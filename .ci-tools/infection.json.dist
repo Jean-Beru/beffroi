@@ -14,5 +14,8 @@
         "global-ignoreSourceCodeByRegex": [
             "\\$this->logger.*"
         ]
+    },
+    "phpUnit": {
+        "customPath": "/tools/phpunit-12"
     }
 }

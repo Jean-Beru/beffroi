@@ -217,6 +217,9 @@ function infect(int $minMsi = 0, int $minCoveredMsi = 0): void
         '--threads=max',
         '--logger-github',
         '-s',
+        // Infection 0.32 generates a PHPUnit configuration with executionOrder="defects" and cacheResult="false";
+        // PHPUnit 13 answers with a runner warning and, stopOnDefect being set too, executes no test at all.
+        // Until Infection catches up, infection.json.dist points it at the PHPUnit 12 phar of the phpqa image.
         '--configuration=.ci-tools/infection.json.dist',
     ], [
         'XDEBUG_MODE' => 'coverage',
