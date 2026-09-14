@@ -1,0 +1,35 @@
+name: Bug
+description: Something does not behave as the specification or the documentation says
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: The request or command, the answer you get, the answer you expected.
+    validations:
+      required: true
+  - type: input
+    id: spec
+    attributes:
+      label: Specification reference
+      description: RFC and section, or OpenID specification and section, when the expected behaviour comes from one (for example `RFC 6749 §4.1.2.1`, `OIDC Core §3.1.3.7`).
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Minimal steps, ideally against `apps/op` started with `castor start`.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Heidi commit or tag, PHP, Symfony, client used (`oidc_login` 8.2, conformance suite version, other).
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security
+      options:
+        - label: This is not a security vulnerability (those go to the private advisory form, see the link above).
+          required: true

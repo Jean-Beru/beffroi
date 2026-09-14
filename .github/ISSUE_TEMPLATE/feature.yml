@@ -1,0 +1,26 @@
+name: Feature or protocol gap
+description: A capability the OP should have, with the specification that defines it
+labels: [enhancement, spec]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What is needed and why
+      description: The use case first. Which client, which deployment, what fails today.
+    validations:
+      required: true
+  - type: input
+    id: spec
+    attributes:
+      label: Specification reference
+      description: RFC or OpenID specification and section (the reference list is `docs/specs/oauth-oidc-specs.md` in the documentation repository).
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed scope
+      description: What is in, what is explicitly out. Remember the current spike boundaries and the security defaults, which are not negotiable.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [core, oidc, bundle, app, ci]
