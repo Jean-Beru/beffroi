@@ -10,7 +10,7 @@ You will get an acknowledgement within 72 hours, and a fix or a mitigation plan 
 
 ## Scope
 
-Anything in this repository: the identity core, the OAuth 2.0 / OpenID Connect module, the Symfony bundle, the application, the Docker images and the CI. The security defaults are listed in the wiki page "Security defaults"; a way to bypass one of them without a configuration change is a vulnerability.
+Anything in this repository: the identity core, the OAuth 2.0 / OpenID Connect module, the Symfony bundle, the application, the Docker images and the CI. The security defaults are listed in `docs/security-defaults.md`; a way to bypass one of them without a configuration change is a vulnerability.
 
 ## Supported versions
 
