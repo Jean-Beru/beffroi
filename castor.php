@@ -206,12 +206,16 @@ function lint(): void
     phpqa(['composer', 'exec', '--', 'parallel-lint', 'src', 'tests']);
 }
 
-#[AsTask(description: 'Run Infection for mutation testing')]
+#[AsTask(description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run')]
 function infect(int $minMsi = 0, int $minCoveredMsi = 0): void
 {
+    // The XML coverage and the JUnit report of this run are what Infection reads from .ci-tools/coverage.
+    phpunit();
+
     phpqa([
         'composer', 'exec', '--', 'infection',
         '--coverage=coverage',
+        '--skip-initial-tests',
         sprintf('--min-msi=%d', $minMsi),
         sprintf('--min-covered-msi=%d', $minCoveredMsi),
         '--threads=max',
