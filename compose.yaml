@@ -1,0 +1,139 @@
+# Development stack of the monorepo.
+#
+#   docker compose up -d                          the OP on https://op.localhost and PostgreSQL
+#   docker compose --profile conformance up -d    plus the OpenID conformance suite on https://localhost:8443
+#
+# The OP answers on op.localhost for the browser (every *.localhost name is loopback) and for the
+# conformance suite container (network alias). Caddy issues the certificate from its internal CA;
+# that CA is imported into the Java truststore of the suite at start-up (tests/conformance/server-entrypoint.sh).
+services:
+  op:
+    build:
+      context: .
+      dockerfile: apps/op/Dockerfile
+      target: frankenphp_dev
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-op.localhost}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-heidi}:${POSTGRES_PASSWORD:-heidi}@database:5432/${POSTGRES_DB:-heidi}?serverVersion=16&charset=utf8
+      MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-heidi}:${RABBITMQ_PASSWORD:-heidi}@rabbitmq:5672/%2f/messages
+      # https://xdebug.org/docs/all_settings#mode
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}
+    volumes:
+      - ./apps/op:/app
+      - ./src:/src
+      - /app/var/
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - target: 80
+        published: ${HTTP_PORT:-80}
+        protocol: tcp
+      - target: 443
+        published: ${HTTPS_PORT:-443}
+        protocol: tcp
+      - target: 443
+        published: ${HTTP3_PORT:-443}
+        protocol: udp
+    networks:
+      default:
+        aliases:
+          - op.localhost
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    tty: true
+
+  database:
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-heidi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-heidi}
+      POSTGRES_USER: ${POSTGRES_USER:-heidi}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-heidi}", "-U", "${POSTGRES_USER:-heidi}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - database_data:/var/lib/postgresql/data:rw
+
+  rabbitmq:
+    image: rabbitmq:${RABBITMQ_VERSION:-4}-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-heidi}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-heidi}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    ports:
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  # OpenID Foundation conformance suite, prebuilt images from gitlab.com/openid/conformance-suite.
+  # Test plan for spike 1: oidcc-basic-certification-test-plan (tests/conformance/).
+  conformance-mongodb:
+    image: mongo:6.0.13
+    profiles: [conformance]
+    networks:
+      default:
+        aliases:
+          # The suite jar connects to "mongodb" whatever the property says
+          - mongodb
+    volumes:
+      - conformance_mongo:/data/db
+
+  conformance-server:
+    image: registry.gitlab.com/openid/conformance-suite:${CONFORMANCE_SUITE_VERSION:-release-v5.2.1}
+    profiles: [conformance]
+    # Same environment as the official docker-compose-prebuilt.yml: the dev Spring profile needs no
+    # login, but the OAuth registrations must be non-empty for the context to start.
+    environment:
+      BASE_URL: https://localhost:8443
+      BASE_MTLS_URL: https://localhost:8444
+      MONGODB_HOST: conformance-mongodb
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_EXTRA_ARGS: -Dfintechlabs.devmode=true
+      OIDC_GOOGLE_CLIENTID: google-client
+      OIDC_GOOGLE_SECRET: google-secret
+      OIDC_GITLAB_CLIENTID: gitlab-client
+      OIDC_GITLAB_SECRET: gitlab-secret
+    entrypoint: ["/bin/sh", "/entrypoint/server-entrypoint.sh"]
+    volumes:
+      - ./tests/conformance/server-entrypoint.sh:/entrypoint/server-entrypoint.sh:ro
+      - caddy_data:/caddy:ro
+    networks:
+      default:
+        aliases:
+          # The nginx image proxies to http://server:8080
+          - server
+    depends_on:
+      - conformance-mongodb
+      - op
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "5"
+
+  conformance-nginx:
+    image: registry.gitlab.com/openid/conformance-suite/nginx:${CONFORMANCE_NGINX_VERSION:-release-v5.2.0}
+    profiles: [conformance]
+    ports:
+      - "8443:8443"
+      - "8444:8444"
+    depends_on:
+      - conformance-server
+
+volumes:
+  caddy_data:
+  rabbitmq_data:
+  caddy_config:
+  database_data:
+  conformance_mongo:

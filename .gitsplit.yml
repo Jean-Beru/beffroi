@@ -1,0 +1,17 @@
+# Split configuration for jderusse/gitsplit. The read-only package repositories are created
+# at the go / no-go of 2026-10-01; until then this file documents which directory becomes
+# which package.
+cache_url: "/cache/gitsplit"
+project_url: "https://github.com/heidi/framework"
+
+splits:
+  - prefix: "src/core"
+    target: "https://${GH_TOKEN}@github.com/Spomky-Labs/heidi-core.git"
+  - prefix: "src/oidc"
+    target: "https://${GH_TOKEN}@github.com/Spomky-Labs/heidi-oidc.git"
+  - prefix: "src/symfony"
+    target: "https://${GH_TOKEN}@github.com/Spomky-Labs/heidi-symfony-bundle.git"
+
+origins:
+  - ^\d+\.\d+\.x$
+  - ^v\d+\.\d+\.\d+$

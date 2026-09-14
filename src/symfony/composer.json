@@ -1,0 +1,39 @@
+{
+    "name": "heidi/symfony-bundle",
+    "description": "Symfony integration of the IdP: configuration, controllers, security, persistence, login and consent pages.",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "keywords": [
+        "oauth2",
+        "openid-connect",
+        "identity-provider",
+        "symfony",
+        "symfony-bundle"
+    ],
+    "authors": [
+        {
+            "name": "All contributors"
+        }
+    ],
+    "require": {
+        "php": ">=8.4",
+        "heidi/core": "self.version",
+        "heidi/oidc": "self.version",
+        "symfony/clock": "8.2.*",
+        "symfony/config": "8.2.*",
+        "symfony/dependency-injection": "8.2.*",
+        "symfony/framework-bundle": "8.2.*",
+        "symfony/http-foundation": "8.2.*",
+        "symfony/http-kernel": "8.2.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Heidi\\Bundle\\": "src/"
+        }
+    },
+    "extra": {
+        "thanks": {
+            "name": "heidi/framework"
+        }
+    }
+}

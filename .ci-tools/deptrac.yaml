@@ -1,0 +1,111 @@
+# Layers of docs/11-architecture.md §2: three packages, four layers in each pure-PHP package.
+# The identity core never depends on a protocol; protocols never depend on each other;
+# nothing below the bundle knows Symfony's HTTP, DI or Doctrine.
+deptrac:
+  paths:
+    - '../src'
+  layers:
+    - name: 'CoreDomain'
+      collectors:
+        - { type: directory, value: '../src/core/src/Domain/.*' }
+        - { type: directory, value: '../src/core/src/Exception/.*' }
+    - name: 'CorePort'
+      collectors:
+        - { type: directory, value: '../src/core/src/Port/.*' }
+    - name: 'CoreApplication'
+      collectors:
+        - { type: directory, value: '../src/core/src/Application/.*' }
+    - name: 'CoreBridge'
+      collectors:
+        - { type: directory, value: '../src/core/src/Bridge/.*' }
+    - name: 'OidcDomain'
+      collectors:
+        - { type: directory, value: '../src/oidc/src/Domain/.*' }
+        - { type: directory, value: '../src/oidc/src/Exception/.*' }
+    - name: 'OidcPort'
+      collectors:
+        - { type: directory, value: '../src/oidc/src/Port/.*' }
+    - name: 'OidcApplication'
+      collectors:
+        - { type: directory, value: '../src/oidc/src/Application/.*' }
+    - name: 'OidcBridge'
+      collectors:
+        - { type: directory, value: '../src/oidc/src/Bridge/.*' }
+    - name: 'Bundle'
+      collectors:
+        - { type: directory, value: '../src/symfony/.*' }
+    - name: 'Psr'
+      collectors:
+        - { type: classLike, value: '^Psr\\' }
+    - name: 'KeyManagement'
+      collectors:
+        - { type: classLike, value: '^Symfony\\Component\\KeyManagement\\' }
+    - name: 'Uid'
+      collectors:
+        - { type: classLike, value: '^Symfony\\Component\\Uid\\' }
+    - name: 'Jose'
+      collectors:
+        - { type: classLike, value: '^Jose\\' }
+    - name: 'Symfony'
+      collectors:
+        - { type: classLike, value: '^Symfony\\' }
+    - name: 'Doctrine'
+      collectors:
+        - { type: classLike, value: '^Doctrine\\' }
+  ruleset:
+    CoreDomain:
+      - 'Psr'
+      - 'Uid'
+    CorePort:
+      - 'CoreDomain'
+      - 'Psr'
+    CoreApplication:
+      - 'CoreDomain'
+      - 'CorePort'
+      - 'Psr'
+    CoreBridge:
+      - 'CoreDomain'
+      - 'CorePort'
+      - 'CoreApplication'
+      - 'Psr'
+      - 'KeyManagement'
+      - 'Uid'
+    OidcDomain:
+      - 'CoreDomain'
+      - 'Psr'
+      - 'Uid'
+    OidcPort:
+      - 'OidcDomain'
+      - 'CoreDomain'
+      - 'CorePort'
+      - 'Psr'
+    OidcApplication:
+      - 'OidcDomain'
+      - 'OidcPort'
+      - 'CoreDomain'
+      - 'CorePort'
+      - 'Psr'
+    OidcBridge:
+      - 'OidcDomain'
+      - 'OidcPort'
+      - 'OidcApplication'
+      - 'CoreDomain'
+      - 'CorePort'
+      - 'Psr'
+      - 'Jose'
+      - 'Uid'
+    Bundle:
+      - 'CoreDomain'
+      - 'CorePort'
+      - 'CoreApplication'
+      - 'CoreBridge'
+      - 'OidcDomain'
+      - 'OidcPort'
+      - 'OidcApplication'
+      - 'OidcBridge'
+      - 'Psr'
+      - 'Symfony'
+      - 'KeyManagement'
+      - 'Uid'
+      - 'Jose'
+      - 'Doctrine'

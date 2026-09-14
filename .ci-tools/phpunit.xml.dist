@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    bootstrap="../tests/bootstrap.php"
+    colors="true"
+    cacheDirectory=".phpunit.cache"
+    failOnWarning="true"
+    failOnDeprecation="true"
+    failOnNotice="true"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    displayDetailsOnTestsThatTriggerWarnings="true"
+>
+    <coverage/>
+    <testsuites>
+        <testsuite name="core">
+            <directory>../tests/core</directory>
+        </testsuite>
+        <testsuite name="oidc">
+            <directory>../tests/oidc</directory>
+        </testsuite>
+        <testsuite name="symfony">
+            <directory>../tests/symfony</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <ini name="display_errors" value="1"/>
+        <ini name="error_reporting" value="-1"/>
+        <server name="APP_ENV" value="test" force="true"/>
+        <server name="APP_DEBUG" value="0" force="true"/>
+        <server name="SHELL_VERBOSITY" value="-1"/>
+        <server name="KERNEL_CLASS" value="Heidi\Bundle\Tests\Functional\AppKernel"/>
+    </php>
+    <source ignoreIndirectDeprecations="true">
+        <include>
+            <directory>../src</directory>
+        </include>
+        <exclude>
+            <directory>../src/symfony/config</directory>
+        </exclude>
+    </source>
+</phpunit>

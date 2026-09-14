@@ -1,0 +1,18 @@
+{
+    "source": {
+        "directories": [
+            "../src/core/src",
+            "../src/oidc/src"
+        ]
+    },
+    "timeout": 3,
+    "logs": {
+        "text": "infection.txt"
+    },
+    "mutators": {
+        "@default": true,
+        "global-ignoreSourceCodeByRegex": [
+            "\\$this->logger.*"
+        ]
+    }
+}
