@@ -71,17 +71,23 @@ function check_licenses(
 }
 
 /**
+ * Runs a command in the phpqa image, or directly when already inside a container (CI) or without Docker.
+ * The environment applies in both cases.
+ *
  * @param array<string> $command
- * @param array<string> $dockerOptions
+ * @param array<string, string> $environment
  */
-function phpqa(array $command, array $dockerOptions = []): void
+function phpqa(array $command, array $environment = []): void
 {
     $inContainer = file_exists('/.dockerenv');
     $hasDocker = trim(shell_exec('command -v docker') ?? '') !== '';
     $phpVersion = getenv('PHP_VERSION') ?: \PHP_MAJOR_VERSION . '.' . \PHP_MINOR_VERSION;
+    $environment += [
+        'XDEBUG_MODE' => 'off',
+    ];
 
     if (! $hasDocker || $inContainer) {
-        run($command);
+        run($command, context: context()->withEnvironment($environment));
         return;
     }
 
@@ -89,7 +95,7 @@ function phpqa(array $command, array $dockerOptions = []): void
         mkdir(getcwd() . '/tmp-phpqa');
     }
 
-    $defaultDockerOptions = [
+    $dockerOptions = [
         '--rm',
         '--init',
         stream_isatty(\STDOUT) ? '-it' : '-i',
@@ -97,14 +103,16 @@ function phpqa(array $command, array $dockerOptions = []): void
         '-v', getcwd() . ':/project',
         '-v', getcwd() . '/tmp-phpqa:/project/tmp-phpqa',
         '-w', '/project',
-        '-e', 'XDEBUG_MODE=off',
         '-e', 'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d',
         '-e', 'PHP_INI_ENTRY=sys_temp_dir=/project/tmp-phpqa',
     ];
+    foreach ($environment as $name => $value) {
+        $dockerOptions[] = '-e';
+        $dockerOptions[] = $name . '=' . $value;
+    }
 
     run([
         'docker', 'run',
-        ...$defaultDockerOptions,
         ...$dockerOptions,
         sprintf('ghcr.io/spomky-labs/phpqa:%s', $phpVersion),
         ...$command,
@@ -132,7 +140,9 @@ function phpunit(#[AsRawTokens] array $args = []): void
             '--display-deprecations',
             ...$args,
         ],
-        ['-e', 'XDEBUG_MODE=coverage']
+        [
+            'XDEBUG_MODE' => 'coverage',
+        ]
     );
 }
 
@@ -208,7 +218,9 @@ function infect(int $minMsi = 0, int $minCoveredMsi = 0): void
         '--logger-github',
         '-s',
         '--configuration=.ci-tools/infection.json.dist',
-    ], ['-e', 'XDEBUG_MODE=coverage']);
+    ], [
+        'XDEBUG_MODE' => 'coverage',
+    ]);
 }
 
 #[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443')]
