@@ -13,10 +13,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-# Quality and tests run on the latest PHP only for now. The test matrix stays in place so that
-# older versions can be re-added by listing them (see the "tests" job).
-env:
-  PHP_VERSION: '8.5'
+# Quality and tests run on the latest PHP only for now (the "env" context is not available in
+# "container.image", hence the literal version in every job). The test matrix stays in place so
+# that older versions can be re-added by listing them (see the "tests" job).
 
 jobs:
   pre_checks:
@@ -44,7 +43,7 @@ jobs:
     needs: [pre_checks]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
@@ -57,7 +56,7 @@ jobs:
     needs: [prepare_dependencies]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
@@ -71,7 +70,7 @@ jobs:
     needs: [prepare_dependencies]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
@@ -85,7 +84,7 @@ jobs:
     needs: [prepare_dependencies]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
@@ -99,7 +98,7 @@ jobs:
     needs: [prepare_dependencies]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
@@ -116,7 +115,7 @@ jobs:
     needs: [prepare_dependencies]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - run: composer exec -- parallel-lint src tests
@@ -126,7 +125,7 @@ jobs:
     needs: [prepare_dependencies]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
@@ -140,7 +139,7 @@ jobs:
     needs: [prepare_dependencies]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
@@ -178,7 +177,7 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || endsWith(github.ref, '.x'))
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/spomky-labs/phpqa:${{ env.PHP_VERSION }}
+      image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
       - uses: ramsey/composer-install@v4
