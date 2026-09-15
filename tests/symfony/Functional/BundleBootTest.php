@@ -6,6 +6,8 @@ namespace Heidi\Bundle\Tests\Functional;
 
 use DateTimeImmutable;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
+use Heidi\Bundle\Security\CorePasswordHasher;
+use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
@@ -24,6 +26,7 @@ use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 /**
  * The kernel boots with the full configuration of tests/symfony/config/config_test.yml, and what the
@@ -93,6 +96,26 @@ final class BundleBootTest extends DatabaseTestCase
         static::assertTrue($native->requiresConsent);
         static::assertNull($clients->findByClientId($tenant, 'unknown'));
         static::assertInstanceOf(ClientAuthenticator::class, self::getContainer()->get('test.heidi.client_authenticator'));
+    }
+
+    /**
+     * Architecture §5.4: the security component hashes and verifies the passwords of the users of the
+     * bundle with the hasher of the core, mapped by the bundle and not by the application.
+     */
+    #[Test]
+    public function theSecurityComponentHashesTheUsersOfTheBundleWithTheHasherOfTheCore(): void
+    {
+        $factory = self::service('test.heidi.password_hasher_factory', PasswordHasherFactoryInterface::class);
+        $core = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
+
+        $hasher = $factory->getPasswordHasher(SecurityUser::class);
+
+        static::assertInstanceOf(CorePasswordHasher::class, $hasher);
+        $encoded = $hasher->hash('correct horse battery staple');
+        $hash = CorePasswordHasher::decode($encoded) ?? static::fail('The hash is one of the core.');
+        static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
+        static::assertTrue($core->verify($hash, 'correct horse battery staple'));
+        static::assertTrue($hasher->verify($encoded, 'correct horse battery staple'));
     }
 
     /**

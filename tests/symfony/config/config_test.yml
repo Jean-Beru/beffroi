@@ -37,6 +37,32 @@ framework:
 twig:
     strict_variables: true
 
+# The firewall of the interaction pages as an application declares it (architecture §5.4): the provider,
+# the checker and the handlers of the bundle, the form login on the login route, the CSRF token the page
+# renders. The protocol plane sits outside of any firewall: no cookie is read there, no session started.
+# The hasher of the users of the bundle is prepended by the bundle.
+security:
+    providers:
+        heidi:
+            id: Heidi\Bundle\Security\IdentityUserProvider
+    firewalls:
+        heidi_protocol:
+            pattern: ^/(\.well-known/openid-configuration|jwks|token|userinfo)$
+            security: false
+        heidi_interaction:
+            lazy: true
+            provider: heidi
+            user_checker: Heidi\Bundle\Security\UserChecker
+            form_login:
+                login_path: heidi_interaction_login
+                check_path: heidi_interaction_login
+                username_parameter: _username
+                password_parameter: _password
+                enable_csrf: true
+                csrf_token_id: authenticate
+                success_handler: Heidi\Bundle\Security\InteractionLoginHandler
+                failure_handler: Heidi\Bundle\Security\InteractionLoginHandler
+
 # SQLite in a file of the cache directory (architecture §7): a kernel reboot between two requests keeps the
 # rows, a fresh schema is created by the tests that need one. The mappings and the types of the bundle are
 # prepended by the bundle itself; the host application of this kernel maps an entity of its own, "User" of
@@ -93,6 +119,9 @@ services:
         public: true
     test.heidi.password_hasher:
         alias: Heidi\Core\Port\PasswordHasherInterface
+        public: true
+    test.heidi.password_hasher_factory:
+        alias: security.password_hasher_factory
         public: true
     test.heidi.key_rotator:
         alias: Heidi\Core\Application\Key\SigningKeyRotator

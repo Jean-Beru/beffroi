@@ -19,6 +19,8 @@ use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Plane\Plane;
+use Heidi\Bundle\Security\CorePasswordHasher;
+use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
@@ -221,6 +223,9 @@ final class HeidiBundle extends AbstractBundle
      * migrations of the bundle without a line in the application (architecture §5.3): the same schema
      * installs in an existing application or alone (decision 0002). The classes live in the core and in the
      * module, so the bundle cannot rely on the mapping Doctrine infers from a bundle's own namespace.
+     *
+     * The security component gets the hasher of the users of the bundle (architecture §5.4): the firewall
+     * is the application's to declare, the hasher of a SecurityUser is nobody's choice but the core's.
      */
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -246,6 +251,15 @@ final class HeidiBundle extends AbstractBundle
                             'prefix' => 'Heidi\\Oidc\\Domain',
                             'alias' => 'HeidiOidc',
                         ],
+                    ],
+                ],
+            ]);
+        }
+        if ($builder->hasExtension('security')) {
+            $builder->prependExtensionConfig('security', [
+                'password_hashers' => [
+                    SecurityUser::class => [
+                        'id' => CorePasswordHasher::class,
                     ],
                 ],
             ]);

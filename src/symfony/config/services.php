@@ -21,6 +21,12 @@ use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Plane\PlaneRequestListener;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
+use Heidi\Bundle\Security\CorePasswordHasher;
+use Heidi\Bundle\Security\IdentityUserProvider;
+use Heidi\Bundle\Security\InteractionLoginHandler;
+use Heidi\Bundle\Security\LoginFailureListener;
+use Heidi\Bundle\Security\LoginSuccessListener;
+use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SessionTerminator;
@@ -82,7 +88,8 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_it
 
 /*
  * Every service of the core and of the module, autowired, the ports aliased to the one implementation
- * spike 1 has (architecture §3.4, §4.11, §5.2, §5.3), and the controllers of the two planes.
+ * spike 1 has (architecture §3.4, §4.11, §5.2, §5.3), the controllers of the two planes and what the firewall
+ * of the interaction pages is made of (§5.4).
  */
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
@@ -110,6 +117,16 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AuthorizationResponder::class);
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
+
+    // The bundle: security (architecture §5.4). The application names the provider, the checker and the
+    // handlers in its firewall; the hasher is mapped to the users of the bundle by the bundle itself; the
+    // listeners are global, the security bundle hands them to every firewall.
+    $services->set(IdentityUserProvider::class);
+    $services->set(CorePasswordHasher::class);
+    $services->set(UserChecker::class);
+    $services->set(InteractionLoginHandler::class);
+    $services->set(LoginSuccessListener::class);
+    $services->set(LoginFailureListener::class);
 
     // The bundle: persistence (architecture §5.3). The tenant of a request is the row Doctrine manages,
     // checked against the configuration, held for one request and forgotten with the unit of work; the
