@@ -255,6 +255,9 @@ final class AuthorizationRequestParserTest extends TestCase
         yield 'state with a line break' => [[
             'state' => "a\nb",
         ], 'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).'];
+        yield 'state with a trailing newline' => [[
+            'state' => "af0ifjsldkj\n",
+        ], 'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).'];
     }
 
     /**
@@ -480,6 +483,12 @@ final class AuthorizationRequestParserTest extends TestCase
         yield 'login_hint with a control character' => [[
             'login_hint' => "alice\r\n@acme.example",
         ], 'invalid_request', 'The login_hint parameter must be text without control characters.'];
+        yield 'login_hint with a trailing newline' => [[
+            'login_hint' => "alice@acme.example\n",
+        ], 'invalid_request', 'The login_hint parameter must be text without control characters.'];
+        yield 'max_age with a trailing newline' => [[
+            'max_age' => "60\n",
+        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
         yield 'ui_locales that is not a language tag' => [[
             'ui_locales' => 'fr_FR',
         ], 'invalid_request', 'The ui_locales parameter must be a space-separated list of language tags.'];
@@ -494,6 +503,9 @@ final class AuthorizationRequestParserTest extends TestCase
         ], 'invalid_request', 'The acr_values parameter must be a space-separated list of printable ASCII values.'];
         yield 'acr_values beyond ASCII' => [[
             'acr_values' => 'argenté',
+        ], 'invalid_request', 'The acr_values parameter must be a space-separated list of printable ASCII values.'];
+        yield 'acr_values with a trailing newline' => [[
+            'acr_values' => "urn:a\n",
         ], 'invalid_request', 'The acr_values parameter must be a space-separated list of printable ASCII values.'];
         yield 'unknown display value' => [[
             'display' => 'modal',

@@ -100,11 +100,11 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a token is found by its hash; a family, and the descendants of a code, are
-     * found whole, whatever the state of their members.
+     * Architecture §4.6, §4.9: a token is found by its hash; a family, the descendants of a code and the
+     * tokens of a session are found whole, whatever the state of their members.
      */
     #[Test]
-    public function itFindsRefreshTokensByHashByFamilyAndByCode(): void
+    public function itFindsRefreshTokensByHashByFamilyByCodeAndBySession(): void
     {
         $repository = new InMemoryRefreshTokenRepository();
         $session = Fixtures::session();
@@ -116,13 +116,15 @@ final class InMemoryRepositoriesTest extends TestCase
         $revoked = Tokens::refreshToken('revoked', $client, $session, Fixtures::now()->modify('+2 days'), $family);
         $revoked->revoke(Fixtures::now()->modify('+2 days'));
         $other = Tokens::refreshToken('other', $client, $session, Fixtures::now(), Tokens::family(Fixtures::now(), 'other-code'));
+        $elsewhere = Tokens::refreshToken('elsewhere', $client, Fixtures::session(Fixtures::user($session->tenant, 'bob', 'bob-subject')), Fixtures::now());
         $lineage = [$first, $second, $revoked];
 
         static::assertSame([], $repository->all());
         static::assertNull($repository->findByTokenHash(RefreshToken::hash('first')));
         static::assertSame([], $repository->findByFamily($family->id));
         static::assertSame([], $repository->findByAuthorizationCode(AuthorizationCode::hash('first-code')));
-        foreach ([$first, $second, $revoked, $other, $first] as $token) {
+        static::assertSame([], $repository->findBySession($session->id));
+        foreach ([$first, $second, $revoked, $other, $elsewhere, $first] as $token) {
             $repository->save($token);
         }
 
@@ -135,7 +137,10 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertSame($repository->findByFamily($family->id), $repository->findByAuthorizationCode(AuthorizationCode::hash('first-code')), 'the descendants of the code are the family');
         static::assertSame([$other], $repository->findByAuthorizationCode(AuthorizationCode::hash('other-code')));
         static::assertSame([], $repository->findByAuthorizationCode(AuthorizationCode::hash('unknown')));
-        static::assertSame([...$lineage, $other], $repository->all());
-        static::assertSame(5, $repository->saves);
+        static::assertSame([...$lineage, $other], $repository->findBySession($session->id), 'every token of the session, rotated and revoked ones included');
+        static::assertSame([$elsewhere], $repository->findBySession($elsewhere->session->id));
+        static::assertSame([], $repository->findBySession(Uuid::v7()));
+        static::assertSame([...$lineage, $other, $elsewhere], $repository->all());
+        static::assertSame(6, $repository->saves);
     }
 }
