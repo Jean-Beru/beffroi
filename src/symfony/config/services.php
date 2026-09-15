@@ -31,6 +31,7 @@ use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SessionTerminator;
+use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsSigner;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
@@ -124,6 +125,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
 
+    // The bundle: provisioning from the console (architecture §5.5), the tenant first, then keys and users.
+    $services->load('Heidi\\Bundle\\Command\\', '../src/Command/');
+
     // The bundle: security (architecture §5.4). The application names the provider, the checker and the
     // handlers in its firewall; the hasher is mapped to the users of the bundle by the bundle itself; the
     // listeners are global, the security bundle hands them to every firewall.
@@ -194,6 +198,7 @@ return static function (ContainerConfigurator $container): void {
     // The core: use cases
     $services->set(PasswordAuthenticator::class);
     $services->set(SessionTerminator::class);
+    $services->set(UserProvisioner::class);
 
     // The module: clients
     $services->set(ConfigurationClientRepository::class);
