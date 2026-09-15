@@ -28,18 +28,20 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aCodeComesBackWithWhatTheGrantNeeds(): void
     {
-        $codes = self::codes();
+        // Given
         $session = self::session(self::user());
         $client = self::client();
         $claims = new ClaimsRequest([
             'email' => new ClaimRequest(true),
         ]);
         $code = AuthorizationCode::generate();
-        $codes->save(self::code($code, $client, $session, $claims));
+        self::codes()->save(self::code($code, $client, $session, $claims));
         self::reload();
 
-        $found = $codes->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
+        // When
+        $found = self::codes()->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
 
+        // Then
         static::assertSame(AuthorizationCode::hash($code), $found->codeHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
@@ -63,20 +65,27 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aConsumedCodeStaysConsumed(): void
     {
-        $codes = self::codes();
-        $session = self::session(self::user());
+        // Given
         $code = AuthorizationCode::generate();
-        $record = self::code($code, self::client(), $session, null);
-        $codes->save($record);
+        $record = self::code($code, self::client(), self::session(self::user()), null);
+        self::codes()->save($record);
         $record->consume(self::now()->modify('+90 seconds'));
-        $codes->save($record);
+        self::codes()->save($record);
         self::reload();
 
-        $found = $codes->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
+        // When
+        $found = self::codes()->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
 
+        // Then
         static::assertTrue($found->isUsed());
         static::assertEquals(self::now()->modify('+90 seconds'), $found->usedAt);
-        static::assertNull($codes->findByCodeHash(AuthorizationCode::hash(AuthorizationCode::generate())));
+    }
+
+    #[Test]
+    public function anUnknownCodeIsNotFound(): void
+    {
+        // When / Then
+        static::assertNull(self::codes()->findByCodeHash(AuthorizationCode::hash(AuthorizationCode::generate())));
     }
 
     /**
@@ -86,14 +95,14 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aCodeOfAnUnregisteredClientIsNotFound(): void
     {
-        $codes = self::codes();
-        $session = self::session(self::user());
+        // Given
         $ghost = new Client(self::tenant(), 'ghost', 'Removed client', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://ghost.example/callback')]);
         $code = AuthorizationCode::generate();
-        $codes->save(self::code($code, $ghost, $session, null));
+        self::codes()->save(self::code($code, $ghost, self::session(self::user()), null));
         self::reload();
 
-        static::assertNull($codes->findByCodeHash(AuthorizationCode::hash($code)));
+        // When / Then
+        static::assertNull(self::codes()->findByCodeHash(AuthorizationCode::hash($code)));
     }
 
     private static function code(string $code, Client $client, AuthenticationSession $session, ?ClaimsRequest $claims): AuthorizationCode

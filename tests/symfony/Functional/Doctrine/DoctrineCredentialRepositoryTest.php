@@ -20,7 +20,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aPasswordCredentialComesBackWithItsTypedHash(): void
     {
-        $credentials = self::credentials();
+        // Given
         $user = self::user();
         $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'base64digest', [
             'salt' => 'c2FsdA',
@@ -28,11 +28,13 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         ]);
         $credential = new PasswordCredential(Uuid::v7(), $user, $hash, self::now());
         $credential->markUsed(self::now()->modify('+1 minute'));
-        $credentials->save($credential);
+        self::credentials()->save($credential);
         self::reload();
 
-        $found = $credentials->findPasswordCredential($user) ?? static::fail('The credential was not stored.');
+        // When
+        $found = self::credentials()->findPasswordCredential($user) ?? static::fail('The credential was not stored.');
 
+        // Then
         static::assertTrue($found->id->equals($credential->id));
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
@@ -45,22 +47,40 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         static::assertEquals(self::now(), $found->createdAt);
         static::assertEquals(self::now(), $found->hashChangedAt);
         static::assertEquals(self::now()->modify('+1 minute'), $found->lastUsedAt);
-        static::assertEquals([$found], $credentials->findByUser($user));
+    }
+
+    #[Test]
+    public function theCredentialsOfAUserAreListed(): void
+    {
+        // Given
+        $user = self::user();
+        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        self::credentials()->save($credential);
+        self::reload();
+
+        // When
+        $listed = self::credentials()->findByUser($user);
+
+        // Then
+        static::assertCount(1, $listed);
+        static::assertTrue($listed[0]->id->equals($credential->id));
     }
 
     #[Test]
     public function aRehashIsWrittenOnSave(): void
     {
-        $credentials = self::credentials();
+        // Given
         $user = self::user();
         $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), self::now());
-        $credentials->save($credential);
+        self::credentials()->save($credential);
         $credential->rehash(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$new'), self::now()->modify('+1 hour'));
-        $credentials->save($credential);
+        self::credentials()->save($credential);
         self::reload();
 
-        $found = $credentials->findPasswordCredential($user) ?? static::fail('The credential was not stored.');
+        // When
+        $found = self::credentials()->findPasswordCredential($user) ?? static::fail('The credential was not stored.');
 
+        // Then
         static::assertSame(PasswordAlgorithm::Argon2id, $found->hash->algorithm);
         static::assertSame('$argon2id$new', $found->hash->encoded);
         static::assertSame([], $found->hash->parameters);
@@ -70,14 +90,14 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aUserWithoutPasswordHasNone(): void
     {
-        $credentials = self::credentials();
-        $alice = self::user();
+        // Given
         $bob = self::user('bob', 'bob-subject');
-        $credentials->save(new PasswordCredential(Uuid::v7(), $alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now()));
+        self::credentials()->save(new PasswordCredential(Uuid::v7(), self::user(), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now()));
         self::reload();
 
-        static::assertNull($credentials->findPasswordCredential($bob));
-        static::assertSame([], $credentials->findByUser($bob));
+        // When / Then
+        static::assertNull(self::credentials()->findPasswordCredential($bob));
+        static::assertSame([], self::credentials()->findByUser($bob));
     }
 
     private static function credentials(): CredentialRepositoryInterface

@@ -34,7 +34,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     #[Test]
     public function anInteractionComesBackWithItsWholeRequest(): void
     {
-        $interactions = self::interactions();
+        // Given
         $client = self::client();
         $claims = new ClaimsRequest([
             'email' => new ClaimRequest(true),
@@ -61,11 +61,13 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             ResponseMode::Query,
         );
         $id = Interaction::generateId();
-        $interactions->save(new Interaction($id, self::tenant(), $request, 'fr', self::now(), self::now()->modify('+10 minutes')));
+        self::interactions()->save(new Interaction($id, self::tenant(), $request, 'fr', self::now(), self::now()->modify('+10 minutes')));
         self::reload();
 
-        $found = $interactions->find($id) ?? static::fail('The interaction was not stored.');
+        // When
+        $found = self::interactions()->find($id) ?? static::fail('The interaction was not stored.');
 
+        // Then
         static::assertSame($id, $found->id);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
@@ -98,16 +100,18 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aBareRequestComesBackBare(): void
     {
-        $interactions = self::interactions();
+        // Given
         $client = self::client('native-app');
         $request = new AuthorizationRequest($client, $client->redirectUris[0], [new Scope('openid')], new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256));
         $id = Interaction::generateId();
-        $interactions->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
+        self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
         self::reload();
 
-        $found = $interactions->find($id) ?? static::fail('The interaction was not stored.');
-        $parked = $found->request;
+        // When
+        $found = self::interactions()->find($id) ?? static::fail('The interaction was not stored.');
 
+        // Then
+        $parked = $found->request;
         static::assertNull($found->locale);
         static::assertSame('native-app', $parked->client->clientId);
         static::assertNull($parked->state);
@@ -125,7 +129,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     #[Test]
     public function theSessionTheConsentAndTheCompletionAreWrittenOnSave(): void
     {
-        $interactions = self::interactions();
+        // Given
         $user = self::user();
         $session = self::session($user);
         $client = self::client();
@@ -134,15 +138,17 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             ->save($consent);
         $request = new AuthorizationRequest($client, $client->redirectUris[0], [new Scope('openid')], new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256));
         $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, 'en', self::now(), self::now()->modify('+10 minutes'));
-        $interactions->save($interaction);
+        self::interactions()->save($interaction);
         $interaction->authenticate($session, self::now()->modify('+1 minute'));
         $interaction->consent($consent, self::now()->modify('+2 minutes'));
         $interaction->complete(self::now()->modify('+3 minutes'));
-        $interactions->save($interaction);
+        self::interactions()->save($interaction);
         self::reload();
 
-        $found = $interactions->find($interaction->id) ?? static::fail('The interaction was not stored.');
+        // When
+        $found = self::interactions()->find($interaction->id) ?? static::fail('The interaction was not stored.');
 
+        // Then
         static::assertTrue($found->session?->id->equals($session->id));
         static::assertTrue($found->session->user->id->equals($user->id));
         static::assertTrue($found->consent?->id->equals($consent->id));
@@ -158,15 +164,22 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     #[Test]
     public function anInteractionOfAnUnregisteredClientIsNotFound(): void
     {
-        $interactions = self::interactions();
+        // Given
         $ghost = new Client(self::tenant(), 'ghost', 'Removed client', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://ghost.example/callback')]);
         $request = new AuthorizationRequest($ghost, $ghost->redirectUris[0], [new Scope('openid')], new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256));
         $id = Interaction::generateId();
-        $interactions->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
+        self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
         self::reload();
 
-        static::assertNull($interactions->find($id));
-        static::assertNull($interactions->find(Interaction::generateId()));
+        // When / Then
+        static::assertNull(self::interactions()->find($id));
+    }
+
+    #[Test]
+    public function anUnknownIdentifierFindsNoInteraction(): void
+    {
+        // When / Then
+        static::assertNull(self::interactions()->find(Interaction::generateId()));
     }
 
     private static function interactions(): InteractionRepositoryInterface

@@ -29,7 +29,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aTokenComesBackWithItsFamilyAndWhatTheNextRefreshNeeds(): void
     {
-        $tokens = self::tokens();
+        // Given
         $session = self::session(self::user());
         $client = self::client();
         $family = self::family();
@@ -37,11 +37,13 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
             'acr' => new ClaimRequest(true),
         ]);
         $token = RefreshToken::generate();
-        $tokens->save(self::token($token, $client, $session, $family, $claims, self::now()->modify('+1 minute')));
+        self::tokens()->save(self::token($token, $client, $session, $family, $claims, self::now()->modify('+1 minute')));
         self::reload();
 
-        $found = $tokens->findByTokenHash(RefreshToken::hash($token)) ?? static::fail('The token was not stored.');
+        // When
+        $found = self::tokens()->findByTokenHash(RefreshToken::hash($token)) ?? static::fail('The token was not stored.');
 
+        // Then
         static::assertSame(RefreshToken::hash($token), $found->tokenHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
@@ -63,39 +65,121 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function aRotationAndARevocationAreWrittenOnSave(): void
+    public function aRotationIsWrittenOnSave(): void
     {
-        $tokens = self::tokens();
-        $session = self::session(self::user());
-        $client = self::client();
-        $family = self::family();
-        $first = self::token(RefreshToken::generate(), $client, $session, $family, null, self::now()->modify('+1 minute'));
-        $tokens->save($first);
-        $first->rotate(self::now()->modify('+1 hour'));
-        $tokens->save($first);
-        $second = self::token(RefreshToken::generate(), $client, $session, $family, null, self::now()->modify('+1 hour'));
-        $tokens->save($second);
-        $second->revoke(self::now()->modify('+2 hours'));
-        $tokens->save($second);
+        // Given
+        $token = self::token(RefreshToken::generate(), self::client(), self::session(self::user()), self::family(), null, self::now()->modify('+1 minute'));
+        self::tokens()->save($token);
+        $token->rotate(self::now()->modify('+1 hour'));
+        self::tokens()->save($token);
         self::reload();
 
-        $rotated = $tokens->findByTokenHash($first->tokenHash) ?? static::fail('The first token was not stored.');
-        $revoked = $tokens->findByTokenHash($second->tokenHash) ?? static::fail('The second token was not stored.');
+        // When
+        $rotated = self::tokens()->findByTokenHash($token->tokenHash) ?? static::fail('The token was not stored.');
 
+        // Then
         static::assertTrue($rotated->isRotated());
         static::assertEquals(self::now()->modify('+1 hour'), $rotated->rotatedAt);
         static::assertFalse($rotated->isRevoked());
+    }
+
+    #[Test]
+    public function aRevocationIsWrittenOnSave(): void
+    {
+        // Given
+        $token = self::token(RefreshToken::generate(), self::client(), self::session(self::user()), self::family(), null, self::now()->modify('+1 hour'));
+        self::tokens()->save($token);
+        $token->revoke(self::now()->modify('+2 hours'));
+        self::tokens()->save($token);
+        self::reload();
+
+        // When
+        $revoked = self::tokens()->findByTokenHash($token->tokenHash) ?? static::fail('The token was not stored.');
+
+        // Then
         static::assertTrue($revoked->isRevoked());
         static::assertEquals(self::now()->modify('+2 hours'), $revoked->revokedAt);
     }
 
     /**
-     * RFC 6749 §4.1.2, RFC 9700 §4.13.2, decision 0006: what a replay, a reuse and a logout revoke.
+     * RFC 9700 §4.13.2: a reuse revokes the family, found whole, in issuance order.
      */
     #[Test]
-    public function tokensAreFoundByFamilyByCodeAndBySession(): void
+    public function tokensAreFoundByFamilyInIssuanceOrder(): void
     {
-        $tokens = self::tokens();
+        // Given
+        ['family' => $family, 'first' => $first, 'second' => $second, 'sibling' => $sibling, 'third' => $third] = self::twoFamilies();
+
+        // When / Then
+        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes(self::tokens()->findByFamily($family->id)));
+        static::assertSame([$third->tokenHash], self::hashes(self::tokens()->findByFamily($sibling->id)));
+        static::assertSame([], self::hashes(self::tokens()->findByFamily(Uuid::v7())));
+    }
+
+    /**
+     * RFC 6749 §4.1.2: a replay of the code revokes its descendants, found whole.
+     */
+    #[Test]
+    public function tokensAreFoundByAuthorizationCode(): void
+    {
+        // Given
+        ['family' => $family, 'first' => $first, 'second' => $second] = self::twoFamilies();
+
+        // When / Then
+        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes(self::tokens()->findByAuthorizationCode($family->authorizationCodeHash)));
+    }
+
+    /**
+     * Decision 0006: a logout revokes the tokens of the session, found whole.
+     */
+    #[Test]
+    public function tokensAreFoundBySession(): void
+    {
+        // Given
+        ['aliceSession' => $aliceSession, 'first' => $first, 'second' => $second, 'otherSession' => $otherSession, 'third' => $third] = self::twoFamilies();
+
+        // When / Then
+        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes(self::tokens()->findBySession($aliceSession->id)));
+        static::assertSame([$third->tokenHash], self::hashes(self::tokens()->findBySession($otherSession->id)));
+        static::assertSame([], self::hashes(self::tokens()->findBySession(Uuid::v7())));
+    }
+
+    /**
+     * A token of a client removed from the configuration is not a token: not found, so that nothing
+     * dereferences a client that does not exist.
+     */
+    #[Test]
+    public function aTokenOfAnUnregisteredClientIsNotFound(): void
+    {
+        // Given
+        ['orphan' => $orphan] = self::anOrphanAndAKeptToken();
+
+        // When / Then
+        static::assertNull(self::tokens()->findByTokenHash($orphan->tokenHash));
+    }
+
+    /**
+     * A token of a client removed from the configuration is not listed either, by family or by session.
+     */
+    #[Test]
+    public function aTokenOfAnUnregisteredClientIsNotListed(): void
+    {
+        // Given
+        ['kept' => $kept, 'family' => $family, 'session' => $session] = self::anOrphanAndAKeptToken();
+
+        // When / Then
+        static::assertSame([$kept->tokenHash], self::hashes(self::tokens()->findByFamily($family->id)));
+        static::assertSame([$kept->tokenHash], self::hashes(self::tokens()->findBySession($session->id)));
+    }
+
+    /**
+     * Two tokens of one family in one session of alice, saved out of order, and a third of a sibling
+     * family in another session of hers.
+     *
+     * @return array{family: RefreshTokenFamily, first: RefreshToken, second: RefreshToken, sibling: RefreshTokenFamily, third: RefreshToken, aliceSession: AuthenticationSession, otherSession: AuthenticationSession}
+     */
+    private static function twoFamilies(): array
+    {
         $alice = self::user();
         $aliceSession = self::session($alice);
         $otherSession = self::session($alice, self::now()->modify('+1 minute'));
@@ -105,40 +189,45 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         $first = self::token(RefreshToken::generate(), $client, $aliceSession, $family, null, self::now()->modify('+1 minute'));
         $second = self::token(RefreshToken::generate(), $client, $aliceSession, $family, null, self::now()->modify('+2 minutes'));
         $third = self::token(RefreshToken::generate(), $client, $otherSession, $sibling, null, self::now()->modify('+3 minutes'));
-        $tokens->save($second);
-        $tokens->save($first);
-        $tokens->save($third);
+        self::tokens()->save($second);
+        self::tokens()->save($first);
+        self::tokens()->save($third);
         self::reload();
 
-        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes($tokens->findByFamily($family->id)));
-        static::assertSame([$third->tokenHash], self::hashes($tokens->findByFamily($sibling->id)));
-        static::assertSame([], self::hashes($tokens->findByFamily(Uuid::v7())));
-        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes($tokens->findByAuthorizationCode($family->authorizationCodeHash)));
-        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes($tokens->findBySession($aliceSession->id)));
-        static::assertSame([$third->tokenHash], self::hashes($tokens->findBySession($otherSession->id)));
-        static::assertSame([], self::hashes($tokens->findBySession(Uuid::v7())));
+        return [
+            'family' => $family,
+            'first' => $first,
+            'second' => $second,
+            'sibling' => $sibling,
+            'third' => $third,
+            'aliceSession' => $aliceSession,
+            'otherSession' => $otherSession,
+        ];
     }
 
     /**
-     * A token of a client removed from the configuration is not a token: not found, not listed, so that
-     * nothing dereferences a client that does not exist.
+     * A token of a client removed from the configuration next to one of a registered client, in the
+     * same family and the same session.
+     *
+     * @return array{orphan: RefreshToken, kept: RefreshToken, family: RefreshTokenFamily, session: AuthenticationSession}
      */
-    #[Test]
-    public function aTokenOfAnUnregisteredClientIsNeitherFoundNorListed(): void
+    private static function anOrphanAndAKeptToken(): array
     {
-        $tokens = self::tokens();
         $session = self::session(self::user());
         $family = self::family();
         $ghost = new Client(self::tenant(), 'ghost', 'Removed client', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://ghost.example/callback')]);
         $orphan = self::token(RefreshToken::generate(), $ghost, $session, $family, null, self::now()->modify('+1 minute'));
         $kept = self::token(RefreshToken::generate(), self::client(), $session, $family, null, self::now()->modify('+2 minutes'));
-        $tokens->save($orphan);
-        $tokens->save($kept);
+        self::tokens()->save($orphan);
+        self::tokens()->save($kept);
         self::reload();
 
-        static::assertNull($tokens->findByTokenHash($orphan->tokenHash));
-        static::assertSame([$kept->tokenHash], self::hashes($tokens->findByFamily($family->id)));
-        static::assertSame([$kept->tokenHash], self::hashes($tokens->findBySession($session->id)));
+        return [
+            'orphan' => $orphan,
+            'kept' => $kept,
+            'family' => $family,
+            'session' => $session,
+        ];
     }
 
     private static function family(): RefreshTokenFamily
