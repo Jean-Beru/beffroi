@@ -28,7 +28,7 @@ The core never depends on a protocol; protocols never depend on each other; noth
 - `User`: a stable `subject` distinct from the technical id, so that an import from another IdP keeps its `sub`. Standard profile claims. `emailVerified` is a boolean, never a string.
 - `Credential`: N per user. `PasswordCredential` carries a typed `PasswordHash` (algorithm and parameters). Passkeys and TOTP are future subclasses.
 - `LinkedIdentity`: an identity at an upstream provider. `Group` and `GroupMembership` carry a `source` (local, upstream claims, SCIM); the source wins over manual edits.
-- `AuthenticationSession`: who is authenticated, since when (`auth_time`), how (`amr`, `acr`) and from where: two `RequestContext` (creation, last seen) with IP, user agent, and later GeoIP and device. Sessions end one by one.
+- `AuthenticationSession`: who is authenticated, since when (`auth_time`), how (`amr`, and `acr` computed from the proofs: `"1"` for a password, the numeric level Keycloak emits by default, never stored nor configured) and from where: two `RequestContext` (creation, last seen) with IP, user agent, and later GeoIP and device. Sessions end one by one.
 - Signing keys: `SigningKeyProviderInterface` gives the active key and the publishable set of a tenant. The private key is sealed as a `symfony/key-management` envelope and exists in clear only in process memory; jwt-framework signs. The KMS keeps, it does not sign.
 - Events: every event carries `occurredAt`, the tenant and the `RequestContext` of the request that produced it.
 

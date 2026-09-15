@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Domain\Session;
 
 use DateTimeImmutable;
+use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -51,42 +52,32 @@ final class AuthenticationSessionTest extends TestCase
         static::assertSame(['pwd'], $session->methodReferences());
     }
 
+    /**
+     * OIDC Core §2 "acr", architecture §3.2: read from the proofs, "1" for the one factor a password is.
+     */
     #[Test]
-    public function aSessionHasNoAcrUnlessTheDeploymentDefinesOne(): void
+    public function aSessionEstablishedByAPasswordSatisfiesTheSingleFactorClass(): void
     {
         // When
         $session = Fixtures::session();
 
         // Then
-        static::assertNull($session->authenticationContextClass);
+        static::assertTrue($session->authenticationContextClass()->equals(AuthenticationContextClass::singleFactor()));
+        static::assertSame('1', $session->authenticationContextClass()->value);
     }
 
     #[Test]
-    public function itCarriesAnAcrWhenTheDeploymentDefinesOne(): void
+    public function itRecordsEveryMethodProven(): void
     {
         // Given
         $user = Fixtures::user();
         $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
 
         // When
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, 'urn:acme:loa:2', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
 
         // Then
         static::assertSame(['pwd', 'otp'], $session->methodReferences());
-        static::assertSame('urn:acme:loa:2', $session->authenticationContextClass);
-    }
-
-    #[Test]
-    public function anEmptyAcrIsNotAnAcr(): void
-    {
-        // Given
-        $user = Fixtures::user();
-
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), '', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     #[Test]
@@ -99,7 +90,7 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), null, Fixtures::context(), Fixtures::now());
+        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), Fixtures::context(), Fixtures::now());
     }
 
     #[Test]
@@ -112,7 +103,7 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')), null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')), Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     #[Test]
@@ -125,7 +116,7 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     /**

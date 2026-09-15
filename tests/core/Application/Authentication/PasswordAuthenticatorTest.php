@@ -68,12 +68,12 @@ final class PasswordAuthenticatorTest extends TestCase
         $context = Fixtures::context($this->clock->now());
 
         // When
-        $session = $this->authenticator->authenticate($this->tenant, ' alice ', 'correct horse', $context, 'urn:acme:pwd');
+        $session = $this->authenticator->authenticate($this->tenant, ' alice ', 'correct horse', $context);
 
         // Then
         static::assertSame($this->alice, $session->user);
         static::assertSame(['pwd'], $session->methodReferences());
-        static::assertSame('urn:acme:pwd', $session->authenticationContextClass);
+        static::assertSame('1', $session->authenticationContextClass()->value);
         static::assertSame($context, $session->createdFrom);
         static::assertEquals($this->clock->now(), $session->establishedAt);
         static::assertEquals($this->clock->now(), $session->authenticatedAt());

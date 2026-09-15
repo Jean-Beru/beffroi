@@ -32,7 +32,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         $establishedAt = self::now();
         $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt->modify('-1 minute'))
             ->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $establishedAt);
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, $proofs, 'urn:example:acr:silver', self::enrichedContext($establishedAt), $establishedAt->modify('+12 hours'));
+        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, $proofs, self::enrichedContext($establishedAt), $establishedAt->modify('+12 hours'));
         self::sessions()->save($session);
         self::reload();
 
@@ -46,7 +46,6 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         static::assertEquals($proofs, $found->proofs);
         static::assertSame(['pwd', 'otp'], $found->methodReferences());
         static::assertEquals($establishedAt, $found->authenticatedAt());
-        static::assertSame('urn:example:acr:silver', $found->authenticationContextClass);
         static::assertEquals($establishedAt->modify('+12 hours'), $found->expiresAt);
         static::assertNull($found->endedAt);
         static::assertNull($found->endedBy);
@@ -63,7 +62,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         $user = self::user();
         $establishedAt = self::now();
         $createdFrom = self::enrichedContext($establishedAt);
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt), null, $createdFrom, $establishedAt->modify('+12 hours'));
+        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt), $createdFrom, $establishedAt->modify('+12 hours'));
         self::sessions()->save($session);
         self::reload();
 

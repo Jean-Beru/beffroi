@@ -105,7 +105,7 @@ final class RefreshTokenTest extends TestCase
         static::assertSame($claims, $token->claimsRequest);
         static::assertEquals($issuedAt, $token->authenticatedAt);
         static::assertSame(['pwd', 'otp'], $token->authenticationMethods);
-        static::assertNull($token->authenticationContextClass);
+        static::assertSame('1', $token->authenticationContextClass);
         static::assertEquals($issuedAt, $token->issuedAt);
         static::assertEquals($issuedAt->modify('+30 days'), $token->expiresAt);
     }
@@ -440,7 +440,8 @@ final class RefreshTokenTest extends TestCase
             null,
             $this->session->authenticatedAt(),
             $methods ?? $this->session->methodReferences(),
-            null,
+            $this->session->authenticationContextClass()
+                ->value,
             $issuedAt ?? Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+30 days'),
         );

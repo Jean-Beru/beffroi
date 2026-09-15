@@ -98,7 +98,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         ['claims' => $claims] = $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'));
 
         // Then
-        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'amr', 'scope', 'sid'], array_keys($claims));
+        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'acr', 'amr', 'scope', 'sid'], array_keys($claims));
         static::assertSame('https://id.acme.example', $claims['iss']);
         static::assertSame(Fixtures::now()->modify('+10 minutes')->getTimestamp(), $claims['exp']);
         static::assertSame('spa', $claims['aud']);
@@ -131,13 +131,13 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2.1: "acr" when the session has one, "amr" with every method.
+     * RFC 9068 §2.2.1: "acr" as the session satisfies it, "amr" with every method.
      */
     #[Test]
     public function itWritesTheAuthenticationContextOfTheSession(): void
     {
         // Given
-        $session = new AuthenticationSession(Uuid::v7(), $this->session->tenant, $this->session->user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now()), 'urn:acme:mfa', Fixtures::context(), Fixtures::now()->modify('+12 hours'));
+        $session = new AuthenticationSession(Uuid::v7(), $this->session->tenant, $this->session->user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now()), Fixtures::context(), Fixtures::now()->modify('+12 hours'));
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $session, Fixtures::now()));
         $token = $this->issuer->issue($authorization, Fixtures::now());
 
@@ -145,7 +145,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $claims = $this->jwts->verify($token->value, 'spa', Fixtures::now())['claims'];
 
         // Then
-        static::assertSame('urn:acme:mfa', $claims['acr']);
+        static::assertSame('1', $claims['acr']);
         static::assertSame(['pwd', 'otp'], $claims['amr']);
     }
 
@@ -235,7 +235,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $claims = $this->jwts->verify($token->value, 'spa', Fixtures::now())['claims'];
 
         // Then
-        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'amr', 'scope', 'userinfo_claims', 'sid'], array_keys($claims));
+        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'acr', 'amr', 'scope', 'userinfo_claims', 'sid'], array_keys($claims));
         static::assertSame(['email', 'name'], $claims['userinfo_claims']);
         static::assertStringContainsString('"userinfo_claims":["email","name"]', Jwts::rawPayload($token->value));
     }
