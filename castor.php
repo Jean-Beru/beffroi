@@ -185,6 +185,8 @@ function phpstan_baseline(): void
         'composer', 'exec', '--', 'phpstan', 'analyse',
         '--configuration=.ci-tools/phpstan.neon',
         '--generate-baseline=.ci-tools/phpstan-baseline.neon',
+        // A clean analysis is the expected outcome, not a failure of the task.
+        '--allow-empty-baseline',
     ]);
 }
 
