@@ -73,6 +73,7 @@ deptrac:
       - 'Psr'
       - 'KeyManagement'
       - 'Uid'
+      - 'Jose'
     OidcDomain:
       - 'CoreDomain'
       - 'Psr'
