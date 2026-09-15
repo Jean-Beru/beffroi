@@ -5,7 +5,8 @@
 #
 # The OP answers on op.localhost for the browser (every *.localhost name is loopback) and for the
 # conformance suite container (network alias). Caddy issues the certificate from its internal CA;
-# that CA is imported into the Java truststore of the suite at start-up (tests/conformance/server-entrypoint.sh).
+# that CA is imported into the Java truststore of the suite at start-up (tests/conformance/server-entrypoint.sh),
+# with the certificate of the suite's own nginx, for the scripted browser of the suite (tests/conformance/README.md).
 services:
   op:
     build:
@@ -130,6 +131,20 @@ services:
       - "8444:8444"
     depends_on:
       - conformance-server
+
+  # The scripted browser of the suite runs inside the JVM of conformance-server and is redirected by the OP
+  # to https://localhost:8443/test/a/<alias>/callback, the same URL a browser on the host reaches. Inside
+  # that container, localhost is the container: this sidecar shares its network namespace and forwards the
+  # loopback port 8443 to nginx. The suite does the same with "fintechlabs.startredir" and the redir binary,
+  # which the prebuilt image does not ship.
+  conformance-redirector:
+    image: alpine/socat:${CONFORMANCE_SOCAT_VERSION:-1.8.0.3}
+    profiles: [conformance]
+    network_mode: "service:conformance-server"
+    command: TCP-LISTEN:8443,fork,reuseaddr,bind=127.0.0.1 TCP:conformance-nginx:8443
+    depends_on:
+      - conformance-server
+      - conformance-nginx
 
 volumes:
   caddy_data:

@@ -1,0 +1,162 @@
+{
+    "alias": "heidi",
+    "description": "Heidi, spike 1: oidcc-basic-certification-test-plan against the development OP",
+    "server": {
+        "discoveryUrl": "{HEIDI_ISSUER}/.well-known/openid-configuration",
+        "login_hint": "{HEIDI_DEV_USERNAME}",
+        "ui_locales": "fr"
+    },
+    "client": {
+        "client_id": "conformance-basic",
+        "client_secret": "{CONFORMANCE_BASIC_SECRET}"
+    },
+    "client2": {
+        "client_id": "conformance-basic-second",
+        "client_secret": "{CONFORMANCE_BASIC_SECOND_SECRET}"
+    },
+    "client_secret_post": {
+        "client_id": "conformance-post",
+        "client_secret": "{CONFORMANCE_POST_SECRET}"
+    },
+    "browser": [
+        {
+            "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
+            "match": "{HEIDI_ISSUER}/authorize*",
+            "tasks": [
+                {
+                    "task": "Sign in",
+                    "optional": true,
+                    "match": "{HEIDI_ISSUER}/login*",
+                    "commands": [
+                        ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
+                        ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
+                        ["click", "css", "form button[type=submit]"]
+                    ]
+                },
+                {
+                    "task": "Allow",
+                    "optional": true,
+                    "match": "{HEIDI_ISSUER}/consent*",
+                    "commands": [
+                        ["click", "css", "button[name=answer][value=allow]"]
+                    ]
+                },
+                {
+                    "task": "Verify complete",
+                    "match": "*/test/a/heidi/callback*",
+                    "commands": [
+                        ["wait", "id", "submission_complete", 10]
+                    ]
+                }
+            ]
+        }
+    ],
+    "override": {
+        "oidcc-prompt-login": {
+            "browser": [
+                {
+                    "comment": "The second authorization must show the login page again; its text fills the screenshot placeholder of the module.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Sign in|Connexion", "update-image-placeholder-optional"],
+                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
+                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
+                                ["click", "css", "form button[type=submit]"]
+                            ]
+                        },
+                        {
+                            "task": "Allow",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                ["click", "css", "button[name=answer][value=allow]"]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "*/test/a/heidi/callback*",
+                            "commands": [
+                                ["wait", "id", "submission_complete", 10]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-max-age-1": {
+            "browser": [
+                {
+                    "comment": "Same as prompt=login: the second authorization, one second later with max_age=1, shows the login page again.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Sign in|Connexion", "update-image-placeholder-optional"],
+                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
+                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
+                                ["click", "css", "form button[type=submit]"]
+                            ]
+                        },
+                        {
+                            "task": "Allow",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                ["click", "css", "button[name=answer][value=allow]"]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "*/test/a/heidi/callback*",
+                            "commands": [
+                                ["wait", "id", "submission_complete", 10]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-ensure-registered-redirect-uri": {
+            "browser": [
+                {
+                    "comment": "An unregistered redirect_uri: the OP shows its error page and sends nothing anywhere (RFC 6749 §3.1.2.4); the page fills the screenshot placeholder.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect the error page",
+                            "match": "{HEIDI_ISSUER}/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-ensure-request-object-with-redirect-uri": {
+            "browser": [
+                {
+                    "comment": "The redirect_uri outside the request object is unregistered: the OP shows its error page before it looks at the request object it does not support.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect the error page",
+                            "match": "{HEIDI_ISSUER}/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
