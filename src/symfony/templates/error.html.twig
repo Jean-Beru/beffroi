@@ -1,18 +1,20 @@
 {# The page shown when a request cannot go on and nothing may be sent to a client (RFC 9700 §4.1,
-   RP-Initiated Logout §4). "error" is a code: the "error" of the protocol, or one of the constants of
-   AuthorizationResponder and of the controllers. Overridable by an application under
-   templates/bundles/HeidiBundle/; #16 gives it its layout and its text in every language. #}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Request refused</title>
-</head>
-<body>
-    <main>
-        <h1>Request refused</h1>
-        <p data-error="{{ error }}">{{ description }}</p>
-    </main>
-</body>
-</html>
+   RP-Initiated Logout §4), in the locale of the request. "error" is a code: the "error" of the protocol,
+   or one of the constants of AuthorizationResponder and of the controllers; the codes this page can
+   explain get their sentence, any other the general one. "description", when there is one, is the
+   error_description of the protocol: what the developer of the application needs to fix their request
+   (RFC 6749 §4.1.2.1), in the language of the specification. Overridable by an application under
+   templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% set explained_errors = ['unknown_interaction', 'interaction_expired', 'interaction_completed', 'invalid_csrf_token', 'invalid_request'] %}
+
+{% block title %}{{ 'error.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p data-error="{{ error }}">{{ (error in explained_errors ? 'error.' ~ error : 'error.default')|trans }}</p>
+    {% if description is not null %}
+        <p data-description><code>{{ error }}</code>: {{ description }}</p>
+    {% endif %}
+{% endblock %}

@@ -1,28 +1,25 @@
-{# The consent page of an interaction. Overridable by an application under templates/bundles/HeidiBundle/;
-   #16 gives it its layout and its text in every language. #}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Authorize {{ client.name }}</title>
-</head>
-<body>
-    <main>
-        <h1>Authorize {{ client.name }}</h1>
-        <p>You are signed in as {{ user.username }}.</p>
-        <p>{{ client.name }} asks for access to:</p>
-        <ul>
-            {% for scope in scopes %}
-                <li data-scope="{{ scope.value }}">{{ scope.value }}</li>
-            {% endfor %}
-        </ul>
-        <form method="post" action="{{ path('heidi_interaction_consent') }}">
-            <input type="hidden" name="interaction" value="{{ interaction.id }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('heidi_consent') }}">
-            <button type="submit" name="answer" value="allow">Allow</button>
-            <button type="submit" name="answer" value="deny">Deny</button>
-        </form>
-    </main>
-</body>
-</html>
+{# The consent page of an interaction, in the locale the interaction recorded: the client, the user and
+   every scope of the request, the standard scopes of OIDC Core §5.4 in words, any other by its value.
+   Overridable by an application under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% set described_scopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'] %}
+
+{% block title %}{{ 'consent.title'|trans({client: client.name}) }}{% endblock %}
+
+{% block content %}
+    <p>{{ 'consent.signed_in_as'|trans({username: user.username}) }}</p>
+    <p>{{ 'consent.request'|trans({client: client.name}) }}</p>
+    <ul>
+        {% for scope in scopes %}
+            <li data-scope="{{ scope.value }}">{{ scope.value in described_scopes ? ('scope.' ~ scope.value)|trans : scope.value }}</li>
+        {% endfor %}
+    </ul>
+    <form method="post" action="{{ path('heidi_interaction_consent') }}">
+        <input type="hidden" name="interaction" value="{{ interaction.id }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('heidi_consent') }}">
+        <button type="submit" name="answer" value="allow">{{ 'consent.allow'|trans }}</button>
+        <button type="submit" name="answer" value="deny">{{ 'consent.deny'|trans }}</button>
+    </form>
+{% endblock %}

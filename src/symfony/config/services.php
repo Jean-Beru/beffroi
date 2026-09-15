@@ -14,6 +14,7 @@ use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
@@ -114,6 +115,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RequestContextFactory::class);
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
+    $services->set(InteractionLocale::class)
+        ->args([
+            '$enabledLocales' => '%kernel.enabled_locales%',
+            '$defaultLocale' => '%kernel.default_locale%',
+        ]);
     $services->set(AuthorizationResponder::class);
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);

@@ -89,10 +89,10 @@ final readonly class AuthorizationResponder
     {
         $this->browser->forget($request->getSession(), $interaction);
         if ($exception instanceof InteractionExpiredException) {
-            return $this->pages->error(Response::HTTP_BAD_REQUEST, self::INTERACTION_EXPIRED, 'The request took too long. Start again from the application.');
+            return $this->pages->error(Response::HTTP_BAD_REQUEST, self::INTERACTION_EXPIRED);
         }
 
-        return $this->pages->error(Response::HTTP_BAD_REQUEST, self::INTERACTION_COMPLETED, 'The request was already answered. Start again from the application.');
+        return $this->pages->error(Response::HTTP_BAD_REQUEST, self::INTERACTION_COMPLETED);
     }
 
     /**
@@ -100,7 +100,7 @@ final readonly class AuthorizationResponder
      */
     public function unknownInteraction(): Response
     {
-        return $this->pages->error(Response::HTTP_BAD_REQUEST, self::UNKNOWN_INTERACTION, 'No request is waiting for this page. Start again from the application.');
+        return $this->pages->error(Response::HTTP_BAD_REQUEST, self::UNKNOWN_INTERACTION);
     }
 
     private function toPage(Request $request, Interaction $interaction, string $route): Response

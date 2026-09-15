@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="heidi">
+    <header>
+      <note>The pages of the interaction plane (architecture §5.7): every string a user reads. ICU message format: {client} is the name of the client, {username} the name of the user.</note>
+    </header>
+    <body>
+      <trans-unit id="b3bb2f3a07" resname="login.title">
+        <source>login.title</source>
+        <target>Sign in</target>
+      </trans-unit>
+      <trans-unit id="456091ca2c" resname="login.prompt">
+        <source>login.prompt</source>
+        <target>{client} asks you to sign in.</target>
+      </trans-unit>
+      <trans-unit id="80fbd248a3" resname="login.reauthentication">
+        <source>login.reauthentication</source>
+        <target>Please sign in again to continue.</target>
+      </trans-unit>
+      <trans-unit id="55b0f4b87b" resname="login.failed">
+        <source>login.failed</source>
+        <target>Sign-in failed. Check your username and your password, then try again.</target>
+      </trans-unit>
+      <trans-unit id="04690da6d3" resname="login.username">
+        <source>login.username</source>
+        <target>Username</target>
+      </trans-unit>
+      <trans-unit id="f65ca78fed" resname="login.password">
+        <source>login.password</source>
+        <target>Password</target>
+      </trans-unit>
+      <trans-unit id="4fea9c0c55" resname="login.submit">
+        <source>login.submit</source>
+        <target>Sign in</target>
+      </trans-unit>
+      <trans-unit id="27c34297f7" resname="consent.title">
+        <source>consent.title</source>
+        <target>Authorize {client}</target>
+      </trans-unit>
+      <trans-unit id="db56775db9" resname="consent.signed_in_as">
+        <source>consent.signed_in_as</source>
+        <target>You are signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="55eb317d06" resname="consent.request">
+        <source>consent.request</source>
+        <target>{client} asks for access to:</target>
+      </trans-unit>
+      <trans-unit id="271b1bd84f" resname="consent.allow">
+        <source>consent.allow</source>
+        <target>Allow</target>
+      </trans-unit>
+      <trans-unit id="f2fab12b37" resname="consent.deny">
+        <source>consent.deny</source>
+        <target>Deny</target>
+      </trans-unit>
+      <trans-unit id="bbb000871f" resname="scope.openid">
+        <source>scope.openid</source>
+        <target>Who you are: your identifier at this provider</target>
+      </trans-unit>
+      <trans-unit id="2e384f832b" resname="scope.profile">
+        <source>scope.profile</source>
+        <target>Your profile: name, picture, language</target>
+      </trans-unit>
+      <trans-unit id="c5ee1b4219" resname="scope.email">
+        <source>scope.email</source>
+        <target>Your email address</target>
+      </trans-unit>
+      <trans-unit id="d7c77b8f51" resname="scope.address">
+        <source>scope.address</source>
+        <target>Your postal address</target>
+      </trans-unit>
+      <trans-unit id="ef5674b605" resname="scope.phone">
+        <source>scope.phone</source>
+        <target>Your phone number</target>
+      </trans-unit>
+      <trans-unit id="33607b30f0" resname="scope.offline_access">
+        <source>scope.offline_access</source>
+        <target>Access while you are away, until you revoke it</target>
+      </trans-unit>
+      <trans-unit id="aac9493a9a" resname="logout.title">
+        <source>logout.title</source>
+        <target>Sign out</target>
+      </trans-unit>
+      <trans-unit id="b62f1870d8" resname="logout.prompt.client">
+        <source>logout.prompt.client</source>
+        <target>{client} asks to sign you out.</target>
+      </trans-unit>
+      <trans-unit id="5c9a3f6527" resname="logout.prompt.anonymous">
+        <source>logout.prompt.anonymous</source>
+        <target>You are asked to sign out.</target>
+      </trans-unit>
+      <trans-unit id="beb2b22fa9" resname="logout.signed_in_as">
+        <source>logout.signed_in_as</source>
+        <target>You are signed in as {username}. Do you want to sign out?</target>
+      </trans-unit>
+      <trans-unit id="e6a1f46cff" resname="logout.confirm">
+        <source>logout.confirm</source>
+        <target>Sign out</target>
+      </trans-unit>
+      <trans-unit id="879d52571c" resname="logout.stay">
+        <source>logout.stay</source>
+        <target>Stay signed in</target>
+      </trans-unit>
+      <trans-unit id="9e91e50535" resname="logged_out.title">
+        <source>logged_out.title</source>
+        <target>You are signed out</target>
+      </trans-unit>
+      <trans-unit id="b1cdee136f" resname="logged_out.close">
+        <source>logged_out.close</source>
+        <target>You can close this window.</target>
+      </trans-unit>
+      <trans-unit id="dc96b2d115" resname="still_signed_in.title">
+        <source>still_signed_in.title</source>
+        <target>You are still signed in</target>
+      </trans-unit>
+      <trans-unit id="66be09af33" resname="still_signed_in.unchanged">
+        <source>still_signed_in.unchanged</source>
+        <target>Nothing was changed.</target>
+      </trans-unit>
+      <trans-unit id="49a8c3fb96" resname="error.title">
+        <source>error.title</source>
+        <target>Request refused</target>
+      </trans-unit>
+      <trans-unit id="3d21b51c86" resname="error.default">
+        <source>error.default</source>
+        <target>This provider cannot serve the request. Start again from the application.</target>
+      </trans-unit>
+      <trans-unit id="607d0dc2ff" resname="error.unknown_interaction">
+        <source>error.unknown_interaction</source>
+        <target>No request is waiting for this page. Start again from the application.</target>
+      </trans-unit>
+      <trans-unit id="feaea8469d" resname="error.interaction_expired">
+        <source>error.interaction_expired</source>
+        <target>The request took too long. Start again from the application.</target>
+      </trans-unit>
+      <trans-unit id="35d471521d" resname="error.interaction_completed">
+        <source>error.interaction_completed</source>
+        <target>The request was already answered. Start again from the application.</target>
+      </trans-unit>
+      <trans-unit id="7a2863564f" resname="error.invalid_csrf_token">
+        <source>error.invalid_csrf_token</source>
+        <target>The form was not submitted from this provider. Start again from the application.</target>
+      </trans-unit>
+      <trans-unit id="9b1e13b67f" resname="error.invalid_request">
+        <source>error.invalid_request</source>
+        <target>The application sent a request this provider cannot serve. Start again from the application.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>
