@@ -17,9 +17,9 @@ Symfony 8.2 is not released yet: `minimum-stability: dev` pulls the `8.2.x-dev` 
 
 A fresh stack has a schema (the container runs the migrations at start-up) and nothing else. `castor provision` does the rest, in the order of the console commands of the bundle, and can be run again at any time:
 
-1. It writes the development values `apps/op/.env.local` lacks and keeps every one it finds: a sodium key for the KMS that seals the signing keys (`HEIDI_KMS_DSN`, `HEIDI_KMS_KEY_ID`), one secret per client of `apps/op/config/packages/heidi.yaml` (the four clients of the conformance suite, `oidc-demo`), the password of the development user (`HEIDI_DEV_USER_PASSWORD`). Nothing secret is committed: `apps/op/.env` leaves them empty on purpose, and a process without a KMS DSN seals nothing.
+1. It writes the development values `apps/op/.env.local` lacks and keeps every one it finds: a sodium key for the KMS that seals the signing keys (`HEIDI_KMS_DSN`, `HEIDI_KMS_KEY_ID`), one secret per client of `apps/op/config/packages/heidi.yaml` (the three clients of the conformance suite, `oidc-demo`), the password of the development user (`HEIDI_DEV_USER_PASSWORD`). Nothing secret is committed: `apps/op/.env` leaves them empty on purpose, and a process without a KMS DSN seals nothing.
 2. `heidi:tenant:synchronize`, `heidi:keys:generate` unless a key is published already (a second generation would be a rotation), `heidi:user:create alice` unless the user exists, then `heidi:user:set-password alice` from the standard input.
-3. It prints where to look: the discovery document, the JWK Set, the username and the password, and the secret of each client, which `oidc-demo` and the conformance plan take from `.env.local`.
+3. It prints where to look: the discovery document, the JWK Set, the username and the password, and the secret of each client, which `oidc-demo` and `castor conformance` take from `.env.local`.
 
 The pages of the interaction plane (login, consent, logout) are styled by the application: `apps/op/templates/bundles/HeidiBundle/layout.html.twig` overrides the layout of the bundle, and `apps/op/assets/styles/app.css` builds Tailwind with the DaisyUI plugin through `symfonycasts/tailwind-bundle` (the binary is pinned in `config/packages/symfonycasts_tailwind.yaml`, DaisyUI in `importmap.php`). The container builds the stylesheet at start-up; `castor tailwind --watch` rebuilds it while you edit.
 
@@ -30,7 +30,7 @@ The pages of the interaction plane (login, consent, logout) are styled by the ap
 | `op` | https://op.localhost | FrankenPHP, TLS from Caddy's internal CA. Every `*.localhost` name is loopback for browsers and modern resolvers. |
 | `database` | internal | PostgreSQL 16, user and database `heidi` |
 | `rabbitmq` | http://localhost:15672 | Management UI, `heidi` / `heidi` |
-| conformance suite | https://localhost:8443 | `castor start --conformance`, see [Conformance suite](conformance-suite.md) |
+| conformance suite | https://localhost:8443 | `castor start --conformance`, then `castor conformance` runs the plan; see [Conformance suite](conformance-suite.md) |
 
 To make your browser trust `https://op.localhost`, export Caddy's root certificate and install it on your machine:
 

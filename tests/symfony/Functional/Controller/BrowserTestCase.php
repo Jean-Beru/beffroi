@@ -96,13 +96,14 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     /**
      * Signs the user in without the form: a session of the core, and a fresh HTTP session bound to it,
-     * whose cookie the browser now carries.
+     * whose cookie the browser now carries. The session is established now, by the clock the kernel
+     * reads, not at the fixed moment of the fixtures: the kernel judges whether it is still active.
      */
     protected function signIn(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
     {
         // the browser reboots the kernel between two requests: the user is read again from the rows
         $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
-        $session = self::session($managed, $establishedAt);
+        $session = self::session($managed, $establishedAt ?? self::currentSecond());
         $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->bind($httpSession, $session));
 
         return $session;
@@ -254,6 +255,14 @@ abstract class BrowserTestCase extends DatabaseTestCase
         $httpSession->start();
 
         return $httpSession;
+    }
+
+    /**
+     * The real now, with the precision of a datetime column.
+     */
+    protected static function currentSecond(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('@' . time());
     }
 
     /**
