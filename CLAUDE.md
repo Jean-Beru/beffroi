@@ -22,6 +22,8 @@ composer install                  # monorepo (packages, tests)
 (cd apps/op && composer install)  # the application, path repositories to ../../src/*
 castor start                      # https://op.localhost (FrankenPHP), PostgreSQL, RabbitMQ
 castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443
+castor provision                  # apps/op/.env.local (KMS key, client secrets, password), tenant, signing key, user "alice"
+castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI) inside the op container
 castor stop / castor logs / castor console <cmd>
 castor phpunit            # tests with coverage
 castor phpstan            # level max

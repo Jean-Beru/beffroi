@@ -8,9 +8,20 @@ cd heidi
 composer install                   # the monorepo: packages and tests
 (cd apps/op && composer install)   # the application; heidi/* are path repositories to ../../src
 castor start                       # https://op.localhost, PostgreSQL, RabbitMQ
+castor provision                   # the tenant, a signing key, the user "alice"; see below
 ```
 
 Symfony 8.2 is not released yet: `minimum-stability: dev` pulls the `8.2.x-dev` branches, including `symfony/key-management`.
+
+## Provisioning the development OP
+
+A fresh stack has a schema (the container runs the migrations at start-up) and nothing else. `castor provision` does the rest, in the order of the console commands of the bundle, and can be run again at any time:
+
+1. It writes the development values `apps/op/.env.local` lacks and keeps every one it finds: a sodium key for the KMS that seals the signing keys (`HEIDI_KMS_DSN`, `HEIDI_KMS_KEY_ID`), one secret per client of `apps/op/config/packages/heidi.yaml` (the four clients of the conformance suite, `oidc-demo`), the password of the development user (`HEIDI_DEV_USER_PASSWORD`). Nothing secret is committed: `apps/op/.env` leaves them empty on purpose, and a process without a KMS DSN seals nothing.
+2. `heidi:tenant:synchronize`, `heidi:keys:generate` unless a key is published already (a second generation would be a rotation), `heidi:user:create alice` unless the user exists, then `heidi:user:set-password alice` from the standard input.
+3. It prints where to look: the discovery document, the JWK Set, the username and the password, and the secret of each client, which `oidc-demo` and the conformance plan take from `.env.local`.
+
+The pages of the interaction plane (login, consent, logout) are styled by the application: `apps/op/templates/bundles/HeidiBundle/layout.html.twig` overrides the layout of the bundle, and `apps/op/assets/styles/app.css` builds Tailwind with the DaisyUI plugin through `symfonycasts/tailwind-bundle` (the binary is pinned in `config/packages/symfonycasts_tailwind.yaml`, DaisyUI in `importmap.php`). The container builds the stylesheet at start-up; `castor tailwind --watch` rebuilds it while you edit.
 
 ## The stack
 

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use Castor\Attribute\AsRawTokens;
 use Castor\Attribute\AsTask;
+use Castor\Context;
 use function Castor\context;
 use function Castor\guard_min_version;
 use function Castor\io;
+use function Castor\load_dot_env;
 use function Castor\run;
+use Symfony\Component\Process\Process;
 
 guard_min_version('v0.23.0');
 
@@ -263,7 +266,158 @@ function logs(#[AsRawTokens] array $args = []): void
 #[AsTask(description: 'Run a Symfony console command of the application inside the op container', ignoreValidationErrors: true)]
 function console(#[AsRawTokens] array $args = []): void
 {
-    run(['docker', 'compose', 'exec', ...(stream_isatty(\STDOUT) ? [] : ['-T']), 'op', 'php', 'bin/console', ...$args]);
+    op_console($args);
+}
+
+/**
+ * Runs a console command of the application inside the op container, without a TTY when the input is
+ * fed by the task (the password of the development user) or when the output is captured.
+ *
+ * @param array<string> $args
+ */
+function op_console(array $args, ?Context $context = null): Process
+{
+    $tty = $context === null && stream_isatty(\STDOUT);
+
+    return run(
+        ['docker', 'compose', 'exec', ...($tty ? [] : ['-T']), 'op', 'php', 'bin/console', ...$args],
+        context: $context,
+    );
+}
+
+#[AsTask(description: 'Build the stylesheet of the pages (Tailwind and DaisyUI) inside the op container; --watch rebuilds on change')]
+function tailwind(bool $watch = false): void
+{
+    op_console(['tailwind:build', ...($watch ? ['--watch'] : [])]);
+}
+
+/**
+ * The variables "castor provision" writes into apps/op/.env.local when they are missing: development
+ * values, generated once per checkout, never committed (apps/op/.env explains each one).
+ */
+const DEV_ENV_LOCAL = 'apps/op/.env.local';
+
+const DEV_USERNAME = 'alice';
+
+const DEV_CLIENT_SECRETS = [
+    'CONFORMANCE_BASIC_SECRET',
+    'CONFORMANCE_BASIC_SECOND_SECRET',
+    'CONFORMANCE_POST_SECRET',
+    'CONFORMANCE_POST_SECOND_SECRET',
+    'OIDC_DEMO_SECRET',
+];
+
+#[AsTask(description: 'Provision the development OP after "castor start": the local KMS key and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a password')]
+function provision(): void
+{
+    io()->title('Provisioning the development OP');
+
+    io()
+        ->section('Development secrets');
+    $env = provision_env_local();
+
+    io()
+        ->section('Tenant');
+    op_console(['heidi:tenant:synchronize']);
+
+    io()
+        ->section('Signing key');
+    // The console wraps its blocks: flatten before searching the sentence.
+    $keys = (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
+    if (str_contains($keys, 'no published key')) {
+        op_console(['heidi:keys:generate']);
+    } else {
+        io()->note('A signing key is published already; "castor console heidi:keys:generate" rotates it.');
+    }
+
+    io()
+        ->section(sprintf('User "%s"', DEV_USERNAME));
+    $creation = op_console(
+        ['heidi:user:create', DEV_USERNAME, '--email', DEV_USERNAME . '@op.localhost', '--email-verified'],
+        context()
+            ->withAllowFailure()
+            ->withQuiet(),
+    );
+    if ($creation->isSuccessful()) {
+        io()->write($creation->getOutput());
+    } elseif (str_contains($creation->getOutput(), 'already exists')) {
+        io()->note(sprintf('The user "%s" exists already; the password below is set again.', DEV_USERNAME));
+    } else {
+        io()->write($creation->getOutput());
+        exit($creation->getExitCode() ?? 1);
+    }
+    // Never on the command line: the command reads it on its standard input.
+    op_console(
+        ['heidi:user:set-password', DEV_USERNAME, '--password-stdin'],
+        context()
+            ->withInput($env['HEIDI_DEV_USER_PASSWORD'] . "\n"),
+    );
+
+    io()
+        ->success('The OP is provisioned.');
+    io()
+        ->definitionList(
+            [
+                'Discovery' => $env['HEIDI_ISSUER'] . '/.well-known/openid-configuration',
+            ],
+            [
+                'JWKS' => $env['HEIDI_ISSUER'] . '/jwks',
+            ],
+            [
+                'Username' => DEV_USERNAME,
+            ],
+            [
+                'Password' => $env['HEIDI_DEV_USER_PASSWORD'],
+            ],
+            ...array_map(static fn (string $name): array => [
+                $name => $env[$name],
+            ], DEV_CLIENT_SECRETS),
+        );
+    io()
+        ->note(sprintf('These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, the conformance plan the four others.', DEV_ENV_LOCAL));
+}
+
+/**
+ * Writes the development values apps/op/.env.local lacks and returns the environment of the application
+ * once they are loaded: a sodium key for the KMS, one secret per client, the password of the development
+ * user. An existing value is kept, whoever wrote it: the sealed signing keys depend on the KMS key.
+ *
+ * @return array<string, string>
+ */
+function provision_env_local(): array
+{
+    $generate = static fn (int $bytes): string => rtrim(strtr(base64_encode(random_bytes($bytes)), '+/', '-_'), '=');
+    $values = [
+        'HEIDI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
+        'HEIDI_KMS_KEY_ID' => static fn (): string => 'signing',
+        'HEIDI_DEV_USER_PASSWORD' => static fn (): string => $generate(24),
+    ];
+    foreach (DEV_CLIENT_SECRETS as $name) {
+        $values[$name] = static fn (): string => $generate(32);
+    }
+
+    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $lines = [];
+    foreach ($values as $name => $value) {
+        if (($env[$name] ?? '') !== '') {
+            continue;
+        }
+        $env[$name] = $value();
+        $lines[] = sprintf('%s="%s"', $name, $env[$name]);
+    }
+    if ($lines === []) {
+        io()->note(sprintf('%s carries every development value already.', DEV_ENV_LOCAL));
+
+        return $env;
+    }
+
+    $path = getcwd() . '/' . DEV_ENV_LOCAL;
+    $existing = file_exists($path) ? rtrim((string) file_get_contents($path), "\n") . "\n\n" : '';
+    file_put_contents($path, $existing . "###> castor provision ###\n" . implode("\n", $lines) . "\n###< castor provision ###\n");
+    io()
+        ->text(sprintf('Wrote %d development value(s) into %s.', count($lines), DEV_ENV_LOCAL));
+
+    return $env;
 }
 
 #[AsTask(description: 'Fix code style and apply Rector rules, then run static analysis.')]
