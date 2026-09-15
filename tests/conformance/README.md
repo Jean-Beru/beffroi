@@ -13,6 +13,6 @@ The suite version is pinned (`CONFORMANCE_SUITE_VERSION`, `CONFORMANCE_NGINX_VER
 
 ## Test plan of spike 1
 
-`oidcc-basic-certification-test-plan`, variants `client_auth_type=client_secret_basic` and `client_secret_post`, `response_type=code`, `response_mode=default`. The plan needs two registered clients; the second one is used by the tests that check the behaviour with a wrong client. Their configuration lives in `basic-op.json` once the OP registers clients (bundle configuration), and `castor conformance` will create and run the plan through the API of the suite.
+`oidcc-basic-certification-test-plan`, variants `client_auth_type=client_secret_basic` and `client_secret_post`, `response_type=code`, `response_mode=default`. The plan needs two registered clients; the second one is used by the tests that check the behaviour with a wrong client. The OP registers one pair per variant in `apps/op/config/packages/heidi.yaml` (`conformance-basic` / `conformance-basic-second`, `conformance-post` / `conformance-post-second`), with the alias `heidi` in their redirect URIs (`https://localhost:8443/test/a/heidi/callback`); `castor provision` generates their secrets into `apps/op/.env.local`. The plan configuration lives in `basic-op.json`, and `castor conformance` will create and run the plan through the API of the suite.
 
 Every daily run is recorded in the journal of `spikes/01-conformite/README.md`.
