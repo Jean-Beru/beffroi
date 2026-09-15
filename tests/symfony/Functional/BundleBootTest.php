@@ -7,12 +7,12 @@ namespace Heidi\Bundle\Tests\Functional;
 use DateTimeImmutable;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
@@ -23,7 +23,6 @@ use Heidi\Oidc\Port\ClientRepositoryInterface;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -31,10 +30,11 @@ use Symfony\Component\Filesystem\Filesystem;
  * bundle wires today answers: the tenant, the clients, the hasher, the keys sealed by the configured
  * KMS and stored as files, the event dispatcher on the event bus.
  */
-final class BundleBootTest extends KernelTestCase
+final class BundleBootTest extends DatabaseTestCase
 {
     protected function setUp(): void
     {
+        parent::setUp();
         new Filesystem()
             ->remove(self::keyStorage());
     }
@@ -49,7 +49,7 @@ final class BundleBootTest extends KernelTestCase
     #[Test]
     public function theBundleBootsAndExposesItsExtension(): void
     {
-        $bundles = self::bootKernel()->getBundles();
+        $bundles = self::$kernel?->getBundles() ?? [];
 
         static::assertArrayHasKey('HeidiBundle', $bundles);
         static::assertSame('heidi', $bundles['HeidiBundle']->getContainerExtension()?->getAlias());
@@ -61,7 +61,7 @@ final class BundleBootTest extends KernelTestCase
     #[Test]
     public function theTenantComesFromTheConfiguration(): void
     {
-        $tenant = self::service('test.heidi.tenant', Tenant::class);
+        $tenant = self::tenant();
 
         static::assertSame('https://op.test', (string) $tenant->issuer);
         static::assertSame('default', $tenant->slug);
@@ -75,7 +75,7 @@ final class BundleBootTest extends KernelTestCase
     #[Test]
     public function theClientsComeFromTheConfigurationWithTheirSecretHashed(): void
     {
-        $tenant = self::service('test.heidi.tenant', Tenant::class);
+        $tenant = self::tenant();
         $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
         $hasher = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
 
@@ -102,7 +102,7 @@ final class BundleBootTest extends KernelTestCase
     #[Test]
     public function aRotatedKeyIsSealedStoredAndPublished(): void
     {
-        $tenant = self::service('test.heidi.tenant', Tenant::class);
+        $tenant = self::tenant();
         $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
         $jwks = self::service('test.heidi.jwks', JwksHandler::class);
 
@@ -127,7 +127,7 @@ final class BundleBootTest extends KernelTestCase
     #[Test]
     public function theEventsOfTheCoreAndOfTheModuleGoToTheEventBus(): void
     {
-        $tenant = self::service('test.heidi.tenant', Tenant::class);
+        $tenant = self::tenant();
         $authenticator = self::service('test.heidi.client_authenticator', ClientAuthenticator::class);
         $recorder = self::service(RecordingEventHandler::class, RecordingEventHandler::class);
         static::assertInstanceOf(EventBusDispatcher::class, self::getContainer()->get('test.heidi.event_bus_dispatcher'));
@@ -149,21 +149,6 @@ final class BundleBootTest extends KernelTestCase
     protected static function getKernelClass(): string
     {
         return AppKernel::class;
-    }
-
-    /**
-     * @template T of object
-     *
-     * @param class-string<T> $class
-     *
-     * @return T
-     */
-    private static function service(string $id, string $class): object
-    {
-        $service = self::getContainer()->get($id);
-        static::assertInstanceOf($class, $service);
-
-        return $service;
     }
 
     private static function keyStorage(): string

@@ -56,6 +56,7 @@ final class InteractionTest extends TestCase
         $interaction = new Interaction(Interaction::generateId(), $this->user->tenant, $request, 'fr', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
 
         static::assertSame($request, $interaction->request);
+        static::assertSame($this->client->clientId, $interaction->clientId);
         static::assertSame('fr', $interaction->locale);
         static::assertNull($interaction->session);
         static::assertNull($interaction->consent);

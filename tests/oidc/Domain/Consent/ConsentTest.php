@@ -27,6 +27,7 @@ final class ConsentTest extends TestCase
         $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid'), new Scope('profile'), new Scope('openid')], Fixtures::now());
 
         static::assertSame($user->tenant, $consent->tenant);
+        static::assertSame($client->clientId, $consent->clientId);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $consent->scopes);
         static::assertTrue($consent->covers([new Scope('openid')]));
         static::assertTrue($consent->covers([new Scope('profile'), new Scope('openid')]));

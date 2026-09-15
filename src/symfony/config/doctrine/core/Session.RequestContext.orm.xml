@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!-- Where a request came from and with what (architecture §3.5): the raw values as columns, the enrichments as documents, because they are absent until the asynchronous enrichment fills them and an embeddable cannot be null. -->
+    <embeddable name="Heidi\Core\Domain\Session\RequestContext">
+        <field name="receivedAt" type="datetime_immutable" column="received_at"/>
+        <field name="ipAddress" type="string" column="ip_address" length="45" nullable="true"/>
+        <field name="userAgent" type="string" column="user_agent" length="1024" nullable="true"/>
+        <field name="location" type="heidi_geo_location" column="location" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="device" type="heidi_device" column="device" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+    </embeddable>
+</doctrine-mapping>

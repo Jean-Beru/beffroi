@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!-- An identity of a tenant (decision 0002, architecture §3.1). The subject and the username are unique within the tenant. -->
+    <entity name="Heidi\Core\Domain\Identity\User" table="heidi_user">
+        <unique-constraints>
+            <unique-constraint name="heidi_user_subject" columns="tenant_id,subject"/>
+            <unique-constraint name="heidi_user_username" columns="tenant_id,username"/>
+        </unique-constraints>
+        <id name="id" type="uuid" column="id"/>
+        <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
+        <field name="subject" type="heidi_subject" column="subject" length="255"/>
+        <field name="username" type="string" column="username" length="255"/>
+        <field name="email" type="heidi_email_address" column="email" length="255" nullable="true"/>
+        <field name="emailVerified" type="boolean" column="email_verified"/>
+        <embedded name="profile" class="Heidi\Core\Domain\Identity\Profile" use-column-prefix="false"/>
+        <field name="phoneNumber" type="string" column="phone_number" length="64" nullable="true"/>
+        <field name="phoneNumberVerified" type="boolean" column="phone_number_verified"/>
+        <field name="address" type="heidi_address" column="address" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="createdAt" type="datetime_immutable" column="created_at"/>
+        <field name="updatedAt" type="datetime_immutable" column="updated_at"/>
+        <field name="disabledAt" type="datetime_immutable" column="disabled_at" nullable="true"/>
+    </entity>
+</doctrine-mapping>

@@ -74,6 +74,8 @@ final class RefreshTokenTest extends TestCase
         static::assertSame(RefreshToken::hash('the-token'), $token->tokenHash);
         static::assertSame($this->family, $token->family);
         static::assertSame($this->client, $token->client);
+        static::assertSame($this->client->clientId, $token->clientId);
+        static::assertSame($this->client->tenant, $token->tenant);
         static::assertSame($this->session, $token->session);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes);
         static::assertSame($claims, $token->claimsRequest);

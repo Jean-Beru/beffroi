@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!-- An authorization code as the provider keeps it (architecture §4.4): the hash is the key, a used code stays until it expires so that its replay can be told from an unknown code. -->
+    <entity name="Heidi\Oidc\Domain\Authorization\AuthorizationCode" table="heidi_authorization_code">
+        <indexes>
+            <index name="heidi_authorization_code_expiry" columns="expires_at"/>
+        </indexes>
+        <id name="codeHash" type="string" column="code_hash" length="64">
+            <options>
+                <option name="fixed">true</option>
+            </options>
+        </id>
+        <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
+        <field name="clientId" type="string" column="client_id" length="255"/>
+        <many-to-one field="session" target-entity="Heidi\Core\Domain\Session\AuthenticationSession">
+            <join-column name="session_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+        <field name="redirectUri" type="heidi_redirect_uri" column="redirect_uri" length="2048"/>
+        <field name="scopes" type="heidi_scopes" column="scopes"/>
+        <field name="nonce" type="text" column="nonce" nullable="true"/>
+        <embedded name="codeChallenge" class="Heidi\Oidc\Domain\Authorization\CodeChallenge" use-column-prefix="false"/>
+        <field name="claimsRequest" type="heidi_claims_request" column="claims" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="authenticatedAt" type="datetime_immutable" column="authenticated_at"/>
+        <field name="authenticationMethods" type="simple_array" column="amr"/>
+        <field name="authenticationContextClass" type="string" column="acr" length="255" nullable="true"/>
+        <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
+        <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
+        <field name="usedAt" type="datetime_immutable" column="used_at" nullable="true"/>
+        <entity-listeners>
+            <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
+                <lifecycle-callback type="postLoad" method="postLoad"/>
+            </entity-listener>
+        </entity-listeners>
+    </entity>
+</doctrine-mapping>

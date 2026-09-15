@@ -2,6 +2,16 @@
 
 declare(strict_types=1);
 
+use Heidi\Bundle\Doctrine\Listener\ClientResolver;
+use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
+use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\Doctrine\TenantSynchronizer;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Plane\Plane;
@@ -19,7 +29,8 @@ use Heidi\Core\Bridge\Null\NullGeoLocator;
 use Heidi\Core\Bridge\Null\NullUserAgentParser;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\GeoLocatorInterface;
 use Heidi\Core\Port\JwsSignerInterface;
 use Heidi\Core\Port\JwsVerifierInterface;
@@ -29,6 +40,7 @@ use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use Heidi\Core\Port\UserAgentParserInterface;
+use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
@@ -49,9 +61,13 @@ use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
+use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
+use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -60,10 +76,9 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_it
 
 /*
  * Every service of the core and of the module the bundle can wire today, autowired, the ports aliased to
- * the one implementation spike 1 has (architecture §3.4, §4.11). What is missing has an issue of its own:
- * the persistence ports (users, credentials, sessions, interactions, codes, refresh tokens, consents) are
- * Doctrine's (#13), the endpoint locator is the router's (#14). A use case that needs them is declared
- * here already and becomes reachable when they are.
+ * the one implementation spike 1 has (architecture §3.4, §4.11, §5.3). What is missing has an issue of its
+ * own: the endpoint locator is the router's (#14). A use case that needs it is declared here already and
+ * becomes reachable when it is.
  */
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
@@ -81,8 +96,34 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PlaneRequestListener::class)
         ->args(['%env(enum:' . Plane::class . ':HEIDI_PLANE)%']);
     $services->set(TenantFactory::class);
-    $services->set(Tenant::class)
-        ->factory([service(TenantFactory::class), 'create']);
+
+    // The bundle: persistence (architecture §5.3). The tenant of a request is the row Doctrine manages,
+    // checked against the configuration, held for one request and forgotten with the unit of work; the
+    // synchroniser writes that row. No service holds a Tenant: an entity is not a service.
+    $services->set(TenantProvider::class)
+        ->tag('kernel.reset', [
+            'method' => 'reset',
+        ])
+        ->tag('doctrine.event_listener', [
+            'event' => 'onClear',
+        ]);
+    $services->set(TenantSynchronizer::class);
+    $services->set(ClientResolver::class)
+        ->tag('doctrine.orm.entity_listener');
+    $services->set(DoctrineUserRepository::class);
+    $services->alias(UserRepositoryInterface::class, DoctrineUserRepository::class);
+    $services->set(DoctrineCredentialRepository::class);
+    $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
+    $services->set(DoctrineAuthenticationSessionRepository::class);
+    $services->alias(AuthenticationSessionRepositoryInterface::class, DoctrineAuthenticationSessionRepository::class);
+    $services->set(DoctrineInteractionRepository::class);
+    $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
+    $services->set(DoctrineAuthorizationCodeRepository::class);
+    $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
+    $services->set(DoctrineRefreshTokenRepository::class);
+    $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
+    $services->set(DoctrineConsentRepository::class);
+    $services->alias(ConsentRepositoryInterface::class, DoctrineConsentRepository::class);
 
     // The core: keys
     $services->set(EnvelopeKeySealer::class);
