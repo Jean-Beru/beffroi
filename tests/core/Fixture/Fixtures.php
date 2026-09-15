@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Issuer;
@@ -36,7 +37,7 @@ final class Fixtures
         $user ??= self::user();
         $authenticatedAt ??= self::now();
 
-        return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, [AuthenticationMethod::Password], null, self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
+        return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), null, self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
     }
 
     public static function user(?Tenant $tenant = null, string $username = 'alice', string $subject = 'alice-subject'): User

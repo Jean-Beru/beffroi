@@ -23,7 +23,7 @@ final class EventsTest extends TestCase
         $session = Fixtures::session();
         $event = new UserAuthenticated($session);
 
-        static::assertSame($session->authenticatedAt, $event->occurredAt);
+        static::assertSame($session->establishedAt, $event->occurredAt);
         static::assertSame($session->tenant, $event->tenant);
         static::assertSame($session->createdFrom, $event->context);
     }

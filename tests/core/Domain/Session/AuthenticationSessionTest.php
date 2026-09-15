@@ -6,6 +6,7 @@ namespace Heidi\Core\Tests\Domain\Session;
 
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Exception\InvalidArgumentException;
@@ -25,24 +26,21 @@ final class AuthenticationSessionTest extends TestCase
         static::assertTrue($session->isActive(Fixtures::now()));
         static::assertFalse($session->hasEnded());
         static::assertSame($session->createdFrom, $session->lastSeenFrom);
-        static::assertSame($session->authenticatedAt, $session->lastSeenAt);
+        static::assertSame($session->establishedAt, $session->lastSeenAt);
+        static::assertEquals($session->establishedAt, $session->authenticatedAt());
         static::assertSame(['pwd'], $session->methodReferences());
         static::assertNull($session->authenticationContextClass);
     }
 
-    /**
-     * RFC 8176 §2: "amr" is a list of method references; a session records at least one, without duplicates.
-     */
     #[Test]
-    public function methodsAreDeduplicatedAndNeverEmpty(): void
+    public function itCarriesAnAcrWhenTheDeploymentDefinesOne(): void
     {
         $user = Fixtures::user();
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), [AuthenticationMethod::Password, AuthenticationMethod::OneTimePassword, AuthenticationMethod::Password], 'urn:acme:loa:2', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
+        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, 'urn:acme:loa:2', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+
         static::assertSame(['pwd', 'otp'], $session->methodReferences());
         static::assertSame('urn:acme:loa:2', $session->authenticationContextClass);
-
-        $this->expectException(InvalidArgumentException::class);
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), [], null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     #[Test]
@@ -51,16 +49,25 @@ final class AuthenticationSessionTest extends TestCase
         $user = Fixtures::user();
 
         $this->expectException(InvalidArgumentException::class);
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), [AuthenticationMethod::Password], '', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), '', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     #[Test]
-    public function itExpiresAfterItWasAuthenticated(): void
+    public function itExpiresAfterItWasEstablished(): void
     {
         $user = Fixtures::user();
 
         $this->expectException(InvalidArgumentException::class);
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), [AuthenticationMethod::Password], null, Fixtures::context(), Fixtures::now());
+        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), null, Fixtures::context(), Fixtures::now());
+    }
+
+    #[Test]
+    public function itsFirstProofsAreNotDatedAfterItWasEstablished(): void
+    {
+        $user = Fixtures::user();
+
+        $this->expectException(InvalidArgumentException::class);
+        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')), null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     #[Test]
@@ -69,7 +76,57 @@ final class AuthenticationSessionTest extends TestCase
         $user = Fixtures::user();
 
         $this->expectException(InvalidArgumentException::class);
-        new AuthenticationSession(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), $user, Fixtures::now(), [AuthenticationMethod::Password], null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+    }
+
+    /**
+     * OIDC Core §2: auth_time is the time of the End-User authentication; a re-authentication moves it, and
+     * the proofs of other methods keep their own date (symfony/symfony#66064).
+     */
+    #[Test]
+    public function aNewProofMovesAuthTimeAndKeepsTheOtherProofs(): void
+    {
+        $session = Fixtures::session();
+        $later = Fixtures::now()->modify('+2 hours');
+        $context = Fixtures::context($later, '198.51.100.7');
+
+        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), $context);
+
+        static::assertEquals($later, $session->authenticatedAt());
+        static::assertSame(['pwd', 'hwk'], $session->methodReferences());
+        static::assertEquals(Fixtures::now(), $session->proofs->provenAt(AuthenticationMethod::password()));
+        static::assertSame($context, $session->lastSeenFrom);
+        static::assertSame($later, $session->lastSeenAt);
+        static::assertEquals(Fixtures::now(), $session->establishedAt);
+    }
+
+    #[Test]
+    public function aProofAtTheVeryInstantTheSessionWasEstablishedIsAccepted(): void
+    {
+        $session = Fixtures::session();
+
+        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context(Fixtures::now()));
+
+        static::assertSame(['pwd', 'otp'], $session->methodReferences());
+    }
+
+    #[Test]
+    public function aProofCannotPredateTheSession(): void
+    {
+        $session = Fixtures::session();
+
+        $this->expectException(LogicException::class);
+        $session->recordProof(AuthenticationMethod::password(), Fixtures::context(Fixtures::now()->modify('-1 minute')));
+    }
+
+    #[Test]
+    public function anEndedSessionCannotReceiveAProof(): void
+    {
+        $session = Fixtures::session();
+        $session->end(SessionEnd::User, Fixtures::now());
+
+        $this->expectException(LogicException::class);
+        $session->recordProof(AuthenticationMethod::password(), Fixtures::context(Fixtures::now()->modify('+1 minute')));
     }
 
     #[Test]

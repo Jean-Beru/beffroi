@@ -73,7 +73,12 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame(['pwd'], $session->methodReferences());
         static::assertSame('urn:acme:pwd', $session->authenticationContextClass);
         static::assertSame($context, $session->createdFrom);
-        static::assertEquals($this->clock->now(), $session->authenticatedAt);
+        static::assertEquals($this->clock->now(), $session->establishedAt);
+        static::assertEquals($this->clock->now(), $session->authenticatedAt());
+        static::assertSame([
+            'pwd' => $this->clock->now()
+                ->getTimestamp(),
+        ], $session->proofs->toTimestamps());
         static::assertEquals($this->clock->now()->modify('+8 hours'), $session->expiresAt);
         static::assertSame($session, $this->sessions->find($session->id));
         static::assertEquals($this->clock->now(), $this->credentials->findPasswordCredential($this->alice)?->lastUsedAt);
