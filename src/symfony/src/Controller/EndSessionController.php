@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Controller;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
@@ -29,7 +30,9 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
  * POST with them in the form body. An error in the request is a page, never a redirection (§4). When
  * the handler must ask, the confirmation page re-submits the same parameters with the answer and the
  * CSRF token of the form; the request is parsed again, the same way, and confirm() ends the session. A
- * "no" ends nothing and sends the user nowhere: the client asked for a logout that did not happen.
+ * "no" ends nothing and sends the user nowhere: the client asked for a logout that did not happen. There
+ * is no interaction to record a locale on: the pages speak the language "ui_locales" of the request
+ * asks for (§2), which the confirmation form carries over, then the browser's (architecture §5.7).
  */
 #[AsController]
 final readonly class EndSessionController
@@ -58,6 +61,7 @@ final readonly class EndSessionController
         private RequestContextFactory $contexts,
         private InteractionPages $pages,
         private CsrfTokenManagerInterface $csrf,
+        private InteractionLocale $locale,
     ) {
     }
 
@@ -71,6 +75,7 @@ final readonly class EndSessionController
         } catch (OAuth2Exception $exception) {
             return $this->pages->error($exception->statusCode, $exception->error, $exception->errorDescription);
         }
+        $this->locale->apply($request, $this->locale->choose($request, $endSessionRequest->uiLocales));
         $session = $this->browser->authenticationSession($request, $tenant);
         $context = $this->contexts->fromRequest($request);
 
@@ -80,7 +85,7 @@ final readonly class EndSessionController
         } else {
             $token = $parameters['_token'] ?? null;
             if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-                return $this->pages->error(Response::HTTP_FORBIDDEN, self::INVALID_CSRF_TOKEN, 'The form was not submitted from this provider.');
+                return $this->pages->error(Response::HTTP_FORBIDDEN, self::INVALID_CSRF_TOKEN);
             }
             if ($answer !== self::CONFIRM_YES) {
                 return $this->pages->render('logged_out.html.twig', [

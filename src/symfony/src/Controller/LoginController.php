@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Controller;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
@@ -31,7 +32,7 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
  * browser back here; the route accepts POST so that the firewall may sit on it, and without a firewall a
  * POST shows the page again. A refused login comes back here too, with the failure the firewall left in
  * the HTTP session, read once and shown as one flat message whatever the reason (decision 0006, the
- * core says no more to a user).
+ * core says no more to a user). The page speaks the language the interaction recorded (architecture §5.7).
  */
 #[AsController]
 final readonly class LoginController
@@ -44,6 +45,7 @@ final readonly class LoginController
         private AuthorizationResponder $responder,
         private InteractionPages $pages,
         private AuthenticationUtils $authentication,
+        private InteractionLocale $locale,
     ) {
     }
 
@@ -55,6 +57,7 @@ final readonly class LoginController
         if ($interaction === null) {
             return $this->responder->unknownInteraction();
         }
+        $this->locale->resume($request, $interaction);
         try {
             $decision = $this->handler->resume(
                 $interaction,

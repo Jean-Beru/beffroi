@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Controller;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
@@ -25,7 +26,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * the handler, goes back to the client when it may (RFC 9700 §4.1). The endpoint logs nobody in: the
  * handler parks the request and the responder sends the browser where the decision says.
  *
- * The locale of the interaction is chosen by #16; until then the pages are in the language of the bundle.
+ * The locale of the interaction is chosen here, once (architecture §5.7): "ui_locales" of the request,
+ * then the browser, then the deployment; it is recorded on the interaction and applied to this request,
+ * whose pages may already be shown in it.
  */
 #[AsController]
 final readonly class AuthorizationController
@@ -38,6 +41,7 @@ final readonly class AuthorizationController
         private RequestContextFactory $contexts,
         private AuthorizationResponder $responder,
         private InteractionPages $pages,
+        private InteractionLocale $locale,
     ) {
     }
 
@@ -53,10 +57,13 @@ final readonly class AuthorizationController
         }
         try {
             $authorizationRequest = $this->parser->parse($target, $parameters);
+            $locale = $this->locale->choose($request, $authorizationRequest->uiLocales);
+            $this->locale->apply($request, $locale);
             $decision = $this->handler->begin(
                 $authorizationRequest,
                 $this->browser->authenticationSession($request, $tenant),
                 $this->contexts->fromRequest($request),
+                $locale,
             );
         } catch (OAuth2Exception $exception) {
             return $this->responder->failure($request, $target, $exception);

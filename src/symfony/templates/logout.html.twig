@@ -1,29 +1,23 @@
-{# The logout confirmation page (OIDC RP-Initiated Logout 1.0 §2): the request did not prove it is about
-   the session the browser holds, so the user is asked. The form re-submits the same parameters with the
-   answer. Overridable by an application under templates/bundles/HeidiBundle/; #16 gives it its layout
-   and its text in every language. #}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sign out</title>
-</head>
-<body>
-    <main>
-        <h1>Sign out</h1>
-        <p data-reason="{{ reason.value }}">
-            {% if client is not null %}{{ client.name }} asks{% else %}Something asks{% endif %}
-            to sign you out. You are signed in as {{ user.username }}. Do you want to sign out?
-        </p>
-        <form method="post" action="{{ path('heidi_interaction_logout') }}">
-            {% for name, value in parameters %}
-                <input type="hidden" name="{{ name }}" value="{{ value }}">
-            {% endfor %}
-            <input type="hidden" name="_token" value="{{ csrf_token('heidi_logout') }}">
-            <button type="submit" name="confirm" value="yes">Sign out</button>
-            <button type="submit" name="confirm" value="no">Stay signed in</button>
-        </form>
-    </main>
-</body>
-</html>
+{# The logout confirmation page (OIDC RP-Initiated Logout 1.0 §2), in the locale of the request: the
+   request did not prove it is about the session the browser holds, so the user is asked. The form
+   re-submits the same parameters with the answer. Overridable by an application under
+   templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% block title %}{{ 'logout.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p data-reason="{{ reason.value }}">
+        {% if client is not null %}{{ 'logout.prompt.client'|trans({client: client.name}) }}{% else %}{{ 'logout.prompt.anonymous'|trans }}{% endif %}
+        {{ 'logout.signed_in_as'|trans({username: user.username}) }}
+    </p>
+    <form method="post" action="{{ path('heidi_interaction_logout') }}">
+        {% for name, value in parameters %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+        <input type="hidden" name="_token" value="{{ csrf_token('heidi_logout') }}">
+        <button type="submit" name="confirm" value="yes">{{ 'logout.confirm'|trans }}</button>
+        <button type="submit" name="confirm" value="no">{{ 'logout.stay'|trans }}</button>
+    </form>
+{% endblock %}

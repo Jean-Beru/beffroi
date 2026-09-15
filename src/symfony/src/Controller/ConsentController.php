@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Controller;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
@@ -29,7 +30,8 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
  * The consent page of an interaction (architecture §4.3, §5.2). GET shows the client and the scopes
  * while a consent is still required; POST carries the answer, "allow" or "deny", with the CSRF token of
  * the form, and calls grantConsent() or deny(). Both resume the handler with the session the browser
- * holds, so that a session that ended between the two pages sends the user back to the login.
+ * holds, so that a session that ended between the two pages sends the user back to the login. The page
+ * speaks the language the interaction recorded (architecture §5.7).
  */
 #[AsController]
 final readonly class ConsentController
@@ -50,6 +52,7 @@ final readonly class ConsentController
         private AuthorizationResponder $responder,
         private InteractionPages $pages,
         private CsrfTokenManagerInterface $csrf,
+        private InteractionLocale $locale,
     ) {
     }
 
@@ -63,10 +66,11 @@ final readonly class ConsentController
         if ($interaction === null) {
             return $this->responder->unknownInteraction();
         }
+        $this->locale->resume($request, $interaction);
         if ($request->isMethod('POST')) {
             $token = $parameters['_token'] ?? null;
             if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-                return $this->pages->error(Response::HTTP_FORBIDDEN, self::INVALID_CSRF_TOKEN, 'The form was not submitted from this provider. Start again from the application.');
+                return $this->pages->error(Response::HTTP_FORBIDDEN, self::INVALID_CSRF_TOKEN);
             }
         }
         try {

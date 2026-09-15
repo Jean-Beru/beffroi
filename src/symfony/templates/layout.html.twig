@@ -1,0 +1,22 @@
+{# The layout every page of the interaction plane extends (architecture §5.2): the document, its language
+   (the locale of the interaction, architecture §5.7) and the blocks a page fills. The bundle ships the
+   structure and the words, never a stylesheet or a script: an application gives the pages their look by
+   overriding this one file under templates/bundles/HeidiBundle/layout.html.twig, and the pages of the
+   bundle come with it; a page it wants otherwise is overridden the same way, by its name. #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|replace({'_': '-'}) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %}</title>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% block body %}
+        <main>
+            <h1>{% block heading %}{{ block('title') }}{% endblock %}</h1>
+            {% block content %}{% endblock %}
+        </main>
+    {% endblock %}
+</body>
+</html>

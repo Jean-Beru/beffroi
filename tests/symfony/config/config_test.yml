@@ -16,6 +16,9 @@ framework:
         cookie_secure: auto
         cookie_samesite: lax
     csrf_protection: true
+    # The two locales the bundle ships (architecture §5.7); the pages choose between them, never the URL.
+    default_locale: en
+    enabled_locales: ['en', 'fr']
     # The three buses of architecture §5.6, everything synchronous under test.
     messenger:
         default_bus: command.bus
@@ -183,3 +186,8 @@ services:
     Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
         autoconfigure: true
         public: true
+
+    # A missing translation fails the request rather than showing its key or its English (architecture §5.7).
+    Heidi\Bundle\Tests\Functional\Translation\StrictTranslator:
+        decorates: translator
+        arguments: ['@.inner']
