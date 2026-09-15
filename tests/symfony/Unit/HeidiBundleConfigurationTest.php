@@ -1,0 +1,275 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Tests\Unit;
+
+use function array_map;
+use Heidi\Bundle\HeidiBundle;
+use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use function preg_match;
+use Symfony\Component\Config\Definition\ArrayNode;
+use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use Symfony\Component\Config\Definition\NodeInterface;
+use Symfony\Component\Config\Definition\Processor;
+use Symfony\Component\Config\Definition\PrototypedArrayNode;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\ConfigurationExtensionInterface;
+
+/**
+ * The configuration tree of architecture §5.1, read through the Config component as the kernel reads it.
+ */
+final class HeidiBundleConfigurationTest extends TestCase
+{
+    private const array MINIMAL = [
+        'tenant' => [
+            'issuer' => 'https://op.test',
+        ],
+        'keys' => [
+            'kms' => 'sodium://?keys[signing]=AAAA',
+            'key_id' => 'signing',
+        ],
+    ];
+
+    /**
+     * Architecture §9: the lifetimes are the choices of the design, applied when the configuration says nothing.
+     */
+    #[Test]
+    public function theDefaultsAreThoseOfTheArchitecture(): void
+    {
+        $config = self::process(self::MINIMAL);
+
+        static::assertSame([
+            'issuer' => 'https://op.test',
+            'slug' => 'default',
+            'name' => null,
+        ], $config['tenant']);
+        static::assertSame([
+            'kms' => 'sodium://?keys[signing]=AAAA',
+            'key_id' => 'signing',
+            'storage' => '%kernel.project_dir%/var/keys',
+        ], $config['keys']);
+        static::assertSame([
+            'authorization_code_ttl' => 60,
+            'access_token_ttl' => 600,
+            'id_token_ttl' => 600,
+            'refresh_token_ttl' => 2592000,
+            'refresh_token_absolute_ttl' => 7776000,
+        ], $config['tokens']);
+        static::assertSame([], $config['clients']);
+    }
+
+    /**
+     * The tree cannot tell an absent list from an empty one, so it carries the defaults of the module
+     * itself; a client declared with nothing but a redirect URI is the same client either way.
+     */
+    #[Test]
+    public function aClientDeclaredWithNothingGetsTheDefaultsOfTheModule(): void
+    {
+        $config = self::process(self::MINIMAL + [
+            'clients' => [
+                'oidc-demo' => [
+                    'redirect_uris' => ['https://demo.test/login/check'],
+                    'token_endpoint_auth_method' => 'none',
+                ],
+            ],
+        ]);
+
+        static::assertIsArray($config['clients']);
+        static::assertSame(['oidc-demo'], array_keys($config['clients']));
+        static::assertIsArray($config['clients']['oidc-demo']);
+        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']));
+        $fromModule = ClientDefinition::fromArray('oidc-demo', [
+            'redirect_uris' => ['https://demo.test/login/check'],
+            'token_endpoint_auth_method' => 'none',
+        ]);
+
+        static::assertEquals($fromModule, $fromTree);
+        static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
+        static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, array_map(static fn ($scope) => (string) $scope, $fromTree->allowedScopes));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function refusedConfigurations(): iterable
+    {
+        yield 'no tenant' => [[
+            'keys' => self::MINIMAL['keys'],
+        ], 'tenant'];
+        yield 'no issuer' => [[
+            'tenant' => [],
+            'keys' => self::MINIMAL['keys'],
+        ], 'issuer'];
+        yield 'no kms' => [[
+            'tenant' => self::MINIMAL['tenant'],
+            'keys' => [
+                'key_id' => 'signing',
+            ],
+        ], 'kms'];
+        yield 'no key id' => [[
+            'tenant' => self::MINIMAL['tenant'],
+            'keys' => [
+                'kms' => 'sodium://?keys[signing]=AAAA',
+            ],
+        ], 'key_id'];
+        yield 'an authorization code living longer than RFC 6749 section 4.1.2 recommends' => [self::MINIMAL + [
+            'tokens' => [
+                'authorization_code_ttl' => HeidiBundle::MAX_AUTHORIZATION_CODE_TTL + 1,
+            ],
+        ], 'authorization_code_ttl'];
+        yield 'a lifetime of zero' => [self::MINIMAL + [
+            'tokens' => [
+                'access_token_ttl' => 0,
+            ],
+        ], 'access_token_ttl'];
+        yield 'a sliding refresh lifetime beyond the absolute one' => [self::MINIMAL + [
+            'tokens' => [
+                'refresh_token_ttl' => 100,
+                'refresh_token_absolute_ttl' => 99,
+            ],
+        ], 'refresh_token_ttl'];
+        yield 'an unknown client option' => [self::MINIMAL + [
+            'clients' => [
+                'app' => [
+                    'insecure_redirect_uris' => true,
+                ],
+            ],
+        ], 'insecure_redirect_uris'];
+        yield 'an unknown authentication method' => [self::MINIMAL + [
+            'clients' => [
+                'app' => [
+                    'token_endpoint_auth_method' => 'private_key_jwt',
+                ],
+            ],
+        ], 'token_endpoint_auth_method'];
+        yield 'an unknown grant type' => [self::MINIMAL + [
+            'clients' => [
+                'app' => [
+                    'grant_types' => ['implicit'],
+                ],
+            ],
+        ], 'implicit'];
+        yield 'an unknown signature algorithm' => [self::MINIMAL + [
+            'clients' => [
+                'app' => [
+                    'id_token_signed_response_alg' => 'HS256',
+                ],
+            ],
+        ], 'HS256'];
+        yield 'a consent flag that is not a boolean' => [self::MINIMAL + [
+            'clients' => [
+                'app' => [
+                    'requires_consent' => 'no',
+                ],
+            ],
+        ], 'requires_consent'];
+        yield 'an unknown top-level option' => [self::MINIMAL + [
+            'compatibility' => [],
+        ], 'compatibility'];
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    #[Test]
+    #[DataProvider('refusedConfigurations')]
+    public function itRefusesWhatItDoesNotKnowOrCannotAllow(array $config, string $named): void
+    {
+        try {
+            self::process($config);
+            static::fail('The configuration is refused.');
+        } catch (InvalidConfigurationException $exception) {
+            static::assertStringContainsString($named, $exception->getMessage());
+        }
+    }
+
+    /**
+     * A client identifier is a value, not a configuration key to normalize: "oidc-demo" stays "oidc-demo".
+     */
+    #[Test]
+    public function clientIdentifiersAreKeptAsWritten(): void
+    {
+        $config = self::process(self::MINIMAL + [
+            'clients' => [
+                'oidc-demo' => [],
+                'Conformance.Client_1' => [],
+            ],
+        ]);
+
+        static::assertIsArray($config['clients']);
+        static::assertSame(['oidc-demo', 'Conformance.Client_1'], array_keys($config['clients']));
+    }
+
+    /**
+     * Decision 0006: no option to do it wrong. Nothing in the tree, at any depth, names an insecure mode,
+     * a compatibility switch or a way to allow or disable a security rule.
+     */
+    #[Test]
+    public function theTreeHasNoInsecureOptionAndNoCompatibilitySwitch(): void
+    {
+        $names = [];
+        self::collect(self::configuration()->getConfigTreeBuilder()->buildTree(), $names);
+
+        static::assertNotSame([], $names);
+        foreach ($names as $name) {
+            static::assertSame(0, preg_match('/insecure|compat|legacy|allow_|disable_|skip_|unsafe/i', $name), $name);
+        }
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    private static function collect(NodeInterface $node, array &$names): void
+    {
+        $names[] = $node->getName();
+        if ($node instanceof PrototypedArrayNode) {
+            self::collect($node->getPrototype(), $names);
+        }
+        if ($node instanceof ArrayNode) {
+            foreach ($node->getChildren() as $child) {
+                self::collect($child, $names);
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private static function process(array $config): array
+    {
+        return self::stringKeyed(new Processor()->processConfiguration(self::configuration(), [$config]));
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     *
+     * @return array<string, mixed>
+     */
+    private static function stringKeyed(array $values): array
+    {
+        $result = [];
+        foreach ($values as $key => $value) {
+            $result[(string) $key] = $value;
+        }
+
+        return $result;
+    }
+
+    private static function configuration(): ConfigurationInterface
+    {
+        $extension = new HeidiBundle()
+            ->getContainerExtension();
+        static::assertInstanceOf(ConfigurationExtensionInterface::class, $extension);
+        $configuration = $extension->getConfiguration([], new ContainerBuilder());
+        static::assertInstanceOf(ConfigurationInterface::class, $configuration);
+
+        return $configuration;
+    }
+}

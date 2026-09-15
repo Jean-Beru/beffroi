@@ -19,12 +19,17 @@
         "php": ">=8.4",
         "heidi/core": "self.version",
         "heidi/oidc": "self.version",
+        "psr/event-dispatcher": "^1.0",
         "symfony/clock": "8.2.*",
         "symfony/config": "8.2.*",
         "symfony/dependency-injection": "8.2.*",
+        "symfony/event-dispatcher": "8.2.*",
         "symfony/framework-bundle": "8.2.*",
         "symfony/http-foundation": "8.2.*",
-        "symfony/http-kernel": "8.2.*"
+        "symfony/http-kernel": "8.2.*",
+        "symfony/key-management": "8.2.*",
+        "symfony/messenger": "8.2.*",
+        "symfony/uid": "8.2.*"
     },
     "autoload": {
         "psr-4": {

@@ -29,6 +29,7 @@
         "symfony/http-foundation": "8.2.*",
         "symfony/http-kernel": "8.2.*",
         "symfony/key-management": "8.2.*",
+        "symfony/messenger": "8.2.*",
         "symfony/uid": "8.2.*",
         "web-token/jwt-library": "^4.2"
     },

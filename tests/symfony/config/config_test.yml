@@ -9,5 +9,90 @@ framework:
         resource: '%kernel.project_dir%/config/routing.yml'
         utf8: true
         strict_requirements: true
+    # The three buses of architecture §5.6, everything synchronous under test.
+    messenger:
+        default_bus: command.bus
+        buses:
+            command.bus: ~
+            query.bus: ~
+            event.bus:
+                default_middleware: allow_no_handlers
+        transports:
+            sync: 'sync://'
+        routing:
+            Heidi\Core\Domain\Event\DomainEventInterface: sync
+            Heidi\Bundle\Message\Command: sync
+            Heidi\Bundle\Message\Event: sync
+            Heidi\Bundle\Message\Query: sync
+            Heidi\Bundle\Message\SyncMessage: sync
 
-heidi: ~
+# A full configuration (architecture §5.1): one tenant, a local KMS, files for the sealed keys, the default
+# lifetimes and two clients. The sodium key is a fixture of this kernel and seals nothing outside of it.
+heidi:
+    tenant:
+        issuer: 'https://op.test'
+    keys:
+        kms: 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
+        key_id: signing
+        storage: '%kernel.cache_dir%/keys'
+    clients:
+        oidc-demo:
+            name: 'Demo application'
+            secret: 'demo-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://demo.test/login/check']
+            post_logout_redirect_uris: ['https://demo.test/']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+        native-app:
+            redirect_uris: ['http://127.0.0.1/callback']
+            token_endpoint_auth_method: none
+
+services:
+    # The 404s the plane tests expect are not worth a line on stderr.
+    logger:
+        class: Psr\Log\NullLogger
+
+    # Reachable from the tests: the use cases and ports the bundle wires in full today. A private service
+    # nothing references is removed from the container, which is what these aliases prevent.
+    test.heidi.tenant:
+        alias: Heidi\Core\Domain\Tenant\Tenant
+        public: true
+    test.heidi.clients:
+        alias: Heidi\Oidc\Port\ClientRepositoryInterface
+        public: true
+    test.heidi.client_authenticator:
+        alias: Heidi\Oidc\Application\Client\ClientAuthenticator
+        public: true
+    test.heidi.password_hasher:
+        alias: Heidi\Core\Port\PasswordHasherInterface
+        public: true
+    test.heidi.key_rotator:
+        alias: Heidi\Core\Application\Key\SigningKeyRotator
+        public: true
+    test.heidi.jwks:
+        alias: Heidi\Oidc\Application\Discovery\JwksHandler
+        public: true
+    test.heidi.access_tokens:
+        alias: Heidi\Oidc\Port\AccessTokenIssuerInterface
+        public: true
+    test.heidi.id_tokens:
+        alias: Heidi\Oidc\Port\IdTokenIssuerInterface
+        public: true
+    test.heidi.access_token_verifier:
+        alias: Heidi\Oidc\Application\Token\AccessTokenVerifier
+        public: true
+    test.heidi.id_token_hints:
+        alias: Heidi\Oidc\Application\Authorization\IdTokenHintVerifier
+        public: true
+    test.heidi.authorization_request_parser:
+        alias: Heidi\Oidc\Application\Authorization\AuthorizationRequestParser
+        public: true
+    test.heidi.end_session_request_parser:
+        alias: Heidi\Oidc\Application\EndSession\EndSessionRequestParser
+        public: true
+    test.heidi.event_bus_dispatcher:
+        alias: Heidi\Bundle\Messenger\EventBusDispatcher
+        public: true
+    Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
+        autoconfigure: true
+        public: true
