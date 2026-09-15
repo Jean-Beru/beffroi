@@ -19,6 +19,7 @@ final class RequestContextFactoryTest extends TestCase
     #[Test]
     public function theContextIsTheMomentTheClientIpAndTheUserAgent(): void
     {
+        // Given
         $now = new DateTimeImmutable('2026-09-15T10:00:00+00:00');
         $factory = new RequestContextFactory(new MockClock($now));
         $request = Request::create('/authorize', 'GET', server: [
@@ -26,8 +27,10 @@ final class RequestContextFactoryTest extends TestCase
             'HTTP_USER_AGENT' => 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0',
         ]);
 
+        // When
         $context = $factory->fromRequest($request);
 
+        // Then
         static::assertEquals($now, $context->receivedAt);
         static::assertSame('203.0.113.10', $context->ipAddress);
         static::assertSame('Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0', $context->userAgent);
@@ -37,13 +40,16 @@ final class RequestContextFactoryTest extends TestCase
     #[Test]
     public function aRequestWithoutAnAddressOrAnAgentIsStillAContext(): void
     {
+        // Given
         $factory = new RequestContextFactory(new MockClock());
         $request = Request::create('/authorize');
         $request->server->remove('REMOTE_ADDR');
         $request->headers->remove('User-Agent');
 
+        // When
         $context = $factory->fromRequest($request);
 
+        // Then
         static::assertNull($context->ipAddress);
         static::assertNull($context->userAgent);
     }

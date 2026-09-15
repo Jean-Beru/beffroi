@@ -23,6 +23,7 @@ final class EventBusDispatcherTest extends TestCase
     #[Test]
     public function itReplaysTheEventOnTheBusAfterTheCurrentOne(): void
     {
+        // Given
         $bus = new class() implements MessageBusInterface {
             /**
              * @var list<Envelope>
@@ -40,9 +41,11 @@ final class EventBusDispatcherTest extends TestCase
         $session->end(SessionEnd::User, Fixtures::now());
         $event = new AuthenticationSessionEnded($session, Fixtures::now(), Fixtures::context());
 
+        // When
         $returned = new EventBusDispatcher($bus)
             ->dispatch($event);
 
+        // Then
         static::assertSame($event, $returned);
         static::assertCount(1, $bus->envelopes);
         static::assertSame($event, $bus->envelopes[0]->getMessage());

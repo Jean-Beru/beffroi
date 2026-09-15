@@ -14,6 +14,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Requests;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -46,20 +47,37 @@ final class BrowserSessionTest extends TestCase
     #[Test]
     public function aRequestWithoutASessionCookieIsNotAuthenticated(): void
     {
+        // Given
         $request = Request::create('/authorize');
         $request->setSession(new Session(new MockArraySessionStorage()));
 
+        // When / Then
         static::assertNull($this->browser->authenticationSession($request, $this->tenant));
-        static::assertFalse($request->getSession()->isStarted(), 'A request without a cookie starts no session.');
+    }
+
+    #[Test]
+    public function aRequestWithoutASessionCookieStartsNoSession(): void
+    {
+        // Given
+        $request = Request::create('/authorize');
+        $request->setSession(new Session(new MockArraySessionStorage()));
+
+        // When
+        $this->browser->authenticationSession($request, $this->tenant);
+
+        // Then
+        static::assertFalse($request->getSession()->isStarted());
     }
 
     #[Test]
     public function aBoundBrowserIsAuthenticated(): void
     {
+        // Given
         $session = $this->session();
         $request = self::request();
         $this->browser->bind($request->getSession(), $session);
 
+        // When / Then
         static::assertSame($session, $this->browser->authenticationSession($request, $this->tenant));
     }
 
@@ -69,91 +87,168 @@ final class BrowserSessionTest extends TestCase
     #[Test]
     public function bindingRegeneratesTheHttpSessionIdentifier(): void
     {
+        // Given
         $request = self::request();
         $before = $request->getSession()
             ->getId();
 
+        // When
         $this->browser->bind($request->getSession(), $this->session());
 
+        // Then
         static::assertNotSame($before, $request->getSession()->getId());
     }
 
     #[Test]
-    public function anEndedSessionIsForgotten(): void
+    public function anEndedSessionIsNotAuthenticated(): void
     {
+        // Given
         $session = $this->session();
         $request = self::request();
         $this->browser->bind($request->getSession(), $session);
         $session->end(SessionEnd::User, Fixtures::now());
 
+        // When / Then
         static::assertNull($this->browser->authenticationSession($request, $this->tenant));
+    }
+
+    #[Test]
+    public function anEndedSessionIsForgotten(): void
+    {
+        // Given
+        $session = $this->session();
+        $request = self::request();
+        $this->browser->bind($request->getSession(), $session);
+        $session->end(SessionEnd::User, Fixtures::now());
+
+        // When
+        $this->browser->authenticationSession($request, $this->tenant);
+
+        // Then
         static::assertFalse($request->getSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY));
     }
 
     #[Test]
     public function aSessionOfAnotherTenantIsNotThisBrowsers(): void
     {
+        // Given
         $request = self::request();
         $this->browser->bind($request->getSession(), $this->session());
 
+        // When / Then
         static::assertNull($this->browser->authenticationSession($request, Fixtures::tenant('other', 'https://other.example')));
     }
 
     #[Test]
-    public function aBindingToNothingIsNotAuthenticated(): void
+    #[DataProvider('provideBindingsToNothing')]
+    public function aBindingToNothingIsNotAuthenticated(string $bound): void
     {
+        // Given
         $request = self::request();
         $request->getSession()
-            ->set(BrowserSession::AUTHENTICATION_SESSION_KEY, 'not-a-uuid');
+            ->set(BrowserSession::AUTHENTICATION_SESSION_KEY, $bound);
 
+        // When / Then
         static::assertNull($this->browser->authenticationSession($request, $this->tenant));
+    }
 
-        $request->getSession()
-            ->set(BrowserSession::AUTHENTICATION_SESSION_KEY, '019968a0-0000-7000-8000-000000000000');
-
-        static::assertNull($this->browser->authenticationSession($request, $this->tenant));
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideBindingsToNothing(): iterable
+    {
+        yield 'not a UUID' => ['not-a-uuid'];
+        yield 'an unknown session' => ['019968a0-0000-7000-8000-000000000000'];
     }
 
     #[Test]
     public function unbindingInvalidatesTheHttpSession(): void
     {
+        // Given
         $request = self::request();
         $this->browser->bind($request->getSession(), $this->session());
         $interaction = $this->interaction();
         $this->browser->begin($request->getSession(), $interaction);
 
+        // When
         $this->browser->unbind($request->getSession());
 
+        // Then
         static::assertNull($this->browser->authenticationSession($request, $this->tenant));
+        static::assertNull($this->browser->pending($request, $this->tenant, $interaction->id));
+    }
+
+    #[Test]
+    public function anInteractionNotBegunByThisBrowserIsNotPending(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $request = self::request();
+
+        // When / Then
         static::assertNull($this->browser->pending($request, $this->tenant, $interaction->id));
     }
 
     #[Test]
     public function anInteractionIsPendingForTheBrowserThatBeganIt(): void
     {
+        // Given
         $interaction = $this->interaction();
         $request = self::request();
 
-        static::assertNull($this->browser->pending($request, $this->tenant, $interaction->id), 'Not begun by this browser.');
-
+        // When
         $this->browser->begin($request->getSession(), $interaction);
 
+        // Then
         static::assertSame($interaction, $this->browser->pending($request, $this->tenant, $interaction->id));
-        static::assertNull($this->browser->pending($request, $this->tenant, null));
-        static::assertNull($this->browser->pending($request, $this->tenant, ''));
-        static::assertNull($this->browser->pending($request, $this->tenant, 'unknown'));
+    }
+
+    #[Test]
+    #[DataProvider('provideIdentifiersOfNoPendingInteraction')]
+    public function nothingIsPendingForAnIdentifierThatIsNotOneOfThisBrowser(?string $id): void
+    {
+        // Given
+        $request = self::request();
+        $this->browser->begin($request->getSession(), $this->interaction());
+
+        // When / Then
+        static::assertNull($this->browser->pending($request, $this->tenant, $id));
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function provideIdentifiersOfNoPendingInteraction(): iterable
+    {
+        yield 'none' => [null];
+        yield 'empty' => [''];
+        yield 'unknown' => ['unknown'];
+    }
+
+    #[Test]
+    public function anInteractionIsNotPendingForAnotherTenant(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $request = self::request();
+        $this->browser->begin($request->getSession(), $interaction);
+
+        // When / Then
         static::assertNull($this->browser->pending($request, Fixtures::tenant('other', 'https://other.example'), $interaction->id));
     }
 
     #[Test]
     public function anInteractionThatIsOverIsNotPendingAnyMore(): void
     {
+        // Given
         $interaction = $this->interaction();
         $request = self::request();
         $this->browser->begin($request->getSession(), $interaction);
 
+        // When
         $this->browser->forget($request->getSession(), $interaction);
 
+        // Then
         static::assertNull($this->browser->pending($request, $this->tenant, $interaction->id));
         static::assertFalse($request->getSession()->has(BrowserSession::INTERACTIONS_KEY));
     }
@@ -164,6 +259,7 @@ final class BrowserSessionTest extends TestCase
     #[Test]
     public function aBrowserHoldsABoundedNumberOfInteractions(): void
     {
+        // Given
         $request = self::request();
         $first = $this->interaction();
         $second = $this->interaction();
@@ -173,8 +269,11 @@ final class BrowserSessionTest extends TestCase
             $this->browser->begin($request->getSession(), $this->interaction());
         }
         $last = $this->interaction();
+
+        // When
         $this->browser->begin($request->getSession(), $last);
 
+        // Then
         static::assertNull($this->browser->pending($request, $this->tenant, $first->id));
         static::assertSame($second, $this->browser->pending($request, $this->tenant, $second->id));
         static::assertSame($last, $this->browser->pending($request, $this->tenant, $last->id));
@@ -183,16 +282,26 @@ final class BrowserSessionTest extends TestCase
     #[Test]
     public function aCorruptedListOfInteractionsIsAnEmptyOne(): void
     {
+        // Given
         $interaction = $this->interaction();
         $request = self::request();
         $request->getSession()
             ->set(BrowserSession::INTERACTIONS_KEY, 'not-a-list');
 
+        // When / Then
         static::assertNull($this->browser->pending($request, $this->tenant, $interaction->id));
+    }
 
+    #[Test]
+    public function aListOfInteractionsWithAForeignEntryStillHoldsTheOthers(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $request = self::request();
         $request->getSession()
             ->set(BrowserSession::INTERACTIONS_KEY, [$interaction->id, 42]);
 
+        // When / Then
         static::assertSame($interaction, $this->browser->pending($request, $this->tenant, $interaction->id));
     }
 

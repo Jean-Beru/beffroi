@@ -30,13 +30,16 @@ final class CorePasswordHasherTest extends TestCase
     #[Test]
     public function aHashOfTheCoreGoesThroughTheStringOfTheComponentWithoutLoss(): void
     {
+        // Given
         $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'ZGlnZXN0', [
             'salt' => 'c2FsdA',
             'iterations' => 27500,
         ]);
 
+        // When
         $decoded = CorePasswordHasher::decode(CorePasswordHasher::encode($hash));
 
+        // Then
         static::assertNotNull($decoded);
         static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $decoded->algorithm);
         static::assertSame('ZGlnZXN0', $decoded->encoded);
@@ -47,16 +50,27 @@ final class CorePasswordHasherTest extends TestCase
     }
 
     #[Test]
-    public function hashingProducesWhatTheCoreProducesAndVerifiesIt(): void
+    public function hashingProducesWhatTheCoreProduces(): void
     {
+        // When
         $encoded = $this->hasher->hash('correct horse battery staple');
 
+        // Then
         $hash = CorePasswordHasher::decode($encoded);
         static::assertNotNull($hash);
         static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
+        static::assertFalse($this->hasher->needsRehash($encoded));
+    }
+
+    #[Test]
+    public function aHashOfTheCoreVerifiesTheRightPasswordOnly(): void
+    {
+        // Given
+        $encoded = $this->hasher->hash('correct horse battery staple');
+
+        // When / Then
         static::assertTrue($this->hasher->verify($encoded, 'correct horse battery staple'));
         static::assertFalse($this->hasher->verify($encoded, 'incorrect horse'));
-        static::assertFalse($this->hasher->needsRehash($encoded));
     }
 
     /**
@@ -65,10 +79,12 @@ final class CorePasswordHasherTest extends TestCase
     #[Test]
     public function aHashOfAnotherAlgorithmIsVerifiedAndNeedsARehash(): void
     {
+        // Given
         $encoded = CorePasswordHasher::encode(new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('correct horse battery staple', PASSWORD_BCRYPT, [
             'cost' => 4,
         ])));
 
+        // When / Then
         static::assertTrue($this->hasher->verify($encoded, 'correct horse battery staple'));
         static::assertFalse($this->hasher->verify($encoded, 'incorrect horse'));
         static::assertTrue($this->hasher->needsRehash($encoded));
@@ -79,9 +95,10 @@ final class CorePasswordHasherTest extends TestCase
      * an algorithm from a hash.
      */
     #[Test]
-    #[DataProvider('notAHash')]
+    #[DataProvider('provideNotAHash')]
     public function aStringThatIsNotAHashOfTheCoreVerifiesNothing(string $encoded): void
     {
+        // When / Then
         static::assertNull(CorePasswordHasher::decode($encoded));
         static::assertFalse($this->hasher->verify($encoded, 'correct horse battery staple'));
         static::assertFalse($this->hasher->needsRehash($encoded));
@@ -90,7 +107,7 @@ final class CorePasswordHasherTest extends TestCase
     /**
      * @return iterable<string, array{string}>
      */
-    public static function notAHash(): iterable
+    public static function provideNotAHash(): iterable
     {
         yield 'a PHC string' => ['$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA'];
         yield 'empty' => [''];
@@ -110,10 +127,12 @@ final class CorePasswordHasherTest extends TestCase
     #[Test]
     public function aHashNoHasherHandlesIsAWrongPassword(): void
     {
+        // Given
         $encoded = CorePasswordHasher::encode(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha512, 'ZGlnZXN0', [
             'salt' => 'c2FsdA',
         ]));
 
+        // When / Then
         static::assertFalse($this->hasher->verify($encoded, 'correct horse battery staple'));
         static::assertFalse($this->hasher->needsRehash($encoded));
     }

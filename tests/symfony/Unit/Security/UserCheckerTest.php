@@ -17,19 +17,41 @@ use Symfony\Component\Security\Core\User\InMemoryUser;
  */
 final class UserCheckerTest extends TestCase
 {
+    /**
+     * The account state is checked after the password: whoever does not know the password cannot tell a
+     * disabled account from a wrong password.
+     */
     #[Test]
-    public function aDisabledUserIsRefusedAfterThePasswordOnly(): void
+    public function aDisabledUserPassesBeforeThePassword(): void
     {
+        // Given
         $user = Fixtures::user();
         $user->disable(Fixtures::now());
         $adapter = new SecurityUser($user, null);
         $checker = new UserChecker();
 
+        // When
         $checker->checkPreAuth($adapter);
+
+        // Then
+        static::assertFalse($adapter->enabled);
+    }
+
+    #[Test]
+    public function aDisabledUserIsRefusedAfterThePassword(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $user->disable(Fixtures::now());
+        $adapter = new SecurityUser($user, null);
+        $checker = new UserChecker();
+
+        // When
         try {
             $checker->checkPostAuth($adapter);
             static::fail('A disabled user is refused.');
         } catch (DisabledException $exception) {
+            // Then
             static::assertSame($adapter, $exception->getUser());
         }
     }
@@ -37,24 +59,30 @@ final class UserCheckerTest extends TestCase
     #[Test]
     public function anEnabledUserPasses(): void
     {
+        // Given
         $adapter = new SecurityUser(Fixtures::user(), null);
         $checker = new UserChecker();
 
+        // When
         $checker->checkPreAuth($adapter);
         $checker->checkPostAuth($adapter);
 
+        // Then
         static::assertTrue($adapter->enabled);
     }
 
     #[Test]
     public function aUserOfAHostApplicationIsNotItsBusiness(): void
     {
+        // Given
         $user = new InMemoryUser('host', null, enabled: false);
         $checker = new UserChecker();
 
+        // When
         $checker->checkPreAuth($user);
         $checker->checkPostAuth($user);
 
+        // Then
         static::assertFalse($user->isEnabled());
     }
 }

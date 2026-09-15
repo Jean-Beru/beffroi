@@ -28,10 +28,13 @@ final class RouterEndpointLocatorTest extends TestCase
     #[Test]
     public function theEndpointsAreTheRoutesUnderTheOriginOfTheIssuer(): void
     {
+        // Given
         $locator = new RouterEndpointLocator(self::router(''));
 
+        // When
         $endpoints = $locator->locate(self::tenant('https://op.example'));
 
+        // Then
         static::assertSame('https://op.example/authorize', $endpoints->authorization);
         static::assertSame('https://op.example/token', $endpoints->token);
         static::assertSame('https://op.example/userinfo', $endpoints->userinfo);
@@ -45,10 +48,13 @@ final class RouterEndpointLocatorTest extends TestCase
     #[Test]
     public function theHostOfTheRequestIsIgnored(): void
     {
+        // Given
         $locator = new RouterEndpointLocator(self::router('', new RequestContext('', 'GET', 'attacker.example', 'http', 8080)));
 
+        // When
         $endpoints = $locator->locate(self::tenant('https://op.example:8443'));
 
+        // Then
         static::assertSame('https://op.example:8443/token', $endpoints->token);
     }
 
@@ -58,10 +64,13 @@ final class RouterEndpointLocatorTest extends TestCase
     #[Test]
     public function anIssuerWithAPathHasItsRoutesUnderThatPath(): void
     {
+        // Given
         $locator = new RouterEndpointLocator(self::router('/tenant1'));
 
+        // When
         $endpoints = $locator->locate(self::tenant('https://op.example/tenant1'));
 
+        // Then
         static::assertSame('https://op.example/tenant1/authorize', $endpoints->authorization);
         static::assertSame('https://op.example/tenant1/token', $endpoints->token);
     }
@@ -73,12 +82,15 @@ final class RouterEndpointLocatorTest extends TestCase
     #[Test]
     public function routesMountedElsewhereThanTheIssuerAreRefused(): void
     {
+        // Given
         $locator = new RouterEndpointLocator(self::router('/auth'));
 
+        // When
         try {
             $locator->locate(self::tenant('https://op.example'));
             static::fail('The routes are not under the issuer.');
         } catch (LogicException $exception) {
+            // Then
             static::assertStringContainsString('https://op.example/.well-known/openid-configuration', $exception->getMessage());
             static::assertStringContainsString('https://op.example/auth/.well-known/openid-configuration', $exception->getMessage());
         }
@@ -91,9 +103,13 @@ final class RouterEndpointLocatorTest extends TestCase
     #[Test]
     public function aLoopbackIssuerInClearCannotAnnounceATokenEndpoint(): void
     {
+        // Given
         $locator = new RouterEndpointLocator(self::router(''));
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $locator->locate(self::tenant('http://localhost:8000'));
     }
 

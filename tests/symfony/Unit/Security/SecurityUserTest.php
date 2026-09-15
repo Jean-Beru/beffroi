@@ -11,10 +11,12 @@ use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function serialize;
 use Symfony\Component\Security\Core\User\InMemoryUser;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
@@ -27,12 +29,15 @@ final class SecurityUserTest extends TestCase
     #[Test]
     public function theAdapterExposesTheUserAndItsHashToTheFirewall(): void
     {
+        // Given
         $user = Fixtures::user();
         $hash = new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
         $credential = new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now());
 
+        // When
         $adapter = new SecurityUser($user, $credential);
 
+        // Then
         static::assertSame('alice', $adapter->getUserIdentifier());
         static::assertTrue($adapter->id->equals($user->id));
         static::assertSame([SecurityUser::ROLE], $adapter->getRoles());
@@ -45,8 +50,10 @@ final class SecurityUserTest extends TestCase
     #[Test]
     public function aUserWithoutAPasswordHasNoneToVerify(): void
     {
+        // When
         $adapter = new SecurityUser(Fixtures::user(), null);
 
+        // Then
         static::assertNull($adapter->getPassword());
         static::assertNull($adapter->passwordCredential());
     }
@@ -54,9 +61,11 @@ final class SecurityUserTest extends TestCase
     #[Test]
     public function aDisabledUserSaysSo(): void
     {
+        // Given
         $user = Fixtures::user();
         $user->disable(Fixtures::now());
 
+        // When / Then
         static::assertFalse(new SecurityUser($user, null)->enabled);
     }
 
@@ -65,65 +74,141 @@ final class SecurityUserTest extends TestCase
      * username, the state and the hash survive, the entities do not.
      */
     #[Test]
-    public function theSerialisedFormKeepsWhatARefreshNeedsAndNoEntity(): void
+    public function theSerialisedFormHoldsNoEntity(): void
     {
-        $user = Fixtures::user();
-        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$04$abcdefghijklmnopqrstuu'), Fixtures::now());
-        $adapter = new SecurityUser($user, $credential);
+        // Given
+        $adapter = self::adapterOfAlice();
 
+        // When
         $serialized = serialize($adapter);
-        static::assertStringNotContainsString('alice-subject', $serialized, 'The entities are not serialised.');
-        $restored = unserialize($serialized);
 
+        // Then
+        static::assertStringNotContainsString('alice-subject', $serialized);
+    }
+
+    #[Test]
+    public function theSerialisedFormKeepsWhatARefreshNeeds(): void
+    {
+        // Given
+        $adapter = self::adapterOfAlice();
+
+        // When
+        $restored = unserialize(serialize($adapter));
+
+        // Then
         static::assertInstanceOf(SecurityUser::class, $restored);
-        static::assertTrue($restored->id->equals($user->id));
+        static::assertTrue($restored->id->equals($adapter->id));
         static::assertSame('alice', $restored->getUserIdentifier());
         static::assertTrue($restored->enabled);
         static::assertSame($adapter->getPassword(), $restored->getPassword());
         static::assertTrue($restored->isEqualTo($adapter));
-        try {
-            $restored->user();
-            static::fail('A restored adapter holds no user.');
-        } catch (LogicException $exception) {
-            static::assertStringContainsString('refresh it through the provider', $exception->getMessage());
-        }
-        try {
-            $restored->passwordCredential();
-            static::fail('A restored adapter holds no credential.');
-        } catch (LogicException $exception) {
-            static::assertStringContainsString('refresh it through the provider', $exception->getMessage());
-        }
+    }
+
+    #[Test]
+    public function aRestoredAdapterHoldsNoUser(): void
+    {
+        // Given
+        $restored = unserialize(serialize(self::adapterOfAlice()));
+        static::assertInstanceOf(SecurityUser::class, $restored);
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('refresh it through the provider');
+
+        // When
+        $restored->user();
+    }
+
+    #[Test]
+    public function aRestoredAdapterHoldsNoCredential(): void
+    {
+        // Given
+        $restored = unserialize(serialize(self::adapterOfAlice()));
+        static::assertInstanceOf(SecurityUser::class, $restored);
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('refresh it through the provider');
+
+        // When
+        $restored->passwordCredential();
     }
 
     #[Test]
     public function aSerialisedFormThisClassDidNotWriteIsRefused(): void
     {
-        try {
-            unserialize('O:34:"Heidi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
-            static::fail('A forged form is refused.');
-        } catch (LogicException $exception) {
-            static::assertSame('The serialised user is not one this class wrote.', $exception->getMessage());
-        }
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The serialised user is not one this class wrote.');
+
+        // When
+        unserialize('O:34:"Heidi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
     }
 
     /**
-     * A password change signs the other browsers out, a rename does not, another user never compares
-     * equal, nor does a user of a host application.
+     * A rename does not sign the other browsers out.
      */
     #[Test]
-    public function equalityIsTheIdentifierAndTheHash(): void
+    public function aRenamedUserIsStillEqual(): void
     {
+        // Given
         $user = Fixtures::user();
-        $hash = new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
+        $hash = self::hash();
         $adapter = new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now()));
-
         $user->rename('alice.renamed', Fixtures::now());
-        static::assertTrue($adapter->isEqualTo(new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now()))));
 
+        // When / Then
+        static::assertTrue($adapter->isEqualTo(new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now()))));
+    }
+
+    /**
+     * A password change signs the other browsers out.
+     */
+    #[Test]
+    public function aUserWithAnotherHashIsNotEqual(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $adapter = new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, self::hash(), Fixtures::now()));
         $changed = new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$b3RoZXI');
+
+        // When / Then
         static::assertFalse($adapter->isEqualTo(new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $changed, Fixtures::now()))));
         static::assertFalse($adapter->isEqualTo(new SecurityUser($user, null)));
-        static::assertFalse($adapter->isEqualTo(new SecurityUser(Fixtures::user(username: 'bob', subject: 'bob-subject'), null)));
-        static::assertFalse($adapter->isEqualTo(new InMemoryUser('alice', null)));
+    }
+
+    /**
+     * Another user never compares equal, nor does a user of a host application.
+     */
+    #[Test]
+    #[DataProvider('provideOtherUsers')]
+    public function anotherUserIsNotEqual(UserInterface $other): void
+    {
+        // Given
+        $adapter = self::adapterOfAlice();
+
+        // When / Then
+        static::assertFalse($adapter->isEqualTo($other));
+    }
+
+    /**
+     * @return iterable<string, array{UserInterface}>
+     */
+    public static function provideOtherUsers(): iterable
+    {
+        yield 'another user of the core' => [new SecurityUser(Fixtures::user(username: 'bob', subject: 'bob-subject'), null)];
+        yield 'a user of a host application' => [new InMemoryUser('alice', null)];
+    }
+
+    private static function hash(): PasswordHash
+    {
+        return new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
+    }
+
+    private static function adapterOfAlice(): SecurityUser
+    {
+        $user = Fixtures::user();
+
+        return new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, self::hash(), Fixtures::now()));
     }
 }

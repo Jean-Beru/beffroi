@@ -17,8 +17,10 @@ final class RequestParametersTest extends TestCase
     #[Test]
     public function aBrowserGetReadsTheQuery(): void
     {
+        // Given
         $request = Request::create('/authorize?client_id=demo&scope=openid', 'GET');
 
+        // When / Then
         static::assertSame([
             'client_id' => 'demo',
             'scope' => 'openid',
@@ -28,10 +30,12 @@ final class RequestParametersTest extends TestCase
     #[Test]
     public function aBrowserPostReadsTheFormBodyAndNotTheQuery(): void
     {
+        // Given
         $request = Request::create('/authorize?client_id=from-the-query', 'POST', [
             'client_id' => 'from-the-body',
         ]);
 
+        // When / Then
         static::assertSame([
             'client_id' => 'from-the-body',
         ], RequestParameters::ofBrowserRequest($request));
@@ -40,10 +44,12 @@ final class RequestParametersTest extends TestCase
     #[Test]
     public function aFormReadsTheBodyOnly(): void
     {
+        // Given
         $request = Request::create('/token?grant_type=from-the-query', 'POST', [
             'grant_type' => 'from-the-body',
         ]);
 
+        // When / Then
         static::assertSame([
             'grant_type' => 'from-the-body',
         ], RequestParameters::ofForm($request));
@@ -55,8 +61,10 @@ final class RequestParametersTest extends TestCase
     #[Test]
     public function aRepeatedParameterIsHandedOverAsAnArray(): void
     {
+        // Given
         $request = Request::create('/authorize?scope[]=openid&scope[]=profile', 'GET');
 
+        // When / Then
         static::assertSame([
             'scope' => ['openid', 'profile'],
         ], RequestParameters::ofBrowserRequest($request));
@@ -68,8 +76,10 @@ final class RequestParametersTest extends TestCase
     #[Test]
     public function aNumericKeyIsDropped(): void
     {
+        // Given
         $request = Request::create('/authorize?0=zero&client_id=demo', 'GET');
 
+        // When / Then
         static::assertSame([
             'client_id' => 'demo',
         ], RequestParameters::ofBrowserRequest($request));
