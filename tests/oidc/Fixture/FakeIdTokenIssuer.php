@@ -12,7 +12,7 @@ use function sprintf;
 
 /**
  * An issuer whose ID tokens say what they would carry, in clear. Never leaves the test suite: the real
- * one writes a signed JWT (issue #8).
+ * one, JwtIdTokenIssuer, writes a signed JWT.
  */
 final class FakeIdTokenIssuer implements IdTokenIssuerInterface
 {

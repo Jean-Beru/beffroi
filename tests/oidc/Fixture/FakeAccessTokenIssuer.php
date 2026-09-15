@@ -13,7 +13,7 @@ use function sprintf;
 
 /**
  * An issuer whose tokens say who they were minted for, in clear, and live ten minutes. Never leaves the
- * test suite: the real one writes a signed at+jwt (issue #8).
+ * test suite: the real one, JwtAccessTokenIssuer, writes a signed at+jwt.
  */
 final class FakeAccessTokenIssuer implements AccessTokenIssuerInterface
 {
