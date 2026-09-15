@@ -1,0 +1,18 @@
+{# The page shown when a request cannot go on and nothing may be sent to a client (RFC 9700 §4.1,
+   RP-Initiated Logout §4). "error" is a code: the "error" of the protocol, or one of the constants of
+   AuthorizationResponder and of the controllers. Overridable by an application under
+   templates/bundles/HeidiBundle/; #16 gives it its layout and its text in every language. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Request refused</title>
+</head>
+<body>
+    <main>
+        <h1>Request refused</h1>
+        <p data-error="{{ error }}">{{ description }}</p>
+    </main>
+</body>
+</html>

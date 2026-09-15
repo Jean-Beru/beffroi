@@ -7,7 +7,8 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Stands in for the controllers to come: answers 200 with the name of the plane its route declares.
+ * A route of the host application, next to the routes of the bundle: answers 200 with the name of the
+ * plane its route declares, so that the plane guard can be shown to leave it alone.
  */
 final readonly class ProbeController
 {

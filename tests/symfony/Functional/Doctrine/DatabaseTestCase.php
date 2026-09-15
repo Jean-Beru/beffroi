@@ -22,18 +22,38 @@ use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use function sprintf;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * A kernel on a fresh SQLite schema (architecture §7), the tenant of the configuration synchronised, so
- * that a test starts where an application starts after its first migration and its provisioning.
+ * that a test starts where an application starts after its first migration and its provisioning. A test
+ * that drives a browser gets it from browser(): the kernel is then the one behind the browser, and the
+ * rows survive the reboot the browser does between two requests.
  */
-abstract class DatabaseTestCase extends KernelTestCase
+abstract class DatabaseTestCase extends WebTestCase
 {
     protected function setUp(): void
     {
         self::bootKernel();
+        self::prepareDatabase();
+    }
+
+    /**
+     * A browser on a kernel of its own, the schema and the tenant prepared behind it.
+     */
+    protected static function browser(): KernelBrowser
+    {
+        self::ensureKernelShutdown();
+        $browser = self::createClient();
+        self::prepareDatabase();
+
+        return $browser;
+    }
+
+    private static function prepareDatabase(): void
+    {
         $entityManager = self::entityManager();
         $schema = new SchemaTool($entityManager);
         $schema->dropDatabase();

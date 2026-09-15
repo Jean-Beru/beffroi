@@ -12,10 +12,15 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
+use Heidi\Bundle\Http\AuthorizationResponder;
+use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Plane\PlaneRequestListener;
+use Heidi\Bundle\Routing\RouterEndpointLocator;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SessionTerminator;
@@ -65,6 +70,7 @@ use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
@@ -75,10 +81,8 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 /*
- * Every service of the core and of the module the bundle can wire today, autowired, the ports aliased to
- * the one implementation spike 1 has (architecture §3.4, §4.11, §5.3). What is missing has an issue of its
- * own: the endpoint locator is the router's (#14). A use case that needs it is declared here already and
- * becomes reachable when it is.
+ * Every service of the core and of the module, autowired, the ports aliased to the one implementation
+ * spike 1 has (architecture §3.4, §4.11, §5.2, §5.3), and the controllers of the two planes.
  */
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
@@ -96,6 +100,16 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PlaneRequestListener::class)
         ->args(['%env(enum:' . Plane::class . ':HEIDI_PLANE)%']);
     $services->set(TenantFactory::class);
+
+    // The bundle: the two planes (architecture §5.2). The controllers translate the request into the objects
+    // of the module and the decisions into responses; what they share is here.
+    $services->load('Heidi\\Bundle\\Controller\\', '../src/Controller/');
+    $services->set(RequestContextFactory::class);
+    $services->set(BrowserSession::class);
+    $services->set(InteractionPages::class);
+    $services->set(AuthorizationResponder::class);
+    $services->set(RouterEndpointLocator::class);
+    $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
 
     // The bundle: persistence (architecture §5.3). The tenant of a request is the row Doctrine manages,
     // checked against the configuration, held for one request and forgotten with the unit of work; the

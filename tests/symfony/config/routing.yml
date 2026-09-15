@@ -1,16 +1,7 @@
-# Routes of the bundle are added here as they exist. Until the controllers arrive, one probe per plane
-# stands where the login page and the JWK Set will be, so that the plane guard can be exercised.
-heidi_interaction_login:
-    path: /login
-    controller: Heidi\Bundle\Tests\Functional\Controller\ProbeController
-    defaults:
-        plane: interaction
-
-heidi_protocol_jwks:
-    path: /jwks
-    controller: Heidi\Bundle\Tests\Functional\Controller\ProbeController
-    defaults:
-        plane: protocol
+# The routes of the bundle, imported as an application imports them, next to a route of the host
+# application that the plane guard must leave alone.
+heidi:
+    resource: '@HeidiBundle/config/routes.php'
 
 host_route:
     path: /host

@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Tests\Functional\Controller;
+
+use Heidi\Oidc\Port\EndpointLocatorInterface;
+use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * OIDC Discovery §4 and architecture §4.8, §5.2: the provider metadata at the well-known location, the
+ * endpoints announced under the issuer whatever host the request came in with.
+ */
+final class DiscoveryControllerTest extends BrowserTestCase
+{
+    #[Test]
+    public function theMetadataIsServedAtTheWellKnownLocation(): void
+    {
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertSame('application/json', $response->headers->get('Content-Type'));
+        static::assertTrue($response->headers->hasCacheControlDirective('public'));
+        static::assertSame('3600', $response->headers->getCacheControlDirective('max-age'));
+        $metadata = self::json($response);
+        static::assertSame('https://op.test', $metadata['issuer']);
+        static::assertSame('https://op.test/authorize', $metadata['authorization_endpoint']);
+        static::assertSame('https://op.test/token', $metadata['token_endpoint']);
+        static::assertSame('https://op.test/userinfo', $metadata['userinfo_endpoint']);
+        static::assertSame('https://op.test/jwks', $metadata['jwks_uri']);
+        static::assertSame('https://op.test/logout', $metadata['end_session_endpoint']);
+        static::assertSame(['S256'], $metadata['code_challenge_methods_supported']);
+        static::assertTrue($metadata['authorization_response_iss_parameter_supported']);
+    }
+
+    /**
+     * The Host header of the request does not steer what is announced: the origin is the issuer's.
+     */
+    #[Test]
+    public function theEndpointsAreAnnouncedUnderTheIssuerNotUnderTheRequestHost(): void
+    {
+        $this->browser->request('GET', '/.well-known/openid-configuration', server: [
+            'HTTP_HOST' => 'attacker.example',
+        ]);
+
+        static::assertSame('https://op.test/token', self::json($this->browser->getResponse())['token_endpoint']);
+    }
+
+    /**
+     * Architecture §5.2: the endpoint locator the bundle binds is the one of the router.
+     */
+    #[Test]
+    public function theRouterLocatesTheEndpoints(): void
+    {
+        $endpoints = self::service('test.heidi.endpoints', EndpointLocatorInterface::class)->locate(self::tenant());
+
+        static::assertSame('https://op.test/authorize', $endpoints->authorization);
+        static::assertSame('https://op.test/token', $endpoints->token);
+    }
+
+    #[Test]
+    public function theMetadataIsReadOnly(): void
+    {
+        $this->browser->request('POST', '/.well-known/openid-configuration');
+
+        static::assertSame(Response::HTTP_METHOD_NOT_ALLOWED, $this->browser->getResponse()->getStatusCode());
+    }
+}
