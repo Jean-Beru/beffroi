@@ -8,11 +8,14 @@ use Heidi\Oidc\Exception\AccessDeniedException;
 use Heidi\Oidc\Exception\ConsentRequiredException;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
+use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidScopeException;
 use Heidi\Oidc\Exception\LoginRequiredException;
 use Heidi\Oidc\Exception\RequestNotSupportedException;
 use Heidi\Oidc\Exception\RequestUriNotSupportedException;
+use Heidi\Oidc\Exception\UnauthorizedClientException;
+use Heidi\Oidc\Exception\UnsupportedGrantTypeException;
 use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -72,6 +75,30 @@ final class OAuth2ExceptionTest extends TestCase
         static::assertSame(400, $exception->statusCode);
         static::assertFalse($exception->redirectable);
         static::assertTrue(new InvalidScopeException('Sent back to the client.', true)->redirectable);
+    }
+
+    /**
+     * RFC 6749 §5.2: the errors of the token endpoint are 400 and never redirected; unauthorized_client
+     * is also an error of the authorization endpoint (§4.1.2.1), so its flag is the caller's.
+     */
+    #[Test]
+    public function theErrorsOfTheTokenEndpointAreA400AndAreNotRedirectable(): void
+    {
+        $exceptions = [
+            'invalid_grant' => new InvalidGrantException('The authorization code is invalid.'),
+            'unsupported_grant_type' => new UnsupportedGrantTypeException('The grant type is not supported by this provider.'),
+            'unauthorized_client' => new UnauthorizedClientException('The client is not registered for this grant type.'),
+        ];
+
+        foreach ($exceptions as $error => $exception) {
+            static::assertSame($error, $exception->error);
+            static::assertSame(400, $exception->statusCode);
+            static::assertFalse($exception->redirectable);
+        }
+        static::assertTrue(new UnauthorizedClientException('Sent back to the client.', true)->redirectable);
+
+        $cause = new RuntimeException('What went wrong, for the logs.');
+        static::assertSame($cause, new InvalidScopeException('Sent back to the client.', false, $cause)->getPrevious());
     }
 
     /**

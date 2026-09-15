@@ -51,6 +51,22 @@ final class CodeChallengeTest extends TestCase
     }
 
     /**
+     * RFC 7636 §4.6 with the vector of appendix B: BASE64URL(SHA256(verifier)) is the challenge; one
+     * character off, the empty string, or the challenge itself (a "plain" attempt) are refused.
+     */
+    #[Test]
+    public function itVerifiesTheCodeVerifierOfRfc7636AppendixB(): void
+    {
+        $challenge = new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256);
+
+        static::assertTrue($challenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
+        static::assertFalse($challenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'));
+        static::assertFalse($challenge->verifies(''));
+        static::assertFalse($challenge->verifies('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'));
+        static::assertFalse($challenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk='));
+    }
+
+    /**
      * @return iterable<string, array{string}>
      */
     public static function provideInvalidChallenges(): iterable
