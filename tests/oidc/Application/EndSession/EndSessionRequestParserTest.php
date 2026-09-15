@@ -58,6 +58,7 @@ final class EndSessionRequestParserTest extends TestCase
     #[Test]
     public function itReadsARequestWithAHint(): void
     {
+        // When
         $request = $this->parser->parse($this->tenant, [
             'id_token_hint' => self::ALICE_HINT,
             'post_logout_redirect_uri' => 'https://demo.localhost/',
@@ -67,6 +68,7 @@ final class EndSessionRequestParserTest extends TestCase
             'unknown' => 'ignored',
         ]);
 
+        // Then
         static::assertSame($this->client, $request->client);
         static::assertNotNull($request->idTokenHint);
         static::assertSame('alice-subject', (string) $request->idTokenHint->subject);
@@ -85,11 +87,13 @@ final class EndSessionRequestParserTest extends TestCase
      * @param array<string, mixed> $parameters
      */
     #[Test]
-    #[DataProvider('bareRequests')]
+    #[DataProvider('provideBareRequests')]
     public function itReadsARequestWithoutParameters(array $parameters): void
     {
+        // When
         $request = $this->parser->parse($this->tenant, $parameters);
 
+        // Then
         static::assertSame($this->tenant, $request->tenant);
         static::assertNull($request->client);
         static::assertNull($request->idTokenHint);
@@ -103,7 +107,7 @@ final class EndSessionRequestParserTest extends TestCase
     /**
      * @return iterable<string, array{array<string, mixed>}>
      */
-    public static function bareRequests(): iterable
+    public static function provideBareRequests(): iterable
     {
         yield 'nothing' => [[]];
         yield 'empty values' => [[
@@ -122,10 +126,12 @@ final class EndSessionRequestParserTest extends TestCase
     #[Test]
     public function itFindsTheClientAmongTheAudiencesOfTheHint(): void
     {
+        // When
         $request = $this->parser->parse($this->tenant, [
             'id_token_hint' => self::LISTED_HINT,
         ]);
 
+        // Then
         static::assertSame($this->client, $request->client);
     }
 
@@ -136,18 +142,20 @@ final class EndSessionRequestParserTest extends TestCase
      * @param array<string, string> $parameters
      */
     #[Test]
-    #[DataProvider('clientIds')]
+    #[DataProvider('provideClientIds')]
     public function itFindsTheClientByClientId(array $parameters, string $expectedClientId): void
     {
+        // When
         $request = $this->parser->parse($this->tenant, $parameters);
 
+        // Then
         static::assertSame($expectedClientId, $request->client?->clientId);
     }
 
     /**
      * @return iterable<string, array{array<string, string>, string}>
      */
-    public static function clientIds(): iterable
+    public static function provideClientIds(): iterable
     {
         yield 'alone' => [[
             'client_id' => 'spa',
@@ -169,11 +177,13 @@ final class EndSessionRequestParserTest extends TestCase
     #[Test]
     public function itAcceptsARegisteredRedirectForAClientNamedByClientIdAlone(): void
     {
+        // When
         $request = $this->parser->parse($this->tenant, [
             'client_id' => 'oidc-demo',
             'post_logout_redirect_uri' => 'https://demo.localhost/',
         ]);
 
+        // Then
         static::assertSame($this->client, $request->client);
         static::assertNull($request->idTokenHint);
         static::assertSame('https://demo.localhost/', $request->redirect()?->toUri());
@@ -186,13 +196,15 @@ final class EndSessionRequestParserTest extends TestCase
      * @param array<string, mixed> $parameters
      */
     #[Test]
-    #[DataProvider('invalidRequests')]
+    #[DataProvider('provideInvalidRequests')]
     public function itRefusesAnInvalidRequestWithoutRedirecting(array $parameters, string $description): void
     {
+        // When
         try {
             $this->parser->parse($this->tenant, $parameters);
             static::fail('The request should have been refused.');
         } catch (InvalidRequestException $exception) {
+            // Then
             static::assertFalse($exception->redirectable);
             static::assertSame($description, $exception->errorDescription);
         }
@@ -201,7 +213,7 @@ final class EndSessionRequestParserTest extends TestCase
     /**
      * @return iterable<string, array{array<string, mixed>, string}>
      */
-    public static function invalidRequests(): iterable
+    public static function provideInvalidRequests(): iterable
     {
         yield 'hint not a JWS' => [[
             'id_token_hint' => 'not-a-jwt',
@@ -281,7 +293,10 @@ final class EndSessionRequestParserTest extends TestCase
     #[Test]
     public function itVerifiesTheHintAgainstTheKeysOfTheTenant(): void
     {
+        // Then
         $this->expectException(InvalidRequestException::class);
+
+        // When
         $this->parser->parse(Fixtures::tenant('other', 'https://id.other.example'), [
             'id_token_hint' => self::ALICE_HINT,
         ]);

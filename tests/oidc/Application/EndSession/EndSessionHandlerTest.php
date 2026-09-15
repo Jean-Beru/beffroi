@@ -32,6 +32,8 @@ use Heidi\Oidc\Domain\EndSession\LogoutConfirmationReason;
 use Heidi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
 use Heidi\Oidc\Domain\Token\AccessToken;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\RefreshToken;
+use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
@@ -84,75 +86,160 @@ final class EndSessionHandlerTest extends TestCase
 
     /**
      * OIDC RP-Initiated Logout 1.0 §2 and architecture §4.9: a hint naming the user and the session the
-     * browser holds is honoured without a question. The session ends by the relying party, once,
-     * AuthenticationSessionEnded carries the request that ended it, every refresh token issued in the
-     * session is revoked (decision 0006), those of other sessions are not, and the user agent goes
-     * where the client asked with its state (§3).
+     * browser holds is honoured without a question, and the user agent goes where the client asked with
+     * its state (§3).
      */
     #[Test]
     public function itEndsTheSessionTheHintDescribesWithoutAsking(): void
     {
-        $issued = Fixtures::now();
-        $family = Tokens::family($issued);
-        $rotated = Tokens::refreshToken('rotated', $this->client, $this->session, $issued, $family);
-        $rotated->rotate($issued->modify('+1 day'));
-        $revoked = Tokens::refreshToken('revoked', $this->client, $this->session, $issued->modify('+1 day'), $family);
-        $revoked->revoke($issued->modify('+2 days'));
-        $current = Tokens::refreshToken('current', $this->client, $this->session, $issued->modify('+2 days'), $family);
-        $otherSession = Fixtures::session($this->alice);
-        $this->sessions->save($otherSession);
-        $elsewhere = Tokens::refreshToken('elsewhere', $this->client, $otherSession, $issued);
-        foreach ([$rotated, $revoked, $current, $elsewhere] as $token) {
-            $this->refreshTokens->save($token);
-        }
-        $savesBefore = $this->refreshTokens->saves;
+        // Given
         $request = $this->request($this->hint($this->session), 'af0ifjsldkj');
 
+        // When
         $decision = $this->handler->begin($request, $this->session, $this->context);
 
+        // Then
         static::assertInstanceOf(LoggedOut::class, $decision);
         static::assertSame($request, $decision->request);
         static::assertSame($this->session, $decision->endedSession);
         static::assertSame('https://demo.localhost/?state=af0ifjsldkj', $decision->redirect?->toUri());
+    }
+
+    /**
+     * The session ends by the relying party, now.
+     */
+    #[Test]
+    public function theSessionEndsByTheRelyingParty(): void
+    {
+        // When
+        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
+
+        // Then
         static::assertTrue($this->session->hasEnded());
         static::assertSame(SessionEnd::RelyingParty, $this->session->endedBy);
         static::assertEquals($this->clock->now(), $this->session->endedAt);
-        static::assertSame([$otherSession], $this->sessions->findActiveByUser($this->alice, $this->clock->now()), 'the other session of the user is not touched');
+    }
+
+    #[Test]
+    public function theOtherSessionsOfTheUserAreNotTouched(): void
+    {
+        // Given
+        $otherSession = Fixtures::session($this->alice);
+        $this->sessions->save($otherSession);
+
+        // When
+        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
+
+        // Then
+        static::assertSame([$otherSession], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
+    }
+
+    /**
+     * AuthenticationSessionEnded carries the request that ended the session, once.
+     */
+    #[Test]
+    public function theEndOfTheSessionIsAnnouncedOnceWithTheRequestContext(): void
+    {
+        // When
+        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
+
+        // Then
         static::assertCount(1, $this->events->events);
         $event = $this->events->of(AuthenticationSessionEnded::class)[0];
         static::assertSame($this->session, $event->session);
         static::assertSame($this->context, $event->context);
         static::assertSame(SessionEnd::RelyingParty, $event->endedBy);
+    }
+
+    /**
+     * Decision 0006: every refresh token issued in the session is revoked, rotated ones included; those
+     * of other sessions are not.
+     */
+    #[Test]
+    public function theRefreshTokensOfTheSessionAreRevoked(): void
+    {
+        // Given
+        $family = Tokens::family(Fixtures::now());
+        $rotated = $this->refreshToken('rotated', $this->session, $family);
+        $rotated->rotate(Fixtures::now()->modify('+1 day'));
+        $current = $this->refreshToken('current', $this->session, $family, '+2 days');
+        $otherSession = Fixtures::session($this->alice);
+        $this->sessions->save($otherSession);
+        $elsewhere = $this->refreshToken('elsewhere', $otherSession);
+
+        // When
+        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
+
+        // Then
         static::assertTrue($rotated->isRevoked());
         static::assertEquals($this->clock->now(), $rotated->revokedAt);
-        static::assertEquals($issued->modify('+2 days'), $revoked->revokedAt, 'the first revocation wins');
         static::assertTrue($current->isRevoked());
         static::assertFalse($elsewhere->isRevoked());
-        static::assertSame($savesBefore + 2, $this->refreshTokens->saves, 'the two tokens revoked now are saved, the one already revoked is not');
+    }
+
+    /**
+     * The tokens revoked now are saved; one already revoked keeps its date and is not saved again.
+     */
+    #[Test]
+    public function onlyTheTokensRevokedNowAreSaved(): void
+    {
+        // Given
+        $family = Tokens::family(Fixtures::now());
+        $revoked = $this->refreshToken('revoked', $this->session, $family, '+1 day');
+        $revoked->revoke(Fixtures::now()->modify('+2 days'));
+        $this->refreshToken('current', $this->session, $family, '+2 days');
+        $this->refreshToken('other', $this->session, $family, '+3 days');
+        $savesBefore = $this->refreshTokens->saves;
+
+        // When
+        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify('+2 days'), $revoked->revokedAt, 'the first revocation wins');
+        static::assertSame($savesBefore + 2, $this->refreshTokens->saves);
     }
 
     /**
      * §2: the provider must ask when there is no id_token_hint, when the hint names another user, or
      * when it does not belong to the current session; §6: a request without a valid hint may be a
-     * denial of service. Nothing is written until the user answers.
+     * denial of service.
      *
      * @param callable(self): ?IdTokenHint $hint
      */
     #[Test]
-    #[DataProvider('hintsThatDoNotProveTheSession')]
+    #[DataProvider('provideHintsThatDoNotProveTheSession')]
     public function itAsksBeforeEndingASessionTheHintDoesNotProve(callable $hint, LogoutConfirmationReason $reason): void
     {
-        $token = Tokens::refreshToken('current', $this->client, $this->session, Fixtures::now());
-        $this->refreshTokens->save($token);
-        $savesBefore = $this->refreshTokens->saves + $this->sessions->saves;
+        // Given
         $request = $this->request($hint($this));
 
+        // When
         $decision = $this->handler->begin($request, $this->session, $this->context);
 
+        // Then
         static::assertInstanceOf(LogoutConfirmationRequired::class, $decision);
         static::assertSame($request, $decision->request);
         static::assertSame($this->session, $decision->session);
         static::assertSame($reason, $decision->reason);
+    }
+
+    /**
+     * Nothing is written until the user answers.
+     *
+     * @param callable(self): ?IdTokenHint $hint
+     */
+    #[Test]
+    #[DataProvider('provideHintsThatDoNotProveTheSession')]
+    public function nothingIsWrittenUntilTheUserAnswers(callable $hint, LogoutConfirmationReason $reason): void
+    {
+        // Given
+        $token = $this->refreshToken('current', $this->session);
+        $savesBefore = $this->refreshTokens->saves + $this->sessions->saves;
+
+        // When
+        $this->handler->begin($this->request($hint($this)), $this->session, $this->context);
+
+        // Then
         static::assertTrue($this->session->isActive($this->clock->now()));
         static::assertFalse($token->isRevoked());
         static::assertSame($savesBefore, $this->refreshTokens->saves + $this->sessions->saves);
@@ -162,7 +249,7 @@ final class EndSessionHandlerTest extends TestCase
     /**
      * @return iterable<string, array{callable(self): ?IdTokenHint, LogoutConfirmationReason}>
      */
-    public static function hintsThatDoNotProveTheSession(): iterable
+    public static function provideHintsThatDoNotProveTheSession(): iterable
     {
         yield 'no hint' => [
             static fn (self $test): ?IdTokenHint => null,
@@ -189,20 +276,37 @@ final class EndSessionHandlerTest extends TestCase
      * @param callable(self): ?IdTokenHint $hint
      */
     #[Test]
-    #[DataProvider('hintsToConfirm')]
+    #[DataProvider('provideHintsToConfirm')]
     public function itEndsTheSessionWhenTheUserConfirms(callable $hint): void
     {
-        $token = Tokens::refreshToken('current', $this->client, $this->session, Fixtures::now());
-        $this->refreshTokens->save($token);
+        // Given
         $request = $this->request($hint($this), 'af0ifjsldkj');
 
+        // When
         $decision = $this->handler->confirm($request, $this->session, $this->context);
 
+        // Then
         static::assertSame($request, $decision->request);
         static::assertSame($this->session, $decision->endedSession);
         static::assertSame('https://demo.localhost/?state=af0ifjsldkj', $decision->redirect?->toUri());
         static::assertTrue($this->session->hasEnded());
         static::assertSame(SessionEnd::RelyingParty, $this->session->endedBy);
+    }
+
+    /**
+     * @param callable(self): ?IdTokenHint $hint
+     */
+    #[Test]
+    #[DataProvider('provideHintsToConfirm')]
+    public function aConfirmedLogoutRevokesTheTokensAndAnnouncesTheEnd(callable $hint): void
+    {
+        // Given
+        $token = $this->refreshToken('current', $this->session);
+
+        // When
+        $this->handler->confirm($this->request($hint($this)), $this->session, $this->context);
+
+        // Then
         static::assertTrue($token->isRevoked());
         static::assertCount(1, $this->events->of(AuthenticationSessionEnded::class));
     }
@@ -210,46 +314,86 @@ final class EndSessionHandlerTest extends TestCase
     /**
      * @return iterable<string, array{callable(self): ?IdTokenHint}>
      */
-    public static function hintsToConfirm(): iterable
+    public static function provideHintsToConfirm(): iterable
     {
-        foreach (self::hintsThatDoNotProveTheSession() as $name => [$hint]) {
+        foreach (self::provideHintsThatDoNotProveTheSession() as $name => [$hint]) {
             yield $name => [$hint];
         }
     }
 
     /**
      * §4: a logout request is idempotent, it is not an error to log out a user who is not logged in.
-     * No session, an ended one or an expired one: nothing to ask, nothing to end, no event, and the
-     * user agent goes where the client asked when it may.
+     * No session, an ended one or an expired one: nothing to ask, nothing to end, and the user agent
+     * goes where the client asked when it may.
      *
      * @param callable(self): ?AuthenticationSession $session
      */
     #[Test]
-    #[DataProvider('sessionsNotToEnd')]
+    #[DataProvider('provideSessionsNotToEnd')]
     public function itConsidersTheUserLoggedOutWhenTheBrowserHoldsNoActiveSession(callable $session, bool $withHint): void
     {
-        $token = Tokens::refreshToken('current', $this->client, $this->session, Fixtures::now());
-        $this->refreshTokens->save($token);
+        // Given
         $request = $this->request($withHint ? $this->hint($this->session) : null);
         $held = $session($this);
 
-        $begun = $this->handler->begin($request, $held, $this->context);
-        $confirmed = $this->handler->confirm($request, $held, $this->context);
+        // When
+        $decision = $this->handler->begin($request, $held, $this->context);
 
-        foreach ([$begun, $confirmed] as $decision) {
-            static::assertInstanceOf(LoggedOut::class, $decision);
-            static::assertSame($request, $decision->request);
-            static::assertNull($decision->endedSession);
-            static::assertSame('https://demo.localhost/', $decision->redirect?->toUri());
-        }
-        static::assertFalse($token->isRevoked(), 'a token of the session the hint names is not revoked on the word of the token: the browser proves the session, the token does not');
+        // Then
+        static::assertInstanceOf(LoggedOut::class, $decision);
+        static::assertSame($request, $decision->request);
+        static::assertNull($decision->endedSession);
+        static::assertSame('https://demo.localhost/', $decision->redirect?->toUri());
+    }
+
+    /**
+     * @param callable(self): ?AuthenticationSession $session
+     */
+    #[Test]
+    #[DataProvider('provideSessionsNotToEnd')]
+    public function aConfirmationWithoutAnActiveSessionEndsNothingEither(callable $session, bool $withHint): void
+    {
+        // Given
+        $request = $this->request($withHint ? $this->hint($this->session) : null);
+        $held = $session($this);
+
+        // When
+        $decision = $this->handler->confirm($request, $held, $this->context);
+
+        // Then
+        static::assertSame($request, $decision->request);
+        static::assertNull($decision->endedSession);
+        static::assertSame('https://demo.localhost/', $decision->redirect?->toUri());
+    }
+
+    /**
+     * A token of the session the hint names is not revoked on the word of the token: the browser proves
+     * the session, the token does not. No event either.
+     *
+     * @param callable(self): ?AuthenticationSession $session
+     */
+    #[Test]
+    #[DataProvider('provideSessionsNotToEnd')]
+    public function nothingIsRevokedNorAnnouncedWithoutAnActiveSession(callable $session, bool $withHint): void
+    {
+        // Given
+        $token = $this->refreshToken('current', $this->session);
+        $request = $this->request($withHint ? $this->hint($this->session) : null);
+        $held = $session($this);
+
+        // When
+        $this->handler->begin($request, $held, $this->context);
+        $this->handler->confirm($request, $held, $this->context);
+
+        // Then
+        static::assertFalse($token->isRevoked());
         static::assertSame([], $this->events->events);
     }
 
     /**
      * @return iterable<string, array{callable(self): ?AuthenticationSession, bool}>
      */
-    public static function sessionsNotToEnd(): iterable
+    public static function provideSessionsNotToEnd(): iterable
     {
         yield 'no session, with a hint' => [
             static fn (self $test): ?AuthenticationSession => null,
@@ -272,21 +416,38 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * A request that names no client, from a bare logout link: the session ends after confirmation
-     * and there is nowhere to redirect to (§3).
+     * A request that names no client, from a bare logout link, is confirmed like one without a hint.
+     */
+    #[Test]
+    public function itAsksWhenTheRequestNamesNoClient(): void
+    {
+        // Given
+        $request = new EndSessionRequest($this->tenant, null, null, null);
+
+        // When
+        $decision = $this->handler->begin($request, $this->session, $this->context);
+
+        // Then
+        static::assertInstanceOf(LogoutConfirmationRequired::class, $decision);
+        static::assertSame(LogoutConfirmationReason::NoHint, $decision->reason);
+    }
+
+    /**
+     * A request that names no client: the session ends after confirmation and there is nowhere to
+     * redirect to (§3).
      */
     #[Test]
     public function itRedirectsNowhereWhenTheRequestNamesNoClient(): void
     {
+        // Given
         $request = new EndSessionRequest($this->tenant, null, null, null);
 
-        $begun = $this->handler->begin($request, $this->session, $this->context);
-        static::assertInstanceOf(LogoutConfirmationRequired::class, $begun);
-        static::assertSame(LogoutConfirmationReason::NoHint, $begun->reason);
+        // When
+        $decision = $this->handler->confirm($request, $this->session, $this->context);
 
-        $confirmed = $this->handler->confirm($request, $this->session, $this->context);
-        static::assertNull($confirmed->redirect);
-        static::assertSame($this->session, $confirmed->endedSession);
+        // Then
+        static::assertNull($decision->redirect);
+        static::assertSame($this->session, $decision->endedSession);
         static::assertTrue($this->session->hasEnded());
     }
 
@@ -295,18 +456,29 @@ final class EndSessionHandlerTest extends TestCase
      * a wiring error, not a decision.
      */
     #[Test]
-    public function itRefusesASessionOfAnotherTenant(): void
+    public function beginRefusesASessionOfAnotherTenant(): void
     {
+        // Given
         $other = Fixtures::session(Fixtures::user(Fixtures::tenant('other', 'https://id.other.example')));
-        $request = $this->request(null);
 
-        try {
-            $this->handler->begin($request, $other, $this->context);
-            static::fail('The session should have been refused.');
-        } catch (InvalidArgumentException) {
-        }
+        // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->handler->confirm($request, $other, $this->context);
+
+        // When
+        $this->handler->begin($this->request(null), $other, $this->context);
+    }
+
+    #[Test]
+    public function confirmRefusesASessionOfAnotherTenant(): void
+    {
+        // Given
+        $other = Fixtures::session(Fixtures::user(Fixtures::tenant('other', 'https://id.other.example')));
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+
+        // When
+        $this->handler->confirm($this->request(null), $other, $this->context);
     }
 
     /**
@@ -319,14 +491,14 @@ final class EndSessionHandlerTest extends TestCase
      * here by the issuer of #8 and verified through the JWS bridge of the core, as the endpoint will.
      */
     #[Test]
-    #[DataProvider('idTokensOidcLoginHolds')]
+    #[DataProvider('provideIdTokensOidcLoginHolds')]
     public function itLogsOutWhatOidcLoginSends(bool $refreshed, int $secondsLater): void
     {
+        // Given
         $jwts = new Jwts($this->tenant);
         $issuer = new JwtIdTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider());
         $accessToken = new AccessToken('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-        $refreshToken = Tokens::refreshToken('current', $this->client, $this->session, Fixtures::now());
-        $this->refreshTokens->save($refreshToken);
+        $refreshToken = $this->refreshToken('current', $this->session);
         $authorization = $refreshed
             ? GrantedAuthorization::fromRefreshToken($refreshToken, null)
             : GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
@@ -340,8 +512,10 @@ final class EndSessionHandlerTest extends TestCase
             'post_logout_redirect_uri' => 'https://demo.localhost/',
         ], '', '&', PHP_QUERY_RFC3986);
 
+        // When
         $decision = $this->handler->begin($parser->parse($this->tenant, self::parameters($query)), $this->session, $this->context);
 
+        // Then
         static::assertInstanceOf(LoggedOut::class, $decision);
         static::assertSame($this->session, $decision->endedSession);
         static::assertSame('https://demo.localhost/', $decision->redirect?->toUri(), 'no state was sent, none comes back');
@@ -353,7 +527,7 @@ final class EndSessionHandlerTest extends TestCase
     /**
      * @return iterable<string, array{bool, int}>
      */
-    public static function idTokensOidcLoginHolds(): iterable
+    public static function provideIdTokensOidcLoginHolds(): iterable
     {
         yield 'from the code, still valid' => [false, 60];
         yield 'from a refresh, still valid' => [true, 60];
@@ -384,5 +558,16 @@ final class EndSessionHandlerTest extends TestCase
     private function hint(AuthenticationSession $session): IdTokenHint
     {
         return new IdTokenHint($session->user->subject, ['oidc-demo'], $session->id);
+    }
+
+    /**
+     * A refresh token of the session, issued at the fixture's "now" plus an offset, saved.
+     */
+    private function refreshToken(string $value, AuthenticationSession $session, ?RefreshTokenFamily $family = null, string $issuedOffset = '+0 seconds'): RefreshToken
+    {
+        $token = Tokens::refreshToken($value, $this->client, $session, Fixtures::now()->modify($issuedOffset), $family);
+        $this->refreshTokens->save($token);
+
+        return $token;
     }
 }

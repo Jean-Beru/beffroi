@@ -46,18 +46,23 @@ final class IdTokenHintVerifierTest extends TestCase
      * is not looked at because the hint may describe a past session.
      */
     #[Test]
-    #[DataProvider('validHints')]
+    #[DataProvider('provideValidHints')]
     public function itReadsTheSubjectOfAnIdTokenIssuedHereToThisClient(string $payload): void
     {
+        // Given
         $this->jws->knows($this->tenant, self::TOKEN, $payload);
 
-        static::assertSame('alice-subject', (string) $this->verifier->verify($this->client, self::TOKEN));
+        // When
+        $subject = $this->verifier->verify($this->client, self::TOKEN);
+
+        // Then
+        static::assertSame('alice-subject', (string) $subject);
     }
 
     /**
      * @return iterable<string, array{string}>
      */
-    public static function validHints(): iterable
+    public static function provideValidHints(): iterable
     {
         yield 'single audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1}'];
         yield 'audience list' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","spa"],"exp":1}'];
@@ -72,17 +77,20 @@ final class IdTokenHintVerifierTest extends TestCase
      * @param class-string<Throwable>|null $cause
      */
     #[Test]
-    #[DataProvider('foreignHints')]
+    #[DataProvider('provideForeignHints')]
     public function itRefusesATokenNotIssuedHere(?string $payload, ?string $cause = null): void
     {
+        // Given
         if ($payload !== null) {
             $this->jws->knows($this->tenant, self::TOKEN, $payload);
         }
 
+        // When
         try {
             $this->verifier->verify($this->client, self::TOKEN);
             static::fail('The hint should have been refused.');
         } catch (InvalidRequestException $exception) {
+            // Then
             static::assertTrue($exception->redirectable);
             static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
             if ($cause === null) {
@@ -96,7 +104,7 @@ final class IdTokenHintVerifierTest extends TestCase
     /**
      * @return iterable<string, array{?string, 1?: class-string<Throwable>}>
      */
-    public static function foreignHints(): iterable
+    public static function provideForeignHints(): iterable
     {
         yield 'signature' => [null, InvalidJwsException::class];
         yield 'not JSON' => ['not json', JsonException::class];
@@ -117,15 +125,18 @@ final class IdTokenHintVerifierTest extends TestCase
      * token it did not obtain.
      */
     #[Test]
-    #[DataProvider('otherClientHints')]
+    #[DataProvider('provideOtherClientHints')]
     public function itRefusesATokenIssuedToAnotherClient(string $payload): void
     {
+        // Given
         $this->jws->knows($this->tenant, self::TOKEN, $payload);
 
+        // When
         try {
             $this->verifier->verify($this->client, self::TOKEN);
             static::fail('The hint should have been refused.');
         } catch (InvalidRequestException $exception) {
+            // Then
             static::assertTrue($exception->redirectable);
             static::assertSame('The id_token_hint parameter is not an ID token issued to this client.', $exception->errorDescription);
         }
@@ -134,7 +145,7 @@ final class IdTokenHintVerifierTest extends TestCase
     /**
      * @return iterable<string, array{string}>
      */
-    public static function otherClientHints(): iterable
+    public static function provideOtherClientHints(): iterable
     {
         yield 'no audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject"}'];
         yield 'other audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"other"}'];
@@ -150,9 +161,13 @@ final class IdTokenHintVerifierTest extends TestCase
     #[Test]
     public function itVerifiesAgainstTheKeysOfTheTenantOfTheClient(): void
     {
+        // Given
         $this->jws->knows(Fixtures::tenant('other', 'https://id.other.example'), self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa"}');
 
+        // Then
         $this->expectException(InvalidRequestException::class);
+
+        // When
         $this->verifier->verify($this->client, self::TOKEN);
     }
 
@@ -164,13 +179,16 @@ final class IdTokenHintVerifierTest extends TestCase
      * @param list<string> $audiences
      */
     #[Test]
-    #[DataProvider('readableHints')]
+    #[DataProvider('provideReadableHints')]
     public function itReadsSubjectAudiencesAndSessionOfAnIdTokenIssuedHere(string $payload, array $audiences, ?string $sid): void
     {
+        // Given
         $this->jws->knows($this->tenant, self::TOKEN, $payload);
 
+        // When
         $hint = $this->verifier->read($this->tenant, self::TOKEN, false);
 
+        // Then
         static::assertSame('alice-subject', (string) $hint->subject);
         static::assertSame($audiences, $hint->audiences);
         static::assertSame($sid, $hint->sessionId?->toRfc4122());
@@ -181,7 +199,7 @@ final class IdTokenHintVerifierTest extends TestCase
     /**
      * @return iterable<string, array{string, list<string>, ?string}>
      */
-    public static function readableHints(): iterable
+    public static function provideReadableHints(): iterable
     {
         yield 'as issued here' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"sid":"' . self::SID . '"}', ['spa'], self::SID];
         yield 'audience list' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa","another"]}', ['spa', 'another'], null];
@@ -196,15 +214,18 @@ final class IdTokenHintVerifierTest extends TestCase
      * whether the error may be sent to a client; the logout endpoint never redirects one (§4).
      */
     #[Test]
-    #[DataProvider('sessionIdsNotIssuedHere')]
+    #[DataProvider('provideSessionIdsNotIssuedHere')]
     public function itRefusesASessionIdentifierItDidNotWrite(string $sid): void
     {
+        // Given
         $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","sid":' . $sid . '}');
 
+        // When
         try {
             $this->verifier->read($this->tenant, self::TOKEN, false);
             static::fail('The hint should have been refused.');
         } catch (InvalidRequestException $exception) {
+            // Then
             static::assertFalse($exception->redirectable);
             static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
         }
@@ -213,7 +234,7 @@ final class IdTokenHintVerifierTest extends TestCase
     /**
      * @return iterable<string, array{string}>
      */
-    public static function sessionIdsNotIssuedHere(): iterable
+    public static function provideSessionIdsNotIssuedHere(): iterable
     {
         yield 'a number' => ['42'];
         yield 'empty' => ['""'];
@@ -228,17 +249,20 @@ final class IdTokenHintVerifierTest extends TestCase
      * @param class-string<Throwable>|null $cause
      */
     #[Test]
-    #[DataProvider('foreignHints')]
+    #[DataProvider('provideForeignHints')]
     public function itRefusesATokenNotIssuedHereWithoutRedirecting(?string $payload, ?string $cause = null): void
     {
+        // Given
         if ($payload !== null) {
             $this->jws->knows($this->tenant, self::TOKEN, $payload);
         }
 
+        // When
         try {
             $this->verifier->read($this->tenant, self::TOKEN, false);
             static::fail('The hint should have been refused.');
         } catch (InvalidRequestException $exception) {
+            // Then
             static::assertFalse($exception->redirectable);
             static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
             static::assertSame($cause, $exception->getPrevious() === null ? null : $exception->getPrevious()::class);

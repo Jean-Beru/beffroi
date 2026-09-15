@@ -46,6 +46,7 @@ use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Tests\Fixture\Requests;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
@@ -101,45 +102,86 @@ final class AuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: no session, the user logs in first. The interaction is parked for ten minutes
-     * with the request and the locale the integration chose.
+     * Architecture §4.3: no session, the user logs in first. The interaction carries the request and the
+     * locale the integration chose.
      */
     #[Test]
     public function itRequiresALoginWhenThereIsNoSession(): void
     {
+        // Given
         $request = $this->request();
 
+        // When
         $decision = $this->handler->begin($request, null, $this->context, 'fr');
 
+        // Then
         $login = $this->loginRequired($decision, LoginRequirement::NoSession);
         static::assertSame($request, $login->interaction->request);
         static::assertSame($this->tenant, $login->interaction->tenant);
         static::assertSame('fr', $login->interaction->locale);
         static::assertNull($login->interaction->session);
-        static::assertEquals($this->clock->now(), $login->interaction->createdAt);
-        static::assertEquals($this->clock->now()->modify('+10 minutes'), $login->interaction->expiresAt);
         static::assertFalse($login->interaction->isCompleted());
-        static::assertSame($login->interaction, $this->interactions->find($login->interaction->id));
+    }
+
+    /**
+     * Architecture §4.3: the interaction is parked for ten minutes.
+     */
+    #[Test]
+    public function itParksTheInteractionForTenMinutes(): void
+    {
+        // When
+        $decision = $this->handler->begin($this->request(), null, $this->context);
+
+        // Then
+        $interaction = $this->loginRequired($decision, LoginRequirement::NoSession)->interaction;
+        static::assertEquals($this->clock->now(), $interaction->createdAt);
+        static::assertEquals($this->clock->now()->modify('+10 minutes'), $interaction->expiresAt);
+        static::assertSame($interaction, $this->interactions->find($interaction->id));
+    }
+
+    #[Test]
+    public function itIssuesNothingBeforeTheLogin(): void
+    {
+        // When
+        $this->handler->begin($this->request(), null, $this->context);
+
+        // Then
         static::assertSame([], $this->events->events);
         static::assertSame([], $this->codes->all());
     }
 
     /**
      * A session that ended, or that expired, is no session.
+     *
+     * @param callable(self): AuthenticationSession $session
      */
     #[Test]
-    public function itRequiresALoginWhenTheSessionIsNotActive(): void
+    #[DataProvider('provideInactiveSessions')]
+    public function itRequiresALoginWhenTheSessionIsNotActive(callable $session): void
     {
-        $ended = $this->session();
-        $ended->end(SessionEnd::User, $this->clock->now());
-        $expired = $this->session(Fixtures::now()->modify('-1 day'));
+        // Given
+        $inactive = $session($this);
 
-        foreach ([$ended, $expired] as $session) {
-            $decision = $this->handler->begin($this->request(), $session, $this->context);
+        // When
+        $decision = $this->handler->begin($this->request(), $inactive, $this->context);
 
-            $login = $this->loginRequired($decision, LoginRequirement::NoSession);
-            static::assertNull($login->interaction->session);
-        }
+        // Then
+        $login = $this->loginRequired($decision, LoginRequirement::NoSession);
+        static::assertNull($login->interaction->session);
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): AuthenticationSession}>
+     */
+    public static function provideInactiveSessions(): iterable
+    {
+        yield 'ended' => [static function (self $test): AuthenticationSession {
+            $session = $test->session();
+            $session->end(SessionEnd::User, $test->clock->now());
+
+            return $session;
+        }];
+        yield 'expired' => [static fn (self $test): AuthenticationSession => $test->session(Fixtures::now()->modify('-1 day'))];
     }
 
     /**
@@ -148,43 +190,77 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function itRequiresAConsentWhenNoneCoversTheRequest(): void
     {
+        // Given
         $session = $this->session();
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, Clients::public($this->tenant), [Scope::openid(), new Scope('profile')], Fixtures::now()));
 
+        // When
         $decision = $this->handler->begin($this->request(['openid', 'profile']), $session, $this->context);
 
+        // Then
         $consent = $this->consentRequired($decision, ConsentRequirement::NotGranted);
         static::assertSame($session, $consent->session);
-        static::assertSame($session, $consent->interaction->session);
-        static::assertNull($consent->interaction->consent);
         static::assertEquals([Scope::openid(), new Scope('profile')], $consent->scopes);
-        static::assertFalse($consent->interaction->isCompleted());
-        static::assertSame($consent->interaction, $this->interactions->find($consent->interaction->id));
+    }
+
+    #[Test]
+    public function itParksTheInteractionWithTheSessionUntilTheConsent(): void
+    {
+        // Given
+        $session = $this->session();
+
+        // When
+        $decision = $this->handler->begin($this->request(['openid', 'profile']), $session, $this->context);
+
+        // Then
+        $interaction = $this->consentRequired($decision, ConsentRequirement::NotGranted)->interaction;
+        static::assertSame($session, $interaction->session);
+        static::assertNull($interaction->consent);
+        static::assertFalse($interaction->isCompleted());
+        static::assertSame($interaction, $this->interactions->find($interaction->id));
         static::assertSame([], $this->events->events);
     }
 
     /**
-     * Architecture §4.3 and §4.4: everything acquired, the code is issued for sixty seconds, stored as
-     * its hash with the authentication as it stands, and the user agent goes back with code, state and
-     * iss (RFC 9207 §2). The interaction is over.
+     * Architecture §4.3: everything acquired, the interaction is over.
      */
     #[Test]
     public function itGrantsWhenAConsentInForceCoversTheRequest(): void
     {
+        // Given
         $session = $this->session();
         $consent = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile'), new Scope('email')], Fixtures::now());
         $this->consents->save($consent);
-        $request = $this->request(['openid', 'profile']);
 
-        $decision = $this->handler->begin($request, $session, $this->context);
+        // When
+        $decision = $this->handler->begin($this->request(['openid', 'profile']), $session, $this->context);
 
+        // Then
         $granted = $this->granted($decision);
         static::assertSame($consent, $granted->interaction->consent);
         static::assertSame($session, $granted->interaction->session);
         static::assertTrue($granted->interaction->isCompleted());
         static::assertSame($granted->interaction, $this->interactions->find($granted->interaction->id));
+    }
 
+    /**
+     * Architecture §4.4: the code is issued for sixty seconds, stored as its hash with the
+     * authentication as it stands.
+     */
+    #[Test]
+    public function theCodeIsIssuedForSixtySecondsWithTheAuthenticationAsItStands(): void
+    {
+        // Given
+        $session = $this->session();
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
+        $request = $this->request(['openid', 'profile']);
+
+        // When
+        $decision = $this->handler->begin($request, $session, $this->context);
+
+        // Then
+        $granted = $this->granted($decision);
         $code = $granted->code;
         static::assertSame([$code], $this->codes->all());
         static::assertSame(AuthorizationCode::hash($granted->response->code), $code->codeHash);
@@ -200,18 +276,44 @@ final class AuthorizationHandlerTest extends TestCase
         static::assertNull($code->authenticationContextClass);
         static::assertEquals($this->clock->now(), $code->issuedAt);
         static::assertEquals($this->clock->now()->modify('+60 seconds'), $code->expiresAt);
+    }
 
-        static::assertSame('https://id.acme.example', (string) $granted->response->issuer);
-        static::assertSame('af0ifjsldkj', $granted->response->state);
-        static::assertSame(sprintf('https://demo.localhost/login/check?code=%s&state=af0ifjsldkj&iss=https%%3A%%2F%%2Fid.acme.example', $granted->response->code), $granted->response->toUri());
+    /**
+     * RFC 6749 §4.1.2 and RFC 9207 §2: the user agent goes back with code, state and iss.
+     */
+    #[Test]
+    public function theUserAgentGoesBackWithCodeStateAndIssuer(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
 
+        // When
+        $decision = $this->handler->begin($this->request(), $this->session(), $this->context);
+
+        // Then
+        $response = $this->granted($decision)->response;
+        static::assertSame('https://id.acme.example', (string) $response->issuer);
+        static::assertSame('af0ifjsldkj', $response->state);
+        static::assertSame(sprintf('https://demo.localhost/login/check?code=%s&state=af0ifjsldkj&iss=https%%3A%%2F%%2Fid.acme.example', $response->code), $response->toUri());
+    }
+
+    #[Test]
+    public function theCodeIssuedIsAnnouncedOnceWithTheRequestContext(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(), $this->session(), $this->context);
+
+        // Then
         $issued = $this->events->of(AuthorizationCodeIssued::class);
         static::assertCount(1, $issued);
-        static::assertSame($code, $issued[0]->code);
+        static::assertCount(1, $this->events->events);
+        static::assertSame($this->granted($decision)->code, $issued[0]->code);
         static::assertSame($this->context, $issued[0]->context);
         static::assertSame($this->tenant, $issued[0]->tenant);
         static::assertEquals($this->clock->now(), $issued[0]->occurredAt);
-        static::assertCount(1, $this->events->events);
     }
 
     /**
@@ -221,8 +323,10 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function itGrantsWithoutConsentToAFirstPartyClient(): void
     {
+        // When
         $decision = $this->handler->begin(Requests::authorization($this->firstParty, ['openid', 'profile']), $this->session(), $this->context);
 
+        // Then
         $granted = $this->granted($decision);
         static::assertNull($granted->interaction->consent);
         static::assertSame([], $this->consents->all());
@@ -231,38 +335,75 @@ final class AuthorizationHandlerTest extends TestCase
 
     /**
      * OIDC Core §3.1.2.6: with prompt=none, a login that would be needed is the redirected error
-     * login_required, and the interaction is over.
+     * login_required.
      */
     #[Test]
     public function itRefusesToPromptForALoginWhenPromptIsNone(): void
     {
+        // When
         try {
             $this->handler->begin($this->request(prompts: [Prompt::None]), null, $this->context);
             static::fail('The request should have been refused.');
         } catch (LoginRequiredException $exception) {
+            // Then
             static::assertSame('login_required', $exception->error);
             static::assertTrue($exception->redirectable);
             static::assertStringContainsString('prompt=none', $exception->errorDescription);
         }
+    }
+
+    /**
+     * OIDC Core §3.1.2.6: the interaction refused for prompt=none is over.
+     */
+    #[Test]
+    public function theInteractionRefusedForPromptNoneIsOver(): void
+    {
+        // When
+        try {
+            $this->handler->begin($this->request(prompts: [Prompt::None]), null, $this->context);
+        } catch (LoginRequiredException) {
+        }
+
+        // Then
         static::assertSame(1, $this->interactions->saves);
         static::assertTrue($this->savedInteraction()->isCompleted());
     }
 
     /**
      * OIDC Core §3.1.2.6: with prompt=none, a consent that would be needed is the redirected error
-     * consent_required, and the interaction is over.
+     * consent_required.
      */
     #[Test]
     public function itRefusesToPromptForAConsentWhenPromptIsNone(): void
     {
+        // Given
+        $session = $this->session();
+
+        // When
         try {
-            $this->handler->begin($this->request(prompts: [Prompt::None]), $this->session(), $this->context);
+            $this->handler->begin($this->request(prompts: [Prompt::None]), $session, $this->context);
             static::fail('The request should have been refused.');
         } catch (ConsentRequiredException $exception) {
+            // Then
             static::assertSame('consent_required', $exception->error);
             static::assertTrue($exception->redirectable);
             static::assertStringContainsString('prompt=none', $exception->errorDescription);
         }
+    }
+
+    #[Test]
+    public function theInteractionRefusedForPromptNoneWithASessionIsOver(): void
+    {
+        // Given
+        $session = $this->session();
+
+        // When
+        try {
+            $this->handler->begin($this->request(prompts: [Prompt::None]), $session, $this->context);
+        } catch (ConsentRequiredException) {
+        }
+
+        // Then
         static::assertSame(1, $this->interactions->saves);
         static::assertTrue($this->savedInteraction()->isCompleted());
     }
@@ -273,33 +414,67 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function itGrantsSilentlyWhenPromptIsNoneAndNothingIsMissing(): void
     {
+        // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
 
+        // When
         $decision = $this->handler->begin($this->request(prompts: [Prompt::None]), $this->session(), $this->context);
 
+        // Then
         $this->granted($decision);
     }
 
     /**
-     * OIDC Core §3.1.2.1 prompt=login: the user re-authenticates even with a session; a login done during
-     * the interaction satisfies it on resume.
+     * OIDC Core §3.1.2.1 prompt=login: the user re-authenticates even with a session.
      */
     #[Test]
     public function itRequiresAReauthenticationWhenPromptIsLogin(): void
     {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(prompts: [Prompt::Login]), $this->session(), $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::ReauthenticationRequested);
+    }
+
+    /**
+     * OIDC Core §3.1.2.1 prompt=login: a login done during the interaction satisfies it on resume.
+     */
+    #[Test]
+    public function aLoginDuringTheInteractionSatisfiesPromptLogin(): void
+    {
+        // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
         $session = $this->session();
-
-        $decision = $this->handler->begin($this->request(prompts: [Prompt::Login]), $session, $this->context);
-        $login = $this->loginRequired($decision, LoginRequirement::ReauthenticationRequested);
-
+        $login = $this->loginRequired($this->handler->begin($this->request(prompts: [Prompt::Login]), $session, $this->context), LoginRequirement::ReauthenticationRequested);
         $this->clock->sleep(30);
         $session->recordProof(AuthenticationMethod::password(), Fixtures::context($this->clock->now()));
-        $granted = $this->granted($this->handler->resume($login->interaction, $session, $this->context));
-        static::assertEquals($this->clock->now(), $granted->code->authenticatedAt);
 
-        // a session established the very second the interaction began was established during it
-        $this->granted($this->handler->begin($this->request(prompts: [Prompt::Login]), $this->session($this->clock->now()), $this->context));
+        // When
+        $decision = $this->handler->resume($login->interaction, $session, $this->context);
+
+        // Then
+        $granted = $this->granted($decision);
+        static::assertEquals($this->clock->now(), $granted->code->authenticatedAt);
+    }
+
+    /**
+     * A session established the very second the interaction began was established during it.
+     */
+    #[Test]
+    public function aSessionEstablishedTheSecondTheInteractionBeganSatisfiesPromptLogin(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(prompts: [Prompt::Login]), $this->session($this->clock->now()), $this->context);
+
+        // Then
+        $this->granted($decision);
     }
 
     /**
@@ -308,8 +483,10 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function itRequiresAnAccountSelectionWhenPromptIsSelectAccount(): void
     {
+        // When
         $decision = $this->handler->begin($this->request(prompts: [Prompt::SelectAccount]), $this->session(), $this->context);
 
+        // Then
         $this->loginRequired($decision, LoginRequirement::AccountSelectionRequested);
     }
 
@@ -321,11 +498,37 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function itRequiresAReauthenticationWhenTheLastOneIsOlderThanMaxAge(): void
     {
+        // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
 
-        $this->loginRequired($this->handler->begin($this->request(maxAge: 7199), $this->session(), $this->context), LoginRequirement::MaxAgeExceeded);
-        $this->granted($this->handler->begin($this->request(maxAge: 7200), $this->session(), $this->context));
-        $this->granted($this->handler->begin($this->request(maxAge: 86400), $this->session(), $this->context));
+        // When
+        $decision = $this->handler->begin($this->request(maxAge: 7199), $this->session(), $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::MaxAgeExceeded);
+    }
+
+    #[Test]
+    #[DataProvider('provideMaxAgesTheSessionMeets')]
+    public function itGrantsWhenTheLastAuthenticationIsWithinMaxAge(int $maxAge): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(maxAge: $maxAge), $this->session(), $this->context);
+
+        // Then
+        $this->granted($decision);
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideMaxAgesTheSessionMeets(): iterable
+    {
+        yield 'exactly two hours' => [7200];
+        yield 'one day' => [86400];
     }
 
     /**
@@ -335,80 +538,180 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function aLoginDuringTheInteractionSatisfiesMaxAge(): void
     {
+        // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
         $login = $this->loginRequired($this->handler->begin($this->request(maxAge: 0), null, $this->context), LoginRequirement::NoSession);
-
         $this->clock->sleep(5);
         $session = $this->session($this->clock->now());
         $this->clock->sleep(60);
 
-        $this->granted($this->handler->resume($login->interaction, $session, $this->context));
+        // When
+        $decision = $this->handler->resume($login->interaction, $session, $this->context);
+
+        // Then
+        $this->granted($decision);
     }
 
     /**
-     * OIDC Core §3.1.2.1 id_token_hint: the session must be the user the hint names; the same user goes
-     * through, another user has to log in.
+     * OIDC Core §3.1.2.1 id_token_hint: the session of the user the hint names goes through.
      */
     #[Test]
-    public function itComparesTheSessionToTheIdTokenHint(): void
+    public function itGrantsWhenTheSessionIsTheUserOfTheIdTokenHint(): void
     {
+        // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
 
-        $this->granted($this->handler->begin($this->request(idTokenHint: self::ALICE_HINT), $this->session(), $this->context));
-        $this->loginRequired($this->handler->begin($this->request(idTokenHint: self::BOB_HINT), $this->session(), $this->context), LoginRequirement::DifferentUser);
-        $this->loginRequired($this->handler->begin($this->request(idTokenHint: self::BOB_HINT), null, $this->context), LoginRequirement::NoSession);
+        // When
+        $decision = $this->handler->begin($this->request(idTokenHint: self::ALICE_HINT), $this->session(), $this->context);
+
+        // Then
+        $this->granted($decision);
+    }
+
+    /**
+     * OIDC Core §3.1.2.1 id_token_hint: another user has to log in.
+     */
+    #[Test]
+    public function itRequiresALoginWhenTheSessionIsNotTheUserOfTheIdTokenHint(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(idTokenHint: self::BOB_HINT), $this->session(), $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::DifferentUser);
+    }
+
+    #[Test]
+    public function itRequiresALoginWhenThereIsNoSessionForTheIdTokenHint(): void
+    {
+        // When
+        $decision = $this->handler->begin($this->request(idTokenHint: self::BOB_HINT), null, $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::NoSession);
     }
 
     /**
      * A hint that was not issued here is refused before anything else, with or without a session: the
-     * error goes back to the client and the interaction is over.
+     * error goes back to the client.
+     *
+     * @param callable(self): ?AuthenticationSession $session
      */
     #[Test]
-    public function itRefusesAForgedIdTokenHintBeforeAskingForALogin(): void
+    #[DataProvider('provideSessionsOrNone')]
+    public function itRefusesAForgedIdTokenHintBeforeAskingForALogin(callable $session): void
     {
-        foreach ([null, $this->session()] as $session) {
-            try {
-                $this->handler->begin($this->request(idTokenHint: self::FORGED_HINT), $session, $this->context);
-                static::fail('The request should have been refused.');
-            } catch (InvalidRequestException $exception) {
-                static::assertTrue($exception->redirectable);
-                static::assertStringContainsString('id_token_hint', $exception->errorDescription);
-            }
-            static::assertTrue($this->savedInteraction()->isCompleted());
+        // Given
+        $current = $session($this);
+
+        // When
+        try {
+            $this->handler->begin($this->request(idTokenHint: self::FORGED_HINT), $current, $this->context);
+            static::fail('The request should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            // Then
+            static::assertTrue($exception->redirectable);
+            static::assertStringContainsString('id_token_hint', $exception->errorDescription);
         }
     }
 
     /**
-     * Architecture §4.3, the whole path: login, consent, code. The consent is recorded for the scopes
-     * of the request and announced with the request context.
+     * @param callable(self): ?AuthenticationSession $session
      */
     #[Test]
-    public function itResumesAfterTheLoginAndAfterTheConsent(): void
+    #[DataProvider('provideSessionsOrNone')]
+    public function theInteractionRefusedForAForgedIdTokenHintIsOver(callable $session): void
     {
-        $request = $this->request(['openid', 'profile']);
-        $login = $this->loginRequired($this->handler->begin($request, null, $this->context), LoginRequirement::NoSession);
+        // Given
+        $current = $session($this);
 
+        // When
+        try {
+            $this->handler->begin($this->request(idTokenHint: self::FORGED_HINT), $current, $this->context);
+        } catch (InvalidRequestException) {
+        }
+
+        // Then
+        static::assertTrue($this->savedInteraction()->isCompleted());
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): ?AuthenticationSession}>
+     */
+    public static function provideSessionsOrNone(): iterable
+    {
+        yield 'no session' => [static fn (self $test): ?AuthenticationSession => null];
+        yield 'a session' => [static fn (self $test): ?AuthenticationSession => $test->session()];
+    }
+
+    /**
+     * Architecture §4.3, the whole path: after the login, the consent.
+     */
+    #[Test]
+    public function itResumesAfterTheLoginWithTheConsentStep(): void
+    {
+        // Given
+        $login = $this->loginRequired($this->handler->begin($this->request(['openid', 'profile']), null, $this->context), LoginRequirement::NoSession);
         $this->clock->sleep(20);
         $session = $this->session($this->clock->now());
         $resumed = $this->interactions->find($login->interaction->id) ?? static::fail('The interaction should have been saved.');
-        $consent = $this->consentRequired($this->handler->resume($resumed, $session, $this->context), ConsentRequirement::NotGranted);
+
+        // When
+        $decision = $this->handler->resume($resumed, $session, $this->context);
+
+        // Then
+        $consent = $this->consentRequired($decision, ConsentRequirement::NotGranted);
         static::assertSame($login->interaction, $consent->interaction);
+    }
 
+    /**
+     * Architecture §4.3, the whole path: after the consent, the code. The consent is recorded for the
+     * scopes of the request.
+     */
+    #[Test]
+    public function grantingTheConsentRecordsItForTheScopesOfTheRequest(): void
+    {
+        // Given
+        $request = $this->request(['openid', 'profile']);
+        $session = $this->session();
+        $consent = $this->consentRequired($this->handler->begin($request, $session, $this->context), ConsentRequirement::NotGranted);
         $this->clock->sleep(20);
-        $context = Fixtures::context($this->clock->now());
-        $granted = $this->granted($this->handler->grantConsent($consent->interaction, $session, $context));
 
-        $recorded = $granted->interaction->consent ?? static::fail('The consent should have been recorded.');
+        // When
+        $decision = $this->handler->grantConsent($consent->interaction, $session, Fixtures::context($this->clock->now()));
+
+        // Then
+        $recorded = $this->granted($decision)->interaction->consent ?? static::fail('The consent should have been recorded.');
         static::assertSame([$recorded], $this->consents->all());
         static::assertSame($recorded, $this->consents->findActive($this->alice, $this->client));
         static::assertSame($this->alice, $recorded->user);
         static::assertSame($this->client, $recorded->client);
         static::assertSame($request->scopes, $recorded->scopes);
         static::assertEquals($this->clock->now(), $recorded->grantedAt);
+    }
 
+    /**
+     * The consent and the code are announced with the context of the request that granted the consent.
+     */
+    #[Test]
+    public function grantingTheConsentAnnouncesItAndTheCodeWithTheRequestContext(): void
+    {
+        // Given
+        $session = $this->session();
+        $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $session, $this->context), ConsentRequirement::NotGranted);
+        $this->clock->sleep(20);
+        $context = Fixtures::context($this->clock->now());
+
+        // When
+        $decision = $this->handler->grantConsent($consent->interaction, $session, $context);
+
+        // Then
         $events = $this->events->of(ConsentGranted::class);
         static::assertCount(1, $events);
-        static::assertSame($recorded, $events[0]->consent);
+        static::assertSame($this->granted($decision)->interaction->consent, $events[0]->consent);
         static::assertNull($events[0]->supersedes);
         static::assertSame($context, $events[0]->context);
         static::assertSame($this->tenant, $events[0]->tenant);
@@ -424,84 +727,197 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function itRecordsTheSessionItIsGivenTheConsentWith(): void
     {
+        // Given
         $login = $this->loginRequired($this->handler->begin($this->request(), null, $this->context), LoginRequirement::NoSession);
         $session = $this->session($this->clock->now());
 
-        $granted = $this->granted($this->handler->grantConsent($login->interaction, $session, $this->context));
+        // When
+        $decision = $this->handler->grantConsent($login->interaction, $session, $this->context);
 
+        // Then
+        $granted = $this->granted($decision);
         static::assertSame($session, $granted->interaction->session);
         static::assertSame($session, $granted->code->session);
     }
 
     /**
-     * A new grant adds the scopes of the request to what the user had already granted the client, and
-     * supersedes the previous consent, which is revoked.
+     * A new grant adds the scopes of the request to what the user had already granted the client.
      */
     #[Test]
-    public function aNewConsentSupersedesThePreviousOne(): void
+    public function aNewConsentAddsTheScopesOfTheRequestToThePreviousOnes(): void
     {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now()));
+        $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context), ConsentRequirement::NotGranted);
+
+        // When
+        $decision = $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
+
+        // Then
+        $recorded = $this->granted($decision)->interaction->consent ?? static::fail('The consent should have been recorded.');
+        static::assertEquals([Scope::openid(), new Scope('email'), new Scope('profile')], $recorded->scopes);
+    }
+
+    /**
+     * A new grant supersedes the previous consent, which is revoked and saved so.
+     */
+    #[Test]
+    public function aNewConsentRevokesThePreviousOne(): void
+    {
+        // Given
         $previous = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now());
         $this->consents->save($previous);
         $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context), ConsentRequirement::NotGranted);
 
-        $granted = $this->granted($this->handler->grantConsent($consent->interaction, $consent->session, $this->context));
+        // When
+        $decision = $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
 
-        $recorded = $granted->interaction->consent ?? static::fail('The consent should have been recorded.');
-        static::assertEquals([Scope::openid(), new Scope('email'), new Scope('profile')], $recorded->scopes);
+        // Then
         static::assertFalse($previous->isActive());
         static::assertEquals($this->clock->now(), $previous->revokedAt);
-        static::assertSame($recorded, $this->consents->findActive($this->alice, $this->client));
+        static::assertSame($this->granted($decision)->interaction->consent, $this->consents->findActive($this->alice, $this->client));
         static::assertCount(2, $this->consents->all());
         static::assertSame(3, $this->consents->saves, 'the previous consent is saved revoked, then the new one');
+    }
+
+    #[Test]
+    public function aNewConsentIsAnnouncedWithTheOneItSupersedes(): void
+    {
+        // Given
+        $previous = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now());
+        $this->consents->save($previous);
+        $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context), ConsentRequirement::NotGranted);
+
+        // When
+        $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
+
+        // Then
         static::assertSame($previous, $this->events->of(ConsentGranted::class)[0]->supersedes);
     }
 
     /**
-     * OIDC Core §3.1.2.1 prompt=consent: the question is put again even with a consent in force; the
-     * consent given during the interaction satisfies it.
+     * OIDC Core §3.1.2.1 prompt=consent: the question is put again even with a consent in force.
      */
     #[Test]
     public function itAsksAgainWhenPromptIsConsent(): void
     {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(prompts: [Prompt::Consent]), $this->session(), $this->context);
+
+        // Then
+        $this->consentRequired($decision, ConsentRequirement::ConsentRequested);
+    }
+
+    #[Test]
+    public function aResumeWithoutAnAnswerAsksAgainWhenPromptIsConsent(): void
+    {
+        // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
         $session = $this->session();
-
         $consent = $this->consentRequired($this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context), ConsentRequirement::ConsentRequested);
-        $this->consentRequired($this->handler->resume($consent->interaction, $session, $this->context), ConsentRequirement::ConsentRequested);
-        $this->granted($this->handler->grantConsent($consent->interaction, $session, $this->context));
+
+        // When
+        $decision = $this->handler->resume($consent->interaction, $session, $this->context);
+
+        // Then
+        $this->consentRequired($decision, ConsentRequirement::ConsentRequested);
     }
 
     /**
-     * The session ended between the consent page and its answer: nothing is recorded, the user logs in.
+     * The consent given during the interaction satisfies prompt=consent.
      */
     #[Test]
-    public function itRecordsNoConsentWithoutAnActiveSession(): void
+    public function theConsentGivenDuringTheInteractionSatisfiesPromptConsent(): void
     {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
+        $session = $this->session();
+        $consent = $this->consentRequired($this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context), ConsentRequirement::ConsentRequested);
+
+        // When
+        $decision = $this->handler->grantConsent($consent->interaction, $session, $this->context);
+
+        // Then
+        $this->granted($decision);
+    }
+
+    /**
+     * The session ended between the consent page and its answer: the user logs in.
+     */
+    #[Test]
+    public function itRequiresALoginWhenTheSessionEndedBeforeTheConsent(): void
+    {
+        // Given
         $session = $this->session();
         $consent = $this->consentRequired($this->handler->begin($this->request(), $session, $this->context), ConsentRequirement::NotGranted);
         $session->end(SessionEnd::User, $this->clock->now());
 
-        $this->loginRequired($this->handler->grantConsent($consent->interaction, $session, $this->context), LoginRequirement::NoSession);
+        // When
+        $decision = $this->handler->grantConsent($consent->interaction, $session, $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::NoSession);
+    }
+
+    /**
+     * The session ended between the consent page and its answer: nothing is recorded.
+     */
+    #[Test]
+    public function itRecordsNoConsentWithoutAnActiveSession(): void
+    {
+        // Given
+        $session = $this->session();
+        $consent = $this->consentRequired($this->handler->begin($this->request(), $session, $this->context), ConsentRequirement::NotGranted);
+        $session->end(SessionEnd::User, $this->clock->now());
+
+        // When
+        $this->handler->grantConsent($consent->interaction, $session, $this->context);
+
+        // Then
         static::assertSame([], $this->consents->all());
         static::assertSame([], $this->events->events);
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the user refused, access_denied goes back to the client and the interaction is
-     * over.
+     * RFC 6749 §4.1.2.1: the user refused, access_denied goes back to the client.
      */
     #[Test]
     public function itDeniesWhenTheUserRefuses(): void
     {
+        // Given
         $consent = $this->consentRequired($this->handler->begin($this->request(), $this->session(), $this->context), ConsentRequirement::NotGranted);
 
+        // When
         try {
             $this->handler->deny($consent->interaction);
+            static::fail('The request should have been denied.');
         } catch (AccessDeniedException $exception) {
+            // Then
             static::assertSame('access_denied', $exception->error);
             static::assertTrue($exception->redirectable);
             static::assertSame('The end user denied the request.', $exception->errorDescription);
         }
+    }
+
+    /**
+     * RFC 6749 §4.1.2.1: the interaction denied is over, and nothing is recorded.
+     */
+    #[Test]
+    public function theInteractionDeniedIsOverAndRecordsNothing(): void
+    {
+        // Given
+        $consent = $this->consentRequired($this->handler->begin($this->request(), $this->session(), $this->context), ConsentRequirement::NotGranted);
+
+        // When
+        try {
+            $this->handler->deny($consent->interaction);
+        } catch (AccessDeniedException) {
+        }
+
+        // Then
         static::assertTrue($consent->interaction->isCompleted());
         static::assertSame(2, $this->interactions->saves, 'saved when parked, saved again completed');
         static::assertSame([], $this->consents->all());
@@ -510,74 +926,133 @@ final class AuthorizationHandlerTest extends TestCase
 
     /**
      * Acceptance of #6: an interaction is not resumed twice, whatever ended it.
+     *
+     * @param callable(self, Interaction, AuthenticationSession, AuthenticationSession): mixed $resume
      */
     #[Test]
-    public function itDoesNotResumeACompletedInteraction(): void
+    #[DataProvider('provideResumptions')]
+    public function itDoesNotResumeACompletedInteraction(callable $resume): void
     {
+        // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
         $session = $this->session();
         $granted = $this->granted($this->handler->begin($this->request(), $session, $this->context));
         $ended = $this->session();
         $ended->end(SessionEnd::User, $this->clock->now());
 
-        foreach ([
-            fn () => $this->handler->resume($granted->interaction, $session, $this->context),
-            fn () => $this->handler->resume($granted->interaction, null, $this->context),
-            fn () => $this->handler->grantConsent($granted->interaction, $session, $this->context),
-            fn () => $this->handler->grantConsent($granted->interaction, $ended, $this->context),
-            fn () => $this->handler->deny($granted->interaction),
-        ] as $resume) {
-            try {
-                $resume();
-                static::fail('The interaction should have been refused.');
-            } catch (InteractionCompletedException $exception) {
-                static::assertSame($granted->interaction->id, $exception->interactionId);
-            }
+        // When
+        try {
+            $resume($this, $granted->interaction, $session, $ended);
+            static::fail('The interaction should have been refused.');
+        } catch (InteractionCompletedException $exception) {
+            // Then
+            static::assertSame($granted->interaction->id, $exception->interactionId);
         }
+    }
+
+    #[Test]
+    public function aCompletedInteractionIssuesNoSecondCode(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $session = $this->session();
+        $granted = $this->granted($this->handler->begin($this->request(), $session, $this->context));
+
+        // When
+        try {
+            $this->handler->grantConsent($granted->interaction, $session, $this->context);
+        } catch (InteractionCompletedException) {
+        }
+
+        // Then
         static::assertCount(1, $this->codes->all());
     }
 
     /**
      * Acceptance of #6: an interaction is not resumed after its ten minutes.
+     *
+     * @param callable(self, Interaction, AuthenticationSession, AuthenticationSession): mixed $resume
      */
     #[Test]
-    public function itDoesNotResumeAnExpiredInteraction(): void
+    #[DataProvider('provideResumptions')]
+    public function itDoesNotResumeAnExpiredInteraction(callable $resume): void
     {
+        // Given
         $login = $this->loginRequired($this->handler->begin($this->request(), null, $this->context), LoginRequirement::NoSession);
         $this->clock->sleep(600);
         $session = $this->session($this->clock->now());
         $ended = $this->session($this->clock->now());
         $ended->end(SessionEnd::User, $this->clock->now());
 
-        foreach ([
-            fn () => $this->handler->resume($login->interaction, $session, $this->context),
-            fn () => $this->handler->resume($login->interaction, null, $this->context),
-            fn () => $this->handler->grantConsent($login->interaction, $session, $this->context),
-            fn () => $this->handler->grantConsent($login->interaction, $ended, $this->context),
-            fn () => $this->handler->deny($login->interaction),
-        ] as $resume) {
-            try {
-                $resume();
-                static::fail('The interaction should have been refused.');
-            } catch (InteractionExpiredException $exception) {
-                static::assertSame($login->interaction->id, $exception->interactionId);
-            }
+        // When
+        try {
+            $resume($this, $login->interaction, $session, $ended);
+            static::fail('The interaction should have been refused.');
+        } catch (InteractionExpiredException $exception) {
+            // Then
+            static::assertSame($login->interaction->id, $exception->interactionId);
         }
+    }
+
+    #[Test]
+    public function anExpiredInteractionStaysUncompleted(): void
+    {
+        // Given
+        $login = $this->loginRequired($this->handler->begin($this->request(), null, $this->context), LoginRequirement::NoSession);
+        $this->clock->sleep(600);
+
+        // When
+        try {
+            $this->handler->grantConsent($login->interaction, $this->session($this->clock->now()), $this->context);
+        } catch (InteractionExpiredException) {
+        }
+
+        // Then
         static::assertFalse($login->interaction->isCompleted());
     }
 
     /**
-     * The lifetimes are the integration's to set; the defaults are those of architecture §4.3 and §4.4.
+     * @return iterable<string, array{callable(self, Interaction, AuthenticationSession, AuthenticationSession): mixed}>
+     */
+    public static function provideResumptions(): iterable
+    {
+        yield 'resume with a session' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, $session, $test->context)];
+        yield 'resume without a session' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, null, $test->context)];
+        yield 'grant the consent' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $session, $test->context)];
+        yield 'grant the consent with an ended session' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $ended, $test->context)];
+        yield 'deny' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->deny($interaction)];
+    }
+
+    /**
+     * The lifetime of the interaction is the integration's to set; the default is that of architecture §4.3.
      */
     #[Test]
-    public function theLifetimesAreConfigurable(): void
+    public function theInteractionLifetimeIsConfigurable(): void
     {
+        // Given
         $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
 
-        $granted = $this->granted($handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context));
+        // When
+        $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
 
-        static::assertEquals($this->clock->now()->modify('+5 minutes'), $granted->interaction->expiresAt);
-        static::assertEquals($this->clock->now()->modify('+30 seconds'), $granted->code->expiresAt);
+        // Then
+        static::assertEquals($this->clock->now()->modify('+5 minutes'), $this->granted($decision)->interaction->expiresAt);
+    }
+
+    /**
+     * The lifetime of the code is the integration's to set; the default is that of architecture §4.4.
+     */
+    #[Test]
+    public function theCodeLifetimeIsConfigurable(): void
+    {
+        // Given
+        $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
+
+        // When
+        $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
+
+        // Then
+        static::assertEquals($this->clock->now()->modify('+30 seconds'), $this->granted($decision)->code->expiresAt);
     }
 
     /**

@@ -76,12 +76,35 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itAuthenticatesWithClientSecretBasic(): void
     {
+        // When
         $client = $this->authenticator->authenticate($this->tenant, self::basic('basic-client', Clients::SECRET), [
             'grant_type' => 'authorization_code',
         ], $this->context);
 
+        // Then
         static::assertSame($this->basicClient, $client);
+    }
+
+    /**
+     * The secret is compared by the hasher, against the client's own hash, exactly once.
+     */
+    #[Test]
+    public function itVerifiesTheSecretAgainstTheHashOfTheClientOnce(): void
+    {
+        // When
+        $this->authenticator->authenticate($this->tenant, self::basic('basic-client', Clients::SECRET), [], $this->context);
+
+        // Then
         static::assertSame([$this->basicClient->secretHash?->encoded], $this->hasher->verifiedAgainst);
+    }
+
+    #[Test]
+    public function aSuccessfulAuthenticationAnnouncesNothing(): void
+    {
+        // When
+        $this->authenticator->authenticate($this->tenant, self::basic('basic-client', Clients::SECRET), [], $this->context);
+
+        // Then
         static::assertSame([], $this->events->events);
     }
 
@@ -91,11 +114,14 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itDecodesTheFormEncodedBasicCredentials(): void
     {
+        // Given
         $secret = 'a+b%c:d e' . Clients::SECRET;
         $this->clients->save(Clients::confidential($this->tenant, $this->hasher->hash($secret), TokenEndpointAuthMethod::ClientSecretBasic, 'odd client'));
 
+        // When
         $client = $this->authenticator->authenticate($this->tenant, self::basic('odd client', $secret), [], $this->context);
 
+        // Then
         static::assertSame('odd client', $client->clientId);
     }
 
@@ -105,9 +131,14 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itReadsTheSchemeCaseInsensitively(): void
     {
+        // Given
         $header = "BASIC \t  " . base64_encode('basic-client:' . Clients::SECRET);
 
-        static::assertSame($this->basicClient, $this->authenticator->authenticate($this->tenant, $header, [], $this->context));
+        // When
+        $client = $this->authenticator->authenticate($this->tenant, $header, [], $this->context);
+
+        // Then
+        static::assertSame($this->basicClient, $client);
     }
 
     /**
@@ -117,11 +148,14 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function onlyTheFirstColonSeparatesTheIdentifierFromTheSecret(): void
     {
+        // Given
         $secret = 'with:colons:' . Clients::SECRET;
         $this->clients->save(Clients::confidential($this->tenant, $this->hasher->hash($secret), TokenEndpointAuthMethod::ClientSecretBasic, 'colon-client'));
 
+        // When
         $client = $this->authenticator->authenticate($this->tenant, 'Basic ' . base64_encode('colon-client:' . $secret), [], $this->context);
 
+        // Then
         static::assertSame('colon-client', $client->clientId);
     }
 
@@ -131,10 +165,12 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itAcceptsAMatchingClientIdInTheBodyNextToTheHeader(): void
     {
+        // When
         $client = $this->authenticator->authenticate($this->tenant, self::basic('basic-client', Clients::SECRET), [
             'client_id' => 'basic-client',
         ], $this->context);
 
+        // Then
         static::assertSame($this->basicClient, $client);
     }
 
@@ -144,11 +180,13 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itAuthenticatesWithClientSecretPost(): void
     {
+        // When
         $client = $this->authenticator->authenticate($this->tenant, null, [
             'client_id' => 'post-client',
             'client_secret' => Clients::SECRET,
         ], $this->context);
 
+        // Then
         static::assertSame($this->postClient, $client);
         static::assertSame([$this->postClient->secretHash?->encoded], $this->hasher->verifiedAgainst);
     }
@@ -159,38 +197,82 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itIdentifiesAPublicClientByItsIdAlone(): void
     {
+        // When
         $client = $this->authenticator->authenticate($this->tenant, null, [
             'client_id' => 'public-client',
         ], $this->context);
 
+        // Then
         static::assertSame($this->publicClient, $client);
         static::assertSame([], $this->hasher->verifiedAgainst);
     }
 
     /**
-     * RFC 6749 §2.3: more than one authentication method is invalid_request, before any lookup.
+     * RFC 6749 §2.3: more than one authentication method is invalid_request.
      */
     #[Test]
     public function itRefusesAHeaderAndABodySecretTogether(): void
     {
-        $exception = $this->expectFailure(self::basic('basic-client', Clients::SECRET), [
+        // Then
+        $this->expectException(InvalidRequestException::class);
+
+        // When
+        $this->authenticator->authenticate($this->tenant, self::basic('basic-client', Clients::SECRET), [
+            'client_id' => 'basic-client',
+            'client_secret' => Clients::SECRET,
+        ], $this->context);
+    }
+
+    /**
+     * RFC 6749 §2.3: two methods are refused before any lookup.
+     */
+    #[Test]
+    public function twoMethodsAreRefusedBeforeAnyVerification(): void
+    {
+        // When
+        $this->failToAuthenticate(self::basic('basic-client', Clients::SECRET), [
             'client_id' => 'basic-client',
             'client_secret' => Clients::SECRET,
         ]);
 
-        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        // Then
         static::assertSame([], $this->hasher->verifiedAgainst);
+    }
+
+    #[Test]
+    public function twoMethodsAreAnnouncedWithTheIdentifierOfTheHeader(): void
+    {
+        // When
+        $this->failToAuthenticate(self::basic('basic-client', Clients::SECRET), [
+            'client_id' => 'basic-client',
+            'client_secret' => Clients::SECRET,
+        ]);
+
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MultipleMechanisms, 'basic-client', null);
     }
 
     #[Test]
     public function itRefusesABodyClientIdThatDiffersFromTheHeader(): void
     {
-        $exception = $this->expectFailure(self::basic('basic-client', Clients::SECRET), [
+        // Then
+        $this->expectException(InvalidRequestException::class);
+
+        // When
+        $this->authenticator->authenticate($this->tenant, self::basic('basic-client', Clients::SECRET), [
+            'client_id' => 'post-client',
+        ], $this->context);
+    }
+
+    #[Test]
+    public function aMismatchedClientIdIsAnnouncedWithTheIdentifierOfTheHeader(): void
+    {
+        // When
+        $this->failToAuthenticate(self::basic('basic-client', Clients::SECRET), [
             'client_id' => 'post-client',
         ]);
 
-        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MismatchedClientId, 'basic-client', TokenEndpointAuthMethod::ClientSecretBasic);
     }
 
@@ -202,12 +284,26 @@ final class ClientAuthenticatorTest extends TestCase
     #[DataProvider('provideHeadersThatAreNotBasic')]
     public function itRefusesAnAuthorizationHeaderThatIsNotBasic(string $header): void
     {
-        $exception = $this->expectFailure($header, [
+        // When
+        $exception = $this->failToAuthenticate($header, [
             'client_id' => 'basic-client',
         ]);
 
+        // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         static::assertSame(self::CHALLENGE, $exception->challenge);
+    }
+
+    #[Test]
+    #[DataProvider('provideHeadersThatAreNotBasic')]
+    public function anUnsupportedSchemeIsAnnouncedWithoutIdentifier(string $header): void
+    {
+        // When
+        $this->failToAuthenticate($header, [
+            'client_id' => 'basic-client',
+        ]);
+
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnsupportedScheme, null, null);
     }
 
@@ -228,10 +324,32 @@ final class ClientAuthenticatorTest extends TestCase
     #[DataProvider('provideMalformedBasicCredentials')]
     public function itRefusesMalformedBasicCredentials(string $header): void
     {
-        $exception = $this->expectFailure($header, []);
+        // Then
+        $this->expectException(InvalidRequestException::class);
 
-        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        // When
+        $this->authenticator->authenticate($this->tenant, $header, [], $this->context);
+    }
+
+    #[Test]
+    #[DataProvider('provideMalformedBasicCredentials')]
+    public function malformedBasicCredentialsCostNoVerification(string $header): void
+    {
+        // When
+        $this->failToAuthenticate($header, []);
+
+        // Then
         static::assertSame([], $this->hasher->verifiedAgainst);
+    }
+
+    #[Test]
+    #[DataProvider('provideMalformedBasicCredentials')]
+    public function malformedBasicCredentialsAreAnnouncedWithTheMethodUsed(string $header): void
+    {
+        // When
+        $this->failToAuthenticate($header, []);
+
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MalformedCredentials, null, TokenEndpointAuthMethod::ClientSecretBasic);
     }
 
@@ -254,9 +372,24 @@ final class ClientAuthenticatorTest extends TestCase
     #[DataProvider('provideNonStringParameters')]
     public function itRefusesNonStringParameters(array $parameters): void
     {
-        $exception = $this->expectFailure(null, $parameters);
+        // Then
+        $this->expectException(InvalidRequestException::class);
 
-        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        // When
+        $this->authenticator->authenticate($this->tenant, null, $parameters, $this->context);
+    }
+
+    /**
+     * @param array<string, mixed> $parameters
+     */
+    #[Test]
+    #[DataProvider('provideNonStringParameters')]
+    public function nonStringParametersAreAnnouncedWithoutIdentifier(array $parameters): void
+    {
+        // When
+        $this->failToAuthenticate(null, $parameters);
+
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MalformedCredentials, null, null);
     }
 
@@ -280,10 +413,12 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function aMalformedBodyNextToAHeaderIsAnnouncedWithTheHeaderIdentifier(): void
     {
-        $exception = $this->expectFailure(self::basic('basic-client', Clients::SECRET), [
+        // When
+        $exception = $this->failToAuthenticate(self::basic('basic-client', Clients::SECRET), [
             'client_id' => ['basic-client'],
         ]);
 
+        // Then
         static::assertInstanceOf(InvalidRequestException::class, $exception);
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MalformedCredentials, 'basic-client', null);
     }
@@ -291,10 +426,12 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itRefusesABodySecretWithoutAClientId(): void
     {
-        $exception = $this->expectFailure(null, [
+        // When
+        $exception = $this->failToAuthenticate(null, [
             'client_secret' => Clients::SECRET,
         ]);
 
+        // Then
         static::assertInstanceOf(InvalidRequestException::class, $exception);
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MalformedCredentials, null, TokenEndpointAuthMethod::ClientSecretPost);
     }
@@ -306,54 +443,115 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function itRefusesARequestWithoutAnyCredentials(): void
     {
-        $exception = $this->expectFailure(null, [
+        // When
+        $exception = $this->failToAuthenticate(null, [
             'grant_type' => 'authorization_code',
         ]);
 
+        // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         static::assertNull($exception->challenge);
+    }
+
+    #[Test]
+    public function aRequestWithoutAnyCredentialsIsAnnouncedAsSuch(): void
+    {
+        // When
+        $this->failToAuthenticate(null, [
+            'grant_type' => 'authorization_code',
+        ]);
+
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::NoCredentials, null, null);
     }
 
     /**
-     * An unknown client presenting a secret costs a verification against a decoy, the same decoy for the
-     * life of the authenticator, so that the time taken does not tell it from a known one; nor does the
-     * error description.
+     * An unknown client presenting a secret is invalid_client, with the challenge of the scheme it used,
+     * and an error description that does not tell it from a known one.
      */
     #[Test]
-    public function anUnknownClientCostsAVerificationAgainstADecoy(): void
+    public function anUnknownClientWithABasicSecretIsInvalidClient(): void
     {
-        $first = $this->expectFailure(self::basic('nobody', Clients::SECRET), []);
-        $second = $this->expectFailure(null, [
+        // When
+        $exception = $this->failToAuthenticate(self::basic('nobody', Clients::SECRET), []);
+
+        // Then
+        static::assertInstanceOf(InvalidClientException::class, $exception);
+        static::assertSame(self::CHALLENGE, $exception->challenge);
+        static::assertSame('Client authentication failed.', $exception->errorDescription);
+    }
+
+    #[Test]
+    public function anUnknownClientWithAPostSecretIsInvalidClientWithoutChallenge(): void
+    {
+        // When
+        $exception = $this->failToAuthenticate(null, [
             'client_id' => 'nobody',
             'client_secret' => Clients::SECRET,
         ]);
 
-        static::assertInstanceOf(InvalidClientException::class, $first);
-        static::assertSame(self::CHALLENGE, $first->challenge);
-        static::assertSame('Client authentication failed.', $first->errorDescription);
-        static::assertInstanceOf(InvalidClientException::class, $second);
-        static::assertNull($second->challenge);
+        // Then
+        static::assertInstanceOf(InvalidClientException::class, $exception);
+        static::assertNull($exception->challenge);
+    }
+
+    /**
+     * An unknown client presenting a secret costs a verification against a decoy, the same decoy for the
+     * life of the authenticator, so that the time taken does not tell it from a known one.
+     */
+    #[Test]
+    public function anUnknownClientCostsAVerificationAgainstTheSameDecoyEveryTime(): void
+    {
+        // When
+        $this->failToAuthenticate(self::basic('nobody', Clients::SECRET), []);
+        $this->failToAuthenticate(null, [
+            'client_id' => 'nobody',
+            'client_secret' => Clients::SECRET,
+        ]);
+
+        // Then
         static::assertCount(2, $this->hasher->verifiedAgainst);
         static::assertSame($this->hasher->verifiedAgainst[0], $this->hasher->verifiedAgainst[1]);
         static::assertTrue(str_starts_with($this->hasher->verifiedAgainst[0], 'fake:'));
         static::assertNotSame($this->basicClient->secretHash?->encoded, $this->hasher->verifiedAgainst[0]);
-        static::assertCount(2, $this->events->of(ClientAuthenticationFailed::class));
-        static::assertSame(ClientAuthenticationFailureReason::UnknownClient, $this->events->of(ClientAuthenticationFailed::class)[0]->reason);
-        static::assertSame('nobody', $this->events->of(ClientAuthenticationFailed::class)[0]->clientId);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretPost, $this->events->of(ClientAuthenticationFailed::class)[1]->method);
+    }
+
+    #[Test]
+    public function anUnknownClientIsAnnouncedWithTheIdentifierAndTheMethodItUsed(): void
+    {
+        // When
+        $this->failToAuthenticate(null, [
+            'client_id' => 'nobody',
+            'client_secret' => Clients::SECRET,
+        ]);
+
+        // Then
+        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, 'nobody', TokenEndpointAuthMethod::ClientSecretPost);
+    }
+
+    #[Test]
+    public function anUnknownPublicClientIsInvalidClient(): void
+    {
+        // When
+        $exception = $this->failToAuthenticate(null, [
+            'client_id' => 'nobody',
+        ]);
+
+        // Then
+        static::assertInstanceOf(InvalidClientException::class, $exception);
+        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, 'nobody', TokenEndpointAuthMethod::None);
     }
 
     #[Test]
     public function anUnknownPublicClientCostsNothing(): void
     {
-        $exception = $this->expectFailure(null, [
+        // When
+        $this->failToAuthenticate(null, [
             'client_id' => 'nobody',
         ]);
 
-        static::assertInstanceOf(InvalidClientException::class, $exception);
+        // Then
         static::assertSame([], $this->hasher->verifiedAgainst);
-        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, 'nobody', TokenEndpointAuthMethod::None);
     }
 
     /**
@@ -362,14 +560,16 @@ final class ClientAuthenticatorTest extends TestCase
     #[Test]
     public function aClientOfAnotherTenantIsUnknown(): void
     {
-        $exception = $this->expectFailure(self::basic('foreign-client', Clients::SECRET), []);
+        // When
+        $exception = $this->failToAuthenticate(self::basic('foreign-client', Clients::SECRET), []);
 
+        // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, 'foreign-client', TokenEndpointAuthMethod::ClientSecretBasic);
     }
 
     /**
-     * RFC 6749 §2.3: a method other than the registered one is refused, at the same cost as a wrong secret.
+     * RFC 6749 §2.3: a method other than the registered one is refused, with the challenge of the scheme used.
      *
      * @param array<string, mixed> $parameters
      */
@@ -377,16 +577,47 @@ final class ClientAuthenticatorTest extends TestCase
     #[DataProvider('provideUnexpectedMethods')]
     public function itRefusesAMethodOtherThanTheRegisteredOne(?string $header, array $parameters, string $clientId, TokenEndpointAuthMethod $used, bool $secretPresented): void
     {
-        $exception = $this->expectFailure($header, $parameters);
+        // When
+        $exception = $this->failToAuthenticate($header, $parameters);
 
+        // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         static::assertSame($header === null ? null : self::CHALLENGE, $exception->challenge);
+    }
+
+    /**
+     * RFC 6749 §2.3: a method other than the registered one costs the same as a wrong secret, against a
+     * decoy, never against the hash of the client.
+     *
+     * @param array<string, mixed> $parameters
+     */
+    #[Test]
+    #[DataProvider('provideUnexpectedMethods')]
+    public function anUnexpectedMethodCostsAVerificationAgainstADecoyWhenASecretIsPresented(?string $header, array $parameters, string $clientId, TokenEndpointAuthMethod $used, bool $secretPresented): void
+    {
+        // When
+        $this->failToAuthenticate($header, $parameters);
+
+        // Then
         static::assertCount($secretPresented ? 1 : 0, $this->hasher->verifiedAgainst);
         if ($secretPresented) {
             static::assertTrue(str_starts_with($this->hasher->verifiedAgainst[0], 'fake:'));
             static::assertNotSame($this->basicClient->secretHash?->encoded, $this->hasher->verifiedAgainst[0]);
             static::assertNotSame($this->postClient->secretHash?->encoded, $this->hasher->verifiedAgainst[0]);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $parameters
+     */
+    #[Test]
+    #[DataProvider('provideUnexpectedMethods')]
+    public function anUnexpectedMethodIsAnnouncedWithTheMethodUsed(?string $header, array $parameters, string $clientId, TokenEndpointAuthMethod $used, bool $secretPresented): void
+    {
+        // When
+        $this->failToAuthenticate($header, $parameters);
+
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnexpectedMethod, $clientId, $used);
     }
 
@@ -411,28 +642,53 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * The secret is compared by the hasher, against the client's own hash, exactly once.
+     * A wrong secret is invalid_client, with the challenge and a description that does not say why.
      */
     #[Test]
     public function aWrongSecretIsInvalidClient(): void
     {
-        $exception = $this->expectFailure(self::basic('basic-client', 'wrong ' . Clients::SECRET), []);
+        // When
+        $exception = $this->failToAuthenticate(self::basic('basic-client', 'wrong ' . Clients::SECRET), []);
 
+        // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         static::assertSame(self::CHALLENGE, $exception->challenge);
         static::assertSame('Client authentication failed.', $exception->errorDescription);
+    }
+
+    /**
+     * The secret is compared by the hasher, against the client's own hash, exactly once.
+     */
+    #[Test]
+    public function aWrongSecretIsVerifiedAgainstTheHashOfTheClientOnce(): void
+    {
+        // When
+        $this->failToAuthenticate(self::basic('basic-client', 'wrong ' . Clients::SECRET), []);
+
+        // Then
         static::assertSame([$this->basicClient->secretHash?->encoded], $this->hasher->verifiedAgainst);
+    }
+
+    #[Test]
+    public function aWrongSecretIsAnnouncedWithTheClientAndTheMethod(): void
+    {
+        // When
+        $this->failToAuthenticate(self::basic('basic-client', 'wrong ' . Clients::SECRET), []);
+
+        // Then
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::InvalidSecret, 'basic-client', TokenEndpointAuthMethod::ClientSecretBasic);
     }
 
     #[Test]
     public function aWrongPostSecretIsInvalidClientWithoutAChallenge(): void
     {
-        $exception = $this->expectFailure(null, [
+        // When
+        $exception = $this->failToAuthenticate(null, [
             'client_id' => 'post-client',
             'client_secret' => '',
         ]);
 
+        // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         static::assertNull($exception->challenge);
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::InvalidSecret, 'post-client', TokenEndpointAuthMethod::ClientSecretPost);
@@ -441,7 +697,7 @@ final class ClientAuthenticatorTest extends TestCase
     /**
      * @param array<string, mixed> $parameters
      */
-    private function expectFailure(?string $header, array $parameters): OAuth2Exception
+    private function failToAuthenticate(?string $header, array $parameters): OAuth2Exception
     {
         try {
             $this->authenticator->authenticate($this->tenant, $header, $parameters, $this->context);

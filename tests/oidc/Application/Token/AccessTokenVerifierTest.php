@@ -66,6 +66,7 @@ final class AccessTokenVerifierTest extends TestCase
     #[Test]
     public function itReadsATokenTheIssuerMinted(): void
     {
+        // Given
         $session = Fixtures::session(Fixtures::user($this->tenant));
         $jwts = new Jwts($this->tenant);
         $code = Tokens::code('the-code', $this->client, $session, Fixtures::now(), ['openid', 'email'], claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'));
@@ -73,10 +74,12 @@ final class AccessTokenVerifierTest extends TestCase
             ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now());
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
+        $verifier = new AccessTokenVerifier(new JwtFrameworkJwsVerifier($jwts->keys), $clients);
 
-        $token = new AccessTokenVerifier(new JwtFrameworkJwsVerifier($jwts->keys), $clients)
-            ->verify($this->tenant, $minted->value, Fixtures::now()->modify('+9 minutes'));
+        // When
+        $token = $verifier->verify($this->tenant, $minted->value, Fixtures::now()->modify('+9 minutes'));
 
+        // Then
         static::assertSame($this->client, $token->client);
         static::assertSame('alice-subject', (string) $token->subject);
         static::assertSame(['openid', 'email'], array_map(strval(...), $token->scopes));
@@ -94,13 +97,16 @@ final class AccessTokenVerifierTest extends TestCase
      * @param list<string> $expectedClaims
      */
     #[Test]
-    #[DataProvider('validPayloads')]
+    #[DataProvider('provideValidPayloads')]
     public function itReadsTheClaimsOfAnAccessTokenOfThisProvider(string $payload, string $expectedScopes, array $expectedClaims, int $expectedExpiry = 1789467000): void
     {
+        // Given
         $this->knows($payload);
 
+        // When
         $token = $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now());
 
+        // Then
         static::assertSame($this->client, $token->client);
         static::assertSame('alice-subject', (string) $token->subject);
         static::assertSame($expectedScopes, implode(' ', $token->scopes));
@@ -111,7 +117,7 @@ final class AccessTokenVerifierTest extends TestCase
     /**
      * @return iterable<string, array{string, string, list<string>, 3?: int}>
      */
-    public static function validPayloads(): iterable
+    public static function provideValidPayloads(): iterable
     {
         yield 'as issued' => [self::PAYLOAD, 'openid profile', []];
         yield 'audience list' => [self::with([
@@ -139,17 +145,20 @@ final class AccessTokenVerifierTest extends TestCase
      * @param class-string<Throwable>|null $cause
      */
     #[Test]
-    #[DataProvider('foreignTokens')]
+    #[DataProvider('provideForeignTokens')]
     public function itRefusesWhatIsNotAnAccessTokenOfThisProvider(?string $payload, ?array $header = null, ?string $cause = null): void
     {
+        // Given
         if ($payload !== null) {
             $this->knows($payload, $header);
         }
 
+        // When
         try {
             $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now());
             static::fail('The token should have been refused.');
         } catch (InvalidTokenException $exception) {
+            // Then
             static::assertSame('invalid_token', $exception->error);
             static::assertSame(401, $exception->statusCode);
             static::assertFalse($exception->redirectable);
@@ -165,7 +174,7 @@ final class AccessTokenVerifierTest extends TestCase
     /**
      * @return iterable<string, array{string|null, array<string, string>|null, class-string<Throwable>|null}>
      */
-    public static function foreignTokens(): iterable
+    public static function provideForeignTokens(): iterable
     {
         yield 'does not verify' => [null, null, InvalidJwsException::class];
         yield 'not JSON' => ['not json', null, JsonException::class];
@@ -253,12 +262,15 @@ final class AccessTokenVerifierTest extends TestCase
     #[Test]
     public function itRefusesAnExpiredToken(): void
     {
+        // Given
         $this->knows(self::PAYLOAD);
 
+        // When
         try {
             $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now()->modify('+10 minutes'));
             static::fail('The token should have been refused.');
         } catch (InvalidTokenException $exception) {
+            // Then
             static::assertSame('invalid_token', $exception->error);
             static::assertSame(401, $exception->statusCode);
             static::assertSame('The access token expired.', $exception->errorDescription);
@@ -273,11 +285,15 @@ final class AccessTokenVerifierTest extends TestCase
     #[Test]
     public function itRefusesATokenOfAnotherTenant(): void
     {
+        // Given
         $this->jws->knows(Fixtures::tenant('other', 'https://id.other.example'), self::TOKEN, self::PAYLOAD, [
             'typ' => 'at+jwt',
         ]);
 
+        // Then
         $this->expectException(InvalidTokenException::class);
+
+        // When
         $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now());
     }
 
