@@ -89,6 +89,7 @@ deptrac:
       - 'OidcPort'
       - 'CoreDomain'
       - 'CorePort'
+      - 'CoreApplication'
       - 'Psr'
       - 'Uid'
     OidcBridge:

@@ -16,10 +16,13 @@ use JsonException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 use Throwable;
 
 final class IdTokenHintVerifierTest extends TestCase
 {
+    private const string SID = '01996f5a-1c2e-7b3c-9d4e-5f6a7b8c9d0e';
+
     private const string TOKEN = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkazcifQ.eyJpc3MiOiJodHRwczovL2lkLmFjbWUuZXhhbXBsZSJ9.c2lnbmF0dXJl';
 
     private Tenant $tenant;
@@ -151,5 +154,94 @@ final class IdTokenHintVerifierTest extends TestCase
 
         $this->expectException(InvalidRequestException::class);
         $this->verifier->verify($this->client, self::TOKEN);
+    }
+
+    /**
+     * RP-Initiated Logout §2: the logout endpoint reads the hint before it knows the client, and finds
+     * the client in "aud" and the session in "sid" (architecture §4.6). "exp" is not looked at: §2
+     * says the provider should accept an expired token.
+     *
+     * @param list<string> $audiences
+     */
+    #[Test]
+    #[DataProvider('readableHints')]
+    public function itReadsSubjectAudiencesAndSessionOfAnIdTokenIssuedHere(string $payload, array $audiences, ?string $sid): void
+    {
+        $this->jws->knows($this->tenant, self::TOKEN, $payload);
+
+        $hint = $this->verifier->read($this->tenant, self::TOKEN, false);
+
+        static::assertSame('alice-subject', (string) $hint->subject);
+        static::assertSame($audiences, $hint->audiences);
+        static::assertSame($sid, $hint->sessionId?->toRfc4122());
+        static::assertSame($audiences !== [], $hint->isFor('spa'));
+        static::assertFalse($hint->isFor('other'));
+    }
+
+    /**
+     * @return iterable<string, array{string, list<string>, ?string}>
+     */
+    public static function readableHints(): iterable
+    {
+        yield 'as issued here' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"sid":"' . self::SID . '"}', ['spa'], self::SID];
+        yield 'audience list' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa","another"]}', ['spa', 'another'], null];
+        yield 'no audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject"}', [], null];
+        yield 'audience map' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"a":"spa"}}', [], null];
+        yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42}', [], null];
+        yield 'audience list with a number' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa",42]}', [], null];
+    }
+
+    /**
+     * The "sid" this provider writes is a UUID: any other shape was not issued here. The flag says
+     * whether the error may be sent to a client; the logout endpoint never redirects one (§4).
+     */
+    #[Test]
+    #[DataProvider('sessionIdsNotIssuedHere')]
+    public function itRefusesASessionIdentifierItDidNotWrite(string $sid): void
+    {
+        $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","sid":' . $sid . '}');
+
+        try {
+            $this->verifier->read($this->tenant, self::TOKEN, false);
+            static::fail('The hint should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            static::assertFalse($exception->redirectable);
+            static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function sessionIdsNotIssuedHere(): iterable
+    {
+        yield 'a number' => ['42'];
+        yield 'empty' => ['""'];
+        yield 'not a UUID' => ['"session-1"'];
+        yield 'base58' => ['"' . Uuid::fromString(self::SID)->toBase58() . '"'];
+    }
+
+    /**
+     * Every refusal of read() carries the flag it was given, so that the authorization endpoint sends
+     * the error back and the logout endpoint shows it.
+     *
+     * @param class-string<Throwable>|null $cause
+     */
+    #[Test]
+    #[DataProvider('foreignHints')]
+    public function itRefusesATokenNotIssuedHereWithoutRedirecting(?string $payload, ?string $cause = null): void
+    {
+        if ($payload !== null) {
+            $this->jws->knows($this->tenant, self::TOKEN, $payload);
+        }
+
+        try {
+            $this->verifier->read($this->tenant, self::TOKEN, false);
+            static::fail('The hint should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            static::assertFalse($exception->redirectable);
+            static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
+            static::assertSame($cause, $exception->getPrevious() === null ? null : $exception->getPrevious()::class);
+        }
     }
 }
