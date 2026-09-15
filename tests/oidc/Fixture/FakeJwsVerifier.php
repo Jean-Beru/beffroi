@@ -21,18 +21,21 @@ use function sprintf;
 final class FakeJwsVerifier implements JwsVerifierInterface
 {
     /**
-     * @var array<string, array{Tenant, string}> compact JWS => tenant and payload
+     * @var array<string, array{Tenant, string, array<string, string>}> compact JWS => tenant, payload and the header members beyond "alg" and "kid"
      */
     private array $known = [];
 
-    public function knows(Tenant $tenant, string $compactJws, string $payload): void
+    /**
+     * @param array<string, string> $header the protected header members beyond "alg" and "kid", "typ" for one
+     */
+    public function knows(Tenant $tenant, string $compactJws, string $payload, array $header = []): void
     {
-        $this->known[$compactJws] = [$tenant, $payload];
+        $this->known[$compactJws] = [$tenant, $payload, $header];
     }
 
     public function verify(Tenant $tenant, string $compactJws): VerifiedJws
     {
-        [$issuer, $payload] = $this->known[$compactJws] ?? [null, null];
+        [$issuer, $payload, $header] = $this->known[$compactJws] ?? [null, null, []];
         if ($issuer === null || $payload === null || ! $issuer->equals($tenant)) {
             throw new InvalidJwsException(sprintf('The token "%s" does not verify.', $compactJws));
         }
@@ -45,7 +48,7 @@ final class FakeJwsVerifier implements JwsVerifierInterface
             'e' => 'AQAB',
         ], 'sealed', Fixtures::now());
 
-        return new VerifiedJws($key, [
+        return new VerifiedJws($key, $header + [
             'alg' => 'RS256',
             'kid' => 'fake-kid',
         ], $payload);

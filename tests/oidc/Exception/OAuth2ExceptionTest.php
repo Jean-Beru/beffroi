@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Exception;
 
+use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\AccessDeniedException;
 use Heidi\Oidc\Exception\ConsentRequiredException;
+use Heidi\Oidc\Exception\InsufficientScopeException;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidScopeException;
+use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Exception\LoginRequiredException;
+use Heidi\Oidc\Exception\MissingBearerTokenException;
 use Heidi\Oidc\Exception\RequestNotSupportedException;
 use Heidi\Oidc\Exception\RequestUriNotSupportedException;
 use Heidi\Oidc\Exception\UnauthorizedClientException;
@@ -138,5 +142,53 @@ final class OAuth2ExceptionTest extends TestCase
                 static::assertStringContainsString('RFC 6749', $exception->getMessage());
             }
         }
+    }
+
+    /**
+     * RFC 6750 §3.1: invalid_token is a 401 raised by a protected resource, never redirected; the cause
+     * stays for the logs.
+     */
+    #[Test]
+    public function anInvalidTokenIsA401(): void
+    {
+        $cause = new RuntimeException('What went wrong, for the logs.');
+        $exception = new InvalidTokenException('The access token expired.', $cause);
+
+        static::assertSame('invalid_token', $exception->error);
+        static::assertSame('The access token expired.', $exception->errorDescription);
+        static::assertSame(401, $exception->statusCode);
+        static::assertFalse($exception->redirectable);
+        static::assertSame($cause, $exception->getPrevious());
+        static::assertNull(new InvalidTokenException('The access token expired.')->getPrevious());
+    }
+
+    /**
+     * RFC 6750 §3.1: insufficient_scope is a 403 that names the scopes the resource required.
+     */
+    #[Test]
+    public function anInsufficientScopeIsA403NamingTheScopesRequired(): void
+    {
+        $exception = new InsufficientScopeException('The token does not open this resource.', [Scope::openid()]);
+
+        static::assertSame('insufficient_scope', $exception->error);
+        static::assertSame(403, $exception->statusCode);
+        static::assertFalse($exception->redirectable);
+        static::assertSame('openid', implode(' ', $exception->scopes));
+
+        $this->expectException(InvalidArgumentException::class);
+        new InsufficientScopeException('The token does not open this resource.', []);
+    }
+
+    /**
+     * RFC 6750 §3.1: a request without any token is not an OAuth 2.0 error; it is a 401 without code.
+     */
+    #[Test]
+    public function aMissingBearerTokenIsA401WithoutErrorCode(): void
+    {
+        $exception = new MissingBearerTokenException();
+
+        static::assertSame('The request carries no bearer token.', $exception->getMessage());
+        static::assertSame(0, $exception->getCode());
+        static::assertNull($exception->getPrevious());
     }
 }

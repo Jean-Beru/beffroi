@@ -12,6 +12,7 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -127,5 +128,28 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
         $this->expectException(InvalidClaimException::class);
         $this->jwts->verify($token->value, 'other', Fixtures::now());
+    }
+
+    /**
+     * Architecture §4.6: the names asked for by "claims.userinfo" (OIDC Core §5.5) travel in the token
+     * as "userinfo_claims", in the order given, so that UserInfo serves them from the token alone; those
+     * of "claims.id_token" do not, and nothing is written when nothing was asked, or when the request
+     * asked for the ID token only.
+     */
+    #[Test]
+    public function itCarriesTheNamesOfTheClaimsAskedForFromUserInfo(): void
+    {
+        $client = Clients::public($this->session->tenant);
+        $asked = ClaimsRequest::fromJson('{"userinfo":{"email":{"essential":true},"name":null},"id_token":{"picture":null}}');
+        $idTokenOnly = ClaimsRequest::fromJson('{"id_token":{"picture":null}}');
+
+        $with = $this->issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), claims: $asked)), Fixtures::now());
+        $without = $this->issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), claims: $idTokenOnly)), Fixtures::now());
+
+        $claims = $this->jwts->verify($with->value, 'spa', Fixtures::now())['claims'];
+        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'amr', 'scope', 'userinfo_claims', 'sid'], array_keys($claims));
+        static::assertSame(['email', 'name'], $claims['userinfo_claims']);
+        static::assertStringContainsString('"userinfo_claims":["email","name"]', Jwts::rawPayload($with->value));
+        static::assertArrayNotHasKey('userinfo_claims', $this->jwts->verify($without->value, 'spa', Fixtures::now())['claims']);
     }
 }
