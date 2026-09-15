@@ -66,6 +66,21 @@ final class ClientTest extends TestCase
     /**
      * OIDC RP-Initiated Logout 1.0 §2: the post-logout URI is a registered value, matched exactly too.
      */
+    /**
+     * A client identifier is unique within its tenant: two registrations of the same identifier in two
+     * tenants are two clients.
+     */
+    #[Test]
+    public function itEqualsTheSameRegistrationOfItsTenant(): void
+    {
+        $tenant = Fixtures::tenant();
+        $client = Clients::public($tenant);
+
+        static::assertTrue($client->equals(Clients::public($tenant)));
+        static::assertFalse($client->equals(Clients::public($tenant, 'another')));
+        static::assertFalse($client->equals(Clients::public(Fixtures::tenant('other', 'https://id.other.example'))));
+    }
+
     #[Test]
     public function itKnowsItsPostLogoutRedirectUris(): void
     {

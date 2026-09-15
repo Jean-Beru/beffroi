@@ -84,4 +84,20 @@ final class RedirectUriTest extends TestCase
         static::assertTrue($uri->equals(new RedirectUri('https://rp.example/cb')));
         static::assertFalse($uri->equals(new RedirectUri('https://rp.example/cb/')));
     }
+
+    /**
+     * RFC 6749 §3.1.2: the response parameters are added to the query the client registered, which is
+     * kept; RFC 3986 §2.1: every value is percent-encoded.
+     */
+    #[Test]
+    public function itAppendsResponseParametersToItsQuery(): void
+    {
+        static::assertSame('https://rp.example/cb?code=Splx%20lOBe&iss=https%3A%2F%2Fid.acme.example', new RedirectUri('https://rp.example/cb')->withParameters([
+            'code' => 'Splx lOBe',
+            'iss' => 'https://id.acme.example',
+        ]));
+        static::assertSame('https://rp.example/cb?app=1&state=a%26b', new RedirectUri('https://rp.example/cb?app=1')->withParameters([
+            'state' => 'a&b',
+        ]));
+    }
 }
