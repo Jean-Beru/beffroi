@@ -302,6 +302,35 @@ const DEV_ENV_LOCAL = 'apps/op/.env.local';
 
 const DEV_USERNAME = 'alice';
 
+/**
+ * The description of the development user, every claim of OIDC Core §5.1 the "profile", "phone" and
+ * "address" scopes stand for: the scope modules of the conformance plan check that UserInfo answers each
+ * scope with its claims, and a user without them ends those modules in a warning (issue #45).
+ */
+const DEV_USER_PROFILE = [
+    '--name', 'Alice Liddell',
+    '--given-name', 'Alice',
+    '--family-name', 'Liddell',
+    '--middle-name', 'Pleasance',
+    '--nickname', 'Ali',
+    '--preferred-username', 'alice',
+    '--profile-url', 'https://op.localhost/alice',
+    '--picture', 'https://op.localhost/alice.png',
+    '--website', 'https://op.localhost/',
+    '--gender', 'female',
+    '--birthdate', '1852-05-04',
+    '--zoneinfo', 'Europe/London',
+    '--locale', 'en-GB',
+    '--phone-number', '+44 1865 000000',
+    '--phone-number-verified',
+    '--address', "1 Wonderland Road\nOxford OX1 1AA\nUnited Kingdom",
+    '--street-address', '1 Wonderland Road',
+    '--locality', 'Oxford',
+    '--region', 'Oxfordshire',
+    '--postal-code', 'OX1 1AA',
+    '--country', 'United Kingdom',
+];
+
 const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -309,7 +338,7 @@ const DEV_CLIENT_SECRETS = [
     'OIDC_DEMO_SECRET',
 ];
 
-#[AsTask(description: 'Provision the development OP after "castor start": the local KMS key and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a password')]
+#[AsTask(description: 'Provision the development OP after "castor start": the local KMS key and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a full profile and a password')]
 function provision(): void
 {
     io()->title('Provisioning the development OP');
@@ -348,6 +377,9 @@ function provision(): void
         io()->write($creation->getOutput());
         exit($creation->getExitCode() ?? 1);
     }
+    // The whole profile of OIDC Core §5.1, so that every scope of the Basic OP plan gets its claims
+    // (tests/conformance/README.md); replayed on every run, the command clears what it does not say.
+    op_console(['heidi:user:profile', DEV_USERNAME, ...DEV_USER_PROFILE]);
     // Never on the command line: the command reads it on its standard input.
     op_console(
         ['heidi:user:set-password', DEV_USERNAME, '--password-stdin'],

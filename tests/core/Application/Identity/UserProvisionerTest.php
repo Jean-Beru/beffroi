@@ -10,7 +10,9 @@ use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
+use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidArgumentException;
@@ -152,6 +154,79 @@ final class UserProvisionerTest extends TestCase
 
         // Then
         static::assertSame('alice', $other->username);
+    }
+
+    /**
+     * OIDC Core §5.1: the attributes the "profile", "phone" and "address" scopes stand for, saved at once.
+     */
+    #[Test]
+    public function theProfileThePhoneNumberAndTheAddressAreSetAtOnce(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+        $this->clock->modify('+1 day');
+        $profile = new Profile('Alice Liddell', 'Alice', 'Liddell', locale: 'en-GB');
+        $address = new Address('1 Wonderland Road\nOxford', '1 Wonderland Road', 'Oxford', 'Oxfordshire', 'OX1 1AA', 'GB');
+
+        // When
+        $described = $this->provisioner->setProfile($user, $profile, '+44 1865 000000', true, $address);
+
+        // Then
+        static::assertSame($user, $described);
+        static::assertSame($user, $this->users->find($user->id));
+        static::assertSame($profile, $user->profile);
+        static::assertSame('+44 1865 000000', $user->phoneNumber);
+        static::assertTrue($user->phoneNumberVerified);
+        static::assertSame($address, $user->address);
+        static::assertEquals($this->clock->now(), $user->updatedAt);
+    }
+
+    /**
+     * A replacement, not a merge: a second description clears what it does not say.
+     */
+    #[Test]
+    public function aSecondProfileReplacesTheFirstInFull(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+        $this->provisioner->setProfile($user, new Profile('Alice Liddell'), '+44 1865 000000', true, new Address(locality: 'Oxford'));
+
+        // When
+        $this->provisioner->setProfile($user, new Profile(givenName: 'Alice'));
+
+        // Then
+        static::assertNull($user->profile->name);
+        static::assertSame('Alice', $user->profile->givenName);
+        static::assertNull($user->phoneNumber);
+        static::assertFalse($user->phoneNumberVerified);
+        static::assertNull($user->address);
+    }
+
+    #[Test]
+    public function anEmptyAddressIsNoAddress(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // When
+        $this->provisioner->setProfile($user, Profile::empty(), address: new Address());
+
+        // Then
+        static::assertNull($user->address);
+    }
+
+    #[Test]
+    public function anAbsentPhoneNumberCannotBeVerified(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An absent phone number cannot be verified.');
+
+        // When
+        $this->provisioner->setProfile($user, Profile::empty(), null, true);
     }
 
     #[Test]
