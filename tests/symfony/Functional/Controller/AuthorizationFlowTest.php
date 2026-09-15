@@ -9,39 +9,51 @@ use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Architecture §4.3 and §5.2, the acceptance criterion of the controllers: from /authorize to /userinfo
  * through the login and the consent pages, on the test kernel, with the module behind Doctrine. The
  * login itself is the one the firewall will do (#15): here the browser is handed a session the way the
- * firewall will hand it one.
+ * firewall will hand it one. The code flow of a public client that requires consent, one step per test
+ * (OIDC Core §3.1.2 to §3.1.3 and §5.3, RFC 7636, RFC 9207).
  */
 final class AuthorizationFlowTest extends BrowserTestCase
 {
     /**
-     * OIDC Core §3.1.2 to §3.1.3 and §5.3, RFC 7636, RFC 9207: the whole code flow of a public client
-     * that requires consent.
+     * Step 1: the authorization request parks an interaction and sends the browser to the login page.
      */
     #[Test]
-    public function theCodeFlowGoesFromAuthorizeToUserInfoThroughLoginAndConsent(): void
+    public function theAuthorizationRequestSendsTheBrowserToTheLoginPage(): void
     {
-        self::signingKey();
-        $user = self::user('alice');
-
-        // 1. the authorization request parks an interaction and sends the browser to the login page
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters());
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertInteractionHeaders($response);
-        $interaction = self::redirectedInteraction($response);
-        static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
+        static::assertSame('/login?interaction=' . self::redirectedInteraction($response), $response->headers->get('Location'));
+    }
 
-        // 2. the login page shows the form of the firewall, with its CSRF token
+    /**
+     * Step 2: the login page shows the form of the firewall, with its CSRF token.
+     */
+    #[Test]
+    public function theLoginPageShowsTheFormOfTheFirewall(): void
+    {
+        // Given
+        $interaction = $this->beginAuthorization();
+
+        // When
         $crawler = $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
         ]);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertInteractionHeaders($response);
@@ -49,85 +61,198 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertCount(1, $crawler->filter('input[name="_password"]'));
         static::assertNotSame('', $crawler->filter('input[name="_csrf_token"]')->attr('value'));
         static::assertSame('/login?interaction=' . $interaction, $crawler->filter('form')->attr('action'));
+    }
 
-        // 3. once the browser holds a session, the login page resumes the interaction: consent is required
-        $this->signIn($user);
+    /**
+     * Step 3: once the browser holds a session, the login page resumes the interaction: consent is required.
+     */
+    #[Test]
+    public function theLoginPageResumesTheInteractionOnceTheBrowserHoldsASession(): void
+    {
+        // Given
+        $interaction = $this->beginAuthorization();
+        $this->signIn(self::user('alice'));
+
+        // When
         $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
         ]);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/consent?interaction=' . $interaction, $response->headers->get('Location'));
+    }
 
-        // 4. the consent page names the client, the user and every scope of the request
+    /**
+     * Step 4: the consent page names the client, the user and every scope of the request.
+     */
+    #[Test]
+    public function theConsentPageNamesTheUserAndTheScopes(): void
+    {
+        // Given
+        $interaction = $this->beginAuthorization();
+        $this->signIn(self::user('alice'));
+
+        // When
         $crawler = $this->browser->request('GET', '/consent', [
             'interaction' => $interaction,
         ]);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertInteractionHeaders($response);
         static::assertStringContainsString('alice', self::string($response->getContent()));
         static::assertSame(['openid', 'profile'], $crawler->filter('li[data-scope]')->extract(['data-scope']));
         static::assertSame($interaction, $crawler->filter('input[name="interaction"]')->attr('value'));
+    }
 
-        // 5. the user allows: the code goes back to the client with "state" and "iss" (RFC 9207 §2)
+    /**
+     * Step 5: the user allows, the code goes back to the client with "state" and "iss" (RFC 9207 §2).
+     */
+    #[Test]
+    public function allowingSendsTheCodeBackToTheClientWithStateAndIssuer(): void
+    {
+        // Given
+        $interaction = $this->beginAuthorization();
+        $this->signIn(self::user('alice'));
+        $crawler = $this->consentPage($interaction);
+
+        // When
         $this->browser->submit($crawler->selectButton('Allow')->form());
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertInteractionHeaders($response);
-        $location = self::string($response->headers->get('Location'));
-        static::assertStringStartsWith('http://127.0.0.1/callback?code=', $location);
+        static::assertStringStartsWith('http://127.0.0.1/callback?code=', self::string($response->headers->get('Location')));
         $query = self::redirectedQuery($response);
         static::assertSame('state-of-the-client', $query['state']);
         static::assertSame('https://op.test', $query['iss']);
-        $code = $query['code'];
+    }
 
-        // 6. the code is exchanged (RFC 6749 §4.1.3, RFC 7636 §4.5)
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'http://127.0.0.1/callback',
-            'client_id' => 'native-app',
-            'code_verifier' => self::CODE_VERIFIER,
-        ]);
+    /**
+     * Step 6: the code is exchanged (RFC 6749 §4.1.3, RFC 7636 §4.5).
+     */
+    #[Test]
+    public function theCodeIsExchangedForTokens(): void
+    {
+        // Given
+        self::signingKey();
+        $code = $this->codeAllowedByAlice();
+
+        // When
+        $this->exchange($code);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('application/json', $response->headers->get('Content-Type'));
-        static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
-        static::assertSame('no-cache', $response->headers->get('Pragma'));
         $tokens = self::json($response);
         static::assertSame('Bearer', $tokens['token_type']);
         static::assertSame('openid profile', $tokens['scope']);
         static::assertIsString($tokens['id_token']);
-        static::assertArrayNotHasKey('refresh_token', $tokens, 'A public client without offline_access gets no refresh token (architecture §4.5).');
-        $accessToken = self::string($tokens['access_token']);
+        static::assertIsString($tokens['access_token']);
+    }
 
-        // 7. the access token opens UserInfo (OIDC Core §5.3)
+    /**
+     * RFC 6749 §5.1: the token response is never cached.
+     */
+    #[Test]
+    public function theTokenResponseIsNotCached(): void
+    {
+        // Given
+        self::signingKey();
+        $code = $this->codeAllowedByAlice();
+
+        // When
+        $this->exchange($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
+        static::assertSame('no-cache', $response->headers->get('Pragma'));
+    }
+
+    /**
+     * Architecture §4.5: a public client without offline_access gets no refresh token.
+     */
+    #[Test]
+    public function aPublicClientWithoutOfflineAccessGetsNoRefreshToken(): void
+    {
+        // Given
+        self::signingKey();
+        $code = $this->codeAllowedByAlice();
+
+        // When
+        $this->exchange($code);
+
+        // Then
+        static::assertArrayNotHasKey('refresh_token', self::json($this->browser->getResponse()));
+    }
+
+    /**
+     * Step 7: the access token opens UserInfo (OIDC Core §5.3).
+     */
+    #[Test]
+    public function theAccessTokenOpensUserInfo(): void
+    {
+        // Given
+        self::signingKey();
+        $this->exchange($this->codeAllowedByAlice());
+        $accessToken = self::string(self::json($this->browser->getResponse())['access_token']);
+
+        // When
         $this->browser->request('GET', '/userinfo', server: [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
         ]);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('application/json', $response->headers->get('Content-Type'));
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
         static::assertSame('alice-subject', self::json($response)['sub']);
+    }
 
-        // 8. a second presentation of the code is a replay (RFC 6749 §4.1.2)
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'http://127.0.0.1/callback',
-            'client_id' => 'native-app',
-            'code_verifier' => self::CODE_VERIFIER,
-        ]);
+    /**
+     * Step 8: a second presentation of the code is a replay (RFC 6749 §4.1.2).
+     */
+    #[Test]
+    public function aSecondPresentationOfTheCodeIsRefused(): void
+    {
+        // Given
+        self::signingKey();
+        $code = $this->codeAllowedByAlice();
+        $this->exchange($code);
+
+        // When
+        $this->exchange($code);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertSame('invalid_grant', self::json($response)['error']);
+    }
 
-        // 9. the interaction is over: its pages are not reached again
+    /**
+     * Step 9: the interaction is over, its pages are not reached again.
+     */
+    #[Test]
+    public function theInteractionIsOverOnceTheCodeWasIssued(): void
+    {
+        // Given
+        $interaction = $this->beginAuthorization();
+        $this->signIn(self::user('alice'));
+        $this->browser->submit($this->consentPage($interaction)->selectButton('Allow')->form());
+
+        // When
         $this->browser->request('GET', '/consent', [
             'interaction' => $interaction,
         ]);
+
+        // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
         static::assertStringContainsString(AuthorizationResponder::UNKNOWN_INTERACTION, self::string($this->browser->getResponse()->getContent()));
     }
@@ -139,14 +264,16 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function aSignedInBrowserAndAFirstPartyClientGetTheCodeAtOnce(): void
     {
+        // Given
         $this->signIn(self::user('alice'));
 
+        // When
         $this->browser->request('POST', '/authorize', self::authorizationParameters('oidc-demo'));
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
-        $location = self::string($response->headers->get('Location'));
-        static::assertStringStartsWith('https://demo.test/login/check?code=', $location);
+        static::assertStringStartsWith('https://demo.test/login/check?code=', self::string($response->headers->get('Location')));
         static::assertSame('https://op.test', self::redirectedQuery($response)['iss']);
     }
 
@@ -156,15 +283,14 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function aDenialGoesBackToTheClient(): void
     {
+        // Given
         $this->signIn(self::user('alice'));
-        $this->browser->request('GET', '/authorize', self::authorizationParameters());
-        $interaction = self::redirectedInteraction($this->browser->getResponse());
-        $crawler = $this->browser->request('GET', '/consent', [
-            'interaction' => $interaction,
-        ]);
+        $crawler = $this->consentPage($this->beginAuthorization());
 
+        // When
         $this->browser->submit($crawler->selectButton('Deny')->form());
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame([
@@ -182,8 +308,10 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function anUnknownClientIsShownToTheUser(): void
     {
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('unknown-client'));
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
@@ -197,15 +325,17 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function aMissingCodeChallengeGoesBackToTheClient(): void
     {
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
             'code_challenge' => null,
             'code_challenge_method' => null,
         ]));
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
-        $query = self::redirectedQuery($response);
         static::assertStringStartsWith('http://127.0.0.1/callback?', self::string($response->headers->get('Location')));
+        $query = self::redirectedQuery($response);
         static::assertSame('invalid_request', $query['error']);
         static::assertSame('state-of-the-client', $query['state']);
         static::assertSame('https://op.test', $query['iss']);
@@ -217,10 +347,12 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function promptNoneWithoutASessionIsLoginRequired(): void
     {
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
             'prompt' => 'none',
         ]));
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('login_required', self::redirectedQuery($response)['error']);
@@ -233,14 +365,16 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function anotherBrowserCannotResumeAnInteraction(): void
     {
-        $this->browser->request('GET', '/authorize', self::authorizationParameters());
-        $interaction = self::redirectedInteraction($this->browser->getResponse());
+        // Given
+        $interaction = $this->beginAuthorization();
         $other = self::browser();
 
+        // When
         $other->request('GET', '/login', [
             'interaction' => $interaction,
         ]);
 
+        // Then
         $response = $other->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertStringContainsString('data-error="' . AuthorizationResponder::UNKNOWN_INTERACTION . '"', self::string($response->getContent()));
@@ -248,17 +382,29 @@ final class AuthorizationFlowTest extends BrowserTestCase
 
     /**
      * A login page reached without an interaction, or with one that does not exist.
+     *
+     * @param array<string, string> $parameters
      */
     #[Test]
-    public function theLoginPageNeedsAnInteraction(): void
+    #[DataProvider('provideLoginPagesWithoutAnInteraction')]
+    public function theLoginPageNeedsAnInteraction(array $parameters): void
     {
-        $this->browser->request('GET', '/login');
-        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
+        // When
+        $this->browser->request('GET', '/login', $parameters);
 
-        $this->browser->request('GET', '/login', [
-            'interaction' => 'does-not-exist',
-        ]);
+        // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string>}>
+     */
+    public static function provideLoginPagesWithoutAnInteraction(): iterable
+    {
+        yield 'no interaction' => [[]];
+        yield 'an interaction that does not exist' => [[
+            'interaction' => 'does-not-exist',
+        ]];
     }
 
     /**
@@ -268,12 +414,15 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function anExpiredInteractionIsShownToTheUser(): void
     {
+        // Given
         $interaction = $this->beginInteraction(new DateTimeImmutable('-20 minutes'), new DateTimeImmutable('-10 minutes'));
 
+        // When
         $this->browser->request('GET', '/login', [
             'interaction' => $interaction->id,
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
@@ -287,6 +436,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function promptLoginShowsTheLoginPageToASignedInUser(): void
     {
+        // Given
         $this->signIn(self::user('alice'), new DateTimeImmutable('-1 hour'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
             'prompt' => 'login',
@@ -295,10 +445,12 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         $interaction = self::redirectedInteraction($response);
 
+        // When
         $crawler = $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
         ]);
 
+        // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertSame('reauthentication_requested', $crawler->filter('[data-requirement]')->attr('data-requirement'));
     }
@@ -309,19 +461,38 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function theConsentFormRefusesAForeignSubmission(): void
     {
+        // Given
         $this->signIn(self::user('alice'));
-        $this->browser->request('GET', '/authorize', self::authorizationParameters());
-        $interaction = self::redirectedInteraction($this->browser->getResponse());
+        $interaction = $this->beginAuthorization();
 
+        // When
         $this->browser->request('POST', '/consent', [
             'interaction' => $interaction,
             'answer' => 'allow',
             '_token' => 'forged',
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FORBIDDEN, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
+    }
+
+    #[Test]
+    public function aForeignSubmissionOfTheConsentFormCompletesNothing(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $interaction = $this->beginAuthorization();
+
+        // When
+        $this->browser->request('POST', '/consent', [
+            'interaction' => $interaction,
+            'answer' => 'allow',
+            '_token' => 'forged',
+        ]);
+
+        // Then
         $pending = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction) ?? static::fail('The interaction is gone.');
         static::assertFalse($pending->isCompleted());
     }
@@ -333,23 +504,63 @@ final class AuthorizationFlowTest extends BrowserTestCase
     #[Test]
     public function aBrowserWhoseSessionEndedGoesBackToTheLogin(): void
     {
+        // Given
         $session = $this->signIn(self::user('alice'));
-        $this->browser->request('GET', '/authorize', self::authorizationParameters());
-        $interaction = self::redirectedInteraction($this->browser->getResponse());
-        $crawler = $this->browser->request('GET', '/consent', [
-            'interaction' => $interaction,
-        ]);
-        $form = $crawler->selectButton('Allow')
+        $interaction = $this->beginAuthorization();
+        $form = $this->consentPage($interaction)
+            ->selectButton('Allow')
             ->form();
         $sessions = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class);
         $stored = $sessions->find($session->id) ?? static::fail('The session is gone.');
         $stored->end(SessionEnd::User, new DateTimeImmutable());
         $sessions->save($stored);
 
+        // When
         $this->browser->submit($form);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
+    }
+
+    /**
+     * The authorization request of the native client, parked: its interaction identifier.
+     */
+    private function beginAuthorization(): string
+    {
+        $this->browser->request('GET', '/authorize', self::authorizationParameters());
+
+        return self::redirectedInteraction($this->browser->getResponse());
+    }
+
+    private function consentPage(string $interaction): Crawler
+    {
+        return $this->browser->request('GET', '/consent', [
+            'interaction' => $interaction,
+        ]);
+    }
+
+    /**
+     * The code the native client gets once alice signed in and allowed.
+     */
+    private function codeAllowedByAlice(): string
+    {
+        $interaction = $this->beginAuthorization();
+        $this->signIn(self::user('alice'));
+        $this->browser->submit($this->consentPage($interaction)->selectButton('Allow')->form());
+
+        return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
+    }
+
+    private function exchange(string $code): void
+    {
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => 'http://127.0.0.1/callback',
+            'client_id' => 'native-app',
+            'code_verifier' => self::CODE_VERIFIER,
+        ]);
     }
 }

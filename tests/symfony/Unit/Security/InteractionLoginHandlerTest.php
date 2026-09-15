@@ -42,12 +42,30 @@ final class InteractionLoginHandlerTest extends TestCase
     #[Test]
     public function aSuccessGoesBackToTheLoginPageOfTheInteraction(): void
     {
+        // Given
         $request = Request::create('/login?interaction=abc', 'POST');
 
+        // When
         $response = $this->handler->onAuthenticationSuccess($request, new NullToken());
 
+        // Then
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('/login?interaction=abc', $response->headers->get('Location'));
+    }
+
+    /**
+     * Architecture §5.4: every response of the interaction plane carries the headers of the pages.
+     */
+    #[Test]
+    public function theRedirectCarriesTheHeadersOfTheInteractionPages(): void
+    {
+        // Given
+        $request = Request::create('/login?interaction=abc', 'POST');
+
+        // When
+        $response = $this->handler->onAuthenticationSuccess($request, new NullToken());
+
+        // Then
         static::assertSame('DENY', $response->headers->get('X-Frame-Options'));
         static::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
@@ -59,6 +77,7 @@ final class InteractionLoginHandlerTest extends TestCase
     #[Test]
     public function theInteractionIsReadFromTheQueryOnly(): void
     {
+        // Given
         $request = Request::create('/login', 'POST', [
             'interaction' => 'from-the-body',
             '_target_path' => '/elsewhere',
@@ -66,20 +85,25 @@ final class InteractionLoginHandlerTest extends TestCase
             'HTTP_REFERER' => 'https://op.test/login?interaction=from-the-referer',
         ]);
 
+        // When
         $response = $this->handler->onAuthenticationSuccess($request, new NullToken());
 
+        // Then
         static::assertSame('/login', $response->headers->get('Location'));
     }
 
     #[Test]
     public function aFailureIsKeptForThePageAndGoesBackToIt(): void
     {
+        // Given
         $request = Request::create('/login?interaction=abc', 'POST');
         $request->setSession(new Session(new MockArraySessionStorage()));
         $exception = new BadCredentialsException('Bad credentials.');
 
+        // When
         $response = $this->handler->onAuthenticationFailure($request, $exception);
 
+        // Then
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('/login?interaction=abc', $response->headers->get('Location'));
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));

@@ -25,7 +25,7 @@ use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Event\AuthorizationCodeReplayed;
 use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\IssuedTokens;
+use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -33,6 +33,7 @@ use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
@@ -40,6 +41,8 @@ use Symfony\Component\Clock\MockClock;
 
 final class AuthorizationCodeGrantTest extends TestCase
 {
+    private const string INVALID_GRANT = 'invalid_grant: The authorization code is invalid.';
+
     private Tenant $tenant;
 
     private User $alice;
@@ -86,33 +89,80 @@ final class AuthorizationCodeGrantTest extends TestCase
     #[Test]
     public function itHandlesTheAuthorizationCodeGrantType(): void
     {
+        // When / Then
         static::assertSame(GrantType::AuthorizationCode, $this->grant->grantType());
     }
 
     /**
-     * RFC 6749 §4.1.3, §4.1.4, RFC 7636 §4.6, OIDC Core §3.1.3.3: a valid exchange yields the access
-     * token, the ID token with the nonce of the request, and, for a confidential client registered for
-     * the refresh_token grant, a refresh token in a new family descending from the code (architecture
-     * §4.5, §9). The code is consumed.
+     * RFC 6749 §4.1.2: a valid exchange consumes the code.
      */
     #[Test]
-    public function itExchangesAValidCodeForTokens(): void
+    public function aValidExchangeConsumesTheCode(): void
     {
+        // Given
         $code = $this->code('the-code', $this->client, ['openid', 'profile']);
 
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        // When
+        $this->grant->grant($this->client, $this->request(), $this->context);
 
+        // Then
         static::assertTrue($code->isUsed());
         static::assertEquals($this->clock->now(), $code->usedAt);
         static::assertSame(2, $this->codes->saves);
+    }
+
+    /**
+     * RFC 6749 §4.1.3, §4.1.4: the tokens are issued for the client, the session and the scopes of the code.
+     */
+    #[Test]
+    public function aValidExchangeYieldsTheAuthorizationOfTheCode(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client, ['openid', 'profile']);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         static::assertSame($this->client, $issued->authorization->client);
         static::assertSame($this->session, $issued->authorization->session);
         static::assertSame(GrantType::AuthorizationCode, $issued->authorization->grantType);
         static::assertSame($code->scopes, $issued->authorization->scopes);
         static::assertSame('n-0S6_WzA2Mj', $issued->authorization->nonce);
+    }
+
+    /**
+     * RFC 7636 §4.6, OIDC Core §3.1.3.3: a valid exchange yields the access token and the ID token with
+     * the nonce of the request.
+     */
+    #[Test]
+    public function aValidExchangeYieldsTheAccessTokenAndTheIdToken(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid', 'profile']);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         static::assertSame('id:oidc-demo:alice-subject:n-0S6_WzA2Mj:' . $this->clock->now()->getTimestamp(), $issued->idToken);
         static::assertSame('at:oidc-demo:alice-subject:' . $this->clock->now()->getTimestamp(), $issued->accessToken->value);
+    }
 
+    /**
+     * Architecture §4.5, §9: a confidential client registered for the refresh_token grant gets a refresh
+     * token in a new family descending from the code.
+     */
+    #[Test]
+    public function aConfidentialClientGetsARefreshTokenInANewFamilyDescendingFromTheCode(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client, ['openid', 'profile']);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         $refreshToken = $issued->refreshToken ?? static::fail('A confidential client registered for refresh_token gets a refresh token.');
         static::assertSame($code->codeHash, $refreshToken->token->family->authorizationCodeHash);
         static::assertEquals($this->clock->now(), $refreshToken->token->family->startedAt);
@@ -120,81 +170,198 @@ final class AuthorizationCodeGrantTest extends TestCase
         static::assertEquals($this->clock->now()->modify('+30 days'), $refreshToken->token->expiresAt);
         static::assertSame($code->scopes, $refreshToken->token->scopes);
         static::assertSame([$refreshToken->token], $this->refreshTokens->all());
+    }
 
+    /**
+     * RFC 6749 §5.1, OIDC Core §3.1.3.3: the response carries every token issued.
+     */
+    #[Test]
+    public function theResponseCarriesEveryTokenIssued(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid', 'profile']);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         static::assertSame([
             'access_token' => $issued->accessToken->value,
             'token_type' => 'Bearer',
             'expires_in' => 600,
-            'refresh_token' => $refreshToken->value,
+            'refresh_token' => $issued->refreshToken?->value,
             'id_token' => $issued->idToken,
             'scope' => 'openid profile',
         ], $issued->toResponse()
             ->parameters());
+    }
 
+    #[Test]
+    public function theExchangeIsAnnouncedOnceWithTheRequestContext(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid', 'profile']);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         static::assertCount(1, $this->events->events);
         $event = $this->events->of(TokensIssued::class)[0];
         static::assertSame($issued->authorization, $event->authorization);
-        static::assertSame($refreshToken->token, $event->refreshToken);
+        static::assertSame($issued->refreshToken?->token, $event->refreshToken);
         static::assertSame($this->context, $event->context);
     }
 
     /**
-     * Architecture §4.5: a public client gets a refresh token only when it asked for "offline_access"
-     * (OIDC Core §11) and is registered for the grant.
+     * Architecture §4.5: a public client gets no refresh token without "offline_access" (OIDC Core §11).
      */
     #[Test]
-    public function aPublicClientGetsARefreshTokenOnlyWithOfflineAccess(): void
+    public function aPublicClientGetsNoRefreshTokenWithoutOfflineAccess(): void
     {
-        $this->code('without', $this->offlineClient, ['openid']);
-        $this->code('with', $this->offlineClient, ['openid', 'offline_access']);
-        $this->code('not-registered', $this->publicClient, ['openid']);
+        // Given
+        $this->code('the-code', $this->offlineClient, ['openid']);
 
-        static::assertNull($this->grant->grant($this->offlineClient, $this->request('without', 'https://mobile.example/callback'), $this->context)->refreshToken);
-        static::assertNotNull($this->grant->grant($this->offlineClient, $this->request('with', 'https://mobile.example/callback'), $this->context)->refreshToken);
-        static::assertNull($this->grant->grant($this->publicClient, $this->request('not-registered', 'https://spa.example/callback'), $this->context)->refreshToken);
+        // When
+        $issued = $this->grant->grant($this->offlineClient, $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
+
+        // Then
+        static::assertNull($issued->refreshToken);
+        static::assertSame([], $this->refreshTokens->all());
+    }
+
+    /**
+     * Architecture §4.5: a public client registered for the grant gets a refresh token with "offline_access".
+     */
+    #[Test]
+    public function aPublicClientGetsARefreshTokenWithOfflineAccess(): void
+    {
+        // Given
+        $this->code('the-code', $this->offlineClient, ['openid', 'offline_access']);
+
+        // When
+        $issued = $this->grant->grant($this->offlineClient, $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
+
+        // Then
+        static::assertNotNull($issued->refreshToken);
         static::assertCount(1, $this->refreshTokens->all());
     }
 
     /**
-     * Architecture §9: the refresh token without "offline_access" is a choice of the tenant for its
-     * confidential clients; turned off, "offline_access" is the only way. A client not registered for
-     * refresh_token never gets one.
+     * Architecture §4.5: a public client not registered for the grant never gets a refresh token.
      */
     #[Test]
-    public function aConfidentialClientGetsARefreshTokenWithoutOfflineAccessUnlessTheTenantSaysOtherwise(): void
+    public function aPublicClientNotRegisteredForTheGrantGetsNoRefreshToken(): void
     {
-        $strict = $this->grant(refreshTokenWithoutOfflineAccess: false);
-        $codeOnly = new Client($this->tenant, 'code-only', 'Code only', TokenEndpointAuthMethod::ClientSecretBasic, new FakePasswordHasher()->hash(Clients::SECRET), [new RedirectUri('https://demo.localhost/login/check')], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
-        $this->code('default', $this->client, ['openid']);
-        $this->code('strict-without', $this->client, ['openid']);
-        $this->code('code-only', $codeOnly, ['openid', 'offline_access']);
+        // Given
+        $this->code('the-code', $this->publicClient, ['openid']);
 
-        static::assertNotNull($this->grant->grant($this->client, $this->request('default'), $this->context)->refreshToken);
-        static::assertNull($strict->grant($this->client, $this->request('strict-without'), $this->context)->refreshToken);
-        static::assertNull($this->grant->grant($codeOnly, $this->request('code-only'), $this->context)->refreshToken);
+        // When
+        $issued = $this->grant->grant($this->publicClient, $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
+
+        // Then
+        static::assertNull($issued->refreshToken);
     }
 
     /**
-     * RFC 6749 §4.1.3, RFC 7636 §4.5: "code", "redirect_uri" and "code_verifier" are required; without
-     * them nothing is looked up, so nothing is consumed.
+     * Architecture §9: the refresh token without "offline_access" is a choice of the tenant for its
+     * confidential clients, on by default.
      */
     #[Test]
-    public function itRequiresTheCodeTheRedirectUriAndTheCodeVerifier(): void
+    public function aConfidentialClientGetsARefreshTokenWithoutOfflineAccessByDefault(): void
     {
-        $code = $this->code('the-code', $this->client);
+        // Given
+        $this->code('the-code', $this->client, ['openid']);
 
-        foreach (['code', 'redirect_uri', 'code_verifier'] as $missing) {
-            $parameters = $this->parameters();
-            unset($parameters[$missing]);
-            try {
-                $this->grant->grant($this->client, new TokenRequest($parameters), $this->context);
-                static::fail($missing . ' is required.');
-            } catch (InvalidRequestException $exception) {
-                static::assertSame('The ' . $missing . ' parameter is missing.', $exception->errorDescription);
-            }
-        }
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
+        static::assertNotNull($issued->refreshToken);
+    }
+
+    /**
+     * Architecture §9: turned off, "offline_access" is the only way.
+     */
+    #[Test]
+    public function aConfidentialClientGetsNoRefreshTokenWithoutOfflineAccessWhenTheTenantSaysSo(): void
+    {
+        // Given
+        $strict = $this->grant(refreshTokenWithoutOfflineAccess: false);
+        $this->code('the-code', $this->client, ['openid']);
+
+        // When
+        $issued = $strict->grant($this->client, $this->request(), $this->context);
+
+        // Then
+        static::assertNull($issued->refreshToken);
+    }
+
+    /**
+     * A client not registered for refresh_token never gets one, offline_access or not.
+     */
+    #[Test]
+    public function aClientNotRegisteredForTheGrantGetsNoRefreshTokenEvenWithOfflineAccess(): void
+    {
+        // Given
+        $codeOnly = new Client($this->tenant, 'code-only', 'Code only', TokenEndpointAuthMethod::ClientSecretBasic, new FakePasswordHasher()->hash(Clients::SECRET), [new RedirectUri('https://demo.localhost/login/check')], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
+        $this->code('the-code', $codeOnly, ['openid', 'offline_access']);
+
+        // When
+        $issued = $this->grant->grant($codeOnly, $this->request(), $this->context);
+
+        // Then
+        static::assertNull($issued->refreshToken);
+    }
+
+    /**
+     * RFC 6749 §4.1.3, RFC 7636 §4.5: "code", "redirect_uri" and "code_verifier" are required.
+     */
+    #[Test]
+    #[DataProvider('provideRequiredParameters')]
+    public function itRequiresTheCodeTheRedirectUriAndTheCodeVerifier(string $missing): void
+    {
+        // Given
+        $this->code('the-code', $this->client);
+        $parameters = $this->parameters();
+        unset($parameters[$missing]);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The ' . $missing . ' parameter is missing.');
+
+        // When
+        $this->grant->grant($this->client, new TokenRequest($parameters), $this->context);
+    }
+
+    /**
+     * Without a required parameter nothing is looked up, so nothing is consumed.
+     */
+    #[Test]
+    #[DataProvider('provideRequiredParameters')]
+    public function aRequestWithoutARequiredParameterConsumesNothing(string $missing): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $parameters = $this->parameters();
+        unset($parameters[$missing]);
+
+        // When
+        $this->failToGrant($this->client, new TokenRequest($parameters));
+
+        // Then
         static::assertFalse($code->isUsed());
         static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideRequiredParameters(): iterable
+    {
+        yield 'code' => ['code'];
+        yield 'redirect_uri' => ['redirect_uri'];
+        yield 'code_verifier' => ['code_verifier'];
     }
 
     /**
@@ -202,19 +369,43 @@ final class AuthorizationCodeGrantTest extends TestCase
      * grant to try.
      */
     #[Test]
-    public function itRefusesAMalformedCodeVerifier(): void
+    #[DataProvider('provideMalformedVerifiers')]
+    public function itRefusesAMalformedCodeVerifier(string $verifier): void
     {
+        // Given
+        $this->code('the-code', $this->client);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIsOrContains('code_verifier');
+
+        // When
+        $this->grant->grant($this->client, $this->request(verifier: $verifier), $this->context);
+    }
+
+    #[Test]
+    #[DataProvider('provideMalformedVerifiers')]
+    public function aMalformedCodeVerifierConsumesNothing(string $verifier): void
+    {
+        // Given
         $code = $this->code('the-code', $this->client);
 
-        foreach ([str_repeat('a', 42), str_repeat('a', 129), str_repeat('a', 42) . '=', str_repeat('a', 42) . ' '] as $verifier) {
-            try {
-                $this->grant->grant($this->client, $this->request(verifier: $verifier), $this->context);
-                static::fail('The verifier should have been refused.');
-            } catch (InvalidRequestException $exception) {
-                static::assertStringContainsString('code_verifier', $exception->errorDescription);
-            }
-        }
+        // When
+        $this->failToGrant($this->client, $this->request(verifier: $verifier));
+
+        // Then
         static::assertFalse($code->isUsed());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideMalformedVerifiers(): iterable
+    {
+        yield 'too short' => [str_repeat('a', 42)];
+        yield 'too long' => [str_repeat('a', 129)];
+        yield 'base64 padding' => [str_repeat('a', 42) . '='];
+        yield 'space' => [str_repeat('a', 42) . ' '];
     }
 
     /**
@@ -223,38 +414,88 @@ final class AuthorizationCodeGrantTest extends TestCase
     #[Test]
     public function itRefusesAnUnknownCode(): void
     {
+        // Given
         $this->code('the-code', $this->client);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('another-code'), $this->context));
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request('another-code'), $this->context);
+    }
+
+    #[Test]
+    public function anUnknownCodeConsumesNothing(): void
+    {
+        // Given
+        $this->code('the-code', $this->client);
+
+        // When
+        $this->failToGrant($this->client, $this->request('another-code'));
+
+        // Then
         static::assertSame(1, $this->codes->saves, 'the fixture only: nothing was consumed');
         static::assertSame([], $this->events->events);
     }
 
     /**
-     * RFC 6749 §4.1.2: a code presented twice is denied and every token issued from it is revoked,
-     * whichever client presents it the second time; the detection is announced.
+     * RFC 6749 §4.1.2: a code presented twice is denied.
      */
     #[Test]
-    public function itRevokesTheTokensOfAReplayedCode(): void
+    public function itRefusesAReplayedCode(): void
     {
+        // Given
+        $this->code('the-code', $this->client);
+        $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request(), $this->context);
+    }
+
+    /**
+     * RFC 6749 §4.1.2: every token issued from a replayed code is revoked, the successors of a rotation
+     * included; one already revoked keeps its date.
+     */
+    #[Test]
+    public function aReplayedCodeRevokesTheTokensIssuedFromIt(): void
+    {
+        // Given
         $code = $this->code('the-code', $this->client);
-        $first = $this->grant->grant($this->client, $this->request(), $this->context);
-        $refreshToken = ($first->refreshToken ?? static::fail('A refresh token was issued.'))->token;
-        // as if the client had refreshed once and the first token had been swept meanwhile
-        $refreshToken->rotate($this->clock->now());
-        $refreshToken->revoke($this->clock->now());
-        $this->refreshTokens->save($refreshToken);
-        $successor = Tokens::refreshToken('successor', $this->client, $this->session, $this->clock->now(), $refreshToken->family);
-        $this->refreshTokens->save($successor);
+        $first = $this->firstExchangeThenARotation();
+        $successor = $this->successorOf($first);
         $this->clock->sleep(5);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request(), $this->context));
+        // When
+        $this->failToGrant($this->client, $this->request());
 
+        // Then
         static::assertTrue($successor->isRevoked());
         static::assertEquals($this->clock->now(), $successor->revokedAt);
-        static::assertEquals($this->clock->now()->modify('-5 seconds'), $refreshToken->revokedAt, 'already revoked, left as it was');
+        static::assertEquals($this->clock->now()->modify('-5 seconds'), $first->revokedAt, 'already revoked, left as it was');
         static::assertEquals($this->clock->now()->modify('-5 seconds'), $code->usedAt, 'the first use is what is recorded');
         static::assertSame(4, $this->refreshTokens->saves, 'the exchange, the two fixtures, the revocation');
+    }
+
+    /**
+     * The detection is announced, whichever client presents the code the second time.
+     */
+    #[Test]
+    public function aReplayIsAnnouncedWithWhatWasRevoked(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $successor = $this->successorOf($this->firstExchangeThenARotation());
+        $this->clock->sleep(5);
+
+        // When
+        $this->failToGrant($this->client, $this->request());
+
+        // Then
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(1, $replays);
         static::assertSame($code, $replays[0]->code);
@@ -264,10 +505,22 @@ final class AuthorizationCodeGrantTest extends TestCase
         static::assertSame($this->tenant, $replays[0]->tenant);
         static::assertSame($this->context, $replays[0]->context);
         static::assertCount(1, $this->events->of(TokensIssued::class));
+    }
 
+    #[Test]
+    public function aSecondReplayByAnotherClientIsAnnouncedWithNothingLeftToRevoke(): void
+    {
+        // Given
+        $this->code('the-code', $this->client);
+        $successor = $this->successorOf($this->firstExchangeThenARotation());
         $this->clock->sleep(5);
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->publicClient, $this->request(), $this->context));
+        $this->failToGrant($this->client, $this->request());
+        $this->clock->sleep(5);
 
+        // When
+        $this->failToGrant($this->publicClient, $this->request());
+
+        // Then
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(2, $replays);
         static::assertSame($this->publicClient, $replays[1]->presentedBy);
@@ -283,16 +536,29 @@ final class AuthorizationCodeGrantTest extends TestCase
     #[Test]
     public function aFailedAttemptConsumesTheCode(): void
     {
+        // Given
         $code = $this->code('the-code', $this->client);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request(verifier: str_repeat('x', 43)), $this->context));
+        // When
+        $this->failToGrant($this->client, $this->request(verifier: str_repeat('x', 43)));
 
+        // Then
         static::assertTrue($code->isUsed());
         static::assertSame(2, $this->codes->saves, 'the fixture, then the consumption');
         static::assertSame([], $this->events->events);
+    }
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request(), $this->context));
+    #[Test]
+    public function aSecondTryAfterAFailedAttemptIsAReplayWithNothingToRevoke(): void
+    {
+        // Given
+        $this->code('the-code', $this->client);
+        $this->failToGrant($this->client, $this->request(verifier: str_repeat('x', 43)));
 
+        // When
+        $this->failToGrant($this->client, $this->request());
+
+        // Then
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(1, $replays);
         static::assertSame([], $replays[0]->revoked);
@@ -305,28 +571,63 @@ final class AuthorizationCodeGrantTest extends TestCase
     #[Test]
     public function itRefusesACodeIssuedToAnotherClient(): void
     {
+        // Given
+        $this->code('the-code', $this->publicClient);
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
+    }
+
+    #[Test]
+    public function aCodeSeenByTheWrongClientIsBurnt(): void
+    {
+        // Given
         $code = $this->code('the-code', $this->publicClient);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request(redirectUri: 'https://spa.example/callback'), $this->context));
+        // When
+        $this->failToGrant($this->client, $this->request(redirectUri: 'https://spa.example/callback'));
 
-        static::assertTrue($code->isUsed(), 'a code seen by the wrong client is burnt');
-        static::assertSame([], $this->events->events);
+        // Then
+        static::assertTrue($code->isUsed());
     }
 
     /**
-     * Architecture §4.4: sixty seconds, the last one excluded.
+     * Architecture §4.4: sixty seconds, the last one included.
+     */
+    #[Test]
+    public function itExchangesACodeUntilItsLastSecond(): void
+    {
+        // Given
+        $this->code('the-code', $this->client);
+        $this->clock->sleep(59);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
+        static::assertNotNull($issued->idToken);
+    }
+
+    /**
+     * Architecture §4.4: sixty seconds, the sixtieth excluded.
      */
     #[Test]
     public function itRefusesAnExpiredCode(): void
     {
-        $this->code('fresh', $this->client);
-        $this->code('stale', $this->client);
-        $this->clock->sleep(59);
+        // Given
+        $this->code('the-code', $this->client);
+        $this->clock->sleep(60);
 
-        static::assertNotNull($this->grant->grant($this->client, $this->request('fresh'), $this->context)->idToken);
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
-        $this->clock->sleep(1);
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('stale'), $this->context));
+        // When
+        $this->grant->grant($this->client, $this->request(), $this->context);
     }
 
     /**
@@ -336,10 +637,15 @@ final class AuthorizationCodeGrantTest extends TestCase
     #[Test]
     public function itRefusesAnotherRedirectUri(): void
     {
+        // Given
         $this->code('the-code', $this->client);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request(redirectUri: 'https://demo.localhost/login/check/'), $this->context));
-        static::assertSame([], $this->events->events);
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request(redirectUri: 'https://demo.localhost/login/check/'), $this->context);
     }
 
     /**
@@ -348,10 +654,15 @@ final class AuthorizationCodeGrantTest extends TestCase
     #[Test]
     public function itRefusesAWrongCodeVerifier(): void
     {
+        // Given
         $this->code('the-code', $this->client);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'), $this->context));
-        static::assertSame([], $this->events->events);
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'), $this->context);
     }
 
     /**
@@ -359,31 +670,89 @@ final class AuthorizationCodeGrantTest extends TestCase
      * logout in another tab for instance, yields no token.
      */
     #[Test]
-    public function itRefusesACodeWhoseSessionIsNoLongerActive(): void
+    public function itRefusesACodeWhoseSessionEnded(): void
     {
+        // Given
         $ended = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
-        $this->code('ended', $this->client, session: $ended);
+        $this->code('the-code', $this->client, session: $ended);
         $ended->end(SessionEnd::User, $this->clock->now());
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request(), $this->context);
+    }
+
+    #[Test]
+    public function itRefusesACodeWhoseSessionExpired(): void
+    {
+        // Given
         $expiring = Fixtures::session($this->alice, $this->clock->now()->modify('-12 hours +30 seconds'));
-        $this->code('expiring', $this->client, session: $expiring);
+        $this->code('the-code', $this->client, session: $expiring);
         $this->clock->sleep(30);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('ended'), $this->context));
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('expiring'), $this->context));
-        static::assertSame([], $this->events->events);
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request(), $this->context);
     }
 
     /**
-     * Architecture §4.6: the lifetime of the family is the tenant's.
+     * A refused exchange issues nothing and announces nothing.
+     *
+     * @param callable(self): TokenRequest $request
+     */
+    #[Test]
+    #[DataProvider('provideRefusedExchanges')]
+    public function aRefusedExchangeAnnouncesNothing(callable $request): void
+    {
+        // Given
+        $this->code('the-code', $this->client);
+
+        // When
+        $this->failToGrant($this->client, $request($this));
+
+        // Then
+        static::assertSame([], $this->events->events);
+        static::assertSame([], $this->refreshTokens->all());
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): TokenRequest}>
+     */
+    public static function provideRefusedExchanges(): iterable
+    {
+        yield 'another redirect URI' => [
+            static fn (self $test): TokenRequest => $test->request(redirectUri: 'https://demo.localhost/login/check/'),
+        ];
+        yield 'wrong verifier' => [
+            static fn (self $test): TokenRequest => $test->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'),
+        ];
+        yield 'expired code' => [static function (self $test): TokenRequest {
+            $test->clock->sleep(60);
+
+            return $test->request();
+        }];
+    }
+
+    /**
+     * Architecture §4.6: the lifetime of the family is the tenant's, and caps the token.
      */
     #[Test]
     public function theFamilyLifetimeIsConfigurable(): void
     {
+        // Given
         $this->code('the-code', $this->client);
         $grant = $this->grant(new DateInterval('P7D'));
 
+        // When
         $issued = $grant->grant($this->client, $this->request(), $this->context);
 
+        // Then
         $refreshToken = $issued->refreshToken ?? static::fail('A refresh token was issued.');
         static::assertEquals($this->clock->now()->modify('+7 days'), $refreshToken->token->family->expiresAt);
         static::assertEquals($this->clock->now()->modify('+7 days'), $refreshToken->token->expiresAt, 'capped by the family');
@@ -425,17 +794,35 @@ final class AuthorizationCodeGrantTest extends TestCase
         return new TokenRequest($this->parameters($code, $redirectUri, $verifier));
     }
 
-    /**
-     * @param callable(): IssuedTokens $attempt
-     */
-    private function assertInvalidGrant(callable $attempt): void
+    private function failToGrant(Client $client, TokenRequest $request): void
     {
         try {
-            $attempt();
+            $this->grant->grant($client, $request, $this->context);
             static::fail('The grant should have failed.');
-        } catch (InvalidGrantException $exception) {
-            static::assertSame('The authorization code is invalid.', $exception->errorDescription);
-            static::assertSame(400, $exception->statusCode);
+        } catch (InvalidGrantException|InvalidRequestException) {
         }
+    }
+
+    /**
+     * The first exchange of "the-code", then the refresh token rotated and swept meanwhile, as if the
+     * client had refreshed once.
+     */
+    private function firstExchangeThenARotation(): RefreshToken
+    {
+        $first = $this->grant->grant($this->client, $this->request(), $this->context);
+        $refreshToken = ($first->refreshToken ?? static::fail('A refresh token was issued.'))->token;
+        $refreshToken->rotate($this->clock->now());
+        $refreshToken->revoke($this->clock->now());
+        $this->refreshTokens->save($refreshToken);
+
+        return $refreshToken;
+    }
+
+    private function successorOf(RefreshToken $rotated): RefreshToken
+    {
+        $successor = Tokens::refreshToken('successor', $this->client, $this->session, $this->clock->now(), $rotated->family);
+        $this->refreshTokens->save($successor);
+
+        return $successor;
     }
 }

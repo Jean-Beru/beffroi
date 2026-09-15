@@ -12,6 +12,7 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Tokens;
@@ -37,13 +38,16 @@ final class GrantedAuthorizationTest extends TestCase
     #[Test]
     public function fromACodeItCarriesEverythingTheCodeRecorded(): void
     {
+        // Given
         $claims = new ClaimsRequest([], [
             'email' => new ClaimRequest(true),
         ]);
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile'], 'n-0S6_WzA2Mj', $claims);
 
+        // When
         $authorization = GrantedAuthorization::fromAuthorizationCode($code);
 
+        // Then
         static::assertSame(GrantType::AuthorizationCode, $authorization->grantType);
         static::assertSame($this->client, $authorization->client);
         static::assertSame($this->session, $authorization->session);
@@ -56,67 +60,121 @@ final class GrantedAuthorizationTest extends TestCase
         static::assertEquals($this->session->authenticatedAt(), $authorization->authenticatedAt);
         static::assertSame(['pwd'], $authorization->authenticationMethods);
         static::assertNull($authorization->authenticationContextClass);
+    }
+
+    #[Test]
+    public function itKnowsTheScopesItCarries(): void
+    {
+        // Given
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+
+        // When / Then
         static::assertTrue($authorization->hasScope(new Scope('profile')));
         static::assertFalse($authorization->hasScope(new Scope('email')));
     }
 
     /**
-     * RFC 6749 §6, OIDC Core §12.2: after a refresh, the scopes are those of the token or the narrower
-     * ones asked for, the token's scopes stay the granted ones, and there is no nonce.
+     * RFC 6749 §6, OIDC Core §12.2: after a refresh without a scope, the scopes are those of the token,
+     * and there is no nonce.
      */
     #[Test]
-    public function fromARefreshTokenItNarrowsTheScopesAndDropsTheNonce(): void
+    public function fromARefreshTokenItKeepsTheScopesOfTheTokenAndDropsTheNonce(): void
     {
-        $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile', 'email']);
+        // Given
+        $token = $this->refreshToken();
 
-        $whole = GrantedAuthorization::fromRefreshToken($token, null);
-        $narrowed = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        // When
+        $authorization = GrantedAuthorization::fromRefreshToken($token, null);
 
-        static::assertSame(GrantType::RefreshToken, $whole->grantType);
-        static::assertSame($token->scopes, $whole->scopes);
-        static::assertSame($token->scopes, $whole->grantedScopes);
-        static::assertNull($whole->nonce);
-        static::assertEquals([new Scope('profile')], $narrowed->scopes);
-        static::assertSame($token->scopes, $narrowed->grantedScopes);
-        static::assertFalse($narrowed->hasScope(Scope::openid()));
-        static::assertSame($token->client, $narrowed->client);
-        static::assertSame($token->session, $narrowed->session);
-        static::assertEquals($token->authenticatedAt, $narrowed->authenticatedAt);
-        static::assertSame($token->authenticationMethods, $narrowed->authenticationMethods);
+        // Then
+        static::assertSame(GrantType::RefreshToken, $authorization->grantType);
+        static::assertSame($token->scopes, $authorization->scopes);
+        static::assertSame($token->scopes, $authorization->grantedScopes);
+        static::assertNull($authorization->nonce);
+    }
+
+    /**
+     * RFC 6749 §6: after a refresh with a scope, the scopes are the narrower ones asked for and the
+     * token's scopes stay the granted ones.
+     */
+    #[Test]
+    public function fromARefreshTokenItNarrowsTheScopesToThoseAskedFor(): void
+    {
+        // Given
+        $token = $this->refreshToken();
+
+        // When
+        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+
+        // Then
+        static::assertEquals([new Scope('profile')], $authorization->scopes);
+        static::assertSame($token->scopes, $authorization->grantedScopes);
+        static::assertFalse($authorization->hasScope(Scope::openid()));
+    }
+
+    #[Test]
+    public function fromARefreshTokenItCarriesTheAuthenticationOfTheToken(): void
+    {
+        // Given
+        $token = $this->refreshToken();
+
+        // When
+        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+
+        // Then
+        static::assertSame($token->client, $authorization->client);
+        static::assertSame($token->session, $authorization->session);
+        static::assertEquals($token->authenticatedAt, $authorization->authenticatedAt);
+        static::assertSame($token->authenticationMethods, $authorization->authenticationMethods);
     }
 
     #[Test]
     public function itRefusesAScopeOutsideTheGrantedOnes(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->authorization(scopes: [Scope::openid(), new Scope('email')], grantedScopes: [Scope::openid()]);
     }
 
     #[Test]
     public function itRefusesAnEmptyScopeList(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->authorization(scopes: [], grantedScopes: [Scope::openid()]);
     }
 
     #[Test]
     public function itRefusesAnEmptyGrantedScopeList(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->authorization(scopes: [Scope::openid()], grantedScopes: []);
     }
 
     #[Test]
     public function itRefusesAnEmptyMethodList(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->authorization(methods: []);
     }
 
     #[Test]
     public function itRefusesASessionOfAnotherTenant(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->authorization(client: Clients::public(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
@@ -126,8 +184,16 @@ final class GrantedAuthorizationTest extends TestCase
     #[Test]
     public function itRefusesANonceOnARefresh(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->authorization(grantType: GrantType::RefreshToken, nonce: 'n-0S6_WzA2Mj');
+    }
+
+    private function refreshToken(): RefreshToken
+    {
+        return Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile', 'email']);
     }
 
     /**

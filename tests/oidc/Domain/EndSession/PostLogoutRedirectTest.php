@@ -18,8 +18,10 @@ final class PostLogoutRedirectTest extends TestCase
     #[Test]
     public function itRedirectsToTheRegisteredUriWithTheState(): void
     {
+        // Given
         $redirect = new PostLogoutRedirect(new RedirectUri('https://demo.localhost/?app=1'), 'af0ifjsldkj/=');
 
+        // When / Then
         static::assertSame('https://demo.localhost/?app=1&state=af0ifjsldkj%2F%3D', $redirect->toUri());
     }
 
@@ -30,8 +32,10 @@ final class PostLogoutRedirectTest extends TestCase
     #[Test]
     public function itRedirectsToTheRegisteredUriAsIsWithoutState(): void
     {
+        // Given
         $redirect = new PostLogoutRedirect(new RedirectUri('https://demo.localhost/'), null);
 
+        // When / Then
         static::assertSame('https://demo.localhost/', $redirect->toUri());
     }
 }

@@ -18,11 +18,13 @@ final class PasswordHashTest extends TestCase
     #[Test]
     public function itAlwaysNamesItsAlgorithmAndMayCarryParameters(): void
     {
+        // When
         $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'base64digest', [
             'salt' => 'base64salt',
             'iterations' => 27500,
         ]);
 
+        // Then
         static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $hash->algorithm);
         static::assertSame(27500, $hash->parameters['iterations']);
     }
@@ -30,8 +32,10 @@ final class PasswordHashTest extends TestCase
     #[Test]
     public function itRejectsAnEmptyDigest(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new PasswordHash(PasswordAlgorithm::Argon2id, '');
     }
 }

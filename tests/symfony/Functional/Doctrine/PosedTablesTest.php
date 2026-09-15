@@ -20,6 +20,7 @@ final class PosedTablesTest extends DatabaseTestCase
     #[Test]
     public function aLinkedIdentityRoundTrips(): void
     {
+        // Given
         $entityManager = self::entityManager();
         $user = self::user();
         $identity = new LinkedIdentity(Uuid::v7(), $user, 'google', '1234567890', [
@@ -30,8 +31,10 @@ final class PosedTablesTest extends DatabaseTestCase
         $entityManager->flush();
         self::reload();
 
+        // When
         $found = self::entityManager()->find(LinkedIdentity::class, $identity->id) ?? static::fail('The linked identity was not stored.');
 
+        // Then
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('google', $found->provider);
@@ -45,27 +48,43 @@ final class PosedTablesTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function aGroupAndAMembershipRoundTrip(): void
+    public function aGroupRoundTrips(): void
     {
-        $entityManager = self::entityManager();
+        // Given
+        $group = new Group(Uuid::v7(), self::tenant(), 'admins', GroupSource::Scim, self::now());
+        self::entityManager()->persist($group);
+        self::entityManager()->flush();
+        self::reload();
+
+        // When
+        $found = self::entityManager()->find(Group::class, $group->id) ?? static::fail('The group was not stored.');
+
+        // Then
+        static::assertSame('admins', $found->name);
+        static::assertSame(GroupSource::Scim, $found->source);
+        static::assertTrue($found->tenant->id->equals(self::tenant()->id));
+    }
+
+    #[Test]
+    public function aMembershipRoundTripsWithItsGroupAndItsUser(): void
+    {
+        // Given
         $user = self::user();
         $group = new Group(Uuid::v7(), self::tenant(), 'admins', GroupSource::Scim, self::now());
         $membership = new GroupMembership(Uuid::v7(), $group, $user, GroupSource::UpstreamClaims, self::now());
-        $entityManager->persist($group);
-        $entityManager->persist($membership);
-        $entityManager->flush();
+        self::entityManager()->persist($group);
+        self::entityManager()->persist($membership);
+        self::entityManager()->flush();
         self::reload();
 
-        $foundGroup = self::entityManager()->find(Group::class, $group->id) ?? static::fail('The group was not stored.');
-        $foundMembership = self::entityManager()->find(GroupMembership::class, $membership->id) ?? static::fail('The membership was not stored.');
+        // When
+        $found = self::entityManager()->find(GroupMembership::class, $membership->id) ?? static::fail('The membership was not stored.');
 
-        static::assertSame('admins', $foundGroup->name);
-        static::assertSame(GroupSource::Scim, $foundGroup->source);
-        static::assertTrue($foundGroup->tenant->id->equals(self::tenant()->id));
-        static::assertSame($foundGroup, $foundMembership->group);
-        static::assertTrue($foundMembership->user->id->equals($user->id));
-        static::assertTrue($foundMembership->tenant->id->equals(self::tenant()->id));
-        static::assertSame(GroupSource::UpstreamClaims, $foundMembership->source);
-        static::assertEquals(self::now(), $foundMembership->addedAt);
+        // Then
+        static::assertTrue($found->group->id->equals($group->id));
+        static::assertTrue($found->user->id->equals($user->id));
+        static::assertTrue($found->tenant->id->equals(self::tenant()->id));
+        static::assertSame(GroupSource::UpstreamClaims, $found->source);
+        static::assertEquals(self::now(), $found->addedAt);
     }
 }

@@ -24,6 +24,7 @@ final class UserInfoResponseTest extends TestCase
     #[Test]
     public function itWritesSubFirstThenTheClaimsAsTheyAre(): void
     {
+        // When
         $response = new UserInfoResponse('alice-subject', [
             'email' => 'alice@acme.example',
             'sub' => 'someone-else',
@@ -34,6 +35,7 @@ final class UserInfoResponseTest extends TestCase
             ],
         ]);
 
+        // Then
         static::assertSame('alice-subject', $response->subject);
         static::assertSame([
             'sub' => 'alice-subject',
@@ -45,39 +47,62 @@ final class UserInfoResponseTest extends TestCase
             ],
         ], $response->claims);
         static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"updated_at":1789466400,"address":{"country":"FR"}}', $response->toJson());
+    }
+
+    #[Test]
+    public function aResponseWithoutClaimsCarriesSubAlone(): void
+    {
+        // When / Then
         static::assertSame('{"sub":"alice-subject"}', new UserInfoResponse('alice-subject', [])->toJson());
     }
 
     #[Test]
     public function itRefusesAnEmptySubject(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new UserInfoResponse('', []);
     }
 
     /**
      * RFC 6750 §3: the challenge carries "error" and "error_description"; the status is the exception's;
-     * the body repeats the error; nothing is cached.
+     * the body repeats the error.
      */
     #[Test]
     public function anInvalidTokenIsA401WithTheErrorInTheChallenge(): void
     {
+        // When
         $response = UserInfoErrorResponse::fromException(new InvalidTokenException('The access token expired.'));
 
+        // Then
         static::assertSame(401, $response->statusCode);
         static::assertSame('invalid_token', $response->error);
         static::assertSame('The access token expired.', $response->errorDescription);
         static::assertNull($response->scope);
         static::assertSame('Bearer error="invalid_token", error_description="The access token expired."', $response->challenge());
         static::assertSame([
+            'error' => 'invalid_token',
+            'error_description' => 'The access token expired.',
+        ], $response->parameters());
+    }
+
+    /**
+     * RFC 6750 §3: nothing is cached.
+     */
+    #[Test]
+    public function anErrorIsNotCached(): void
+    {
+        // When
+        $response = UserInfoErrorResponse::fromException(new InvalidTokenException('The access token expired.'));
+
+        // Then
+        static::assertSame([
             'WWW-Authenticate' => 'Bearer error="invalid_token", error_description="The access token expired."',
             'Cache-Control' => 'no-store',
             'Pragma' => 'no-cache',
         ], $response->headers());
-        static::assertSame([
-            'error' => 'invalid_token',
-            'error_description' => 'The access token expired.',
-        ], $response->parameters());
     }
 
     /**
@@ -86,8 +111,10 @@ final class UserInfoResponseTest extends TestCase
     #[Test]
     public function anInvalidRequestIsA400(): void
     {
+        // When
         $response = UserInfoErrorResponse::fromException(new InvalidRequestException('The access token is sent by more than one method.'));
 
+        // Then
         static::assertSame(400, $response->statusCode);
         static::assertSame('Bearer error="invalid_request", error_description="The access token is sent by more than one method."', $response->challenge());
     }
@@ -98,8 +125,10 @@ final class UserInfoResponseTest extends TestCase
     #[Test]
     public function anInsufficientScopeIsA403NamingTheScopes(): void
     {
+        // When
         $response = UserInfoErrorResponse::fromException(new InsufficientScopeException('The token opens nothing here.', [Scope::openid(), new Scope('profile')]));
 
+        // Then
         static::assertSame(403, $response->statusCode);
         static::assertSame('insufficient_scope', $response->error);
         static::assertSame('openid profile', $response->scope);
@@ -116,8 +145,10 @@ final class UserInfoResponseTest extends TestCase
     #[Test]
     public function aRequestWithoutTokenGetsTheBareChallenge(): void
     {
+        // When
         $response = UserInfoErrorResponse::fromException(new MissingBearerTokenException());
 
+        // Then
         static::assertSame(401, $response->statusCode);
         static::assertNull($response->error);
         static::assertNull($response->errorDescription);
@@ -137,8 +168,10 @@ final class UserInfoResponseTest extends TestCase
     #[Test]
     public function theDescriptionIsOptional(): void
     {
+        // When
         $response = new UserInfoErrorResponse(401, 'invalid_token', null);
 
+        // Then
         static::assertSame('Bearer error="invalid_token"', $response->challenge());
         static::assertSame([
             'error' => 'invalid_token',

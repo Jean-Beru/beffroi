@@ -36,9 +36,10 @@ final class InteractionLocaleTest extends TestCase
      * @param list<string> $uiLocales
      */
     #[Test]
-    #[DataProvider('choices')]
+    #[DataProvider('provideChoices')]
     public function theLocaleIsUiLocalesThenAcceptLanguageThenTheDefault(array $enabled, string $default, array $uiLocales, ?string $acceptLanguage, string $expected): void
     {
+        // Given
         $locale = new InteractionLocale(new LocaleSwitcher($default, []), $enabled, $default);
         // Request::create() gives every request an English Accept-Language; the case says which header there is
         $request = Request::create('/authorize');
@@ -47,13 +48,14 @@ final class InteractionLocaleTest extends TestCase
             $request->headers->set('Accept-Language', $acceptLanguage);
         }
 
+        // When / Then
         static::assertSame($expected, $locale->choose($request, $uiLocales));
     }
 
     /**
      * @return iterable<string, array{list<string>, string, list<string>, string|null, string}>
      */
-    public static function choices(): iterable
+    public static function provideChoices(): iterable
     {
         yield 'the first ui_locales tag an enabled locale matches wins' => [['en', 'fr'], 'en', ['de', 'fr-CA', 'en'], 'en', 'fr'];
         yield 'a region is kept when that locale is enabled' => [['en', 'fr', 'fr_CA'], 'en', ['fr-ca'], null, 'fr_CA'];
@@ -72,8 +74,10 @@ final class InteractionLocaleTest extends TestCase
     #[Test]
     public function theEnabledLocalesAreCanonicalAndTheDefaultComesFirst(): void
     {
+        // Given
         $locale = new InteractionLocale(new LocaleSwitcher('fr', []), ['en', 'fr-ca', 'FR', 'zh-hant'], 'fr');
 
+        // When / Then
         static::assertSame(['fr', 'en', 'fr_CA', 'zh_Hant'], $locale->enabledLocales());
     }
 
@@ -83,12 +87,15 @@ final class InteractionLocaleTest extends TestCase
     #[Test]
     public function applyingALocaleSetsItOnTheRequestAndOnTheSwitcher(): void
     {
+        // Given
         $switcher = new LocaleSwitcher('en', []);
         $locale = new InteractionLocale($switcher, ['en', 'fr'], 'en');
         $request = Request::create('/login');
 
+        // When
         $locale->apply($request, 'fr');
 
+        // Then
         static::assertSame('fr', $request->getLocale());
         static::assertSame('fr', $switcher->getLocale());
     }
@@ -96,12 +103,15 @@ final class InteractionLocaleTest extends TestCase
     #[Test]
     public function aPageOfAnInteractionSpeaksTheLanguageTheInteractionRecorded(): void
     {
+        // Given
         $switcher = new LocaleSwitcher('en', []);
         $locale = new InteractionLocale($switcher, ['en', 'fr'], 'en');
         $request = Request::create('/login');
 
+        // When
         $locale->resume($request, self::interaction('fr'));
 
+        // Then
         static::assertSame('fr', $request->getLocale());
         static::assertSame('fr', $switcher->getLocale());
     }
@@ -109,13 +119,16 @@ final class InteractionLocaleTest extends TestCase
     #[Test]
     public function anInteractionWithoutALocaleLeavesTheRequestAlone(): void
     {
+        // Given
         $switcher = new LocaleSwitcher('en', []);
         $locale = new InteractionLocale($switcher, ['en', 'fr'], 'en');
         $request = Request::create('/login');
         $request->setLocale('fr');
 
+        // When
         $locale->resume($request, self::interaction(null));
 
+        // Then
         static::assertSame('fr', $request->getLocale());
         static::assertSame('en', $switcher->getLocale());
     }
@@ -126,29 +139,43 @@ final class InteractionLocaleTest extends TestCase
      * of a host application are not touched.
      */
     #[Test]
-    public function theListenerChoosesForTheInteractionPlaneOnly(): void
+    public function theListenerChoosesForThePagesOfTheInteractionPlane(): void
     {
+        // Given
         $locale = new InteractionLocale(new LocaleSwitcher('en', []), ['en', 'fr'], 'en');
-
         $page = self::event('heidi_interaction_logout', 'fr');
+
+        // When
         $locale->onKernelRequest($page);
+
+        // Then
         static::assertSame('fr', $page->getRequest()->attributes->get('_locale'));
+    }
 
-        $endpoint = self::event('heidi_protocol_token', 'fr');
-        $locale->onKernelRequest($endpoint);
-        static::assertFalse($endpoint->getRequest()->attributes->has('_locale'));
+    #[Test]
+    #[DataProvider('provideRequestsOutsideTheInteractionPlane')]
+    public function theListenerLeavesTheOtherRequestsAlone(?string $route, int $type): void
+    {
+        // Given
+        $locale = new InteractionLocale(new LocaleSwitcher('en', []), ['en', 'fr'], 'en');
+        $event = self::event($route, 'fr', $type);
 
-        $host = self::event('host_route', 'fr');
-        $locale->onKernelRequest($host);
-        static::assertFalse($host->getRequest()->attributes->has('_locale'));
+        // When
+        $locale->onKernelRequest($event);
 
-        $unrouted = self::event(null, 'fr');
-        $locale->onKernelRequest($unrouted);
-        static::assertFalse($unrouted->getRequest()->attributes->has('_locale'));
+        // Then
+        static::assertFalse($event->getRequest()->attributes->has('_locale'));
+    }
 
-        $sub = self::event('heidi_interaction_login', 'fr', HttpKernelInterface::SUB_REQUEST);
-        $locale->onKernelRequest($sub);
-        static::assertFalse($sub->getRequest()->attributes->has('_locale'));
+    /**
+     * @return iterable<string, array{?string, int}>
+     */
+    public static function provideRequestsOutsideTheInteractionPlane(): iterable
+    {
+        yield 'the protocol plane' => ['heidi_protocol_token', HttpKernelInterface::MAIN_REQUEST];
+        yield 'a route of the host application' => ['host_route', HttpKernelInterface::MAIN_REQUEST];
+        yield 'no route' => [null, HttpKernelInterface::MAIN_REQUEST];
+        yield 'a sub request of the interaction plane' => ['heidi_interaction_login', HttpKernelInterface::SUB_REQUEST];
     }
 
     private static function event(?string $route, string $acceptLanguage, int $type = HttpKernelInterface::MAIN_REQUEST): RequestEvent

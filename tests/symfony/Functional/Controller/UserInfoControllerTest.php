@@ -20,8 +20,10 @@ final class UserInfoControllerTest extends BrowserTestCase
     #[Test]
     public function aRequestWithoutATokenGetsTheBareChallenge(): void
     {
+        // When
         $this->browser->request('GET', '/userinfo');
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
         static::assertSame('Bearer', $response->headers->get('WWW-Authenticate'));
@@ -35,10 +37,12 @@ final class UserInfoControllerTest extends BrowserTestCase
     #[Test]
     public function aTokenInTheQueryStringIsNotRead(): void
     {
+        // When
         $this->browser->request('GET', '/userinfo', [
             'access_token' => 'whatever',
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
         static::assertSame('Bearer', $response->headers->get('WWW-Authenticate'));
@@ -51,10 +55,12 @@ final class UserInfoControllerTest extends BrowserTestCase
     #[Test]
     public function aForeignTokenIsInvalid(): void
     {
+        // When
         $this->browser->request('GET', '/userinfo', server: [
             'HTTP_AUTHORIZATION' => 'Bearer not.a.token',
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
         static::assertStringStartsWith('Bearer error="invalid_token"', self::string($response->headers->get('WWW-Authenticate')));
@@ -68,6 +74,7 @@ final class UserInfoControllerTest extends BrowserTestCase
     #[Test]
     public function aTokenInTheFormBodyOfAPostIsRead(): void
     {
+        // Given
         self::signingKey();
         $this->signIn(self::user('alice'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
@@ -82,10 +89,12 @@ final class UserInfoControllerTest extends BrowserTestCase
         ]);
         $accessToken = self::string(self::json($this->browser->getResponse())['access_token']);
 
+        // When
         $this->browser->request('POST', '/userinfo', [
             'access_token' => $accessToken,
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('alice-subject', self::json($response)['sub']);

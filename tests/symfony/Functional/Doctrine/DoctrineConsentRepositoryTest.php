@@ -19,15 +19,17 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
     #[Test]
     public function aConsentComesBackAsItWasGranted(): void
     {
-        $consents = self::consents();
+        // Given
         $user = self::user();
         $client = self::client();
         $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid'), new Scope('profile')], self::now());
-        $consents->save($consent);
+        self::consents()->save($consent);
         self::reload();
 
-        $found = $consents->findActive($user, $client) ?? static::fail('The consent was not stored.');
+        // When
+        $found = self::consents()->findActive($user, $client) ?? static::fail('The consent was not stored.');
 
+        // Then
         static::assertTrue($found->id->equals($consent->id));
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
@@ -43,39 +45,52 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
     #[Test]
     public function theConsentInForceIsTheActiveOneGrantedLast(): void
     {
-        $consents = self::consents();
+        // Given
         $alice = self::user();
-        $bob = self::user('bob', 'bob-subject');
         $demo = self::client();
-        $native = self::client('native-app');
         $superseded = new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid')], self::now()->modify('-1 day'));
         $superseded->revoke(self::now());
-        $consents->save($superseded);
+        self::consents()->save($superseded);
         $latest = new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid'), new Scope('email')], self::now());
-        $consents->save($latest);
-        $older = new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid'), new Scope('profile')], self::now()->modify('-1 hour'));
-        $consents->save($older);
-        $consents->save(new Consent(Uuid::v7(), $bob, $demo, [new Scope('openid')], self::now()->modify('+1 hour')));
-        $consents->save(new Consent(Uuid::v7(), $alice, $native, [new Scope('openid')], self::now()->modify('+1 hour')));
+        self::consents()->save($latest);
+        self::consents()->save(new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid'), new Scope('profile')], self::now()->modify('-1 hour')));
+        self::consents()->save(new Consent(Uuid::v7(), self::user('bob', 'bob-subject'), $demo, [new Scope('openid')], self::now()->modify('+1 hour')));
+        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client('native-app'), [new Scope('openid')], self::now()->modify('+1 hour')));
         self::reload();
 
-        static::assertTrue($latest->id->equals($consents->findActive($alice, $demo)?->id));
-        static::assertNull($consents->findActive(self::user('carol', 'carol-subject'), $demo));
+        // When
+        $found = self::consents()->findActive($alice, $demo);
+
+        // Then
+        static::assertTrue($latest->id->equals($found?->id));
+    }
+
+    #[Test]
+    public function aUserWithoutConsentHasNoneInForce(): void
+    {
+        // Given
+        $demo = self::client();
+        self::consents()->save(new Consent(Uuid::v7(), self::user(), $demo, [new Scope('openid')], self::now()));
+        self::reload();
+
+        // When / Then
+        static::assertNull(self::consents()->findActive(self::user('carol', 'carol-subject'), $demo));
     }
 
     #[Test]
     public function aRevocationIsWrittenOnSave(): void
     {
-        $consents = self::consents();
+        // Given
         $user = self::user();
         $client = self::client();
         $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid')], self::now());
-        $consents->save($consent);
+        self::consents()->save($consent);
         $consent->revoke(self::now()->modify('+1 hour'));
-        $consents->save($consent);
+        self::consents()->save($consent);
         self::reload();
 
-        static::assertNull($consents->findActive($user, $client));
+        // When / Then
+        static::assertNull(self::consents()->findActive($user, $client));
         static::assertEquals(self::now()->modify('+1 hour'), self::entityManager()->find(Consent::class, $consent->id)?->revokedAt);
     }
 

@@ -27,10 +27,13 @@ final class AuthorizationErrorResponseTest extends TestCase
     #[Test]
     public function itRedirectsWithErrorStateAndIssuer(): void
     {
+        // Given
         $target = new RedirectTarget(Clients::public(Fixtures::tenant()), new RedirectUri('https://spa.example/callback'), 'af0ifjsldkj');
 
+        // When
         $response = AuthorizationErrorResponse::fromException($target, new UnsupportedResponseTypeException('Only the code response type is supported.'));
 
+        // Then
         static::assertSame([
             'error' => 'unsupported_response_type',
             'error_description' => 'Only the code response type is supported.',
@@ -46,10 +49,13 @@ final class AuthorizationErrorResponseTest extends TestCase
     #[Test]
     public function itOmitsTheStateWhenTheRequestHadNone(): void
     {
+        // Given
         $target = new RedirectTarget(Clients::public(Fixtures::tenant()), new RedirectUri('https://spa.example/callback'), null);
 
+        // When
         $response = AuthorizationErrorResponse::fromException($target, new InvalidRequestException('The scope parameter is missing.', true));
 
+        // Then
         static::assertArrayNotHasKey('state', $response->parameters());
         static::assertSame('https://spa.example/callback?error=invalid_request&error_description=The%20scope%20parameter%20is%20missing.&iss=https%3A%2F%2Fid.acme.example', $response->toUri());
     }
@@ -61,12 +67,14 @@ final class AuthorizationErrorResponseTest extends TestCase
     #[Test]
     public function itKeepsTheQueryOfTheRegisteredRedirectUri(): void
     {
-        $tenant = Fixtures::tenant();
-        $client = new Client($tenant, 'app', 'Application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://rp.example/cb?app=1')]);
+        // Given
+        $client = new Client(Fixtures::tenant(), 'app', 'Application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://rp.example/cb?app=1')]);
         $target = new RedirectTarget($client, new RedirectUri('https://rp.example/cb?app=1'), 'a state with spaces & ampersand');
 
+        // When
         $uri = AuthorizationErrorResponse::fromException($target, new InvalidRequestException('The scope parameter is missing.', true))->toUri();
 
+        // Then
         static::assertSame('https://rp.example/cb?app=1&error=invalid_request&error_description=The%20scope%20parameter%20is%20missing.&state=a%20state%20with%20spaces%20%26%20ampersand&iss=https%3A%2F%2Fid.acme.example', $uri);
     }
 
@@ -77,13 +85,14 @@ final class AuthorizationErrorResponseTest extends TestCase
     #[Test]
     public function itRefusesToRedirectAnErrorThatMustBeShown(): void
     {
+        // Given
         $target = new RedirectTarget(Clients::public(Fixtures::tenant()), new RedirectUri('https://spa.example/callback'), null);
 
-        try {
-            AuthorizationErrorResponse::fromException($target, new InvalidClientException('Unknown client.'));
-            static::fail('The error should not have been turned into a redirect.');
-        } catch (LogicException $exception) {
-            static::assertStringContainsString('invalid_client', $exception->getMessage());
-        }
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIsOrContains('invalid_client');
+
+        // When
+        AuthorizationErrorResponse::fromException($target, new InvalidClientException('Unknown client.'));
     }
 }

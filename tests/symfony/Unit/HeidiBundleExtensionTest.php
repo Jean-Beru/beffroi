@@ -30,6 +30,7 @@ final class HeidiBundleExtensionTest extends TestCase
     #[Test]
     public function theLifetimesOfTheConfigurationReachTheUseCases(): void
     {
+        // When
         $container = self::load([
             'tokens' => [
                 'authorization_code_ttl' => 45,
@@ -40,6 +41,7 @@ final class HeidiBundleExtensionTest extends TestCase
             ],
         ]);
 
+        // Then
         static::assertSame('PT45S', self::interval($container, AuthorizationHandler::class, '$codeLifetime'));
         static::assertSame('PT300S', self::interval($container, JwtAccessTokenIssuer::class, '$lifetime'));
         static::assertSame('PT120S', self::interval($container, JwtIdTokenIssuer::class, '$lifetime'));
@@ -48,8 +50,9 @@ final class HeidiBundleExtensionTest extends TestCase
     }
 
     #[Test]
-    public function theTenantTheKeysAndTheClientsReachTheBridges(): void
+    public function theTenantAndTheKeysReachTheBridges(): void
     {
+        // When
         $container = self::load([
             'tenant' => [
                 'issuer' => 'https://op.test/tenant-a',
@@ -61,6 +64,23 @@ final class HeidiBundleExtensionTest extends TestCase
                 'key_id' => 'k',
                 'storage' => '/var/lib/heidi/keys',
             ],
+        ]);
+
+        // Then
+        $factory = $container->getDefinition(TenantFactory::class);
+        static::assertSame('https://op.test/tenant-a', $factory->getArgument('$issuer'));
+        static::assertSame('tenant-a', $factory->getArgument('$slug'));
+        static::assertSame('Tenant A', $factory->getArgument('$name'));
+        static::assertSame('sodium://?keys[k]=AAAA', $container->getDefinition('heidi.kms')->getArgument(0));
+        static::assertSame('k', $container->getDefinition(EnvelopeKeySealer::class)->getArgument('$kmsKeyId'));
+        static::assertSame('/var/lib/heidi/keys', $container->getDefinition(FileSigningKeyRepository::class)->getArgument('$directory'));
+    }
+
+    #[Test]
+    public function theClientsReachTheConfigurationRepository(): void
+    {
+        // When
+        $container = self::load([
             'clients' => [
                 'app' => [
                     'redirect_uris' => ['https://app.test/cb'],
@@ -69,16 +89,22 @@ final class HeidiBundleExtensionTest extends TestCase
             ],
         ]);
 
-        $factory = $container->getDefinition(TenantFactory::class);
-        static::assertSame('https://op.test/tenant-a', $factory->getArgument('$issuer'));
-        static::assertSame('tenant-a', $factory->getArgument('$slug'));
-        static::assertSame('Tenant A', $factory->getArgument('$name'));
-        static::assertSame('sodium://?keys[k]=AAAA', $container->getDefinition('heidi.kms')->getArgument(0));
-        static::assertSame('k', $container->getDefinition(EnvelopeKeySealer::class)->getArgument('$kmsKeyId'));
-        static::assertSame('/var/lib/heidi/keys', $container->getDefinition(FileSigningKeyRepository::class)->getArgument('$directory'));
+        // Then
         $clients = $container->getDefinition(ConfigurationClientRepository::class)->getArgument('$definitions');
         static::assertIsArray($clients);
         static::assertSame(['app'], array_keys($clients));
+    }
+
+    /**
+     * Architecture §5.2: a process serves both planes unless HEIDI_PLANE says otherwise.
+     */
+    #[Test]
+    public function theDefaultPlaneIsBoth(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
         static::assertSame('all', $container->getParameterBag()->all()['env(HEIDI_PLANE)']);
     }
 
@@ -88,11 +114,14 @@ final class HeidiBundleExtensionTest extends TestCase
     #[Test]
     public function theApplicationKeepsItsOwnDefaultPlane(): void
     {
+        // Given
         $container = new ContainerBuilder();
         $container->setParameter('env(HEIDI_PLANE)', 'protocol');
 
+        // When
         self::load([], $container);
 
+        // Then
         static::assertSame('protocol', $container->getParameterBag()->all()['env(HEIDI_PLANE)']);
     }
 

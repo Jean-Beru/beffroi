@@ -29,47 +29,78 @@ use Jose\Component\Signature\JWSVerifier;
 use Jose\Component\Signature\Serializer\CompactSerializer;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class JwksHandlerTest extends TestCase
 {
+    private Jwts $jwts;
+
+    private SigningKey $retiring;
+
+    private JwksHandler $handler;
+
+    protected function setUp(): void
+    {
+        $this->jwts = new Jwts(Fixtures::tenant());
+        $repository = new InMemorySigningKeyRepository();
+        $repository->save($this->jwts->key);
+        $this->retiring = new SigningKey(Keys::otherPair()->kid, $this->jwts->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'));
+        $this->retiring->startRetiring(Fixtures::now());
+        $repository->save($this->retiring);
+        $repository->save(self::retiredKey($this->jwts->tenant));
+        $repository->save(new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now()));
+        $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
+    }
+
     /**
      * RFC 7517 §5, architecture §4.8: the active key and the retiring one are served, a retired one and
-     * another tenant's are not, in creation order; a token the tenant signs verifies against the served
-     * document read the way Symfony's OidcJwks reads it (JSON, "keys" filtered on a string "kty", a
-     * string "kid" and "use" equal to "sig").
+     * another tenant's are not, in creation order, read the way Symfony's OidcJwks reads a document
+     * (JSON, "keys" filtered on a string "kty", a string "kid" and "use" equal to "sig").
      */
     #[Test]
-    public function itServesTheKeysThatVerifyTheTokensOfTheTenant(): void
+    public function itServesTheActiveAndRetiringKeysOfTheTenant(): void
     {
-        $jwts = new Jwts(Fixtures::tenant());
-        $repository = new InMemorySigningKeyRepository();
-        $repository->save($jwts->key);
-        $retiring = new SigningKey(Keys::otherPair()->kid, $jwts->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'));
-        $retiring->startRetiring(Fixtures::now());
-        $repository->save($retiring);
-        $retired = self::retiredKey($jwts->tenant);
-        $repository->save($retired);
-        $repository->save(new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now()));
-        $handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
+        // When
+        $response = $this->handler->handle($this->jwts->tenant);
 
-        $response = $handler->handle($jwts->tenant);
-
+        // Then
         $keys = self::keysAsOidcJwksReadsThem($response->toJson());
-        static::assertSame([$jwts->key->kid, $retiring->kid], array_column($keys, 'kid'));
-        static::assertSame([$jwts->key->publicJwk, $retiring->publicJwk], $keys);
+        static::assertSame([$this->jwts->key->kid, $this->retiring->kid], array_column($keys, 'kid'));
+        static::assertSame([$this->jwts->key->publicJwk, $this->retiring->publicJwk], $keys);
+    }
+
+    #[Test]
+    public function theSetIsCachedForFiveMinutesByDefault(): void
+    {
+        // When
+        $response = $this->handler->handle($this->jwts->tenant);
+
+        // Then
         static::assertSame([
             'Cache-Control' => 'public, max-age=300',
         ], $response->headers);
+    }
 
-        $token = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver())
-            ->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', Clients::public($jwts->tenant), Fixtures::session(Fixtures::user($jwts->tenant)), Fixtures::now())), Fixtures::now());
-        $jws = new CompactSerializer()
-            ->unserialize($token->value);
-        static::assertTrue(new JWSVerifier(new AlgorithmManager([new RS256()]))->verifyWithKeySet($jws, JWKSet::createFromKeyData([
-            'keys' => $keys,
-        ]), 0));
+    /**
+     * A token the tenant signs verifies against the served document.
+     */
+    #[Test]
+    public function aTokenOfTheTenantVerifiesAgainstTheServedKeys(): void
+    {
+        // Given
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver())
+            ->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', Clients::public($this->jwts->tenant), Fixtures::session(Fixtures::user($this->jwts->tenant)), Fixtures::now())), Fixtures::now());
+        $keys = JWKSet::createFromKeyData([
+            'keys' => self::keysAsOidcJwksReadsThem($this->handler->handle($this->jwts->tenant)->toJson()),
+        ]);
+
+        // When
+        $verified = new JWSVerifier(new AlgorithmManager([new RS256()]))->verifyWithKeySet(new CompactSerializer()->unserialize($token->value), $keys, 0);
+
+        // Then
+        static::assertTrue($verified);
     }
 
     /**
@@ -78,12 +109,16 @@ final class JwksHandlerTest extends TestCase
     #[Test]
     public function aTenantWithoutKeysGetsAnEmptyUncachedSet(): void
     {
+        // Given
         $tenant = Fixtures::tenant();
         $repository = new InMemorySigningKeyRepository();
         $repository->save(self::retiredKey($tenant));
+        $handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
 
-        $response = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()))->handle($tenant);
+        // When
+        $response = $handler->handle($tenant);
 
+        // Then
         static::assertSame('{"keys":[]}', $response->toJson());
         static::assertSame([
             'Cache-Control' => 'no-store',
@@ -91,31 +126,45 @@ final class JwksHandlerTest extends TestCase
     }
 
     /**
-     * The cache lifetime is the deployment's, five minutes by default, zero meaning "revalidate every
-     * time"; a negative one is refused at construction, not on the first request.
+     * The cache lifetime is the deployment's, zero meaning "revalidate every time".
      */
     #[Test]
-    public function theLifetimeIsAnOptionCheckedAtConstruction(): void
+    #[DataProvider('provideLifetimes')]
+    public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
-        $jwts = new Jwts(Fixtures::tenant());
+        // Given
+        $handler = new JwksHandler($this->jwts->keys, $lifetime);
 
-        static::assertSame([
-            'Cache-Control' => 'public, max-age=60',
-        ], new JwksHandler($jwts->keys, 60)
-            ->handle($jwts->tenant)
-            ->headers);
-        static::assertSame([
-            'Cache-Control' => 'public, max-age=0',
-        ], new JwksHandler($jwts->keys, 0)
-            ->handle($jwts->tenant)
-            ->headers);
+        // When
+        $response = $handler->handle($this->jwts->tenant);
 
-        try {
-            new JwksHandler($jwts->keys, -1);
-            static::fail('A negative lifetime is refused.');
-        } catch (InvalidArgumentException $e) {
-            static::assertStringContainsString('number of seconds', $e->getMessage());
-        }
+        // Then
+        static::assertSame([
+            'Cache-Control' => $cacheControl,
+        ], $response->headers);
+    }
+
+    /**
+     * @return iterable<string, array{int, string}>
+     */
+    public static function provideLifetimes(): iterable
+    {
+        yield 'one minute' => [60, 'public, max-age=60'];
+        yield 'zero' => [0, 'public, max-age=0'];
+    }
+
+    /**
+     * A negative lifetime is refused at construction, not on the first request.
+     */
+    #[Test]
+    public function aNegativeLifetimeIsRefusedAtConstruction(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('number of seconds');
+
+        // When
+        new JwksHandler($this->jwts->keys, -1);
     }
 
     private static function retiredKey(Tenant $tenant): SigningKey

@@ -15,15 +15,15 @@ use Symfony\Component\HttpFoundation\Response;
 final class DiscoveryControllerTest extends BrowserTestCase
 {
     #[Test]
-    public function theMetadataIsServedAtTheWellKnownLocation(): void
+    public function theMetadataIsServedAsJsonAtTheWellKnownLocation(): void
     {
+        // When
         $this->browser->request('GET', '/.well-known/openid-configuration');
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertSame('application/json', $response->headers->get('Content-Type'));
-        static::assertTrue($response->headers->hasCacheControlDirective('public'));
-        static::assertSame('3600', $response->headers->getCacheControlDirective('max-age'));
         $metadata = self::json($response);
         static::assertSame('https://op.test', $metadata['issuer']);
         static::assertSame('https://op.test/authorize', $metadata['authorization_endpoint']);
@@ -31,6 +31,31 @@ final class DiscoveryControllerTest extends BrowserTestCase
         static::assertSame('https://op.test/userinfo', $metadata['userinfo_endpoint']);
         static::assertSame('https://op.test/jwks', $metadata['jwks_uri']);
         static::assertSame('https://op.test/logout', $metadata['end_session_endpoint']);
+    }
+
+    #[Test]
+    public function theMetadataIsPubliclyCacheableForOneHour(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertTrue($response->headers->hasCacheControlDirective('public'));
+        static::assertSame('3600', $response->headers->getCacheControlDirective('max-age'));
+    }
+
+    /**
+     * Decision 0006 and RFC 9207 §3: S256 only, and iss in every authorization response.
+     */
+    #[Test]
+    public function theMetadataAnnouncesWhatTheProviderDoes(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $metadata = self::json($this->browser->getResponse());
         static::assertSame(['S256'], $metadata['code_challenge_methods_supported']);
         static::assertTrue($metadata['authorization_response_iss_parameter_supported']);
     }
@@ -41,10 +66,12 @@ final class DiscoveryControllerTest extends BrowserTestCase
     #[Test]
     public function theEndpointsAreAnnouncedUnderTheIssuerNotUnderTheRequestHost(): void
     {
+        // When
         $this->browser->request('GET', '/.well-known/openid-configuration', server: [
             'HTTP_HOST' => 'attacker.example',
         ]);
 
+        // Then
         static::assertSame('https://op.test/token', self::json($this->browser->getResponse())['token_endpoint']);
     }
 
@@ -54,8 +81,10 @@ final class DiscoveryControllerTest extends BrowserTestCase
     #[Test]
     public function theRouterLocatesTheEndpoints(): void
     {
+        // When
         $endpoints = self::service('test.heidi.endpoints', EndpointLocatorInterface::class)->locate(self::tenant());
 
+        // Then
         static::assertSame('https://op.test/authorize', $endpoints->authorization);
         static::assertSame('https://op.test/token', $endpoints->token);
     }
@@ -63,8 +92,10 @@ final class DiscoveryControllerTest extends BrowserTestCase
     #[Test]
     public function theMetadataIsReadOnly(): void
     {
+        // When
         $this->browser->request('POST', '/.well-known/openid-configuration');
 
+        // Then
         static::assertSame(Response::HTTP_METHOD_NOT_ALLOWED, $this->browser->getResponse()->getStatusCode());
     }
 }

@@ -16,10 +16,23 @@ final class IssuerTest extends TestCase
      * OIDC Discovery §3: the issuer is a URL using the https scheme.
      */
     #[Test]
-    public function itAcceptsAnHttpsIssuerWithOrWithoutAPath(): void
+    public function itAcceptsAnHttpsIssuer(): void
     {
+        // When / Then
         static::assertSame('https://id.acme.example', (string) new Issuer('https://id.acme.example'));
-        static::assertSame('/tenants/acme', (new Issuer('https://id.example/tenants/acme'))->path);
+    }
+
+    /**
+     * OIDC Discovery §3: the issuer may have a path.
+     */
+    #[Test]
+    public function itAcceptsAnHttpsIssuerWithAPath(): void
+    {
+        // When
+        $issuer = new Issuer('https://id.example/tenants/acme');
+
+        // Then
+        static::assertSame('/tenants/acme', $issuer->path);
     }
 
     /**
@@ -29,6 +42,7 @@ final class IssuerTest extends TestCase
     #[DataProvider('provideLoopbackIssuers')]
     public function itAcceptsPlainHttpOnLoopbackHostsOnly(string $issuer): void
     {
+        // When / Then
         static::assertSame($issuer, (string) new Issuer($issuer));
     }
 
@@ -47,12 +61,12 @@ final class IssuerTest extends TestCase
     #[DataProvider('provideInvalidIssuers')]
     public function itRejectsWhatClientsWouldRefuseOrCompareDifferently(string $issuer, string $reason): void
     {
-        try {
-            new Issuer($issuer);
-            static::fail('The issuer should have been rejected.');
-        } catch (InvalidArgumentException $exception) {
-            static::assertStringContainsString($reason, $exception->getMessage());
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains($reason);
+
+        // When
+        new Issuer($issuer);
     }
 
     /**
@@ -75,20 +89,44 @@ final class IssuerTest extends TestCase
     }
 
     #[Test]
-    public function itTrimsSurroundingWhitespaceAndLowercasesSchemeAndHostForItsChecks(): void
+    public function itTrimsSurroundingWhitespaceAndKeepsTheCaseOfTheValue(): void
     {
+        // When
         $issuer = new Issuer('  HTTPS://ID.ACME.EXAMPLE/Tenants/Acme ');
 
+        // Then
         static::assertSame('HTTPS://ID.ACME.EXAMPLE/Tenants/Acme', $issuer->value);
-        static::assertSame('id.acme.example', $issuer->host);
         static::assertSame('/Tenants/Acme', $issuer->path);
-        static::assertSame('op.localhost', (new Issuer('HTTP://OP.LOCALHOST'))->host);
+    }
+
+    #[Test]
+    #[DataProvider('provideUppercaseHosts')]
+    public function itLowercasesTheHostForItsChecks(string $issuer, string $host): void
+    {
+        // When / Then
+        static::assertSame($host, new Issuer($issuer)->host);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideUppercaseHosts(): iterable
+    {
+        yield 'https' => ['HTTPS://ID.ACME.EXAMPLE/Tenants/Acme', 'id.acme.example'];
+        yield 'http on loopback' => ['HTTP://OP.LOCALHOST', 'op.localhost'];
+    }
+
+    #[Test]
+    public function itEqualsAnIssuerOfTheSameValue(): void
+    {
+        // When / Then
+        static::assertTrue(new Issuer('https://id.acme.example')->equals(new Issuer('https://id.acme.example')));
     }
 
     #[Test]
     public function itComparesByteForByte(): void
     {
-        static::assertTrue(new Issuer('https://id.acme.example')->equals(new Issuer('https://id.acme.example')));
+        // When / Then
         static::assertFalse(new Issuer('https://id.acme.example')->equals(new Issuer('https://id.acme.example/acme')));
     }
 }

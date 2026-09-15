@@ -18,6 +18,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Scope\Scope;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -38,6 +39,10 @@ final class StandardClaimsProviderTest extends TestCase
     #[Test]
     public function theProfileScopeGivesTheProfileClaims(): void
     {
+        // When
+        $claims = $this->provider->claims(self::fullUser(), self::scopes('profile'), []);
+
+        // Then
         static::assertSame([
             'name' => 'Alice Martin',
             'given_name' => 'Alice',
@@ -53,19 +58,20 @@ final class StandardClaimsProviderTest extends TestCase
             'zoneinfo' => 'Europe/Paris',
             'locale' => 'fr-FR',
             'updated_at' => Fixtures::now()->modify('+1 day')->getTimestamp(),
-        ], $this->provider->claims(self::fullUser(), self::scopes('profile'), []));
+        ], $claims);
     }
 
     /**
-     * OIDC Core §5.4 "email", "address", "phone"; §5.1: "email_verified" and "phone_number_verified" are
-     * JSON booleans, true or false, never strings (architecture §9); §5.1.1: the address is an object
-     * with the members that have a value.
+     * OIDC Core §5.4 "email", "address", "phone"; §5.1.1: the address is an object with the members
+     * that have a value.
      */
     #[Test]
-    public function theEmailAddressAndPhoneScopesGiveTheirClaimsWithBooleanFlags(): void
+    public function theEmailAddressAndPhoneScopesGiveTheirClaims(): void
     {
+        // When
         $claims = $this->provider->claims(self::fullUser(), self::scopes('email', 'address', 'phone'), []);
 
+        // Then
         static::assertSame([
             'email' => 'alice@acme.example',
             'email_verified' => true,
@@ -79,60 +85,133 @@ final class StandardClaimsProviderTest extends TestCase
                 'country' => 'FR',
             ],
         ], $claims);
-        static::assertSame('{"email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false,"address":{"formatted":"1 rue de la Paix\n75002 Paris","street_address":"1 rue de la Paix","locality":"Paris","postal_code":"75002","country":"FR"}}', json_encode($claims, JSON_THROW_ON_ERROR));
     }
 
     /**
-     * OIDC Core §5.3.2: a claim the user has no value for is left out; the verification flag goes with
-     * the value it qualifies. A bare user with every scope gives "updated_at" alone.
+     * OIDC Core §5.1: "email_verified" and "phone_number_verified" are JSON booleans, true or false,
+     * never strings (architecture §9).
      */
     #[Test]
-    public function absentAttributesGiveNoClaimAndNoFlag(): void
+    public function theVerificationFlagsAreJsonBooleans(): void
     {
-        $user = Fixtures::user();
+        // Given
+        $claims = $this->provider->claims(self::fullUser(), self::scopes('email', 'address', 'phone'), []);
 
+        // When
+        $json = json_encode($claims, JSON_THROW_ON_ERROR);
+
+        // Then
+        static::assertSame('{"email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false,"address":{"formatted":"1 rue de la Paix\n75002 Paris","street_address":"1 rue de la Paix","locality":"Paris","postal_code":"75002","country":"FR"}}', $json);
+    }
+
+    /**
+     * OIDC Core §5.3.2: a claim the user has no value for is left out. A bare user with every scope
+     * gives "updated_at" alone.
+     */
+    #[Test]
+    public function absentAttributesGiveNoClaim(): void
+    {
+        // When
+        $claims = $this->provider->claims(Fixtures::user(), self::scopes('profile', 'email', 'address', 'phone'), []);
+
+        // Then
         static::assertSame([
             'updated_at' => Fixtures::now()->getTimestamp(),
-        ], $this->provider->claims($user, self::scopes('profile', 'email', 'address', 'phone'), []));
+        ], $claims);
+    }
 
+    /**
+     * OIDC Core §5.3.2: the verification flag goes with the value it qualifies, and an empty address is
+     * no address.
+     */
+    #[Test]
+    public function theVerificationFlagGoesWithTheValueItQualifies(): void
+    {
+        // Given
+        $user = Fixtures::user();
         $user->changeEmail(new EmailAddress('alice@acme.example'), false, Fixtures::now());
         $user->changeAddress(new Address(), Fixtures::now());
+
+        // When
+        $claims = $this->provider->claims($user, self::scopes('email', 'address'), []);
+
+        // Then
         static::assertSame([
             'email' => 'alice@acme.example',
             'email_verified' => false,
-        ], $this->provider->claims($user, self::scopes('email', 'address'), []));
+        ], $claims);
     }
 
     /**
-     * OIDC Discovery §3 "scopes_supported" and "claims_supported": the provider announces the four scopes
-     * of OIDC Core §5.4 and the nineteen claims of §5.1 they stand for, every announced claim being one
-     * a full user actually gets, and nothing else.
+     * OIDC Discovery §3 "scopes_supported": the provider announces the four scopes of OIDC Core §5.4.
      */
     #[Test]
-    public function itAnnouncesTheScopesAndClaimsItServes(): void
+    public function itAnnouncesTheScopesItServes(): void
     {
-        static::assertSame(['profile', 'email', 'address', 'phone'], array_map(static fn (Scope $scope): string => $scope->value, $this->provider->supportedScopes()));
+        // When
+        $scopes = $this->provider->supportedScopes();
+
+        // Then
+        static::assertSame(['profile', 'email', 'address', 'phone'], array_map(static fn (Scope $scope): string => $scope->value, $scopes));
+    }
+
+    /**
+     * OIDC Discovery §3 "claims_supported": the nineteen claims of §5.1 the scopes stand for, "sub"
+     * being the resolver's.
+     */
+    #[Test]
+    public function itAnnouncesTheClaimsItServes(): void
+    {
+        // When
+        $claims = $this->provider->supportedClaims();
+
+        // Then
         static::assertSame([
             'name', 'family_name', 'given_name', 'middle_name', 'nickname', 'preferred_username', 'profile', 'picture', 'website', 'gender', 'birthdate', 'zoneinfo', 'locale', 'updated_at',
             'email', 'email_verified',
             'address',
             'phone_number', 'phone_number_verified',
-        ], $this->provider->supportedClaims());
-        static::assertNotContains('sub', $this->provider->supportedClaims());
+        ], $claims);
+        static::assertNotContains('sub', $claims);
+    }
 
+    /**
+     * Every announced claim is one a full user actually gets, and nothing else.
+     */
+    #[Test]
+    public function aFullUserGetsEveryAnnouncedClaimAndNothingElse(): void
+    {
+        // When
         $served = array_keys($this->provider->claims(self::fullUser(), $this->provider->supportedScopes(), []));
+
+        // Then
         static::assertEqualsCanonicalizing($this->provider->supportedClaims(), $served);
     }
 
     /**
      * OIDC Core §5.4: "openid" asks for no claim of its own ("sub" is the resolver's), and a scope
      * outside the four of §5.4 asks for none either.
+     *
+     * @param list<string> $scopes
      */
     #[Test]
-    public function otherScopesGiveNothing(): void
+    #[DataProvider('provideScopesWithoutClaims')]
+    public function otherScopesGiveNothing(array $scopes): void
     {
-        static::assertSame([], $this->provider->claims(self::fullUser(), self::scopes('openid', 'offline_access', 'api:read'), []));
-        static::assertSame([], $this->provider->claims(self::fullUser(), [], []));
+        // When
+        $claims = $this->provider->claims(self::fullUser(), self::scopes(...$scopes), []);
+
+        // Then
+        static::assertSame([], $claims);
+    }
+
+    /**
+     * @return iterable<string, array{list<string>}>
+     */
+    public static function provideScopesWithoutClaims(): iterable
+    {
+        yield 'openid, offline_access and a custom scope' => [['openid', 'offline_access', 'api:read']];
+        yield 'no scope' => [[]];
     }
 
     /**
@@ -143,6 +222,7 @@ final class StandardClaimsProviderTest extends TestCase
     #[Test]
     public function claimsRequestedByNameAreServedWithoutTheirScope(): void
     {
+        // When
         $claims = $this->provider->claims(self::fullUser(), self::scopes('email'), [
             'email_verified' => new ClaimRequest(true, false),
             'given_name' => new ClaimRequest(),
@@ -150,6 +230,7 @@ final class StandardClaimsProviderTest extends TestCase
             'groups' => new ClaimRequest(true),
         ]);
 
+        // Then
         static::assertSame(['given_name', 'email', 'email_verified', 'phone_number'], array_keys($claims));
         static::assertSame('Alice', $claims['given_name']);
         static::assertTrue($claims['email_verified']);

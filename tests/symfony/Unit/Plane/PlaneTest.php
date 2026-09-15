@@ -25,7 +25,7 @@ final class PlaneTest extends TestCase
     /**
      * @return iterable<string, array{Plane, string, bool}>
      */
-    public static function routes(): iterable
+    public static function provideRoutes(): iterable
     {
         yield 'all serves the login' => [Plane::All, 'heidi_interaction_login', true];
         yield 'all serves the token endpoint' => [Plane::All, 'heidi_protocol_token', true];
@@ -40,25 +40,51 @@ final class PlaneTest extends TestCase
     }
 
     #[Test]
-    #[DataProvider('routes')]
+    #[DataProvider('provideRoutes')]
     public function aPlaneServesItsRoutesAndThoseOfTheHost(Plane $plane, string $route, bool $served): void
     {
+        // When / Then
         static::assertSame($served, $plane->serves($route));
+    }
+
+    #[Test]
+    #[DataProvider('provideRoutesTheProtocolPlaneServes')]
+    public function theListenerLetsTheRoutesOfItsPlaneAndOfTheHostThrough(?string $route): void
+    {
+        // Given
+        $listener = new PlaneRequestListener(Plane::Protocol);
+        $event = self::event($route);
+
+        // When
+        $listener($event);
+
+        // Then
+        static::assertNull($event->getResponse());
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function provideRoutesTheProtocolPlaneServes(): iterable
+    {
+        yield 'a route of the plane' => ['heidi_protocol_jwks'];
+        yield 'a route of the host' => ['app_home'];
+        yield 'no route' => [null];
     }
 
     #[Test]
     public function theListenerRefusesARouteOfTheOtherPlaneWithANotFound(): void
     {
+        // Given
         $listener = new PlaneRequestListener(Plane::Protocol);
+        $event = self::event('heidi_interaction_login');
 
-        $listener(self::event('heidi_protocol_jwks'));
-        $listener(self::event('app_home'));
-        $listener(self::event(null));
-
+        // When
         try {
-            $listener(self::event('heidi_interaction_login'));
+            $listener($event);
             static::fail('The route of the other plane is refused.');
         } catch (NotFoundHttpException $exception) {
+            // Then
             static::assertSame(404, $exception->getStatusCode());
             static::assertStringContainsString('heidi_interaction_login', $exception->getMessage());
             static::assertStringContainsString('HEIDI_PLANE=protocol', $exception->getMessage());
@@ -71,8 +97,10 @@ final class PlaneTest extends TestCase
     #[Test]
     public function theListenerRunsAfterTheRouterAndBeforeTheFirewall(): void
     {
+        // Given
         $routerPriority = RouterListener::getSubscribedEvents()[KernelEvents::REQUEST][0][1] ?? null;
 
+        // When / Then
         static::assertSame(32, $routerPriority);
         static::assertLessThan($routerPriority, PlaneRequestListener::PRIORITY);
         static::assertGreaterThan(8, PlaneRequestListener::PRIORITY);

@@ -10,6 +10,8 @@ use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\Subject;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -17,43 +19,101 @@ use Symfony\Component\Uid\Uuid;
 
 final class InMemoryRepositoriesTest extends TestCase
 {
-    #[Test]
-    public function usersAreFoundByIdSubjectOrUsernameWithinTheirTenant(): void
+    private Tenant $tenant;
+
+    private Tenant $other;
+
+    private User $alice;
+
+    private InMemoryUserRepository $users;
+
+    protected function setUp(): void
     {
-        $tenant = Fixtures::tenant();
-        $other = Fixtures::tenant('other', 'https://id.other.example');
-        $alice = Fixtures::user($tenant, 'alice', 'alice-subject');
-        $repository = new InMemoryUserRepository();
-        $repository->save($alice);
-        $repository->save(Fixtures::user($other, 'alice', 'alice-subject'));
-
-        static::assertSame($alice, $repository->find($alice->id));
-        static::assertSame($alice, $repository->findBySubject($tenant, new Subject('alice-subject')));
-        static::assertSame($alice, $repository->findByUsername($tenant, 'alice'));
-        static::assertNotSame($alice, $repository->findByUsername($other, 'alice'));
-        static::assertNull($repository->find(Uuid::v7()));
-        static::assertNull($repository->findByUsername($tenant, 'bob'));
-
-        $repository->save(Fixtures::user($other, 'bob', 'bob-subject'));
-        static::assertNull($repository->findBySubject($tenant, new Subject('bob-subject')));
-        static::assertNull($repository->findByUsername($tenant, 'bob'));
+        $this->tenant = Fixtures::tenant();
+        $this->other = Fixtures::tenant('other', 'https://id.other.example');
+        $this->alice = Fixtures::user($this->tenant, 'alice', 'alice-subject');
+        $this->users = new InMemoryUserRepository();
+        $this->users->save($this->alice);
+        $this->users->save(Fixtures::user($this->other, 'alice', 'alice-subject'));
+        $this->users->save(Fixtures::user($this->other, 'bob', 'bob-subject'));
     }
 
     #[Test]
-    public function credentialsAreFoundByUserAndThePasswordOneByKind(): void
+    public function aUserIsFoundById(): void
     {
-        $alice = Fixtures::user();
-        $repository = new InMemoryCredentialRepository();
-        static::assertNull($repository->findPasswordCredential($alice));
+        // When / Then
+        static::assertSame($this->alice, $this->users->find($this->alice->id));
+    }
 
-        $password = new PasswordCredential(Uuid::v7(), $alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+    #[Test]
+    public function noUserIsFoundForAnUnknownId(): void
+    {
+        // When / Then
+        static::assertNull($this->users->find(Uuid::v7()));
+    }
+
+    #[Test]
+    public function aUserIsFoundBySubjectWithinItsTenant(): void
+    {
+        // When / Then
+        static::assertSame($this->alice, $this->users->findBySubject($this->tenant, new Subject('alice-subject')));
+    }
+
+    #[Test]
+    public function aSubjectOfAnotherTenantIsNotFound(): void
+    {
+        // When / Then
+        static::assertNull($this->users->findBySubject($this->tenant, new Subject('bob-subject')));
+    }
+
+    #[Test]
+    public function aUserIsFoundByUsernameWithinItsTenant(): void
+    {
+        // When / Then
+        static::assertSame($this->alice, $this->users->findByUsername($this->tenant, 'alice'));
+        static::assertNotSame($this->alice, $this->users->findByUsername($this->other, 'alice'));
+    }
+
+    #[Test]
+    public function aUsernameOfAnotherTenantIsNotFound(): void
+    {
+        // When / Then
+        static::assertNull($this->users->findByUsername($this->tenant, 'bob'));
+    }
+
+    #[Test]
+    public function aUserWithoutCredentialHasNoPasswordCredential(): void
+    {
+        // Given
+        $repository = new InMemoryCredentialRepository();
+
+        // When / Then
+        static::assertNull($repository->findPasswordCredential($this->alice));
+    }
+
+    #[Test]
+    public function thePasswordCredentialOfAUserIsFoundAmongThoseOfOtherUsers(): void
+    {
+        // Given
+        $repository = new InMemoryCredentialRepository();
+        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
         $repository->save($password);
         $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
 
-        static::assertSame($password, $repository->findPasswordCredential($alice));
-        static::assertCount(1, $repository->findByUser($alice));
+        // When / Then
+        static::assertSame($password, $repository->findPasswordCredential($this->alice));
+    }
 
-        $repository->save(new PasswordCredential(Uuid::v7(), $alice, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$z'), Fixtures::now()));
-        static::assertCount(2, $repository->findByUser($alice));
+    #[Test]
+    public function theCredentialsOfAUserAreListedWithoutThoseOfOtherUsers(): void
+    {
+        // Given
+        $repository = new InMemoryCredentialRepository();
+        $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now()));
+        $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$z'), Fixtures::now()));
+        $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
+
+        // When / Then
+        static::assertCount(2, $repository->findByUser($this->alice));
     }
 }

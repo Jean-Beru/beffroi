@@ -14,6 +14,7 @@ final class AddressTest extends TestCase
     #[Test]
     public function anAddressWithNoFieldIsEmpty(): void
     {
+        // When / Then
         static::assertTrue(new Address()->isEmpty());
     }
 
@@ -24,6 +25,7 @@ final class AddressTest extends TestCase
     #[DataProvider('provideSingleFieldAddresses')]
     public function anySingleFieldMakesAnAddress(Address $address): void
     {
+        // When / Then
         static::assertFalse($address->isEmpty());
     }
 

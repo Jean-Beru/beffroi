@@ -18,9 +18,11 @@ final class PublicSubjectIdentifierResolverTest extends TestCase
     #[Test]
     public function itGivesEveryClientTheSubjectOfTheUser(): void
     {
+        // Given
         $user = Fixtures::user();
         $resolver = new PublicSubjectIdentifierResolver();
 
+        // When / Then
         static::assertSame($user->subject, $resolver->resolve($user, Clients::public($user->tenant)));
         static::assertSame($user->subject, $resolver->resolve($user, Clients::public($user->tenant, 'other')));
     }

@@ -52,8 +52,10 @@ final class BundleBootTest extends DatabaseTestCase
     #[Test]
     public function theBundleBootsAndExposesItsExtension(): void
     {
+        // When
         $bundles = self::$kernel?->getBundles() ?? [];
 
+        // Then
         static::assertArrayHasKey('HeidiBundle', $bundles);
         static::assertSame('heidi', $bundles['HeidiBundle']->getContainerExtension()?->getAlias());
     }
@@ -64,8 +66,10 @@ final class BundleBootTest extends DatabaseTestCase
     #[Test]
     public function theTenantComesFromTheConfiguration(): void
     {
+        // When
         $tenant = self::tenant();
 
+        // Then
         static::assertSame('https://op.test', (string) $tenant->issuer);
         static::assertSame('default', $tenant->slug);
         static::assertSame('op.test', $tenant->name);
@@ -73,68 +77,156 @@ final class BundleBootTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §5.1: clients declared in the configuration, the secret hashed when the client is loaded.
+     * Architecture §5.1: clients declared in the configuration.
      */
     #[Test]
-    public function theClientsComeFromTheConfigurationWithTheirSecretHashed(): void
+    public function aConfidentialClientComesFromTheConfiguration(): void
     {
-        $tenant = self::tenant();
+        // Given
         $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
-        $hasher = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
 
-        $demo = $clients->findByClientId($tenant, 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
-        $native = $clients->findByClientId($tenant, 'native-app') ?? static::fail('The native-app client is configured.');
+        // When
+        $demo = $clients->findByClientId(self::tenant(), 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
 
+        // Then
         static::assertSame('Demo application', $demo->name);
         static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $demo->tokenEndpointAuthMethod);
         static::assertFalse($demo->requiresConsent);
+    }
+
+    /**
+     * Architecture §5.1: the secret is hashed by the hasher of the core when the client is loaded.
+     */
+    #[Test]
+    public function theSecretOfAConfiguredClientIsHashedByTheHasherOfTheCore(): void
+    {
+        // Given
+        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+        $hasher = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
+
+        // When
+        $demo = $clients->findByClientId(self::tenant(), 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
+
+        // Then
         static::assertNotNull($demo->secretHash);
         static::assertSame(PasswordAlgorithm::Argon2id, $demo->secretHash->algorithm);
         static::assertTrue($hasher->verify($demo->secretHash, 'demo-secret-of-at-least-32-characters-long'));
+    }
+
+    #[Test]
+    public function aPublicClientComesFromTheConfiguration(): void
+    {
+        // Given
+        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+
+        // When
+        $native = $clients->findByClientId(self::tenant(), 'native-app') ?? static::fail('The native-app client is configured.');
+
+        // Then
         static::assertSame('native-app', $native->name);
         static::assertSame(TokenEndpointAuthMethod::None, $native->tokenEndpointAuthMethod);
         static::assertTrue($native->requiresConsent);
-        static::assertNull($clients->findByClientId($tenant, 'unknown'));
+    }
+
+    #[Test]
+    public function anUnknownClientIsNotFound(): void
+    {
+        // Given
+        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+
+        // When / Then
+        static::assertNull($clients->findByClientId(self::tenant(), 'unknown'));
+    }
+
+    #[Test]
+    public function theClientAuthenticatorIsWired(): void
+    {
+        // When / Then
         static::assertInstanceOf(ClientAuthenticator::class, self::getContainer()->get('test.heidi.client_authenticator'));
     }
 
     /**
-     * Architecture §5.4: the security component hashes and verifies the passwords of the users of the
-     * bundle with the hasher of the core, mapped by the bundle and not by the application.
+     * Architecture §5.4: the security component hashes the passwords of the users of the bundle with the
+     * hasher of the core, mapped by the bundle and not by the application.
      */
     #[Test]
     public function theSecurityComponentHashesTheUsersOfTheBundleWithTheHasherOfTheCore(): void
     {
+        // Given
         $factory = self::service('test.heidi.password_hasher_factory', PasswordHasherFactoryInterface::class);
-        $core = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
 
+        // When
         $hasher = $factory->getPasswordHasher(SecurityUser::class);
 
+        // Then
         static::assertInstanceOf(CorePasswordHasher::class, $hasher);
+    }
+
+    /**
+     * Architecture §5.4: what the security component hashes, the core verifies, and the other way round.
+     */
+    #[Test]
+    public function aHashOfTheSecurityComponentIsAHashOfTheCore(): void
+    {
+        // Given
+        $hasher = self::service('test.heidi.password_hasher_factory', PasswordHasherFactoryInterface::class)->getPasswordHasher(SecurityUser::class);
+        $core = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
+
+        // When
         $encoded = $hasher->hash('correct horse battery staple');
+
+        // Then
         $hash = CorePasswordHasher::decode($encoded) ?? static::fail('The hash is one of the core.');
         static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
         static::assertTrue($core->verify($hash, 'correct horse battery staple'));
         static::assertTrue($hasher->verify($encoded, 'correct horse battery staple'));
     }
 
-    /**
-     * Architecture §3.3 and §5.1: a key generated by the rotator is sealed by the KMS of the configuration,
-     * stored under "keys.storage", and published by the JWK Set handler on the next read.
-     */
     #[Test]
-    public function aRotatedKeyIsSealedStoredAndPublished(): void
+    public function aTenantWithoutKeysPublishesNothing(): void
     {
-        $tenant = self::tenant();
-        $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+        // Given
         $jwks = self::service('test.heidi.jwks', JwksHandler::class);
 
-        static::assertSame([], $jwks->handle($tenant)->keys->keys);
+        // When
+        $response = $jwks->handle(self::tenant());
 
-        $key = $rotator->rotate($tenant, SignatureAlgorithm::RS256, new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+        // Then
+        static::assertSame([], $response->keys->keys);
+    }
 
+    /**
+     * Architecture §3.3 and §5.1: a key generated by the rotator is sealed by the KMS of the configuration
+     * and stored under "keys.storage".
+     */
+    #[Test]
+    public function aRotatedKeyIsSealedAndStored(): void
+    {
+        // Given
+        $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+
+        // When
+        $key = $rotator->rotate(self::tenant(), SignatureAlgorithm::RS256, new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+
+        // Then
         static::assertFileExists(self::keyStorage() . '/default/' . $key->kid . '.json');
-        $published = json_decode($jwks->handle($tenant)->toJson(), true, 8, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Architecture §4.8: a rotated key is published by the JWK Set handler on the next read, public
+     * members only.
+     */
+    #[Test]
+    public function aRotatedKeyIsPublishedOnTheNextRead(): void
+    {
+        // Given
+        $tenant = self::tenant();
+        $key = self::service('test.heidi.key_rotator', SigningKeyRotator::class)->rotate($tenant, SignatureAlgorithm::RS256, new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+
+        // When
+        $published = json_decode(self::service('test.heidi.jwks', JwksHandler::class)->handle($tenant)->toJson(), true, 8, JSON_THROW_ON_ERROR);
+
+        // Then
         static::assertIsArray($published);
         static::assertIsArray($published['keys']);
         static::assertCount(1, $published['keys']);
@@ -144,19 +236,29 @@ final class BundleBootTest extends DatabaseTestCase
     }
 
     /**
+     * Architecture §5.6: the dispatcher of the core is the one that replays on the event bus.
+     */
+    #[Test]
+    public function theEventDispatcherOfTheCoreIsTheEventBusOne(): void
+    {
+        // When / Then
+        static::assertInstanceOf(EventBusDispatcher::class, self::getContainer()->get('test.heidi.event_bus_dispatcher'));
+    }
+
+    /**
      * Architecture §5.6: the core and the module announce in PSR-14, the bundle replays on the event bus,
      * where the handlers of the application receive them; the dispatcher of the kernel hears nothing.
      */
     #[Test]
     public function theEventsOfTheCoreAndOfTheModuleGoToTheEventBus(): void
     {
-        $tenant = self::tenant();
+        // Given
         $authenticator = self::service('test.heidi.client_authenticator', ClientAuthenticator::class);
         $recorder = self::service(RecordingEventHandler::class, RecordingEventHandler::class);
-        static::assertInstanceOf(EventBusDispatcher::class, self::getContainer()->get('test.heidi.event_bus_dispatcher'));
 
+        // When
         try {
-            $authenticator->authenticate($tenant, null, [
+            $authenticator->authenticate(self::tenant(), null, [
                 'client_id' => 'oidc-demo',
                 'client_secret' => 'wrong-secret-of-at-least-32-characters-long',
             ], new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
@@ -164,6 +266,7 @@ final class BundleBootTest extends DatabaseTestCase
         } catch (InvalidClientException) {
         }
 
+        // Then
         static::assertCount(1, $recorder->events);
         static::assertInstanceOf(ClientAuthenticationFailed::class, $recorder->events[0]);
         static::assertSame('oidc-demo', $recorder->events[0]->clientId);

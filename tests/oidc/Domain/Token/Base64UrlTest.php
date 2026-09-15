@@ -16,16 +16,17 @@ final class Base64UrlTest extends TestCase
      * uses "-" and "_" where base64 uses "+" and "/".
      */
     #[Test]
-    #[DataProvider('vectors')]
+    #[DataProvider('provideVectors')]
     public function itEncodesWithoutPaddingInTheUrlSafeAlphabet(string $octets, string $expected): void
     {
+        // When / Then
         static::assertSame($expected, Base64Url::encode($octets));
     }
 
     /**
      * @return iterable<string, array{string, string}>
      */
-    public static function vectors(): iterable
+    public static function provideVectors(): iterable
     {
         yield 'empty' => ['', ''];
         yield 'f' => ['f', 'Zg'];

@@ -19,21 +19,33 @@ final class JwtPayloadTest extends TestCase
     #[Test]
     public function itEncodesClaimsAsTheyAre(): void
     {
-        static::assertSame('{"iss":"https://id.acme.example/t","name":"Zoé","email_verified":true,"score":1.0,"amr":["pwd"]}', JwtPayload::encode([
+        // When
+        $json = JwtPayload::encode([
             'iss' => 'https://id.acme.example/t',
             'name' => 'Zoé',
             'email_verified' => true,
             'score' => 1.0,
             'amr' => ['pwd'],
-        ]));
+        ]);
+
+        // Then
+        static::assertSame('{"iss":"https://id.acme.example/t","name":"Zoé","email_verified":true,"score":1.0,"amr":["pwd"]}', $json);
+    }
+
+    #[Test]
+    public function noClaimIsAnEmptyObject(): void
+    {
+        // When / Then
         static::assertSame('{}', JwtPayload::encode([]));
     }
 
     #[Test]
     public function aClaimThatCannotBeEncodedIsAProgrammingError(): void
     {
+        // Then
         $this->expectException(JsonException::class);
 
+        // When
         JwtPayload::encode([
             'x' => NAN,
         ]);

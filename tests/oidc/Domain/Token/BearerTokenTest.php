@@ -21,11 +21,13 @@ final class BearerTokenTest extends TestCase
      * @param array<string, mixed> $parameters
      */
     #[Test]
-    #[DataProvider('oneMethod')]
+    #[DataProvider('provideOneMethod')]
     public function itReadsTheTokenFromTheHeaderOrTheBody(?string $header, array $parameters, string $expected): void
     {
+        // When
         $token = BearerToken::fromRequest($header, $parameters);
 
+        // Then
         static::assertNotNull($token);
         static::assertSame($expected, $token->value);
     }
@@ -33,7 +35,7 @@ final class BearerTokenTest extends TestCase
     /**
      * @return iterable<string, array{string|null, array<string, mixed>, string}>
      */
-    public static function oneMethod(): iterable
+    public static function provideOneMethod(): iterable
     {
         yield 'header' => ['Bearer ' . self::JWS, [], self::JWS];
         yield 'header, several spaces' => ['Bearer   ' . self::JWS, [], self::JWS];
@@ -60,16 +62,17 @@ final class BearerTokenTest extends TestCase
      * @param array<string, mixed> $parameters
      */
     #[Test]
-    #[DataProvider('noToken')]
+    #[DataProvider('provideNoToken')]
     public function itFindsNoTokenWhenNoneIsSent(?string $header, array $parameters): void
     {
+        // When / Then
         static::assertNull(BearerToken::fromRequest($header, $parameters));
     }
 
     /**
      * @return iterable<string, array{string|null, array<string, mixed>}>
      */
-    public static function noToken(): iterable
+    public static function provideNoToken(): iterable
     {
         yield 'nothing' => [null, []];
         yield 'another scheme' => ['Basic Y2xpZW50OnNlY3JldA==', []];
@@ -85,18 +88,21 @@ final class BearerTokenTest extends TestCase
 
     /**
      * RFC 6750 §2: more than one method is refused; §3.1: a header that names the scheme without a
-     * b64token, or a parameter that is not one, is a malformed request: invalid_request, 400.
+     * b64token, or a parameter that is not one, is a malformed request: invalid_request, 400, never a
+     * redirect.
      *
      * @param array<string, mixed> $parameters
      */
     #[Test]
-    #[DataProvider('malformed')]
+    #[DataProvider('provideMalformed')]
     public function itRefusesAMalformedRequest(?string $header, array $parameters, string $description): void
     {
+        // When
         try {
             BearerToken::fromRequest($header, $parameters);
             static::fail('The request should have been refused.');
         } catch (InvalidRequestException $exception) {
+            // Then
             static::assertSame('invalid_request', $exception->error);
             static::assertSame(400, $exception->statusCode);
             static::assertFalse($exception->redirectable);
@@ -107,7 +113,7 @@ final class BearerTokenTest extends TestCase
     /**
      * @return iterable<string, array{string|null, array<string, mixed>, string}>
      */
-    public static function malformed(): iterable
+    public static function provideMalformed(): iterable
     {
         yield 'both methods' => ['Bearer ' . self::JWS, [
             'access_token' => self::JWS,

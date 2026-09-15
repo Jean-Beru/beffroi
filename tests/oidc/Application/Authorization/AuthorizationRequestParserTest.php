@@ -57,6 +57,7 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itReadsACompleteRequest(): void
     {
+        // When
         $request = $this->parse([
             'nonce' => 'n-0S6_WzA2Mj',
             'prompt' => 'login consent',
@@ -70,6 +71,7 @@ final class AuthorizationRequestParserTest extends TestCase
             'response_mode' => 'query',
         ]);
 
+        // Then
         static::assertSame($this->client, $request->client);
         static::assertSame('https://demo.localhost/login/check', (string) $request->redirectUri);
         static::assertEquals([Scope::openid(), new Scope('profile')], $request->scopes);
@@ -98,10 +100,12 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itReadsAMinimalRequest(): void
     {
+        // When
         $request = $this->parse([
             'state' => '',
         ]);
 
+        // Then
         static::assertNull($request->state);
         static::assertNull($request->nonce);
         static::assertSame([], $request->prompts);
@@ -121,11 +125,13 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itIgnoresUnknownParameters(): void
     {
+        // When
         $request = $this->parse([
             'foo' => 'bar',
             'resource' => ['a', 'b'],
         ]);
 
+        // Then
         static::assertSame($this->client, $request->client);
     }
 
@@ -135,6 +141,7 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itTreatsAnEmptyParameterAsOmitted(): void
     {
+        // When
         $request = $this->parse([
             'nonce' => '',
             'prompt' => '',
@@ -143,6 +150,7 @@ final class AuthorizationRequestParserTest extends TestCase
             'request_uri' => '',
         ]);
 
+        // Then
         static::assertNull($request->nonce);
         static::assertSame([], $request->prompts);
         static::assertNull($request->claims);
@@ -155,10 +163,12 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itReadsScopesOnceEach(): void
     {
+        // When
         $request = $this->parse([
             'scope' => 'email openid email profile',
         ]);
 
+        // Then
         static::assertEquals([new Scope('email'), Scope::openid(), new Scope('profile')], $request->scopes);
     }
 
@@ -169,23 +179,40 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itReadsAZeroMaxAge(): void
     {
-        static::assertSame(0, $this->parse([
+        // When
+        $request = $this->parse([
             'max_age' => '0',
-        ])->maxAge);
+        ]);
+
+        // Then
+        static::assertSame(0, $request->maxAge);
     }
 
     /**
-     * OIDC Core §3.1.2.1: "none" alone is a valid prompt, and so is each of the other values.
+     * OIDC Core §3.1.2.1: "none" alone is a valid prompt, and so is each of the other values, read once.
+     *
+     * @param list<Prompt> $prompts
      */
     #[Test]
-    public function itReadsPromptNoneAlone(): void
+    #[DataProvider('providePrompts')]
+    public function itReadsThePromptValues(string $value, array $prompts): void
     {
-        static::assertSame([Prompt::None], $this->parse([
-            'prompt' => 'none',
-        ])->prompts);
-        static::assertSame([Prompt::SelectAccount, Prompt::Consent], $this->parse([
-            'prompt' => 'select_account consent select_account',
-        ])->prompts);
+        // When
+        $request = $this->parse([
+            'prompt' => $value,
+        ]);
+
+        // Then
+        static::assertSame($prompts, $request->prompts);
+    }
+
+    /**
+     * @return iterable<string, array{string, list<Prompt>}>
+     */
+    public static function providePrompts(): iterable
+    {
+        yield 'none alone' => ['none', [Prompt::None]];
+        yield 'a value repeated' => ['select_account consent select_account', [Prompt::SelectAccount, Prompt::Consent]];
     }
 
     /**
@@ -198,10 +225,12 @@ final class AuthorizationRequestParserTest extends TestCase
     #[DataProvider('provideRequestsShownToTheUser')]
     public function itShowsTheErrorWhenTheClientOrTheRedirectUriIsNotEstablished(array $overrides, string $description): void
     {
+        // When
         try {
             $this->parser->redirectTarget($this->tenant, self::parameters($overrides));
             static::fail('The request should have been rejected.');
         } catch (OAuth2Exception $exception) {
+            // Then
             static::assertSame('invalid_request', $exception->error);
             static::assertSame($description, $exception->errorDescription);
             static::assertFalse($exception->redirectable);
@@ -266,58 +295,102 @@ final class AuthorizationRequestParserTest extends TestCase
      * the error is shown.
      */
     #[Test]
-    public function itRefusesARepeatedParameterOfTheFirstStage(): void
+    #[DataProvider('provideParametersOfTheFirstStage')]
+    public function itRefusesARepeatedParameterOfTheFirstStage(string $name): void
     {
-        foreach (['client_id', 'redirect_uri', 'state'] as $name) {
-            try {
-                $this->parser->redirectTarget($this->tenant, self::parameters([
-                    $name => ['a', 'b'],
-                ]));
-                static::fail(sprintf('A repeated %s should have been rejected.', $name));
-            } catch (OAuth2Exception $exception) {
-                static::assertSame('invalid_request', $exception->error);
-                static::assertSame(sprintf('The %s parameter must be a single string.', $name), $exception->errorDescription);
-                static::assertFalse($exception->redirectable);
-            }
+        // Given
+        $parameters = self::parameters([
+            $name => ['a', 'b'],
+        ]);
+
+        // When
+        try {
+            $this->parser->redirectTarget($this->tenant, $parameters);
+            static::fail(sprintf('A repeated %s should have been rejected.', $name));
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame('invalid_request', $exception->error);
+            static::assertSame(sprintf('The %s parameter must be a single string.', $name), $exception->errorDescription);
+            static::assertFalse($exception->redirectable);
         }
     }
 
     /**
-     * RFC 6749 §3.1: the same rule once the target is established, where the error is sent back; a
-     * repeated "request" or "request_uri" is still the unsupported feature it names.
+     * @return iterable<string, array{string}>
+     */
+    public static function provideParametersOfTheFirstStage(): iterable
+    {
+        foreach (['client_id', 'redirect_uri', 'state'] as $name) {
+            yield $name => [$name];
+        }
+    }
+
+    /**
+     * RFC 6749 §3.1: the same rule once the target is established, where the error is sent back.
      */
     #[Test]
-    public function itRefusesARepeatedParameterOfTheSecondStage(): void
+    #[DataProvider('provideParametersOfTheSecondStage')]
+    public function itRefusesARepeatedParameterOfTheSecondStage(string $name): void
     {
-        $names = ['response_type', 'response_mode', 'scope', 'code_challenge', 'code_challenge_method', 'nonce', 'prompt', 'max_age', 'login_hint', 'ui_locales', 'acr_values', 'display', 'id_token_hint', 'claims'];
-        foreach ($names as $name) {
-            $parameters = self::parameters([
-                $name => ['a', 'b'],
-            ]);
-            try {
-                $this->parser->parse($this->parser->redirectTarget($this->tenant, $parameters), $parameters);
-                static::fail(sprintf('A repeated %s should have been rejected.', $name));
-            } catch (OAuth2Exception $exception) {
-                static::assertSame('invalid_request', $exception->error);
-                static::assertSame(sprintf('The %s parameter must be a single string.', $name), $exception->errorDescription);
-                static::assertTrue($exception->redirectable);
-            }
+        // Given
+        $parameters = self::parameters([
+            $name => ['a', 'b'],
+        ]);
+        $target = $this->parser->redirectTarget($this->tenant, $parameters);
+
+        // When
+        try {
+            $this->parser->parse($target, $parameters);
+            static::fail(sprintf('A repeated %s should have been rejected.', $name));
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame('invalid_request', $exception->error);
+            static::assertSame(sprintf('The %s parameter must be a single string.', $name), $exception->errorDescription);
+            static::assertTrue($exception->redirectable);
         }
-        foreach ([
-            'request' => 'request_not_supported',
-            'request_uri' => 'request_uri_not_supported',
-        ] as $name => $error) {
-            $parameters = self::parameters([
-                $name => [self::ID_TOKEN],
-            ]);
-            try {
-                $this->parser->parse($this->parser->redirectTarget($this->tenant, $parameters), $parameters);
-                static::fail(sprintf('A repeated %s should have been rejected.', $name));
-            } catch (OAuth2Exception $exception) {
-                static::assertSame($error, $exception->error);
-                static::assertTrue($exception->redirectable);
-            }
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideParametersOfTheSecondStage(): iterable
+    {
+        foreach (['response_type', 'response_mode', 'scope', 'code_challenge', 'code_challenge_method', 'nonce', 'prompt', 'max_age', 'login_hint', 'ui_locales', 'acr_values', 'display', 'id_token_hint', 'claims'] as $name) {
+            yield $name => [$name];
         }
+    }
+
+    /**
+     * A repeated "request" or "request_uri" is still the unsupported feature it names.
+     */
+    #[Test]
+    #[DataProvider('provideUnsupportedRequestParameters')]
+    public function aRepeatedRequestObjectParameterIsStillUnsupported(string $name, string $error): void
+    {
+        // Given
+        $parameters = self::parameters([
+            $name => [self::ID_TOKEN],
+        ]);
+        $target = $this->parser->redirectTarget($this->tenant, $parameters);
+
+        // When
+        try {
+            $this->parser->parse($target, $parameters);
+            static::fail(sprintf('A repeated %s should have been rejected.', $name));
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame($error, $exception->error);
+            static::assertTrue($exception->redirectable);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideUnsupportedRequestParameters(): iterable
+    {
+        yield 'request' => ['request', 'request_not_supported'];
+        yield 'request_uri' => ['request_uri', 'request_uri_not_supported'];
     }
 
     /**
@@ -327,6 +400,7 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itEstablishesTheTargetBeforeReadingAnythingElse(): void
     {
+        // When
         $target = $this->parser->redirectTarget($this->tenant, [
             'client_id' => 'oidc-demo',
             'redirect_uri' => 'https://demo.localhost/login/check',
@@ -335,12 +409,25 @@ final class AuthorizationRequestParserTest extends TestCase
             'scope' => ['not', 'a', 'string'],
         ]);
 
+        // Then
         static::assertSame($this->client, $target->client);
         static::assertSame('https://demo.localhost/login/check', (string) $target->redirectUri);
         static::assertSame('af0ifjsldkj', $target->state);
-        static::assertNull($this->parser->redirectTarget($this->tenant, self::parameters([
+    }
+
+    /**
+     * RFC 6749 §4.1.1: state is optional; the target carries none when the request had none.
+     */
+    #[Test]
+    public function theTargetCarriesNoStateWhenTheRequestHadNone(): void
+    {
+        // When
+        $target = $this->parser->redirectTarget($this->tenant, self::parameters([
             'state' => null,
-        ]))->state);
+        ]));
+
+        // Then
+        static::assertNull($target->state);
     }
 
     /**
@@ -353,13 +440,16 @@ final class AuthorizationRequestParserTest extends TestCase
     #[DataProvider('provideRequestsSentBackToTheClient')]
     public function itRedirectsTheErrorOnceTheTargetIsEstablished(array $overrides, string $error, string $description): void
     {
+        // Given
         $parameters = self::parameters($overrides);
         $target = $this->parser->redirectTarget($this->tenant, $parameters);
 
+        // When
         try {
             $this->parser->parse($target, $parameters);
             static::fail('The request should have been rejected.');
         } catch (OAuth2Exception $exception) {
+            // Then
             static::assertSame($error, $exception->error);
             static::assertSame($description, $exception->errorDescription);
             static::assertTrue($exception->redirectable);
@@ -540,9 +630,13 @@ final class AuthorizationRequestParserTest extends TestCase
     #[DataProvider('provideDisplays')]
     public function itReadsEveryDisplayValue(string $value, Display $display): void
     {
-        static::assertSame($display, $this->parse([
+        // When
+        $request = $this->parse([
             'display' => $value,
-        ])->display);
+        ]);
+
+        // Then
+        static::assertSame($display, $request->display);
     }
 
     /**

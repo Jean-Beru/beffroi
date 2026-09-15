@@ -72,16 +72,18 @@ final class UserInfoHandlerTest extends TestCase
 
     /**
      * OIDC Core §5.3.2: "sub" first, equal to the one of the token; §5.4: the claims of the scopes of the
-     * token; §5.1: "email_verified" a JSON boolean on the wire. RFC 6750 §2.1: the token in the
-     * Authorization header, which is how oidc_login sends it.
+     * token. RFC 6750 §2.1: the token in the Authorization header, which is how oidc_login sends it.
      */
     #[Test]
     public function itServesTheClaimsOfTheScopesOfTheToken(): void
     {
+        // Given
         $token = $this->accessToken(['openid', 'email', 'phone']);
 
+        // When
         $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
 
+        // Then
         static::assertSame('alice-subject', $response->subject);
         static::assertSame($this->jwts->verify($token, 'spa', Fixtures::now())['claims']['sub'], $response->subject);
         static::assertSame([
@@ -91,6 +93,21 @@ final class UserInfoHandlerTest extends TestCase
             'phone_number' => '+33612345678',
             'phone_number_verified' => false,
         ], $response->claims);
+    }
+
+    /**
+     * OIDC Core §5.1: "email_verified" a JSON boolean on the wire.
+     */
+    #[Test]
+    public function theVerificationFlagsAreJsonBooleansOnTheWire(): void
+    {
+        // Given
+        $token = $this->accessToken(['openid', 'email', 'phone']);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
         static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false}', $response->toJson());
     }
 
@@ -103,12 +120,15 @@ final class UserInfoHandlerTest extends TestCase
     #[Test]
     public function itServesTheClaimsAskedForByNameFromTheTokenAlone(): void
     {
+        // Given
         $token = $this->accessToken(['openid'], '{"userinfo":{"nickname":null,"email":{"essential":true},"unknown":null},"id_token":{"name":null}}');
 
+        // When
         $response = $this->handler->handle($this->tenant, null, [
             'access_token' => $token,
         ], Fixtures::context());
 
+        // Then
         static::assertSame([
             'sub' => 'alice-subject',
             'nickname' => 'ali',
@@ -123,10 +143,14 @@ final class UserInfoHandlerTest extends TestCase
     #[Test]
     public function itServesSubAloneForOpenidAlone(): void
     {
+        // Given
         $refreshed = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'email']), [Scope::openid()]);
+        $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
 
-        $response = $this->handler->handle($this->tenant, 'Bearer ' . $this->accessTokens->issue($refreshed, Fixtures::now())->value, [], Fixtures::context());
+        // When
+        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
 
+        // Then
         static::assertSame([
             'sub' => 'alice-subject',
         ], $response->claims);
@@ -139,10 +163,12 @@ final class UserInfoHandlerTest extends TestCase
     #[Test]
     public function itRefusesARequestWithoutToken(): void
     {
+        // When
         try {
             $this->handler->handle($this->tenant, null, [], Fixtures::context());
             static::fail('The request should have been refused.');
         } catch (MissingBearerTokenException $exception) {
+            // Then
             static::assertSame('Bearer', UserInfoErrorResponse::fromException($exception)->challenge());
         }
     }
@@ -153,39 +179,56 @@ final class UserInfoHandlerTest extends TestCase
     #[Test]
     public function itRefusesATokenSentTwice(): void
     {
+        // Given
         $token = $this->accessToken(['openid']);
 
+        // Then
         $this->expectException(InvalidRequestException::class);
+
+        // When
         $this->handler->handle($this->tenant, 'Bearer ' . $token, [
             'access_token' => $token,
         ], Fixtures::context());
     }
 
     /**
-     * RFC 6750 §3.1, RFC 9068 §4: an expired token, or an ID token of this provider presented as an
-     * access token (no "typ" at+jwt), is invalid_token, 401.
+     * RFC 6750 §3.1, RFC 9068 §4: an expired token is invalid_token, 401, with a description that tells
+     * the client to refresh.
      */
     #[Test]
-    public function itRefusesAnExpiredTokenAndAnIdToken(): void
+    public function itRefusesAnExpiredToken(): void
     {
-        $authorization = $this->authorization(['openid', 'email']);
-        $accessToken = $this->accessTokens->issue($authorization, Fixtures::now());
-        $idToken = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider())
-            ->issue($authorization, $accessToken, Fixtures::now());
+        // Given
+        $token = $this->accessToken(['openid', 'email']);
 
+        // When
         try {
-            $this->handler->handle($this->tenant, 'Bearer ' . $accessToken->value, [], Fixtures::context(Fixtures::now()->modify('+10 minutes')));
+            $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(Fixtures::now()->modify('+10 minutes')));
             static::fail('The token should have been refused.');
         } catch (InvalidTokenException $exception) {
+            // Then
             static::assertSame('Bearer error="invalid_token", error_description="The access token expired."', UserInfoErrorResponse::fromException($exception)->challenge());
         }
-        try {
-            $this->handler->handle($this->tenant, 'Bearer ' . $idToken, [], Fixtures::context());
-            static::fail('The token should have been refused.');
-        } catch (InvalidTokenException $exception) {
-            static::assertSame(401, $exception->statusCode);
-            static::assertStringContainsString('not an access token', $exception->errorDescription);
-        }
+    }
+
+    /**
+     * RFC 9068 §4: an ID token of this provider presented as an access token (no "typ" at+jwt) is
+     * invalid_token, 401.
+     */
+    #[Test]
+    public function itRefusesAnIdTokenPresentedAsAnAccessToken(): void
+    {
+        // Given
+        $authorization = $this->authorization(['openid', 'email']);
+        $idToken = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider())
+            ->issue($authorization, $this->accessTokens->issue($authorization, Fixtures::now()), Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIsOrContains('not an access token');
+
+        // When
+        $this->handler->handle($this->tenant, 'Bearer ' . $idToken, [], Fixtures::context());
     }
 
     /**
@@ -195,38 +238,55 @@ final class UserInfoHandlerTest extends TestCase
     #[Test]
     public function itRefusesATokenWithoutOpenidScope(): void
     {
+        // Given
         $refreshed = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'email']), [new Scope('email')]);
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
 
+        // When
         try {
             $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
             static::fail('The token should have been refused.');
         } catch (InsufficientScopeException $exception) {
+            // Then
             static::assertSame(403, $exception->statusCode);
             static::assertSame('Bearer error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid"', UserInfoErrorResponse::fromException($exception)->challenge());
         }
     }
 
     /**
-     * A token that names a user the tenant no longer has, or has disabled, opens nothing: invalid_token,
-     * the same as a bad one. Nothing about the user is said.
+     * A token that names a user the tenant has disabled opens nothing: invalid_token, the same as a bad
+     * one. Nothing about the user is said.
      */
     #[Test]
-    public function itRefusesATokenOfAUserGoneOrDisabled(): void
+    public function itRefusesATokenOfADisabledUser(): void
     {
+        // Given
         $token = $this->accessToken(['openid', 'email']);
         $this->user->disable(Fixtures::now());
-        try {
-            $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
-            static::fail('The token should have been refused.');
-        } catch (InvalidTokenException $exception) {
-            static::assertSame(401, $exception->statusCode);
-            static::assertSame('The access token names a user this provider no longer serves.', $exception->errorDescription);
-        }
 
+        // Then
         $this->expectException(InvalidTokenException::class);
-        $this->handler(new InMemoryUserRepository())
-            ->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $this->expectExceptionMessageIs('invalid_token: The access token names a user this provider no longer serves.');
+
+        // When
+        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+    }
+
+    /**
+     * A token that names a user the tenant no longer has opens nothing either.
+     */
+    #[Test]
+    public function itRefusesATokenOfAUserGone(): void
+    {
+        // Given
+        $token = $this->accessToken(['openid', 'email']);
+        $handler = $this->handler(new InMemoryUserRepository());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+
+        // When
+        $handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -235,9 +295,13 @@ final class UserInfoHandlerTest extends TestCase
     #[Test]
     public function itRefusesATokenOfAnotherTenant(): void
     {
+        // Given
         $token = $this->accessToken(['openid']);
 
+        // Then
         $this->expectException(InvalidTokenException::class);
+
+        // When
         $this->handler->handle(Fixtures::tenant('other', 'https://id.other.example'), 'Bearer ' . $token, [], Fixtures::context());
     }
 

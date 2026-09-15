@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
 use function array_map;
 use Doctrine\DBAL\Schema\Name\OptionallyQualifiedName;
+use Doctrine\DBAL\Schema\Table;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\Tools\SchemaValidator;
 use Heidi\Bundle\Tests\Functional\Doctrine\Host\User as HostUser;
@@ -37,43 +38,60 @@ final class SchemaTest extends DatabaseTestCase
      * What "doctrine:schema:validate" checks: the mappings are consistent, and the database matches them.
      */
     #[Test]
-    public function theMappingsAreValidAndTheSchemaIsInSync(): void
+    public function theMappingsAreValid(): void
     {
+        // Given
         $validator = new SchemaValidator(self::entityManager());
 
+        // When / Then
         static::assertSame([], $validator->validateMapping());
+    }
+
+    #[Test]
+    public function theSchemaIsInSyncWithTheMappings(): void
+    {
+        // Given
+        $validator = new SchemaValidator(self::entityManager());
+
+        // When / Then
         static::assertSame([], $validator->getUpdateSchemaList());
     }
 
     /**
-     * Architecture §5.3: every table is prefixed "heidi_" and every row carries the tenant.
+     * Architecture §5.3: the tables of the bundle, every one prefixed "heidi_", and no other.
      */
     #[Test]
-    public function everyTableIsPrefixedAndCarriesTheTenant(): void
+    public function theBundleDeclaresItsElevenPrefixedTables(): void
     {
-        $entityManager = self::entityManager();
-        $schema = new SchemaTool($entityManager)
-            ->getSchemaFromMetadata($entityManager->getMetadataFactory()->getAllMetadata());
+        // When
+        $tables = array_keys(self::tablesOfTheBundle());
 
-        $tables = [];
-        foreach ($schema->getTables() as $table) {
-            $name = $table->getObjectName()
-                ->getUnqualifiedName()
-                ->getValue();
-            if ($name === 'app_user') {
-                continue;
-            }
-            $tables[] = $name;
-            static::assertTrue(str_starts_with($name, 'heidi_'), $name);
-            if ($name !== 'heidi_tenant') {
-                static::assertTrue($table->hasColumn('tenant_id'), $name);
-                static::assertNotFalse($table->getColumn('tenant_id')->getNotnull(), $name);
-            }
-        }
+        // Then
         $expected = self::TABLES;
         sort($tables);
         sort($expected);
         static::assertSame($expected, $tables);
+        foreach ($tables as $name) {
+            static::assertTrue(str_starts_with($name, 'heidi_'), $name);
+        }
+    }
+
+    /**
+     * Architecture §5.3: every row carries the tenant.
+     */
+    #[Test]
+    public function everyTableButTheTenantOneCarriesTheTenant(): void
+    {
+        // When
+        $tables = self::tablesOfTheBundle();
+
+        // Then
+        unset($tables['heidi_tenant']);
+        static::assertNotSame([], $tables);
+        foreach ($tables as $name => $table) {
+            static::assertTrue($table->hasColumn('tenant_id'), $name);
+            static::assertNotFalse($table->getColumn('tenant_id')->getNotnull(), $name);
+        }
     }
 
     /**
@@ -83,17 +101,41 @@ final class SchemaTest extends DatabaseTestCase
     #[Test]
     public function theHostApplicationKeepsItsOwnUserNextToTheBundle(): void
     {
-        $entityManager = self::entityManager();
+        // Given
         $host = new HostUser('host@example.com');
-        $entityManager->persist($host);
-        $entityManager->flush();
+        self::entityManager()->persist($host);
+        self::entityManager()->flush();
         self::reload();
 
+        // When
         $tables = array_map(static fn (OptionallyQualifiedName $table): string => $table->getUnqualifiedName()->getValue(), self::entityManager()->getConnection()->createSchemaManager()->introspectTableNames());
-        sort($tables);
 
+        // Then
         static::assertContains('app_user', $tables);
         static::assertContains('heidi_user', $tables);
-        static::assertSame('host@example.com', $entityManager->find(HostUser::class, $host->id)?->email);
+        static::assertSame('host@example.com', self::entityManager()->find(HostUser::class, $host->id)?->email);
+    }
+
+    /**
+     * The tables the mappings of the bundle describe, by name, the one of the host application left out.
+     *
+     * @return array<string, Table>
+     */
+    private static function tablesOfTheBundle(): array
+    {
+        $entityManager = self::entityManager();
+        $schema = new SchemaTool($entityManager)
+            ->getSchemaFromMetadata($entityManager->getMetadataFactory()->getAllMetadata());
+        $tables = [];
+        foreach ($schema->getTables() as $table) {
+            $name = $table->getObjectName()
+                ->getUnqualifiedName()
+                ->getValue();
+            if ($name !== 'app_user') {
+                $tables[$name] = $table;
+            }
+        }
+
+        return $tables;
     }
 }

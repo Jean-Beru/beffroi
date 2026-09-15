@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Unit\Doctrine\Type;
 
 use DateTimeImmutable;
+use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Types\ConversionException;
@@ -47,7 +48,7 @@ final class TypesTest extends TestCase
     /**
      * @return iterable<string, array{class-string<Type>, object|list<Scope>, string}>
      */
-    public static function values(): iterable
+    public static function provideValues(): iterable
     {
         yield 'issuer' => [IssuerType::class, new Issuer('https://op.example/tenant'), 'https://op.example/tenant'];
         yield 'subject' => [SubjectType::class, new Subject('alice-subject'), 'alice-subject'];
@@ -74,16 +75,50 @@ final class TypesTest extends TestCase
      * @param object|list<Scope> $value
      */
     #[Test]
-    #[DataProvider('values')]
-    public function aValueGoesToTheDatabaseAndComesBackEqual(string $type, object|array $value, string $stored): void
+    #[DataProvider('provideValues')]
+    public function aValueGoesToTheDatabaseAsOneValue(string $type, object|array $value, string $stored): void
     {
+        // Given
+        $type = self::type($type);
+
+        // When
+        $written = $type->convertToDatabaseValue($value, new SQLitePlatform());
+
+        // Then
+        static::assertSame($stored, $written);
+    }
+
+    /**
+     * @param class-string<Type> $type
+     * @param object|list<Scope> $value
+     */
+    #[Test]
+    #[DataProvider('provideValues')]
+    public function aValueComesBackEqual(string $type, object|array $value, string $stored): void
+    {
+        // Given
+        $type = self::type($type);
+
+        // When
+        $read = $type->convertToPHPValue($stored, new SQLitePlatform());
+
+        // Then
+        static::assertEquals($value, $read);
+    }
+
+    /**
+     * @param class-string<Type> $type
+     * @param object|list<Scope> $value
+     */
+    #[Test]
+    #[DataProvider('provideValues')]
+    public function nullGoesBothWaysAsNull(string $type, object|array $value, string $stored): void
+    {
+        // Given
         $platform = new SQLitePlatform();
         $type = self::type($type);
 
-        $written = $type->convertToDatabaseValue($value, $platform);
-
-        static::assertSame($stored, $written);
-        static::assertEquals($value, $type->convertToPHPValue($written, $platform));
+        // When / Then
         static::assertNull($type->convertToDatabaseValue(null, $platform));
         static::assertNull($type->convertToPHPValue(null, $platform));
     }
@@ -91,7 +126,7 @@ final class TypesTest extends TestCase
     /**
      * @return iterable<string, array{class-string<Type>, mixed}>
      */
-    public static function valuesThatAreNotStorable(): iterable
+    public static function provideValuesThatAreNotStorable(): iterable
     {
         yield 'a string for an issuer' => [IssuerType::class, 'https://op.example'];
         yield 'a subject for an issuer' => [IssuerType::class, new Subject('alice')];
@@ -107,19 +142,23 @@ final class TypesTest extends TestCase
      * @param class-string<Type> $type
      */
     #[Test]
-    #[DataProvider('valuesThatAreNotStorable')]
+    #[DataProvider('provideValuesThatAreNotStorable')]
     public function whatIsNotTheValueObjectIsNotStored(string $type, mixed $value): void
     {
+        // Given
+        $type = self::type($type);
+
+        // Then
         $this->expectException(ConversionException::class);
 
-        self::type($type)
-            ->convertToDatabaseValue($value, new SQLitePlatform());
+        // When
+        $type->convertToDatabaseValue($value, new SQLitePlatform());
     }
 
     /**
      * @return iterable<string, array{class-string<Type>, mixed}>
      */
-    public static function storedValuesThatAreNotReadable(): iterable
+    public static function provideStoredValuesThatAreNotReadable(): iterable
     {
         yield 'an issuer with a fragment' => [IssuerType::class, 'https://op.example/#x'];
         yield 'an issuer that is not a string' => [IssuerType::class, 12];
@@ -149,52 +188,85 @@ final class TypesTest extends TestCase
      * @param class-string<Type> $type
      */
     #[Test]
-    #[DataProvider('storedValuesThatAreNotReadable')]
+    #[DataProvider('provideStoredValuesThatAreNotReadable')]
     public function whatTheDatabaseHoldsThatIsNotTheValueObjectIsNotRead(string $type, mixed $stored): void
     {
+        // Given
+        $type = self::type($type);
+
+        // Then
         $this->expectException(ConversionException::class);
 
-        self::type($type)
-            ->convertToPHPValue($stored, new SQLitePlatform());
+        // When
+        $type->convertToPHPValue($stored, new SQLitePlatform());
     }
 
     #[Test]
     public function anEmptyScopeStringReadsAsNoScope(): void
     {
+        // When / Then
         static::assertSame([], self::type(ScopesType::class)->convertToPHPValue('', new SQLitePlatform()));
     }
 
     /**
      * The JSON documents are JSONB on PostgreSQL when the mapping asks, JSON otherwise; a string is a
      * string everywhere.
+     *
+     * @param class-string<Type> $type
+     * @param array<string, mixed> $column
      */
     #[Test]
-    public function theColumnsDeclareThemselvesForEachPlatform(): void
+    #[DataProvider('provideColumnDeclarations')]
+    public function theColumnsDeclareThemselvesForEachPlatform(string $type, array $column, AbstractPlatform $platform, string $declaration): void
     {
-        $postgres = new PostgreSQLPlatform();
-        $sqlite = new SQLitePlatform();
+        // When / Then
+        static::assertSame($declaration, self::type($type)->getSQLDeclaration($column, $platform));
+    }
 
-        static::assertSame('JSONB', self::type(GeoLocationType::class)->getSQLDeclaration([
+    /**
+     * @return iterable<string, array{class-string<Type>, array<string, mixed>, AbstractPlatform, string}>
+     */
+    public static function provideColumnDeclarations(): iterable
+    {
+        yield 'JSONB on PostgreSQL when asked' => [GeoLocationType::class, [
             'jsonb' => true,
-        ], $postgres));
-        static::assertSame('JSON', self::type(AddressType::class)->getSQLDeclaration([], $postgres));
-        static::assertSame('CLOB', self::type(ClaimsRequestType::class)->getSQLDeclaration([], $sqlite));
-        static::assertSame('VARCHAR(255)', self::type(IssuerType::class)->getSQLDeclaration([
+        ], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSON on PostgreSQL otherwise' => [AddressType::class, [], new PostgreSQLPlatform(), 'JSON'];
+        yield 'CLOB on SQLite' => [ClaimsRequestType::class, [], new SQLitePlatform(), 'CLOB'];
+        yield 'a string with a length' => [IssuerType::class, [
             'length' => 255,
-        ], $postgres));
-        static::assertSame('TEXT', self::type(ScopesType::class)->getSQLDeclaration([], $postgres));
+        ], new PostgreSQLPlatform(), 'VARCHAR(255)'];
+        yield 'a string without a length' => [ScopesType::class, [], new PostgreSQLPlatform(), 'TEXT'];
     }
 
     /**
      * The bundle declares every type to Doctrine under the name the mappings use.
+     *
+     * @param class-string<Type> $class
      */
     #[Test]
-    public function everyTypeIsDeclaredUnderItsName(): void
+    #[DataProvider('provideDeclaredTypes')]
+    public function everyTypeIsDeclaredUnderItsName(string $name, string $class): void
+    {
+        // When / Then
+        static::assertSame($class::NAME, $name);
+        static::assertInstanceOf($class, self::type($class));
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string<Type>}>
+     */
+    public static function provideDeclaredTypes(): iterable
     {
         foreach (HeidiBundle::DBAL_TYPES as $name => $class) {
-            static::assertSame($class::NAME, $name, $class);
-            static::assertInstanceOf($class, self::type($class));
+            yield $name => [$name, $class];
         }
+    }
+
+    #[Test]
+    public function theBundleDeclaresTenTypes(): void
+    {
+        // When / Then
         static::assertCount(10, HeidiBundle::DBAL_TYPES);
     }
 

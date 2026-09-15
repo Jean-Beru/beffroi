@@ -20,8 +20,10 @@ final class AuthorizationResponseTest extends TestCase
     #[Test]
     public function itRedirectsWithCodeStateAndIssuer(): void
     {
+        // When
         $response = new AuthorizationResponse(new Issuer('https://id.acme.example'), new RedirectUri('https://spa.example/callback?app=1'), 'af0ifjsldkj', 'SplxlOBeZQQYbYS6WxSbIA');
 
+        // Then
         static::assertSame([
             'code' => 'SplxlOBeZQQYbYS6WxSbIA',
             'state' => 'af0ifjsldkj',
@@ -36,8 +38,10 @@ final class AuthorizationResponseTest extends TestCase
     #[Test]
     public function itOmitsTheStateWhenTheRequestHadNone(): void
     {
+        // When
         $response = new AuthorizationResponse(new Issuer('https://id.acme.example'), new RedirectUri('https://spa.example/callback'), null, 'SplxlOBeZQQYbYS6WxSbIA');
 
+        // Then
         static::assertSame([
             'code' => 'SplxlOBeZQQYbYS6WxSbIA',
             'iss' => 'https://id.acme.example',
@@ -48,7 +52,10 @@ final class AuthorizationResponseTest extends TestCase
     #[Test]
     public function itRefusesAnEmptyCode(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new AuthorizationResponse(new Issuer('https://id.acme.example'), new RedirectUri('https://spa.example/callback'), null, '');
     }
 }

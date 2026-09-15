@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,53 +22,95 @@ use Twig\Error\RuntimeError;
  */
 final class LocalizedPagesTest extends BrowserTestCase
 {
+    private const string ENGLISH_BROWSER = 'en-US,en;q=0.9';
+
     /**
-     * The acceptance criterion of #16: ui_locales=fr renders the login page in French. The choice is
-     * recorded on the interaction, so the next page is French too, whatever the browser now says.
+     * The acceptance criterion of #16: the choice of ui_locales=fr is recorded on the interaction, and
+     * the locale is not in the URL.
      */
     #[Test]
-    public function uiLocalesFrRendersTheLoginPageInFrench(): void
+    public function uiLocalesFrIsRecordedOnTheInteraction(): void
     {
-        $user = self::userWithPassword('alice', 'correct horse battery staple');
-
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
             'ui_locales' => 'fr',
         ]), server: [
-            'HTTP_ACCEPT_LANGUAGE' => 'en-US,en;q=0.9',
+            'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
         ]);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         $interaction = self::redirectedInteraction($response);
         static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'), 'The locale is not in the URL.');
-        $stored = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction) ?? static::fail('The interaction is gone.');
-        static::assertSame('fr', $stored->locale);
+        static::assertSame('fr', $this->storedLocale($interaction));
+    }
 
-        $crawler = $this->page('/login', $interaction, 'en-US,en;q=0.9');
+    /**
+     * The acceptance criterion of #16: ui_locales=fr renders the login page in French, whatever the
+     * browser now says.
+     */
+    #[Test]
+    public function uiLocalesFrRendersTheLoginPageInFrench(): void
+    {
+        // Given
+        $interaction = $this->frenchInteraction();
+
+        // When
+        $crawler = $this->page('/login', $interaction, self::ENGLISH_BROWSER);
+
+        // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Connexion', $crawler->filter('title')->text());
         static::assertSame('Connexion', $crawler->filter('h1')->text());
         static::assertSame('Nom d’utilisateur', $crawler->filter('label[for="username"]')->text());
         static::assertCount(1, $crawler->selectButton('Se connecter'));
+    }
 
-        // a refused login is refused in French
-        $form = $crawler->selectButton('Se connecter')
+    /**
+     * A refused login is refused in French.
+     */
+    #[Test]
+    public function aRefusedLoginIsRefusedInTheLanguageOfTheInteraction(): void
+    {
+        // Given
+        self::userWithPassword('alice', 'correct horse battery staple');
+        $form = $this->page('/login', $this->frenchInteraction(), self::ENGLISH_BROWSER)
+            ->selectButton('Se connecter')
             ->form();
         $form['_username'] = 'alice';
         $form['_password'] = 'wrong';
+
+        // When
         $this->browser->submit($form);
         $crawler = $this->browser->followRedirect();
+
+        // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertStringStartsWith('La connexion a échoué.', $crawler->filter('p[data-error]')->text());
+    }
 
-        // the consent page of the same interaction is French, the browser still asking for English
+    /**
+     * The consent page of the same interaction is French, the browser still asking for English.
+     */
+    #[Test]
+    public function theConsentPageSpeaksTheLanguageOfTheInteraction(): void
+    {
+        // Given
+        $user = self::user('alice');
+        $interaction = $this->frenchInteraction();
         $this->signIn($user);
         $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
         ], server: [
-            'HTTP_ACCEPT_LANGUAGE' => 'en-US,en;q=0.9',
+            'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
         ]);
         static::assertSame('/consent?interaction=' . $interaction, $this->browser->getResponse()->headers->get('Location'));
-        $crawler = $this->page('/consent', $interaction, 'en-US,en;q=0.9');
+
+        // When
+        $crawler = $this->page('/consent', $interaction, self::ENGLISH_BROWSER);
+
+        // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Autoriser native-app', $crawler->filter('h1')->text());
         static::assertSame('Session ouverte pour alice.', $crawler->filter('main > p')->first()->text());
@@ -83,15 +126,16 @@ final class LocalizedPagesTest extends BrowserTestCase
     #[Test]
     public function acceptLanguageDecidesWhenUiLocalesMatchesNothing(): void
     {
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
             'ui_locales' => 'de-DE de',
         ]), server: [
             'HTTP_ACCEPT_LANGUAGE' => 'fr-CA,fr;q=0.9,en;q=0.5',
         ]);
-        $interaction = self::redirectedInteraction($this->browser->getResponse());
-        $stored = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction) ?? static::fail('The interaction is gone.');
-        static::assertSame('fr', $stored->locale);
 
+        // Then
+        $interaction = self::redirectedInteraction($this->browser->getResponse());
+        static::assertSame('fr', $this->storedLocale($interaction));
         $crawler = $this->page('/login', $interaction, 'en');
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Connexion', $crawler->filter('h1')->text());
@@ -103,13 +147,14 @@ final class LocalizedPagesTest extends BrowserTestCase
     #[Test]
     public function theDefaultLocaleWhenNothingMatches(): void
     {
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters(), server: [
             'HTTP_ACCEPT_LANGUAGE' => 'de-DE,de;q=0.9',
         ]);
-        $interaction = self::redirectedInteraction($this->browser->getResponse());
-        $stored = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction) ?? static::fail('The interaction is gone.');
-        static::assertSame('en', $stored->locale);
 
+        // Then
+        $interaction = self::redirectedInteraction($this->browser->getResponse());
+        static::assertSame('en', $this->storedLocale($interaction));
         $crawler = $this->page('/login', $interaction, 'de-DE,de;q=0.9');
         static::assertSame('en', $crawler->filter('html')->attr('lang'));
         static::assertSame('Sign in', $crawler->filter('h1')->text());
@@ -118,29 +163,42 @@ final class LocalizedPagesTest extends BrowserTestCase
 
     /**
      * A page shown without an interaction has nothing to record and nothing to read: the error page of
-     * a refused request speaks the language of the browser, the code stays a code and the description
-     * of the protocol stays what the developer of the client reads (RFC 6749 §4.1.2.1).
+     * a refused request speaks the language of the browser.
      */
     #[Test]
-    public function anErrorPageSpeaksTheLanguageOfTheBrowser(): void
+    public function anErrorPageWithoutAnInteractionSpeaksTheLanguageOfTheBrowser(): void
     {
+        // When
         $crawler = $this->browser->request('GET', '/login', [
             'interaction' => 'nothing-this-browser-began',
         ], server: [
             'HTTP_ACCEPT_LANGUAGE' => 'fr',
         ]);
+
+        // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Requête refusée', $crawler->filter('h1')->text());
         static::assertSame(AuthorizationResponder::UNKNOWN_INTERACTION, $crawler->filter('p[data-error]')->attr('data-error'));
         static::assertSame('Aucune requête n’attend cette page. Recommencez depuis l’application.', $crawler->filter('p[data-error]')->text());
         static::assertCount(0, $crawler->filter('p[data-description]'));
+    }
 
+    /**
+     * RFC 6749 §4.1.2.1: on a refused authorization request the code stays a code and the description
+     * of the protocol stays what the developer of the client reads; the explanation is translated.
+     */
+    #[Test]
+    public function aRefusedAuthorizationRequestIsExplainedInTheLanguageOfTheBrowser(): void
+    {
+        // When
         $crawler = $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
             'client_id' => 'nobody',
         ]), server: [
             'HTTP_ACCEPT_LANGUAGE' => 'fr',
         ]);
+
+        // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('invalid_request', $crawler->filter('p[data-error]')->attr('data-error'));
@@ -149,38 +207,102 @@ final class LocalizedPagesTest extends BrowserTestCase
     }
 
     /**
-     * RP-Initiated Logout §2: the logout pages speak the "ui_locales" of the logout request, which the
-     * confirmation form carries over so that the answer is read in the same language; without one, the
-     * language of the browser.
+     * RP-Initiated Logout §2: the logout page speaks the "ui_locales" of the logout request, which the
+     * confirmation form carries over.
      */
     #[Test]
-    public function theLogoutPagesSpeakTheUiLocalesOfTheLogoutRequest(): void
+    public function theLogoutPageSpeaksTheUiLocalesOfTheLogoutRequest(): void
     {
+        // Given
         $this->signIn(self::user('alice'));
 
-        $crawler = $this->browser->request('GET', '/logout', [
-            'client_id' => 'oidc-demo',
-            'ui_locales' => 'fr-FR',
-        ], server: [
-            'HTTP_ACCEPT_LANGUAGE' => 'en',
-        ]);
+        // When
+        $crawler = $this->frenchLogoutPage();
+
+        // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Déconnexion', $crawler->filter('h1')->text());
         static::assertSame('fr-FR', $crawler->filter('input[name="ui_locales"]')->attr('value'));
         static::assertStringContainsString('Demo application demande à vous déconnecter.', $crawler->filter('p[data-reason]')->text());
+    }
 
+    /**
+     * The answer to the confirmation form is read in the same language.
+     */
+    #[Test]
+    public function theAnswerToTheLogoutFormSpeaksTheSameLanguage(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $crawler = $this->frenchLogoutPage();
+
+        // When
         $crawler = $this->browser->submit($crawler->selectButton('Garder la session ouverte')->form());
+
+        // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Session toujours ouverte', $crawler->filter('[data-logged-out="no"]')->text());
+    }
 
-        // without ui_locales, the browser says, on every request as a browser does
+    /**
+     * Without ui_locales, the browser says, on every request as a browser does.
+     */
+    #[Test]
+    public function withoutUiLocalesTheLogoutPagesSpeakTheLanguageOfTheBrowser(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
         $this->browser->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+
+        // When
         $crawler = $this->browser->request('GET', '/logout');
+
+        // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Votre déconnexion est demandée. Session ouverte pour alice. Voulez-vous vous déconnecter ?', $crawler->filter('p[data-reason]')->text(normalizeWhitespace: true));
+    }
+
+    #[Test]
+    public function withoutUiLocalesTheLoggedOutPageSpeaksTheLanguageOfTheBrowser(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->browser->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+        $crawler = $this->browser->request('GET', '/logout');
+
+        // When
         $crawler = $this->browser->submit($crawler->selectButton('Se déconnecter')->form());
+
+        // Then
         static::assertSame('Session fermée', $crawler->filter('[data-logged-out="yes"]')->text());
+    }
+
+    /**
+     * The catalogue of every enabled locale defines the keys of the pages, a regional locale falling
+     * back on its language.
+     */
+    #[Test]
+    #[DataProvider('provideTranslations')]
+    public function theCatalogueTranslatesTheKeysOfThePages(string $locale, string $translation): void
+    {
+        // Given
+        $twig = self::service('twig', Environment::class);
+
+        // When
+        $rendered = $twig->createTemplate("{{ 'login.title'|trans({}, 'heidi', '" . $locale . "') }}")->render();
+
+        // Then
+        static::assertSame($translation, $rendered);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideTranslations(): iterable
+    {
+        yield 'en' => ['en', 'Sign in'];
+        yield 'fr_CA' => ['fr_CA', 'Connexion'];
     }
 
     /**
@@ -190,19 +312,53 @@ final class LocalizedPagesTest extends BrowserTestCase
     #[Test]
     public function theTestKernelFailsOnAMissingTranslation(): void
     {
-        $twig = self::service('twig', Environment::class);
+        // Given
+        $template = self::service('twig', Environment::class)->createTemplate("{{ 'login.nothing'|trans({}, 'heidi', 'fr') }}");
 
-        static::assertSame('Sign in', $twig->createTemplate("{{ 'login.title'|trans({}, 'heidi', 'en') }}")->render());
-        static::assertSame('Connexion', $twig->createTemplate("{{ 'login.title'|trans({}, 'heidi', 'fr_CA') }}")->render());
+        // When
         try {
-            $twig->createTemplate("{{ 'login.nothing'|trans({}, 'heidi', 'fr') }}")
-                ->render();
+            $template->render();
             static::fail('A missing translation was rendered.');
         } catch (RuntimeError $error) {
+            // Then
             $cause = $error->getPrevious();
             static::assertInstanceOf(LogicException::class, $cause);
             static::assertSame('No translation of "login.nothing" in the "heidi" domain for the "fr" locale.', $cause->getMessage());
         }
+    }
+
+    /**
+     * An interaction of the native client asked in French by a browser that speaks English.
+     */
+    private function frenchInteraction(): string
+    {
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
+            'ui_locales' => 'fr',
+        ]), server: [
+            'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
+        ]);
+
+        return self::redirectedInteraction($this->browser->getResponse());
+    }
+
+    /**
+     * The logout page asked in French by oidc-demo, from a browser that speaks English.
+     */
+    private function frenchLogoutPage(): Crawler
+    {
+        return $this->browser->request('GET', '/logout', [
+            'client_id' => 'oidc-demo',
+            'ui_locales' => 'fr-FR',
+        ], server: [
+            'HTTP_ACCEPT_LANGUAGE' => 'en',
+        ]);
+    }
+
+    private function storedLocale(string $interaction): ?string
+    {
+        $stored = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction) ?? static::fail('The interaction is gone.');
+
+        return $stored->locale;
     }
 
     private function page(string $path, string $interaction, string $acceptLanguage): Crawler

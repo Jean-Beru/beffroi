@@ -11,6 +11,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function str_repeat;
 use Symfony\Component\Uid\Uuid;
 
 final class TenantTest extends TestCase
@@ -19,8 +20,10 @@ final class TenantTest extends TestCase
     #[DataProvider('provideInvalidSlugs')]
     public function itRejectsASlugThatCouldNotBeAPathSegmentOrAHostLabel(string $slug): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new Tenant(Uuid::v7(), $slug, new Issuer('https://id.example'), 'Acme', Fixtures::now());
     }
 
@@ -38,32 +41,60 @@ final class TenantTest extends TestCase
     }
 
     #[Test]
-    public function itCanBeRenamedButNotToNothing(): void
+    public function itCanBeRenamed(): void
     {
+        // Given
         $tenant = Fixtures::tenant();
-        $tenant->rename('Acme Corporation');
-        static::assertSame('Acme Corporation', $tenant->name);
 
+        // When
+        $tenant->rename('Acme Corporation');
+
+        // Then
+        static::assertSame('Acme Corporation', $tenant->name);
+    }
+
+    #[Test]
+    public function itCannotBeRenamedToNothing(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $tenant->rename('');
     }
 
     #[Test]
     public function itCannotBeCreatedWithoutAName(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new Tenant(Uuid::v7(), 'acme', new Issuer('https://id.example'), '', Fixtures::now());
     }
 
     #[Test]
-    public function twoTenantsAreEqualByIdentifierOnly(): void
+    public function twoTenantsWithTheSameIdentifierAreEqualWhateverTheRest(): void
     {
+        // Given
         $id = Uuid::v7();
         $a = new Tenant($id, 'acme', new Issuer('https://a.example'), 'A', Fixtures::now());
         $b = new Tenant($id, 'other', new Issuer('https://b.example'), 'B', Fixtures::now());
 
+        // When / Then
         static::assertTrue($a->equals($b));
-        static::assertFalse($a->equals(Fixtures::tenant()));
+    }
+
+    #[Test]
+    public function twoTenantsWithDifferentIdentifiersAreNotEqual(): void
+    {
+        // Given
+        $tenant = new Tenant(Uuid::v7(), 'acme', new Issuer('https://a.example'), 'A', Fixtures::now());
+
+        // When / Then
+        static::assertFalse($tenant->equals(Fixtures::tenant()));
     }
 }

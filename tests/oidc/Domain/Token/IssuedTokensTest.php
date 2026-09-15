@@ -42,11 +42,14 @@ final class IssuedTokensTest extends TestCase
     #[Test]
     public function itBecomesTheResponseWithEveryTokenIssued(): void
     {
+        // Given
         $refreshToken = new IssuedRefreshToken(Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now()), 'rt.value');
+        $issued = new IssuedTokens($this->authorization, $this->accessToken, 'id.value', $refreshToken);
 
-        $response = new IssuedTokens($this->authorization, $this->accessToken, 'id.value', $refreshToken)
-            ->toResponse();
+        // When
+        $response = $issued->toResponse();
 
+        // Then
         static::assertSame([
             'access_token' => 'at.value',
             'token_type' => 'Bearer',
@@ -61,9 +64,13 @@ final class IssuedTokensTest extends TestCase
     #[Test]
     public function itBecomesTheResponseWithoutWhatWasNotIssued(): void
     {
-        $response = new IssuedTokens($this->authorization, $this->accessToken, null, null)
-            ->toResponse();
+        // Given
+        $issued = new IssuedTokens($this->authorization, $this->accessToken, null, null);
 
+        // When
+        $response = $issued->toResponse();
+
+        // Then
         static::assertSame([
             'access_token' => 'at.value',
             'token_type' => 'Bearer',
@@ -75,35 +82,54 @@ final class IssuedTokensTest extends TestCase
     #[Test]
     public function itRefusesAnEmptyIdToken(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new IssuedTokens($this->authorization, $this->accessToken, '', null);
+    }
+
+    #[Test]
+    public function aRefreshTokenIsARecordAndItsValue(): void
+    {
+        // Given
+        $token = Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now());
+
+        // When
+        $issued = new IssuedRefreshToken($token, 'rt.value');
+
+        // Then
+        static::assertSame($token, $issued->token);
+        static::assertSame('rt.value', $issued->value);
     }
 
     /**
      * The record is the hash of the value: the two sides of a refresh token never drift apart.
      */
     #[Test]
-    public function aRefreshTokenIsARecordAndItsValue(): void
+    public function aRefreshTokenRefusesAValueThatIsNotTheOneRecorded(): void
     {
+        // Given
         $token = Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now());
 
-        $issued = new IssuedRefreshToken($token, 'rt.value');
-
-        static::assertSame($token, $issued->token);
-        static::assertSame('rt.value', $issued->value);
-
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new IssuedRefreshToken($token, 'another');
     }
 
     #[Test]
     public function theScopesOfTheResponseAreThoseOfTheAuthorization(): void
     {
+        // Given
         $narrowed = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']), [new Scope('profile')]);
+        $issued = new IssuedTokens($narrowed, $this->accessToken, null, null);
 
-        $response = new IssuedTokens($narrowed, $this->accessToken, null, null)
-            ->toResponse();
+        // When
+        $response = $issued->toResponse();
 
+        // Then
         static::assertSame('profile', $response->parameters()['scope']);
     }
 }

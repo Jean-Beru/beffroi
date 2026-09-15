@@ -17,39 +17,61 @@ final class EnvelopeKeySealerTest extends TestCase
      * sees it (envelope mode wraps a data key).
      */
     #[Test]
-    public function itSealsAPrivateJwkIntoOpaqueBytesAndOpensItBack(): void
+    public function itSealsAPrivateJwkIntoOpaqueBytes(): void
     {
+        // Given
         $private = Keys::pair()->privateJwk;
 
+        // When
         $sealed = Keys::sealer()->seal($private);
 
+        // Then
         static::assertStringNotContainsString($private['d'], $sealed);
         static::assertStringNotContainsString($private['n'], $sealed);
-        static::assertSame($private, Keys::sealer()->unseal($sealed));
+    }
+
+    #[Test]
+    public function itOpensWhatItSealed(): void
+    {
+        // Given
+        $private = Keys::pair()->privateJwk;
+        $sealed = Keys::sealer()->seal($private);
+
+        // When
+        $opened = Keys::sealer()->unseal($sealed);
+
+        // Then
+        static::assertSame($private, $opened);
     }
 
     #[Test]
     public function twoSealsOfTheSameKeyDiffer(): void
     {
+        // When / Then
         static::assertNotSame(Keys::sealer()->seal(Keys::pair()->privateJwk), Keys::sealer()->seal(Keys::pair()->privateJwk));
     }
 
     #[Test]
-    public function itRefusesTamperedOrForeignBytes(): void
+    public function itRefusesTamperedBytes(): void
     {
-        $sealed = Keys::sealer()->seal(Keys::pair()->privateJwk);
-        $tampered = $sealed;
+        // Given
+        $tampered = Keys::sealer()->seal(Keys::pair()->privateJwk);
         $tampered[strlen($tampered) - 1] = $tampered[strlen($tampered) - 1] === 'a' ? 'b' : 'a';
 
+        // Then
         $this->expectException(RuntimeException::class);
+
+        // When
         Keys::sealer()->unseal($tampered);
     }
 
     #[Test]
     public function itRefusesGarbage(): void
     {
+        // Then
         $this->expectException(RuntimeException::class);
 
+        // When
         Keys::sealer()->unseal('not an envelope');
     }
 }

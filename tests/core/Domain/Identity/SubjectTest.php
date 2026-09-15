@@ -14,26 +14,60 @@ use function strlen;
 
 final class SubjectTest extends TestCase
 {
-    /**
-     * OIDC Core §2: "sub" MUST NOT exceed 255 ASCII characters and is case sensitive.
-     */
     #[Test]
-    public function itKeepsTheValueAsGivenAndComparesCaseSensitively(): void
+    public function itKeepsTheValueAsGiven(): void
     {
+        // When
         $subject = new Subject('248289761001');
 
+        // Then
         static::assertSame('248289761001', (string) $subject);
+    }
+
+    #[Test]
+    public function itEqualsASubjectOfTheSameValue(): void
+    {
+        // Given
+        $subject = new Subject('248289761001');
+
+        // When / Then
         static::assertTrue($subject->equals(new Subject('248289761001')));
-        static::assertFalse(new Subject('Alice')->equals(new Subject('alice')));
-        static::assertSame(255, strlen((string) new Subject(str_repeat('x', 255))));
+    }
+
+    /**
+     * OIDC Core §2: "sub" is case sensitive.
+     */
+    #[Test]
+    public function itComparesCaseSensitively(): void
+    {
+        // Given
+        $subject = new Subject('Alice');
+
+        // When / Then
+        static::assertFalse($subject->equals(new Subject('alice')));
+    }
+
+    /**
+     * OIDC Core §2: "sub" MUST NOT exceed 255 ASCII characters.
+     */
+    #[Test]
+    public function itMayBe255CharactersLong(): void
+    {
+        // When
+        $subject = new Subject(str_repeat('x', 255));
+
+        // Then
+        static::assertSame(255, strlen((string) $subject));
     }
 
     #[Test]
     #[DataProvider('provideInvalidSubjects')]
     public function itRejectsWhatOidcCoreSection2Forbids(string $value): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new Subject($value);
     }
 

@@ -13,18 +13,30 @@ use PHPUnit\Framework\TestCase;
 final class EmailAddressTest extends TestCase
 {
     #[Test]
-    public function itAcceptsAnAddressIncludingUnicodeLocalParts(): void
+    #[DataProvider('provideValidAddresses')]
+    public function itAcceptsAnAddress(string $value): void
     {
-        static::assertSame('alice@acme.example', (string) new EmailAddress('alice@acme.example'));
-        static::assertSame('zoé@acme.example', (string) new EmailAddress('zoé@acme.example'));
+        // When / Then
+        static::assertSame($value, (string) new EmailAddress($value));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideValidAddresses(): iterable
+    {
+        yield 'ascii' => ['alice@acme.example'];
+        yield 'unicode local part' => ['zoé@acme.example'];
     }
 
     #[Test]
     #[DataProvider('provideInvalidAddresses')]
     public function itRejectsAnInvalidAddress(string $value): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new EmailAddress($value);
     }
 

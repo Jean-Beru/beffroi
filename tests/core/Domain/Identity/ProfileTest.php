@@ -16,11 +16,27 @@ final class ProfileTest extends TestCase
      * OIDC Core §5.1: birthdate is "YYYY-MM-DD", or "YYYY" when only the year is known, "0000" when it is not.
      */
     #[Test]
-    public function itAcceptsTheBirthdateFormsOfOidcCore(): void
+    #[DataProvider('provideValidBirthdates')]
+    public function itAcceptsTheBirthdateFormsOfOidcCore(string $birthdate): void
     {
-        static::assertSame('1990-05-21', (new Profile(birthdate: '1990-05-21'))->birthdate);
-        static::assertSame('1990', (new Profile(birthdate: '1990'))->birthdate);
-        static::assertSame('0000', (new Profile(birthdate: '0000'))->birthdate);
+        // When / Then
+        static::assertSame($birthdate, new Profile(birthdate: $birthdate)->birthdate);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideValidBirthdates(): iterable
+    {
+        yield 'full date' => ['1990-05-21'];
+        yield 'year only' => ['1990'];
+        yield 'unknown year' => ['0000'];
+    }
+
+    #[Test]
+    public function anEmptyProfileHasNoBirthdate(): void
+    {
+        // When / Then
         static::assertNull(Profile::empty()->birthdate);
     }
 
@@ -28,8 +44,10 @@ final class ProfileTest extends TestCase
     #[DataProvider('provideInvalidBirthdates')]
     public function itRejectsAnotherBirthdateFormat(string $birthdate): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new Profile(birthdate: $birthdate);
     }
 

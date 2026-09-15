@@ -41,8 +41,10 @@ final class HeidiBundleConfigurationTest extends TestCase
     #[Test]
     public function theDefaultsAreThoseOfTheArchitecture(): void
     {
+        // When
         $config = self::process(self::MINIMAL);
 
+        // Then
         static::assertSame([
             'issuer' => 'https://op.test',
             'slug' => 'default',
@@ -70,6 +72,13 @@ final class HeidiBundleConfigurationTest extends TestCase
     #[Test]
     public function aClientDeclaredWithNothingGetsTheDefaultsOfTheModule(): void
     {
+        // Given
+        $fromModule = ClientDefinition::fromArray('oidc-demo', [
+            'redirect_uris' => ['https://demo.test/login/check'],
+            'token_endpoint_auth_method' => 'none',
+        ]);
+
+        // When
         $config = self::process(self::MINIMAL + [
             'clients' => [
                 'oidc-demo' => [
@@ -79,15 +88,11 @@ final class HeidiBundleConfigurationTest extends TestCase
             ],
         ]);
 
+        // Then
         static::assertIsArray($config['clients']);
         static::assertSame(['oidc-demo'], array_keys($config['clients']));
         static::assertIsArray($config['clients']['oidc-demo']);
         $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']));
-        $fromModule = ClientDefinition::fromArray('oidc-demo', [
-            'redirect_uris' => ['https://demo.test/login/check'],
-            'token_endpoint_auth_method' => 'none',
-        ]);
-
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
         static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, array_map(static fn ($scope) => (string) $scope, $fromTree->allowedScopes));
@@ -96,7 +101,7 @@ final class HeidiBundleConfigurationTest extends TestCase
     /**
      * @return iterable<string, array{array<string, mixed>, string}>
      */
-    public static function refusedConfigurations(): iterable
+    public static function provideRefusedConfigurations(): iterable
     {
         yield 'no tenant' => [[
             'keys' => self::MINIMAL['keys'],
@@ -177,15 +182,15 @@ final class HeidiBundleConfigurationTest extends TestCase
      * @param array<string, mixed> $config
      */
     #[Test]
-    #[DataProvider('refusedConfigurations')]
+    #[DataProvider('provideRefusedConfigurations')]
     public function itRefusesWhatItDoesNotKnowOrCannotAllow(array $config, string $named): void
     {
-        try {
-            self::process($config);
-            static::fail('The configuration is refused.');
-        } catch (InvalidConfigurationException $exception) {
-            static::assertStringContainsString($named, $exception->getMessage());
-        }
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains($named);
+
+        // When
+        self::process($config);
     }
 
     /**
@@ -194,6 +199,7 @@ final class HeidiBundleConfigurationTest extends TestCase
     #[Test]
     public function clientIdentifiersAreKeptAsWritten(): void
     {
+        // When
         $config = self::process(self::MINIMAL + [
             'clients' => [
                 'oidc-demo' => [],
@@ -201,6 +207,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             ],
         ]);
 
+        // Then
         static::assertIsArray($config['clients']);
         static::assertSame(['oidc-demo', 'Conformance.Client_1'], array_keys($config['clients']));
     }
@@ -212,9 +219,13 @@ final class HeidiBundleConfigurationTest extends TestCase
     #[Test]
     public function theTreeHasNoInsecureOptionAndNoCompatibilitySwitch(): void
     {
+        // Given
         $names = [];
+
+        // When
         self::collect(self::configuration()->getConfigTreeBuilder()->buildTree(), $names);
 
+        // Then
         static::assertNotSame([], $names);
         foreach ($names as $name) {
             static::assertSame(0, preg_match('/insecure|compat|legacy|allow_|disable_|skip_|unsafe/i', $name), $name);

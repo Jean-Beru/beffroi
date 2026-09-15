@@ -41,11 +41,23 @@ final class EndSessionRequestTest extends TestCase
     #[Test]
     public function itRedirectsWhereTheClientAskedWithTheState(): void
     {
-        $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, $this->client->postLogoutRedirectUris[0], 'af0ifjsldkj', 'alice', ['fr-CA', 'fr']);
+        // Given
+        $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, $this->client->postLogoutRedirectUris[0], 'af0ifjsldkj');
 
+        // When
         $redirect = $request->redirect() ?? static::fail('The request has a redirect.');
 
+        // Then
         static::assertSame('https://demo.localhost/?state=af0ifjsldkj', $redirect->toUri());
+    }
+
+    #[Test]
+    public function itCarriesTheHintsOfTheUserInterface(): void
+    {
+        // When
+        $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, null, null, 'alice', ['fr-CA', 'fr']);
+
+        // Then
         static::assertSame(['fr-CA', 'fr'], $request->uiLocales);
         static::assertSame('alice', $request->logoutHint);
     }
@@ -57,8 +69,10 @@ final class EndSessionRequestTest extends TestCase
     #[Test]
     public function itMayNameNoClientAtAllAndThenRedirectsNowhere(): void
     {
+        // When
         $request = new EndSessionRequest($this->tenant, null, null, null);
 
+        // Then
         static::assertNull($request->client);
         static::assertNull($request->idTokenHint);
         static::assertNull($request->redirect());
@@ -68,8 +82,10 @@ final class EndSessionRequestTest extends TestCase
     #[Test]
     public function itRedirectsNowhereWhenTheClientDidNotAsk(): void
     {
+        // Given
         $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, null, 'af0ifjsldkj');
 
+        // When / Then
         static::assertNull($request->redirect());
     }
 
@@ -78,17 +94,20 @@ final class EndSessionRequestTest extends TestCase
      * to it, the redirect URI is registered on it (§3), the state is not empty.
      */
     #[Test]
-    #[DataProvider('inconsistentRequests')]
+    #[DataProvider('provideInconsistentRequests')]
     public function itRefusesAnInconsistentRequest(callable $build): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $build($this);
     }
 
     /**
      * @return iterable<string, array{callable(self): EndSessionRequest}>
      */
-    public static function inconsistentRequests(): iterable
+    public static function provideInconsistentRequests(): iterable
     {
         yield 'client of another tenant' => [
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, Clients::public(Fixtures::tenant('other', 'https://id.other.example')), null, null),

@@ -9,44 +9,80 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Authorization\Prompt;
+use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Architecture §4.2: the validated request answers the questions the interaction asks (scope, prompt)
+ * and knows where an error raised later goes; the response mode is query.
+ */
 final class AuthorizationRequestTest extends TestCase
 {
-    /**
-     * Architecture §4.2: the validated request answers the questions the interaction asks (scope, prompt)
-     * and knows where an error raised later goes; the response mode is query.
-     */
-    #[Test]
-    public function itAnswersTheQuestionsOfTheInteraction(): void
+    private Client $client;
+
+    private RedirectUri $redirectUri;
+
+    private AuthorizationRequest $request;
+
+    protected function setUp(): void
     {
-        $client = Clients::public(Fixtures::tenant());
-        $redirectUri = new RedirectUri('https://spa.example/callback');
-        $request = new AuthorizationRequest(
-            $client,
-            $redirectUri,
+        $this->client = Clients::public(Fixtures::tenant());
+        $this->redirectUri = new RedirectUri('https://spa.example/callback');
+        $this->request = new AuthorizationRequest(
+            $this->client,
+            $this->redirectUri,
             [Scope::openid(), new Scope('profile')],
             new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256),
             'af0ifjsldkj',
             'n-0S6_WzA2Mj',
             [Prompt::Login],
         );
+    }
 
-        static::assertTrue($request->hasScope(new Scope('profile')));
-        static::assertFalse($request->hasScope(new Scope('email')));
-        static::assertTrue($request->hasPrompt(Prompt::Login));
-        static::assertFalse($request->hasPrompt(Prompt::None));
-        static::assertSame('query', $request->responseMode->value);
-        static::assertNull($request->maxAge);
-        static::assertNull($request->claims);
+    #[Test]
+    public function itKnowsTheScopesItAsksFor(): void
+    {
+        // When / Then
+        static::assertTrue($this->request->hasScope(new Scope('profile')));
+        static::assertFalse($this->request->hasScope(new Scope('email')));
+    }
 
-        $target = $request->redirectTarget();
-        static::assertSame($client, $target->client);
-        static::assertSame($redirectUri, $target->redirectUri);
+    #[Test]
+    public function itKnowsThePromptsItAsksFor(): void
+    {
+        // When / Then
+        static::assertTrue($this->request->hasPrompt(Prompt::Login));
+        static::assertFalse($this->request->hasPrompt(Prompt::None));
+    }
+
+    #[Test]
+    public function itsResponseModeIsQuery(): void
+    {
+        // When / Then
+        static::assertSame('query', $this->request->responseMode->value);
+    }
+
+    #[Test]
+    public function itHasNoMaxAgeAndNoClaimsUnlessGiven(): void
+    {
+        // When / Then
+        static::assertNull($this->request->maxAge);
+        static::assertNull($this->request->claims);
+    }
+
+    #[Test]
+    public function itKnowsWhereALaterErrorGoes(): void
+    {
+        // When
+        $target = $this->request->redirectTarget();
+
+        // Then
+        static::assertSame($this->client, $target->client);
+        static::assertSame($this->redirectUri, $target->redirectUri);
         static::assertSame('af0ifjsldkj', $target->state);
     }
 }

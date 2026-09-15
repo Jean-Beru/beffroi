@@ -14,30 +14,57 @@ use Symfony\Component\HttpFoundation\Response;
 final class JwksControllerTest extends BrowserTestCase
 {
     #[Test]
-    public function anEmptySetIsServedButNotCached(): void
+    public function anEmptySetIsServedAsJson(): void
     {
+        // When
         $this->browser->request('GET', '/jwks');
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertSame('application/json', $response->headers->get('Content-Type'));
-        static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
         static::assertSame([
             'keys' => [],
         ], self::json($response));
     }
 
     #[Test]
-    public function thePublishedKeysAreServedWithoutAnyPrivateMember(): void
+    public function anEmptySetIsNotCached(): void
     {
-        self::signingKey();
-
+        // When
         $this->browser->request('GET', '/jwks');
 
+        // Then
+        static::assertTrue($this->browser->getResponse()->headers->hasCacheControlDirective('no-store'));
+    }
+
+    #[Test]
+    public function thePublishedKeysAreCacheableForFiveMinutes(): void
+    {
+        // Given
+        self::signingKey();
+
+        // When
+        $this->browser->request('GET', '/jwks');
+
+        // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertTrue($response->headers->hasCacheControlDirective('public'));
         static::assertSame('300', $response->headers->getCacheControlDirective('max-age'));
+    }
+
+    #[Test]
+    public function thePublishedKeysAreServedWithoutAnyPrivateMember(): void
+    {
+        // Given
+        self::signingKey();
+
+        // When
+        $this->browser->request('GET', '/jwks');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         $keys = self::json($response)['keys'];
         static::assertIsArray($keys);
         static::assertCount(1, $keys);

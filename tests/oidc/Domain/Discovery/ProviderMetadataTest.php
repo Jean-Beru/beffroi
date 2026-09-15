@@ -14,6 +14,7 @@ use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -28,8 +29,10 @@ final class ProviderMetadataTest extends TestCase
     #[Test]
     public function itDescribesWhatTheProviderDoesAndNothingElse(): void
     {
-        $metadata = self::metadata();
+        // When
+        $document = self::metadata()->toArray();
 
+        // Then
         static::assertSame([
             'issuer' => 'https://id.acme.example',
             'authorization_endpoint' => 'https://id.acme.example/authorize',
@@ -50,7 +53,16 @@ final class ProviderMetadataTest extends TestCase
             'code_challenge_methods_supported' => ['S256'],
             'authorization_response_iss_parameter_supported' => true,
             'end_session_endpoint' => 'https://id.acme.example/logout',
-        ], $metadata->toArray());
+        ], $document);
+    }
+
+    #[Test]
+    public function itIsPubliclyCacheableForItsLifetime(): void
+    {
+        // When
+        $metadata = self::metadata();
+
+        // Then
         static::assertSame([
             'Cache-Control' => 'public, max-age=3600',
         ], $metadata->headers);
@@ -64,14 +76,25 @@ final class ProviderMetadataTest extends TestCase
     #[Test]
     public function theJsonCarriesBooleansAndListsAsTheyAre(): void
     {
+        // When
         $json = self::metadata()->toJson();
 
+        // Then
         static::assertStringContainsString('"issuer":"https://id.acme.example",', $json);
         static::assertStringContainsString('"claims_parameter_supported":true,"request_parameter_supported":false,"request_uri_parameter_supported":false,', $json);
         static::assertStringContainsString('"authorization_response_iss_parameter_supported":true,', $json);
         static::assertStringContainsString('"response_types_supported":["code"],', $json);
-        static::assertSame(self::metadata()->toArray(), json_decode($json, true, 4, JSON_THROW_ON_ERROR));
-        static::assertTrue(json_decode($json, true, 4, JSON_THROW_ON_ERROR)['authorization_response_iss_parameter_supported']);
+    }
+
+    #[Test]
+    public function theJsonIsTheDocument(): void
+    {
+        // When
+        $decoded = json_decode(self::metadata()->toJson(), true, 4, JSON_THROW_ON_ERROR);
+
+        // Then
+        static::assertSame(self::metadata()->toArray(), $decoded);
+        static::assertTrue($decoded['authorization_response_iss_parameter_supported']);
     }
 
     /**
@@ -81,14 +104,23 @@ final class ProviderMetadataTest extends TestCase
     #[Test]
     public function openidAndSubComeFirstAndOnce(): void
     {
+        // When
         $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [new Scope('email'), new Scope('openid'), new Scope('email')], ['email', 'sub', 'email'], 60);
 
+        // Then
         static::assertSame(['openid', 'email'], array_map(static fn (Scope $scope): string => $scope->value, $metadata->scopesSupported));
         static::assertSame(['sub', 'email'], $metadata->claimsSupported);
+    }
 
-        $bare = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], 60);
-        static::assertSame(['openid'], $bare->toArray()['scopes_supported']);
-        static::assertSame(['sub'], $bare->toArray()['claims_supported']);
+    #[Test]
+    public function openidAndSubAreAnnouncedEvenWhenTheIntegrationListsNothing(): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], 60)->toArray();
+
+        // Then
+        static::assertSame(['openid'], $document['scopes_supported']);
+        static::assertSame(['sub'], $document['claims_supported']);
     }
 
     /**
@@ -96,41 +128,63 @@ final class ProviderMetadataTest extends TestCase
      * host and the path of the issuer. Both are the same location when the issuer has no path.
      */
     #[Test]
-    public function theWellKnownLocationsFollowTheIssuer(): void
+    public function theWellKnownLocationsOfAnIssuerWithoutPathCoincide(): void
     {
+        // When
         $metadata = self::metadata();
+
+        // Then
         static::assertSame('https://id.acme.example/.well-known/openid-configuration', $metadata->openIdConfigurationUrl());
         static::assertSame('https://id.acme.example/.well-known/oauth-authorization-server', $metadata->authorizationServerMetadataUrl());
+    }
 
-        $withPath = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), [], [], 60);
-        static::assertSame('https://as.example:8443/tenants/acme/.well-known/openid-configuration', $withPath->openIdConfigurationUrl());
-        static::assertSame('https://as.example:8443/.well-known/oauth-authorization-server/tenants/acme', $withPath->authorizationServerMetadataUrl());
-        static::assertSame('https://as.example:8443/tenants/acme', $withPath->toArray()['issuer']);
+    #[Test]
+    public function theWellKnownLocationsOfAnIssuerWithAPathDiffer(): void
+    {
+        // When
+        $metadata = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), [], [], 60);
+
+        // Then
+        static::assertSame('https://as.example:8443/tenants/acme/.well-known/openid-configuration', $metadata->openIdConfigurationUrl());
+        static::assertSame('https://as.example:8443/.well-known/oauth-authorization-server/tenants/acme', $metadata->authorizationServerMetadataUrl());
+        static::assertSame('https://as.example:8443/tenants/acme', $metadata->toArray()['issuer']);
     }
 
     /**
-     * The cache lifetime is a number of seconds, zero meaning "revalidate every time"; a claim name is
-     * never empty.
+     * The cache lifetime is a number of seconds, zero meaning "revalidate every time".
      */
     #[Test]
-    public function itRefusesANegativeLifetimeAndAnEmptyClaimName(): void
+    public function aLifetimeOfZeroRevalidatesEveryTime(): void
     {
+        // When
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], 0);
+
+        // Then
         static::assertSame([
             'Cache-Control' => 'public, max-age=0',
-        ], new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], 0)->headers);
+        ], $metadata->headers);
+    }
 
-        try {
-            new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], -1);
-            static::fail('A negative lifetime is refused.');
-        } catch (InvalidArgumentException $e) {
-            static::assertStringContainsString('number of seconds', $e->getMessage());
-        }
-        try {
-            new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [''], 60);
-            static::fail('An empty claim name is refused.');
-        } catch (InvalidArgumentException $e) {
-            static::assertStringContainsString('A supported claim has a name.', $e->getMessage());
-        }
+    #[Test]
+    public function aNegativeLifetimeIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('number of seconds');
+
+        // When
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], -1);
+    }
+
+    #[Test]
+    public function anEmptyClaimNameIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('A supported claim has a name.');
+
+        // When
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [''], 60);
     }
 
     /**
@@ -139,19 +193,38 @@ final class ProviderMetadataTest extends TestCase
      * of a loopback issuer in development passes those checks too.
      */
     #[Test]
-    public function itPassesTheChecksOfSymfonyOidcDiscovery(): void
+    #[DataProvider('provideIssuers')]
+    public function itPassesTheChecksOfSymfonyOidcDiscovery(string $issuer): void
     {
-        foreach (['https://id.acme.example', 'https://op.localhost'] as $issuer) {
-            $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout'), [], [], 60)->toArray();
+        // When
+        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout'), [], [], 60)->toArray();
 
-            static::assertSame($issuer, $document['issuer']);
-            foreach (['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'end_session_endpoint'] as $endpoint) {
-                static::assertIsString($document[$endpoint]);
-                static::assertStringStartsWith('https://', $document[$endpoint]);
-            }
-            static::assertTrue($document['authorization_response_iss_parameter_supported']);
+        // Then
+        static::assertSame($issuer, $document['issuer']);
+        foreach (['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'end_session_endpoint'] as $endpoint) {
+            static::assertIsString($document[$endpoint]);
+            static::assertStringStartsWith('https://', $document[$endpoint]);
         }
-        static::assertSame(['issuer', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri'], array_slice(array_keys(self::metadata()->toArray()), 0, 5));
+        static::assertTrue($document['authorization_response_iss_parameter_supported']);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideIssuers(): iterable
+    {
+        yield 'public host' => ['https://id.acme.example'];
+        yield 'loopback host' => ['https://op.localhost'];
+    }
+
+    #[Test]
+    public function theIssuerAndTheEndpointsComeFirst(): void
+    {
+        // When
+        $members = array_keys(self::metadata()->toArray());
+
+        // Then
+        static::assertSame(['issuer', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri'], array_slice($members, 0, 5));
     }
 
     private static function metadata(): ProviderMetadata

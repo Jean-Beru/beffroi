@@ -21,21 +21,30 @@ final class TokenHashTest extends TestCase
     #[Test]
     public function itMatchesTheExampleOfTheSpecification(): void
     {
+        // When / Then
         static::assertSame('77QmUPtjPfzWtF2AnpK9RQ', TokenHash::of('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', SignatureAlgorithm::RS256));
     }
 
     /**
-     * OIDC Core §3.1.3.6: the left-most 128 bits of SHA-256, so 22 base64url characters, and a different
-     * value for a different token; the whole digest is not what is encoded.
+     * OIDC Core §3.1.3.6: the left-most 128 bits of SHA-256, so 22 base64url characters; the whole
+     * digest is not what is encoded.
      */
     #[Test]
     public function itKeepsTheLeftHalfOfTheDigestOnly(): void
     {
+        // When
         $hash = TokenHash::of('token', SignatureAlgorithm::RS256);
 
+        // Then
         static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{22}$/', $hash));
         static::assertSame(32, strlen(hash('sha256', 'token', true)));
-        static::assertNotSame($hash, TokenHash::of('token2', SignatureAlgorithm::RS256));
         static::assertSame('PEaenWxYddN6Q_NT1PiOYQ', $hash, 'the value is stable: the first 16 bytes of SHA-256("token")');
+    }
+
+    #[Test]
+    public function twoTokensHashDifferently(): void
+    {
+        // When / Then
+        static::assertNotSame(TokenHash::of('token', SignatureAlgorithm::RS256), TokenHash::of('token2', SignatureAlgorithm::RS256));
     }
 }

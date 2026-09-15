@@ -30,6 +30,7 @@ final class MigrationTest extends DatabaseTestCase
     #[Test]
     public function theMigrationCreatesWhatTheMappingsDescribeOnPostgreSql(): void
     {
+        // Given
         $connection = DriverManager::getConnection([
             'driver' => 'pdo_pgsql',
             'serverVersion' => '16',
@@ -45,22 +46,44 @@ final class MigrationTest extends DatabaseTestCase
         ));
 
         $migration = new Version20260915171732($connection, new NullLogger());
-        $migration->up(new Schema());
-        $actual = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
 
+        // When
+        $migration->up(new Schema());
+
+        // Then
+        $actual = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         sort($expected);
         sort($actual);
         static::assertSame($expected, $actual);
-        static::assertCount(11, array_filter($actual, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+    }
+
+    #[Test]
+    public function theMigrationCreatesTheElevenTablesOfTheBundle(): void
+    {
+        // Given
+        $migration = new Version20260915171732(DriverManager::getConnection([
+            'driver' => 'pdo_pgsql',
+            'serverVersion' => '16',
+        ]), new NullLogger());
+
+        // When
+        $migration->up(new Schema());
+
+        // Then
+        $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
+        static::assertCount(11, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     #[Test]
     public function theMigrationRefusesAnotherPlatform(): void
     {
+        // Given
         $migration = new Version20260915171732(self::entityManager()->getConnection(), new NullLogger());
 
+        // Then
         $this->expectException(AbortMigration::class);
 
+        // When
         $migration->up(new Schema());
     }
 }
