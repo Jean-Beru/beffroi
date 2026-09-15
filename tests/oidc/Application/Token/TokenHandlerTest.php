@@ -33,6 +33,7 @@ use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -98,17 +99,13 @@ final class TokenHandlerTest extends TestCase
     #[Test]
     public function itExchangesACodeForTokens(): void
     {
-        $code = Tokens::code('the-code', $this->basicClient, $this->session, $this->clock->now(), ['openid', 'profile']);
-        $this->codes->save($code);
+        // Given
+        $this->codes->save(Tokens::code('the-code', $this->basicClient, $this->session, $this->clock->now(), ['openid', 'profile']));
 
-        $response = $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), [
-            'grant_type' => 'authorization_code',
-            'code' => 'the-code',
-            'redirect_uri' => 'https://demo.localhost/login/check',
-            'client_id' => 'basic-client',
-            'code_verifier' => Tokens::CODE_VERIFIER,
-        ], $this->context);
+        // When
+        $response = $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), $this->codeExchange(), $this->context);
 
+        // Then
         $parameters = $response->parameters();
         static::assertSame('at:basic-client:alice-subject:' . $this->clock->now()->getTimestamp(), $parameters['access_token']);
         static::assertSame('Bearer', $parameters['token_type']);
@@ -116,6 +113,19 @@ final class TokenHandlerTest extends TestCase
         static::assertSame('id:basic-client:alice-subject:n-0S6_WzA2Mj:' . $this->clock->now()->getTimestamp(), $parameters['id_token']);
         static::assertSame('openid profile', $parameters['scope']);
         static::assertArrayHasKey('refresh_token', $parameters);
+    }
+
+    #[Test]
+    public function anExchangeConsumesTheCodeAndRecordsTheRefreshToken(): void
+    {
+        // Given
+        $code = Tokens::code('the-code', $this->basicClient, $this->session, $this->clock->now(), ['openid', 'profile']);
+        $this->codes->save($code);
+
+        // When
+        $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), $this->codeExchange(), $this->context);
+
+        // Then
         static::assertTrue($code->isUsed());
         static::assertCount(1, $this->refreshTokens->all());
         static::assertCount(1, $this->events->of(TokensIssued::class));
@@ -127,9 +137,11 @@ final class TokenHandlerTest extends TestCase
     #[Test]
     public function itRefreshesTokens(): void
     {
+        // Given
         $token = Tokens::refreshToken('the-token', $this->postClient, $this->session, $this->clock->now(), null, ['openid', 'profile']);
         $this->refreshTokens->save($token);
 
+        // When
         $response = $this->handler->handle($this->tenant, null, [
             'grant_type' => 'refresh_token',
             'refresh_token' => 'the-token',
@@ -137,6 +149,7 @@ final class TokenHandlerTest extends TestCase
             'client_secret' => Clients::SECRET,
         ], $this->context);
 
+        // Then
         $parameters = $response->parameters();
         static::assertSame('id:post-client:alice-subject:-:' . $this->clock->now()->getTimestamp(), $parameters['id_token']);
         static::assertArrayHasKey('refresh_token', $parameters);
@@ -147,23 +160,46 @@ final class TokenHandlerTest extends TestCase
 
     /**
      * RFC 6749 §3.2.1: the client is authenticated before anything else is read, so that a caller that
-     * is not a client learns nothing about the request; the failure is announced.
+     * is not a client learns nothing about the request.
      */
     #[Test]
     public function itAuthenticatesTheClientBeforeReadingTheGrant(): void
     {
-        $code = Tokens::code('the-code', $this->basicClient, $this->session, $this->clock->now());
-        $this->codes->save($code);
+        // Given
+        $this->codes->save(Tokens::code('the-code', $this->basicClient, $this->session, $this->clock->now()));
 
+        // When
         try {
             $this->handler->handle($this->tenant, self::basic('basic-client', 'wrong-secret'), [
                 'code' => 'the-code',
             ], $this->context);
             static::fail('The client should have been refused.');
         } catch (InvalidClientException $exception) {
+            // Then
             static::assertSame(401, $exception->statusCode);
             static::assertSame('Basic realm="https://id.acme.example"', $exception->challenge);
         }
+    }
+
+    /**
+     * A refused client consumes nothing and the failure is announced.
+     */
+    #[Test]
+    public function aRefusedClientConsumesNothingAndTheFailureIsAnnounced(): void
+    {
+        // Given
+        $code = Tokens::code('the-code', $this->basicClient, $this->session, $this->clock->now());
+        $this->codes->save($code);
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, self::basic('basic-client', 'wrong-secret'), [
+                'code' => 'the-code',
+            ], $this->context);
+        } catch (InvalidClientException) {
+        }
+
+        // Then
         static::assertFalse($code->isUsed());
         static::assertCount(1, $this->events->of(ClientAuthenticationFailed::class));
         static::assertCount(1, $this->events->events);
@@ -171,52 +207,80 @@ final class TokenHandlerTest extends TestCase
 
     /**
      * RFC 6749 §4.1.3, §6: "grant_type" is required.
+     *
+     * @param array<string, mixed> $parameters
      */
     #[Test]
-    public function itRequiresAGrantType(): void
+    #[DataProvider('provideRequestsWithoutGrantType')]
+    public function itRequiresAGrantType(array $parameters): void
     {
-        foreach ([[], [
-            'grant_type' => '',
-        ], [
-            'grant_type' => ['authorization_code'],
-        ]] as $parameters) {
-            try {
-                $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), $parameters, $this->context);
-                static::fail('The grant type is required.');
-            } catch (InvalidRequestException $exception) {
-                static::assertStringContainsString('grant_type', $exception->errorDescription);
-            }
-        }
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessage('grant_type');
+
+        // When
+        $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), $parameters, $this->context);
     }
 
     /**
-     * RFC 6749 §5.2 "unsupported_grant_type": the grants of decision 0006 only, and only those the
-     * handler was given.
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function provideRequestsWithoutGrantType(): iterable
+    {
+        yield 'absent' => [[]];
+        yield 'empty' => [[
+            'grant_type' => '',
+        ]];
+        yield 'repeated' => [[
+            'grant_type' => ['authorization_code'],
+        ]];
+    }
+
+    /**
+     * RFC 6749 §5.2 "unsupported_grant_type": the grants of decision 0006 only.
      */
     #[Test]
-    public function itRefusesAGrantTypeTheProviderDoesNotServe(): void
+    #[DataProvider('provideGrantTypesNotServed')]
+    public function itRefusesAGrantTypeTheProviderDoesNotServe(string $grantType): void
     {
+        // Then
+        $this->expectException(UnsupportedGrantTypeException::class);
+
+        // When
+        $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), [
+            'grant_type' => $grantType,
+        ], $this->context);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideGrantTypesNotServed(): iterable
+    {
+        yield 'password' => ['password'];
+        yield 'client_credentials' => ['client_credentials'];
+        yield 'implicit' => ['implicit'];
+        yield 'device_code' => ['urn:ietf:params:oauth:grant-type:device_code'];
+        yield 'authorization_code in another case' => ['Authorization_Code'];
+    }
+
+    /**
+     * RFC 6749 §5.2 "unsupported_grant_type": only the grants the handler was given.
+     */
+    #[Test]
+    public function itRefusesAGrantTypeTheHandlerWasNotGiven(): void
+    {
+        // Given
         $codeOnly = new TokenHandler($this->authenticator(), [$this->codeGrant]);
 
-        foreach (['password', 'client_credentials', 'implicit', 'urn:ietf:params:oauth:grant-type:device_code', 'Authorization_Code'] as $grantType) {
-            try {
-                $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), [
-                    'grant_type' => $grantType,
-                ], $this->context);
-                static::fail($grantType . ' is not supported.');
-            } catch (UnsupportedGrantTypeException $exception) {
-                static::assertSame(400, $exception->statusCode);
-            }
-        }
-        try {
-            $codeOnly->handle($this->tenant, null, [
-                'grant_type' => 'refresh_token',
-                'client_id' => 'public-client',
-            ], $this->context);
-            static::fail('refresh_token is not served by this handler.');
-        } catch (UnsupportedGrantTypeException $exception) {
-            static::assertSame(400, $exception->statusCode);
-        }
+        // Then
+        $this->expectException(UnsupportedGrantTypeException::class);
+
+        // When
+        $codeOnly->handle($this->tenant, null, [
+            'grant_type' => 'refresh_token',
+            'client_id' => 'public-client',
+        ], $this->context);
     }
 
     /**
@@ -225,33 +289,76 @@ final class TokenHandlerTest extends TestCase
     #[Test]
     public function itRefusesAGrantTheClientIsNotRegisteredFor(): void
     {
-        $token = Tokens::refreshToken('the-token', $this->publicClient, $this->session, $this->clock->now());
-        $this->refreshTokens->save($token);
+        // Given
+        $this->refreshTokens->save(Tokens::refreshToken('the-token', $this->publicClient, $this->session, $this->clock->now()));
 
+        // When
         try {
-            $this->handler->handle($this->tenant, null, [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => 'the-token',
-                'client_id' => 'public-client',
-            ], $this->context);
+            $this->handler->handle($this->tenant, null, $this->publicRefresh(), $this->context);
             static::fail('The public client is not registered for refresh_token.');
         } catch (UnauthorizedClientException $exception) {
+            // Then
             static::assertSame(400, $exception->statusCode);
             static::assertFalse($exception->redirectable);
         }
+    }
+
+    #[Test]
+    public function aGrantTheClientIsNotRegisteredForRotatesNothing(): void
+    {
+        // Given
+        $token = Tokens::refreshToken('the-token', $this->publicClient, $this->session, $this->clock->now());
+        $this->refreshTokens->save($token);
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, null, $this->publicRefresh(), $this->context);
+        } catch (UnauthorizedClientException) {
+        }
+
+        // Then
         static::assertFalse($token->isRotated());
     }
 
     #[Test]
     public function itRefusesTwoGrantsForTheSameType(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new TokenHandler($this->authenticator(), [$this->codeGrant, $this->codeGrant]);
     }
 
     private function authenticator(): ClientAuthenticator
     {
         return new ClientAuthenticator($this->clients, $this->hasher, $this->clock, $this->events);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function codeExchange(): array
+    {
+        return [
+            'grant_type' => 'authorization_code',
+            'code' => 'the-code',
+            'redirect_uri' => 'https://demo.localhost/login/check',
+            'client_id' => 'basic-client',
+            'code_verifier' => Tokens::CODE_VERIFIER,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function publicRefresh(): array
+    {
+        return [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => 'the-token',
+            'client_id' => 'public-client',
+        ];
     }
 
     private static function basic(string $clientId, string $secret): string

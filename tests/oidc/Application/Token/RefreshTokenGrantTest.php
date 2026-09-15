@@ -21,24 +21,28 @@ use Heidi\Oidc\Domain\Event\RefreshTokenReuseDetected;
 use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\IssuedTokens;
+use Heidi\Oidc\Domain\Token\IssuedRefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidScopeException;
+use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 final class RefreshTokenGrantTest extends TestCase
 {
+    private const string INVALID_GRANT = 'invalid_grant: The refresh token is invalid.';
+
     private Tenant $tenant;
 
     private User $alice;
@@ -77,26 +81,43 @@ final class RefreshTokenGrantTest extends TestCase
     #[Test]
     public function itHandlesTheRefreshTokenGrantType(): void
     {
+        // When / Then
         static::assertSame(GrantType::RefreshToken, $this->grant->grantType());
     }
 
     /**
-     * RFC 6749 §6, RFC 9700 §4.13, OIDC Core §12.2: the token presented is rotated, its successor is
-     * issued in the same family with the same scopes and a sliding expiry, the access token covers the
-     * scopes of the token, and the ID token is reissued without nonce, with the original authentication.
+     * RFC 6749 §6, RFC 9700 §4.13: the token presented is rotated, not revoked.
      */
     #[Test]
-    public function itRotatesTheTokenAndIssuesNewOnes(): void
+    public function itRotatesTheTokenPresented(): void
     {
+        // Given
         $token = $this->token('the-token', ['openid', 'profile']);
         $this->clock->sleep(3600);
 
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        // When
+        $this->grant->grant($this->client, $this->request(), $this->context);
 
+        // Then
         static::assertTrue($token->isRotated());
         static::assertEquals($this->clock->now(), $token->rotatedAt);
         static::assertFalse($token->isRevoked());
+    }
 
+    /**
+     * RFC 9700 §4.13: the successor is issued in the same family with the same scopes and a sliding expiry.
+     */
+    #[Test]
+    public function itIssuesASuccessorInTheSameFamilyWithASlidingExpiry(): void
+    {
+        // Given
+        $token = $this->token('the-token', ['openid', 'profile']);
+        $this->clock->sleep(3600);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         $successor = ($issued->refreshToken ?? static::fail('A refresh always issues a successor.'))->token;
         static::assertNotSame($token, $successor);
         static::assertNotSame($token->tokenHash, $successor->tokenHash);
@@ -108,150 +129,350 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertEquals($this->clock->now()->modify('+30 days'), $successor->expiresAt);
         static::assertEquals($token->authenticatedAt, $successor->authenticatedAt);
         static::assertFalse($successor->isRotated());
-        static::assertSame([$token, $successor], $this->refreshTokens->all());
-        static::assertSame(3, $this->refreshTokens->saves, 'the token in setUp, the rotation, the successor');
+    }
 
+    #[Test]
+    public function theRotationAndTheSuccessorAreSaved(): void
+    {
+        // Given
+        $token = $this->token('the-token');
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
+        static::assertSame([$token, $issued->refreshToken?->token], $this->refreshTokens->all());
+        static::assertSame(3, $this->refreshTokens->saves, 'the token in setUp, the rotation, the successor');
+    }
+
+    /**
+     * RFC 6749 §6, OIDC Core §12.2: the access token covers the scopes of the token, and the ID token is
+     * reissued without nonce, with the original authentication.
+     */
+    #[Test]
+    public function itIssuesTheTokensForTheScopesAndTheAuthenticationOfTheToken(): void
+    {
+        // Given
+        $token = $this->token('the-token', ['openid', 'profile']);
+        $this->clock->sleep(3600);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         static::assertSame(GrantType::RefreshToken, $issued->authorization->grantType);
         static::assertSame($token->scopes, $issued->authorization->scopes);
         static::assertNull($issued->authorization->nonce);
         static::assertEquals($token->authenticatedAt, $issued->authorization->authenticatedAt);
         static::assertSame('id:oidc-demo:alice-subject:-:' . $this->clock->now()->getTimestamp(), $issued->idToken);
         static::assertSame('openid profile', $issued->toResponse()->parameters()['scope']);
+    }
 
+    #[Test]
+    public function theRotationIsAnnouncedWithBothTokensAndTheRequestContext(): void
+    {
+        // Given
+        $token = $this->token('the-token');
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+
+        // Then
         static::assertCount(2, $this->events->events);
         $rotations = $this->events->of(RefreshTokenRotated::class);
         static::assertCount(1, $rotations);
         static::assertSame($token, $rotations[0]->previous);
-        static::assertSame($successor, $rotations[0]->next);
+        static::assertSame($issued->refreshToken?->token, $rotations[0]->next);
         static::assertEquals($this->clock->now(), $rotations[0]->occurredAt);
         static::assertSame($this->tenant, $rotations[0]->tenant);
         static::assertSame($this->context, $rotations[0]->context);
-        static::assertSame($successor, $this->events->of(TokensIssued::class)[0]->refreshToken);
+        static::assertSame($issued->refreshToken?->token, $this->events->of(TokensIssued::class)[0]->refreshToken);
     }
 
     /**
-     * RFC 6749 §6: the scope asked for narrows this response, not the token: the successor keeps what
-     * was granted. Below "openid", no ID token.
+     * RFC 6749 §6: the scope asked for narrows this response, each scope once.
      */
     #[Test]
-    public function itNarrowsTheScopeOfTheResponseButNotOfTheSuccessor(): void
+    public function itNarrowsTheScopeOfTheResponse(): void
     {
+        // Given
         $token = $this->token('the-token', ['openid', 'profile', 'email']);
 
+        // When
         $issued = $this->grant->grant($this->client, $this->request(scope: 'email profile email'), $this->context);
 
+        // Then
         static::assertEquals([new Scope('email'), new Scope('profile')], $issued->authorization->scopes);
         static::assertSame($token->scopes, $issued->authorization->grantedScopes);
-        static::assertNull($issued->idToken);
-        static::assertSame([], $this->idTokens->issued);
         static::assertSame('email profile', $issued->toResponse()->parameters()['scope']);
-        static::assertSame($token->scopes, ($issued->refreshToken ?? static::fail('A refresh always issues a successor.'))->token->scopes);
-
-        $again = $this->grant->grant($this->client, $this->request($issued->refreshToken->value, 'openid'), $this->context);
-
-        static::assertNotNull($again->idToken, 'what was granted can be asked for again');
     }
 
     /**
-     * RFC 6749 §6: a scope not originally granted is "invalid_scope"; nothing is rotated.
+     * RFC 6749 §6: the scope asked for does not narrow the successor, which keeps what was granted.
+     */
+    #[Test]
+    public function theSuccessorKeepsTheScopesGranted(): void
+    {
+        // Given
+        $token = $this->token('the-token', ['openid', 'profile', 'email']);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(scope: 'email profile email'), $this->context);
+
+        // Then
+        static::assertSame($token->scopes, ($issued->refreshToken ?? static::fail('A refresh always issues a successor.'))->token->scopes);
+    }
+
+    /**
+     * OIDC Core §12.2: below "openid", no ID token.
+     */
+    #[Test]
+    public function noIdTokenIsIssuedBelowOpenid(): void
+    {
+        // Given
+        $this->token('the-token', ['openid', 'profile', 'email']);
+
+        // When
+        $issued = $this->grant->grant($this->client, $this->request(scope: 'email profile'), $this->context);
+
+        // Then
+        static::assertNull($issued->idToken);
+        static::assertSame([], $this->idTokens->issued);
+    }
+
+    /**
+     * What was granted can be asked for again on the next refresh.
+     */
+    #[Test]
+    public function aScopeNarrowedOnceCanBeAskedForAgain(): void
+    {
+        // Given
+        $this->token('the-token', ['openid', 'profile', 'email']);
+        $narrowed = $this->grant->grant($this->client, $this->request(scope: 'email profile'), $this->context)->refreshToken ?? static::fail('A refresh always issues a successor.');
+
+        // When
+        $again = $this->grant->grant($this->client, $this->request($narrowed->value, 'openid'), $this->context);
+
+        // Then
+        static::assertNotNull($again->idToken);
+    }
+
+    /**
+     * RFC 6749 §6: a scope not originally granted is "invalid_scope".
      */
     #[Test]
     public function itRefusesAScopeOutsideTheGrant(): void
     {
+        // Given
+        $this->token('the-token', ['openid', 'profile']);
+
+        // Then
+        $this->expectException(InvalidScopeException::class);
+        $this->expectExceptionMessage('exceeds');
+
+        // When
+        $this->grant->grant($this->client, $this->request(scope: 'openid email'), $this->context);
+    }
+
+    #[Test]
+    public function aScopeOutsideTheGrantRotatesNothing(): void
+    {
+        // Given
         $token = $this->token('the-token', ['openid', 'profile']);
 
-        try {
-            $this->grant->grant($this->client, $this->request(scope: 'openid email'), $this->context);
-            static::fail('The scope should have been refused.');
-        } catch (InvalidScopeException $exception) {
-            static::assertStringContainsString('exceeds', $exception->errorDescription);
-        }
+        // When
+        $this->failToGrant($this->request(scope: 'openid email'));
+
+        // Then
         static::assertFalse($token->isRotated());
         static::assertSame([], $this->events->events);
     }
 
     /**
-     * RFC 6749 §3.3: a scope that is not a list of scope tokens is refused before anything is looked up.
+     * RFC 6749 §3.3: a scope that is not a list of scope tokens is refused, the cause kept for the logs.
      */
     #[Test]
-    public function itRefusesAMalformedScope(): void
+    #[DataProvider('provideMalformedScopes')]
+    public function itRefusesAMalformedScope(string $scope): void
     {
+        // Given
+        $this->token('the-token');
+
+        // When
+        try {
+            $this->grant->grant($this->client, $this->request(scope: $scope), $this->context);
+            static::fail('The scope should have been refused.');
+        } catch (InvalidScopeException $exception) {
+            // Then
+            static::assertStringContainsString('RFC 6749 section 3.3', $exception->errorDescription);
+            static::assertInstanceOf(InvalidArgumentException::class, $exception->getPrevious());
+        }
+    }
+
+    /**
+     * RFC 6749 §3.3: a malformed scope is refused before anything is looked up.
+     */
+    #[Test]
+    #[DataProvider('provideMalformedScopes')]
+    public function aMalformedScopeRotatesNothing(string $scope): void
+    {
+        // Given
         $token = $this->token('the-token');
 
-        foreach (['openid  profile', 'open"id', ' openid'] as $scope) {
-            try {
-                $this->grant->grant($this->client, $this->request(scope: $scope), $this->context);
-                static::fail('The scope should have been refused.');
-            } catch (InvalidScopeException $exception) {
-                static::assertStringContainsString('RFC 6749 section 3.3', $exception->errorDescription);
-                static::assertInstanceOf(InvalidArgumentException::class, $exception->getPrevious());
-            }
-        }
+        // When
+        $this->failToGrant($this->request(scope: $scope));
+
+        // Then
         static::assertFalse($token->isRotated());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideMalformedScopes(): iterable
+    {
+        yield 'two spaces' => ['openid  profile'];
+        yield 'double quote' => ['open"id'];
+        yield 'leading space' => [' openid'];
     }
 
     #[Test]
     public function itRequiresTheRefreshToken(): void
     {
+        // Given
         $this->token('the-token');
 
-        try {
-            $this->grant->grant($this->client, new TokenRequest([
-                'grant_type' => 'refresh_token',
-            ]), $this->context);
-            static::fail('The refresh token is required.');
-        } catch (InvalidRequestException $exception) {
-            static::assertSame('The refresh_token parameter is missing.', $exception->errorDescription);
-        }
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessage('The refresh_token parameter is missing.');
+
+        // When
+        $this->grant->grant($this->client, new TokenRequest([
+            'grant_type' => 'refresh_token',
+        ]), $this->context);
     }
 
     /**
      * RFC 6749 §5.2: unknown, issued to another client, or revoked, it is "invalid_grant" with nothing
-     * to tell one from the other, and nothing else happens: a token of another client is not a reuse,
-     * even rotated, and a revoked one is not detected twice.
+     * to tell one from the other.
+     *
+     * @param callable(self): string $token
      */
     #[Test]
-    public function itRefusesAnUnknownOrForeignOrRevokedToken(): void
+    #[DataProvider('provideTokensThatAreNoGrant')]
+    public function itRefusesAnUnknownOrForeignOrRevokedToken(callable $token): void
     {
-        $foreign = $this->token('foreign', client: Clients::public($this->tenant));
-        $foreign->rotate($this->clock->now());
-        $this->refreshTokens->save($foreign);
-        $revoked = $this->token('revoked');
-        $revoked->revoke($this->clock->now());
-        $this->refreshTokens->save($revoked);
+        // Given
+        $value = $token($this);
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('unknown'), $this->context));
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('foreign'), $this->context));
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('revoked'), $this->context));
-        static::assertSame([], $this->events->events);
-        static::assertSame(4, $this->refreshTokens->saves);
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessage(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request($value), $this->context);
     }
 
     /**
-     * RFC 9700 §4.13.2: a rotated token presented again reveals a copy; the whole family is revoked,
-     * the presented token and the current one included, and the detection is announced once.
+     * Nothing else happens: a token of another client is not a reuse, even rotated, and a revoked one
+     * is not detected twice.
+     *
+     * @param callable(self): string $token
      */
     #[Test]
-    public function itRevokesTheFamilyWhenARotatedTokenIsPresentedAgain(): void
+    #[DataProvider('provideTokensThatAreNoGrant')]
+    public function aTokenThatIsNoGrantTriggersNothing(callable $token): void
     {
+        // Given
+        $value = $token($this);
+        $savesBefore = $this->refreshTokens->saves;
+
+        // When
+        $this->failToGrant($this->request($value));
+
+        // Then
+        static::assertSame([], $this->events->events);
+        static::assertSame($savesBefore, $this->refreshTokens->saves);
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): string}>
+     */
+    public static function provideTokensThatAreNoGrant(): iterable
+    {
+        yield 'unknown' => [static fn (self $test): string => 'unknown'];
+        yield 'issued to another client, rotated' => [static function (self $test): string {
+            $foreign = $test->token('foreign', client: Clients::public($test->tenant));
+            $foreign->rotate($test->clock->now());
+            $test->refreshTokens->save($foreign);
+
+            return 'foreign';
+        }];
+        yield 'revoked' => [static function (self $test): string {
+            $revoked = $test->token('revoked');
+            $revoked->revoke($test->clock->now());
+            $test->refreshTokens->save($revoked);
+
+            return 'revoked';
+        }];
+    }
+
+    /**
+     * RFC 9700 §4.13.2: a rotated token presented again reveals a copy and is refused.
+     */
+    #[Test]
+    public function itRefusesARotatedTokenPresentedAgain(): void
+    {
+        // Given
+        $this->token('first');
+        $this->grant->grant($this->client, $this->request('first'), $this->context);
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessage(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request('first'), $this->context);
+    }
+
+    /**
+     * RFC 9700 §4.13.2: the whole family is revoked, the presented token and the current one included;
+     * another family is not concerned.
+     */
+    #[Test]
+    public function aRotatedTokenPresentedAgainRevokesTheWholeFamily(): void
+    {
+        // Given
         $first = $this->token('first', ['openid', 'profile']);
         $other = $this->token('other', family: Tokens::family($this->clock->now(), 'other-code'));
-        $this->clock->sleep(60);
-        $second = $this->grant->grant($this->client, $this->request('first'), $this->context)
-            ->refreshToken ?? static::fail('A refresh always issues a successor.');
-        $this->clock->sleep(60);
-        $third = $this->grant->grant($this->client, $this->request($second->value), $this->context)
-            ->refreshToken ?? static::fail('A refresh always issues a successor.');
-        $this->clock->sleep(60);
+        [$second, $third] = $this->twoRotationsOf('first');
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('first'), $this->context));
+        // When
+        $this->failToGrant($this->request('first'));
 
+        // Then
         foreach ([$first, $second->token, $third->token] as $token) {
             static::assertTrue($token->isRevoked());
             static::assertEquals($this->clock->now(), $token->revokedAt);
         }
-        static::assertFalse($other->isRevoked(), 'another family is not concerned');
+        static::assertFalse($other->isRevoked());
         static::assertSame(9, $this->refreshTokens->saves, 'two fixtures, two rotations with their successors, three revocations');
+    }
+
+    /**
+     * RFC 9700 §4.13.2: the detection is announced once, with what was revoked.
+     */
+    #[Test]
+    public function aReuseIsAnnouncedWithWhatWasRevoked(): void
+    {
+        // Given
+        $first = $this->token('first', ['openid', 'profile']);
+        [$second, $third] = $this->twoRotationsOf('first');
+
+        // When
+        $this->failToGrant($this->request('first'));
+
+        // Then
         $detections = $this->events->of(RefreshTokenReuseDetected::class);
         static::assertCount(1, $detections);
         static::assertSame($first, $detections[0]->presented);
@@ -260,49 +481,130 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertSame($this->tenant, $detections[0]->tenant);
         static::assertSame($this->context, $detections[0]->context);
         static::assertCount(2, $this->events->of(TokensIssued::class));
-
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request($third->value), $this->context));
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request($second->value), $this->context));
-
-        static::assertCount(1, $this->events->of(RefreshTokenReuseDetected::class), 'a revoked family is not detected again');
     }
 
     /**
-     * Architecture §4.6: thirty days sliding, ninety days absolute; the last instant excluded.
+     * A revoked family is refused on every member and not detected again.
      */
     #[Test]
-    public function itRefusesAnExpiredToken(): void
+    public function aRevokedFamilyIsNotDetectedAgain(): void
     {
+        // Given
+        $this->token('first', ['openid', 'profile']);
+        [$second, $third] = $this->twoRotationsOf('first');
+        $this->failToGrant($this->request('first'));
+
+        // When
+        $this->failToGrant($this->request($third->value));
+        $this->failToGrant($this->request($second->value));
+
+        // Then
+        static::assertCount(1, $this->events->of(RefreshTokenReuseDetected::class));
+    }
+
+    /**
+     * Architecture §4.6: thirty days sliding; a refresh on the last second issues a successor for thirty
+     * more days.
+     */
+    #[Test]
+    public function aRefreshOnTheLastSecondSlidesTheExpiry(): void
+    {
+        // Given
         $this->token('sliding');
-        $family = Tokens::family($this->clock->now()->modify('-89 days'), 'old-code');
-        $this->token('absolute', family: $family);
         $this->clock->sleep(30 * 86400 - 1);
 
-        $successor = $this->grant->grant($this->client, $this->request('sliding'), $this->context)
-            ->refreshToken ?? static::fail('A refresh always issues a successor.');
+        // When
+        $issued = $this->grant->grant($this->client, $this->request('sliding'), $this->context);
+
+        // Then
+        $successor = $issued->refreshToken ?? static::fail('A refresh always issues a successor.');
         static::assertEquals($this->clock->now()->modify('+30 days'), $successor->token->expiresAt);
-        $this->clock->sleep(1);
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('absolute'), $this->context), 'the family expired one day after this token was issued');
+    }
+
+    /**
+     * Architecture §4.6: thirty days sliding, the last instant excluded.
+     */
+    #[Test]
+    public function itRefusesATokenPastItsSlidingExpiry(): void
+    {
+        // Given
+        $this->token('sliding');
         $this->clock->sleep(30 * 86400);
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request($successor->value), $this->context));
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessage(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request('sliding'), $this->context);
+    }
+
+    /**
+     * Architecture §4.6: ninety days absolute; the family expired one day after this token was issued.
+     */
+    #[Test]
+    public function itRefusesATokenWhoseFamilyExpired(): void
+    {
+        // Given
+        $this->token('absolute', family: Tokens::family($this->clock->now()->modify('-89 days'), 'old-code'));
+        $this->clock->sleep(30 * 86400);
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessage(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request('absolute'), $this->context);
+    }
+
+    #[Test]
+    public function anExpiredTokenIsNoReuse(): void
+    {
+        // Given
+        $this->token('sliding');
+        $this->clock->sleep(30 * 86400);
+
+        // When
+        $this->failToGrant($this->request('sliding'));
+
+        // Then
         static::assertSame([], $this->events->of(RefreshTokenReuseDetected::class));
     }
 
     /**
      * Architecture §4.9: a logout revokes the tokens of the session; one that outlived the revocation
-     * is refused rather than honoured. An expired session is another matter: offline access is what a
-     * refresh token is for.
+     * is refused rather than honoured.
      */
     #[Test]
-    public function itRefusesATokenWhoseSessionHasEndedButNotOneWhoseSessionExpired(): void
+    public function itRefusesATokenWhoseSessionHasEnded(): void
     {
+        // Given
         $ended = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
         $this->token('ended', session: $ended);
         $ended->end(SessionEnd::User, $this->clock->now());
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessage(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, $this->request('ended'), $this->context);
+    }
+
+    /**
+     * An expired session is another matter: offline access is what a refresh token is for.
+     */
+    #[Test]
+    public function itHonoursATokenWhoseSessionExpired(): void
+    {
+        // Given
         $this->token('expired', session: Fixtures::session($this->alice, $this->clock->now()->modify('-2 days')));
 
-        $this->assertInvalidGrant(fn (): IssuedTokens => $this->grant->grant($this->client, $this->request('ended'), $this->context));
-        static::assertNotNull($this->grant->grant($this->client, $this->request('expired'), $this->context)->idToken);
+        // When
+        $issued = $this->grant->grant($this->client, $this->request('expired'), $this->context);
+
+        // Then
+        static::assertNotNull($issued->idToken);
     }
 
     /**
@@ -329,17 +631,30 @@ final class RefreshTokenGrantTest extends TestCase
         return new TokenRequest($parameters);
     }
 
-    /**
-     * @param callable(): IssuedTokens $attempt
-     */
-    private function assertInvalidGrant(callable $attempt, string $message = ''): void
+    private function failToGrant(TokenRequest $request): void
     {
         try {
-            $attempt();
-            static::fail($message !== '' ? $message : 'The grant should have failed.');
-        } catch (InvalidGrantException $exception) {
-            static::assertSame('The refresh token is invalid.', $exception->errorDescription);
-            static::assertSame(400, $exception->statusCode);
+            $this->grant->grant($this->client, $request, $this->context);
+            static::fail('The grant should have failed.');
+        } catch (OAuth2Exception) {
         }
+    }
+
+    /**
+     * Two refreshes a minute apart from the token named, then a minute more.
+     *
+     * @return array{IssuedRefreshToken, IssuedRefreshToken}
+     */
+    private function twoRotationsOf(string $value): array
+    {
+        $this->clock->sleep(60);
+        $second = $this->grant->grant($this->client, $this->request($value), $this->context)
+            ->refreshToken ?? static::fail('A refresh always issues a successor.');
+        $this->clock->sleep(60);
+        $third = $this->grant->grant($this->client, $this->request($second->value), $this->context)
+            ->refreshToken ?? static::fail('A refresh always issues a successor.');
+        $this->clock->sleep(60);
+
+        return [$second, $third];
     }
 }

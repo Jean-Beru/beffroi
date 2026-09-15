@@ -30,6 +30,7 @@ use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use Jose\Component\Checker\InvalidClaimException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function rtrim;
@@ -61,23 +62,39 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "amr", "azp"; §3.1.3.6:
-     * "at_hash", cross-checked here with an independent computation and with the value of appendix A.3;
-     * "sid" of the session (architecture §4.6). RS256 with the active key, "kid" in the header, no "typ".
-     * Ten minutes. Verified by jwt-library against the published JWKS, the way oidc_login does.
+     * OIDC Core §2: RS256 with the active key, "kid" in the header, no "typ". Verified by jwt-library
+     * against the published JWKS, the way oidc_login does.
      */
     #[Test]
-    public function itMintsAnIdTokenVerifiableAgainstThePublishedJwks(): void
+    public function theHeaderNamesTheActiveKeyAndNoType(): void
     {
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+        // Given
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+        // When
+        ['header' => $header] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
 
-        ['header' => $header, 'claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
+        // Then
         static::assertSame([
             'alg' => 'RS256',
             'kid' => $this->jwts->key->kid,
         ], $header);
+    }
+
+    /**
+     * OIDC Core §2: "iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "amr", "azp"; "sid" of the
+     * session (architecture §4.6). Ten minutes.
+     */
+    #[Test]
+    public function thePayloadCarriesTheClaimsOfOidcCoreInOrder(): void
+    {
+        // Given
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
+
+        // Then
         static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'amr', 'azp', 'at_hash', 'sid'], array_keys($claims));
         static::assertSame('https://id.acme.example', $claims['iss']);
         static::assertSame('alice-subject', $claims['sub']);
@@ -88,9 +105,25 @@ final class JwtIdTokenIssuerTest extends TestCase
         static::assertSame('n-0S6_WzA2Mj', $claims['nonce']);
         static::assertSame(['pwd'], $claims['amr']);
         static::assertSame('spa', $claims['azp']);
+        static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
+    }
+
+    /**
+     * OIDC Core §3.1.3.6: "at_hash", cross-checked with an independent computation and with the value
+     * of appendix A.3.
+     */
+    #[Test]
+    public function theAtHashIsTheLeftHalfOfTheSha256OfTheAccessToken(): void
+    {
+        // Given
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+
+        // When
+        $claims = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
+
+        // Then
         static::assertSame(rtrim(strtr(base64_encode(substr(hash('sha256', self::ACCESS_TOKEN, true), 0, 16)), '+/', '-_'), '='), $claims['at_hash']);
         static::assertSame('77QmUPtjPfzWtF2AnpK9RQ', $claims['at_hash']);
-        static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
     }
 
     /**
@@ -100,45 +133,59 @@ final class JwtIdTokenIssuerTest extends TestCase
     #[Test]
     public function onARefreshThereIsNoNonceAndTheOriginalAuthenticationIsDescribed(): void
     {
+        // Given
         $session = new AuthenticationSession(Uuid::v7(), $this->session->tenant, $this->session->user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now()), 'urn:acme:mfa', Fixtures::context(), Fixtures::now()->modify('+12 hours'));
         $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $session, Fixtures::now()), null);
         $later = Fixtures::now()->modify('+20 days');
-
         $idToken = $this->issuer->issue($authorization, $this->accessToken, $later);
 
+        // When
         $claims = $this->jwts->verify($idToken, 'spa', $later)['claims'];
+
+        // Then
+        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'acr', 'amr', 'azp', 'at_hash', 'sid'], array_keys($claims));
         static::assertArrayNotHasKey('nonce', $claims);
         static::assertSame(Fixtures::now()->getTimestamp(), $claims['auth_time']);
         static::assertSame($later->getTimestamp(), $claims['iat']);
         static::assertSame('urn:acme:mfa', $claims['acr']);
         static::assertSame(['pwd', 'otp'], $claims['amr']);
-        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'acr', 'amr', 'azp', 'at_hash', 'sid'], array_keys($claims));
     }
 
     /**
      * OIDC Core §5.5: the claims of "claims.id_token" are in the ID token, those of "claims.userinfo" and
-     * of the scopes are not (§5.4: they belong to UserInfo); §5.1: "email_verified" is a JSON boolean on
-     * the wire; a claim the user has no value for is absent.
+     * of the scopes are not (§5.4: they belong to UserInfo); a claim the user has no value for is absent.
      */
     #[Test]
     public function itAddsTheClaimsRequestedForTheIdTokenAndNoOther(): void
     {
-        $user = Fixtures::user($this->session->tenant);
-        $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
-        $user->updateProfile(new Profile(givenName: 'Alice'), Fixtures::now());
-        $session = Fixtures::session($user);
-        $claims = ClaimsRequest::fromJson('{"id_token":{"email":null,"email_verified":{"essential":true},"family_name":null},"userinfo":{"given_name":null}}');
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $session, Fixtures::now(), ['openid', 'profile', 'email'], claims: $claims));
+        // Given
+        $idToken = $this->issuer->issue($this->authorizationWithRequestedClaims(), $this->accessToken, Fixtures::now());
 
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
-
+        // When
         $decoded = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
+
+        // Then
+        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'amr', 'azp', 'at_hash', 'sid', 'email', 'email_verified'], array_keys($decoded));
         static::assertSame('alice@acme.example', $decoded['email']);
-        static::assertTrue($decoded['email_verified']);
         static::assertArrayNotHasKey('family_name', $decoded);
         static::assertArrayNotHasKey('given_name', $decoded);
         static::assertArrayNotHasKey('updated_at', $decoded);
-        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'amr', 'azp', 'at_hash', 'sid', 'email', 'email_verified'], array_keys($decoded));
+    }
+
+    /**
+     * OIDC Core §5.1: "email_verified" is a JSON boolean on the wire.
+     */
+    #[Test]
+    public function theVerificationFlagIsAJsonBooleanOnTheWire(): void
+    {
+        // Given
+        $idToken = $this->issuer->issue($this->authorizationWithRequestedClaims(), $this->accessToken, Fixtures::now());
+
+        // When
+        $decoded = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
+
+        // Then
+        static::assertTrue($decoded['email_verified']);
         static::assertStringContainsString('"email_verified":true', Jwts::rawPayload($idToken));
     }
 
@@ -147,8 +194,10 @@ final class JwtIdTokenIssuerTest extends TestCase
      * consulted at all.
      */
     #[Test]
-    public function theProviderIsNotAskedWhenNothingIsRequestedForTheIdToken(): void
+    #[DataProvider('provideRequestsWithoutIdTokenClaims')]
+    public function theProviderIsNotAskedWhenNothingIsRequestedForTheIdToken(?ClaimsRequest $claims): void
     {
+        // Given
         $provider = new class() implements ClaimsProviderInterface {
             public int $calls = 0;
 
@@ -171,10 +220,20 @@ final class JwtIdTokenIssuerTest extends TestCase
         };
         $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider);
 
-        $issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('a', $this->client, $this->session, Fixtures::now())), $this->accessToken, Fixtures::now());
-        $issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('b', $this->client, $this->session, Fixtures::now(), claims: ClaimsRequest::fromJson('{"userinfo":{"name":null}}'))), $this->accessToken, Fixtures::now());
+        // When
+        $issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $claims)), $this->accessToken, Fixtures::now());
 
+        // Then
         static::assertSame(0, $provider->calls);
+    }
+
+    /**
+     * @return iterable<string, array{?ClaimsRequest}>
+     */
+    public static function provideRequestsWithoutIdTokenClaims(): iterable
+    {
+        yield 'no claims request' => [null];
+        yield 'userinfo claims only' => [ClaimsRequest::fromJson('{"userinfo":{"name":null}}')];
     }
 
     /**
@@ -184,6 +243,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     #[Test]
     public function aClaimsProviderCannotOverrideTheProtocolClaims(): void
     {
+        // Given
         $provider = new class() implements ClaimsProviderInterface {
             public function claims(User $user, array $scopes, array $requested): array
             {
@@ -208,8 +268,10 @@ final class JwtIdTokenIssuerTest extends TestCase
         $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider);
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: ClaimsRequest::fromJson('{"id_token":{"name":null}}')));
 
+        // When
         $claims = $this->jwts->verify($issuer->issue($authorization, $this->accessToken, Fixtures::now()), 'spa', Fixtures::now())['claims'];
 
+        // Then
         static::assertSame('alice-subject', $claims['sub']);
         static::assertSame('spa', $claims['aud']);
         static::assertSame(Fixtures::now()->modify('+10 minutes')->getTimestamp(), $claims['exp']);
@@ -217,22 +279,52 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the lifetime is a choice, ten minutes by default. OIDC Core §3.1.2.1: the same
-     * token, given back as id_token_hint, is one this provider recognizes (the verifier of issue #6 reads
-     * what this issuer writes).
+     * Architecture §4.6: the lifetime is a choice, ten minutes by default.
      */
     #[Test]
-    public function theLifetimeIsConfigurableAndTheTokenServesAsAHint(): void
+    public function theLifetimeIsConfigurable(): void
     {
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        // Given
         $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), new DateInterval('PT1H'));
+        $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
-        $idToken = $issuer->issue($authorization, $this->accessToken, Fixtures::now());
+        // When
+        $claims = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+59 minutes'))['claims'];
 
-        static::assertSame(Fixtures::now()->modify('+1 hour')->getTimestamp(), $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+59 minutes'))['claims']['exp']);
-        static::assertSame('alice-subject', new IdTokenHintVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys))->verify($this->client, $idToken)->value);
+        // Then
+        static::assertSame(Fixtures::now()->modify('+1 hour')->getTimestamp(), $claims['exp']);
+    }
+
+    #[Test]
+    public function aTokenIsRefusedOncePastItsLifetime(): void
+    {
+        // Given
+        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), new DateInterval('PT1H'));
+        $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+
+        // Then
         $this->expectException(InvalidClaimException::class);
+
+        // When
         $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+61 minutes'));
+    }
+
+    /**
+     * OIDC Core §3.1.2.1: the same token, given back as id_token_hint, is one this provider recognizes
+     * (the verifier of issue #6 reads what this issuer writes).
+     */
+    #[Test]
+    public function theTokenServesAsAnIdTokenHint(): void
+    {
+        // Given
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $verifier = new IdTokenHintVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys));
+
+        // When
+        $subject = $verifier->verify($this->client, $idToken);
+
+        // Then
+        static::assertSame('alice-subject', $subject->value);
     }
 
     /**
@@ -242,11 +334,33 @@ final class JwtIdTokenIssuerTest extends TestCase
     #[Test]
     public function theAudienceIsTheClient(): void
     {
+        // Given
         $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']), [new Scope('openid')]);
-
         $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
 
+        // Then
         $this->expectException(InvalidClaimException::class);
+
+        // When
         $this->jwts->verify($idToken, 'other', Fixtures::now());
+    }
+
+    private function authorizationFromCode(): GrantedAuthorization
+    {
+        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+    }
+
+    /**
+     * Alice with a verified email and a given name, asking "email", "email_verified" and "family_name"
+     * for the ID token and "given_name" for UserInfo.
+     */
+    private function authorizationWithRequestedClaims(): GrantedAuthorization
+    {
+        $user = Fixtures::user($this->session->tenant);
+        $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+        $user->updateProfile(new Profile(givenName: 'Alice'), Fixtures::now());
+        $claims = ClaimsRequest::fromJson('{"id_token":{"email":null,"email_verified":{"essential":true},"family_name":null},"userinfo":{"given_name":null}}');
+
+        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, Fixtures::session($user), Fixtures::now(), ['openid', 'profile', 'email'], claims: $claims));
     }
 }
