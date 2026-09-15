@@ -14,6 +14,7 @@ use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\Test;
@@ -115,6 +116,47 @@ final class AuthorizationCodeTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         $this->code(Fixtures::now(), Fixtures::now());
+    }
+
+    /**
+     * RFC 6749 §4.1.2: a code is used once. The first presentation consumes it; a second one is the
+     * grant's decision, so consuming twice is a programming error.
+     */
+    #[Test]
+    public function itIsConsumedOnce(): void
+    {
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        $presentedAt = Fixtures::now()->modify('+2 seconds');
+
+        static::assertFalse($code->isUsed());
+        static::assertNull($code->usedAt);
+
+        $code->consume($presentedAt);
+
+        static::assertTrue($code->isUsed());
+        static::assertEquals($presentedAt, $code->usedAt);
+
+        try {
+            $code->consume($presentedAt->modify('+1 second'));
+            static::fail('A code is consumed once.');
+        } catch (LogicException $exception) {
+            static::assertStringContainsString('isUsed()', $exception->getMessage());
+        }
+        static::assertEquals($presentedAt, $code->usedAt);
+    }
+
+    /**
+     * Architecture §4.4: sixty seconds, the last one excluded.
+     */
+    #[Test]
+    public function itExpiresAtTheEndOfItsLifetime(): void
+    {
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+
+        static::assertFalse($code->isExpired(Fixtures::now()));
+        static::assertFalse($code->isExpired(Fixtures::now()->modify('+59 seconds')));
+        static::assertTrue($code->isExpired(Fixtures::now()->modify('+60 seconds')));
+        static::assertTrue($code->isExpired(Fixtures::now()->modify('+1 day')));
     }
 
     /**
