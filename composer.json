@@ -19,12 +19,17 @@
     ],
     "require": {
         "php": ">=8.4",
+        "doctrine/dbal": "^4.4",
+        "doctrine/doctrine-bundle": "^3.3",
+        "doctrine/migrations": "^3.9",
+        "doctrine/orm": "^3.7",
         "psr/clock": "^1.0",
         "psr/event-dispatcher": "^1.0",
         "psr/log": "^3.0",
         "symfony/clock": "8.2.*",
         "symfony/config": "8.2.*",
         "symfony/dependency-injection": "8.2.*",
+        "symfony/doctrine-bridge": "8.2.*",
         "symfony/framework-bundle": "8.2.*",
         "symfony/http-foundation": "8.2.*",
         "symfony/http-kernel": "8.2.*",
@@ -57,7 +62,8 @@
         "psr-4": {
             "Heidi\\Core\\Tests\\": "tests/core/",
             "Heidi\\Oidc\\Tests\\": "tests/oidc/",
-            "Heidi\\Bundle\\Tests\\": "tests/symfony/"
+            "Heidi\\Bundle\\Tests\\": "tests/symfony/",
+            "Heidi\\Bundle\\Migrations\\": "src/symfony/migrations/"
         }
     },
     "config": {

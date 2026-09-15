@@ -9,11 +9,13 @@ use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -55,7 +57,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         $tenant = Fixtures::tenant();
         $hasher = new NativePasswordHasher();
-        $repository = new ConfigurationClientRepository($tenant, [
+        $repository = new ConfigurationClientRepository($tenant->slug, [
             'oidc-demo' => self::DEMO,
             'suite-second' => self::SUITE,
         ], $hasher);
@@ -91,22 +93,54 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         $tenant = Fixtures::tenant();
         $hasher = new FakePasswordHasher();
-        $repository = new ConfigurationClientRepository($tenant, [
+        $repository = new ConfigurationClientRepository($tenant->slug, [
             'oidc-demo' => self::DEMO,
             'suite-second' => self::SUITE,
         ], $hasher);
+        static::assertSame(0, $hasher->hashed);
 
         $first = self::find($repository, $tenant, 'oidc-demo');
         $second = self::find($repository, $tenant, 'oidc-demo');
 
         static::assertSame($first, $second);
+        static::assertSame(1, $hasher->hashed);
+    }
+
+    /**
+     * The integration may hold a tenant instance per request: each instance gets clients of its own,
+     * pointing at it, and the secret is still hashed once per process.
+     */
+    #[Test]
+    public function anotherInstanceOfTheTenantGetsClientsOfItsOwnWithTheSameHash(): void
+    {
+        $tenant = Fixtures::tenant();
+        $again = Fixtures::tenant();
+        $hasher = new FakePasswordHasher();
+        $repository = new ConfigurationClientRepository($tenant->slug, [
+            'oidc-demo' => self::DEMO,
+            'spa' => [
+                'redirect_uris' => ['https://spa.example/callback'],
+                'token_endpoint_auth_method' => 'none',
+            ],
+        ], $hasher);
+
+        $first = self::find($repository, $tenant, 'oidc-demo');
+        $second = self::find($repository, $again, 'oidc-demo');
+        self::find($repository, $tenant, 'spa');
+
+        static::assertNotSame($first, $second);
+        static::assertSame($tenant, $first->tenant);
+        static::assertSame($again, $second->tenant);
+        static::assertSame($first->secretHash, $second->secretHash);
+        static::assertSame(1, $hasher->hashed);
+        static::assertSame($second, self::find($repository, $again, 'oidc-demo'));
     }
 
     #[Test]
     public function anUnknownIdOrAnotherTenantFindsNothing(): void
     {
         $tenant = Fixtures::tenant();
-        $repository = new ConfigurationClientRepository($tenant, [
+        $repository = new ConfigurationClientRepository($tenant->slug, [
             'oidc-demo' => self::DEMO,
         ], new FakePasswordHasher());
 
@@ -122,7 +156,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicClientIsDeclaredWithNoneAndNoSecret(): void
     {
         $tenant = Fixtures::tenant();
-        $repository = new ConfigurationClientRepository($tenant, [
+        $repository = new ConfigurationClientRepository($tenant->slug, [
             'spa' => [
                 'redirect_uris' => ['https://spa.example/callback'],
                 'token_endpoint_auth_method' => 'none',
@@ -145,13 +179,31 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aWrongDefinitionFailsAtBoot(array $definition, string $reason): void
     {
         try {
-            new ConfigurationClientRepository(Fixtures::tenant(), [
+            new ConfigurationClientRepository('acme', [
                 'bad' => $definition,
             ], new FakePasswordHasher());
             static::fail('The definition should have been rejected.');
         } catch (InvalidArgumentException $exception) {
             static::assertStringContainsString($reason, $exception->getMessage());
         }
+    }
+
+    /**
+     * RFC 6749 §2.1: a public client has no secret, so there is nothing to hash; the repository asks first.
+     */
+    #[Test]
+    public function aPublicDefinitionHasNoSecretToHash(): void
+    {
+        $definition = ClientDefinition::fromArray('spa', [
+            'redirect_uris' => ['https://spa.example/callback'],
+            'token_endpoint_auth_method' => 'none',
+        ]);
+        static::assertFalse($definition->hasSecret());
+        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO)->hasSecret());
+
+        $this->expectException(LogicException::class);
+
+        $definition->hashSecret(new FakePasswordHasher());
     }
 
     private static function find(ConfigurationClientRepository $repository, Tenant $tenant, string $clientId): Client

@@ -18,7 +18,9 @@ final class PasswordCredentialTest extends TestCase
     #[Test]
     public function itRecordsWhenItWasUsedAndWhenItsHashChanged(): void
     {
-        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+        $user = Fixtures::user();
+        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+        static::assertSame($user->tenant, $credential->tenant);
         static::assertNull($credential->lastUsedAt);
         static::assertEquals(Fixtures::now(), $credential->hashChangedAt);
 

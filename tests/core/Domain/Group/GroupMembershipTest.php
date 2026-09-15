@@ -23,6 +23,7 @@ final class GroupMembershipTest extends TestCase
 
         $membership = new GroupMembership(Uuid::v7(), $group, Fixtures::user($tenant), GroupSource::UpstreamClaims, Fixtures::now());
 
+        static::assertSame($tenant, $membership->tenant);
         static::assertTrue($membership->source->isManaged());
         static::assertFalse($group->source->isManaged());
     }

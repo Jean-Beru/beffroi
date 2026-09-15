@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!-- The identity a user has at an upstream provider (architecture §3.1): the table is posed in spike 1, the code comes with spike 3. -->
+    <entity name="Heidi\Core\Domain\Identity\LinkedIdentity" table="heidi_linked_identity">
+        <unique-constraints>
+            <unique-constraint name="heidi_linked_identity_subject" columns="tenant_id,provider,subject"/>
+        </unique-constraints>
+        <id name="id" type="uuid" column="id"/>
+        <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
+        <many-to-one field="user" target-entity="Heidi\Core\Domain\Identity\User">
+            <join-column name="user_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+        <field name="provider" type="string" column="provider" length="255"/>
+        <field name="subject" type="string" column="subject" length="255"/>
+        <field name="claims" type="json" column="claims">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="linkedAt" type="datetime_immutable" column="linked_at"/>
+        <field name="lastSeenAt" type="datetime_immutable" column="last_seen_at"/>
+    </entity>
+</doctrine-mapping>

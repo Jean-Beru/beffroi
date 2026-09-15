@@ -6,6 +6,17 @@ namespace Heidi\Bundle;
 
 use function array_column;
 use DateInterval;
+use function dirname;
+use Heidi\Bundle\Doctrine\Type\AddressType;
+use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
+use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
+use Heidi\Bundle\Doctrine\Type\DeviceType;
+use Heidi\Bundle\Doctrine\Type\EmailAddressType;
+use Heidi\Bundle\Doctrine\Type\GeoLocationType;
+use Heidi\Bundle\Doctrine\Type\IssuerType;
+use Heidi\Bundle\Doctrine\Type\RedirectUriType;
+use Heidi\Bundle\Doctrine\Type\ScopesType;
+use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Tenant\TenantFactory;
@@ -189,6 +200,66 @@ final class HeidiBundle extends AbstractBundle
     }
 
     /**
+     * The value objects of the core and of the module that a column holds as one value, by the name the
+     * mappings use (architecture §5.3).
+     */
+    public const array DBAL_TYPES = [
+        IssuerType::NAME => IssuerType::class,
+        SubjectType::NAME => SubjectType::class,
+        EmailAddressType::NAME => EmailAddressType::class,
+        AddressType::NAME => AddressType::class,
+        AuthenticationProofsType::NAME => AuthenticationProofsType::class,
+        GeoLocationType::NAME => GeoLocationType::class,
+        DeviceType::NAME => DeviceType::class,
+        RedirectUriType::NAME => RedirectUriType::class,
+        ScopesType::NAME => ScopesType::class,
+        ClaimsRequestType::NAME => ClaimsRequestType::class,
+    ];
+
+    /**
+     * Doctrine gets the mappings of the pure classes, the types their value objects need and the
+     * migrations of the bundle without a line in the application (architecture §5.3): the same schema
+     * installs in an existing application or alone (decision 0002). The classes live in the core and in the
+     * module, so the bundle cannot rely on the mapping Doctrine infers from a bundle's own namespace.
+     */
+    public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
+    {
+        $bundleDir = dirname(__DIR__);
+        if ($builder->hasExtension('doctrine')) {
+            $builder->prependExtensionConfig('doctrine', [
+                'dbal' => [
+                    'types' => self::DBAL_TYPES,
+                ],
+                'orm' => [
+                    'mappings' => [
+                        'HeidiCore' => [
+                            'type' => 'xml',
+                            'is_bundle' => false,
+                            'dir' => $bundleDir . '/config/doctrine/core',
+                            'prefix' => 'Heidi\\Core\\Domain',
+                            'alias' => 'HeidiCore',
+                        ],
+                        'HeidiOidc' => [
+                            'type' => 'xml',
+                            'is_bundle' => false,
+                            'dir' => $bundleDir . '/config/doctrine/oidc',
+                            'prefix' => 'Heidi\\Oidc\\Domain',
+                            'alias' => 'HeidiOidc',
+                        ],
+                    ],
+                ],
+            ]);
+        }
+        if ($builder->hasExtension('doctrine_migrations')) {
+            $builder->prependExtensionConfig('doctrine_migrations', [
+                'migrations_paths' => [
+                    'Heidi\\Bundle\\Migrations' => $bundleDir . '/migrations',
+                ],
+            ]);
+        }
+    }
+
+    /**
      * @param array<array-key, mixed> $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
@@ -236,6 +307,7 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
 
         $services->get(ConfigurationClientRepository::class)
+            ->arg('$tenantSlug', self::string($tenant, 'slug'))
             ->arg('$definitions', is_array($config['clients'] ?? null) ? $config['clients'] : []);
     }
 

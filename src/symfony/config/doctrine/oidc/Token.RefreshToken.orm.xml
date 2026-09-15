@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!-- A refresh token as the provider keeps it (architecture §4.6): the hash is the key, its family is denormalised on every token of the lineage, rotated and revoked tokens stay so that a reuse can be told from an unknown token. -->
+    <entity name="Heidi\Oidc\Domain\Token\RefreshToken" table="heidi_refresh_token">
+        <indexes>
+            <index name="heidi_refresh_token_family" columns="family_id"/>
+            <index name="heidi_refresh_token_code" columns="family_authorization_code_hash"/>
+        </indexes>
+        <id name="tokenHash" type="string" column="token_hash" length="64">
+            <options>
+                <option name="fixed">true</option>
+            </options>
+        </id>
+        <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
+        <field name="clientId" type="string" column="client_id" length="255"/>
+        <embedded name="family" class="Heidi\Oidc\Domain\Token\RefreshTokenFamily" column-prefix="family_"/>
+        <many-to-one field="session" target-entity="Heidi\Core\Domain\Session\AuthenticationSession">
+            <join-column name="session_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+        <field name="scopes" type="heidi_scopes" column="scopes"/>
+        <field name="claimsRequest" type="heidi_claims_request" column="claims" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="authenticatedAt" type="datetime_immutable" column="authenticated_at"/>
+        <field name="authenticationMethods" type="simple_array" column="amr"/>
+        <field name="authenticationContextClass" type="string" column="acr" length="255" nullable="true"/>
+        <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
+        <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
+        <field name="rotatedAt" type="datetime_immutable" column="rotated_at" nullable="true"/>
+        <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
+        <entity-listeners>
+            <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
+                <lifecycle-callback type="postLoad" method="postLoad"/>
+            </entity-listener>
+        </entity-listeners>
+    </entity>
+</doctrine-mapping>

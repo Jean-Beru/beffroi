@@ -22,6 +22,11 @@ final class FakePasswordHasher implements PasswordHasherInterface
      */
     public private(set) array $verifiedAgainst = [];
 
+    /**
+     * How many times hash() was called, for tests that must see a costly hash computed once.
+     */
+    public private(set) int $hashed = 0;
+
     public function supports(PasswordAlgorithm $algorithm): bool
     {
         return $algorithm === PasswordAlgorithm::Argon2id;
@@ -29,6 +34,8 @@ final class FakePasswordHasher implements PasswordHasherInterface
 
     public function hash(#[SensitiveParameter] string $plainPassword): PasswordHash
     {
+        ++$this->hashed;
+
         return new PasswordHash(PasswordAlgorithm::Argon2id, 'fake:' . hash('sha256', $plainPassword));
     }
 

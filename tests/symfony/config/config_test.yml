@@ -26,6 +26,23 @@ framework:
             Heidi\Bundle\Message\Query: sync
             Heidi\Bundle\Message\SyncMessage: sync
 
+# SQLite in a file of the cache directory (architecture §7): a kernel reboot between two requests keeps the
+# rows, a fresh schema is created by the tests that need one. The mappings and the types of the bundle are
+# prepended by the bundle itself; the host application of this kernel maps an entity of its own, "User" of
+# all names, to show the two schemas side by side (decision 0002).
+doctrine:
+    dbal:
+        url: 'sqlite:///%kernel.cache_dir%/heidi.sqlite'
+    orm:
+        validate_xml_mapping: true
+        mappings:
+            Host:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/Functional/Doctrine/Host'
+                prefix: 'Heidi\Bundle\Tests\Functional\Doctrine\Host'
+                alias: Host
+
 # A full configuration (architecture §5.1): one tenant, a local KMS, files for the sealed keys, the default
 # lifetimes and two clients. The sodium key is a fixture of this kernel and seals nothing outside of it.
 heidi:
@@ -54,8 +71,8 @@ services:
 
     # Reachable from the tests: the use cases and ports the bundle wires in full today. A private service
     # nothing references is removed from the container, which is what these aliases prevent.
-    test.heidi.tenant:
-        alias: Heidi\Core\Domain\Tenant\Tenant
+    test.heidi.tenant_provider:
+        alias: Heidi\Bundle\Doctrine\TenantProvider
         public: true
     test.heidi.clients:
         alias: Heidi\Oidc\Port\ClientRepositoryInterface
@@ -92,6 +109,30 @@ services:
         public: true
     test.heidi.event_bus_dispatcher:
         alias: Heidi\Bundle\Messenger\EventBusDispatcher
+        public: true
+    test.heidi.tenant_synchronizer:
+        alias: Heidi\Bundle\Doctrine\TenantSynchronizer
+        public: true
+    test.heidi.users:
+        alias: Heidi\Core\Port\UserRepositoryInterface
+        public: true
+    test.heidi.credentials:
+        alias: Heidi\Core\Port\CredentialRepositoryInterface
+        public: true
+    test.heidi.sessions:
+        alias: Heidi\Core\Port\AuthenticationSessionRepositoryInterface
+        public: true
+    test.heidi.interactions:
+        alias: Heidi\Oidc\Port\InteractionRepositoryInterface
+        public: true
+    test.heidi.authorization_codes:
+        alias: Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface
+        public: true
+    test.heidi.refresh_tokens:
+        alias: Heidi\Oidc\Port\RefreshTokenRepositoryInterface
+        public: true
+    test.heidi.consents:
+        alias: Heidi\Oidc\Port\ConsentRepositoryInterface
         public: true
     Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
         autoconfigure: true

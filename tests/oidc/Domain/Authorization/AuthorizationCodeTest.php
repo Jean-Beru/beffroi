@@ -65,6 +65,8 @@ final class AuthorizationCodeTest extends TestCase
 
         static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', $code->codeHash);
         static::assertSame($this->client, $code->client);
+        static::assertSame($this->client->clientId, $code->clientId);
+        static::assertSame($this->client->tenant, $code->tenant);
         static::assertSame($this->session, $code->session);
         static::assertSame('https://spa.example/callback', (string) $code->redirectUri);
         static::assertEquals([new Scope('openid')], $code->scopes);
