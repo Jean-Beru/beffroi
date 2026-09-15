@@ -158,6 +158,16 @@ final class JwtIdTokenIssuerTest extends TestCase
 
                 return [];
             }
+
+            public function supportedScopes(): array
+            {
+                return [];
+            }
+
+            public function supportedClaims(): array
+            {
+                return [];
+            }
         };
         $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider);
 
@@ -183,6 +193,16 @@ final class JwtIdTokenIssuerTest extends TestCase
                     'exp' => 0,
                     'name' => 'Alice',
                 ];
+            }
+
+            public function supportedScopes(): array
+            {
+                return [];
+            }
+
+            public function supportedClaims(): array
+            {
+                return ['name'];
             }
         };
         $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider);

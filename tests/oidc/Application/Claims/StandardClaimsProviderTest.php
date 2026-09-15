@@ -104,6 +104,27 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
+     * OIDC Discovery §3 "scopes_supported" and "claims_supported": the provider announces the four scopes
+     * of OIDC Core §5.4 and the nineteen claims of §5.1 they stand for, every announced claim being one
+     * a full user actually gets, and nothing else.
+     */
+    #[Test]
+    public function itAnnouncesTheScopesAndClaimsItServes(): void
+    {
+        static::assertSame(['profile', 'email', 'address', 'phone'], array_map(static fn (Scope $scope): string => $scope->value, $this->provider->supportedScopes()));
+        static::assertSame([
+            'name', 'family_name', 'given_name', 'middle_name', 'nickname', 'preferred_username', 'profile', 'picture', 'website', 'gender', 'birthdate', 'zoneinfo', 'locale', 'updated_at',
+            'email', 'email_verified',
+            'address',
+            'phone_number', 'phone_number_verified',
+        ], $this->provider->supportedClaims());
+        static::assertNotContains('sub', $this->provider->supportedClaims());
+
+        $served = array_keys($this->provider->claims(self::fullUser(), $this->provider->supportedScopes(), []));
+        static::assertEqualsCanonicalizing($this->provider->supportedClaims(), $served);
+    }
+
+    /**
      * OIDC Core §5.4: "openid" asks for no claim of its own ("sub" is the resolver's), and a scope
      * outside the four of §5.4 asks for none either.
      */
