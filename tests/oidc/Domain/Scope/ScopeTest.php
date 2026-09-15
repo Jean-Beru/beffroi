@@ -16,12 +16,41 @@ final class ScopeTest extends TestCase
      * RFC 6749 §3.3: scope-token = 1*( %x21 / %x23-5B / %x5D-7E ).
      */
     #[Test]
-    public function itIsAScopeToken(): void
+    #[DataProvider('provideScopeTokens')]
+    public function itIsAScopeToken(string $scope): void
     {
+        // When / Then
+        static::assertSame($scope, (string) new Scope($scope));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideScopeTokens(): iterable
+    {
+        yield 'openid' => ['openid'];
+        yield 'a URL' => ['https://api.example/read'];
+        yield 'every allowed punctuation' => ['!#$%&\'()*+,-./:;<=>?@[]^_`{|}~'];
+    }
+
+    #[Test]
+    public function openidIsAScope(): void
+    {
+        // When / Then
         static::assertSame('openid', (string) Scope::openid());
-        static::assertSame('https://api.example/read', (string) new Scope('https://api.example/read'));
-        static::assertSame('!#$%&\'()*+,-./:;<=>?@[]^_`{|}~', (string) new Scope('!#$%&\'()*+,-./:;<=>?@[]^_`{|}~'));
+    }
+
+    #[Test]
+    public function itEqualsAScopeOfTheSameValue(): void
+    {
+        // When / Then
         static::assertTrue(Scope::openid()->equals(new Scope('openid')));
+    }
+
+    #[Test]
+    public function itComparesCaseSensitively(): void
+    {
+        // When / Then
         static::assertFalse(Scope::openid()->equals(new Scope('OpenID')));
     }
 
@@ -29,12 +58,12 @@ final class ScopeTest extends TestCase
     #[DataProvider('provideInvalidScopes')]
     public function itRejectsWhatIsNotAScopeToken(string $scope): void
     {
-        try {
-            new Scope($scope);
-            static::fail('The scope should have been rejected.');
-        } catch (InvalidArgumentException $exception) {
-            static::assertStringContainsString('RFC 6749 §3.3', $exception->getMessage());
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('RFC 6749 §3.3');
+
+        // When
+        new Scope($scope);
     }
 
     /**

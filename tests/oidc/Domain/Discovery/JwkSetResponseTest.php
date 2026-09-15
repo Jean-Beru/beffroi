@@ -21,15 +21,19 @@ final class JwkSetResponseTest extends TestCase
 {
     /**
      * RFC 7517 §5: a JSON object with a "keys" list of public JWKs, each with "kid", "kty", "alg", "use"
-     * (§4) and no private member; served as JSON, publicly cacheable for a short while.
+     * (§4) and no private member.
      */
     #[Test]
     public function itServesThePublishedKeysAsAJwkSet(): void
     {
-        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now());
+        // Given
+        $key = self::key();
         $response = new JwkSetResponse(new PublicKeySet([$key]), 300);
 
+        // When
         $document = json_decode($response->toJson(), true, 4, JSON_THROW_ON_ERROR);
+
+        // Then
         static::assertSame([
             'keys' => [$key->publicJwk],
         ], $document);
@@ -39,38 +43,73 @@ final class JwkSetResponseTest extends TestCase
         static::assertSame('RSA', $document['keys'][0]['kty']);
         static::assertSame($key->kid, $document['keys'][0]['kid']);
         static::assertArrayNotHasKey('d', $document['keys'][0]);
+    }
+
+    #[Test]
+    public function itIsPubliclyCacheableForItsLifetime(): void
+    {
+        // When
+        $response = new JwkSetResponse(new PublicKeySet([self::key()]), 300);
+
+        // Then
         static::assertSame([
             'Cache-Control' => 'public, max-age=300',
         ], $response->headers);
     }
 
     /**
-     * A set without any key is still a JWK Set (RFC 7517 §5.1 "keys" may be empty) but is not cached:
-     * the first key generated must be seen at once.
+     * A set without any key is still a JWK Set (RFC 7517 §5.1 "keys" may be empty).
+     */
+    #[Test]
+    public function anEmptySetIsStillAJwkSet(): void
+    {
+        // When
+        $response = new JwkSetResponse(new PublicKeySet([]), 300);
+
+        // Then
+        static::assertSame('{"keys":[]}', $response->toJson());
+    }
+
+    /**
+     * An empty set is not cached: the first key generated must be seen at once.
      */
     #[Test]
     public function anEmptySetIsNotCached(): void
     {
+        // When
         $response = new JwkSetResponse(new PublicKeySet([]), 300);
 
-        static::assertSame('{"keys":[]}', $response->toJson());
+        // Then
         static::assertSame([
             'Cache-Control' => 'no-store',
         ], $response->headers);
     }
 
     #[Test]
-    public function theLifetimeIsANumberOfSeconds(): void
+    public function aLifetimeOfZeroRevalidatesEveryTime(): void
     {
+        // When
+        $response = new JwkSetResponse(new PublicKeySet([self::key()]), 0);
+
+        // Then
         static::assertSame([
             'Cache-Control' => 'public, max-age=0',
-        ], new JwkSetResponse(new PublicKeySet([new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now())]), 0)->headers);
+        ], $response->headers);
+    }
 
-        try {
-            new JwkSetResponse(new PublicKeySet([]), -1);
-            static::fail('A negative lifetime is refused.');
-        } catch (InvalidArgumentException $e) {
-            static::assertStringContainsString('number of seconds', $e->getMessage());
-        }
+    #[Test]
+    public function aNegativeLifetimeIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('number of seconds');
+
+        // When
+        new JwkSetResponse(new PublicKeySet([]), -1);
+    }
+
+    private static function key(): SigningKey
+    {
+        return new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now());
     }
 }

@@ -14,35 +14,51 @@ use PHPUnit\Framework\TestCase;
 
 final class ClaimsRequestTest extends TestCase
 {
+    private const string SPECIFICATION_EXAMPLE = '{
+        "userinfo": {
+            "given_name": {"essential": true},
+            "nickname": null,
+            "email": {"essential": true},
+            "email_verified": {"essential": true},
+            "picture": null,
+            "http://example.info/claims/groups": null
+        },
+        "id_token": {
+            "auth_time": {"essential": true},
+            "acr": {"values": ["urn:mace:incommon:iap:silver"]}
+        }
+    }';
+
     /**
-     * OIDC Core §5.5, the example of the specification: "userinfo" and "id_token" members, a claim that is
-     * null, essential claims, a claim with a value and one with a set of values.
+     * OIDC Core §5.5, the example of the specification: the "userinfo" member, in order, with a claim
+     * that is null and essential claims.
      */
     #[Test]
-    public function itReadsTheExampleOfTheSpecification(): void
+    public function itReadsTheUserinfoMemberOfTheExampleOfTheSpecification(): void
     {
-        $claims = ClaimsRequest::fromJson('{
-            "userinfo": {
-                "given_name": {"essential": true},
-                "nickname": null,
-                "email": {"essential": true},
-                "email_verified": {"essential": true},
-                "picture": null,
-                "http://example.info/claims/groups": null
-            },
-            "id_token": {
-                "auth_time": {"essential": true},
-                "acr": {"values": ["urn:mace:incommon:iap:silver"]}
-            }
-        }');
+        // When
+        $claims = ClaimsRequest::fromJson(self::SPECIFICATION_EXAMPLE);
 
+        // Then
         static::assertSame(['given_name', 'nickname', 'email', 'email_verified', 'picture', 'http://example.info/claims/groups'], array_keys($claims->userinfo));
         static::assertEquals(new ClaimRequest(true), $claims->userinfo['given_name']);
         static::assertEquals(new ClaimRequest(), $claims->userinfo['nickname']);
         static::assertFalse($claims->userinfo['nickname']->essential);
+        static::assertFalse($claims->isEmpty());
+    }
+
+    /**
+     * OIDC Core §5.5, the example of the specification: the "id_token" member, with a claim with a set of values.
+     */
+    #[Test]
+    public function itReadsTheIdTokenMemberOfTheExampleOfTheSpecification(): void
+    {
+        // When
+        $claims = ClaimsRequest::fromJson(self::SPECIFICATION_EXAMPLE);
+
+        // Then
         static::assertSame(['auth_time', 'acr'], array_keys($claims->idToken));
         static::assertEquals(new ClaimRequest(false, null, ['urn:mace:incommon:iap:silver']), $claims->idToken['acr']);
-        static::assertFalse($claims->isEmpty());
     }
 
     /**
@@ -52,28 +68,64 @@ final class ClaimsRequestTest extends TestCase
     #[Test]
     public function itKeepsTheRequestedValueAsSent(): void
     {
+        // When
         $claims = ClaimsRequest::fromJson('{"id_token": {"sub": {"value": "248289761001"}, "email_verified": {"value": true}, "updated_at": {"values": [1, 2.5]}}}');
 
+        // Then
         static::assertSame('248289761001', $claims->idToken['sub']->value);
         static::assertTrue($claims->idToken['email_verified']->value);
         static::assertSame([1, 2.5], $claims->idToken['updated_at']->values);
     }
 
     /**
-     * OIDC Core §5.5: members that are not understood are ignored; an empty object or an absent member
-     * asks for nothing.
+     * OIDC Core §5.5: members that are not understood are ignored.
      */
     #[Test]
     public function itIgnoresWhatItDoesNotUnderstand(): void
     {
+        // When
         $claims = ClaimsRequest::fromJson('{"userinfo": null, "other": {"deep": {"deeper": [1]}}, "id_token": {"sub": {"essential": false, "extra": "ignored"}}}');
 
+        // Then
         static::assertSame([], $claims->userinfo);
         static::assertEquals(new ClaimRequest(false), $claims->idToken['sub']);
-        static::assertTrue(ClaimsRequest::fromJson('{}')->isEmpty());
-        static::assertTrue(ClaimsRequest::fromJson('{"userinfo": {}, "id_token": {}}')->isEmpty());
-        static::assertFalse(ClaimsRequest::fromJson('{"userinfo": {"email": null}}')->isEmpty());
-        static::assertFalse(ClaimsRequest::fromJson('{"id_token": {"email": null}}')->isEmpty());
+    }
+
+    /**
+     * OIDC Core §5.5: an empty object or an absent member asks for nothing.
+     */
+    #[Test]
+    #[DataProvider('provideRequestsAskingForNothing')]
+    public function aRequestWithoutClaimsIsEmpty(string $json): void
+    {
+        // When / Then
+        static::assertTrue(ClaimsRequest::fromJson($json)->isEmpty());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideRequestsAskingForNothing(): iterable
+    {
+        yield 'empty object' => ['{}'];
+        yield 'empty members' => ['{"userinfo": {}, "id_token": {}}'];
+    }
+
+    #[Test]
+    #[DataProvider('provideRequestsAskingForOneClaim')]
+    public function aRequestWithOneClaimIsNotEmpty(string $json): void
+    {
+        // When / Then
+        static::assertFalse(ClaimsRequest::fromJson($json)->isEmpty());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideRequestsAskingForOneClaim(): iterable
+    {
+        yield 'userinfo' => ['{"userinfo": {"email": null}}'];
+        yield 'id_token' => ['{"id_token": {"email": null}}'];
     }
 
     /**
@@ -84,12 +136,12 @@ final class ClaimsRequestTest extends TestCase
     #[DataProvider('provideMalformedRequests')]
     public function itRefusesAMalformedRequest(string $json, string $reason): void
     {
-        try {
-            ClaimsRequest::fromJson($json);
-            static::fail('The claims request should have been rejected.');
-        } catch (InvalidArgumentException $exception) {
-            static::assertStringContainsString($reason, $exception->getMessage());
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage($reason);
+
+        // When
+        ClaimsRequest::fromJson($json);
     }
 
     /**

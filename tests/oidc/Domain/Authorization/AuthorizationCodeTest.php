@@ -17,6 +17,7 @@ use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Requests;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
@@ -35,20 +36,40 @@ final class AuthorizationCodeTest extends TestCase
     }
 
     /**
-     * Architecture §4.4: the code is 256 bits of the CSPRNG in base64url and is stored as its SHA-256.
+     * Architecture §4.4: the code is 256 bits of the CSPRNG in base64url.
      */
     #[Test]
-    public function aCodeIsRandomAndStoredHashed(): void
+    public function aCodeIs256RandomBitsInBase64url(): void
     {
+        // When
+        $code = AuthorizationCode::generate();
+
+        // Then
+        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $code));
+        static::assertNotSame($code, AuthorizationCode::generate());
+    }
+
+    /**
+     * Architecture §4.4: the code is stored as its SHA-256.
+     */
+    #[Test]
+    public function aCodeIsHashedWithSha256(): void
+    {
+        // When / Then
+        static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', AuthorizationCode::hash(''));
+        static::assertSame(64, strlen(AuthorizationCode::hash(AuthorizationCode::generate())));
+    }
+
+    #[Test]
+    public function twoCodesHashDifferently(): void
+    {
+        // Given
         $code = AuthorizationCode::generate();
         $again = AuthorizationCode::generate();
 
-        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $code));
-        static::assertNotSame($code, $again);
-        static::assertSame(64, strlen(AuthorizationCode::hash($code)));
+        // When / Then
         static::assertSame(AuthorizationCode::hash($code), AuthorizationCode::hash($code));
         static::assertNotSame(AuthorizationCode::hash($code), AuthorizationCode::hash($again));
-        static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', AuthorizationCode::hash(''));
     }
 
     /**
@@ -58,11 +79,14 @@ final class AuthorizationCodeTest extends TestCase
     #[Test]
     public function itRecordsWhatTheGrantWillNeed(): void
     {
+        // Given
         $issuedAt = Fixtures::now()->modify('+5 minutes');
         $this->session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context($issuedAt));
 
+        // When
         $code = $this->code($issuedAt, $issuedAt->modify('+60 seconds'));
 
+        // Then
         static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', $code->codeHash);
         static::assertSame($this->client, $code->client);
         static::assertSame($this->client->clientId, $code->clientId);
@@ -83,23 +107,33 @@ final class AuthorizationCodeTest extends TestCase
     #[Test]
     public function itRefusesAValueThatIsNotAHexSha256(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'), codeHash: AuthorizationCode::generate());
     }
 
     #[Test]
     public function itRefusesASessionOfAnotherTenant(): void
     {
+        // Given
         $client = Clients::public(Fixtures::tenant('other', 'https://id.other.example'));
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new AuthorizationCode(AuthorizationCode::hash(''), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], null, Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     #[Test]
     public function itRefusesAnEmptyScopeList(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'), scopes: []);
     }
 
@@ -109,41 +143,85 @@ final class AuthorizationCodeTest extends TestCase
     #[Test]
     public function itRefusesAnEmptyMethodList(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new AuthorizationCode(AuthorizationCode::hash(''), $this->client, $this->session, $this->client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), [], null, Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     #[Test]
     public function itRefusesToExpireBeforeItWasIssued(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $this->code(Fixtures::now(), Fixtures::now());
     }
 
+    #[Test]
+    public function aNewCodeIsUnused(): void
+    {
+        // When
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+
+        // Then
+        static::assertFalse($code->isUsed());
+        static::assertNull($code->usedAt);
+    }
+
     /**
-     * RFC 6749 §4.1.2: a code is used once. The first presentation consumes it; a second one is the
-     * grant's decision, so consuming twice is a programming error.
+     * RFC 6749 §4.1.2: a code is used once. The first presentation consumes it.
      */
     #[Test]
-    public function itIsConsumedOnce(): void
+    public function consumingDatesTheUse(): void
     {
+        // Given
         $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
         $presentedAt = Fixtures::now()->modify('+2 seconds');
 
-        static::assertFalse($code->isUsed());
-        static::assertNull($code->usedAt);
-
+        // When
         $code->consume($presentedAt);
 
+        // Then
         static::assertTrue($code->isUsed());
         static::assertEquals($presentedAt, $code->usedAt);
+    }
 
+    /**
+     * RFC 6749 §4.1.2: a second presentation is the grant's decision, so consuming twice is a programming error.
+     */
+    #[Test]
+    public function itCannotBeConsumedTwice(): void
+    {
+        // Given
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        $code->consume(Fixtures::now()->modify('+2 seconds'));
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('isUsed()');
+
+        // When
+        $code->consume(Fixtures::now()->modify('+3 seconds'));
+    }
+
+    #[Test]
+    public function aRefusedSecondConsumptionKeepsTheFirstDate(): void
+    {
+        // Given
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        $presentedAt = Fixtures::now()->modify('+2 seconds');
+        $code->consume($presentedAt);
+
+        // When
         try {
             $code->consume($presentedAt->modify('+1 second'));
-            static::fail('A code is consumed once.');
-        } catch (LogicException $exception) {
-            static::assertStringContainsString('isUsed()', $exception->getMessage());
+        } catch (LogicException) {
         }
+
+        // Then
         static::assertEquals($presentedAt, $code->usedAt);
     }
 
@@ -151,14 +229,25 @@ final class AuthorizationCodeTest extends TestCase
      * Architecture §4.4: sixty seconds, the last one excluded.
      */
     #[Test]
-    public function itExpiresAtTheEndOfItsLifetime(): void
+    #[DataProvider('provideInstants')]
+    public function itExpiresAtTheEndOfItsLifetime(string $offset, bool $expired): void
     {
+        // Given
         $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
 
-        static::assertFalse($code->isExpired(Fixtures::now()));
-        static::assertFalse($code->isExpired(Fixtures::now()->modify('+59 seconds')));
-        static::assertTrue($code->isExpired(Fixtures::now()->modify('+60 seconds')));
-        static::assertTrue($code->isExpired(Fixtures::now()->modify('+1 day')));
+        // When / Then
+        static::assertSame($expired, $code->isExpired(Fixtures::now()->modify($offset)));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideInstants(): iterable
+    {
+        yield 'at issuance' => ['+0 seconds', false];
+        yield 'last second' => ['+59 seconds', false];
+        yield 'at expiry' => ['+60 seconds', true];
+        yield 'long after' => ['+1 day', true];
     }
 
     /**

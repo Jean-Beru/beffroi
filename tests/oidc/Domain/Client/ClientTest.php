@@ -22,50 +22,108 @@ use PHPUnit\Framework\TestCase;
 final class ClientTest extends TestCase
 {
     #[Test]
-    public function aConfidentialClientHoldsAHashedSecretAndClosedLists(): void
+    public function aConfidentialClientHoldsAHashedSecret(): void
     {
-        $tenant = Fixtures::tenant();
+        // Given
         $hash = new FakePasswordHasher()
             ->hash(Clients::SECRET);
 
-        $client = Clients::confidential($tenant, $hash);
+        // When
+        $client = Clients::confidential(Fixtures::tenant(), $hash);
 
-        static::assertTrue($client->belongsTo($tenant));
-        static::assertFalse($client->belongsTo(Fixtures::tenant('other')));
+        // Then
         static::assertFalse($client->isPublic());
         static::assertSame($hash, $client->secretHash);
         static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $client->tokenEndpointAuthMethod);
-        static::assertTrue($client->requiresConsent);
+    }
+
+    #[Test]
+    public function aClientBelongsToItsTenantOnly(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $client = Clients::public($tenant);
+
+        // When / Then
+        static::assertTrue($client->belongsTo($tenant));
+        static::assertFalse($client->belongsTo(Fixtures::tenant('other')));
+    }
+
+    #[Test]
+    public function aClientAllowsItsRegisteredGrantsOnly(): void
+    {
+        // Given
+        $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
+
+        // When / Then
         static::assertTrue($client->allowsGrant(GrantType::AuthorizationCode));
         static::assertTrue($client->allowsGrant(GrantType::RefreshToken));
+        static::assertFalse(Clients::public(Fixtures::tenant())->allowsGrant(GrantType::RefreshToken));
+    }
+
+    #[Test]
+    public function aClientAllowsItsRegisteredScopesOnly(): void
+    {
+        // Given
+        $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
+
+        // When / Then
+        static::assertSame(['openid', 'profile', 'email'], array_map(strval(...), $client->allowedScopes));
         static::assertTrue($client->allowsScope(Scope::openid()));
         static::assertTrue($client->allowsScope(new Scope('email')));
         static::assertFalse($client->allowsScope(new Scope('offline_access')));
-        static::assertSame(['openid', 'profile', 'email'], array_map(strval(...), $client->allowedScopes));
+    }
+
+    #[Test]
+    public function aClientRequiresConsentUnlessRegisteredOtherwise(): void
+    {
+        // When
+        $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
+
+        // Then
+        static::assertTrue($client->requiresConsent);
     }
 
     /**
-     * RFC 6749 §2.1: a public client has no secret; RFC 6749 §3.1.2.3: exact match of the redirect URI.
+     * RFC 6749 §2.1: a public client has no secret.
      */
     #[Test]
-    public function aPublicClientHasNoSecretAndMatchesItsRedirectUrisExactly(): void
+    public function aPublicClientHasNoSecret(): void
     {
+        // When
         $client = Clients::public(Fixtures::tenant());
 
+        // Then
         static::assertTrue($client->isPublic());
         static::assertNull($client->secretHash);
         static::assertSame([GrantType::AuthorizationCode], $client->grantTypes);
-        static::assertFalse($client->allowsGrant(GrantType::RefreshToken));
         static::assertEquals([Scope::openid()], $client->allowedScopes);
-        static::assertTrue($client->hasRedirectUri('https://spa.example/callback'));
-        static::assertFalse($client->hasRedirectUri('https://spa.example/callback/'));
-        static::assertFalse($client->hasRedirectUri('https://spa.example/Callback'));
-        static::assertFalse($client->hasPostLogoutRedirectUri('https://spa.example/'));
     }
 
     /**
-     * OIDC RP-Initiated Logout 1.0 §2: the post-logout URI is a registered value, matched exactly too.
+     * RFC 6749 §3.1.2.3: exact match of the redirect URI.
      */
+    #[Test]
+    #[DataProvider('provideRedirectUris')]
+    public function itMatchesItsRedirectUrisExactly(string $uri, bool $registered): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant());
+
+        // When / Then
+        static::assertSame($registered, $client->hasRedirectUri($uri));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideRedirectUris(): iterable
+    {
+        yield 'as registered' => ['https://spa.example/callback', true];
+        yield 'trailing slash' => ['https://spa.example/callback/', false];
+        yield 'different case' => ['https://spa.example/Callback', false];
+    }
+
     /**
      * A client identifier is unique within its tenant: two registrations of the same identifier in two
      * tenants are two clients.
@@ -73,27 +131,54 @@ final class ClientTest extends TestCase
     #[Test]
     public function itEqualsTheSameRegistrationOfItsTenant(): void
     {
+        // Given
         $tenant = Fixtures::tenant();
         $client = Clients::public($tenant);
 
+        // When / Then
         static::assertTrue($client->equals(Clients::public($tenant)));
         static::assertFalse($client->equals(Clients::public($tenant, 'another')));
         static::assertFalse($client->equals(Clients::public(Fixtures::tenant('other', 'https://id.other.example'))));
     }
 
+    /**
+     * OIDC RP-Initiated Logout 1.0 §2: the post-logout URI is a registered value, matched exactly too.
+     */
     #[Test]
-    public function itKnowsItsPostLogoutRedirectUris(): void
+    #[DataProvider('providePostLogoutRedirectUris')]
+    public function itMatchesItsPostLogoutRedirectUrisExactly(string $uri, bool $registered): void
     {
+        // Given
         $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
 
-        static::assertTrue($client->hasPostLogoutRedirectUri('https://demo.localhost/'));
-        static::assertFalse($client->hasPostLogoutRedirectUri('https://demo.localhost'));
-        static::assertFalse($client->hasPostLogoutRedirectUri('https://demo.localhost/login/check'));
+        // When / Then
+        static::assertSame($registered, $client->hasPostLogoutRedirectUri($uri));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function providePostLogoutRedirectUris(): iterable
+    {
+        yield 'as registered' => ['https://demo.localhost/', true];
+        yield 'without the trailing slash' => ['https://demo.localhost', false];
+        yield 'a redirect URI' => ['https://demo.localhost/login/check', false];
+    }
+
+    #[Test]
+    public function aClientWithoutPostLogoutRedirectUriMatchesNone(): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant());
+
+        // When / Then
+        static::assertFalse($client->hasPostLogoutRedirectUri('https://spa.example/'));
     }
 
     #[Test]
     public function itKeepsEachUriGrantAndScopeOnce(): void
     {
+        // When
         $client = new Client(
             Fixtures::tenant(),
             'twice',
@@ -106,6 +191,7 @@ final class ClientTest extends TestCase
             [new Scope('openid'), new Scope('openid'), new Scope('email')],
         );
 
+        // Then
         static::assertCount(2, $client->redirectUris);
         static::assertCount(1, $client->postLogoutRedirectUris);
         static::assertSame([GrantType::AuthorizationCode], $client->grantTypes);
@@ -119,12 +205,12 @@ final class ClientTest extends TestCase
     #[DataProvider('provideInvalidClients')]
     public function itRefusesAnInconsistentRegistration(callable $build, string $reason): void
     {
-        try {
-            $build(Fixtures::tenant());
-            static::fail('The client should have been rejected.');
-        } catch (InvalidArgumentException $exception) {
-            static::assertStringContainsString($reason, $exception->getMessage());
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage($reason);
+
+        // When
+        $build(Fixtures::tenant());
     }
 
     /**
@@ -187,10 +273,20 @@ final class ClientTest extends TestCase
     }
 
     #[Test]
-    public function theAuthenticationMethodsSayWhetherTheyUseASecret(): void
+    #[DataProvider('provideAuthenticationMethods')]
+    public function theAuthenticationMethodsSayWhetherTheyUseASecret(TokenEndpointAuthMethod $method, bool $usesSecret): void
     {
-        static::assertTrue(TokenEndpointAuthMethod::ClientSecretBasic->usesSecret());
-        static::assertTrue(TokenEndpointAuthMethod::ClientSecretPost->usesSecret());
-        static::assertFalse(TokenEndpointAuthMethod::None->usesSecret());
+        // When / Then
+        static::assertSame($usesSecret, $method->usesSecret());
+    }
+
+    /**
+     * @return iterable<string, array{TokenEndpointAuthMethod, bool}>
+     */
+    public static function provideAuthenticationMethods(): iterable
+    {
+        yield 'client_secret_basic' => [TokenEndpointAuthMethod::ClientSecretBasic, true];
+        yield 'client_secret_post' => [TokenEndpointAuthMethod::ClientSecretPost, true];
+        yield 'none' => [TokenEndpointAuthMethod::None, false];
     }
 }

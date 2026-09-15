@@ -19,11 +19,14 @@ final class ClientAuthenticationFailedTest extends TestCase
     #[Test]
     public function itIsADomainEventWithTheRequestContext(): void
     {
+        // Given
         $tenant = Fixtures::tenant();
         $context = Fixtures::context();
 
+        // When
         $event = new ClientAuthenticationFailed(Fixtures::now(), $tenant, $context, ClientAuthenticationFailureReason::InvalidSecret, 'oidc-demo', TokenEndpointAuthMethod::ClientSecretBasic);
 
+        // Then
         static::assertEquals(Fixtures::now(), $event->occurredAt);
         static::assertSame($tenant, $event->tenant);
         static::assertSame($context, $event->context);

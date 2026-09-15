@@ -19,6 +19,7 @@ use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Tests\Fixture\Requests;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
@@ -42,45 +43,112 @@ final class InteractionTest extends TestCase
     #[Test]
     public function itsIdentifierIsRandom(): void
     {
+        // When
         $id = Interaction::generateId();
 
+        // Then
         static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $id));
         static::assertNotSame($id, Interaction::generateId());
     }
 
     #[Test]
-    public function itParksTheRequest(): void
+    public function itParksTheRequestWithTheLocale(): void
     {
+        // Given
         $request = Requests::authorization($this->client);
 
+        // When
         $interaction = new Interaction(Interaction::generateId(), $this->user->tenant, $request, 'fr', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
 
+        // Then
         static::assertSame($request, $interaction->request);
         static::assertSame($this->client->clientId, $interaction->clientId);
         static::assertSame('fr', $interaction->locale);
+    }
+
+    #[Test]
+    public function aNewInteractionHasNoSessionNoConsentAndIsNotCompleted(): void
+    {
+        // When
+        $interaction = $this->interaction();
+
+        // Then
         static::assertNull($interaction->session);
         static::assertNull($interaction->consent);
         static::assertNull($interaction->completedAt);
         static::assertFalse($interaction->isCompleted());
+    }
+
+    #[Test]
+    public function itExpiresAtTheEndOfItsLifetime(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+
+        // When / Then
         static::assertFalse($interaction->isExpired(Fixtures::now()->modify('+9 minutes 59 seconds')));
         static::assertTrue($interaction->isExpired(Fixtures::now()->modify('+10 minutes')));
     }
 
     #[Test]
-    public function itRecordsTheSessionThenTheConsent(): void
+    public function itRecordsTheSession(): void
     {
+        // Given
         $interaction = $this->interaction();
         $session = Fixtures::session($this->user);
-        $consent = new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now());
 
+        // When
         $interaction->authenticate($session, Fixtures::now()->modify('+1 minute'));
+
+        // Then
+        static::assertSame($session, $interaction->session);
+    }
+
+    #[Test]
+    public function itRecordsTheConsentAfterTheSession(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now()->modify('+1 minute'));
+        $consent = $this->consent();
+
+        // When
         $interaction->consent($consent, Fixtures::now()->modify('+2 minutes'));
+
+        // Then
+        static::assertSame($consent, $interaction->consent);
+    }
+
+    #[Test]
+    public function completingDatesTheCompletion(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now()->modify('+1 minute'));
+        $interaction->consent($this->consent(), Fixtures::now()->modify('+2 minutes'));
+
+        // When
         $interaction->complete(Fixtures::now()->modify('+3 minutes'));
 
-        static::assertSame($session, $interaction->session);
-        static::assertSame($consent, $interaction->consent);
+        // Then
         static::assertTrue($interaction->isCompleted());
         static::assertEquals(Fixtures::now()->modify('+3 minutes'), $interaction->completedAt);
+    }
+
+    #[Test]
+    public function anotherSessionOfTheSameUserKeepsTheRecordedConsent(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $consent = $this->consent();
+        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
+        $interaction->consent($consent, Fixtures::now());
+
+        // When
+        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
+
+        // Then
+        static::assertSame($consent, $interaction->consent);
     }
 
     /**
@@ -89,161 +157,253 @@ final class InteractionTest extends TestCase
     #[Test]
     public function aSessionOfAnotherUserDropsTheRecordedConsent(): void
     {
+        // Given
         $interaction = $this->interaction();
-        $consent = new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now());
         $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
-        $interaction->consent($consent, Fixtures::now());
+        $interaction->consent($this->consent(), Fixtures::now());
 
-        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
-        static::assertSame($consent, $interaction->consent);
-
+        // When
         $interaction->authenticate(Fixtures::session(Fixtures::user($this->user->tenant, 'bob', 'bob-subject')), Fixtures::now());
+
+        // Then
         static::assertNull($interaction->consent);
     }
 
     /**
      * Acceptance of #6: an interaction cannot be resumed after expiry.
+     *
+     * @param callable(self, Interaction): void $resume
      */
     #[Test]
-    public function itCannotBeResumedAfterExpiry(): void
+    #[DataProvider('provideResumptionsAfterExpiry')]
+    public function itCannotBeResumedAfterExpiry(callable $resume): void
     {
+        // Given
         $interaction = $this->interaction();
-        $late = Fixtures::now()->modify('+10 minutes');
 
-        foreach ([
-            fn () => $interaction->authenticate(Fixtures::session($this->user), $late),
-            fn () => $interaction->complete($late),
-            fn () => $interaction->assertResumable($late),
-        ] as $resume) {
-            try {
-                $resume();
-                static::fail('The interaction should have been refused.');
-            } catch (InteractionExpiredException $exception) {
-                static::assertSame($interaction->id, $exception->interactionId);
-                static::assertStringContainsString('expired', $exception->getMessage());
-            }
+        // When
+        try {
+            $resume($this, $interaction);
+            static::fail('The interaction should have been refused.');
+        } catch (InteractionExpiredException $exception) {
+            // Then
+            static::assertSame($interaction->id, $exception->interactionId);
+            static::assertStringContainsString('expired', $exception->getMessage());
         }
+    }
+
+    /**
+     * @return iterable<string, array{callable(self, Interaction): void}>
+     */
+    public static function provideResumptionsAfterExpiry(): iterable
+    {
+        $late = Fixtures::now()->modify('+10 minutes');
+        yield 'authenticate' => [static fn (self $test, Interaction $interaction) => $interaction->authenticate(Fixtures::session($test->user), $late)];
+        yield 'complete' => [static fn (self $test, Interaction $interaction) => $interaction->complete($late)];
+        yield 'assert resumable' => [static fn (self $test, Interaction $interaction) => $interaction->assertResumable($late)];
+    }
+
+    #[Test]
+    public function aRefusedCompletionAfterExpiryLeavesItUncompleted(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+
+        // When
+        try {
+            $interaction->complete(Fixtures::now()->modify('+10 minutes'));
+        } catch (InteractionExpiredException) {
+        }
+
+        // Then
         static::assertFalse($interaction->isCompleted());
     }
 
     /**
      * Acceptance of #6: an interaction cannot be resumed twice.
+     *
+     * @param callable(self, Interaction): void $resume
      */
     #[Test]
-    public function itCannotBeResumedOnceCompleted(): void
+    #[DataProvider('provideResumptionsAfterCompletion')]
+    public function itCannotBeResumedOnceCompleted(callable $resume): void
     {
-        $interaction = $this->interaction();
-        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
-        $interaction->complete(Fixtures::now()->modify('+1 minute'));
-        $consent = new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now());
+        // Given
+        $interaction = $this->completedInteraction();
 
-        foreach ([
-            fn () => $interaction->authenticate(Fixtures::session($this->user), Fixtures::now()),
-            fn () => $interaction->consent($consent, Fixtures::now()),
-            fn () => $interaction->complete(Fixtures::now()),
-            fn () => $interaction->assertResumable(Fixtures::now()),
-        ] as $resume) {
-            try {
-                $resume();
-                static::fail('The interaction should have been refused.');
-            } catch (InteractionCompletedException $exception) {
-                static::assertSame($interaction->id, $exception->interactionId);
-                static::assertStringContainsString('completed', $exception->getMessage());
-            }
+        // When
+        try {
+            $resume($this, $interaction);
+            static::fail('The interaction should have been refused.');
+        } catch (InteractionCompletedException $exception) {
+            // Then
+            static::assertSame($interaction->id, $exception->interactionId);
+            static::assertStringContainsString('completed', $exception->getMessage());
         }
+    }
+
+    /**
+     * @return iterable<string, array{callable(self, Interaction): void}>
+     */
+    public static function provideResumptionsAfterCompletion(): iterable
+    {
+        yield 'authenticate' => [static fn (self $test, Interaction $interaction) => $interaction->authenticate(Fixtures::session($test->user), Fixtures::now())];
+        yield 'consent' => [static fn (self $test, Interaction $interaction) => $interaction->consent($test->consent(), Fixtures::now())];
+        yield 'complete' => [static fn (self $test, Interaction $interaction) => $interaction->complete(Fixtures::now())];
+        yield 'assert resumable' => [static fn (self $test, Interaction $interaction) => $interaction->assertResumable(Fixtures::now())];
+    }
+
+    #[Test]
+    public function aRefusedSecondCompletionKeepsTheFirstDate(): void
+    {
+        // Given
+        $interaction = $this->completedInteraction();
+
+        // When
+        try {
+            $interaction->complete(Fixtures::now()->modify('+2 minutes'));
+        } catch (InteractionCompletedException) {
+        }
+
+        // Then
         static::assertEquals(Fixtures::now()->modify('+1 minute'), $interaction->completedAt);
     }
 
     #[Test]
     public function itRefusesASessionOfAnotherTenant(): void
     {
+        // Given
         $interaction = $this->interaction();
+        $session = Fixtures::session(Fixtures::user(Fixtures::tenant('other', 'https://id.other.example')));
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
-        $interaction->authenticate(Fixtures::session(Fixtures::user(Fixtures::tenant('other', 'https://id.other.example'))), Fixtures::now());
+
+        // When
+        $interaction->authenticate($session, Fixtures::now());
     }
 
     #[Test]
     public function itRefusesASessionThatIsNotActive(): void
     {
+        // Given
         $interaction = $this->interaction();
         $session = Fixtures::session($this->user);
         $session->end(SessionEnd::User, Fixtures::now());
 
+        // Then
         $this->expectException(LogicException::class);
+
+        // When
         $interaction->authenticate($session, Fixtures::now());
     }
 
     #[Test]
     public function itRefusesAConsentBeforeASession(): void
     {
+        // Given
         $interaction = $this->interaction();
 
+        // Then
         $this->expectException(LogicException::class);
-        $interaction->consent(new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now()), Fixtures::now());
+
+        // When
+        $interaction->consent($this->consent(), Fixtures::now());
     }
 
+    /**
+     * @param callable(self): Consent $consent
+     */
     #[Test]
-    public function itRefusesAConsentOfAnotherUserOrClient(): void
+    #[DataProvider('provideConsentsOfSomeoneElse')]
+    public function itRefusesAConsentOfAnotherUserOrClient(callable $consent): void
     {
+        // Given
         $interaction = $this->interaction();
         $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
-        $bob = Fixtures::user($this->user->tenant, 'bob', 'bob-subject');
 
-        foreach ([
-            new Consent(Uuid::v7(), $bob, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now()),
-            new Consent(Uuid::v7(), $this->user, Clients::public($this->user->tenant), [new Scope('openid'), new Scope('profile')], Fixtures::now()),
-        ] as $consent) {
-            try {
-                $interaction->consent($consent, Fixtures::now());
-                static::fail('The consent should have been refused.');
-            } catch (InvalidArgumentException $exception) {
-                static::assertStringContainsString('user of the session and the client of the request', $exception->getMessage());
-            }
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('user of the session and the client of the request');
+
+        // When
+        $interaction->consent($consent($this), Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): Consent}>
+     */
+    public static function provideConsentsOfSomeoneElse(): iterable
+    {
+        yield 'another user' => [static fn (self $test): Consent => new Consent(Uuid::v7(), Fixtures::user($test->user->tenant, 'bob', 'bob-subject'), $test->client, [new Scope('openid'), new Scope('profile')], Fixtures::now())];
+        yield 'another client' => [static fn (self $test): Consent => new Consent(Uuid::v7(), $test->user, Clients::public($test->user->tenant), [new Scope('openid'), new Scope('profile')], Fixtures::now())];
     }
 
     #[Test]
     public function itRefusesAConsentThatDoesNotCoverTheRequest(): void
     {
+        // Given
         $interaction = $this->interaction();
         $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         $interaction->consent(new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid')], Fixtures::now()), Fixtures::now());
     }
 
     #[Test]
-    public function itRefusesAMalformedIdentifier(): void
+    #[DataProvider('provideMalformedIdentifiers')]
+    public function itRefusesAMalformedIdentifier(string $id): void
     {
-        foreach (['', 'short', Interaction::generateId() . '=', Interaction::generateId() . 'a', 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw+cM'] as $id) {
-            try {
-                new Interaction($id, $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-                static::fail('The identifier should have been refused.');
-            } catch (InvalidArgumentException $exception) {
-                static::assertStringContainsString('256 bits', $exception->getMessage());
-            }
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('256 bits');
+
+        // When
+        new Interaction($id, $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideMalformedIdentifiers(): iterable
+    {
+        yield 'empty' => [''];
+        yield 'short' => ['short'];
+        yield 'padded' => [Interaction::generateId() . '='];
+        yield 'too long' => [Interaction::generateId() . 'a'];
+        yield 'standard base64 alphabet' => ['E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw+cM'];
     }
 
     #[Test]
     public function itRefusesAClientOfAnotherTenant(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new Interaction(Interaction::generateId(), Fixtures::tenant('other', 'https://id.other.example'), Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
     #[Test]
     public function itRefusesAnEmptyLocale(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client), '', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
     #[Test]
     public function itRefusesToExpireBeforeItWasCreated(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now());
     }
 
@@ -252,5 +412,19 @@ final class InteractionTest extends TestCase
         $createdAt ??= Fixtures::now();
 
         return new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client, ['openid', 'profile']), null, $createdAt, $createdAt->modify('+10 minutes'));
+    }
+
+    private function completedInteraction(): Interaction
+    {
+        $interaction = $this->interaction();
+        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
+        $interaction->complete(Fixtures::now()->modify('+1 minute'));
+
+        return $interaction;
+    }
+
+    private function consent(): Consent
+    {
+        return new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now());
     }
 }

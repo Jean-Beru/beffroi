@@ -19,6 +19,7 @@ final class RedirectUriTest extends TestCase
     #[DataProvider('provideAcceptedUris')]
     public function itAcceptsAbsoluteHttpsUrisAndPlainHttpOnLoopbackOnly(string $uri): void
     {
+        // When / Then
         static::assertSame($uri, (string) new RedirectUri($uri));
     }
 
@@ -42,12 +43,12 @@ final class RedirectUriTest extends TestCase
     #[DataProvider('provideRejectedUris')]
     public function itRejectsWhatCannotBeRegistered(string $uri, string $reason): void
     {
-        try {
-            new RedirectUri($uri);
-            static::fail('The redirect URI should have been rejected.');
-        } catch (InvalidArgumentException $exception) {
-            static::assertStringContainsString($reason, $exception->getMessage());
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage($reason);
+
+        // When
+        new RedirectUri($uri);
     }
 
     /**
@@ -72,32 +73,73 @@ final class RedirectUriTest extends TestCase
      * spelled out are different URIs.
      */
     #[Test]
-    public function itMatchesByteForByte(): void
+    #[DataProvider('provideCandidates')]
+    public function itMatchesByteForByte(string $candidate, bool $matches): void
     {
+        // Given
         $uri = new RedirectUri('https://rp.example/cb');
 
-        static::assertTrue($uri->matches('https://rp.example/cb'));
-        static::assertFalse($uri->matches('https://rp.example/cb/'));
-        static::assertFalse($uri->matches('https://RP.example/cb'));
-        static::assertFalse($uri->matches('https://rp.example:443/cb'));
-        static::assertFalse($uri->matches('https://rp.example/cb?x=1'));
+        // When / Then
+        static::assertSame($matches, $uri->matches($candidate));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideCandidates(): iterable
+    {
+        yield 'same bytes' => ['https://rp.example/cb', true];
+        yield 'trailing slash' => ['https://rp.example/cb/', false];
+        yield 'host in capitals' => ['https://RP.example/cb', false];
+        yield 'default port spelled out' => ['https://rp.example:443/cb', false];
+        yield 'extra query' => ['https://rp.example/cb?x=1', false];
+    }
+
+    #[Test]
+    public function itEqualsAUriOfTheSameBytes(): void
+    {
+        // Given
+        $uri = new RedirectUri('https://rp.example/cb');
+
+        // When / Then
         static::assertTrue($uri->equals(new RedirectUri('https://rp.example/cb')));
         static::assertFalse($uri->equals(new RedirectUri('https://rp.example/cb/')));
     }
 
     /**
-     * RFC 6749 §3.1.2: the response parameters are added to the query the client registered, which is
-     * kept; RFC 3986 §2.1: every value is percent-encoded.
+     * RFC 3986 §2.1: every value is percent-encoded.
      */
     #[Test]
-    public function itAppendsResponseParametersToItsQuery(): void
+    public function itAppendsPercentEncodedResponseParameters(): void
     {
-        static::assertSame('https://rp.example/cb?code=Splx%20lOBe&iss=https%3A%2F%2Fid.acme.example', new RedirectUri('https://rp.example/cb')->withParameters([
+        // Given
+        $uri = new RedirectUri('https://rp.example/cb');
+
+        // When
+        $withParameters = $uri->withParameters([
             'code' => 'Splx lOBe',
             'iss' => 'https://id.acme.example',
-        ]));
-        static::assertSame('https://rp.example/cb?app=1&state=a%26b', new RedirectUri('https://rp.example/cb?app=1')->withParameters([
+        ]);
+
+        // Then
+        static::assertSame('https://rp.example/cb?code=Splx%20lOBe&iss=https%3A%2F%2Fid.acme.example', $withParameters);
+    }
+
+    /**
+     * RFC 6749 §3.1.2: the response parameters are added to the query the client registered, which is kept.
+     */
+    #[Test]
+    public function itKeepsTheRegisteredQueryBeforeTheResponseParameters(): void
+    {
+        // Given
+        $uri = new RedirectUri('https://rp.example/cb?app=1');
+
+        // When
+        $withParameters = $uri->withParameters([
             'state' => 'a&b',
-        ]));
+        ]);
+
+        // Then
+        static::assertSame('https://rp.example/cb?app=1&state=a%26b', $withParameters);
     }
 }

@@ -10,20 +10,22 @@ use Heidi\Oidc\Domain\Token\TokenResponse;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidGrantException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class TokenResponseTest extends TestCase
 {
     /**
-     * RFC 6749 §5.1: the members in order, "token_type" always Bearer (RFC 6750), "scope" always given,
-     * and the headers that keep the credentials out of every cache.
+     * RFC 6749 §5.1: the members in order, "token_type" always Bearer (RFC 6750), "scope" always given.
      */
     #[Test]
     public function itWritesTheMembersOfRfc6749Section51InOrder(): void
     {
+        // When
         $response = new TokenResponse('at.value', 600, 'rt.value', 'id.value', [Scope::openid(), new Scope('profile')]);
 
+        // Then
         static::assertSame([
             'access_token' => 'at.value',
             'token_type' => 'Bearer',
@@ -32,49 +34,74 @@ final class TokenResponseTest extends TestCase
             'id_token' => 'id.value',
             'scope' => 'openid profile',
         ], $response->parameters());
+    }
+
+    #[Test]
+    public function itOmitsTheTokensThatWereNotIssued(): void
+    {
+        // When
+        $response = new TokenResponse('at.value', 600, null, null, [Scope::openid()]);
+
+        // Then
         static::assertSame([
             'access_token' => 'at.value',
             'token_type' => 'Bearer',
             'expires_in' => 600,
             'scope' => 'openid',
-        ], new TokenResponse('at.value', 600, null, null, [Scope::openid()])->parameters());
+        ], $response->parameters());
     }
 
     #[Test]
     public function itRefusesAnEmptyAccessToken(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new TokenResponse('', 600, null, null, [Scope::openid()]);
     }
 
     #[Test]
-    public function itRefusesAnEmptyRefreshOrIdToken(): void
+    #[DataProvider('provideEmptyOptionalTokens')]
+    public function itRefusesAnEmptyRefreshOrIdToken(?string $refreshToken, ?string $idToken): void
     {
-        foreach ([['', null], [null, '']] as [$refreshToken, $idToken]) {
-            try {
-                new TokenResponse('at.value', 600, $refreshToken, $idToken, [Scope::openid()]);
-                static::fail('The response should have been refused.');
-            } catch (InvalidArgumentException $exception) {
-                static::assertStringContainsString('absent or non-empty', $exception->getMessage());
-            }
-        }
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('absent or non-empty');
+
+        // When
+        new TokenResponse('at.value', 600, $refreshToken, $idToken, [Scope::openid()]);
+    }
+
+    /**
+     * @return iterable<string, array{?string, ?string}>
+     */
+    public static function provideEmptyOptionalTokens(): iterable
+    {
+        yield 'empty refresh token' => ['', null];
+        yield 'empty ID token' => [null, ''];
     }
 
     #[Test]
     public function itRefusesAnEmptyScopeList(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new TokenResponse('at.value', 600, null, null, []);
     }
 
     /**
-     * RFC 6749 §5.2: "error" and "error_description" as JSON, 400, the same no-store headers.
+     * RFC 6749 §5.2: "error" and "error_description" as JSON, 400.
      */
     #[Test]
     public function anErrorIsWrittenAsRfc6749Section52Says(): void
     {
+        // When
         $response = TokenErrorResponse::fromException(new InvalidGrantException('The authorization code is invalid.'));
 
+        // Then
         static::assertSame(400, $response->statusCode);
         static::assertSame('invalid_grant', $response->error);
         static::assertSame('The authorization code is invalid.', $response->errorDescription);
@@ -83,6 +110,18 @@ final class TokenResponseTest extends TestCase
             'error' => 'invalid_grant',
             'error_description' => 'The authorization code is invalid.',
         ], $response->parameters());
+    }
+
+    /**
+     * RFC 6749 §5.1 and §5.2: the headers that keep the credentials out of every cache, on the error too.
+     */
+    #[Test]
+    public function anErrorIsNotCached(): void
+    {
+        // When
+        $response = TokenErrorResponse::fromException(new InvalidGrantException('The authorization code is invalid.'));
+
+        // Then
         static::assertSame([
             'Cache-Control' => 'no-store',
             'Pragma' => 'no-cache',
@@ -95,18 +134,28 @@ final class TokenResponseTest extends TestCase
     #[Test]
     public function anInvalidClientCarriesItsChallenge(): void
     {
-        $challenged = TokenErrorResponse::fromException(new InvalidClientException('Client authentication failed.', 'Basic realm="https://id.acme.example"'));
-        $bare = TokenErrorResponse::fromException(new InvalidClientException('Client authentication failed.'));
+        // When
+        $response = TokenErrorResponse::fromException(new InvalidClientException('Client authentication failed.', 'Basic realm="https://id.acme.example"'));
 
-        static::assertSame(401, $challenged->statusCode);
-        static::assertSame('Basic realm="https://id.acme.example"', $challenged->challenge);
+        // Then
+        static::assertSame(401, $response->statusCode);
+        static::assertSame('Basic realm="https://id.acme.example"', $response->challenge);
         static::assertSame([
             'Cache-Control' => 'no-store',
             'Pragma' => 'no-cache',
             'WWW-Authenticate' => 'Basic realm="https://id.acme.example"',
-        ], $challenged->headers());
-        static::assertSame(401, $bare->statusCode);
-        static::assertNull($bare->challenge);
-        static::assertArrayNotHasKey('WWW-Authenticate', $bare->headers());
+        ], $response->headers());
+    }
+
+    #[Test]
+    public function anInvalidClientWithoutChallengeIsA401WithoutWwwAuthenticate(): void
+    {
+        // When
+        $response = TokenErrorResponse::fromException(new InvalidClientException('Client authentication failed.'));
+
+        // Then
+        static::assertSame(401, $response->statusCode);
+        static::assertNull($response->challenge);
+        static::assertArrayNotHasKey('WWW-Authenticate', $response->headers());
     }
 }
