@@ -10,9 +10,14 @@ use function hash;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Credential\PasswordCredential;
+use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
@@ -25,6 +30,8 @@ use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use function parse_str;
 use function parse_url;
+use const PASSWORD_BCRYPT;
+use function password_hash;
 use const PHP_URL_QUERY;
 use function rtrim;
 use function sprintf;
@@ -35,12 +42,14 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\Uid\Uuid;
 use function sys_get_temp_dir;
 
 /**
- * A browser on the test kernel (architecture §7), with what a flow needs: a user signed in, that is a
- * session of the core the browser is bound to, the way the login of the firewall (#15) will bind it;
- * an interaction this browser began; a signing key; the PKCE pair of a client.
+ * A browser on the test kernel (architecture §7), with what a flow needs: a user with a password, or a
+ * user signed in without the form, that is a session of the core the browser is bound to the way the
+ * login of the firewall binds it; an interaction this browser began; a signing key; the PKCE pair of a
+ * client.
  */
 abstract class BrowserTestCase extends DatabaseTestCase
 {
@@ -66,8 +75,28 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * Signs the user in: a session of the core, and a fresh HTTP session bound to it, whose cookie the
-     * browser now carries.
+     * A user who can sign in on the form: the password hashed by the hasher of the core, or by bcrypt
+     * when the test wants a hash the policy of the core will want to replace.
+     */
+    protected static function userWithPassword(string $username, string $password, PasswordAlgorithm $algorithm = PasswordAlgorithm::Argon2id): User
+    {
+        $user = self::user($username, $username . '-subject');
+        $hash = match ($algorithm) {
+            PasswordAlgorithm::Argon2id => self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->hash($password),
+            PasswordAlgorithm::Bcrypt => new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash($password, PASSWORD_BCRYPT, [
+                'cost' => 4,
+            ])),
+            default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->value)),
+        };
+        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            ->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
+
+        return $user;
+    }
+
+    /**
+     * Signs the user in without the form: a session of the core, and a fresh HTTP session bound to it,
+     * whose cookie the browser now carries.
      */
     protected function signIn(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
     {
@@ -210,6 +239,21 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected static function keyStorage(): string
     {
         return sys_get_temp_dir() . '/heidi-bundle-tests/cache/test/keys';
+    }
+
+    /**
+     * The HTTP session the browser holds, read from the storage of the kernel: what the firewall and the
+     * bundle wrote in it.
+     */
+    protected function readHttpSession(): SessionInterface
+    {
+        $httpSession = self::service('session.factory', SessionFactoryInterface::class)->createSession();
+        $cookie = $this->browser->getCookieJar()
+            ->get($httpSession->getName()) ?? static::fail('The browser holds no session cookie.');
+        $httpSession->setId($cookie->getValue());
+        $httpSession->start();
+
+        return $httpSession;
     }
 
     /**

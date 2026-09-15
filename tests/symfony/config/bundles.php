@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
 use Heidi\Bundle\HeidiBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
+use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 
 return [
@@ -15,6 +16,9 @@ return [
         'all' => true,
     ],
     TwigBundle::class => [
+        'all' => true,
+    ],
+    SecurityBundle::class => [
         'all' => true,
     ],
     HeidiBundle::class => [

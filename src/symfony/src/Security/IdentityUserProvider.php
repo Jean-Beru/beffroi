@@ -1,0 +1,117 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Security;
+
+use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\Http\RequestContextFactory;
+use Heidi\Core\Domain\Event\PasswordRehashed;
+use Heidi\Core\Domain\Session\RequestContext;
+use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Port\UserRepositoryInterface;
+use LogicException;
+use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use SensitiveParameter;
+use function sprintf;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
+use Symfony\Component\Security\Core\Exception\UserNotFoundException;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\UserProviderInterface;
+use function trim;
+
+/**
+ * The user provider of the firewall (architecture §5.4): a user of the core and its password credential,
+ * found by what was typed on the login form, in the tenant of the request, behind a SecurityUser. Never
+ * the User of a host application (decision 0002).
+ *
+ * The provider is also where the firewall brings a hash to upgrade: a password verified against a hash
+ * weaker than the policy of the core is stored again with the current one, on the login that verified
+ * it, and the core is told (PasswordRehashed).
+ *
+ * @implements UserProviderInterface<SecurityUser>
+ */
+final readonly class IdentityUserProvider implements UserProviderInterface, PasswordUpgraderInterface
+{
+    public function __construct(
+        private TenantProvider $tenants,
+        private UserRepositoryInterface $users,
+        private CredentialRepositoryInterface $credentials,
+        private ClockInterface $clock,
+        private EventDispatcherInterface $events,
+        private RequestStack $requests,
+        private RequestContextFactory $contexts,
+    ) {
+    }
+
+    /**
+     * A disabled user is loaded like any other: the firewall checks the password first, then the state
+     * (UserChecker), so that a disabled account answers exactly like a wrong password to whoever does not
+     * know the password.
+     */
+    public function loadUserByIdentifier(string $identifier): SecurityUser
+    {
+        $user = $this->users->findByUsername($this->tenants->provide(), trim($identifier));
+        if ($user === null) {
+            $exception = new UserNotFoundException();
+            $exception->setUserIdentifier($identifier);
+
+            throw $exception;
+        }
+
+        return new SecurityUser($user, $this->credentials->findPasswordCredential($user));
+    }
+
+    /**
+     * Read again from the rows on every request, by identifier and not by username, so that a rename
+     * does not sign the user out; a user that is gone, moved to another tenant or disabled is not
+     * refreshed, which signs them out.
+     */
+    public function refreshUser(UserInterface $user): SecurityUser
+    {
+        if (! $user instanceof SecurityUser) {
+            throw new UnsupportedUserException(sprintf('Instances of "%s" are not supported.', $user::class));
+        }
+        $found = $this->users->find($user->id);
+        if ($found === null || ! $found->belongsTo($this->tenants->provide()) || ! $found->isEnabled()) {
+            $exception = new UserNotFoundException();
+            $exception->setUserIdentifier($user->getUserIdentifier());
+
+            throw $exception;
+        }
+
+        return new SecurityUser($found, $this->credentials->findPasswordCredential($found));
+    }
+
+    public function supportsClass(string $class): bool
+    {
+        return $class === SecurityUser::class;
+    }
+
+    public function upgradePassword(PasswordAuthenticatedUserInterface $user, #[SensitiveParameter] string $newHashedPassword): void
+    {
+        if (! $user instanceof SecurityUser) {
+            return;
+        }
+        $credential = $user->passwordCredential();
+        if ($credential === null) {
+            return;
+        }
+        $hash = CorePasswordHasher::decode($newHashedPassword) ?? throw new LogicException(sprintf('The hash to upgrade to was not produced by "%s"; the firewall of the interaction pages uses another password hasher than the one the bundle configures.', CorePasswordHasher::class));
+        $now = $this->clock->now();
+        $credential->rehash($hash, $now);
+        $this->credentials->save($credential);
+        $this->events->dispatch(new PasswordRehashed($credential, $now, $this->context()));
+    }
+
+    private function context(): RequestContext
+    {
+        $request = $this->requests->getCurrentRequest();
+
+        return $request === null ? new RequestContext($this->clock->now()) : $this->contexts->fromRequest($request);
+    }
+}
