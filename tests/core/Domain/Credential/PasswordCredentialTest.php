@@ -34,4 +34,18 @@ final class PasswordCredentialTest extends TestCase
         static::assertSame($rehashed, $credential->hashChangedAt);
         static::assertSame($used, $credential->lastUsedAt);
     }
+
+    #[Test]
+    public function aPasswordChangeReplacesTheHashAndDatesIt(): void
+    {
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$old'), Fixtures::now());
+        $used = new DateTimeImmutable('2026-09-16T08:00:00+00:00');
+        $credential->markUsed($used);
+
+        $changed = new DateTimeImmutable('2026-09-17T08:00:00+00:00');
+        $credential->changePassword(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$new'), $changed);
+        static::assertSame('$argon2id$new', $credential->hash->encoded);
+        static::assertSame($changed, $credential->hashChangedAt);
+        static::assertSame($used, $credential->lastUsedAt);
+    }
 }

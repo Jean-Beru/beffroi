@@ -129,6 +129,12 @@ services:
     test.heidi.key_rotator:
         alias: Heidi\Core\Application\Key\SigningKeyRotator
         public: true
+    test.heidi.keys:
+        alias: Heidi\Core\Port\SigningKeyRepositoryInterface
+        public: true
+    test.heidi.key_provider:
+        alias: Heidi\Core\Port\SigningKeyProviderInterface
+        public: true
     test.heidi.jwks:
         alias: Heidi\Oidc\Application\Discovery\JwksHandler
         public: true
