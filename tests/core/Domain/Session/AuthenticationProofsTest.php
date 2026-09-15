@@ -11,29 +11,57 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function str_repeat;
 
 final class AuthenticationProofsTest extends TestCase
 {
     /**
-     * RFC 8176 §2: "amr" is the list of methods; the most recent proof is auth_time (OIDC Core §2).
+     * RFC 8176 §2: "amr" is the list of methods, each once, in the order they were first proven.
      */
     #[Test]
-    public function itListsTheMethodsAndDatesTheMostRecentProof(): void
+    public function itListsEachMethodOnceInTheOrderOfTheirFirstProof(): void
     {
+        // Given
+        $login = Fixtures::now();
+
+        // When
+        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)
+            ->with(AuthenticationMethod::password(), $login)
+            ->with(AuthenticationMethod::password(), $login->modify('+2 hours'));
+
+        // Then
+        static::assertSame(['otp', 'pwd'], $proofs->methodReferences());
+        static::assertCount(2, $proofs->methods());
+        static::assertSame('otp', $proofs->methods()[0]->value);
+    }
+
+    /**
+     * OIDC Core §2: the most recent proof is auth_time.
+     */
+    #[Test]
+    public function theMostRecentProofIsTheLatest(): void
+    {
+        // Given
         $login = Fixtures::now();
         $reauth = $login->modify('+2 hours');
         $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)
-            ->with(AuthenticationMethod::password(), $login)
             ->with(AuthenticationMethod::password(), $reauth);
 
-        static::assertSame(['otp', 'pwd'], $proofs->methodReferences());
+        // When / Then
         static::assertEquals($reauth, $proofs->latest());
+    }
+
+    #[Test]
+    public function itDatesTheProofOfEachMethod(): void
+    {
+        // Given
+        $login = Fixtures::now();
+        $reauth = $login->modify('+2 hours');
+        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)
+            ->with(AuthenticationMethod::password(), $reauth);
+
+        // When / Then
         static::assertEquals($login, $proofs->provenAt(new AuthenticationMethod('otp')));
-        static::assertTrue($proofs->has(AuthenticationMethod::password()));
-        static::assertFalse($proofs->has(new AuthenticationMethod('hwk')));
-        static::assertNull($proofs->provenAt(new AuthenticationMethod('hwk')));
-        static::assertCount(2, $proofs->methods());
-        static::assertSame('otp', $proofs->methods()[0]->value);
         static::assertSame([
             'otp' => $login->getTimestamp(),
             'pwd' => $reauth->getTimestamp(),
@@ -41,37 +69,70 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     #[Test]
+    public function itKnowsTheMethodsItHolds(): void
+    {
+        // Given
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now());
+
+        // When / Then
+        static::assertTrue($proofs->has(AuthenticationMethod::password()));
+    }
+
+    #[Test]
+    public function itHasNoProofOfAMethodNeverUsed(): void
+    {
+        // Given
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now());
+
+        // When / Then
+        static::assertFalse($proofs->has(new AuthenticationMethod('hwk')));
+        static::assertNull($proofs->provenAt(new AuthenticationMethod('hwk')));
+    }
+
+    #[Test]
     public function anOlderProofNeverReplacesANewerOne(): void
     {
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())
-            ->with(AuthenticationMethod::password(), Fixtures::now()->modify('-1 hour'));
+        // Given
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now());
 
+        // When
+        $proofs = $proofs->with(AuthenticationMethod::password(), Fixtures::now()->modify('-1 hour'));
+
+        // Then
         static::assertEquals(Fixtures::now(), $proofs->latest());
     }
 
     #[Test]
     public function aProofAtTheSameInstantIsNotRecordedTwice(): void
     {
+        // Given
         $first = Fixtures::now();
-        $sameInstant = Fixtures::now();
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), $first)->with(AuthenticationMethod::password(), $sameInstant);
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), $first);
 
+        // When
+        $proofs = $proofs->with(AuthenticationMethod::password(), Fixtures::now());
+
+        // Then
         static::assertSame($first, $proofs->provenAt(AuthenticationMethod::password()));
     }
 
     #[Test]
     public function itIsNeverEmpty(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new AuthenticationProofs([]);
     }
 
     #[Test]
     public function itValidatesTheMethodReferencesItIsBuiltFrom(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new AuthenticationProofs([
             'not valid!' => Fixtures::now(),
         ]);
@@ -85,6 +146,7 @@ final class AuthenticationProofsTest extends TestCase
     #[DataProvider('provideWellFormedMethods')]
     public function anyWellFormedMethodReferenceIsAccepted(string $value): void
     {
+        // When / Then
         static::assertSame($value, (string) new AuthenticationMethod($value));
     }
 
@@ -102,8 +164,10 @@ final class AuthenticationProofsTest extends TestCase
     #[DataProvider('provideMalformedMethods')]
     public function aMalformedMethodReferenceIsRejected(string $value): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new AuthenticationMethod($value);
     }
 
@@ -119,9 +183,16 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     #[Test]
-    public function methodsCompareByValue(): void
+    public function methodsOfTheSameValueAreEqual(): void
     {
+        // When / Then
         static::assertTrue(AuthenticationMethod::password()->equals(new AuthenticationMethod('pwd')));
+    }
+
+    #[Test]
+    public function methodsCompareCaseSensitively(): void
+    {
+        // When / Then
         static::assertFalse(AuthenticationMethod::password()->equals(new AuthenticationMethod('PWD')));
     }
 }

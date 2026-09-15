@@ -18,26 +18,58 @@ final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
     #[Test]
     public function itListsTheActiveSessionsOfAUserOnly(): void
     {
+        // Given
         $alice = Fixtures::user();
-        $bob = Fixtures::user(username: 'bob', subject: 'bob-subject');
         $repository = new InMemoryAuthenticationSessionRepository();
         $active = Fixtures::session($alice);
         $ended = Fixtures::session($alice);
         $ended->end(SessionEnd::User, Fixtures::now());
         $expired = Fixtures::session($alice, Fixtures::now()->modify('-2 days'));
-        foreach ([$active, $ended, $expired, Fixtures::session($bob)] as $session) {
+        foreach ([$active, $ended, $expired, Fixtures::session(Fixtures::user(username: 'bob', subject: 'bob-subject'))] as $session) {
             $repository->save($session);
         }
 
-        static::assertSame([$active], $repository->findActiveByUser($alice, Fixtures::now()));
+        // When
+        $sessions = $repository->findActiveByUser($alice, Fixtures::now());
+
+        // Then
+        static::assertSame([$active], $sessions);
+    }
+
+    #[Test]
+    public function itFindsAnySavedSessionById(): void
+    {
+        // Given
+        $repository = new InMemoryAuthenticationSessionRepository();
+        $ended = Fixtures::session();
+        $ended->end(SessionEnd::User, Fixtures::now());
+        $repository->save($ended);
+
+        // When / Then
         static::assertSame($ended, $repository->find($ended->id));
+    }
+
+    #[Test]
+    public function itFindsNothingForAnUnknownId(): void
+    {
+        // Given
+        $repository = new InMemoryAuthenticationSessionRepository();
+
+        // When / Then
         static::assertNull($repository->find(Uuid::v7()));
     }
 
     #[Test]
-    public function theNullEnrichersEnrichNothing(): void
+    public function theNullGeoLocatorLocatesNothing(): void
     {
+        // When / Then
         static::assertNull(new NullGeoLocator()->locate('203.0.113.10'));
+    }
+
+    #[Test]
+    public function theNullUserAgentParserParsesNothing(): void
+    {
+        // When / Then
         static::assertNull(new NullUserAgentParser()->parse('curl/8.0'));
     }
 }

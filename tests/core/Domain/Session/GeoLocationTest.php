@@ -15,26 +15,44 @@ final class GeoLocationTest extends TestCase
     #[Test]
     public function itAcceptsAPartialLocation(): void
     {
+        // When
         $location = new GeoLocation(countryCode: 'FR', autonomousSystemNumber: 12322, autonomousSystemOrganization: 'Free SAS', latitude: 45.76, longitude: 4.83);
 
+        // Then
         static::assertSame('FR', $location->countryCode);
         static::assertNull($location->city);
         static::assertSame(45.76, $location->latitude);
     }
 
     #[Test]
-    public function theEdgesOfTheGlobeAreValidCoordinates(): void
+    #[DataProvider('provideEdgesOfTheGlobe')]
+    public function theEdgesOfTheGlobeAreValidCoordinates(float $latitude, float $longitude): void
     {
-        static::assertSame(-90.0, (new GeoLocation(latitude: -90.0, longitude: -180.0))->latitude);
-        static::assertSame(180.0, (new GeoLocation(latitude: 90.0, longitude: 180.0))->longitude);
+        // When
+        $location = new GeoLocation(latitude: $latitude, longitude: $longitude);
+
+        // Then
+        static::assertSame($latitude, $location->latitude);
+        static::assertSame($longitude, $location->longitude);
+    }
+
+    /**
+     * @return iterable<string, array{float, float}>
+     */
+    public static function provideEdgesOfTheGlobe(): iterable
+    {
+        yield 'south west' => [-90.0, -180.0];
+        yield 'north east' => [90.0, 180.0];
     }
 
     #[Test]
     #[DataProvider('provideInvalidLocations')]
     public function itRejectsAnInconsistentLocation(?string $countryCode, ?float $latitude, ?float $longitude): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new GeoLocation(countryCode: $countryCode, latitude: $latitude, longitude: $longitude);
     }
 

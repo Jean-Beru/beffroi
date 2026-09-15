@@ -23,8 +23,10 @@ final class UserTest extends TestCase
     #[Test]
     public function aNewUserIsEnabledUnverifiedAndHasAnEmptyProfile(): void
     {
+        // When
         $user = Fixtures::user();
 
+        // Then
         static::assertTrue($user->isEnabled());
         static::assertNull($user->email);
         static::assertFalse($user->emailVerified);
@@ -36,136 +38,265 @@ final class UserTest extends TestCase
     }
 
     #[Test]
-    public function theUsernameIsTrimmedAndNeverEmpty(): void
+    public function theUsernameIsTrimmed(): void
     {
+        // When
         $user = Fixtures::user(username: '  alice  ');
-        static::assertSame('alice', $user->username);
-        static::assertSame(255, strlen(Fixtures::user(username: str_repeat('a', 255))->username));
 
+        // Then
+        static::assertSame('alice', $user->username);
+    }
+
+    #[Test]
+    public function theUsernameMayBe255CharactersLong(): void
+    {
+        // When
+        $user = Fixtures::user(username: str_repeat('a', 255));
+
+        // Then
+        static::assertSame(255, strlen($user->username));
+    }
+
+    #[Test]
+    public function theUsernameIsNeverEmpty(): void
+    {
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         User::create(Uuid::v7(), Fixtures::tenant(), new Subject('s'), '   ', Fixtures::now());
     }
 
     #[Test]
     public function theUsernameIsAtMost255Characters(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         Fixtures::user(username: str_repeat('a', 256));
     }
 
     #[Test]
     public function itCannotBeCreatedWithAVerifiedButAbsentEmail(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new User(Uuid::v7(), Fixtures::tenant(), new Subject('s'), 'alice', null, true, Profile::empty(), null, false, null, Fixtures::now(), Fixtures::now());
     }
 
     #[Test]
     public function itCannotBeCreatedWithAVerifiedButAbsentPhoneNumber(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new User(Uuid::v7(), Fixtures::tenant(), new Subject('s'), 'alice', null, false, Profile::empty(), null, true, null, Fixtures::now(), Fixtures::now());
     }
 
     #[Test]
     public function itCanBeCreatedWithAVerifiedEmailAndAVerifiedPhoneNumber(): void
     {
+        // When
         $user = new User(Uuid::v7(), Fixtures::tenant(), new Subject('s'), 'alice', new EmailAddress('alice@acme.example'), true, Profile::empty(), '+33600000000', true, null, Fixtures::now(), Fixtures::now());
 
+        // Then
         static::assertTrue($user->emailVerified);
         static::assertTrue($user->phoneNumberVerified);
     }
 
     #[Test]
-    public function aPhoneNumberCanBeChangedAndVerified(): void
+    public function aPhoneNumberCanBeSetAsVerified(): void
     {
+        // Given
         $user = Fixtures::user();
 
+        // When
         $user->changePhoneNumber('+33600000000', true, Fixtures::now());
+
+        // Then
         static::assertSame('+33600000000', $user->phoneNumber);
         static::assertTrue($user->phoneNumberVerified);
+    }
 
+    #[Test]
+    public function aPhoneNumberCanBeRemoved(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $user->changePhoneNumber('+33600000000', true, Fixtures::now());
+
+        // When
         $user->changePhoneNumber(null, false, Fixtures::now());
+
+        // Then
         static::assertNull($user->phoneNumber);
         static::assertFalse($user->phoneNumberVerified);
+    }
+
+    #[Test]
+    public function changingTheEmailCarriesItsVerificationStateAndDatesTheUser(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $later = new DateTimeImmutable('2026-09-16T00:00:00+00:00');
+
+        // When
+        $user->changeEmail(new EmailAddress('alice@acme.example'), true, $later);
+
+        // Then
+        static::assertSame('alice@acme.example', (string) $user->email);
+        static::assertTrue($user->emailVerified);
+        static::assertSame($later, $user->updatedAt);
     }
 
     /**
      * A verified flag never survives a change of address: a new address is unverified until proven otherwise.
      */
     #[Test]
-    public function changingTheEmailCarriesItsOwnVerificationState(): void
+    public function aNewEmailDoesNotInheritTheVerificationOfThePreviousOne(): void
     {
+        // Given
         $user = Fixtures::user();
-        $later = new DateTimeImmutable('2026-09-16T00:00:00+00:00');
+        $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
 
-        $user->changeEmail(new EmailAddress('alice@acme.example'), true, $later);
-        static::assertTrue($user->emailVerified);
-        static::assertSame($later, $user->updatedAt);
+        // When
+        $user->changeEmail(new EmailAddress('alice@other.example'), false, Fixtures::now());
 
-        $user->changeEmail(new EmailAddress('alice@other.example'), false, $later);
+        // Then
         static::assertFalse($user->emailVerified);
     }
 
     #[Test]
     public function anAbsentEmailCannotBeVerified(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         Fixtures::user()->changeEmail(null, true, Fixtures::now());
     }
 
     #[Test]
     public function anAbsentPhoneNumberCannotBeVerified(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         Fixtures::user()->changePhoneNumber(null, true, Fixtures::now());
     }
 
     #[Test]
     public function anEmptyAddressIsStoredAsNoAddress(): void
     {
+        // Given
         $user = Fixtures::user();
 
+        // When
         $user->changeAddress(new Address(), Fixtures::now());
-        static::assertNull($user->address);
 
-        $user->changeAddress(new Address(locality: 'Lyon'), Fixtures::now());
-        static::assertSame('Lyon', $user->address?->locality);
-
-        $user->changeAddress(null, Fixtures::now());
+        // Then
         static::assertNull($user->address);
     }
 
     #[Test]
-    public function disablingIsIdempotentAndReversible(): void
+    public function anAddressWithAFieldIsStored(): void
     {
+        // Given
         $user = Fixtures::user();
-        $t1 = new DateTimeImmutable('2026-09-16T00:00:00+00:00');
-        $t2 = new DateTimeImmutable('2026-09-17T00:00:00+00:00');
 
-        $user->disable($t1);
-        $user->disable($t2);
-        static::assertFalse($user->isEnabled());
-        static::assertSame($t1, $user->disabledAt);
-        static::assertSame($t1, $user->updatedAt);
+        // When
+        $user->changeAddress(new Address(locality: 'Lyon'), Fixtures::now());
 
-        $user->enable($t2);
-        static::assertTrue($user->isEnabled());
-        static::assertSame($t2, $user->updatedAt);
+        // Then
+        static::assertSame('Lyon', $user->address?->locality);
     }
 
     #[Test]
-    public function itBelongsToExactlyOneTenant(): void
+    public function anAddressCanBeRemoved(): void
     {
+        // Given
+        $user = Fixtures::user();
+        $user->changeAddress(new Address(locality: 'Lyon'), Fixtures::now());
+
+        // When
+        $user->changeAddress(null, Fixtures::now());
+
+        // Then
+        static::assertNull($user->address);
+    }
+
+    #[Test]
+    public function disablingDatesTheUser(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $disabledAt = new DateTimeImmutable('2026-09-16T00:00:00+00:00');
+
+        // When
+        $user->disable($disabledAt);
+
+        // Then
+        static::assertFalse($user->isEnabled());
+        static::assertSame($disabledAt, $user->disabledAt);
+        static::assertSame($disabledAt, $user->updatedAt);
+    }
+
+    #[Test]
+    public function disablingIsIdempotent(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $first = new DateTimeImmutable('2026-09-16T00:00:00+00:00');
+        $user->disable($first);
+
+        // When
+        $user->disable(new DateTimeImmutable('2026-09-17T00:00:00+00:00'));
+
+        // Then
+        static::assertFalse($user->isEnabled());
+        static::assertSame($first, $user->disabledAt);
+        static::assertSame($first, $user->updatedAt);
+    }
+
+    #[Test]
+    public function disablingIsReversible(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $user->disable(new DateTimeImmutable('2026-09-16T00:00:00+00:00'));
+        $enabledAt = new DateTimeImmutable('2026-09-17T00:00:00+00:00');
+
+        // When
+        $user->enable($enabledAt);
+
+        // Then
+        static::assertTrue($user->isEnabled());
+        static::assertSame($enabledAt, $user->updatedAt);
+    }
+
+    #[Test]
+    public function itBelongsToItsTenant(): void
+    {
+        // Given
         $tenant = Fixtures::tenant();
         $user = Fixtures::user($tenant);
 
+        // When / Then
         static::assertTrue($user->belongsTo($tenant));
+    }
+
+    #[Test]
+    public function itDoesNotBelongToAnotherTenant(): void
+    {
+        // Given
+        $user = Fixtures::user(Fixtures::tenant());
+
+        // When / Then
         static::assertFalse($user->belongsTo(Fixtures::tenant('other', 'https://id.other.example')));
     }
 }

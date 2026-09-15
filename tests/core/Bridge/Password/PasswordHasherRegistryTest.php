@@ -19,16 +19,28 @@ use SensitiveParameter;
 final class PasswordHasherRegistryTest extends TestCase
 {
     #[Test]
-    public function itHashesWithTheDefaultAndVerifiesWithTheHasherOfTheAlgorithm(): void
+    public function itHashesWithTheDefaultAlgorithm(): void
     {
+        // Given
         $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()]);
 
-        $fresh = $registry->hash('secret');
-        static::assertSame(PasswordAlgorithm::Argon2id, $fresh->algorithm);
-        static::assertTrue($registry->verify($fresh, 'secret'));
-        static::assertFalse($registry->needsRehash($fresh));
+        // When
+        $hash = $registry->hash('secret');
 
+        // Then
+        static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
+        static::assertTrue($registry->verify($hash, 'secret'));
+        static::assertFalse($registry->needsRehash($hash));
+    }
+
+    #[Test]
+    public function itVerifiesWithTheHasherOfTheAlgorithm(): void
+    {
+        // Given
+        $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()]);
         $imported = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'secret-digest');
+
+        // When / Then
         static::assertTrue($registry->verify($imported, 'secret'));
         static::assertFalse($registry->verify($imported, 'other'));
     }
@@ -40,33 +52,43 @@ final class PasswordHasherRegistryTest extends TestCase
     #[Test]
     public function aHashOfAnotherAlgorithmThanTheDefaultAlwaysNeedsARehash(): void
     {
+        // Given
         $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()]);
 
+        // When / Then
         static::assertTrue($registry->needsRehash(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'secret-digest')));
     }
 
     #[Test]
     public function itRefusesToVerifyAnAlgorithmNoHasherHandles(): void
     {
+        // Given
         $registry = new PasswordHasherRegistry([new NativePasswordHasher()]);
 
+        // Then
         $this->expectException(LogicException::class);
+
+        // When
         $registry->verify(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha512, 'digest'), 'secret');
     }
 
     #[Test]
     public function itNeedsAHasherForTheDefaultAlgorithm(): void
     {
+        // Then
         $this->expectException(LogicException::class);
 
+        // When
         new PasswordHasherRegistry([new FakePbkdf2Hasher()]);
     }
 
     #[Test]
     public function itNeedsAtLeastOneHasher(): void
     {
+        // Then
         $this->expectException(InvalidArgumentException::class);
 
+        // When
         new PasswordHasherRegistry([]);
     }
 }

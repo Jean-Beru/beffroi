@@ -11,7 +11,9 @@ use Heidi\Core\Domain\Event\SigningKeyRotated;
 use Heidi\Core\Domain\Key\GeneratedKeyPair;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Session\RequestContext;
+use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\KeyNotFoundException;
 use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
@@ -22,68 +24,164 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
+/**
+ * Spike 2 criterion, prepared here: the new key signs at once, the old one stays published, the tokens it
+ * signed remain verifiable, then it leaves the JWK Set when retired.
+ */
 final class SigningKeyRotatorTest extends TestCase
 {
-    /**
-     * Spike 2 criterion, prepared here: the new key signs at once, the old one stays published, the tokens it
-     * signed remain verifiable, then it leaves the JWK Set when retired.
-     */
-    #[Test]
-    public function rotationActivatesTheNewKeyAndKeepsThePreviousOnePublished(): void
-    {
-        $tenant = Fixtures::tenant();
-        $repository = new InMemorySigningKeyRepository();
-        $events = new RecordingEventDispatcher();
-        $clock = new MockClock('2026-09-15T14:00:00+00:00');
-        $rotator = new SigningKeyRotator($repository, new PrecomputedKeyPairGenerator(Keys::pair(), Keys::otherPair()), Keys::sealer(), $clock, $events);
-        $context = RequestContext::unknown($clock->now());
+    private Tenant $tenant;
 
-        $first = $rotator->rotate($tenant, SignatureAlgorithm::RS256, $context);
+    private InMemorySigningKeyRepository $repository;
+
+    private RecordingEventDispatcher $events;
+
+    private MockClock $clock;
+
+    private SigningKeyRotator $rotator;
+
+    protected function setUp(): void
+    {
+        $this->tenant = Fixtures::tenant();
+        $this->repository = new InMemorySigningKeyRepository();
+        $this->events = new RecordingEventDispatcher();
+        $this->clock = new MockClock('2026-09-15T14:00:00+00:00');
+        $this->rotator = new SigningKeyRotator($this->repository, new PrecomputedKeyPairGenerator(Keys::pair(), Keys::otherPair()), Keys::sealer(), $this->clock, $this->events);
+    }
+
+    #[Test]
+    public function theFirstRotationActivatesAKeyAndRetiresNothing(): void
+    {
+        // When
+        $first = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+
+        // Then
         static::assertSame(Keys::pair()->kid, $first->kid);
         static::assertTrue($first->isActive());
-        static::assertSame($first, $repository->findActive($tenant, SignatureAlgorithm::RS256));
-        static::assertNull($events->of(SigningKeyRotated::class)[0]->retiring);
+        static::assertSame($first, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+        static::assertNull($this->events->of(SigningKeyRotated::class)[0]->retiring);
+    }
 
-        $clock->modify('+30 days');
-        $savesBefore = $repository->saves;
-        $second = $rotator->rotate($tenant, SignatureAlgorithm::RS256, RequestContext::unknown($clock->now()));
-        static::assertSame($savesBefore + 2, $repository->saves);
-        static::assertSame($second, $repository->findActive($tenant, SignatureAlgorithm::RS256));
+    #[Test]
+    public function aRotationActivatesTheNewKey(): void
+    {
+        // Given
+        $this->firstRotation();
+
+        // When
+        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+
+        // Then
+        static::assertSame(Keys::otherPair()->kid, $second->kid);
+        static::assertSame($second, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+    }
+
+    #[Test]
+    public function aRotationStartsRetiringThePreviousKeyAndKeepsItPublished(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+
+        // When
+        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+
+        // Then
         static::assertSame(KeyStatus::Retiring, $first->status);
-        static::assertEquals($clock->now(), $first->retiringAt);
-        static::assertSame([$first, $second], $repository->findPublished($tenant));
-        static::assertSame($first, $events->of(SigningKeyRotated::class)[1]->retiring);
-        static::assertSame($tenant, $events->of(SigningKeyRotated::class)[1]->tenant);
+        static::assertEquals($this->clock->now(), $first->retiringAt);
+        static::assertSame([$first, $second], $this->repository->findPublished($this->tenant));
+    }
 
-        $provider = new SealedKeyProvider($repository, Keys::sealer());
-        static::assertSame(Keys::otherPair()->privateJwk, $provider->activeKey($tenant, SignatureAlgorithm::RS256)->privateJwk);
+    #[Test]
+    public function aRotationSavesBothKeys(): void
+    {
+        // Given
+        $this->firstRotation();
+        $savesBefore = $this->repository->saves;
 
-        $clock->modify('+1 day');
-        $savesBefore = $repository->saves;
-        $rotator->retire($tenant, $first->kid);
-        static::assertSame($savesBefore + 1, $repository->saves);
+        // When
+        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+
+        // Then
+        static::assertSame($savesBefore + 2, $this->repository->saves);
+    }
+
+    #[Test]
+    public function aRotationAnnouncesWhichKeyIsRetiring(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+
+        // When
+        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+
+        // Then
+        $event = $this->events->of(SigningKeyRotated::class)[1];
+        static::assertSame($first, $event->retiring);
+        static::assertSame($this->tenant, $event->tenant);
+    }
+
+    #[Test]
+    public function theNewKeySignsAtOnce(): void
+    {
+        // Given
+        $this->firstRotation();
+        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+        $provider = new SealedKeyProvider($this->repository, Keys::sealer());
+
+        // When
+        $active = $provider->activeKey($this->tenant, SignatureAlgorithm::RS256);
+
+        // Then
+        static::assertSame(Keys::otherPair()->privateJwk, $active->privateJwk);
+    }
+
+    #[Test]
+    public function retiringARetiringKeyRemovesItFromThePublishedKeys(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+        $this->clock->modify('+1 day');
+        $savesBefore = $this->repository->saves;
+
+        // When
+        $this->rotator->retire($this->tenant, $first->kid);
+
+        // Then
         static::assertSame(KeyStatus::Retired, $first->status);
-        static::assertSame([$second], $repository->findPublished($tenant));
+        static::assertSame($savesBefore + 1, $this->repository->saves);
+        static::assertSame([$second], $this->repository->findPublished($this->tenant));
     }
 
     #[Test]
     public function theActiveKeyCannotBeRetiredWithoutARotation(): void
     {
-        $tenant = Fixtures::tenant();
-        $rotator = new SigningKeyRotator(new InMemorySigningKeyRepository(), new PrecomputedKeyPairGenerator(Keys::pair()), Keys::sealer(), new MockClock(), new RecordingEventDispatcher());
-        $key = $rotator->rotate($tenant, SignatureAlgorithm::RS256, RequestContext::unknown(Fixtures::now()));
+        // Given
+        $key = $this->firstRotation();
 
+        // Then
         $this->expectException(LogicException::class);
-        $rotator->retire($tenant, $key->kid);
+
+        // When
+        $this->rotator->retire($this->tenant, $key->kid);
     }
 
     #[Test]
     public function retiringAnUnknownKeyFails(): void
     {
-        $rotator = new SigningKeyRotator(new InMemorySigningKeyRepository(), new PrecomputedKeyPairGenerator(), Keys::sealer(), new MockClock(), new RecordingEventDispatcher());
-
+        // Then
         $this->expectException(KeyNotFoundException::class);
-        $rotator->retire(Fixtures::tenant(), 'nope');
+
+        // When
+        $this->rotator->retire($this->tenant, 'nope');
+    }
+
+    private function firstRotation(): SigningKey
+    {
+        $key = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, RequestContext::unknown($this->clock->now()));
+        $this->clock->modify('+30 days');
+
+        return $key;
     }
 }
 

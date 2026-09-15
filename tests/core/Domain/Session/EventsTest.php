@@ -20,9 +20,13 @@ final class EventsTest extends TestCase
     #[Test]
     public function userAuthenticatedCarriesTheContextOfTheSession(): void
     {
+        // Given
         $session = Fixtures::session();
+
+        // When
         $event = new UserAuthenticated($session);
 
+        // Then
         static::assertSame($session->establishedAt, $event->occurredAt);
         static::assertSame($session->tenant, $event->tenant);
         static::assertSame($session->createdFrom, $event->context);
@@ -31,13 +35,16 @@ final class EventsTest extends TestCase
     #[Test]
     public function sessionEndedCarriesTheContextOfTheRequestThatEndedIt(): void
     {
+        // Given
         $session = Fixtures::session();
         $later = Fixtures::now()->modify('+1 hour');
         $context = Fixtures::context($later, '198.51.100.7');
         $session->end(SessionEnd::RelyingParty, $later);
 
+        // When
         $event = new AuthenticationSessionEnded($session, $later, $context);
 
+        // Then
         static::assertSame(SessionEnd::RelyingParty, $event->endedBy);
         static::assertSame($context, $event->context);
         static::assertSame($session->tenant, $event->tenant);
@@ -46,8 +53,13 @@ final class EventsTest extends TestCase
     #[Test]
     public function sessionEndedRequiresAnEndedSession(): void
     {
+        // Given
+        $session = Fixtures::session();
+
+        // Then
         $this->expectException(LogicException::class);
 
-        new AuthenticationSessionEnded(Fixtures::session(), Fixtures::now(), Fixtures::context());
+        // When
+        new AuthenticationSessionEnded($session, Fixtures::now(), Fixtures::context());
     }
 }

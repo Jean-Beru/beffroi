@@ -16,6 +16,7 @@ final class SignatureAlgorithmTest extends TestCase
     #[Test]
     public function rs256IsRsaWithSha256(): void
     {
+        // When / Then
         static::assertSame('RSA', SignatureAlgorithm::RS256->keyType());
         static::assertSame(2048, SignatureAlgorithm::RS256->minimumKeyBits());
         static::assertSame('sha256', SignatureAlgorithm::RS256->digestAlgorithm());

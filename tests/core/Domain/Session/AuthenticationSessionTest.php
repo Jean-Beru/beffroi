@@ -19,26 +19,59 @@ use Symfony\Component\Uid\Uuid;
 final class AuthenticationSessionTest extends TestCase
 {
     #[Test]
-    public function aNewSessionIsActiveAndWasLastSeenWhereItWasCreated(): void
+    public function aNewSessionIsActive(): void
     {
+        // When
         $session = Fixtures::session();
 
+        // Then
         static::assertTrue($session->isActive(Fixtures::now()));
         static::assertFalse($session->hasEnded());
+    }
+
+    #[Test]
+    public function aNewSessionWasLastSeenWhereAndWhenItWasCreated(): void
+    {
+        // When
+        $session = Fixtures::session();
+
+        // Then
         static::assertSame($session->createdFrom, $session->lastSeenFrom);
         static::assertSame($session->establishedAt, $session->lastSeenAt);
+    }
+
+    #[Test]
+    public function aNewSessionIsAuthenticatedWhenItWasEstablished(): void
+    {
+        // When
+        $session = Fixtures::session();
+
+        // Then
         static::assertEquals($session->establishedAt, $session->authenticatedAt());
         static::assertSame(['pwd'], $session->methodReferences());
+    }
+
+    #[Test]
+    public function aSessionHasNoAcrUnlessTheDeploymentDefinesOne(): void
+    {
+        // When
+        $session = Fixtures::session();
+
+        // Then
         static::assertNull($session->authenticationContextClass);
     }
 
     #[Test]
     public function itCarriesAnAcrWhenTheDeploymentDefinesOne(): void
     {
+        // Given
         $user = Fixtures::user();
         $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
+
+        // When
         $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, 'urn:acme:loa:2', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
 
+        // Then
         static::assertSame(['pwd', 'otp'], $session->methodReferences());
         static::assertSame('urn:acme:loa:2', $session->authenticationContextClass);
     }
@@ -46,140 +79,256 @@ final class AuthenticationSessionTest extends TestCase
     #[Test]
     public function anEmptyAcrIsNotAnAcr(): void
     {
+        // Given
         $user = Fixtures::user();
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), '', Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     #[Test]
     public function itExpiresAfterItWasEstablished(): void
     {
+        // Given
         $user = Fixtures::user();
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), null, Fixtures::context(), Fixtures::now());
     }
 
     #[Test]
     public function itsFirstProofsAreNotDatedAfterItWasEstablished(): void
     {
+        // Given
         $user = Fixtures::user();
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')), null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     #[Test]
     public function itAuthenticatesAUserOfItsOwnTenant(): void
     {
+        // Given
         $user = Fixtures::user();
 
+        // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
         new AuthenticationSession(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), null, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
     }
 
     /**
-     * OIDC Core §2: auth_time is the time of the End-User authentication; a re-authentication moves it, and
-     * the proofs of other methods keep their own date (symfony/symfony#66064).
+     * OIDC Core §2: auth_time is the time of the End-User authentication; a re-authentication moves it.
      */
     #[Test]
-    public function aNewProofMovesAuthTimeAndKeepsTheOtherProofs(): void
+    public function aNewProofMovesAuthTime(): void
     {
+        // Given
+        $session = Fixtures::session();
+        $later = Fixtures::now()->modify('+2 hours');
+
+        // When
+        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), Fixtures::context($later, '198.51.100.7'));
+
+        // Then
+        static::assertEquals($later, $session->authenticatedAt());
+        static::assertEquals(Fixtures::now(), $session->establishedAt);
+    }
+
+    /**
+     * The proofs of other methods keep their own date (symfony/symfony#66064).
+     */
+    #[Test]
+    public function aNewProofKeepsTheOtherProofs(): void
+    {
+        // Given
+        $session = Fixtures::session();
+
+        // When
+        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), Fixtures::context(Fixtures::now()->modify('+2 hours'), '198.51.100.7'));
+
+        // Then
+        static::assertSame(['pwd', 'hwk'], $session->methodReferences());
+        static::assertEquals(Fixtures::now(), $session->proofs->provenAt(AuthenticationMethod::password()));
+    }
+
+    #[Test]
+    public function aNewProofRecordsWhereAndWhenTheSessionWasLastSeen(): void
+    {
+        // Given
         $session = Fixtures::session();
         $later = Fixtures::now()->modify('+2 hours');
         $context = Fixtures::context($later, '198.51.100.7');
 
+        // When
         $session->recordProof(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), $context);
 
-        static::assertEquals($later, $session->authenticatedAt());
-        static::assertSame(['pwd', 'hwk'], $session->methodReferences());
-        static::assertEquals(Fixtures::now(), $session->proofs->provenAt(AuthenticationMethod::password()));
+        // Then
         static::assertSame($context, $session->lastSeenFrom);
         static::assertSame($later, $session->lastSeenAt);
-        static::assertEquals(Fixtures::now(), $session->establishedAt);
     }
 
     #[Test]
     public function aProofAtTheVeryInstantTheSessionWasEstablishedIsAccepted(): void
     {
+        // Given
         $session = Fixtures::session();
 
+        // When
         $session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context(Fixtures::now()));
 
+        // Then
         static::assertSame(['pwd', 'otp'], $session->methodReferences());
     }
 
     #[Test]
     public function aProofCannotPredateTheSession(): void
     {
+        // Given
         $session = Fixtures::session();
 
+        // Then
         $this->expectException(LogicException::class);
+
+        // When
         $session->recordProof(AuthenticationMethod::password(), Fixtures::context(Fixtures::now()->modify('-1 minute')));
     }
 
     #[Test]
     public function anEndedSessionCannotReceiveAProof(): void
     {
+        // Given
         $session = Fixtures::session();
         $session->end(SessionEnd::User, Fixtures::now());
 
+        // Then
         $this->expectException(LogicException::class);
+
+        // When
         $session->recordProof(AuthenticationMethod::password(), Fixtures::context(Fixtures::now()->modify('+1 minute')));
     }
 
     #[Test]
-    public function touchingRecordsWhereAndWhenAndMayExtendButNeverShorten(): void
+    public function touchingRecordsWhereAndWhenTheSessionWasSeenAndExtendsIt(): void
     {
+        // Given
         $session = Fixtures::session();
         $later = Fixtures::now()->modify('+2 hours');
         $context = Fixtures::context($later, '198.51.100.7');
 
+        // When
         $session->touch($context, $later->modify('+12 hours'));
+
+        // Then
         static::assertSame($context, $session->lastSeenFrom);
         static::assertSame($later, $session->lastSeenAt);
         static::assertEquals($later->modify('+12 hours'), $session->expiresAt);
-
-        $session->touch($context, $later->modify('+12 hours'));
-
-        $this->expectException(LogicException::class);
-        $session->touch($context, $later);
     }
 
     #[Test]
-    public function itIsInactiveOnceExpired(): void
+    public function touchingMayKeepTheSameExpiry(): void
     {
+        // Given
+        $session = Fixtures::session();
+        $expiresAt = $session->expiresAt;
+
+        // When
+        $session->touch(Fixtures::context(Fixtures::now()->modify('+2 hours')), $expiresAt);
+
+        // Then
+        static::assertSame($expiresAt, $session->expiresAt);
+    }
+
+    #[Test]
+    public function touchingNeverShortensTheSession(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $later = Fixtures::now()->modify('+2 hours');
+
+        // Then
+        $this->expectException(LogicException::class);
+
+        // When
+        $session->touch(Fixtures::context($later), $later);
+    }
+
+    #[Test]
+    public function itIsActiveUntilItExpires(): void
+    {
+        // Given
         $session = Fixtures::session();
 
+        // When / Then
         static::assertTrue($session->isActive(Fixtures::now()->modify('+11 hours')));
+    }
+
+    #[Test]
+    public function itIsInactiveOnceExpiredWithoutHavingEnded(): void
+    {
+        // Given
+        $session = Fixtures::session();
+
+        // When / Then
         static::assertFalse($session->isActive(Fixtures::now()->modify('+12 hours')));
         static::assertFalse($session->hasEnded());
     }
 
     #[Test]
+    public function endingMakesTheSessionInactive(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $endedAt = new DateTimeImmutable('2026-09-15T11:00:00+00:00');
+
+        // When
+        $session->end(SessionEnd::User, $endedAt);
+
+        // Then
+        static::assertTrue($session->hasEnded());
+        static::assertFalse($session->isActive($endedAt));
+        static::assertSame($endedAt, $session->endedAt);
+        static::assertSame(SessionEnd::User, $session->endedBy);
+    }
+
+    #[Test]
     public function theFirstEndWins(): void
     {
+        // Given
         $session = Fixtures::session();
-        $t1 = new DateTimeImmutable('2026-09-15T11:00:00+00:00');
-        $t2 = new DateTimeImmutable('2026-09-15T12:00:00+00:00');
+        $first = new DateTimeImmutable('2026-09-15T11:00:00+00:00');
+        $session->end(SessionEnd::User, $first);
 
-        $session->end(SessionEnd::User, $t1);
-        $session->end(SessionEnd::Expiry, $t2);
+        // When
+        $session->end(SessionEnd::Expiry, new DateTimeImmutable('2026-09-15T12:00:00+00:00'));
 
-        static::assertTrue($session->hasEnded());
-        static::assertFalse($session->isActive($t1));
-        static::assertSame($t1, $session->endedAt);
+        // Then
+        static::assertSame($first, $session->endedAt);
         static::assertSame(SessionEnd::User, $session->endedBy);
     }
 
     #[Test]
     public function anEndedSessionCannotBeTouched(): void
     {
+        // Given
         $session = Fixtures::session();
         $session->end(SessionEnd::Administrator, Fixtures::now());
 
+        // Then
         $this->expectException(LogicException::class);
+
+        // When
         $session->touch(Fixtures::context(), Fixtures::now()->modify('+1 day'));
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Authentication;
 
-use function count;
 use DateInterval;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
@@ -63,12 +62,15 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     #[Test]
-    public function aRightPasswordOpensASessionAndAnnouncesIt(): void
+    public function aRightPasswordOpensASessionOfTheUser(): void
     {
+        // Given
         $context = Fixtures::context($this->clock->now());
 
+        // When
         $session = $this->authenticator->authenticate($this->tenant, ' alice ', 'correct horse', $context, 'urn:acme:pwd');
 
+        // Then
         static::assertSame($this->alice, $session->user);
         static::assertSame(['pwd'], $session->methodReferences());
         static::assertSame('urn:acme:pwd', $session->authenticationContextClass);
@@ -80,30 +82,110 @@ final class PasswordAuthenticatorTest extends TestCase
                 ->getTimestamp(),
         ], $session->proofs->toTimestamps());
         static::assertEquals($this->clock->now()->modify('+8 hours'), $session->expiresAt);
-        static::assertSame($session, $this->sessions->find($session->id));
-        static::assertEquals($this->clock->now(), $this->credentials->findPasswordCredential($this->alice)?->lastUsedAt);
+    }
 
+    #[Test]
+    public function aRightPasswordSavesTheSession(): void
+    {
+        // When
+        $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame($session, $this->sessions->find($session->id));
+    }
+
+    #[Test]
+    public function aRightPasswordDatesTheUseOfTheCredential(): void
+    {
+        // When
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertEquals($this->clock->now(), $this->credentials->findPasswordCredential($this->alice)?->lastUsedAt);
+    }
+
+    #[Test]
+    public function aRightPasswordAnnouncesTheAuthenticationOnce(): void
+    {
+        // When
+        $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
         static::assertCount(1, $this->events->events);
         static::assertSame($session, $this->events->of(UserAuthenticated::class)[0]->session);
     }
 
     #[Test]
-    public function aWrongPasswordFailsAndIsRecordedWithTheUser(): void
+    public function aWrongPasswordFails(): void
     {
-        $this->expectFailure(AuthenticationFailureReason::InvalidCredential, 'alice', 'wrong');
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'alice', 'wrong', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+            static::assertSame('Authentication failed.', $exception->getMessage());
+        }
+    }
 
+    #[Test]
+    public function aWrongPasswordIsRecordedWithTheUser(): void
+    {
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'alice', 'wrong', Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException) {
+        }
+
+        // Then
+        static::assertCount(1, $this->events->events);
         $failure = $this->events->of(AuthenticationFailed::class)[0];
+        static::assertSame(AuthenticationFailureReason::InvalidCredential, $failure->reason);
         static::assertSame($this->alice, $failure->user);
         static::assertSame('alice', $failure->identifier);
+        static::assertSame($this->tenant, $failure->tenant);
+        static::assertEquals($this->clock->now(), $failure->occurredAt);
+    }
+
+    #[Test]
+    public function aWrongPasswordOpensNoSession(): void
+    {
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'alice', 'wrong', Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException) {
+        }
+
+        // Then
         static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
     }
 
     #[Test]
-    public function anUnknownUserFailsAndIsRecordedWithWhatWasTyped(): void
+    public function anUnknownUserFails(): void
     {
-        $this->expectFailure(AuthenticationFailureReason::UnknownUser, 'mallory', 'whatever');
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'mallory', 'whatever', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::UnknownUser, $exception->reason);
+        }
+    }
 
+    #[Test]
+    public function anUnknownUserIsRecordedWithWhatWasTyped(): void
+    {
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'mallory', 'whatever', Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException) {
+        }
+
+        // Then
         $failure = $this->events->of(AuthenticationFailed::class)[0];
+        static::assertSame(AuthenticationFailureReason::UnknownUser, $failure->reason);
         static::assertNull($failure->user);
         static::assertSame('mallory', $failure->identifier);
     }
@@ -111,11 +193,36 @@ final class PasswordAuthenticatorTest extends TestCase
     #[Test]
     public function aUserWithoutPasswordFails(): void
     {
+        // Given
+        $this->users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
+
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'bob', 'anything', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::NoSuchCredential, $exception->reason);
+        }
+    }
+
+    #[Test]
+    public function aUserWithoutPasswordIsRecordedAsTheUser(): void
+    {
+        // Given
         $bob = Fixtures::user($this->tenant, 'bob', 'bob-subject');
         $this->users->save($bob);
 
-        $this->expectFailure(AuthenticationFailureReason::NoSuchCredential, 'bob', 'anything');
-        static::assertSame($bob, $this->events->of(AuthenticationFailed::class)[0]->user);
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'bob', 'anything', Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException) {
+        }
+
+        // Then
+        $failure = $this->events->of(AuthenticationFailed::class)[0];
+        static::assertSame(AuthenticationFailureReason::NoSuchCredential, $failure->reason);
+        static::assertSame($bob, $failure->user);
     }
 
     /**
@@ -123,62 +230,113 @@ final class PasswordAuthenticatorTest extends TestCase
      * disabled account from a wrong password.
      */
     #[Test]
-    public function aDisabledUserFailsOnlyWithTheRightPassword(): void
+    public function aDisabledUserWithAWrongPasswordFailsLikeAnyWrongPassword(): void
     {
+        // Given
         $this->alice->disable(Fixtures::now());
 
-        $this->expectFailure(AuthenticationFailureReason::InvalidCredential, 'alice', 'wrong');
-        $this->expectFailure(AuthenticationFailureReason::DisabledUser, 'alice', 'correct horse');
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'alice', 'wrong', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+        }
+    }
+
+    #[Test]
+    public function aDisabledUserWithTheRightPasswordFailsAsDisabled(): void
+    {
+        // Given
+        $this->alice->disable(Fixtures::now());
+
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::DisabledUser, $exception->reason);
+        }
     }
 
     #[Test]
     public function aUserOfAnotherTenantIsUnknownHere(): void
     {
-        $this->expectFailure(AuthenticationFailureReason::UnknownUser, 'alice', 'correct horse', Fixtures::tenant('other', 'https://id.other.example'));
+        // Given
+        $other = Fixtures::tenant('other', 'https://id.other.example');
+
+        // When
+        try {
+            $this->authenticator->authenticate($other, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::UnknownUser, $exception->reason);
+        }
+    }
+
+    #[Test]
+    public function aFailureIsRecordedInTheTenantItWasAttemptedIn(): void
+    {
+        // Given
+        $other = Fixtures::tenant('other', 'https://id.other.example');
+
+        // When
+        try {
+            $this->authenticator->authenticate($other, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException) {
+        }
+
+        // Then
+        static::assertSame($other, $this->events->of(AuthenticationFailed::class)[0]->tenant);
     }
 
     #[Test]
     public function aLegacyHashIsReplacedAfterASuccessfulLogin(): void
     {
+        // Given
         $carol = Fixtures::user($this->tenant, 'carol', 'carol-subject');
         $this->users->save($carol);
         $this->credentials->save(new PasswordCredential(Uuid::v7(), $carol, new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)), Fixtures::now()));
 
+        // When
         $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
 
+        // Then
         $credential = $this->credentials->findPasswordCredential($carol);
         static::assertSame(PasswordAlgorithm::Argon2id, $credential?->hash->algorithm);
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);
-        static::assertCount(1, $this->events->of(PasswordRehashed::class));
-        static::assertSame($credential, $this->events->of(PasswordRehashed::class)[0]->credential);
         static::assertTrue(new NativePasswordHasher()->verify($credential->hash, 'carol pass'));
+    }
+
+    #[Test]
+    public function aRehashIsAnnounced(): void
+    {
+        // Given
+        $carol = Fixtures::user($this->tenant, 'carol', 'carol-subject');
+        $this->users->save($carol);
+        $this->credentials->save(new PasswordCredential(Uuid::v7(), $carol, new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)), Fixtures::now()));
+
+        // When
+        $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
+
+        // Then
+        static::assertCount(1, $this->events->of(PasswordRehashed::class));
+        static::assertSame($this->credentials->findPasswordCredential($carol), $this->events->of(PasswordRehashed::class)[0]->credential);
     }
 
     #[Test]
     public function theDefaultSessionLifetimeIsTwelveHours(): void
     {
+        // Given
         $authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), $this->sessions, $this->clock, $this->events);
 
+        // When
         $session = $authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context());
 
+        // Then
         static::assertEquals($this->clock->now()->modify('+12 hours'), $session->expiresAt);
-    }
-
-    private function expectFailure(AuthenticationFailureReason $reason, string $identifier, string $password, ?Tenant $tenant = null): void
-    {
-        $before = count($this->events->events);
-        try {
-            $this->authenticator->authenticate($tenant ?? $this->tenant, $identifier, $password, Fixtures::context($this->clock->now()));
-            static::fail('Authentication should have failed.');
-        } catch (AuthenticationFailedException $exception) {
-            static::assertSame($reason, $exception->reason);
-            static::assertSame('Authentication failed.', $exception->getMessage());
-        }
-        $failures = $this->events->of(AuthenticationFailed::class);
-        static::assertCount($before + 1, $this->events->events);
-        $failure = $failures[count($failures) - 1];
-        static::assertSame($reason, $failure->reason);
-        static::assertEquals($this->clock->now(), $failure->occurredAt);
-        static::assertSame($tenant ?? $this->tenant, $failure->tenant);
     }
 }

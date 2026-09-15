@@ -20,13 +20,17 @@ final class LinkedIdentityTest extends TestCase
      * last snapshot received.
      */
     #[Test]
-    public function itRecordsTheUpstreamIdentityAndItsLastSnapshot(): void
+    public function itRecordsTheUpstreamIdentityOfAUser(): void
     {
+        // Given
         $user = Fixtures::user();
+
+        // When
         $identity = new LinkedIdentity(Uuid::v7(), $user, 'google', '1234567890', [
             'email' => 'alice@example.com',
         ], Fixtures::now(), Fixtures::now());
 
+        // Then
         static::assertSame($user, $identity->user);
         static::assertSame($user->tenant, $identity->tenant);
         static::assertSame('google', $identity->provider);
@@ -34,12 +38,23 @@ final class LinkedIdentityTest extends TestCase
         static::assertSame([
             'email' => 'alice@example.com',
         ], $identity->claims);
+    }
 
+    #[Test]
+    public function aRefreshReplacesTheSnapshotAndDatesItWithoutTouchingTheLink(): void
+    {
+        // Given
+        $identity = new LinkedIdentity(Uuid::v7(), Fixtures::user(), 'google', '1234567890', [
+            'email' => 'alice@example.com',
+        ], Fixtures::now(), Fixtures::now());
         $later = new DateTimeImmutable('2026-09-16T08:00:00+00:00');
+
+        // When
         $identity->refresh([
             'email' => 'alice@example.org',
         ], $later);
 
+        // Then
         static::assertSame([
             'email' => 'alice@example.org',
         ], $identity->claims);
@@ -47,21 +62,23 @@ final class LinkedIdentityTest extends TestCase
         static::assertEquals(Fixtures::now(), $identity->linkedAt);
     }
 
+    #[Test]
+    #[DataProvider('provideIncompleteIdentities')]
+    public function itNamesItsProviderAndItsSubject(string $provider, string $subject): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+
+        // When
+        new LinkedIdentity(Uuid::v7(), Fixtures::user(), $provider, $subject, [], Fixtures::now(), Fixtures::now());
+    }
+
     /**
      * @return iterable<string, array{string, string}>
      */
-    public static function incompleteIdentities(): iterable
+    public static function provideIncompleteIdentities(): iterable
     {
         yield 'no provider' => ['', '1234567890'];
         yield 'no subject' => ['google', ''];
-    }
-
-    #[Test]
-    #[DataProvider('incompleteIdentities')]
-    public function itNamesItsProviderAndItsSubject(string $provider, string $subject): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-
-        new LinkedIdentity(Uuid::v7(), Fixtures::user(), $provider, $subject, [], Fixtures::now(), Fixtures::now());
     }
 }
