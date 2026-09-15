@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Event\AuthenticationFailed;
 use Heidi\Core\Domain\Event\AuthenticationFailureReason;
 use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
@@ -20,9 +21,9 @@ use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sleep;
-use function sprintf;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -42,23 +43,42 @@ final class LoginTest extends BrowserTestCase
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * OIDC Core §2 (auth_time, amr), RFC 8176 §2, architecture §3.2 and §3.5: what the login of the
-     * firewall leaves behind, and how the interaction goes on with it.
+     * Architecture §5.4: the login of the firewall sends the browser back to the login page of the
+     * interaction, which resumes it.
      */
     #[Test]
-    public function aUserCreatedOutsideOfTheBrowserSignsInAndTheInteractionGoesOn(): void
+    public function aSuccessfulLoginGoesBackToTheLoginPageOfTheInteraction(): void
     {
-        $user = self::userWithPassword('alice', self::PASSWORD);
-        $before = new DateTimeImmutable();
-
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
         $interaction = $this->authorize();
+
+        // When
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
         self::assertInteractionHeaders($response);
         static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
+    }
 
-        // the session of the core: who, since when, how, from where
+    /**
+     * OIDC Core §2 (auth_time, amr), RFC 8176 §2, architecture §3.2 and §3.5: the session of the core
+     * says who, since when, how, from where.
+     */
+    #[Test]
+    public function aSuccessfulLoginOpensASessionOfTheCore(): void
+    {
+        // Given
+        $user = self::userWithPassword('alice', self::PASSWORD);
+        $before = new DateTimeImmutable();
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
         $session = $this->boundSession();
         static::assertTrue($session->user->id->equals($user->id));
         static::assertSame(['pwd'], $session->methodReferences());
@@ -68,206 +88,480 @@ final class LoginTest extends BrowserTestCase
         static::assertSame('Symfony BrowserKit', $session->createdFrom->userAgent);
         static::assertTrue($session->isActive(new DateTimeImmutable()));
         static::assertNull($session->authenticationContextClass);
+    }
 
-        // the token of the firewall calls recent what the session calls auth_time (symfony/symfony#66014)
-        static::assertSame($session->authenticatedAt()->getTimestamp(), $this->securityToken()->getAttribute(AuthenticatedVoter::AUTH_TIME_ATTRIBUTE));
+    /**
+     * The token of the firewall calls recent what the session calls auth_time (symfony/symfony#66014).
+     */
+    #[Test]
+    public function theTokenOfTheFirewallCarriesTheAuthTimeOfTheSession(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
 
-        // the credential was used, the core was told
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($session->user) ?? static::fail('The credential is gone.');
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
+        static::assertSame($this->boundSession()->authenticatedAt()->getTimestamp(), $this->securityToken()->getAttribute(AuthenticatedVoter::AUTH_TIME_ATTRIBUTE));
+    }
+
+    #[Test]
+    public function aSuccessfulLoginDatesTheUseOfTheCredential(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
+        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($this->boundSession()->user) ?? static::fail('The credential is gone.');
         static::assertNotNull($credential->lastUsedAt);
+    }
+
+    /**
+     * Architecture §3.5: the core is told once; a hash the policy produces is not rehashed.
+     */
+    #[Test]
+    public function aSuccessfulLoginIsAnnouncedOnce(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
         $events = self::events(UserAuthenticated::class);
         static::assertCount(1, $events);
-        static::assertTrue($events[0]->session->id->equals($session->id));
-        static::assertSame([], self::events(PasswordRehashed::class), 'A hash the policy produces is not rehashed.');
+        static::assertTrue($events[0]->session->id->equals($this->boundSession()->id));
+        static::assertSame([], self::events(PasswordRehashed::class));
+    }
 
-        // the interaction the browser began goes on with the session: consent is next
+    /**
+     * The interaction the browser began goes on with the session: consent is next.
+     */
+    #[Test]
+    public function theInteractionGoesOnWithTheSession(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // When
         $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
         ]);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/consent?interaction=' . $interaction, $response->headers->get('Location'));
     }
 
     /**
-     * Architecture §4.3: an interaction is resumed by the browser that began it and by no other, whether
-     * the other is signed in or not.
+     * Architecture §4.3: an interaction is resumed by the browser that began it and by no other.
      */
     #[Test]
-    public function anInteractionBegunInAnotherHttpSessionCannotBeResumed(): void
+    public function anotherBrowserCannotSeeTheLoginPageOfAnInteraction(): void
     {
-        self::userWithPassword('alice', self::PASSWORD);
+        // Given
         $interaction = $this->authorize();
-        $crawler = $this->loginPage($interaction);
-        $token = $crawler->filter('input[name="_csrf_token"]')
-            ->attr('value');
-        static::assertIsString($token);
-
-        // another browser: no cookie of the first one
         $this->browser->getCookieJar()
             ->clear();
 
-        // the login page of that interaction is not for this browser
+        // When
         $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
         ]);
-        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
 
-        // nor is its form, whatever it posts: the firewall refuses a form token it did not give this
-        // browser and opens no session
-        $this->browser->request('POST', '/login?interaction=' . $interaction, [
-            '_username' => 'alice',
-            '_password' => self::PASSWORD,
-            '_csrf_token' => $token,
-        ]);
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
-        static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
-        static::assertFalse($this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY));
-        static::assertSame([], self::sessionsOf('alice'));
-        static::assertSame([], self::events(UserAuthenticated::class));
-
-        // signed in on an interaction of its own, this browser still cannot touch the first one
-        $own = $this->authorize();
-        $this->submitLogin($own, 'alice', self::PASSWORD);
-        static::assertCount(1, self::sessionsOf('alice'));
-        $this->browser->request('GET', '/login', [
-            'interaction' => $interaction,
-        ]);
+        // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
-        $this->browser->request('GET', '/consent', [
-            'interaction' => $interaction,
-        ]);
-        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
-        static::assertFalse(self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction)?->isCompleted(), 'The first interaction is still pending.');
     }
 
     /**
-     * Decision 0006 and architecture §3.4: the user gets one message whatever the reason, the audit
-     * trail gets the reason.
+     * Nor is its form for another browser, whatever it posts: the firewall refuses a form token it did
+     * not give this browser.
      */
     #[Test]
-    public function aWrongPasswordShowsTheFormAgainWithOneMessageAndOpensNoSession(): void
+    public function anotherBrowserCannotPostTheLoginFormOfAnInteraction(): void
     {
-        $user = self::userWithPassword('alice', self::PASSWORD);
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $token = $this->csrfTokenOfTheLoginPage($interaction);
+        $this->browser->getCookieJar()
+            ->clear();
+
+        // When
+        $this->postLogin($interaction, 'alice', self::PASSWORD, $token);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
+    }
+
+    #[Test]
+    public function aLoginPostedByAnotherBrowserOpensNoSession(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $token = $this->csrfTokenOfTheLoginPage($interaction);
+        $this->browser->getCookieJar()
+            ->clear();
+
+        // When
+        $this->postLogin($interaction, 'alice', self::PASSWORD, $token);
+
+        // Then
+        static::assertFalse($this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY));
+        static::assertSame([], self::sessionsOf('alice'));
+        static::assertSame([], self::events(UserAuthenticated::class));
+    }
+
+    /**
+     * Signed in on an interaction of its own, a browser still cannot touch one begun elsewhere.
+     */
+    #[Test]
+    #[DataProvider('providePagesOfAnInteraction')]
+    public function aBrowserSignedInOnItsOwnInteractionCannotResumeAnotherOne(string $path): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->browser->getCookieJar()
+            ->clear();
+        $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
+
+        // When
+        $this->browser->request('GET', $path, [
+            'interaction' => $interaction,
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function providePagesOfAnInteraction(): iterable
+    {
+        yield 'the login page' => ['/login'];
+        yield 'the consent page' => ['/consent'];
+    }
+
+    #[Test]
+    public function anInteractionAnotherBrowserTriedToResumeIsStillPending(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->browser->getCookieJar()
+            ->clear();
+        $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
+
+        // When
+        $this->browser->request('GET', '/consent', [
+            'interaction' => $interaction,
+        ]);
+
+        // Then
+        static::assertFalse(self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction)?->isCompleted());
+    }
+
+    /**
+     * Decision 0006 and architecture §3.4: a wrong password sends the browser back to the form.
+     */
+    #[Test]
+    public function aWrongPasswordGoesBackToTheLoginPage(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
         $interaction = $this->authorize();
 
+        // When
         $this->submitLogin($interaction, 'alice', 'not the password');
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertInteractionHeaders($response);
         static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
+    }
+
+    #[Test]
+    public function aWrongPasswordOpensNoSession(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', 'not the password');
+
+        // Then
         static::assertFalse($this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY));
         static::assertSame([], self::sessionsOf('alice'));
         static::assertSame([], self::events(UserAuthenticated::class));
+    }
+
+    /**
+     * Architecture §3.4: the audit trail gets the reason and the request context.
+     */
+    #[Test]
+    public function aWrongPasswordIsRecordedWithItsReason(): void
+    {
+        // Given
+        $user = self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', 'not the password');
+
+        // Then
         $failures = self::events(AuthenticationFailed::class);
         static::assertCount(1, $failures);
         static::assertSame(AuthenticationFailureReason::InvalidCredential, $failures[0]->reason);
         static::assertSame('alice', $failures[0]->identifier);
         static::assertTrue($failures[0]->user?->id->equals($user->id));
         static::assertSame('127.0.0.1', $failures[0]->context->ipAddress);
+    }
 
-        // the page shows the form again, the username kept, one message; the message is shown once
+    /**
+     * Decision 0006: the user gets one message whatever the reason, the username kept.
+     */
+    #[Test]
+    public function afterAWrongPasswordTheFormShowsOneMessageAndKeepsTheUsername(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', 'not the password');
+
+        // When
         $crawler = $this->loginPage($interaction);
+
+        // Then
         static::assertSame('authentication_failed', $crawler->filter('p[data-error]')->attr('data-error'));
         static::assertSame('alice', $crawler->filter('input[name="_username"]')->attr('value'));
+    }
+
+    #[Test]
+    public function theMessageOfAFailedLoginIsShownOnce(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', 'not the password');
+        $this->loginPage($interaction);
+
+        // When
         $crawler = $this->loginPage($interaction);
+
+        // Then
         static::assertCount(0, $crawler->filter('p[data-error]'));
     }
 
     /**
      * Decision 0006: an unknown user, a disabled user and a user without a password are refused exactly
-     * like a wrong password; only the audit trail tells them apart.
+     * like a wrong password.
+     *
+     * @param callable(): ?User $user
      */
     #[Test]
-    public function anUnknownADisabledOrAPasswordlessUserIsRefusedLikeAWrongPassword(): void
+    #[DataProvider('provideUsersRefusedLikeAWrongPassword')]
+    public function anUnknownADisabledOrAPasswordlessUserIsRefusedLikeAWrongPassword(string $username, callable $user, AuthenticationFailureReason $reason): void
     {
-        $disabled = self::userWithPassword('bob', self::PASSWORD);
-        $disabled->disable(self::now());
-        self::service('test.heidi.users', UserRepositoryInterface::class)
-            ->save($disabled);
-        $passwordless = self::user('carol', 'carol-subject');
+        // Given
+        $user();
         $interaction = $this->authorize();
 
-        foreach ([
-            'nobody' => [AuthenticationFailureReason::UnknownUser, null],
-            'bob' => [AuthenticationFailureReason::DisabledUser, $disabled],
-            'carol' => [AuthenticationFailureReason::NoSuchCredential, $passwordless],
-        ] as $username => [$reason, $user]) {
-            $this->submitLogin($interaction, $username, self::PASSWORD);
-            $response = $this->browser->getResponse();
-            static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), $username);
-            static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'), $username);
-            static::assertFalse($this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY), $username);
-            $failures = self::events(AuthenticationFailed::class);
-            static::assertCount(1, $failures, $username);
-            static::assertSame($reason, $failures[0]->reason, $username);
-            static::assertSame($username, $failures[0]->identifier, $username);
-            if ($user === null) {
-                static::assertNull($failures[0]->user, $username);
-            } else {
-                static::assertTrue($failures[0]->user?->id->equals($user->id), $username);
-            }
-            $crawler = $this->loginPage($interaction);
-            static::assertSame('authentication_failed', $crawler->filter('p[data-error]')->attr('data-error'), $username);
-        }
-        static::assertSame([], self::sessionsOf('bob'));
-        static::assertSame([], self::sessionsOf('carol'));
-    }
+        // When
+        $this->submitLogin($interaction, $username, self::PASSWORD);
 
-    /**
-     * A form posted without the token of this browser is not an attempt on an account: refused, nothing
-     * opened, nothing recorded.
-     */
-    #[Test]
-    public function aFormWithoutItsTokenIsRefusedAndNothingIsRecorded(): void
-    {
-        self::userWithPassword('alice', self::PASSWORD);
-        $interaction = $this->authorize();
-        $this->loginPage($interaction);
-
-        $this->browser->request('POST', '/login?interaction=' . $interaction, [
-            '_username' => 'alice',
-            '_password' => self::PASSWORD,
-            '_csrf_token' => 'not-the-token',
-        ]);
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
-        static::assertSame([], self::sessionsOf('alice'));
-        static::assertSame([], self::events(AuthenticationFailed::class));
-        static::assertSame([], self::events(UserAuthenticated::class));
+        static::assertFalse($this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY));
+        static::assertSame([], self::sessionsOf($username));
         static::assertSame('authentication_failed', $this->loginPage($interaction)->filter('p[data-error]')->attr('data-error'));
     }
 
     /**
+     * Decision 0006: only the audit trail tells them apart.
+     *
+     * @param callable(): ?User $user
+     */
+    #[Test]
+    #[DataProvider('provideUsersRefusedLikeAWrongPassword')]
+    public function theAuditTrailTellsTheReasonOfARefusedLogin(string $username, callable $user, AuthenticationFailureReason $reason): void
+    {
+        // Given
+        $refused = $user();
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, $username, self::PASSWORD);
+
+        // Then
+        $failures = self::events(AuthenticationFailed::class);
+        static::assertCount(1, $failures);
+        static::assertSame($reason, $failures[0]->reason);
+        static::assertSame($username, $failures[0]->identifier);
+        if ($refused === null) {
+            static::assertNull($failures[0]->user);
+        } else {
+            static::assertTrue($failures[0]->user?->id->equals($refused->id));
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, callable(): ?User, AuthenticationFailureReason}>
+     */
+    public static function provideUsersRefusedLikeAWrongPassword(): iterable
+    {
+        yield 'unknown' => ['nobody', static fn (): ?User => null, AuthenticationFailureReason::UnknownUser];
+        yield 'disabled' => ['bob', static function (): User {
+            $disabled = self::userWithPassword('bob', self::PASSWORD);
+            $disabled->disable(self::now());
+            self::service('test.heidi.users', UserRepositoryInterface::class)
+                ->save($disabled);
+
+            return $disabled;
+        }, AuthenticationFailureReason::DisabledUser];
+        yield 'without a password' => ['carol', static fn (): User => self::user('carol', 'carol-subject'), AuthenticationFailureReason::NoSuchCredential];
+    }
+
+    /**
+     * A form posted without the token of this browser is refused.
+     */
+    #[Test]
+    public function aFormWithoutItsTokenIsRefused(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->loginPage($interaction);
+
+        // When
+        $this->postLogin($interaction, 'alice', self::PASSWORD, 'not-the-token');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
+        static::assertSame('authentication_failed', $this->loginPage($interaction)->filter('p[data-error]')->attr('data-error'));
+    }
+
+    /**
+     * A form posted without its token is not an attempt on an account: nothing opened, nothing recorded.
+     */
+    #[Test]
+    public function aFormWithoutItsTokenRecordsNothing(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->loginPage($interaction);
+
+        // When
+        $this->postLogin($interaction, 'alice', self::PASSWORD, 'not-the-token');
+
+        // Then
+        static::assertSame([], self::sessionsOf('alice'));
+        static::assertSame([], self::events(AuthenticationFailed::class));
+        static::assertSame([], self::events(UserAuthenticated::class));
+    }
+
+    /**
      * Architecture §3.4: a hash weaker than the policy of the core is replaced on the login that verified
-     * it, and the core is told; the password itself did not change.
+     * it; the password itself did not change.
      */
     #[Test]
     public function aHashWeakerThanThePolicyIsRehashedOnLogin(): void
     {
+        // Given
         $user = self::userWithPassword('alice', self::PASSWORD, PasswordAlgorithm::Bcrypt);
         $interaction = $this->authorize();
 
+        // When
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
+        // Then
         static::assertCount(1, self::sessionsOf('alice'));
-        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($managed) ?? static::fail('The credential is gone.');
+        $credential = $this->credentialOf($user);
         static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
         static::assertNotNull($credential->lastUsedAt);
+    }
+
+    /**
+     * Architecture §3.4: the core is told of the rehash, with the request context.
+     */
+    #[Test]
+    public function aRehashOnLoginIsAnnounced(): void
+    {
+        // Given
+        $user = self::userWithPassword('alice', self::PASSWORD, PasswordAlgorithm::Bcrypt);
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
         $rehashes = self::events(PasswordRehashed::class);
         static::assertCount(1, $rehashes);
-        static::assertTrue($rehashes[0]->credential->id->equals($credential->id));
+        static::assertTrue($rehashes[0]->credential->id->equals($this->credentialOf($user)->id));
         static::assertSame('127.0.0.1', $rehashes[0]->context->ipAddress);
+    }
 
-        // the new hash opens the session next time too
+    /**
+     * The new hash opens the session next time too, and is not rehashed again.
+     */
+    #[Test]
+    public function theRehashedPasswordOpensTheSessionNextTime(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD, PasswordAlgorithm::Bcrypt);
+        $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
         $this->browser->getCookieJar()
             ->clear();
+
+        // When
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
+
+        // Then
         static::assertCount(2, self::sessionsOf('alice'));
         static::assertSame([], self::events(PasswordRehashed::class));
+    }
+
+    /**
+     * OIDC Core §3.1.2.1 (prompt=login): the login page tells the signed-in user a fresh login is asked.
+     */
+    #[Test]
+    public function theLoginPageSaysWhenAFreshLoginIsAsked(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
+        $this->aSecondLater();
+        $interaction = $this->authorize([
+            'prompt' => 'login',
+        ]);
+
+        // When
+        $crawler = $this->loginPage($interaction);
+
+        // Then
+        static::assertSame('reauthentication_requested', $crawler->filter('p[data-requirement]')->attr('data-requirement'));
     }
 
     /**
@@ -277,66 +571,124 @@ final class LoginTest extends BrowserTestCase
     #[Test]
     public function aFreshLoginAskedByTheClientRecordsAProofOnTheExistingSession(): void
     {
+        // Given
         self::userWithPassword('alice', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
         $first = $this->boundSession();
-        $firstAuthenticatedAt = $first->authenticatedAt();
-
-        // the rows keep seconds: a request of the next second is what tells a login from a request
-        sleep(1);
+        $this->aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
-        $crawler = $this->loginPage($interaction);
-        static::assertSame('reauthentication_requested', $crawler->filter('p[data-requirement]')->attr('data-requirement'));
+
+        // When
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
-        $sessions = self::sessionsOf('alice');
-        static::assertCount(1, $sessions);
+        // Then
+        static::assertCount(1, self::sessionsOf('alice'));
         $session = $this->boundSession();
         static::assertTrue($session->id->equals($first->id));
         static::assertSame(['pwd'], $session->methodReferences());
-        static::assertGreaterThanOrEqual($firstAuthenticatedAt, $session->authenticatedAt());
-        static::assertSame($session->authenticatedAt()->getTimestamp(), $this->securityToken()->getAttribute(AuthenticatedVoter::AUTH_TIME_ATTRIBUTE));
+        static::assertGreaterThanOrEqual($first->authenticatedAt(), $session->authenticatedAt());
         static::assertSame([], self::events(UserAuthenticated::class), 'No session was opened.');
+    }
 
-        // the interaction goes on: the login is fresh
+    #[Test]
+    public function aFreshLoginMovesTheAuthTimeOfTheToken(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
+        $this->aSecondLater();
+        $interaction = $this->authorize([
+            'prompt' => 'login',
+        ]);
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
+        static::assertSame($this->boundSession()->authenticatedAt()->getTimestamp(), $this->securityToken()->getAttribute(AuthenticatedVoter::AUTH_TIME_ATTRIBUTE));
+    }
+
+    /**
+     * The interaction goes on: the login is fresh.
+     */
+    #[Test]
+    public function theInteractionGoesOnAfterAFreshLogin(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
+        $this->aSecondLater();
+        $interaction = $this->authorize([
+            'prompt' => 'login',
+        ]);
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // When
         $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
         ]);
+
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/consent?interaction=' . $interaction, $response->headers->get('Location'));
     }
 
     /**
-     * Architecture §3.2: two users do not share a cookie. Someone else signing in on a bound browser ends
-     * the session of the first user and opens their own.
+     * Architecture §3.2: two users do not share a cookie. Someone else signing in on a bound browser
+     * opens their own session.
      */
     #[Test]
-    public function anotherUserSigningInOnABoundBrowserEndsTheSessionOfTheFirst(): void
+    public function anotherUserSigningInOnABoundBrowserOpensTheirOwnSession(): void
     {
+        // Given
         self::userWithPassword('alice', self::PASSWORD);
         self::userWithPassword('bob', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
         $alice = $this->boundSession();
-
-        sleep(1);
+        $this->aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
+
+        // When
         $this->submitLogin($interaction, 'bob', self::PASSWORD);
 
+        // Then
         $bob = $this->boundSession();
         static::assertTrue($bob->user->id->equals(self::sessionsOf('bob')[0]->user->id));
         static::assertFalse($bob->id->equals($alice->id));
+        static::assertCount(1, self::events(UserAuthenticated::class));
+    }
+
+    /**
+     * Architecture §3.2: someone else signing in on a bound browser ends the session of the first user.
+     */
+    #[Test]
+    public function anotherUserSigningInOnABoundBrowserEndsTheSessionOfTheFirst(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        self::userWithPassword('bob', self::PASSWORD);
+        $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
+        $alice = $this->boundSession();
+        $this->aSecondLater();
+        $interaction = $this->authorize([
+            'prompt' => 'login',
+        ]);
+
+        // When
+        $this->submitLogin($interaction, 'bob', self::PASSWORD);
+
+        // Then
         $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($alice->id) ?? static::fail('The session of alice is gone.');
         static::assertTrue($ended->hasEnded());
         static::assertSame(SessionEnd::User, $ended->endedBy);
         $endings = self::events(AuthenticationSessionEnded::class);
         static::assertCount(1, $endings);
         static::assertTrue($endings[0]->session->id->equals($alice->id));
-        static::assertCount(1, self::events(UserAuthenticated::class));
     }
 
     /**
@@ -344,17 +696,25 @@ final class LoginTest extends BrowserTestCase
      * session started, whatever the request.
      */
     #[Test]
-    public function theProtocolPlaneStartsNoSession(): void
+    #[DataProvider('provideProtocolRequests')]
+    public function theProtocolPlaneStartsNoSession(string $method, string $path): void
     {
-        foreach ([
-            ['GET', '/.well-known/openid-configuration'],
-            ['GET', '/jwks'],
-            ['POST', '/token'],
-            ['GET', '/userinfo'],
-        ] as [$method, $path]) {
-            $this->browser->request($method, $path);
-            static::assertFalse($this->browser->getResponse()->headers->has('Set-Cookie'), sprintf('%s %s set a cookie.', $method, $path));
-        }
+        // When
+        $this->browser->request($method, $path);
+
+        // Then
+        static::assertFalse($this->browser->getResponse()->headers->has('Set-Cookie'));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideProtocolRequests(): iterable
+    {
+        yield 'discovery' => ['GET', '/.well-known/openid-configuration'];
+        yield 'jwks' => ['GET', '/jwks'];
+        yield 'token' => ['POST', '/token'];
+        yield 'userinfo' => ['GET', '/userinfo'];
     }
 
     /**
@@ -384,6 +744,16 @@ final class LoginTest extends BrowserTestCase
         return $crawler;
     }
 
+    private function csrfTokenOfTheLoginPage(string $interaction): string
+    {
+        $token = $this->loginPage($interaction)
+            ->filter('input[name="_csrf_token"]')
+            ->attr('value');
+        static::assertIsString($token);
+
+        return $token;
+    }
+
     /**
      * Fills and posts the form of the login page, as a user does.
      */
@@ -395,6 +765,33 @@ final class LoginTest extends BrowserTestCase
         $form['_username'] = $username;
         $form['_password'] = $password;
         $this->browser->submit($form);
+    }
+
+    /**
+     * Posts the login form without reading the page, with the token given.
+     */
+    private function postLogin(string $interaction, string $username, string $password, string $token): void
+    {
+        $this->browser->request('POST', '/login?interaction=' . $interaction, [
+            '_username' => $username,
+            '_password' => $password,
+            '_csrf_token' => $token,
+        ]);
+    }
+
+    /**
+     * The rows keep seconds: a request of the next second is what tells a login from a request.
+     */
+    private function aSecondLater(): void
+    {
+        sleep(1);
+    }
+
+    private function credentialOf(User $user): PasswordCredential
+    {
+        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+
+        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($managed) ?? static::fail('The credential is gone.');
     }
 
     /**
