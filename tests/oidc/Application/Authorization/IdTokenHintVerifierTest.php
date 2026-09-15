@@ -1,0 +1,155 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Oidc\Tests\Application\Authorization;
+
+use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Exception\InvalidJwsException;
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Exception\InvalidRequestException;
+use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
+use JsonException;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Throwable;
+
+final class IdTokenHintVerifierTest extends TestCase
+{
+    private const string TOKEN = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkazcifQ.eyJpc3MiOiJodHRwczovL2lkLmFjbWUuZXhhbXBsZSJ9.c2lnbmF0dXJl';
+
+    private Tenant $tenant;
+
+    private Client $client;
+
+    private FakeJwsVerifier $jws;
+
+    private IdTokenHintVerifier $verifier;
+
+    protected function setUp(): void
+    {
+        $this->tenant = Fixtures::tenant();
+        $this->client = Clients::public($this->tenant);
+        $this->jws = new FakeJwsVerifier();
+        $this->verifier = new IdTokenHintVerifier($this->jws);
+    }
+
+    /**
+     * OIDC Core §3.1.2.1: the hint names the end user by "sub"; §2: "aud" is a string or a list, "exp"
+     * is not looked at because the hint may describe a past session.
+     */
+    #[Test]
+    #[DataProvider('validHints')]
+    public function itReadsTheSubjectOfAnIdTokenIssuedHereToThisClient(string $payload): void
+    {
+        $this->jws->knows($this->tenant, self::TOKEN, $payload);
+
+        static::assertSame('alice-subject', (string) $this->verifier->verify($this->client, self::TOKEN));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function validHints(): iterable
+    {
+        yield 'single audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1}'];
+        yield 'audience list' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","spa"],"exp":1}'];
+        yield 'profile claims' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","address":{"country":"FR"}}'];
+    }
+
+    /**
+     * A token that does not verify against the keys of the tenant, or is not a JSON object with the
+     * "iss" of the tenant and a "sub", was not issued here: invalid_request, sent back to the client,
+     * with the cause kept for the logs.
+     *
+     * @param class-string<Throwable>|null $cause
+     */
+    #[Test]
+    #[DataProvider('foreignHints')]
+    public function itRefusesATokenNotIssuedHere(?string $payload, ?string $cause = null): void
+    {
+        if ($payload !== null) {
+            $this->jws->knows($this->tenant, self::TOKEN, $payload);
+        }
+
+        try {
+            $this->verifier->verify($this->client, self::TOKEN);
+            static::fail('The hint should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            static::assertTrue($exception->redirectable);
+            static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
+            if ($cause === null) {
+                static::assertNull($exception->getPrevious());
+            } else {
+                static::assertInstanceOf($cause, $exception->getPrevious());
+            }
+        }
+    }
+
+    /**
+     * @return iterable<string, array{?string, 1?: class-string<Throwable>}>
+     */
+    public static function foreignHints(): iterable
+    {
+        yield 'signature' => [null, InvalidJwsException::class];
+        yield 'not JSON' => ['not json', JsonException::class];
+        yield 'a list' => ['["https://id.acme.example"]'];
+        yield 'a string' => ['"https://id.acme.example"'];
+        yield 'null' => ['null'];
+        yield 'too deep' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","a":{"b":{"c":{"d":1}}}}', JsonException::class];
+        yield 'no issuer' => ['{"sub":"alice-subject","aud":"spa"}'];
+        yield 'other issuer' => ['{"iss":"https://id.other.example","sub":"alice-subject","aud":"spa"}'];
+        yield 'issuer not a string' => ['{"iss":["https://id.acme.example"],"sub":"alice-subject","aud":"spa"}'];
+        yield 'no subject' => ['{"iss":"https://id.acme.example","aud":"spa"}'];
+        yield 'subject not a string' => ['{"iss":"https://id.acme.example","sub":42,"aud":"spa"}'];
+        yield 'subject empty' => ['{"iss":"https://id.acme.example","sub":"","aud":"spa"}'];
+    }
+
+    /**
+     * A token of this provider but for another client is refused too: a client learns nothing from a
+     * token it did not obtain.
+     */
+    #[Test]
+    #[DataProvider('otherClientHints')]
+    public function itRefusesATokenIssuedToAnotherClient(string $payload): void
+    {
+        $this->jws->knows($this->tenant, self::TOKEN, $payload);
+
+        try {
+            $this->verifier->verify($this->client, self::TOKEN);
+            static::fail('The hint should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            static::assertTrue($exception->redirectable);
+            static::assertSame('The id_token_hint parameter is not an ID token issued to this client.', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function otherClientHints(): iterable
+    {
+        yield 'no audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject"}'];
+        yield 'other audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"other"}'];
+        yield 'other audiences' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","another"]}'];
+        yield 'audience map' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"a":"spa"}}'];
+        yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42}'];
+    }
+
+    /**
+     * The keys are those of the client's tenant: a token of another tenant of the same deployment does
+     * not verify.
+     */
+    #[Test]
+    public function itVerifiesAgainstTheKeysOfTheTenantOfTheClient(): void
+    {
+        $this->jws->knows(Fixtures::tenant('other', 'https://id.other.example'), self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa"}');
+
+        $this->expectException(InvalidRequestException::class);
+        $this->verifier->verify($this->client, self::TOKEN);
+    }
+}
