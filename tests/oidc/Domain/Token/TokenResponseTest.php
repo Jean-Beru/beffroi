@@ -67,7 +67,7 @@ final class TokenResponseTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('absent or non-empty');
+        $this->expectExceptionMessageIsOrContains('absent or non-empty');
 
         // When
         new TokenResponse('at.value', 600, $refreshToken, $idToken, [Scope::openid()]);

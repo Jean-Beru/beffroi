@@ -161,10 +161,18 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
      */
     public static function provideLookupsThatFindNothing(): iterable
     {
-        yield 'an unknown subject' => [static fn (UserRepositoryInterface $users): ?User => $users->findBySubject(self::tenant(), new Subject('carol-subject'))];
-        yield 'an unknown username' => [static fn (UserRepositoryInterface $users): ?User => $users->findByUsername(self::tenant(), 'carol')];
-        yield 'a username in another case' => [static fn (UserRepositoryInterface $users): ?User => $users->findByUsername(self::tenant(), 'ALICE')];
-        yield 'an unknown identifier' => [static fn (UserRepositoryInterface $users): ?User => $users->find(Uuid::v7())];
+        yield 'an unknown subject' => [
+            static fn (UserRepositoryInterface $users): ?User => $users->findBySubject(self::tenant(), new Subject('carol-subject')),
+        ];
+        yield 'an unknown username' => [
+            static fn (UserRepositoryInterface $users): ?User => $users->findByUsername(self::tenant(), 'carol'),
+        ];
+        yield 'a username in another case' => [
+            static fn (UserRepositoryInterface $users): ?User => $users->findByUsername(self::tenant(), 'ALICE'),
+        ];
+        yield 'an unknown identifier' => [
+            static fn (UserRepositoryInterface $users): ?User => $users->find(Uuid::v7()),
+        ];
     }
 
     private static function users(): UserRepositoryInterface

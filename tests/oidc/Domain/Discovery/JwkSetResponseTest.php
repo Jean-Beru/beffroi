@@ -102,7 +102,7 @@ final class JwkSetResponseTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('number of seconds');
+        $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
         new JwkSetResponse(new PublicKeySet([]), -1);

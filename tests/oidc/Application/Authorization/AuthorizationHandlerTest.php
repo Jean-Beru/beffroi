@@ -181,7 +181,9 @@ final class AuthorizationHandlerTest extends TestCase
 
             return $session;
         }];
-        yield 'expired' => [static fn (self $test): AuthenticationSession => $test->session(Fixtures::now()->modify('-1 day'))];
+        yield 'expired' => [
+            static fn (self $test): AuthenticationSession => $test->session(Fixtures::now()->modify('-1 day')),
+        ];
     }
 
     /**
@@ -291,7 +293,8 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->begin($this->request(), $this->session(), $this->context);
 
         // Then
-        $response = $this->granted($decision)->response;
+        $response = $this->granted($decision)
+            ->response;
         static::assertSame('https://id.acme.example', (string) $response->issuer);
         static::assertSame('af0ifjsldkj', $response->state);
         static::assertSame(sprintf('https://demo.localhost/login/check?code=%s&state=af0ifjsldkj&iss=https%%3A%%2F%%2Fid.acme.example', $response->code), $response->toUri());
@@ -643,8 +646,12 @@ final class AuthorizationHandlerTest extends TestCase
      */
     public static function provideSessionsOrNone(): iterable
     {
-        yield 'no session' => [static fn (self $test): ?AuthenticationSession => null];
-        yield 'a session' => [static fn (self $test): ?AuthenticationSession => $test->session()];
+        yield 'no session' => [
+            static fn (self $test): ?AuthenticationSession => null,
+        ];
+        yield 'a session' => [
+            static fn (self $test): AuthenticationSession => $test->session(),
+        ];
     }
 
     /**
@@ -684,7 +691,8 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->grantConsent($consent->interaction, $session, Fixtures::context($this->clock->now()));
 
         // Then
-        $recorded = $this->granted($decision)->interaction->consent ?? static::fail('The consent should have been recorded.');
+        $recorded = $this->granted($decision)
+            ->interaction->consent ?? static::fail('The consent should have been recorded.');
         static::assertSame([$recorded], $this->consents->all());
         static::assertSame($recorded, $this->consents->findActive($this->alice, $this->client));
         static::assertSame($this->alice, $recorded->user);
@@ -754,7 +762,8 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
 
         // Then
-        $recorded = $this->granted($decision)->interaction->consent ?? static::fail('The consent should have been recorded.');
+        $recorded = $this->granted($decision)
+            ->interaction->consent ?? static::fail('The consent should have been recorded.');
         static::assertEquals([Scope::openid(), new Scope('email'), new Scope('profile')], $recorded->scopes);
     }
 
@@ -893,7 +902,6 @@ final class AuthorizationHandlerTest extends TestCase
         // When
         try {
             $this->handler->deny($consent->interaction);
-            static::fail('The request should have been denied.');
         } catch (AccessDeniedException $exception) {
             // Then
             static::assertSame('access_denied', $exception->error);
@@ -1016,11 +1024,21 @@ final class AuthorizationHandlerTest extends TestCase
      */
     public static function provideResumptions(): iterable
     {
-        yield 'resume with a session' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, $session, $test->context)];
-        yield 'resume without a session' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, null, $test->context)];
-        yield 'grant the consent' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $session, $test->context)];
-        yield 'grant the consent with an ended session' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $ended, $test->context)];
-        yield 'deny' => [static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->deny($interaction)];
+        yield 'resume with a session' => [
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, $session, $test->context),
+        ];
+        yield 'resume without a session' => [
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, null, $test->context),
+        ];
+        yield 'grant the consent' => [
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $session, $test->context),
+        ];
+        yield 'grant the consent with an ended session' => [
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $ended, $test->context),
+        ];
+        yield 'deny' => [
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->deny($interaction),
+        ];
     }
 
     /**

@@ -17,8 +17,6 @@ final class InMemoryClientRepositoryTest extends TestCase
 {
     private Tenant $tenant;
 
-    private Tenant $other;
-
     private Client $client;
 
     private InMemoryClientRepository $repository;
@@ -26,11 +24,10 @@ final class InMemoryClientRepositoryTest extends TestCase
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $this->other = Fixtures::tenant('other', 'https://id.other.example');
         $this->repository = new InMemoryClientRepository();
         $this->client = Clients::public($this->tenant);
         $this->repository->save($this->client);
-        $this->repository->save(Clients::public($this->other, 'elsewhere'));
+        $this->repository->save(Clients::public(Fixtures::tenant('other', 'https://id.other.example'), 'elsewhere'));
     }
 
     #[Test]
@@ -56,8 +53,17 @@ final class InMemoryClientRepositoryTest extends TestCase
      */
     public static function provideLookupsThatFindNothing(): iterable
     {
-        yield 'a client of another tenant' => [static fn (self $test): Tenant => $test->tenant, 'elsewhere'];
-        yield 'the client from another tenant' => [static fn (self $test): Tenant => $test->other, 'spa'];
-        yield 'an unknown id' => [static fn (self $test): Tenant => $test->tenant, 'nobody'];
+        yield 'a client of another tenant' => [
+            static fn (self $test): Tenant => $test->tenant,
+            'elsewhere',
+        ];
+        yield 'the client from another tenant' => [
+            static fn (self $test): Tenant => Fixtures::tenant('other', 'https://id.other.example'),
+            'spa',
+        ];
+        yield 'an unknown id' => [
+            static fn (self $test): Tenant => $test->tenant,
+            'nobody',
+        ];
     }
 }

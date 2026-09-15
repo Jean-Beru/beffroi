@@ -225,7 +225,7 @@ final class UserInfoHandlerTest extends TestCase
 
         // Then
         $this->expectException(InvalidTokenException::class);
-        $this->expectExceptionMessage('not an access token');
+        $this->expectExceptionMessageIsOrContains('not an access token');
 
         // When
         $this->handler->handle($this->tenant, 'Bearer ' . $idToken, [], Fixtures::context());
@@ -266,7 +266,7 @@ final class UserInfoHandlerTest extends TestCase
 
         // Then
         $this->expectException(InvalidTokenException::class);
-        $this->expectExceptionMessage('invalid_token: The access token names a user this provider no longer serves.');
+        $this->expectExceptionMessageIs('invalid_token: The access token names a user this provider no longer serves.');
 
         // When
         $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());

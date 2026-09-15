@@ -429,7 +429,11 @@ final class LoginTest extends BrowserTestCase
      */
     public static function provideUsersRefusedLikeAWrongPassword(): iterable
     {
-        yield 'unknown' => ['nobody', static fn (): ?User => null, AuthenticationFailureReason::UnknownUser];
+        yield 'unknown' => [
+            'nobody',
+            static fn (): ?User => null,
+            AuthenticationFailureReason::UnknownUser,
+        ];
         yield 'disabled' => ['bob', static function (): User {
             $disabled = self::userWithPassword('bob', self::PASSWORD);
             $disabled->disable(self::now());
@@ -438,7 +442,11 @@ final class LoginTest extends BrowserTestCase
 
             return $disabled;
         }, AuthenticationFailureReason::DisabledUser];
-        yield 'without a password' => ['carol', static fn (): User => self::user('carol', 'carol-subject'), AuthenticationFailureReason::NoSuchCredential];
+        yield 'without a password' => [
+            'carol',
+            static fn (): User => self::user('carol', 'carol-subject'),
+            AuthenticationFailureReason::NoSuchCredential,
+        ];
     }
 
     /**

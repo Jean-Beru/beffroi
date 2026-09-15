@@ -49,7 +49,7 @@ final class TokenRequestTest extends TestCase
     {
         // Then
         $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessage('The ' . $name . ' parameter is missing.');
+        $this->expectExceptionMessageIs('invalid_request: The ' . $name . ' parameter is missing.');
 
         // When
         $this->request->required($name);
@@ -83,7 +83,7 @@ final class TokenRequestTest extends TestCase
     {
         // Then
         $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessage('The scope parameter must be a single string.');
+        $this->expectExceptionMessageIs('invalid_request: The scope parameter must be a single string.');
 
         // When
         $this->request->optional('scope');

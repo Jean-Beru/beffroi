@@ -143,7 +143,7 @@ final class TenantProviderTest extends DatabaseTestCase
 
         // Then
         $this->expectException(TenantNotSynchronizedException::class);
-        $this->expectExceptionMessage('stored with the name "op.test" and configured with "Renamed"');
+        $this->expectExceptionMessageIsOrContains('stored with the name "op.test" and configured with "Renamed"');
 
         // When
         $provider->provide();

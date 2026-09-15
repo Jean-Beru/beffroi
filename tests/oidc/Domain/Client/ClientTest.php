@@ -207,7 +207,7 @@ final class ClientTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($reason);
+        $this->expectExceptionMessageIsOrContains($reason);
 
         // When
         $build(Fixtures::tenant());

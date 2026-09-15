@@ -201,7 +201,7 @@ final class AuthorizationCodeTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('isUsed()');
+        $this->expectExceptionMessageIsOrContains('isUsed()');
 
         // When
         $code->consume(Fixtures::now()->modify('+3 seconds'));

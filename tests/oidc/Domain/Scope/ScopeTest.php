@@ -60,7 +60,7 @@ final class ScopeTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('RFC 6749 §3.3');
+        $this->expectExceptionMessageIsOrContains('RFC 6749 §3.3');
 
         // When
         new Scope($scope);

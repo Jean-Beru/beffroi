@@ -158,7 +158,7 @@ final class DiscoveryHandlerTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('number of seconds');
+        $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
         new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), -1);

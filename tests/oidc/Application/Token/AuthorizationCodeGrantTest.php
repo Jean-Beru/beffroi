@@ -328,7 +328,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessage('The ' . $missing . ' parameter is missing.');
+        $this->expectExceptionMessageIs('invalid_request: The ' . $missing . ' parameter is missing.');
 
         // When
         $this->grant->grant($this->client, new TokenRequest($parameters), $this->context);
@@ -377,7 +377,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessage('code_verifier');
+        $this->expectExceptionMessageIsOrContains('code_verifier');
 
         // When
         $this->grant->grant($this->client, $this->request(verifier: $verifier), $this->context);
@@ -419,7 +419,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request('another-code'), $this->context);
@@ -451,7 +451,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request(), $this->context);
@@ -576,7 +576,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
@@ -624,7 +624,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request(), $this->context);
@@ -642,7 +642,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request(redirectUri: 'https://demo.localhost/login/check/'), $this->context);
@@ -659,7 +659,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'), $this->context);
@@ -679,7 +679,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request(), $this->context);
@@ -695,7 +695,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request(), $this->context);
@@ -726,8 +726,12 @@ final class AuthorizationCodeGrantTest extends TestCase
      */
     public static function provideRefusedExchanges(): iterable
     {
-        yield 'another redirect URI' => [static fn (self $test): TokenRequest => $test->request(redirectUri: 'https://demo.localhost/login/check/')];
-        yield 'wrong verifier' => [static fn (self $test): TokenRequest => $test->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl')];
+        yield 'another redirect URI' => [
+            static fn (self $test): TokenRequest => $test->request(redirectUri: 'https://demo.localhost/login/check/'),
+        ];
+        yield 'wrong verifier' => [
+            static fn (self $test): TokenRequest => $test->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'),
+        ];
         yield 'expired code' => [static function (self $test): TokenRequest {
             $test->clock->sleep(60);
 
@@ -795,7 +799,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         try {
             $this->grant->grant($client, $request, $this->context);
             static::fail('The grant should have failed.');
-        } catch (InvalidGrantException | InvalidRequestException) {
+        } catch (InvalidGrantException|InvalidRequestException) {
         }
     }
 

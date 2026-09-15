@@ -138,7 +138,7 @@ final class ClaimsRequestTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($reason);
+        $this->expectExceptionMessageIsOrContains($reason);
 
         // When
         ClaimsRequest::fromJson($json);

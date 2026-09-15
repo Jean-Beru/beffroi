@@ -105,7 +105,7 @@ final class UserProvisionerTest extends TestCase
 
         // Then
         $this->expectException(UserAlreadyExistsException::class);
-        $this->expectExceptionMessage('A user named "alice" already exists in this tenant.');
+        $this->expectExceptionMessageIs('A user named "alice" already exists in this tenant.');
 
         // When
         $this->provisioner->create($this->tenant, 'alice ');
@@ -119,7 +119,7 @@ final class UserProvisionerTest extends TestCase
 
         // Then
         $this->expectException(UserAlreadyExistsException::class);
-        $this->expectExceptionMessage('A user with the subject "shared" already exists in this tenant.');
+        $this->expectExceptionMessageIs('A user with the subject "shared" already exists in this tenant.');
 
         // When
         $this->provisioner->create($this->tenant, 'bob', subject: new Subject('shared'));
@@ -216,7 +216,7 @@ final class UserProvisionerTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('A password is at least 8 characters long.');
+        $this->expectExceptionMessageIs('A password is at least 8 characters long.');
 
         // When
         $this->provisioner->setPassword($user, 'seven77');
@@ -249,7 +249,6 @@ final class UserProvisionerTest extends TestCase
         $credential = $this->provisioner->setPassword($user, str_repeat('a', UserProvisioner::MAXIMUM_PASSWORD_BYTES));
 
         // Then
-        static::assertSame(4096, UserProvisioner::MAXIMUM_PASSWORD_BYTES);
         static::assertTrue($this->hasher->verify($credential->hash, str_repeat('a', 4096)));
     }
 
@@ -261,7 +260,7 @@ final class UserProvisionerTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('A password is at most 4096 bytes long.');
+        $this->expectExceptionMessageIs('A password is at most 4096 bytes long.');
 
         // When
         $this->provisioner->setPassword($user, str_repeat('a', 4097));

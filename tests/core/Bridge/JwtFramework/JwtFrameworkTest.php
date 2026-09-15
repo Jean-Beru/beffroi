@@ -127,7 +127,8 @@ final class JwtFrameworkTest extends TestCase
     public function theSignatureVerifiesAgainstThePublishedJwks(): void
     {
         // Given
-        $jws = new JwtFrameworkJwsSigner($this->provider)->sign($this->tenant, SignatureAlgorithm::RS256, '{"sub":"alice"}');
+        $jws = new JwtFrameworkJwsSigner($this->provider)
+            ->sign($this->tenant, SignatureAlgorithm::RS256, '{"sub":"alice"}');
         $jwks = JWKSet::createFromKeyData($this->provider->publicKeys($this->tenant)->toJwks());
 
         // When
@@ -141,12 +142,14 @@ final class JwtFrameworkTest extends TestCase
     public function theVerifierReturnsThePayloadTheKeyAndTheHeader(): void
     {
         // Given
-        $jws = new JwtFrameworkJwsSigner($this->provider)->sign($this->tenant, SignatureAlgorithm::RS256, '{"sub":"alice"}', [
-            'typ' => 'at+jwt',
-        ]);
+        $jws = new JwtFrameworkJwsSigner($this->provider)
+            ->sign($this->tenant, SignatureAlgorithm::RS256, '{"sub":"alice"}', [
+                'typ' => 'at+jwt',
+            ]);
 
         // When
-        $verified = new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, $jws);
+        $verified = new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, $jws);
 
         // Then
         static::assertSame('{"sub":"alice"}', $verified->payload);
@@ -191,7 +194,8 @@ final class JwtFrameworkTest extends TestCase
         $jws = self::signWith(Keys::pair()->privateJwk, 'payload');
 
         // When
-        $verified = new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, $jws);
+        $verified = new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, $jws);
 
         // Then
         static::assertSame($this->active, $verified->key);
@@ -223,7 +227,8 @@ final class JwtFrameworkTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, $jws);
+        new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, $jws);
     }
 
     /**
@@ -241,13 +246,15 @@ final class JwtFrameworkTest extends TestCase
             'alg' => 'HS256',
             'kid' => $this->active->kid,
         ])->build();
-        $jws = new CompactSerializer()->serialize($hmac, 0);
+        $jws = new CompactSerializer()
+            ->serialize($hmac, 0);
 
         // Then
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, $jws);
+        new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, $jws);
     }
 
     #[Test]
@@ -260,7 +267,8 @@ final class JwtFrameworkTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, $jws);
+        new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, $jws);
     }
 
     #[Test]
@@ -273,7 +281,8 @@ final class JwtFrameworkTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtFrameworkJwsVerifier($this->provider)->verify(Fixtures::tenant('other', 'https://id.other.example'), $jws);
+        new JwtFrameworkJwsVerifier($this->provider)
+            ->verify(Fixtures::tenant('other', 'https://id.other.example'), $jws);
     }
 
     #[Test]
@@ -283,13 +292,15 @@ final class JwtFrameworkTest extends TestCase
         $built = new JWSBuilder(new AlgorithmManager([new RS256()]))->create()->withPayload('payload')->addSignature(new JWK(Keys::pair()->privateJwk), [
             'alg' => 'RS256',
         ])->build();
-        $jws = new CompactSerializer()->serialize($built, 0);
+        $jws = new CompactSerializer()
+            ->serialize($built, 0);
 
         // Then
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, $jws);
+        new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, $jws);
     }
 
     #[Test]
@@ -303,7 +314,8 @@ final class JwtFrameworkTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, $forged);
+        new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, $forged);
     }
 
     #[Test]
@@ -313,7 +325,8 @@ final class JwtFrameworkTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtFrameworkJwsVerifier($this->provider)->verify($this->tenant, 'not.a.jws.at.all');
+        new JwtFrameworkJwsVerifier($this->provider)
+            ->verify($this->tenant, 'not.a.jws.at.all');
     }
 
     #[Test]

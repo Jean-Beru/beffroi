@@ -216,7 +216,7 @@ final class TokenHandlerTest extends TestCase
     {
         // Then
         $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessage('grant_type');
+        $this->expectExceptionMessageIsOrContains('grant_type');
 
         // When
         $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), $parameters, $this->context);

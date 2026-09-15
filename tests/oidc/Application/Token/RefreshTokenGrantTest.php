@@ -178,15 +178,16 @@ final class RefreshTokenGrantTest extends TestCase
         $issued = $this->grant->grant($this->client, $this->request(), $this->context);
 
         // Then
+        $successor = ($issued->refreshToken ?? static::fail('A refresh always issues a successor.'))->token;
         static::assertCount(2, $this->events->events);
         $rotations = $this->events->of(RefreshTokenRotated::class);
         static::assertCount(1, $rotations);
         static::assertSame($token, $rotations[0]->previous);
-        static::assertSame($issued->refreshToken?->token, $rotations[0]->next);
+        static::assertSame($successor, $rotations[0]->next);
         static::assertEquals($this->clock->now(), $rotations[0]->occurredAt);
         static::assertSame($this->tenant, $rotations[0]->tenant);
         static::assertSame($this->context, $rotations[0]->context);
-        static::assertSame($issued->refreshToken?->token, $this->events->of(TokensIssued::class)[0]->refreshToken);
+        static::assertSame($successor, $this->events->of(TokensIssued::class)[0]->refreshToken);
     }
 
     /**
@@ -248,7 +249,8 @@ final class RefreshTokenGrantTest extends TestCase
     {
         // Given
         $this->token('the-token', ['openid', 'profile', 'email']);
-        $narrowed = $this->grant->grant($this->client, $this->request(scope: 'email profile'), $this->context)->refreshToken ?? static::fail('A refresh always issues a successor.');
+        $narrowed = $this->grant->grant($this->client, $this->request(scope: 'email profile'), $this->context)
+            ->refreshToken ?? static::fail('A refresh always issues a successor.');
 
         // When
         $again = $this->grant->grant($this->client, $this->request($narrowed->value, 'openid'), $this->context);
@@ -268,7 +270,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidScopeException::class);
-        $this->expectExceptionMessage('exceeds');
+        $this->expectExceptionMessageIsOrContains('exceeds');
 
         // When
         $this->grant->grant($this->client, $this->request(scope: 'openid email'), $this->context);
@@ -344,7 +346,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessage('The refresh_token parameter is missing.');
+        $this->expectExceptionMessageIs('invalid_request: The refresh_token parameter is missing.');
 
         // When
         $this->grant->grant($this->client, new TokenRequest([
@@ -367,7 +369,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request($value), $this->context);
@@ -400,7 +402,9 @@ final class RefreshTokenGrantTest extends TestCase
      */
     public static function provideTokensThatAreNoGrant(): iterable
     {
-        yield 'unknown' => [static fn (self $test): string => 'unknown'];
+        yield 'unknown' => [
+            static fn (self $test): string => 'unknown',
+        ];
         yield 'issued to another client, rotated' => [static function (self $test): string {
             $foreign = $test->token('foreign', client: Clients::public($test->tenant));
             $foreign->rotate($test->clock->now());
@@ -429,7 +433,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request('first'), $this->context);
@@ -533,7 +537,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request('sliding'), $this->context);
@@ -551,7 +555,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request('absolute'), $this->context);
@@ -585,7 +589,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidGrantException::class);
-        $this->expectExceptionMessage(self::INVALID_GRANT);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
         $this->grant->grant($this->client, $this->request('ended'), $this->context);

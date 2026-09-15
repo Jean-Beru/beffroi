@@ -198,9 +198,15 @@ final class InteractionTest extends TestCase
     public static function provideResumptionsAfterExpiry(): iterable
     {
         $late = Fixtures::now()->modify('+10 minutes');
-        yield 'authenticate' => [static fn (self $test, Interaction $interaction) => $interaction->authenticate(Fixtures::session($test->user), $late)];
-        yield 'complete' => [static fn (self $test, Interaction $interaction) => $interaction->complete($late)];
-        yield 'assert resumable' => [static fn (self $test, Interaction $interaction) => $interaction->assertResumable($late)];
+        yield 'authenticate' => [
+            static fn (self $test, Interaction $interaction) => $interaction->authenticate(Fixtures::session($test->user), $late),
+        ];
+        yield 'complete' => [
+            static fn (self $test, Interaction $interaction) => $interaction->complete($late),
+        ];
+        yield 'assert resumable' => [
+            static fn (self $test, Interaction $interaction) => $interaction->assertResumable($late),
+        ];
     }
 
     #[Test]
@@ -247,10 +253,18 @@ final class InteractionTest extends TestCase
      */
     public static function provideResumptionsAfterCompletion(): iterable
     {
-        yield 'authenticate' => [static fn (self $test, Interaction $interaction) => $interaction->authenticate(Fixtures::session($test->user), Fixtures::now())];
-        yield 'consent' => [static fn (self $test, Interaction $interaction) => $interaction->consent($test->consent(), Fixtures::now())];
-        yield 'complete' => [static fn (self $test, Interaction $interaction) => $interaction->complete(Fixtures::now())];
-        yield 'assert resumable' => [static fn (self $test, Interaction $interaction) => $interaction->assertResumable(Fixtures::now())];
+        yield 'authenticate' => [
+            static fn (self $test, Interaction $interaction) => $interaction->authenticate(Fixtures::session($test->user), Fixtures::now()),
+        ];
+        yield 'consent' => [
+            static fn (self $test, Interaction $interaction) => $interaction->consent($test->consent(), Fixtures::now()),
+        ];
+        yield 'complete' => [
+            static fn (self $test, Interaction $interaction) => $interaction->complete(Fixtures::now()),
+        ];
+        yield 'assert resumable' => [
+            static fn (self $test, Interaction $interaction) => $interaction->assertResumable(Fixtures::now()),
+        ];
     }
 
     #[Test]
@@ -324,7 +338,7 @@ final class InteractionTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('user of the session and the client of the request');
+        $this->expectExceptionMessageIsOrContains('user of the session and the client of the request');
 
         // When
         $interaction->consent($consent($this), Fixtures::now());
@@ -335,8 +349,12 @@ final class InteractionTest extends TestCase
      */
     public static function provideConsentsOfSomeoneElse(): iterable
     {
-        yield 'another user' => [static fn (self $test): Consent => new Consent(Uuid::v7(), Fixtures::user($test->user->tenant, 'bob', 'bob-subject'), $test->client, [new Scope('openid'), new Scope('profile')], Fixtures::now())];
-        yield 'another client' => [static fn (self $test): Consent => new Consent(Uuid::v7(), $test->user, Clients::public($test->user->tenant), [new Scope('openid'), new Scope('profile')], Fixtures::now())];
+        yield 'another user' => [
+            static fn (self $test): Consent => new Consent(Uuid::v7(), Fixtures::user($test->user->tenant, 'bob', 'bob-subject'), $test->client, [new Scope('openid'), new Scope('profile')], Fixtures::now()),
+        ];
+        yield 'another client' => [
+            static fn (self $test): Consent => new Consent(Uuid::v7(), $test->user, Clients::public($test->user->tenant), [new Scope('openid'), new Scope('profile')], Fixtures::now()),
+        ];
     }
 
     #[Test]
@@ -359,7 +377,7 @@ final class InteractionTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('256 bits');
+        $this->expectExceptionMessageIsOrContains('256 bits');
 
         // When
         new Interaction($id, $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));

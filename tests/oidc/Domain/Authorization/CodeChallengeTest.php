@@ -46,7 +46,7 @@ final class CodeChallengeTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('RFC 7636 §4.2');
+        $this->expectExceptionMessageIsOrContains('RFC 7636 §4.2');
 
         // When
         new CodeChallenge($value, CodeChallengeMethod::S256);

@@ -113,7 +113,7 @@ final class SecurityUserTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('refresh it through the provider');
+        $this->expectExceptionMessageIsOrContains('refresh it through the provider');
 
         // When
         $restored->user();
@@ -128,7 +128,7 @@ final class SecurityUserTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('refresh it through the provider');
+        $this->expectExceptionMessageIsOrContains('refresh it through the provider');
 
         // When
         $restored->passwordCredential();
@@ -139,7 +139,7 @@ final class SecurityUserTest extends TestCase
     {
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('The serialised user is not one this class wrote.');
+        $this->expectExceptionMessageIs('The serialised user is not one this class wrote.');
 
         // When
         unserialize('O:34:"Heidi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');

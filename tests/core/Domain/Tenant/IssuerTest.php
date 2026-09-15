@@ -63,7 +63,7 @@ final class IssuerTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($reason);
+        $this->expectExceptionMessageIsOrContains($reason);
 
         // When
         new Issuer($issuer);

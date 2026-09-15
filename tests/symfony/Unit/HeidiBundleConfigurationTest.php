@@ -187,7 +187,7 @@ final class HeidiBundleConfigurationTest extends TestCase
     {
         // Then
         $this->expectException(InvalidConfigurationException::class);
-        $this->expectExceptionMessage($named);
+        $this->expectExceptionMessageIsOrContains($named);
 
         // When
         self::process($config);

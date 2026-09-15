@@ -45,7 +45,7 @@ final class RedirectUriTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($reason);
+        $this->expectExceptionMessageIsOrContains($reason);
 
         // When
         new RedirectUri($uri);

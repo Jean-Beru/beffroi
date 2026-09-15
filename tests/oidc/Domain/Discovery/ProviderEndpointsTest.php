@@ -60,7 +60,7 @@ final class ProviderEndpointsTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('token endpoint "http://localhost/token" must use HTTPS (RFC 6749 section 3.2), on a loopback host too');
+        $this->expectExceptionMessageIsOrContains('token endpoint "http://localhost/token" must use HTTPS (RFC 6749 section 3.2), on a loopback host too');
 
         // When
         new ProviderEndpoints('https://op.localhost/authorize', 'http://localhost/token', 'https://op.localhost/userinfo', 'https://op.localhost/jwks', 'https://op.localhost/logout');
@@ -76,7 +76,7 @@ final class ProviderEndpointsTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The authorization endpoint "' . $url . '" ' . $reason);
+        $this->expectExceptionMessageIsOrContains('The authorization endpoint "' . $url . '" ' . $reason);
 
         // When
         new ProviderEndpoints($url, 'https://id.acme.example/token', 'https://id.acme.example/userinfo', 'https://id.acme.example/jwks', 'https://id.acme.example/logout');
@@ -110,7 +110,7 @@ final class ProviderEndpointsTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The ' . $name . ' endpoint "' . $url . '"');
+        $this->expectExceptionMessageIsOrContains('The ' . $name . ' endpoint "' . $url . '"');
 
         // When
         new ProviderEndpoints(...$urls);

@@ -192,7 +192,8 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new DateInterval('PT1M'))->issue($authorization, Fixtures::now());
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new DateInterval('PT1M'))
+            ->issue($authorization, Fixtures::now());
 
         // Then
         $this->expectException(InvalidClaimException::class);

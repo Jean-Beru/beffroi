@@ -85,6 +85,7 @@ final class OAuth2ExceptionTest extends TestCase
         $exception = $build($cause);
 
         // Then
+        static::assertInstanceOf(OAuth2Exception::class, $exception);
         static::assertSame($cause, $exception->getPrevious());
     }
 
@@ -93,9 +94,15 @@ final class OAuth2ExceptionTest extends TestCase
      */
     public static function provideExceptionsWithACause(): iterable
     {
-        yield 'invalid_request' => [static fn (RuntimeException $cause): OAuth2Exception => new InvalidRequestException('Sent back to the client.', true, $cause)];
-        yield 'invalid_scope' => [static fn (RuntimeException $cause): OAuth2Exception => new InvalidScopeException('Sent back to the client.', false, $cause)];
-        yield 'invalid_token' => [static fn (RuntimeException $cause): OAuth2Exception => new InvalidTokenException('The access token expired.', $cause)];
+        yield 'invalid_request' => [
+            static fn (RuntimeException $cause): OAuth2Exception => new InvalidRequestException('Sent back to the client.', true, $cause),
+        ];
+        yield 'invalid_scope' => [
+            static fn (RuntimeException $cause): OAuth2Exception => new InvalidScopeException('Sent back to the client.', false, $cause),
+        ];
+        yield 'invalid_token' => [
+            static fn (RuntimeException $cause): OAuth2Exception => new InvalidTokenException('The access token expired.', $cause),
+        ];
     }
 
     /**
@@ -223,7 +230,7 @@ final class OAuth2ExceptionTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('RFC 6749');
+        $this->expectExceptionMessageIsOrContains('RFC 6749');
 
         // When
         new InvalidRequestException($description);

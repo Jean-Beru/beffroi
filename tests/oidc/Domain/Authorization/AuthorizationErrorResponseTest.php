@@ -90,7 +90,7 @@ final class AuthorizationErrorResponseTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('invalid_client');
+        $this->expectExceptionMessageIsOrContains('invalid_client');
 
         // When
         AuthorizationErrorResponse::fromException($target, new InvalidClientException('Unknown client.'));

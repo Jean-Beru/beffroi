@@ -217,6 +217,9 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame(1, $hasher->hashed);
     }
 
+    /**
+     * @param callable(self): Tenant $tenant
+     */
     #[Test]
     #[DataProvider('provideLookupsThatFindNothing')]
     public function anUnknownIdOrAnotherTenantFindsNothing(callable $tenant, string $clientId): void
@@ -235,9 +238,18 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     public static function provideLookupsThatFindNothing(): iterable
     {
-        yield 'unknown id' => [static fn (self $test): Tenant => $test->tenant, 'nobody'];
-        yield 'id in another case' => [static fn (self $test): Tenant => $test->tenant, 'OIDC-DEMO'];
-        yield 'another tenant' => [static fn (self $test): Tenant => Fixtures::tenant('other', 'https://id.other.example'), 'oidc-demo'];
+        yield 'unknown id' => [
+            static fn (self $test): Tenant => $test->tenant,
+            'nobody',
+        ];
+        yield 'id in another case' => [
+            static fn (self $test): Tenant => $test->tenant,
+            'OIDC-DEMO',
+        ];
+        yield 'another tenant' => [
+            static fn (self $test): Tenant => Fixtures::tenant('other', 'https://id.other.example'),
+            'oidc-demo',
+        ];
     }
 
     /**
@@ -270,7 +282,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($reason);
+        $this->expectExceptionMessageIsOrContains($reason);
 
         // When
         new ConfigurationClientRepository('acme', [

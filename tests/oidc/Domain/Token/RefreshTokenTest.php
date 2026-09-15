@@ -260,7 +260,7 @@ final class RefreshTokenTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('isRotated()');
+        $this->expectExceptionMessageIsOrContains('isRotated()');
 
         // When
         $token->rotate(Fixtures::now()->modify('+1 day +1 second'));
@@ -296,7 +296,7 @@ final class RefreshTokenTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('revoked');
+        $this->expectExceptionMessageIsOrContains('revoked');
 
         // When
         $token->rotate(Fixtures::now()->modify('+2 days'));

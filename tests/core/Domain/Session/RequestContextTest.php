@@ -147,7 +147,8 @@ final class RequestContextTest extends TestCase
             ->withDevice(new Device(DeviceType::Desktop, 'Firefox', '140.0', 'Linux'));
 
         // When
-        $stripped = $enriched->withLocation(null)->withDevice(null);
+        $stripped = $enriched->withLocation(null)
+            ->withDevice(null);
 
         // Then
         static::assertFalse($stripped->isEnriched());

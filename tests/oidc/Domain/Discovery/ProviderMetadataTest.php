@@ -170,7 +170,7 @@ final class ProviderMetadataTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('number of seconds');
+        $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
         new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], -1);
@@ -181,7 +181,7 @@ final class ProviderMetadataTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('A supported claim has a name.');
+        $this->expectExceptionMessageIsOrContains('A supported claim has a name.');
 
         // When
         new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [''], 60);

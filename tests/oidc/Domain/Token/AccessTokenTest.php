@@ -68,7 +68,7 @@ final class AccessTokenTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('one second');
+        $this->expectExceptionMessageIsOrContains('one second');
 
         // When
         new AccessToken('at.value', Fixtures::now(), $expiresAt);
