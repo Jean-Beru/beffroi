@@ -50,7 +50,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertSame((string) $client->redirectUris[0], (string) $found->redirectUri);
         static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes);
         static::assertSame('n-0S6_WzA2Mj', $found->nonce);
-        static::assertSame(self::CHALLENGE, $found->codeChallenge->value);
+        static::assertSame(self::CHALLENGE, $found->codeChallenge?->value);
         static::assertTrue($found->codeChallenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
         static::assertEquals($claims, $found->claimsRequest);
         static::assertEquals(self::now(), $found->authenticatedAt);

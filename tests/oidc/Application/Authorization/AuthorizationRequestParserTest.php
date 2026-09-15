@@ -16,6 +16,7 @@ use Heidi\Oidc\Domain\Authorization\Display;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
@@ -38,16 +39,18 @@ final class AuthorizationRequestParserTest extends TestCase
 
     private Client $client;
 
+    private InMemoryClientRepository $clients;
+
     private AuthorizationRequestParser $parser;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $clients = new InMemoryClientRepository();
+        $this->clients = new InMemoryClientRepository();
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
-        $clients->save($this->client);
-        $clients->save(Clients::confidential(Fixtures::tenant('other', 'https://id.other.example'), new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'foreign'));
-        $this->parser = new AuthorizationRequestParser($clients);
+        $this->clients->save($this->client);
+        $this->clients->save(Clients::confidential(Fixtures::tenant('other', 'https://id.other.example'), new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'foreign'));
+        $this->parser = new AuthorizationRequestParser($this->clients);
     }
 
     /**
@@ -75,7 +78,7 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertSame($this->client, $request->client);
         static::assertSame('https://demo.localhost/login/check', (string) $request->redirectUri);
         static::assertEquals([Scope::openid(), new Scope('profile')], $request->scopes);
-        static::assertSame(self::CHALLENGE, $request->codeChallenge->value);
+        static::assertSame(self::CHALLENGE, $request->codeChallenge?->value);
         static::assertSame('S256', $request->codeChallenge->method->value);
         static::assertSame('af0ifjsldkj', $request->state);
         static::assertSame('n-0S6_WzA2Mj', $request->nonce);
@@ -658,6 +661,92 @@ final class AuthorizationRequestParserTest extends TestCase
         $parameters = self::parameters($overrides);
 
         return $this->parser->parse($this->parser->redirectTarget($this->tenant, $parameters), $parameters);
+    }
+
+    /**
+     * Decision 0008: a client registered without the PKCE requirement may send no challenge.
+     */
+    #[Test]
+    public function itAcceptsARequestWithoutPkceFromAClientThatDoesNotRequireIt(): void
+    {
+        // Given
+        $this->legacyClient();
+
+        // When
+        $request = $this->parse([
+            'client_id' => 'legacy',
+            'code_challenge' => null,
+            'code_challenge_method' => null,
+        ]);
+
+        // Then
+        static::assertNull($request->codeChallenge);
+    }
+
+    /**
+     * RFC 9700 §2.1.1: a challenge the client sends is verified whether the client is required to send
+     * one or not.
+     */
+    #[Test]
+    public function itKeepsTheChallengeAClientThatDoesNotRequirePkceSends(): void
+    {
+        // Given
+        $this->legacyClient();
+
+        // When
+        $request = $this->parse([
+            'client_id' => 'legacy',
+        ]);
+
+        // Then
+        static::assertSame(self::CHALLENGE, $request->codeChallenge?->value);
+    }
+
+    /**
+     * The exception of decision 0008 waives the challenge, not its syntax: a "plain" method or a method
+     * without a challenge is refused as for any client.
+     *
+     * @param array<string, mixed> $overrides
+     */
+    #[Test]
+    #[DataProvider('provideMalformedPkceOfAClientThatDoesNotRequireIt')]
+    public function itRefusesAMalformedChallengeEvenFromAClientThatDoesNotRequirePkce(array $overrides, string $description): void
+    {
+        // Given
+        $this->legacyClient();
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: ' . $description);
+
+        // When
+        $this->parse([
+            'client_id' => 'legacy',
+        ] + $overrides);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function provideMalformedPkceOfAClientThatDoesNotRequireIt(): iterable
+    {
+        yield 'plain method (decision 0006)' => [[
+            'code_challenge_method' => 'plain',
+        ], 'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).'];
+        yield 'method without a challenge' => [[
+            'code_challenge' => null,
+        ], 'The code_challenge parameter is missing (RFC 7636 section 4.3).'];
+        yield 'challenge without a method, which RFC 7636 §4.3 would read as plain' => [[
+            'code_challenge_method' => null,
+        ], 'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).'];
+    }
+
+    /**
+     * A confidential client registered without the PKCE requirement (decision 0008), on the same redirect URI.
+     */
+    private function legacyClient(): void
+    {
+        $this->clients->save(Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'legacy', requiresPkce: false));
     }
 
     /**

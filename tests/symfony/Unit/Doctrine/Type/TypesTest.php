@@ -13,6 +13,7 @@ use Doctrine\DBAL\Types\Type;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
+use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
 use Heidi\Bundle\Doctrine\Type\GeoLocationType;
@@ -32,6 +33,8 @@ use Heidi\Core\Domain\Session\GeoLocation;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
+use Heidi\Oidc\Domain\Authorization\CodeChallenge;
+use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -54,6 +57,7 @@ final class TypesTest extends TestCase
         yield 'subject' => [SubjectType::class, new Subject('alice-subject'), 'alice-subject'];
         yield 'email address' => [EmailAddressType::class, new EmailAddress('alice@example.com'), 'alice@example.com'];
         yield 'redirect URI' => [RedirectUriType::class, new RedirectUri('https://demo.example/login/check?dummy=1'), 'https://demo.example/login/check?dummy=1'];
+        yield 'code challenge' => [CodeChallengeType::class, new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256), 'S256:E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
         yield 'scopes' => [ScopesType::class, [new Scope('openid'), new Scope('profile')], 'openid profile'];
         yield 'proofs' => [AuthenticationProofsType::class, AuthenticationProofs::of(AuthenticationMethod::password(), new DateTimeImmutable('@1789000000'))->with(new AuthenticationMethod('otp'), new DateTimeImmutable('@1789000060')), '{"pwd":1789000000,"otp":1789000060}'];
         yield 'location' => [GeoLocationType::class, new GeoLocation('FR', 'Île-de-France', 'Paris', 3215, 'Orange S.A.', 48.8566, 2.3522), '{"country_code":"FR","region":"Île-de-France","city":"Paris","asn":3215,"as_organization":"Orange S.A.","latitude":48.8566,"longitude":2.3522}'];
@@ -165,6 +169,9 @@ final class TypesTest extends TestCase
         yield 'a subject with a space' => [SubjectType::class, 'alice example'];
         yield 'a malformed email address' => [EmailAddressType::class, 'alice'];
         yield 'a redirect URI in plain HTTP' => [RedirectUriType::class, 'http://demo.example/login/check'];
+        yield 'a code challenge without a method' => [CodeChallengeType::class, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
+        yield 'a code challenge with the plain method' => [CodeChallengeType::class, 'plain:E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
+        yield 'a code challenge too short' => [CodeChallengeType::class, 'S256:short'];
         yield 'a scope with a quote' => [ScopesType::class, 'open"id'];
         yield 'scopes that are not a string' => [ScopesType::class, ['openid']];
         yield 'proofs that are not JSON' => [AuthenticationProofsType::class, '{'];
@@ -264,10 +271,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTenTypes(): void
+    public function theBundleDeclaresElevenTypes(): void
     {
         // When / Then
-        static::assertCount(10, HeidiBundle::DBAL_TYPES);
+        static::assertCount(11, HeidiBundle::DBAL_TYPES);
     }
 
     /**

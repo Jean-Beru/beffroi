@@ -34,7 +34,7 @@ The core never depends on a protocol; protocols never depend on each other; noth
 
 ## The OIDC module
 
-- `Client` with exact-match redirect URIs, hashed secret, `requiresConsent` per client.
+- `Client` with exact-match redirect URIs, hashed secret, `requiresConsent` and `requiresPkce` per client (the latter false only for a confidential client).
 - `AuthorizationRequest` validated in two stages: client and redirect URI first (errors are shown, never redirected), everything else after (errors are redirected with `error`, `state`, `iss`).
 - `Interaction`: the authorization endpoint parks the request; the integration authenticates and asks for consent; `AuthorizationHandler::begin()` returns `LoginRequired`, `ConsentRequired` or `Granted(code)`.
 - Grants: `authorization_code` with PKCE S256 and replay detection, `refresh_token` with rotation and reuse detection.

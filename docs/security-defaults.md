@@ -2,7 +2,7 @@
 
 The OP does not offer the option to do it wrong. The rules of RFC 9700, OAuth 2.1 and RFC 8725 are product decisions, not configuration:
 
-- PKCE `S256` mandatory for every client; `plain` does not exist.
+- PKCE `S256` mandatory for every client; `plain` does not exist. A confidential client may be registered with `requires_pkce: false` (decision 0008 of the design repository, the named exception for the OpenID certification profiles, which send no `code_challenge`); a challenge it sends is verified all the same, a `code_verifier` without a challenge is refused (RFC 9700 §4.8.2), and a public client cannot hold the exception.
 - No implicit grant, no resource owner password credentials.
 - Redirect URIs match exactly.
 - `iss` in every authorization response (RFC 9207), success or error.
@@ -25,6 +25,7 @@ Choices that are not specification requirements:
 | Access token 10 minutes, stateless | No immediate revocation without storage or introspection; a short lifetime bounds the exposure |
 | Rotation and reuse detection for every client | RFC 9700 §4.13 recommends it for public clients; a confidential client whose secret leaked is a public client |
 | Consent required by default, `requiresConsent=false` per client | Consent is the rule; the first-party application is the named exception, carried by the client |
+| PKCE required by default, `requiresPkce=false` per confidential client | PKCE is the rule; the client of a certification profile without PKCE is the named exception, carried by the client, with its scope and its removal condition in decision 0008 |
 | Locale outside the URL | The RP does not know the user's language; an interaction URL must not vary with it |
 | No synchronous write outside protocol needs | An authentication request never waits for an enrichment, a log or a purge |
 | Two route planes | An attack on login must not stop `/token` and `/jwks` from answering |
