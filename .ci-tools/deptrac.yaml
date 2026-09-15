@@ -53,6 +53,9 @@ deptrac:
     - name: 'Doctrine'
       collectors:
         - { type: classLike, value: '^Doctrine\\' }
+    - name: 'Twig'
+      collectors:
+        - { type: classLike, value: '^Twig\\' }
   ruleset:
     CoreDomain:
       - 'Psr'
@@ -116,3 +119,4 @@ deptrac:
       - 'Uid'
       - 'Jose'
       - 'Doctrine'
+      - 'Twig'

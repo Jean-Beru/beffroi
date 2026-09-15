@@ -1,0 +1,236 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Tests\Functional\Controller;
+
+use function base64_encode;
+use DateTimeImmutable;
+use function hash;
+use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Port\UserRepositoryInterface;
+use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Heidi\Oidc\Domain\Authorization\CodeChallenge;
+use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Interaction\Interaction;
+use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use function json_decode;
+use const JSON_THROW_ON_ERROR;
+use function parse_str;
+use function parse_url;
+use const PHP_URL_QUERY;
+use function rtrim;
+use function sprintf;
+use function strtr;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Component\BrowserKit\Cookie;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use function sys_get_temp_dir;
+
+/**
+ * A browser on the test kernel (architecture §7), with what a flow needs: a user signed in, that is a
+ * session of the core the browser is bound to, the way the login of the firewall (#15) will bind it;
+ * an interaction this browser began; a signing key; the PKCE pair of a client.
+ */
+abstract class BrowserTestCase extends DatabaseTestCase
+{
+    /**
+     * RFC 7636 §4.1: 43 to 128 unreserved characters.
+     */
+    protected const string CODE_VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+
+    protected KernelBrowser $browser;
+
+    protected function setUp(): void
+    {
+        $this->browser = self::browser();
+        new Filesystem()
+            ->remove(self::keyStorage());
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        new Filesystem()
+            ->remove(self::keyStorage());
+    }
+
+    /**
+     * Signs the user in: a session of the core, and a fresh HTTP session bound to it, whose cookie the
+     * browser now carries.
+     */
+    protected function signIn(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
+    {
+        // the browser reboots the kernel between two requests: the user is read again from the rows
+        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $session = self::session($managed, $establishedAt);
+        $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->bind($httpSession, $session));
+
+        return $session;
+    }
+
+    /**
+     * An interaction of the native client, begun by this browser, created at the given moment.
+     */
+    protected function beginInteraction(DateTimeImmutable $createdAt, DateTimeImmutable $expiresAt): Interaction
+    {
+        $request = new AuthorizationRequest(
+            self::client('native-app'),
+            new RedirectUri('http://127.0.0.1/callback'),
+            [Scope::openid(), new Scope('profile')],
+            new CodeChallenge(self::codeChallenge(), CodeChallengeMethod::S256),
+            'state-of-the-client',
+            'nonce-of-the-client',
+        );
+        $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, null, $createdAt, $expiresAt);
+        self::service('test.heidi.interactions', InteractionRepositoryInterface::class)
+            ->save($interaction);
+        $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->begin($httpSession, $interaction));
+
+        return $interaction;
+    }
+
+    /**
+     * A key the tenant signs with, so that the token endpoint can answer.
+     */
+    protected static function signingKey(): void
+    {
+        self::service('test.heidi.key_rotator', SigningKeyRotator::class)
+            ->rotate(self::tenant(), SignatureAlgorithm::RS256, self::context());
+    }
+
+    /**
+     * A valid authorization request of a client of the test kernel (OIDC Core §3.1.2.1), as query
+     * parameters; what is given replaces the defaults, null removes a parameter.
+     *
+     * @param array<string, string|null> $parameters
+     *
+     * @return array<string, string>
+     */
+    protected static function authorizationParameters(string $clientId = 'native-app', array $parameters = []): array
+    {
+        $defaults = [
+            'client_id' => $clientId,
+            'redirect_uri' => $clientId === 'native-app' ? 'http://127.0.0.1/callback' : 'https://demo.test/login/check',
+            'response_type' => 'code',
+            'scope' => 'openid profile',
+            'state' => 'state-of-the-client',
+            'nonce' => 'nonce-of-the-client',
+            'code_challenge' => self::codeChallenge(),
+            'code_challenge_method' => 'S256',
+        ];
+        $merged = [];
+        foreach ($parameters + $defaults as $name => $value) {
+            if ($value !== null) {
+                $merged[$name] = $value;
+            }
+        }
+
+        return $merged;
+    }
+
+    protected static function codeChallenge(): string
+    {
+        return rtrim(strtr(base64_encode(hash('sha256', self::CODE_VERIFIER, true)), '+/', '-_'), '=');
+    }
+
+    /**
+     * The query parameters of the Location header of a redirection.
+     *
+     * @return array<string, string>
+     */
+    protected static function redirectedQuery(Response $response): array
+    {
+        $location = $response->headers->get('Location') ?? static::fail('The response is not a redirection.');
+        $query = parse_url($location, PHP_URL_QUERY);
+        static::assertIsString($query, sprintf('The location "%s" carries no query.', $location));
+        parse_str($query, $parameters);
+        $strings = [];
+        foreach ($parameters as $name => $value) {
+            static::assertIsString($value);
+            $strings[(string) $name] = $value;
+        }
+
+        return $strings;
+    }
+
+    /**
+     * The interaction identifier the Location header of a redirection to a page carries.
+     */
+    protected static function redirectedInteraction(Response $response): string
+    {
+        return self::redirectedQuery($response)['interaction'] ?? static::fail('The redirection names no interaction.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function json(Response $response): array
+    {
+        $content = $response->getContent();
+        static::assertIsString($content);
+        $decoded = json_decode($content, true, 8, JSON_THROW_ON_ERROR);
+        static::assertIsArray($decoded);
+        $members = [];
+        foreach ($decoded as $name => $value) {
+            $members[(string) $name] = $value;
+        }
+
+        return $members;
+    }
+
+    protected static function string(mixed $value): string
+    {
+        static::assertIsString($value);
+
+        return $value;
+    }
+
+    /**
+     * Architecture §5.2: what every response of the interaction plane carries.
+     */
+    protected static function assertInteractionHeaders(Response $response): void
+    {
+        static::assertSame('DENY', $response->headers->get('X-Frame-Options'));
+        static::assertSame("frame-ancestors 'none'", $response->headers->get('Content-Security-Policy'));
+        static::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
+        static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
+    }
+
+    protected static function keyStorage(): string
+    {
+        return sys_get_temp_dir() . '/heidi-bundle-tests/cache/test/keys';
+    }
+
+    /**
+     * Writes an HTTP session the browser will present on its next request, through the same session
+     * factory and storage the kernel uses.
+     *
+     * @param callable(SessionInterface, BrowserSession): void $write
+     */
+    private function httpSession(callable $write): void
+    {
+        $httpSession = self::service('session.factory', SessionFactoryInterface::class)->createSession();
+        $cookie = $this->browser->getCookieJar()
+            ->get($httpSession->getName());
+        if ($cookie !== null) {
+            $httpSession->setId($cookie->getValue());
+        }
+        $httpSession->start();
+        $write($httpSession, self::service('test.heidi.browser_session', BrowserSession::class));
+        $httpSession->save();
+        // the cookie the kernel set carries a domain, and a cookie with a domain wins over one without
+        $this->browser->getCookieJar()
+            ->set(new Cookie($httpSession->getName(), $httpSession->getId(), null, $cookie?->getPath() ?? '/', $cookie?->getDomain() ?? ''));
+    }
+}

@@ -1,0 +1,28 @@
+{# The consent page of an interaction. Overridable by an application under templates/bundles/HeidiBundle/;
+   #16 gives it its layout and its text in every language. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authorize {{ client.name }}</title>
+</head>
+<body>
+    <main>
+        <h1>Authorize {{ client.name }}</h1>
+        <p>You are signed in as {{ user.username }}.</p>
+        <p>{{ client.name }} asks for access to:</p>
+        <ul>
+            {% for scope in scopes %}
+                <li data-scope="{{ scope.value }}">{{ scope.value }}</li>
+            {% endfor %}
+        </ul>
+        <form method="post" action="{{ path('heidi_interaction_consent') }}">
+            <input type="hidden" name="interaction" value="{{ interaction.id }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('heidi_consent') }}">
+            <button type="submit" name="answer" value="allow">Allow</button>
+            <button type="submit" name="answer" value="deny">Deny</button>
+        </form>
+    </main>
+</body>
+</html>

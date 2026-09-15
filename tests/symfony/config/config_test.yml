@@ -9,6 +9,13 @@ framework:
         resource: '%kernel.project_dir%/config/routing.yml'
         utf8: true
         strict_requirements: true
+    # The interaction plane binds the browser to its session and protects its forms; the session storage of
+    # the test kernel is the mock file storage, which a test can write to hand the browser a session.
+    session:
+        storage_factory_id: session.storage.factory.mock_file
+        cookie_secure: auto
+        cookie_samesite: lax
+    csrf_protection: true
     # The three buses of architecture §5.6, everything synchronous under test.
     messenger:
         default_bus: command.bus
@@ -25,6 +32,10 @@ framework:
             Heidi\Bundle\Message\Event: sync
             Heidi\Bundle\Message\Query: sync
             Heidi\Bundle\Message\SyncMessage: sync
+
+# The pages of the bundle, and nothing else: a missing variable is a defect of a template.
+twig:
+    strict_variables: true
 
 # SQLite in a file of the cache directory (architecture §7): a kernel reboot between two requests keeps the
 # rows, a fresh schema is created by the tests that need one. The mappings and the types of the bundle are
@@ -133,6 +144,12 @@ services:
         public: true
     test.heidi.consents:
         alias: Heidi\Oidc\Port\ConsentRepositoryInterface
+        public: true
+    test.heidi.browser_session:
+        alias: Heidi\Bundle\Http\BrowserSession
+        public: true
+    test.heidi.endpoints:
+        alias: Heidi\Oidc\Port\EndpointLocatorInterface
         public: true
     Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
         autoconfigure: true

@@ -1,0 +1,22 @@
+{# Shown after a logout request that has nowhere to send the user, or after the user chose to stay signed
+   in. Overridable by an application under templates/bundles/HeidiBundle/; #16 gives it its layout and its
+   text in every language. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if logged_out %}Signed out{% else %}Still signed in{% endif %}</title>
+</head>
+<body>
+    <main>
+        {% if logged_out %}
+            <h1 data-logged-out="yes">You are signed out</h1>
+            <p>You can close this window.</p>
+        {% else %}
+            <h1 data-logged-out="no">You are still signed in</h1>
+            <p>Nothing was changed.</p>
+        {% endif %}
+    </main>
+</body>
+</html>
