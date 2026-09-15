@@ -37,7 +37,7 @@ final class PlaneTest extends DatabaseTestCase
     /**
      * @return iterable<string, array{string|null, string, int}>
      */
-    public static function requests(): iterable
+    public static function provideRequests(): iterable
     {
         yield 'a protocol process refuses the login' => ['protocol', '/login', 404];
         yield 'a protocol process serves the JWK Set' => ['protocol', '/jwks', self::JWKS_SERVED];
@@ -53,16 +53,19 @@ final class PlaneTest extends DatabaseTestCase
     }
 
     #[Test]
-    #[DataProvider('requests')]
+    #[DataProvider('provideRequests')]
     public function aProcessAnswersTheRoutesOfItsPlaneOnly(?string $plane, string $path, int $status): void
     {
+        // Given
         if ($plane !== null) {
             $_SERVER['HEIDI_PLANE'] = $plane;
         }
         $browser = self::browser();
 
+        // When
         $browser->request('GET', $path);
 
+        // Then
         static::assertSame($status, $browser->getResponse()->getStatusCode());
     }
 
@@ -72,11 +75,15 @@ final class PlaneTest extends DatabaseTestCase
     #[Test]
     public function anUnknownPlaneIsRefused(): void
     {
+        // Given
         $_SERVER['HEIDI_PLANE'] = 'everything';
         $browser = self::browser();
         $browser->catchExceptions(false);
 
+        // Then
         $this->expectException(RuntimeException::class);
+
+        // When
         $browser->request('GET', '/host');
     }
 }

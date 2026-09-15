@@ -8,6 +8,7 @@ use function base64_encode;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -22,8 +23,10 @@ final class EndSessionControllerTest extends BrowserTestCase
     #[Test]
     public function aBrowserWithoutASessionIsLoggedOutAlready(): void
     {
+        // When
         $this->browser->request('GET', '/logout');
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertInteractionHeaders($response);
@@ -31,37 +34,65 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: without a hint the user is asked; the confirmation form carries the parameters over and ends
-     * the session on yes, after which the browser holds nothing.
+     * §2: without a hint the user is asked; the confirmation form carries the parameters over.
      */
     #[Test]
-    public function withoutAHintTheUserConfirmsAndTheSessionEnds(): void
+    public function withoutAHintTheUserIsAsked(): void
     {
-        $session = $this->signIn(self::user('alice'));
+        // Given
+        $this->signIn(self::user('alice'));
 
+        // When
         $crawler = $this->browser->request('GET', '/logout', [
             'client_id' => 'oidc-demo',
             'post_logout_redirect_uri' => 'https://demo.test/',
             'state' => 'after-logout',
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertInteractionHeaders($response);
         static::assertSame('no_hint', $crawler->filter('[data-reason]')->attr('data-reason'));
         static::assertSame('after-logout', $crawler->filter('input[name="state"]')->attr('value'));
         static::assertSame('oidc-demo', $crawler->filter('input[name="client_id"]')->attr('value'));
+    }
 
+    /**
+     * §2, §3: on yes the session ends and the browser goes where the client asked, with the state.
+     */
+    #[Test]
+    public function aConfirmedLogoutEndsTheSessionAndRedirectsWithTheState(): void
+    {
+        // Given
+        $session = $this->signIn(self::user('alice'));
+        $crawler = $this->confirmationPage();
+
+        // When
         $this->browser->submit($crawler->selectButton('Sign out')->form());
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('https://demo.test/?state=after-logout', $response->headers->get('Location'));
         $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
         static::assertTrue($ended->hasEnded());
+    }
 
-        // the browser is not bound to anything any more: an authorization request needs a login
+    /**
+     * After the logout the browser is not bound to anything any more: an authorization request needs a login.
+     */
+    #[Test]
+    public function aLoggedOutBrowserNeedsALoginAgain(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->browser->submit($this->confirmationPage()->selectButton('Sign out')->form());
+
+        // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
+
+        // Then
         static::assertStringStartsWith('/login?interaction=', self::string($this->browser->getResponse()->headers->get('Location')));
     }
 
@@ -71,14 +102,14 @@ final class EndSessionControllerTest extends BrowserTestCase
     #[Test]
     public function theUserMayStaySignedIn(): void
     {
+        // Given
         $session = $this->signIn(self::user('alice'));
-        $crawler = $this->browser->request('GET', '/logout', [
-            'client_id' => 'oidc-demo',
-            'post_logout_redirect_uri' => 'https://demo.test/',
-        ]);
+        $crawler = $this->confirmationPage();
 
+        // When
         $this->browser->submit($crawler->selectButton('Stay signed in')->form());
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
@@ -94,14 +125,16 @@ final class EndSessionControllerTest extends BrowserTestCase
     #[Test]
     public function aHintNamingTheSessionEndsItWithoutAQuestion(): void
     {
-        $user = self::user('alice');
-        $idToken = $this->idTokenOf($user);
+        // Given
+        $idToken = $this->idTokenOf(self::user('alice'));
 
+        // When
         $this->browser->request('GET', '/logout', [
             'id_token_hint' => $idToken,
             'post_logout_redirect_uri' => 'https://demo.test/',
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('https://demo.test/', $response->headers->get('Location'));
@@ -114,14 +147,17 @@ final class EndSessionControllerTest extends BrowserTestCase
     #[Test]
     public function aHintOfAnotherSessionAsksFirst(): void
     {
+        // Given
         $user = self::user('alice');
         $idToken = $this->idTokenOf($user);
         $this->signIn($user);
 
+        // When
         $crawler = $this->browser->request('GET', '/logout', [
             'id_token_hint' => $idToken,
         ]);
 
+        // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertSame('different_session', $crawler->filter('[data-reason]')->attr('data-reason'));
     }
@@ -132,11 +168,13 @@ final class EndSessionControllerTest extends BrowserTestCase
     #[Test]
     public function anUnregisteredRedirectUriIsShownToTheUser(): void
     {
+        // When
         $this->browser->request('GET', '/logout', [
             'client_id' => 'oidc-demo',
             'post_logout_redirect_uri' => 'https://attacker.example/',
         ]);
 
+        // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
@@ -149,16 +187,31 @@ final class EndSessionControllerTest extends BrowserTestCase
     #[Test]
     public function aForgedConfirmationEndsNothing(): void
     {
+        // Given
         $session = $this->signIn(self::user('alice'));
 
+        // When
         $this->browser->request('POST', '/logout', [
             'confirm' => 'yes',
             '_token' => 'forged',
         ]);
 
+        // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
         $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
         static::assertFalse($kept->hasEnded());
+    }
+
+    /**
+     * The confirmation page of a logout asked by oidc-demo without a hint, with a state.
+     */
+    private function confirmationPage(): Crawler
+    {
+        return $this->browser->request('GET', '/logout', [
+            'client_id' => 'oidc-demo',
+            'post_logout_redirect_uri' => 'https://demo.test/',
+            'state' => 'after-logout',
+        ]);
     }
 
     /**
