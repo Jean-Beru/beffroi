@@ -48,7 +48,8 @@ deptrac:
         - { type: classLike, value: '^Jose\\' }
     - name: 'Symfony'
       collectors:
-        - { type: classLike, value: '^Symfony\\' }
+        # Everything of Symfony except the standalone components the pure-PHP packages may use, which have layers of their own above
+        - { type: classLike, value: '^Symfony\\(?!Component\\(?:Uid|KeyManagement)\\)' }
     - name: 'Doctrine'
       collectors:
         - { type: classLike, value: '^Doctrine\\' }
@@ -59,10 +60,12 @@ deptrac:
     CorePort:
       - 'CoreDomain'
       - 'Psr'
+      - 'Uid'
     CoreApplication:
       - 'CoreDomain'
       - 'CorePort'
       - 'Psr'
+      - 'Uid'
     CoreBridge:
       - 'CoreDomain'
       - 'CorePort'
@@ -79,12 +82,14 @@ deptrac:
       - 'CoreDomain'
       - 'CorePort'
       - 'Psr'
+      - 'Uid'
     OidcApplication:
       - 'OidcDomain'
       - 'OidcPort'
       - 'CoreDomain'
       - 'CorePort'
       - 'Psr'
+      - 'Uid'
     OidcBridge:
       - 'OidcDomain'
       - 'OidcPort'
