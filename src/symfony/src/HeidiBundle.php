@@ -10,6 +10,7 @@ use function dirname;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
+use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
 use Heidi\Bundle\Doctrine\Type\GeoLocationType;
@@ -191,6 +192,10 @@ final class HeidiBundle extends AbstractBundle
             ->info('Consent is the rule; a first-party application is the named exception.')
             ->defaultTrue()
             ->end()
+            ->booleanNode('requires_pkce')
+            ->info('PKCE S256 is the rule; a confidential client that cannot send a code_challenge is the named exception of decision 0008, refused for a public client. A challenge the client sends is verified all the same.')
+            ->defaultTrue()
+            ->end()
             ->enumNode('id_token_signed_response_alg')
             ->values(array_column(SignatureAlgorithm::cases(), 'value'))
             ->defaultValue(SignatureAlgorithm::RS256->value)
@@ -216,6 +221,7 @@ final class HeidiBundle extends AbstractBundle
         RedirectUriType::NAME => RedirectUriType::class,
         ScopesType::NAME => ScopesType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
+        CodeChallengeType::NAME => CodeChallengeType::class,
     ];
 
     /**

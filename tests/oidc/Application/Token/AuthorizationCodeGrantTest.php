@@ -315,11 +315,12 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3, RFC 7636 §4.5: "code", "redirect_uri" and "code_verifier" are required.
+     * RFC 6749 §4.1.3: "code" and "redirect_uri" are required. Whether "code_verifier" is depends on the
+     * code (RFC 7636 §4.5, RFC 9700 §4.8.2), so it is judged once the code is found.
      */
     #[Test]
     #[DataProvider('provideRequiredParameters')]
-    public function itRequiresTheCodeTheRedirectUriAndTheCodeVerifier(string $missing): void
+    public function itRequiresTheCodeAndTheRedirectUri(string $missing): void
     {
         // Given
         $this->code('the-code', $this->client);
@@ -361,7 +362,6 @@ final class AuthorizationCodeGrantTest extends TestCase
     {
         yield 'code' => ['code'];
         yield 'redirect_uri' => ['redirect_uri'];
-        yield 'code_verifier' => ['code_verifier'];
     }
 
     /**
@@ -646,6 +646,84 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // When
         $this->grant->grant($this->client, $this->request(redirectUri: 'https://demo.localhost/login/check/'), $this->context);
+    }
+
+    /**
+     * RFC 7636 §4.5, §4.6: a code issued with a challenge is exchanged with the verifier, whatever the
+     * client is registered with.
+     */
+    #[Test]
+    public function itRefusesACodeIssuedWithAChallengeWithoutACodeVerifier(): void
+    {
+        // Given
+        $this->code('the-code', $this->client);
+        $parameters = $this->parameters();
+        unset($parameters['code_verifier']);
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($this->client, new TokenRequest($parameters), $this->context);
+    }
+
+    /**
+     * The code was looked up, so it is consumed: a verifier cannot be tried after a first attempt without one.
+     */
+    #[Test]
+    public function aCodeIssuedWithAChallengePresentedWithoutAVerifierIsConsumed(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $parameters = $this->parameters();
+        unset($parameters['code_verifier']);
+
+        // When
+        $this->failToGrant($this->client, new TokenRequest($parameters));
+
+        // Then
+        static::assertTrue($code->isUsed());
+    }
+
+    /**
+     * Decision 0008: a client registered without the PKCE requirement gets a code without a challenge
+     * when it sent none, and exchanges it without a verifier.
+     */
+    #[Test]
+    public function aCodeIssuedWithoutAChallengeIsExchangedWithoutAVerifier(): void
+    {
+        // Given
+        $client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'legacy', requiresPkce: false);
+        $this->codes->save(Tokens::code('the-code', $client, $this->session, $this->clock->now(), pkce: false));
+        $parameters = $this->parameters();
+        unset($parameters['code_verifier']);
+
+        // When
+        $issued = $this->grant->grant($client, new TokenRequest($parameters), $this->context);
+
+        // Then
+        static::assertSame('at:legacy:alice-subject:' . $this->clock->now()->getTimestamp(), $issued->accessToken->value);
+    }
+
+    /**
+     * RFC 9700 §4.8.2: a code_verifier is accepted only if a code_challenge was present in the
+     * authorization request; otherwise an attacker who stripped the challenge would be exchanging a
+     * code the client never bound.
+     */
+    #[Test]
+    public function itRefusesACodeVerifierForACodeIssuedWithoutAChallenge(): void
+    {
+        // Given
+        $client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'legacy', requiresPkce: false);
+        $this->codes->save(Tokens::code('the-code', $client, $this->session, $this->clock->now(), pkce: false));
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant($client, $this->request(), $this->context);
     }
 
     /**

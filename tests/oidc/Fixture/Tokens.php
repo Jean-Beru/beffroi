@@ -26,7 +26,7 @@ final class Tokens
 
     /**
      * A code issued now for sixty seconds, for the first redirect URI of the client, bound to
-     * Requests::CHALLENGE, with the authentication of the session.
+     * Requests::CHALLENGE unless the request carried no challenge, with the authentication of the session.
      *
      * @param list<string> $scopes
      */
@@ -38,6 +38,7 @@ final class Tokens
         array $scopes = ['openid'],
         ?string $nonce = 'n-0S6_WzA2Mj',
         ?ClaimsRequest $claims = null,
+        bool $pkce = true,
     ): AuthorizationCode {
         return new AuthorizationCode(
             AuthorizationCode::hash($code),
@@ -46,7 +47,7 @@ final class Tokens
             $client->redirectUris[0],
             array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
             $nonce,
-            new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
             $claims,
             $session->authenticatedAt(),
             $session->methodReferences(),

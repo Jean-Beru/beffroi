@@ -82,7 +82,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertTrue($parked->client->belongsTo($found->tenant));
         static::assertSame((string) $client->redirectUris[0], (string) $parked->redirectUri);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $parked->scopes);
-        static::assertSame(self::CHALLENGE, $parked->codeChallenge->value);
+        static::assertSame(self::CHALLENGE, $parked->codeChallenge?->value);
         static::assertSame('S256', $parked->codeChallenge->method->value);
         static::assertSame('af0ifjsldkj', $parked->state);
         static::assertSame('n-0S6_WzA2Mj', $parked->nonce);

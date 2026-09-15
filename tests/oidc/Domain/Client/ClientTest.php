@@ -85,6 +85,46 @@ final class ClientTest extends TestCase
     }
 
     /**
+     * Decision 0008: PKCE is the rule.
+     */
+    #[Test]
+    public function aClientRequiresPkceUnlessRegisteredOtherwise(): void
+    {
+        // When
+        $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
+
+        // Then
+        static::assertTrue($client->requiresPkce);
+    }
+
+    /**
+     * Decision 0008: the named exception is carried by a confidential client.
+     */
+    #[Test]
+    public function aConfidentialClientMayBeRegisteredWithoutThePkceRequirement(): void
+    {
+        // When
+        $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET), requiresPkce: false);
+
+        // Then
+        static::assertFalse($client->requiresPkce);
+    }
+
+    /**
+     * RFC 9700 §2.1.1: a public client MUST use PKCE; the exception of decision 0008 is not for it.
+     */
+    #[Test]
+    public function aPublicClientCannotBeRegisteredWithoutThePkceRequirement(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The client "spa" is public and must use PKCE (RFC 9700 section 2.1.1): requires_pkce cannot be false.');
+
+        // When
+        new Client(Fixtures::tenant(), 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], requiresPkce: false);
+    }
+
+    /**
      * RFC 6749 §2.1: a public client has no secret.
      */
     #[Test]

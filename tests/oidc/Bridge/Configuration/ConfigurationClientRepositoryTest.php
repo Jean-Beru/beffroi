@@ -85,6 +85,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($demo->belongsTo($this->tenant));
         static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $demo->tokenEndpointAuthMethod);
         static::assertFalse($demo->requiresConsent);
+        static::assertTrue($demo->requiresPkce);
         static::assertTrue($demo->hasRedirectUri('https://demo.localhost/login/check'));
         static::assertTrue($demo->hasPostLogoutRedirectUri('https://demo.localhost/'));
         static::assertSame([GrantType::AuthorizationCode, GrantType::RefreshToken], $demo->grantTypes);
@@ -272,6 +273,26 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
+     * Decision 0008: requires_pkce is read like requires_consent, false only where the configuration says so.
+     */
+    #[Test]
+    public function aConfidentialClientIsDeclaredWithoutThePkceRequirement(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'legacy' => self::DEMO + [
+                'requires_pkce' => false,
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'legacy');
+
+        // Then
+        static::assertFalse($client->requiresPkce);
+    }
+
+    /**
      * A wrong definition fails when the repository is built, not when the client first shows up.
      *
      * @param array<string, mixed> $definition
@@ -327,6 +348,14 @@ final class ConfigurationClientRepositoryTest extends TestCase
         yield 'requires_consent as a string' => [$base + [
             'requires_consent' => 'false',
         ], 'must be a boolean'];
+        yield 'requires_pkce as a string' => [$base + [
+            'requires_pkce' => 'false',
+        ], 'requires_pkce option of the client "bad" must be a boolean'];
+        yield 'public client without the PKCE requirement (RFC 9700 §2.1.1)' => [[
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'none',
+            'requires_pkce' => false,
+        ], 'is public and must use PKCE'];
         yield 'name not a string' => [$base + [
             'name' => ['x'],
         ], 'name of the client "bad" must be a string'];

@@ -84,7 +84,8 @@ doctrine:
                 alias: Host
 
 # A full configuration (architecture §5.1): one tenant, a local KMS, files for the sealed keys, the default
-# lifetimes and two clients. The sodium key is a fixture of this kernel and seals nothing outside of it.
+# lifetimes and three clients, the third one carrying the PKCE exception of decision 0008. The sodium key
+# is a fixture of this kernel and seals nothing outside of it.
 heidi:
     tenant:
         issuer: 'https://op.test'
@@ -103,6 +104,12 @@ heidi:
         native-app:
             redirect_uris: ['http://127.0.0.1/callback']
             token_endpoint_auth_method: none
+        legacy-app:
+            name: 'Legacy application'
+            secret: 'legacy-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://legacy.test/callback']
+            token_endpoint_auth_method: client_secret_post
+            requires_pkce: false
 
 services:
     # The 404s the plane tests expect are not worth a line on stderr.

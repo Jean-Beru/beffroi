@@ -95,7 +95,7 @@ final class AuthorizationCodeTest extends TestCase
         static::assertSame('https://spa.example/callback', (string) $code->redirectUri);
         static::assertEquals([new Scope('openid')], $code->scopes);
         static::assertSame('n-0S6_WzA2Mj', $code->nonce);
-        static::assertSame(Requests::CHALLENGE, $code->codeChallenge->value);
+        static::assertSame(Requests::CHALLENGE, $code->codeChallenge?->value);
         static::assertNull($code->claimsRequest);
         static::assertEquals($issuedAt, $code->authenticatedAt);
         static::assertSame(['pwd', 'otp'], $code->authenticationMethods);

@@ -173,6 +173,13 @@ final class HeidiBundleConfigurationTest extends TestCase
                 ],
             ],
         ], 'requires_consent'];
+        yield 'a PKCE flag that is not a boolean' => [self::MINIMAL + [
+            'clients' => [
+                'app' => [
+                    'requires_pkce' => 'no',
+                ],
+            ],
+        ], 'requires_pkce'];
         yield 'an unknown top-level option' => [self::MINIMAL + [
             'compatibility' => [],
         ], 'compatibility'];

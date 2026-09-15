@@ -92,6 +92,24 @@ final class BundleBootTest extends DatabaseTestCase
         static::assertSame('Demo application', $demo->name);
         static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $demo->tokenEndpointAuthMethod);
         static::assertFalse($demo->requiresConsent);
+        static::assertTrue($demo->requiresPkce);
+    }
+
+    /**
+     * Decision 0008: the PKCE exception is declared per client.
+     */
+    #[Test]
+    public function aClientWithoutThePkceRequirementComesFromTheConfiguration(): void
+    {
+        // Given
+        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+
+        // When
+        $legacy = $clients->findByClientId(self::tenant(), 'legacy-app') ?? static::fail('The legacy-app client is configured.');
+
+        // Then
+        static::assertFalse($legacy->requiresPkce);
+        static::assertSame(TokenEndpointAuthMethod::ClientSecretPost, $legacy->tokenEndpointAuthMethod);
     }
 
     /**
