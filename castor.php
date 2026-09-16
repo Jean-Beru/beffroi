@@ -483,6 +483,11 @@ const CONFORMANCE_REQUIRED_VALUES = [
 const CONFORMANCE_MODULE_TIMEOUT = 300;
 
 /**
+ * How long the suite may take to serve its API after its container reports healthy.
+ */
+const CONFORMANCE_SUITE_TIMEOUT = 180;
+
+/**
  * @param array<string> $module
  */
 #[AsTask(description: 'Run the OpenID conformance plan of spike 1 (Basic OP profile) against the OP through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user, and print the result of every module')]
@@ -491,6 +496,8 @@ function conformance(
     array $module = [],
     #[AsOption(description: 'Base URL of the suite; CONFORMANCE_TOKEN in the environment authenticates on a hosted one')]
     string $suite = 'https://localhost:8443',
+    #[AsOption(description: 'Fail on WARNING as well as on FAILED, which is what the CI asks of the plan')]
+    bool $strict = false,
 ): void {
     io()->title(sprintf('Conformance: %s', CONFORMANCE_PLAN));
 
@@ -501,7 +508,7 @@ function conformance(
         exit(1);
     }
 
-    $server = conformance_request($suite, 'GET', '/api/server');
+    $server = conformance_server($suite);
     io()
         ->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['HEIDI_ISSUER']));
 
@@ -561,13 +568,43 @@ function conformance(
         ->text($planUrl);
 
     // WARNING and REVIEW are what a human reads before submitting; SKIPPED is the suite's own choice.
-    $failed = array_sum(array_filter($verdict, static fn (string $result): bool => ! in_array($result, ['PASSED', 'WARNING', 'REVIEW', 'SKIPPED'], true), \ARRAY_FILTER_USE_KEY));
+    // Under --strict a WARNING is a failure: the CI keeps the plan at the state a submission needs, and
+    // REVIEW and SKIPPED stay accepted because no run of the plan can avoid them (tests/conformance/README.md).
+    $accepted = $strict ? ['PASSED', 'REVIEW', 'SKIPPED'] : ['PASSED', 'WARNING', 'REVIEW', 'SKIPPED'];
+    $failed = array_sum(array_filter($verdict, static fn (string $result): bool => ! in_array($result, $accepted, true), \ARRAY_FILTER_USE_KEY));
     if ($failed > 0) {
         io()->error(sprintf('%d module(s) did not pass.', $failed));
         exit(1);
     }
     io()
         ->success('Every module passed.');
+}
+
+/**
+ * The suite, once it answers. Its container is healthy before its JVM serves the API, and nginx answers
+ * 502 until then: a plan created in that window fails for nothing, which is the difference between a
+ * developer who waits and a CI that does not.
+ *
+ * @return array<string, mixed>
+ */
+function conformance_server(string $suite): array
+{
+    $deadline = microtime(true) + CONFORMANCE_SUITE_TIMEOUT;
+    $announced = false;
+    while (true) {
+        try {
+            return conformance_request($suite, 'GET', '/api/server');
+        } catch (Throwable $exception) {
+            if (microtime(true) >= $deadline) {
+                throw $exception;
+            }
+            if (! $announced) {
+                io()->text(sprintf('Waiting for the suite on %s.', $suite));
+                $announced = true;
+            }
+            usleep(2_000_000);
+        }
+    }
 }
 
 /**

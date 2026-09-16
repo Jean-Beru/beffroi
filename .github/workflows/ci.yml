@@ -171,6 +171,45 @@ jobs:
           composer-options: --optimize-autoloader
       - run: castor phpunit
 
+  conformance:
+    name: "🔟 OpenID Conformance (Basic OP)"
+    needs: [tests]
+    # The plan drives a real browser through a real OP: the host runs Docker, not the phpqa image.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      # The application is pinned by its own lock, the way a developer runs it; the monorepo jobs above
+      # are the ones that follow the dev branches of Symfony.
+      - uses: ramsey/composer-install@v4
+        with:
+          working-directory: apps/op
+          dependency-versions: locked
+          composer-options: --optimize-autoloader
+      - name: "Install Castor"
+        run: |
+          curl -fsSL -o "${RUNNER_TEMP}/castor" https://github.com/jolicode/castor/releases/download/v1.7.0/castor.linux-amd64
+          chmod +x "${RUNNER_TEMP}/castor"
+          echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
+      - name: "Start the OP and the conformance suite"
+        run: castor start --conformance --build
+      - name: "Provision the OP"
+        run: castor provision
+      # --strict makes a WARNING a failure: what the plan must look like before anything is submitted.
+      # REVIEW and SKIPPED stay accepted, no run of the plan can avoid them (tests/conformance/README.md).
+      - name: "Run the Basic OP plan"
+        run: castor conformance --strict
+      - name: "Logs of the stack"
+        if: failure()
+        run: docker compose --profile conformance logs --no-color --tail 400
+      - name: "Stop the stack"
+        if: always()
+        run: castor stop
+
   infection:
     name: "9️⃣ Mutation Testing"
     needs: [tests]
