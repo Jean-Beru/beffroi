@@ -289,7 +289,9 @@ final class UserInfoHandlerTest extends TestCase
         // Given
         $refreshed = $this->refreshed(['openid', 'email'], null);
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
-        $this->grants->findByGrantId($refreshed->grantId)?->revoke(Fixtures::now());
+        $grant = $this->grants->findByGrantId($refreshed->grantId);
+        static::assertNotNull($grant, 'the refresh carries the grant of the code it descends from');
+        $grant->revoke(Fixtures::now());
 
         // Then
         $this->expectException(InvalidTokenException::class);
