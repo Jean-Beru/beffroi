@@ -99,7 +99,7 @@ final class AuthorizationCodeTest extends TestCase
         static::assertNull($code->claimsRequest);
         static::assertEquals($issuedAt, $code->authenticatedAt);
         static::assertSame(['pwd', 'otp'], $code->authenticationMethods);
-        static::assertNull($code->authenticationContextClass);
+        static::assertSame('1', $code->authenticationContextClass);
         static::assertEquals($issuedAt, $code->issuedAt);
         static::assertEquals($issuedAt->modify('+60 seconds'), $code->expiresAt);
     }
@@ -124,7 +124,7 @@ final class AuthorizationCodeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthorizationCode(AuthorizationCode::hash(''), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], null, Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        new AuthorizationCode(AuthorizationCode::hash(''), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     #[Test]
@@ -147,7 +147,7 @@ final class AuthorizationCodeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthorizationCode(AuthorizationCode::hash(''), $this->client, $this->session, $this->client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), [], null, Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        new AuthorizationCode(AuthorizationCode::hash(''), $this->client, $this->session, $this->client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), [], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     #[Test]
@@ -266,7 +266,8 @@ final class AuthorizationCodeTest extends TestCase
             null,
             $this->session->authenticatedAt(),
             $this->session->methodReferences(),
-            $this->session->authenticationContextClass,
+            $this->session->authenticationContextClass()
+                ->value,
             $issuedAt,
             $expiresAt,
         );

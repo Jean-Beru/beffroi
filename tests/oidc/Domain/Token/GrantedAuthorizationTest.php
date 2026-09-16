@@ -59,7 +59,7 @@ final class GrantedAuthorizationTest extends TestCase
         static::assertSame($claims, $authorization->claimsRequest);
         static::assertEquals($this->session->authenticatedAt(), $authorization->authenticatedAt);
         static::assertSame(['pwd'], $authorization->authenticationMethods);
-        static::assertNull($authorization->authenticationContextClass);
+        static::assertSame('1', $authorization->authenticationContextClass);
     }
 
     #[Test]
@@ -213,7 +213,8 @@ final class GrantedAuthorizationTest extends TestCase
             null,
             $this->session->authenticatedAt(),
             $methods ?? $this->session->methodReferences(),
-            null,
+            $this->session->authenticationContextClass()
+                ->value,
         );
     }
 }

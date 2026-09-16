@@ -24,7 +24,7 @@ final class ProviderMetadataTest extends TestCase
      * OIDC Discovery §3: the members, in the order the section lists them, then "code_challenge_methods_supported"
      * (RFC 8414 §2), "authorization_response_iss_parameter_supported" (RFC 9207 §3) and "end_session_endpoint"
      * (RP-Initiated Logout §2.1). Only what the provider does: "code", "query", "S256", "public", "RS256",
-     * the three client authentication methods of RFC 6749 §2.3, no request object.
+     * the three client authentication methods of RFC 6749 §2.3, the one "acr" it asserts, no request object.
      */
     #[Test]
     public function itDescribesWhatTheProviderDoesAndNothingElse(): void
@@ -43,6 +43,7 @@ final class ProviderMetadataTest extends TestCase
             'response_types_supported' => ['code'],
             'response_modes_supported' => ['query'],
             'grant_types_supported' => ['authorization_code', 'refresh_token'],
+            'acr_values_supported' => ['1'],
             'subject_types_supported' => ['public'],
             'id_token_signing_alg_values_supported' => ['RS256'],
             'token_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'none'],

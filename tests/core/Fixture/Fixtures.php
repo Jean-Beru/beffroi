@@ -37,7 +37,7 @@ final class Fixtures
         $user ??= self::user();
         $authenticatedAt ??= self::now();
 
-        return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), null, self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
+        return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
     }
 
     public static function user(?Tenant $tenant = null, string $username = 'alice', string $subject = 'alice-subject'): User

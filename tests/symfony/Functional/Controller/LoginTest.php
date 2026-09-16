@@ -87,7 +87,7 @@ final class LoginTest extends BrowserTestCase
         static::assertSame('127.0.0.1', $session->createdFrom->ipAddress);
         static::assertSame('Symfony BrowserKit', $session->createdFrom->userAgent);
         static::assertTrue($session->isActive(new DateTimeImmutable()));
-        static::assertNull($session->authenticationContextClass);
+        static::assertSame('1', $session->authenticationContextClass()->value);
     }
 
     /**

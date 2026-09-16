@@ -82,7 +82,6 @@ final readonly class LoginSuccessListener
                 $user->user(),
                 $now,
                 AuthenticationProofs::of($method, $now),
-                null,
                 $context,
                 $now->add($this->sessionLifetime),
             );

@@ -302,6 +302,35 @@ const DEV_ENV_LOCAL = 'apps/op/.env.local';
 
 const DEV_USERNAME = 'alice';
 
+/**
+ * The description of the development user, every claim of OIDC Core §5.1 the "profile", "phone" and
+ * "address" scopes stand for: the scope modules of the conformance plan check that UserInfo answers each
+ * scope with its claims, and a user without them ends those modules in a warning (issue #45).
+ */
+const DEV_USER_PROFILE = [
+    '--name', 'Alice Liddell',
+    '--given-name', 'Alice',
+    '--family-name', 'Liddell',
+    '--middle-name', 'Pleasance',
+    '--nickname', 'Ali',
+    '--preferred-username', 'alice',
+    '--profile-url', 'https://op.localhost/alice',
+    '--picture', 'https://op.localhost/alice.png',
+    '--website', 'https://op.localhost/',
+    '--gender', 'female',
+    '--birthdate', '1852-05-04',
+    '--zoneinfo', 'Europe/London',
+    '--locale', 'en-GB',
+    '--phone-number', '+44 1865 000000',
+    '--phone-number-verified',
+    '--address', "1 Wonderland Road\nOxford OX1 1AA\nUnited Kingdom",
+    '--street-address', '1 Wonderland Road',
+    '--locality', 'Oxford',
+    '--region', 'Oxfordshire',
+    '--postal-code', 'OX1 1AA',
+    '--country', 'United Kingdom',
+];
+
 const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -309,7 +338,7 @@ const DEV_CLIENT_SECRETS = [
     'OIDC_DEMO_SECRET',
 ];
 
-#[AsTask(description: 'Provision the development OP after "castor start": the local KMS key and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a password')]
+#[AsTask(description: 'Provision the development OP after "castor start": the local KMS key and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a full profile and a password')]
 function provision(): void
 {
     io()->title('Provisioning the development OP');
@@ -348,6 +377,9 @@ function provision(): void
         io()->write($creation->getOutput());
         exit($creation->getExitCode() ?? 1);
     }
+    // The whole profile of OIDC Core §5.1, so that every scope of the Basic OP plan gets its claims
+    // (tests/conformance/README.md); replayed on every run, the command clears what it does not say.
+    op_console(['heidi:user:profile', DEV_USERNAME, ...DEV_USER_PROFILE]);
     // Never on the command line: the command reads it on its standard input.
     op_console(
         ['heidi:user:set-password', DEV_USERNAME, '--password-stdin'],
@@ -703,6 +735,274 @@ function conformance_request(string $suite, string $method, string $path, array 
     return is_array($decoded) ? $decoded : [
         'value' => $decoded,
     ];
+}
+
+/**
+ * oidc-demo, the reference client of the core (Symfony's oidc_login): where it is checked out, next to this
+ * repository or next to the repository this one is nested in, where its server listens, and the client the
+ * application registers for it (apps/op/config/packages/heidi.yaml).
+ */
+const DEMO_DIRS = ['../oidc-demo', '../../oidc-demo'];
+
+const DEMO_URL = 'https://localhost:8002';
+
+const DEMO_CLIENT_ID = 'oidc-demo';
+
+#[AsTask(description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line')]
+function demo(
+    #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
+    ?string $dir = null,
+    #[AsOption(description: 'Sign in as the development user, open /profile and log out, from the command line, and print what was verified')]
+    bool $check = false,
+    #[AsOption(description: 'Stop the server of oidc-demo instead')]
+    bool $stop = false,
+): void {
+    $isDemo = static fn (string $dir): bool => file_exists($dir . '/config/packages/security.yaml') && str_contains((string) file_get_contents($dir . '/config/packages/security.yaml'), 'oidc_login');
+    $candidates = $dir === null ? DEMO_DIRS : [$dir];
+    $dir = null;
+    foreach ($candidates as $candidate) {
+        $candidate = str_starts_with($candidate, '/') ? $candidate : getcwd() . '/' . $candidate;
+        if ($isDemo($candidate)) {
+            $dir = realpath($candidate) ?: $candidate;
+            break;
+        }
+    }
+    if ($dir === null) {
+        io()->error(sprintf('oidc-demo is not in %s (no oidc_login firewall in config/packages/security.yaml). Pass --dir.', implode(' nor ', $candidates)));
+        exit(1);
+    }
+    $server = context()
+        ->withWorkingDirectory($dir);
+    if ($stop) {
+        run(['symfony', 'server:stop'], context: $server->withAllowFailure());
+
+        return;
+    }
+
+    io()
+        ->title('oidc-demo against the development OP');
+    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    foreach (['HEIDI_ISSUER', 'OIDC_DEMO_SECRET', 'HEIDI_DEV_USER_PASSWORD'] as $name) {
+        if (($env[$name] ?? '') === '') {
+            io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
+            exit(1);
+        }
+    }
+
+    io()
+        ->section('Configuration');
+    // .env.local only: the .env of the demo, which its repository holds, is not touched
+    demo_write_env_local($dir . '/.env.local', [
+        'OIDC_PROVIDER_URI' => $env['HEIDI_ISSUER'],
+        'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
+        'OIDC_CLIENT_SECRET' => $env['OIDC_DEMO_SECRET'],
+    ]);
+    // The OP serves a certificate of Caddy's internal CA, which the PHP of the host does not know unless
+    // the CA was installed on the machine: the demo runs with a php.ini of its own that trusts it, which
+    // the Symfony CLI reads from the root of the project.
+    $ca = $dir . '/var/caddy-root.crt';
+    if (! is_dir($dir . '/var')) {
+        mkdir($dir . '/var', 0o777, true);
+    }
+    run(['docker', 'compose', 'cp', 'op:/data/caddy/pki/authorities/local/root.crt', $ca], context: context()->withQuiet());
+    file_put_contents($dir . '/php.ini', sprintf("; written by \"castor demo\" of the OP: trust the CA of Caddy for https://op.localhost\nopenssl.cafile=%s\ncurl.cainfo=%s\n", $ca, $ca));
+    io()
+        ->text(sprintf('Issuer %s, client "%s", secret from apps/op/.env.local, CA of Caddy in %s.', $env['HEIDI_ISSUER'], DEMO_CLIENT_ID, $ca));
+
+    io()
+        ->section('Server');
+    // the discovery document of the previous issuer may still be cached
+    run(['php', 'bin/console', 'cache:clear'], context: $server->withQuiet());
+    $status = run(['symfony', 'server:status'], context: $server->withAllowFailure()->withQuiet())->getOutput();
+    if (str_contains($status, 'Listening on')) {
+        io()->note('The server of oidc-demo runs already; "castor demo --stop" stops it.');
+    } else {
+        run(['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'], context: $server);
+    }
+    io()
+        ->success(sprintf('%s/profile signs in on %s as "%s", password %s.', DEMO_URL, $env['HEIDI_ISSUER'], DEV_USERNAME, $env['HEIDI_DEV_USER_PASSWORD']));
+
+    if ($check) {
+        demo_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+}
+
+/**
+ * Sets or replaces the given variables in a dotenv file and keeps every other line.
+ *
+ * @param array<string, string> $values
+ */
+function demo_write_env_local(string $path, array $values): void
+{
+    $lines = file_exists($path) ? explode("\n", rtrim((string) file_get_contents($path), "\n")) : [];
+    foreach ($values as $name => $value) {
+        $line = sprintf('%s=%s', $name, $value);
+        $written = false;
+        foreach ($lines as $index => $existing) {
+            if (str_starts_with($existing, $name . '=')) {
+                $lines[$index] = $line;
+                $written = true;
+            }
+        }
+        if (! $written) {
+            $lines[] = $line;
+        }
+    }
+    file_put_contents($path, implode("\n", array_filter($lines, static fn (string $line): bool => $line !== '')) . "\n");
+}
+
+/**
+ * The success criterion of spike 1, second half, from the command line: what a browser does from
+ * /profile of the demo to the login page of the OP, the callback, /profile again and the logout, one
+ * request at a time (no redirect followed), so that every step is looked at: PKCE S256 in the
+ * authorization request, "iss" on the callback (RFC 9207), an "at+jwt" access token and an ID token with
+ * the nonce on the page, the RP-Initiated Logout round trip, and no session left at the OP afterwards.
+ */
+function demo_check(string $issuer, string $password, string $ca): void
+{
+    io()
+        ->section('Sign in, /profile, logout');
+    $cookies = [];
+    $verified = [];
+
+    // /profile: the demo starts the flow
+    [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('/profile sends the browser to the authorization endpoint (got %d %s)', $status, $location));
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
+    demo_expect(($authorization['response_type'] ?? null) === 'code' && ($authorization['code_challenge_method'] ?? null) === 'S256' && ($authorization['client_id'] ?? null) === DEMO_CLIENT_ID, 'the authorization request is response_type=code with PKCE S256');
+    $verified[] = ['Authorization request', 'response_type=code, client_id=' . DEMO_CLIENT_ID . ', PKCE S256, nonce, state'];
+
+    // the OP parks the request and asks for a login
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf('the OP asks for a login (got %d %s)', $status, $location));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1, 'the login page carries the form');
+
+    // the form, then the login page resumes the interaction and sends the browser back to the demo
+    [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
+        '_username' => DEV_USERNAME,
+        '_password' => $password,
+        '_csrf_token' => $csrf[1],
+    ]);
+    demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'), sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location));
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+    demo_expect(isset($callback['code'], $callback['state']) && ($callback['iss'] ?? null) === $issuer, 'the callback carries code, state and iss (RFC 9207)');
+    $verified[] = ['Authorization response', 'code, state, iss=' . $issuer];
+
+    // the demo exchanges the code, reads UserInfo and opens /profile
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && $location === DEMO_URL . '/profile', sprintf('the demo signs the user in (got %d %s)', $status, $location));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
+    demo_expect($status === 200, sprintf('/profile opens (got %d)', $status));
+    $tokens = demo_tokens_of($page);
+    demo_expect(isset($tokens['id_token'], $tokens['access_token']), '/profile shows an ID token and an access token');
+    $verified[] = ['/profile', sprintf('sub %s, %d claims from UserInfo', $tokens['id_token']['sub'] ?? '?', preg_match_all('/<tr><th>[a-z_]+<\/th>/', $page))];
+    $verified[] = ['ID token', sprintf('nonce, auth_time, acr=%s, amr=%s, at_hash, sid', $tokens['id_token']['acr'] ?? '?', json_encode($tokens['id_token']['amr'] ?? null))];
+    $verified[] = ['Access token', sprintf('typ=at+jwt, scope="%s", jti %s', $tokens['access_token']['scope'] ?? '?', $tokens['access_token']['jti'] ?? '?')];
+
+    // RP-Initiated Logout: the demo ends its session and the one of the OP, which sends the browser back
+    [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/logout');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/logout?'), sprintf('/logout sends the browser to the end session endpoint (got %d %s)', $status, $location));
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $logout);
+    demo_expect(isset($logout['id_token_hint']) && ($logout['post_logout_redirect_uri'] ?? null) === DEMO_URL . '/', 'the logout request carries id_token_hint and post_logout_redirect_uri');
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && $location === DEMO_URL . '/', sprintf('the OP ends the session and sends the browser back to the demo (got %d %s)', $status, $location));
+    [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), '/profile asks for a new login');
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?'), 'the OP asks for a login again: its session ended');
+    $verified[] = ['RP-Initiated Logout', 'id_token_hint verified, back to ' . DEMO_URL . '/, the OP asks for a login again'];
+
+    io()
+        ->table(['Step', 'Verified'], $verified);
+    io()
+        ->note(sprintf('The refresh of the access token (refresh_access_token) happens on the first request after it expired, ten minutes after the login (access_token_ttl of the application): sign in from a browser, open %s/profile again then and compare the "jti".', DEMO_URL));
+    io()
+        ->success('oidc-demo signed in, opened /profile and logged out against the OP, without a patch.');
+}
+
+/**
+ * One request of the browser of the check, cookies kept per host, no redirect followed. The demo is a
+ * development server with a certificate of the Symfony CLI, verified against nothing; the OP is verified
+ * against the CA of Caddy.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ * @param array<string, string> $form
+ * @return array{int, string, string} status, Location, body
+ */
+function demo_request(array &$cookies, string $ca, string $method, string $url, array $form = []): array
+{
+    $host = (string) parse_url($url, \PHP_URL_HOST);
+    $options = [
+        'max_redirects' => 0,
+        'headers' => [
+            'Cookie' => implode('; ', array_map(static fn (string $name, string $value): string => $name . '=' . $value, array_keys($cookies[$host] ?? []), array_values($cookies[$host] ?? []))),
+        ],
+    ];
+    if ($host === 'localhost') {
+        $options['verify_peer'] = false;
+        $options['verify_host'] = false;
+    } else {
+        $options['cafile'] = $ca;
+    }
+    if ($form !== []) {
+        $options['body'] = $form;
+    }
+    $response = http_request($method, $url, $options);
+    $headers = $response->getHeaders(false);
+    foreach ($headers['set-cookie'] ?? [] as $cookie) {
+        [$pair] = explode(';', $cookie, 2);
+        [$name, $value] = explode('=', $pair, 2) + [
+            1 => '',
+        ];
+        $cookies[$host][trim($name)] = trim($value);
+    }
+
+    // a Location may be relative (RFC 9110 §10.2.2): resolved against the origin of the request
+    $location = $headers['location'][0] ?? '';
+    if (str_starts_with($location, '/')) {
+        $port = parse_url($url, \PHP_URL_PORT);
+        $location = sprintf('%s://%s%s%s', (string) parse_url($url, \PHP_URL_SCHEME), $host, $port === null ? '' : ':' . $port, $location);
+    }
+
+    return [$response->getStatusCode(), $location, $response->getContent(false)];
+}
+
+function demo_expect(bool $condition, string $what): void
+{
+    if (! $condition) {
+        io()->error('Not verified: ' . $what);
+        exit(1);
+    }
+    io()
+        ->text(' <info>✓</info> ' . $what);
+}
+
+/**
+ * The tokens the profile page prints in full, by their kind: the header "typ" tells the access token
+ * (RFC 9068 §2.1), the "nonce" claim the ID token.
+ *
+ * @return array<string, array<string, mixed>>
+ */
+function demo_tokens_of(string $page): array
+{
+    $tokens = [];
+    preg_match_all('/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/', $page, $matches);
+    foreach (array_unique($matches[0]) as $jwt) {
+        [$header, $payload] = explode('.', $jwt);
+        $decode = static fn (string $part): array => (array) json_decode((string) base64_decode(strtr($part, '-_', '+/'), true), true);
+        $header = $decode($header);
+        $claims = $decode($payload);
+        if (($header['typ'] ?? null) === 'at+jwt') {
+            $tokens['access_token'] = $claims;
+        } elseif (isset($claims['nonce'])) {
+            $tokens['id_token'] = $claims;
+        }
+    }
+
+    return $tokens;
 }
 
 #[AsTask(description: 'Fix code style and apply Rector rules, then run static analysis.')]

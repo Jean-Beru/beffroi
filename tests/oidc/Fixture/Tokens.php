@@ -51,7 +51,8 @@ final class Tokens
             $claims,
             $session->authenticatedAt(),
             $session->methodReferences(),
-            $session->authenticationContextClass,
+            $session->authenticationContextClass()
+                ->value,
             $issuedAt,
             $issuedAt->modify('+60 seconds'),
         );
@@ -91,7 +92,8 @@ final class Tokens
             $claims,
             $session->authenticatedAt(),
             $session->methodReferences(),
-            $session->authenticationContextClass,
+            $session->authenticationContextClass()
+                ->value,
             $issuedAt,
             $issuedAt->modify('+30 days') < $family->expiresAt ? $issuedAt->modify('+30 days') : $family->expiresAt,
         );

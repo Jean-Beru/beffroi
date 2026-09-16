@@ -275,7 +275,7 @@ final class AuthorizationHandlerTest extends TestCase
         static::assertNull($code->claimsRequest);
         static::assertEquals(Fixtures::now(), $code->authenticatedAt);
         static::assertSame(['pwd'], $code->authenticationMethods);
-        static::assertNull($code->authenticationContextClass);
+        static::assertSame('1', $code->authenticationContextClass);
         static::assertEquals($this->clock->now(), $code->issuedAt);
         static::assertEquals($this->clock->now()->modify('+60 seconds'), $code->expiresAt);
     }

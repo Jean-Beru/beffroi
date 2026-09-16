@@ -95,7 +95,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         ['claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
 
         // Then
-        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'amr', 'azp', 'at_hash', 'sid'], array_keys($claims));
+        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'acr', 'amr', 'azp', 'at_hash', 'sid'], array_keys($claims));
         static::assertSame('https://id.acme.example', $claims['iss']);
         static::assertSame('alice-subject', $claims['sub']);
         static::assertSame('spa', $claims['aud']);
@@ -128,13 +128,13 @@ final class JwtIdTokenIssuerTest extends TestCase
 
     /**
      * OIDC Core §12.2: on a refresh, no "nonce"; the authentication described is the original one, as the
-     * refresh token carried it, "acr" included when there is one.
+     * refresh token carried it, "acr" included.
      */
     #[Test]
     public function onARefreshThereIsNoNonceAndTheOriginalAuthenticationIsDescribed(): void
     {
         // Given
-        $session = new AuthenticationSession(Uuid::v7(), $this->session->tenant, $this->session->user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now()), 'urn:acme:mfa', Fixtures::context(), Fixtures::now()->modify('+12 hours'));
+        $session = new AuthenticationSession(Uuid::v7(), $this->session->tenant, $this->session->user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now()), Fixtures::context(), Fixtures::now()->modify('+12 hours'));
         $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $session, Fixtures::now()), null);
         $later = Fixtures::now()->modify('+20 days');
         $idToken = $this->issuer->issue($authorization, $this->accessToken, $later);
@@ -147,7 +147,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         static::assertArrayNotHasKey('nonce', $claims);
         static::assertSame(Fixtures::now()->getTimestamp(), $claims['auth_time']);
         static::assertSame($later->getTimestamp(), $claims['iat']);
-        static::assertSame('urn:acme:mfa', $claims['acr']);
+        static::assertSame('1', $claims['acr']);
         static::assertSame(['pwd', 'otp'], $claims['amr']);
     }
 
@@ -165,7 +165,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         $decoded = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
 
         // Then
-        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'amr', 'azp', 'at_hash', 'sid', 'email', 'email_verified'], array_keys($decoded));
+        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'acr', 'amr', 'azp', 'at_hash', 'sid', 'email', 'email_verified'], array_keys($decoded));
         static::assertSame('alice@acme.example', $decoded['email']);
         static::assertArrayNotHasKey('family_name', $decoded);
         static::assertArrayNotHasKey('given_name', $decoded);

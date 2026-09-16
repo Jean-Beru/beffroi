@@ -207,6 +207,10 @@ final class ProvisioningTest extends BrowserTestCase
         yield 'heidi:user:create' => ['heidi:user:create', [
             'username' => 'alice',
         ]];
+        yield 'heidi:user:profile' => ['heidi:user:profile', [
+            'username' => 'alice',
+            '--name' => 'Alice Liddell',
+        ]];
         yield 'heidi:user:set-password' => ['heidi:user:set-password', [
             'username' => 'alice',
             '--password-stdin' => true,
@@ -426,6 +430,145 @@ final class ProvisioningTest extends BrowserTestCase
         yield 'not a subject' => [[
             '--subject' => 'with a space',
         ], 'printable ASCII'];
+    }
+
+    /**
+     * OIDC Core §5.1: the attributes of the "profile", "phone" and "address" scopes, under the names of the
+     * specification, on an existing user.
+     */
+    #[Test]
+    public function aUserIsDescribedWithTheStandardClaims(): void
+    {
+        // Given
+        $user = self::user('alice');
+
+        // When
+        $tester = self::console('heidi:user:profile', [
+            'username' => ' alice ',
+            '--name' => 'Alice Liddell',
+            '--given-name' => 'Alice',
+            '--family-name' => 'Liddell',
+            '--nickname' => 'Ali',
+            '--preferred-username' => 'alice',
+            '--profile-url' => 'https://alice.example/about',
+            '--picture' => 'https://alice.example/alice.png',
+            '--website' => 'https://alice.example',
+            '--gender' => 'female',
+            '--birthdate' => '1990-05-04',
+            '--zoneinfo' => 'Europe/London',
+            '--locale' => 'en-GB',
+            '--phone-number' => '+44 1865 000000',
+            '--phone-number-verified' => true,
+            '--address' => "1 Wonderland Road\nOxford OX1 1AA\nUnited Kingdom",
+            '--street-address' => '1 Wonderland Road',
+            '--locality' => 'Oxford',
+            '--region' => 'Oxfordshire',
+            '--postal-code' => 'OX1 1AA',
+            '--country' => 'United Kingdom',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('Alice Liddell', self::displayed($tester, 'Name'));
+        static::assertSame('+44 1865 000000 (verified)', self::displayed($tester, 'Phone number'));
+        static::assertSame('1 Wonderland Road, OX1 1AA, Oxford, Oxfordshire, United Kingdom', self::displayed($tester, 'Address'));
+        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        static::assertSame('Alice Liddell', $described->profile->name);
+        static::assertSame('Alice', $described->profile->givenName);
+        static::assertSame('Liddell', $described->profile->familyName);
+        static::assertNull($described->profile->middleName);
+        static::assertSame('Ali', $described->profile->nickname);
+        static::assertSame('alice', $described->profile->preferredUsername);
+        static::assertSame('https://alice.example/about', $described->profile->profileUrl);
+        static::assertSame('https://alice.example/alice.png', $described->profile->pictureUrl);
+        static::assertSame('https://alice.example', $described->profile->websiteUrl);
+        static::assertSame('female', $described->profile->gender);
+        static::assertSame('1990-05-04', $described->profile->birthdate);
+        static::assertSame('Europe/London', $described->profile->zoneinfo);
+        static::assertSame('en-GB', $described->profile->locale);
+        static::assertSame('+44 1865 000000', $described->phoneNumber);
+        static::assertTrue($described->phoneNumberVerified);
+        $address = $described->address ?? static::fail('The address is not stored.');
+        static::assertSame("1 Wonderland Road\nOxford OX1 1AA\nUnited Kingdom", $address->formatted);
+        static::assertSame('1 Wonderland Road', $address->streetAddress);
+        static::assertSame('Oxford', $address->locality);
+        static::assertSame('Oxfordshire', $address->region);
+        static::assertSame('OX1 1AA', $address->postalCode);
+        static::assertSame('United Kingdom', $address->country);
+    }
+
+    /**
+     * The whole description every time: what the second run does not say is cleared.
+     */
+    #[Test]
+    public function aSecondDescriptionClearsWhatItDoesNotSay(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::console('heidi:user:profile', [
+            'username' => 'alice',
+            '--name' => 'Alice Liddell',
+            '--phone-number' => '+44 1865 000000',
+            '--phone-number-verified' => true,
+            '--locality' => 'Oxford',
+        ]);
+
+        // When
+        $tester = self::console('heidi:user:profile', [
+            'username' => 'alice',
+            '--given-name' => 'Alice',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        static::assertNull($described->profile->name);
+        static::assertSame('Alice', $described->profile->givenName);
+        static::assertNull($described->phoneNumber);
+        static::assertFalse($described->phoneNumberVerified);
+        static::assertNull($described->address);
+    }
+
+    /**
+     * @param array<string, string|bool> $input
+     */
+    #[Test]
+    #[DataProvider('provideDescriptionsRefused')]
+    public function aDescriptionThatCannotBeTakenIsRefusedWithoutWriting(array $input, int $status, string $message): void
+    {
+        // Given
+        $user = self::user('alice');
+
+        // When
+        $tester = self::console('heidi:user:profile', $input);
+
+        // Then
+        static::assertSame($status, $tester->getStatusCode());
+        static::assertStringContainsString($message, $tester->getDisplay());
+        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        static::assertNull($described->profile->name);
+        static::assertNull($described->phoneNumber);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string|bool>, int, string}>
+     */
+    public static function provideDescriptionsRefused(): iterable
+    {
+        yield 'not a birthdate' => [[
+            'username' => 'alice',
+            '--name' => 'Alice Liddell',
+            '--birthdate' => '4 May 1990',
+        ], Command::INVALID, 'must be "YYYY-MM-DD" or "YYYY"'];
+        yield 'a verified phone number without a number' => [[
+            'username' => 'alice',
+            '--name' => 'Alice Liddell',
+            '--phone-number-verified' => true,
+        ], Command::INVALID, 'An absent phone number cannot be verified.'];
+        yield 'unknown user' => [[
+            'username' => 'nobody',
+            '--name' => 'Nobody',
+        ], Command::FAILURE, 'There is no user named "nobody"'];
     }
 
     /**

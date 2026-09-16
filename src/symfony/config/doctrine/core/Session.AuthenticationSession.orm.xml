@@ -18,7 +18,6 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <field name="authenticationContextClass" type="string" column="acr" length="255" nullable="true"/>
         <embedded name="createdFrom" class="Heidi\Core\Domain\Session\RequestContext" column-prefix="created_from_"/>
         <embedded name="lastSeenFrom" class="Heidi\Core\Domain\Session\RequestContext" column-prefix="last_seen_from_"/>
         <field name="lastSeenAt" type="datetime_immutable" column="last_seen_at"/>

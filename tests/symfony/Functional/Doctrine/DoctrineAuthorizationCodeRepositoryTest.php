@@ -55,7 +55,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertEquals($claims, $found->claimsRequest);
         static::assertEquals(self::now(), $found->authenticatedAt);
         static::assertSame(['pwd'], $found->authenticationMethods);
-        static::assertNull($found->authenticationContextClass);
+        static::assertSame('1', $found->authenticationContextClass);
         static::assertEquals(self::now()->modify('+1 minute'), $found->issuedAt);
         static::assertEquals(self::now()->modify('+2 minutes'), $found->expiresAt);
         static::assertNull($found->usedAt);
@@ -118,7 +118,8 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             $claims,
             $session->authenticatedAt(),
             $session->methodReferences(),
-            $session->authenticationContextClass,
+            $session->authenticationContextClass()
+                ->value,
             self::now()->modify('+1 minute'),
             self::now()->modify('+2 minutes'),
         );

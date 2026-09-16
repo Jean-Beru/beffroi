@@ -114,7 +114,7 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function session(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
     {
         $establishedAt ??= self::now();
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt), null, self::context($establishedAt), $establishedAt->modify('+12 hours'));
+        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt), self::context($establishedAt), $establishedAt->modify('+12 hours'));
         self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
             ->save($session);
 

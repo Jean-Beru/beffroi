@@ -57,7 +57,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertEquals($claims, $found->claimsRequest);
         static::assertEquals(self::now(), $found->authenticatedAt);
         static::assertSame(['pwd'], $found->authenticationMethods);
-        static::assertNull($found->authenticationContextClass);
+        static::assertSame('1', $found->authenticationContextClass);
         static::assertEquals(self::now()->modify('+1 minute'), $found->issuedAt);
         static::assertEquals(self::now()->modify('+30 days'), $found->expiresAt);
         static::assertNull($found->rotatedAt);
@@ -246,7 +246,8 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
             $claims,
             $session->authenticatedAt(),
             $session->methodReferences(),
-            $session->authenticationContextClass,
+            $session->authenticationContextClass()
+                ->value,
             $issuedAt,
             self::now()->modify('+30 days'),
         );

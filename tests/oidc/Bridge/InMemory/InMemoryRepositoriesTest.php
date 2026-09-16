@@ -325,7 +325,7 @@ final class InMemoryRepositoriesTest extends TestCase
 
     private function code(string $value): AuthorizationCode
     {
-        return new AuthorizationCode(AuthorizationCode::hash($value), $this->client, $this->session, $this->client->redirectUris[0], [Scope::openid()], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], null, Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        return new AuthorizationCode(AuthorizationCode::hash($value), $this->client, $this->session, $this->client->redirectUris[0], [Scope::openid()], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     /**
