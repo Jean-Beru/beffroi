@@ -9,6 +9,7 @@ composer install                   # the monorepo: packages and tests
 (cd apps/op && composer install)   # the application; heidi/* are path repositories to ../../src
 castor start                       # https://op.localhost, PostgreSQL, RabbitMQ
 castor provision                   # the tenant, a signing key, the user "alice" with a profile; see below
+castor demo --check                # oidc-demo (Symfony oidc_login) against the OP; see below
 ```
 
 Symfony 8.2 is not released yet: `minimum-stability: dev` pulls the `8.2.x-dev` branches, including `symfony/key-management`.
@@ -22,6 +23,16 @@ A fresh stack has a schema (the container runs the migrations at start-up) and n
 3. It prints where to look: the discovery document, the JWK Set, the username and the password, and the secret of each client, which `oidc-demo` and `castor conformance` take from `.env.local`.
 
 The pages of the interaction plane (login, consent, logout) are styled by the application: `apps/op/templates/bundles/HeidiBundle/layout.html.twig` overrides the layout of the bundle, and `apps/op/assets/styles/app.css` builds Tailwind with the DaisyUI plugin through `symfonycasts/tailwind-bundle` (the binary is pinned in `config/packages/symfonycasts_tailwind.yaml`, DaisyUI in `importmap.php`). The container builds the stylesheet at start-up; `castor tailwind --watch` rebuilds it while you edit.
+
+## oidc-demo, the reference client
+
+`oidc-demo` is the Symfony application on the `oidc_login` authenticator of Symfony 8.2, the client the OP is written against: whatever the OP emits must be consumable by it without a patch. It lives in its own repository, checked out next to this one (`../oidc-demo`, or `../../oidc-demo` when this repository is nested in the design one; `--dir` otherwise), on the `8.2` branch of Symfony for `symfony/security-http`, `security-core` and `security-bundle`, since the authenticator, `iss` on the callback, the refresh of the access token and the RP-Initiated Logout were merged there after the original pull request.
+
+`castor demo` writes the issuer, the client `oidc-demo` and its secret (from `apps/op/.env.local`) into the `.env.local` of the demo, never into its `.env`; exports the root certificate of Caddy into `var/caddy-root.crt` of the demo and writes a `php.ini` next to it (`openssl.cafile`, `curl.cainfo`), which the Symfony CLI reads, so that the PHP of the host trusts `https://op.localhost` without touching the machine; clears the cache of the demo, where the discovery document of the previous issuer may live; then starts `symfony server:start --port=8002 --daemon`. `castor demo --stop` stops it.
+
+`castor demo --check` then does what a browser does, one request at a time, no redirect followed: `/profile` of the demo, the authorization request (`response_type=code`, PKCE `S256`, `nonce`, `state`), the login form of the OP as `alice`, the callback with `code`, `state` and `iss` (RFC 9207), `/profile` open with the claims of UserInfo, an ID token and an `at+jwt` access token, then `/logout`, the round trip through the end session endpoint with `id_token_hint`, and a new authorization request that lands on the login page again because the session of the OP ended. The refresh of the access token (`refresh_access_token`) is not in the check: it happens on the first request after the token expired, ten minutes after the login; sign in from a browser, open `/profile` again then and compare the `jti`.
+
+The firewall of the demo: `client_authentication: { client_secret_post: ... }` (the method the OP registered the client with), `scope: [openid, profile, email]`, `refresh_access_token: true`, `enable_end_session: true`, `post_logout_redirect_path: /`, everything else at its default.
 
 ## The stack
 
