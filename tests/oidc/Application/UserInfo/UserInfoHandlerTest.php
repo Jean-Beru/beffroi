@@ -18,7 +18,9 @@ use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
+use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -52,6 +54,8 @@ final class UserInfoHandlerTest extends TestCase
 
     private JwtAccessTokenIssuer $accessTokens;
 
+    private InMemoryAuthorizationCodeRepository $grants;
+
     private UserInfoHandler $handler;
 
     protected function setUp(): void
@@ -65,6 +69,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->session = Fixtures::session($this->user);
         $this->jwts = new Jwts($this->tenant);
         $this->accessTokens = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver());
+        $this->grants = new InMemoryAuthorizationCodeRepository();
         $users = new InMemoryUserRepository();
         $users->save($this->user);
         $this->handler = $this->handler($users);
@@ -144,7 +149,7 @@ final class UserInfoHandlerTest extends TestCase
     public function itServesSubAloneForOpenidAlone(): void
     {
         // Given
-        $refreshed = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'email']), [Scope::openid()]);
+        $refreshed = $this->refreshed(['openid', 'email'], [Scope::openid()]);
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
 
         // When
@@ -239,7 +244,7 @@ final class UserInfoHandlerTest extends TestCase
     public function itRefusesATokenWithoutOpenidScope(): void
     {
         // Given
-        $refreshed = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'email']), [new Scope('email')]);
+        $refreshed = $this->refreshed(['openid', 'email'], [new Scope('email')]);
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
 
         // When
@@ -251,6 +256,65 @@ final class UserInfoHandlerTest extends TestCase
             static::assertSame(403, $exception->statusCode);
             static::assertSame('Bearer error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid"', UserInfoErrorResponse::fromException($exception)->challenge());
         }
+    }
+
+    /**
+     * RFC 6749 §4.1.2: the replay of an authorization code revokes what was issued from it. The access
+     * token still verifies on its own (RFC 9068 §4), so a resource server holding only the keys keeps
+     * serving it; the provider, which knows where its grants live, refuses it: invalid_token, 401.
+     */
+    #[Test]
+    public function itRefusesATokenOfARevokedGrant(): void
+    {
+        // Given
+        $code = $this->code(['openid', 'email']);
+        $token = $this->accessTokens->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now())->value;
+        $code->revoke(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
+
+        // When
+        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+    }
+
+    /**
+     * RFC 6749 §4.1.2 names every token issued from the code, so an access token obtained by refreshing
+     * is refused as well: the family carries the grant of the code it descends from.
+     */
+    #[Test]
+    public function itRefusesARefreshedTokenOfARevokedGrant(): void
+    {
+        // Given
+        $refreshed = $this->refreshed(['openid', 'email'], null);
+        $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
+        $this->grants->findByGrantId($refreshed->grantId)?->revoke(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
+
+        // When
+        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+    }
+
+    /**
+     * A token whose grant the provider no longer has is refused the same way: there is nothing left to
+     * vouch for it.
+     */
+    #[Test]
+    public function itRefusesATokenWhoseGrantIsGone(): void
+    {
+        // Given
+        $token = $this->accessTokens->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('never-stored', $this->client, $this->session, Fixtures::now(), ['openid'])), Fixtures::now())->value;
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
+
+        // When
+        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -312,6 +376,7 @@ final class UserInfoHandlerTest extends TestCase
 
         return new UserInfoHandler(
             new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients),
+            $this->grants,
             $users,
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
@@ -331,6 +396,33 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function authorization(array $scopes, ?string $claims = null): GrantedAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), $scopes, claims: $claims === null ? null : ClaimsRequest::fromJson($claims)));
+        return GrantedAuthorization::fromAuthorizationCode($this->code($scopes, $claims));
+    }
+
+    /**
+     * A code of the grant the tokens descend from, in the repository the endpoint reads to learn whether
+     * that grant is still alive.
+     *
+     * @param list<string> $scopes
+     */
+    private function code(array $scopes, ?string $claims = null): AuthorizationCode
+    {
+        $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), $scopes, claims: $claims === null ? null : ClaimsRequest::fromJson($claims));
+        $this->grants->save($code);
+
+        return $code;
+    }
+
+    /**
+     * The authorization of a refresh, whose tokens descend from the same grant as the code.
+     *
+     * @param list<string> $granted
+     * @param list<Scope>|null $scopes
+     */
+    private function refreshed(array $granted, ?array $scopes): GrantedAuthorization
+    {
+        $family = Tokens::family(Fixtures::now(), grantId: $this->code($granted)->grantId);
+
+        return GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $family, $granted), $scopes);
     }
 }

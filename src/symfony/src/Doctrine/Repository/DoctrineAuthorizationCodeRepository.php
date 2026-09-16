@@ -8,6 +8,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Authorization codes in heidi_authorization_code (architecture §4.4), keyed by their hash. A code of a
@@ -27,6 +28,16 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
         $code = $this->repository()
             ->findOneBy([
                 'codeHash' => $codeHash,
+            ]);
+
+        return $code !== null && ClientResolver::isResolved($code) ? $code : null;
+    }
+
+    public function findByGrantId(Uuid $grantId): ?AuthorizationCode
+    {
+        $code = $this->repository()
+            ->findOneBy([
+                'grantId' => $grantId,
             ]);
 
         return $code !== null && ClientResolver::isResolved($code) ? $code : null;

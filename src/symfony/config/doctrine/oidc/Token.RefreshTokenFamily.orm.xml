@@ -11,6 +11,7 @@
                 <option name="fixed">true</option>
             </options>
         </field>
+        <field name="grantId" type="uuid" column="grant_id"/>
         <field name="startedAt" type="datetime_immutable" column="started_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
     </embeddable>

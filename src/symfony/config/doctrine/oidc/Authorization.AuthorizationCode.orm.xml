@@ -3,11 +3,14 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- An authorization code as the provider keeps it (architecture §4.4): the hash is the key, a used code stays until it expires so that its replay can be told from an unknown code. -->
+    <!-- An authorization code as the provider keeps it (architecture §4.4): the hash is the key, a used code stays so that its replay can be told from an unknown code. The record is also the grant, named by an opaque "grant_id" the access tokens carry, and revoked when the code is replayed (RFC 6749 §4.1.2); a row is kept as long as a token descending from it may be presented, which is the lifetime of the refresh token family, not the sixty seconds of the code. -->
     <entity name="Heidi\Oidc\Domain\Authorization\AuthorizationCode" table="heidi_authorization_code">
         <indexes>
             <index name="heidi_authorization_code_expiry" columns="expires_at"/>
         </indexes>
+        <unique-constraints>
+            <unique-constraint name="heidi_authorization_code_grant" columns="grant_id"/>
+        </unique-constraints>
         <id name="codeHash" type="string" column="code_hash" length="64">
             <options>
                 <option name="fixed">true</option>
@@ -16,6 +19,7 @@
         <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
         </many-to-one>
+        <field name="grantId" type="uuid" column="grant_id"/>
         <field name="clientId" type="string" column="client_id" length="255"/>
         <many-to-one field="session" target-entity="Heidi\Core\Domain\Session\AuthenticationSession">
             <join-column name="session_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
@@ -35,6 +39,7 @@
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="usedAt" type="datetime_immutable" column="used_at" nullable="true"/>
+        <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
         <entity-listeners>
             <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>

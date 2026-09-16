@@ -16,6 +16,7 @@ use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Architecture §4.4, §5.3: a code keyed by its hash, with everything the token endpoint needs, back with
@@ -109,6 +110,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     {
         return new AuthorizationCode(
             AuthorizationCode::hash($code),
+            Uuid::v7(),
             $client,
             $session,
             $client->redirectUris[0],

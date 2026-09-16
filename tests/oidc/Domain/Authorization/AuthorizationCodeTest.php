@@ -22,6 +22,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
 use function strlen;
+use Symfony\Component\Uid\Uuid;
 
 final class AuthorizationCodeTest extends TestCase
 {
@@ -124,7 +125,7 @@ final class AuthorizationCodeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthorizationCode(AuthorizationCode::hash(''), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        new AuthorizationCode(AuthorizationCode::hash(''), Uuid::v7(), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     #[Test]
@@ -147,7 +148,7 @@ final class AuthorizationCodeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthorizationCode(AuthorizationCode::hash(''), $this->client, $this->session, $this->client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), [], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        new AuthorizationCode(AuthorizationCode::hash(''), Uuid::v7(), $this->client, $this->session, $this->client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), [], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     #[Test]
@@ -225,6 +226,53 @@ final class AuthorizationCodeTest extends TestCase
         static::assertEquals($presentedAt, $code->usedAt);
     }
 
+    #[Test]
+    public function aNewCodeIsNotRevoked(): void
+    {
+        // When
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+
+        // Then
+        static::assertFalse($code->isRevoked());
+        static::assertNull($code->revokedAt);
+    }
+
+    /**
+     * RFC 6749 §4.1.2: the replay of a code revokes what was issued from it, said on the grant itself.
+     */
+    #[Test]
+    public function revokingDatesTheRevocation(): void
+    {
+        // Given
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        $replayedAt = Fixtures::now()->modify('+3 seconds');
+
+        // When
+        $code->revoke($replayedAt);
+
+        // Then
+        static::assertTrue($code->isRevoked());
+        static::assertEquals($replayedAt, $code->revokedAt);
+    }
+
+    /**
+     * A third presentation replays the code again; the grant was revoked when it first was.
+     */
+    #[Test]
+    public function aSecondRevocationKeepsTheFirstDate(): void
+    {
+        // Given
+        $code = $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        $replayedAt = Fixtures::now()->modify('+3 seconds');
+        $code->revoke($replayedAt);
+
+        // When
+        $code->revoke($replayedAt->modify('+1 second'));
+
+        // Then
+        static::assertEquals($replayedAt, $code->revokedAt);
+    }
+
     /**
      * Architecture §4.4: sixty seconds, the last one excluded.
      */
@@ -257,6 +305,7 @@ final class AuthorizationCodeTest extends TestCase
     {
         return new AuthorizationCode(
             $codeHash,
+            Uuid::v7(),
             $this->client,
             $this->session,
             $this->client->redirectUris[0],

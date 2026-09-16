@@ -482,6 +482,28 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.1.2: the grant itself is revoked, which is what the provider's own UserInfo reads to
+     * refuse the access tokens issued from the code; a third presentation keeps the first date.
+     */
+    #[Test]
+    public function aReplayedCodeRevokesTheGrant(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->clock->sleep(5);
+
+        // When
+        $this->failToGrant($this->client, $this->request());
+        $this->clock->sleep(5);
+        $this->failToGrant($this->client, $this->request());
+
+        // Then
+        static::assertTrue($code->isRevoked());
+        static::assertEquals($this->clock->now()->modify('-5 seconds'), $code->revokedAt);
+    }
+
+    /**
      * The detection is announced, whichever client presents the code the second time.
      */
     #[Test]
