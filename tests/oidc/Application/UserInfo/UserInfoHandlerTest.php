@@ -289,8 +289,7 @@ final class UserInfoHandlerTest extends TestCase
         // Given
         $refreshed = $this->refreshed(['openid', 'email'], null);
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
-        $grant = $this->grants->findByGrantId($refreshed->grantId);
-        static::assertNotNull($grant, 'the refresh carries the grant of the code it descends from');
+        $grant = $this->grants->findByGrantId($refreshed->grantId) ?? static::fail('The refresh carries the grant of the code it descends from.');
         $grant->revoke(Fixtures::now());
 
         // Then

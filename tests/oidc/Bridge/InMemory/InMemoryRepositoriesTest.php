@@ -200,6 +200,33 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertNull($repository->findByCodeHash('one'), 'the lookup is by hash, never by value');
     }
 
+    /**
+     * RFC 6749 §4.1.2: the claim of a code is told to one caller only, the others read a replay.
+     */
+    #[Test]
+    public function onlyTheFirstCallerConsumesACode(): void
+    {
+        // Given
+        $repository = new InMemoryAuthorizationCodeRepository();
+        $code = $this->code('one');
+        $repository->save($code);
+
+        // When / Then
+        static::assertTrue($repository->consume($code, Fixtures::now()));
+        static::assertFalse($repository->consume($code, Fixtures::now()->modify('+1 second')));
+        static::assertEquals(Fixtures::now(), $code->usedAt);
+    }
+
+    #[Test]
+    public function anUnknownCodeIsNotConsumed(): void
+    {
+        // Given
+        $repository = new InMemoryAuthorizationCodeRepository();
+
+        // When / Then
+        static::assertFalse($repository->consume($this->code('one'), Fixtures::now()));
+    }
+
     #[Test]
     public function anEmptyRefreshTokenRepositoryFindsNothing(): void
     {

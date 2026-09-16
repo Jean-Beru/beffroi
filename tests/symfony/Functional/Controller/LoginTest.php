@@ -104,8 +104,11 @@ final class LoginTest extends BrowserTestCase
 
         // Then
         static::assertSame([
-            'pwd' => $this->boundSession()->authenticatedAt()->getTimestamp(),
-        ], $this->securityToken()->getAuthenticationProofs());
+            'pwd' => $this->boundSession()
+                ->authenticatedAt()
+                ->getTimestamp(),
+        ], $this->securityToken()
+            ->getAuthenticationProofs());
     }
 
     #[Test]
@@ -617,8 +620,11 @@ final class LoginTest extends BrowserTestCase
 
         // Then
         static::assertSame([
-            'pwd' => $this->boundSession()->authenticatedAt()->getTimestamp(),
-        ], $this->securityToken()->getAuthenticationProofs());
+            'pwd' => $this->boundSession()
+                ->authenticatedAt()
+                ->getTimestamp(),
+        ], $this->securityToken()
+            ->getAuthenticationProofs());
     }
 
     /**

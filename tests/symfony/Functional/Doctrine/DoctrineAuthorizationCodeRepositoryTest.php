@@ -26,6 +26,30 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
 {
     public const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 
+    /**
+     * RFC 6749 §4.1.2, RFC 9700 §4.5: the claim is one conditional statement, so a second caller is told
+     * it lost whatever it read before, and it holds the date the first one wrote.
+     */
+    #[Test]
+    public function onlyTheFirstCallerConsumesTheCode(): void
+    {
+        // Given
+        $session = self::session(self::user());
+        $code = AuthorizationCode::generate();
+        self::codes()->save(self::code($code, self::client(), $session, null));
+        self::reload();
+        $record = self::codes()->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
+
+        // When
+        $first = self::codes()->consume($record, self::now());
+        $second = self::codes()->consume($record, self::now()->modify('+1 second'));
+
+        // Then
+        static::assertTrue($first);
+        static::assertFalse($second);
+        static::assertEquals(self::now(), $record->usedAt);
+    }
+
     #[Test]
     public function aCodeComesBackWithWhatTheGrantNeeds(): void
     {
