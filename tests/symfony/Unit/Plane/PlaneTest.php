@@ -69,6 +69,8 @@ final class PlaneTest extends TestCase
     {
         yield 'a route of the plane' => ['heidi_protocol_jwks'];
         yield 'a route of the host' => ['app_home'];
+        yield 'the profiler of the host, in development' => ['_profiler'];
+        yield 'the web debug toolbar of the host, in development' => ['_wdt'];
         yield 'no route' => [null];
     }
 
