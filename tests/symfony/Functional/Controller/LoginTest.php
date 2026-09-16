@@ -27,7 +27,6 @@ use function sleep;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-use Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter;
 use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
@@ -104,7 +103,9 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // Then
-        static::assertSame($this->boundSession()->authenticatedAt()->getTimestamp(), $this->securityToken()->getAttribute(AuthenticatedVoter::AUTH_TIME_ATTRIBUTE));
+        static::assertSame([
+            'pwd' => $this->boundSession()->authenticatedAt()->getTimestamp(),
+        ], $this->securityToken()->getAuthenticationProofs());
     }
 
     #[Test]
@@ -615,7 +616,9 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // Then
-        static::assertSame($this->boundSession()->authenticatedAt()->getTimestamp(), $this->securityToken()->getAttribute(AuthenticatedVoter::AUTH_TIME_ATTRIBUTE));
+        static::assertSame([
+            'pwd' => $this->boundSession()->authenticatedAt()->getTimestamp(),
+        ], $this->securityToken()->getAuthenticationProofs());
     }
 
     /**
