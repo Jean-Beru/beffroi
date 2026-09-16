@@ -21,6 +21,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -42,6 +43,7 @@ use Heidi\Oidc\Exception\InteractionCompletedException;
 use Heidi\Oidc\Exception\InteractionExpiredException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\LoginRequiredException;
+use Heidi\Oidc\Exception\UnmetAuthenticationRequirementsException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
@@ -1042,6 +1044,132 @@ final class AuthorizationHandlerTest extends TestCase
     }
 
     /**
+     * OIDC Core §5.5.1.1: the code carries the first requested class the session satisfies, in the
+     * client's order, which may be below the strongest one: the session proved two factors, the client
+     * asked for "1".
+     */
+    #[Test]
+    public function theCodeCarriesTheRequestedClassTheSessionSatisfies(): void
+    {
+        // Given
+        $session = $this->session();
+        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context(Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phrh", "1"]}}}')), $session, $this->context);
+
+        // Then
+        static::assertSame('1', $this->granted($decision)->code->authenticationContextClass);
+    }
+
+    /**
+     * OIDC Core §5.5.1.1: a voluntary request the session does not satisfy is answered with the
+     * session's current class, "acr_values" being the voluntary form.
+     */
+    #[Test]
+    public function aVoluntaryRequestTheSessionDoesNotSatisfyIsAnsweredWithTheCurrentClass(): void
+    {
+        // When
+        $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phrh', '2']), $this->session(), $this->context);
+
+        // Then
+        static::assertSame('1', $this->granted($decision)->code->authenticationContextClass);
+    }
+
+    /**
+     * OIDC Core §5.5.1.1: an essential "acr" naming only classes the provider cannot assert is a failed
+     * authentication, unmet_authentication_requirements (OIDC Core Error Code
+     * unmet_authentication_requirements §1), sent back to the client before any login.
+     */
+    #[Test]
+    public function anEssentialAcrTheProviderCannotAssertFailsBeforeTheLogin(): void
+    {
+        // When
+        try {
+            $this->handler->begin($this->request(claims: '{"id_token": {"acr": {"essential": true, "values": ["phrh", "2"]}}}'), null, $this->context);
+            static::fail('The request should have been refused.');
+        } catch (UnmetAuthenticationRequirementsException $exception) {
+            // Then
+            static::assertSame('unmet_authentication_requirements', $exception->error);
+            static::assertSame(400, $exception->statusCode);
+            static::assertTrue($exception->redirectable);
+            static::assertStringContainsString('acr_values_supported', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * OIDC Core §5.5.1.1: the failure is the same with a session, and with prompt=none it is not
+     * login_required, the user could do nothing about it.
+     */
+    #[Test]
+    public function anEssentialAcrTheProviderCannotAssertFailsWhateverTheSessionAndThePrompt(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+
+        // Then
+        $this->expectException(UnmetAuthenticationRequirementsException::class);
+
+        // When
+        $this->handler->begin($this->request(prompts: [Prompt::None], claims: '{"id_token": {"acr": {"essential": true, "value": "2"}}}'), $this->session(), $this->context);
+    }
+
+    /**
+     * The interaction refused for an unmet essential "acr" is over.
+     */
+    #[Test]
+    public function theInteractionRefusedForAnUnmetAcrIsOver(): void
+    {
+        // When
+        try {
+            $this->handler->begin($this->request(claims: '{"id_token": {"acr": {"essential": true, "values": ["2"]}}}'), null, $this->context);
+        } catch (UnmetAuthenticationRequirementsException) {
+        }
+
+        // Then
+        static::assertSame(1, $this->interactions->saves);
+        static::assertTrue($this->savedInteraction()->isCompleted());
+    }
+
+    /**
+     * OIDC Core §5.5.1.1: an essential "acr" is met as soon as one requested class is one the provider
+     * asserts; the login goes on as usual.
+     */
+    #[Test]
+    #[DataProvider('provideEssentialAcrRequestsTheProviderMeets')]
+    public function anEssentialAcrTheProviderAssertsAsksForTheLogin(string $claims): void
+    {
+        // When
+        $decision = $this->handler->begin($this->request(claims: $claims), null, $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::NoSession);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideEssentialAcrRequestsTheProviderMeets(): iterable
+    {
+        yield 'the single factor' => ['{"id_token": {"acr": {"essential": true, "values": ["1"]}}}'];
+        yield 'the single factor after a class the provider does not assert' => ['{"id_token": {"acr": {"essential": true, "values": ["phrh", "1"]}}}'];
+        yield 'essential without a value' => ['{"id_token": {"acr": {"essential": true}}}'];
+    }
+
+    /**
+     * OIDC Core §5.5.1.1: a voluntary "acr" is never refused, whatever it names.
+     */
+    #[Test]
+    public function aVoluntaryAcrTheProviderCannotAssertAsksForTheLogin(): void
+    {
+        // When
+        $decision = $this->handler->begin($this->request(acrValues: ['phrh'], claims: '{"id_token": {"acr": {"values": ["urn:mace:incommon:iap:silver"]}}}'), null, $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::NoSession);
+    }
+
+    /**
      * The lifetime of the interaction is the integration's to set; the default is that of architecture §4.3.
      */
     #[Test]
@@ -1076,10 +1204,11 @@ final class AuthorizationHandlerTest extends TestCase
     /**
      * @param list<string> $scopes
      * @param list<Prompt> $prompts
+     * @param list<string> $acrValues
      */
-    private function request(array $scopes = ['openid'], array $prompts = [], ?int $maxAge = null, ?string $idTokenHint = null): AuthorizationRequest
+    private function request(array $scopes = ['openid'], array $prompts = [], ?int $maxAge = null, ?string $idTokenHint = null, array $acrValues = [], ?string $claims = null): AuthorizationRequest
     {
-        return Requests::authorization($this->client, $scopes, $prompts, $maxAge, $idTokenHint);
+        return Requests::authorization($this->client, $scopes, $prompts, $maxAge, $idTokenHint, claims: $claims === null ? null : ClaimsRequest::fromJson($claims), acrValues: $acrValues);
     }
 
     /**

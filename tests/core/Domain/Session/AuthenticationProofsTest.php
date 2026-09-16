@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Domain\Session;
 
+use Heidi\Core\Domain\Session\AuthenticationFactor;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Exception\InvalidArgumentException;
@@ -66,6 +67,32 @@ final class AuthenticationProofsTest extends TestCase
             'otp' => $login->getTimestamp(),
             'pwd' => $reauth->getTimestamp(),
         ], $proofs->toTimestamps());
+    }
+
+    /**
+     * Two methods of the same kind are one factor; a method of another kind is a second one.
+     *
+     * @param list<AuthenticationFactor> $factors
+     */
+    #[Test]
+    #[DataProvider('provideProofsAndTheirFactors')]
+    public function itCountsTheKindsOfFactorItCovers(AuthenticationProofs $proofs, array $factors): void
+    {
+        // When / Then
+        static::assertSame($factors, $proofs->factors());
+    }
+
+    /**
+     * @return iterable<string, array{AuthenticationProofs, list<AuthenticationFactor>}>
+     */
+    public static function provideProofsAndTheirFactors(): iterable
+    {
+        $now = Fixtures::now();
+        yield 'a password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now), [AuthenticationFactor::Knowledge]];
+        yield 'a password and a PIN' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('pin'), $now), [AuthenticationFactor::Knowledge]];
+        yield 'a password and a one-time password, in that order' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now), [AuthenticationFactor::Knowledge, AuthenticationFactor::Possession]];
+        yield 'a hardware key and a fingerprint' => [AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now)->with(new AuthenticationMethod('fpt'), $now), [AuthenticationFactor::Possession, AuthenticationFactor::Inherence]];
+        yield 'a presence check alone' => [AuthenticationProofs::of(new AuthenticationMethod('user'), $now), []];
     }
 
     #[Test]

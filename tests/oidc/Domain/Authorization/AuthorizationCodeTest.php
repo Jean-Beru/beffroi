@@ -99,7 +99,7 @@ final class AuthorizationCodeTest extends TestCase
         static::assertNull($code->claimsRequest);
         static::assertEquals($issuedAt, $code->authenticatedAt);
         static::assertSame(['pwd', 'otp'], $code->authenticationMethods);
-        static::assertSame('1', $code->authenticationContextClass);
+        static::assertSame('2', $code->authenticationContextClass);
         static::assertEquals($issuedAt, $code->issuedAt);
         static::assertEquals($issuedAt->modify('+60 seconds'), $code->expiresAt);
     }

@@ -23,6 +23,7 @@ final class Requests
      *
      * @param list<string> $scopes
      * @param list<Prompt> $prompts
+     * @param list<string> $acrValues
      */
     public static function authorization(
         Client $client,
@@ -33,6 +34,7 @@ final class Requests
         ?string $state = 'af0ifjsldkj',
         ?string $nonce = 'n-0S6_WzA2Mj',
         ?ClaimsRequest $claims = null,
+        array $acrValues = [],
     ): AuthorizationRequest {
         return new AuthorizationRequest(
             $client,
@@ -43,6 +45,7 @@ final class Requests
             $nonce,
             $prompts,
             $maxAge,
+            acrValues: $acrValues,
             idTokenHint: $idTokenHint,
             claims: $claims,
         );

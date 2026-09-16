@@ -147,7 +147,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         static::assertArrayNotHasKey('nonce', $claims);
         static::assertSame(Fixtures::now()->getTimestamp(), $claims['auth_time']);
         static::assertSame($later->getTimestamp(), $claims['iat']);
-        static::assertSame('1', $claims['acr']);
+        static::assertSame('2', $claims['acr']);
         static::assertSame(['pwd', 'otp'], $claims['amr']);
     }
 
