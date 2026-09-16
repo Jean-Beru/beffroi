@@ -359,6 +359,28 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Core §5.5.1.1 and OIDC Core Error Code unmet_authentication_requirements §1: an essential "acr"
+     * naming classes the provider cannot assert is refused to the client, with the state and the issuer,
+     * before any login page.
+     */
+    #[Test]
+    public function anEssentialAcrTheProviderCannotAssertIsRefusedToTheClient(): void
+    {
+        // When
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
+            'claims' => '{"id_token": {"acr": {"essential": true, "values": ["phrh"]}}}',
+        ]));
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        $query = self::redirectedQuery($response);
+        static::assertSame('unmet_authentication_requirements', $query['error']);
+        static::assertSame('state-of-the-client', $query['state']);
+        static::assertSame('https://op.test', $query['iss']);
+    }
+
+    /**
      * Architecture §4.3: an interaction is resumed only by the browser that began it. Another browser
      * holding the identifier is told nothing but that no request waits for it.
      */

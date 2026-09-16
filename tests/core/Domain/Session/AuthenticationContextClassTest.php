@@ -9,6 +9,7 @@ use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use function in_array;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -34,13 +35,107 @@ final class AuthenticationContextClassTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3 "acr_values_supported": what the provider can assert, the single factor today.
+     * Architecture §3.2: the strongest class the proofs satisfy, "phrh" above "phr" above "2" above "1".
+     */
+    #[Test]
+    #[DataProvider('provideProofsAndTheirStrongestClass')]
+    public function theClassOfASessionIsTheStrongestItsProofsSatisfy(AuthenticationProofs $proofs, string $class): void
+    {
+        // When / Then
+        static::assertSame($class, AuthenticationContextClass::of($proofs)->value);
+    }
+
+    /**
+     * @return iterable<string, array{AuthenticationProofs, string}>
+     */
+    public static function provideProofsAndTheirStrongestClass(): iterable
+    {
+        $now = Fixtures::now();
+        yield 'a one-time password alone' => [AuthenticationProofs::of(new AuthenticationMethod('otp'), $now), '1'];
+        yield 'a password and a PIN, one kind' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('pin'), $now), '1'];
+        yield 'a password and a one-time password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now), '2'];
+        yield 'a password and a fingerprint' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('fpt'), $now), '2'];
+        yield 'mfa asserted upstream' => [AuthenticationProofs::of(new AuthenticationMethod('mfa'), $now), '2'];
+        yield 'a software key' => [AuthenticationProofs::of(new AuthenticationMethod('swk'), $now), 'phr'];
+        yield 'a hardware key' => [AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now), 'phrh'];
+        yield 'a password and a hardware key' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('hwk'), $now), 'phrh'];
+        yield 'a presence check alone' => [AuthenticationProofs::of(new AuthenticationMethod('user'), $now), '1'];
+    }
+
+    /**
+     * OIDC Core §5.5.1.1, architecture §3.2: a class is a predicate on the proofs, and a session
+     * satisfies every class whose predicate holds, not only the strongest.
+     *
+     * @param list<string> $satisfied
+     */
+    #[Test]
+    #[DataProvider('provideProofsAndTheClassesTheySatisfy')]
+    public function aSessionSatisfiesEveryClassWhosePredicateHolds(AuthenticationProofs $proofs, array $satisfied): void
+    {
+        // When / Then
+        foreach (['1', '2', 'phr', 'phrh'] as $value) {
+            static::assertSame(in_array($value, $satisfied, true), new AuthenticationContextClass($value)->isSatisfiedBy($proofs), $value);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{AuthenticationProofs, list<string>}>
+     */
+    public static function provideProofsAndTheClassesTheySatisfy(): iterable
+    {
+        $now = Fixtures::now();
+        yield 'a password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now), ['1']];
+        yield 'a password and a one-time password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now), ['1', '2']];
+        yield 'a software key alone' => [AuthenticationProofs::of(new AuthenticationMethod('swk'), $now), ['1', 'phr']];
+        yield 'a hardware key alone' => [AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now), ['1', 'phr', 'phrh']];
+        yield 'a password and a hardware key' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('hwk'), $now), ['1', '2', 'phr', 'phrh']];
+    }
+
+    /**
+     * OIDC Core §2: the provider asserts nothing it has not defined; a name of RFC 6711 or a URI of a
+     * federation is never satisfied, whatever the proofs.
+     */
+    #[Test]
+    #[DataProvider('provideClassesTheProviderDoesNotDefine')]
+    public function aClassTheProviderDoesNotDefineIsNeverSatisfied(string $value): void
+    {
+        // Given
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod('hwk'), Fixtures::now());
+
+        // When / Then
+        static::assertFalse(new AuthenticationContextClass($value)->isSatisfiedBy($proofs));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideClassesTheProviderDoesNotDefine(): iterable
+    {
+        yield 'level 0' => ['0'];
+        yield 'level 3' => ['3'];
+        yield 'a registered name' => ['urn:mace:incommon:iap:silver'];
+        yield 'a URL' => ['https://eidas.europa.eu/LoA/substantial'];
+    }
+
+    /**
+     * OIDC Discovery §3 "acr_values_supported": what a credential of the provider can prove, the single
+     * factor while the password is the only credential.
      */
     #[Test]
     public function theProviderAssertsTheSingleFactorClassOnly(): void
     {
         // When / Then
         static::assertSame(['1'], AuthenticationContextClass::supported());
+    }
+
+    #[Test]
+    public function eachDefinedClassHasItsConstructor(): void
+    {
+        // When / Then
+        static::assertSame('1', AuthenticationContextClass::singleFactor()->value);
+        static::assertSame('2', AuthenticationContextClass::twoFactors()->value);
+        static::assertSame('phr', AuthenticationContextClass::phishingResistant()->value);
+        static::assertSame('phrh', AuthenticationContextClass::phishingResistantHardware()->value);
     }
 
     #[Test]
@@ -74,6 +169,14 @@ final class AuthenticationContextClassTest extends TestCase
         new AuthenticationContextClass($value);
     }
 
+    #[Test]
+    #[DataProvider('provideMalformedValues')]
+    public function whatIsNotPrintableAsciiWithoutSpaceIsNotWellFormed(string $value): void
+    {
+        // When / Then
+        static::assertFalse(AuthenticationContextClass::isWellFormed($value));
+    }
+
     /**
      * @return iterable<string, array{string}>
      */
@@ -83,6 +186,7 @@ final class AuthenticationContextClassTest extends TestCase
         yield 'with a space' => ['level 1'];
         yield 'not ASCII' => ['niveau·1'];
         yield 'too long' => [str_repeat('a', 256)];
+        yield 'with a trailing newline' => ["1\n"];
     }
 
     #[Test]

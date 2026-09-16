@@ -131,7 +131,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2.1: "acr" as the session satisfies it, "amr" with every method.
+     * RFC 9068 §2.2.1: "acr" as the session satisfies it, two factors here, "amr" with every method.
      */
     #[Test]
     public function itWritesTheAuthenticationContextOfTheSession(): void
@@ -145,7 +145,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $claims = $this->jwts->verify($token->value, 'spa', Fixtures::now())['claims'];
 
         // Then
-        static::assertSame('1', $claims['acr']);
+        static::assertSame('2', $claims['acr']);
         static::assertSame(['pwd', 'otp'], $claims['amr']);
     }
 

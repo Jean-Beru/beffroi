@@ -66,6 +66,40 @@ final class AuthenticationSessionTest extends TestCase
         static::assertSame('1', $session->authenticationContextClass()->value);
     }
 
+    /**
+     * OIDC Core §5.5.1.1: a session satisfies a requested class when its proofs meet it, a class below
+     * the strongest included.
+     */
+    #[Test]
+    public function aSessionSatisfiesTheClassesItsProofsMeet(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
+        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+
+        // When / Then
+        static::assertTrue($session->satisfies(AuthenticationContextClass::singleFactor()));
+        static::assertTrue($session->satisfies(AuthenticationContextClass::twoFactors()));
+        static::assertFalse($session->satisfies(AuthenticationContextClass::phishingResistant()));
+    }
+
+    /**
+     * Architecture §3.2: a step-up adds a proof, and the class moves with it as auth_time does.
+     */
+    #[Test]
+    public function aNewProofOfAnotherKindRaisesTheClass(): void
+    {
+        // Given
+        $session = Fixtures::session();
+
+        // When
+        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context(Fixtures::now()->modify('+5 minutes')));
+
+        // Then
+        static::assertSame('2', $session->authenticationContextClass()->value);
+    }
+
     #[Test]
     public function itRecordsEveryMethodProven(): void
     {
