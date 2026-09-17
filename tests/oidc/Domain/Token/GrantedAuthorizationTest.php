@@ -18,6 +18,7 @@ use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 final class GrantedAuthorizationTest extends TestCase
 {
@@ -205,6 +206,7 @@ final class GrantedAuthorizationTest extends TestCase
     {
         return new GrantedAuthorization(
             $grantType,
+            Uuid::v7(),
             $client ?? $this->client,
             $this->session,
             $scopes ?? [Scope::openid()],

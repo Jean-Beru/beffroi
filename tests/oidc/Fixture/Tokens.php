@@ -39,9 +39,11 @@ final class Tokens
         ?string $nonce = 'n-0S6_WzA2Mj',
         ?ClaimsRequest $claims = null,
         bool $pkce = true,
+        ?Uuid $grantId = null,
     ): AuthorizationCode {
         return new AuthorizationCode(
             AuthorizationCode::hash($code),
+            $grantId ?? Uuid::v7(),
             $client,
             $session,
             $client->redirectUris[0],
@@ -61,9 +63,9 @@ final class Tokens
     /**
      * A family started now, from a code, for ninety days.
      */
-    public static function family(DateTimeImmutable $startedAt, string $code = 'the-code'): RefreshTokenFamily
+    public static function family(DateTimeImmutable $startedAt, string $code = 'the-code', ?Uuid $grantId = null): RefreshTokenFamily
     {
-        return new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash($code), $startedAt, $startedAt->modify('+90 days'));
+        return new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
     }
 
     /**

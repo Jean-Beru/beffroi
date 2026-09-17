@@ -237,6 +237,32 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
+     * RFC 6749 §4.1.2: the replay revokes what was issued from the code, so the access token handed out
+     * on the first exchange no longer opens UserInfo. This is what the Basic OP profile checks after a
+     * code reuse (oidcc-codereuse-30seconds).
+     */
+    #[Test]
+    public function theAccessTokenOfAReplayedCodeNoLongerOpensUserInfo(): void
+    {
+        // Given
+        self::signingKey();
+        $code = $this->codeAllowedByAlice();
+        $this->exchange($code);
+        $accessToken = self::string(self::json($this->browser->getResponse())['access_token']);
+        $this->exchange($code);
+
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertStringContainsString('invalid_token', self::string($response->headers->get('WWW-Authenticate')));
+    }
+
+    /**
      * Step 9: the interaction is over, its pages are not reached again.
      */
     #[Test]

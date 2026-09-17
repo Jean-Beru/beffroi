@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Security;
 
+use function array_map;
 use DateInterval;
+use DateTimeImmutable;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\RequestContextFactory;
@@ -20,7 +22,6 @@ use LogicException;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use function sprintf;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
@@ -37,9 +38,10 @@ use Symfony\Component\Uid\Uuid;
  * they have, which moves its auth_time and leaves the tokens issued on it alone. A browser bound to the
  * session of someone else ends that session first: two users do not share a cookie.
  *
- * The "auth_time" attribute of the token of Symfony (IS_AUTHENTICATED_RECENTLY, symfony/symfony#66014)
- * is set from the session, so that what the firewall calls recent and what OIDC Core §2 calls auth_time
- * are one instant.
+ * The proofs of the session are copied into the token of Symfony (symfony/symfony#66064), method by
+ * method with the moment each was last proven, so that what the firewall calls recent
+ * (IS_AUTHENTICATED_RECENTLY, symfony/symfony#66014) and what OIDC Core §2 calls auth_time are read
+ * from one record; the most recent entry is that auth_time.
  */
 final readonly class LoginSuccessListener
 {
@@ -97,7 +99,10 @@ final readonly class LoginSuccessListener
 
         $this->browser->bind($request->getSession(), $session);
         $event->getAuthenticatedToken()
-            ->setAttribute(AuthenticatedVoter::AUTH_TIME_ATTRIBUTE, $session->authenticatedAt()->getTimestamp());
+            ->setAuthenticationProofs(array_map(
+                static fn (DateTimeImmutable $provenAt): int => $provenAt->getTimestamp(),
+                $session->proofs->entries,
+            ));
     }
 
     /**

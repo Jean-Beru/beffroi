@@ -25,7 +25,7 @@ final class RefreshTokenFamilyTest extends TestCase
         $id = Uuid::v7();
 
         // When
-        $family = new RefreshTokenFamily($id, AuthorizationCode::hash('the-code'), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily($id, AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
 
         // Then
         static::assertSame($id, $family->id);
@@ -41,7 +41,7 @@ final class RefreshTokenFamilyTest extends TestCase
     public function itExpiresAbsolutely(string $offset, bool $expired): void
     {
         // Given
-        $family = new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
 
         // When / Then
         static::assertSame($expired, $family->isExpired(Fixtures::now()->modify($offset)));
@@ -62,20 +62,20 @@ final class RefreshTokenFamilyTest extends TestCase
     {
         // Given
         $id = Uuid::v7();
-        $family = new RefreshTokenFamily($id, AuthorizationCode::hash('the-code'), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily($id, AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
 
         // When / Then
-        static::assertTrue($family->equals(new RefreshTokenFamily($id, AuthorizationCode::hash('another'), Fixtures::now(), Fixtures::now()->modify('+1 day'))));
+        static::assertTrue($family->equals(new RefreshTokenFamily($id, AuthorizationCode::hash('another'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+1 day'))));
     }
 
     #[Test]
     public function twoFamiliesWithDifferentIdentifiersAreNotEqual(): void
     {
         // Given
-        $family = new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
 
         // When / Then
-        static::assertFalse($family->equals(new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Fixtures::now(), Fixtures::now()->modify('+90 days'))));
+        static::assertFalse($family->equals(new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'))));
     }
 
     #[Test]
@@ -85,7 +85,7 @@ final class RefreshTokenFamilyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new RefreshTokenFamily(Uuid::v7(), 'the-code', Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        new RefreshTokenFamily(Uuid::v7(), 'the-code', Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
     }
 
     #[Test]
@@ -95,6 +95,6 @@ final class RefreshTokenFamilyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Fixtures::now(), Fixtures::now());
+        new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now());
     }
 }

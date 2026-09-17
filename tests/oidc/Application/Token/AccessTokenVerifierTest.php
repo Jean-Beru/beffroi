@@ -37,7 +37,7 @@ final class AccessTokenVerifierTest extends TestCase
     /**
      * A payload as JwtAccessTokenIssuer writes it, valid for ten minutes from Fixtures::now().
      */
-    private const string PAYLOAD = '{"iss":"https://id.acme.example","exp":1789467000,"aud":"spa","sub":"alice-subject","client_id":"spa","iat":1789466400,"jti":"6f1c2b7e-1d2a-4c3b-8e9f-0a1b2c3d4e5f","auth_time":1789466400,"amr":["pwd"],"scope":"openid profile","sid":"01997b9e-0000-7000-8000-000000000000"}';
+    private const string PAYLOAD = '{"iss":"https://id.acme.example","exp":1789467000,"aud":"spa","sub":"alice-subject","client_id":"spa","iat":1789466400,"jti":"6f1c2b7e-1d2a-4c3b-8e9f-0a1b2c3d4e5f","auth_time":1789466400,"amr":["pwd"],"scope":"openid profile","sid":"01997b9e-0000-7000-8000-000000000000","grant_id":"01997b9e-0000-7000-8000-00000000000a"}';
 
     private Tenant $tenant;
 
@@ -87,6 +87,7 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertTrue($token->hasScope(new Scope('email')));
         static::assertFalse($token->hasScope(new Scope('profile')));
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
+        static::assertTrue($code->grantId->equals($token->grantId));
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
     }
 
@@ -224,6 +225,13 @@ final class AccessTokenVerifierTest extends TestCase
             'aud' => 1,
         ]), null, null];
         yield 'no sub' => [self::without('sub'), null, null];
+        yield 'no grant_id' => [self::without('grant_id'), null, null];
+        yield 'grant_id not a string' => [self::with([
+            'grant_id' => 1,
+        ]), null, null];
+        yield 'grant_id not a UUID' => [self::with([
+            'grant_id' => 'the-grant',
+        ]), null, null];
         yield 'sub not a string' => [self::with([
             'sub' => 1,
         ]), null, null];

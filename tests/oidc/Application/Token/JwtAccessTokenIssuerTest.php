@@ -85,20 +85,22 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
     /**
      * RFC 9068 §2.2: "iss", "exp", "aud", "sub", "client_id", "iat", "jti"; §2.2.1: "auth_time", "amr";
-     * §2.2.3: "scope" as RFC 8693 §4.2 writes it; "sid" of the session (architecture §4.6).
+     * §2.2.3: "scope" as RFC 8693 §4.2 writes it; "sid" of the session and "grant_id" of the
+     * authorization code the token descends from (architecture §4.6).
      */
     #[Test]
     public function thePayloadCarriesTheClaimsOfRfc9068InOrder(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']));
+        $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
+        $authorization = GrantedAuthorization::fromAuthorizationCode($code);
         $token = $this->issuer->issue($authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'));
 
         // Then
-        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'acr', 'amr', 'scope', 'sid'], array_keys($claims));
+        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'acr', 'amr', 'scope', 'sid', 'grant_id'], array_keys($claims));
         static::assertSame('https://id.acme.example', $claims['iss']);
         static::assertSame(Fixtures::now()->modify('+10 minutes')->getTimestamp(), $claims['exp']);
         static::assertSame('spa', $claims['aud']);
@@ -111,6 +113,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertSame(['pwd'], $claims['amr']);
         static::assertSame('openid profile email', $claims['scope']);
         static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
+        static::assertSame($code->grantId->toRfc4122(), $claims['grant_id']);
     }
 
     /**
@@ -235,7 +238,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $claims = $this->jwts->verify($token->value, 'spa', Fixtures::now())['claims'];
 
         // Then
-        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'acr', 'amr', 'scope', 'userinfo_claims', 'sid'], array_keys($claims));
+        static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'acr', 'amr', 'scope', 'userinfo_claims', 'sid', 'grant_id'], array_keys($claims));
         static::assertSame(['email', 'name'], $claims['userinfo_claims']);
         static::assertStringContainsString('"userinfo_claims":["email","name"]', Jwts::rawPayload($token->value));
     }
