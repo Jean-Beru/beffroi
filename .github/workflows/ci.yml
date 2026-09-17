@@ -172,9 +172,9 @@ jobs:
       - run: castor phpunit
 
   conformance:
-    name: "🔟 OpenID Conformance (Basic OP)"
+    name: "🔟 OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
     needs: [tests]
-    # The plan drives a real browser through a real OP: the host runs Docker, not the phpqa image.
+    # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image.
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -199,9 +199,9 @@ jobs:
         run: castor start --conformance --build
       - name: "Provision the OP"
         run: castor provision
-      # --strict makes a WARNING a failure: what the plan must look like before anything is submitted.
-      # REVIEW and SKIPPED stay accepted, no run of the plan can avoid them (tests/conformance/README.md).
-      - name: "Run the Basic OP plan"
+      # --strict makes a WARNING a failure: what the plans must look like before anything is submitted.
+      # REVIEW and SKIPPED stay accepted, no run of a plan can avoid them (tests/conformance/README.md).
+      - name: "Run the certification plans"
         run: castor conformance --strict
       - name: "Logs of the stack"
         if: failure()
