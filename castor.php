@@ -455,18 +455,33 @@ function provision_env_local(): array
 }
 
 /**
- * The conformance plan of spike 1 (tests/conformance/README.md): its name in the suite, the variants a plan
- * is created with (the modules carry their own), the configuration file whose {PLACEHOLDERS} the task fills
- * from apps/op/.env.local, and the values that must be there for the plan to make sense.
+ * The certification plans the OP answers (tests/conformance/README.md), by the short name "--plan" takes:
+ * the name of each in the suite and the variants it is created with (the modules carry their own). One
+ * configuration serves them all: the file whose {PLACEHOLDERS} the task fills from apps/op/.env.local,
+ * and the values that must be there for the plans to make sense.
  */
-const CONFORMANCE_PLAN = 'oidcc-basic-certification-test-plan';
-
-const CONFORMANCE_PLAN_VARIANT = [
-    'server_metadata' => 'discovery',
-    'client_registration' => 'static_client',
+const CONFORMANCE_PLANS = [
+    'basic' => [
+        'name' => 'oidcc-basic-certification-test-plan',
+        'variant' => [
+            'server_metadata' => 'discovery',
+            'client_registration' => 'static_client',
+        ],
+    ],
+    'config' => [
+        'name' => 'oidcc-config-certification-test-plan',
+        'variant' => [],
+    ],
+    'rp-initiated-logout' => [
+        'name' => 'oidcc-rp-initiated-logout-certification-test-plan',
+        'variant' => [
+            'response_type' => 'code',
+            'client_registration' => 'static_client',
+        ],
+    ],
 ];
 
-const CONFORMANCE_CONFIGURATION = 'tests/conformance/basic-op.json';
+const CONFORMANCE_CONFIGURATION = 'tests/conformance/configuration.json';
 
 const CONFORMANCE_REQUIRED_VALUES = [
     'HEIDI_ISSUER',
@@ -488,18 +503,28 @@ const CONFORMANCE_MODULE_TIMEOUT = 300;
 const CONFORMANCE_SUITE_TIMEOUT = 180;
 
 /**
+ * @param array<string> $plan
  * @param array<string> $module
  */
-#[AsTask(description: 'Run the OpenID conformance plan of spike 1 (Basic OP profile) against the OP through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user, and print the result of every module')]
+#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, RP-Initiated Logout OP) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user, and print the result of every module')]
 function conformance(
+    #[AsOption(description: 'Run only this plan: basic, config or rp-initiated-logout (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
+    array $plan = [],
     #[AsOption(description: 'Run only the modules whose name contains this text (repeatable)', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $module = [],
     #[AsOption(description: 'Base URL of the suite; CONFORMANCE_TOKEN in the environment authenticates on a hosted one')]
     string $suite = 'https://localhost:8443',
-    #[AsOption(description: 'Fail on WARNING as well as on FAILED, which is what the CI asks of the plan')]
+    #[AsOption(description: 'Fail on WARNING as well as on FAILED, which is what the CI asks of the plans')]
     bool $strict = false,
 ): void {
-    io()->title(sprintf('Conformance: %s', CONFORMANCE_PLAN));
+    $unknown = array_diff($plan, array_keys(CONFORMANCE_PLANS));
+    if ($unknown !== []) {
+        io()->error(sprintf('Unknown plan %s; the plans are %s.', implode(', ', $unknown), implode(', ', array_keys(CONFORMANCE_PLANS))));
+        exit(1);
+    }
+    $plans = $plan === [] ? CONFORMANCE_PLANS : array_intersect_key(CONFORMANCE_PLANS, array_flip($plan));
+    io()
+        ->title(sprintf('Conformance: %s', implode(', ', array_column($plans, 'name'))));
 
     $env = load_dot_env(getcwd() . '/apps/op/.env');
     $missing = array_filter(CONFORMANCE_REQUIRED_VALUES, static fn (string $name): bool => ($env[$name] ?? '') === '');
@@ -511,65 +536,76 @@ function conformance(
     $server = conformance_server($suite);
     io()
         ->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['HEIDI_ISSUER']));
-
-    $plan = conformance_request($suite, 'POST', '/api/plan', [
-        'query' => [
-            'planName' => CONFORMANCE_PLAN,
-            'variant' => json_encode(CONFORMANCE_PLAN_VARIANT, \JSON_THROW_ON_ERROR),
-        ],
-        'headers' => [
-            'Content-Type' => 'application/json',
-        ],
-        'body' => conformance_configuration($env),
-    ], 201);
-    $planId = (string) $plan['id'];
-    $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
-    $modules = array_values(array_filter(
-        $plan['modules'],
-        static fn (array $definition): bool => $module === []
-            || array_any($module, static fn (string $needle): bool => str_contains((string) $definition['testModule'], $needle)),
-    ));
-    if ($modules === []) {
-        io()->error(sprintf('No module of the plan matches %s.', implode(', ', $module)));
-        exit(1);
-    }
-    io()
-        ->text(sprintf('Plan %s, %d module(s): %s', $planId, count($modules), $planUrl));
+    $configuration = conformance_configuration($env);
 
     $rows = [];
     $verdict = [];
-    foreach ($modules as $index => $definition) {
-        $name = (string) $definition['testModule'];
+    $planUrls = [];
+    foreach ($plans as $definition) {
+        $created = conformance_request($suite, 'POST', '/api/plan', [
+            'query' => [
+                'planName' => $definition['name'],
+                'variant' => json_encode((object) $definition['variant'], \JSON_THROW_ON_ERROR),
+            ],
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => $configuration,
+        ], 201);
+        $planId = (string) $created['id'];
+        $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
+        $planUrls[] = sprintf('%s: %s', $definition['name'], $planUrl);
+        $modules = array_values(array_filter(
+            $created['modules'],
+            static fn (array $moduleDefinition): bool => $module === []
+                || array_any($module, static fn (string $needle): bool => str_contains((string) $moduleDefinition['testModule'], $needle)),
+        ));
         io()
-            ->section(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
-        $started = microtime(true);
-        $run = conformance_run_module($suite, $planId, $definition);
-        $elapsed = microtime(true) - $started;
-        $rows[] = [$name, $run['result'], sprintf('%ds', (int) $elapsed), $run['url']];
-        $verdict[$run['result']] = ($verdict[$run['result']] ?? 0) + 1;
+            ->section(sprintf('%s: plan %s, %d module(s)', $definition['name'], $planId, count($modules)));
         io()
-            ->text(sprintf('%s in %ds: %s', $run['result'], (int) $elapsed, $run['url']));
-        foreach ($run['findings'] as $finding) {
-            io()->text('  ' . $finding);
+            ->text($planUrl);
+        if ($modules === []) {
+            io()->warning(sprintf('No module of %s matches %s.', $definition['name'], implode(', ', $module)));
+            continue;
         }
+
+        foreach ($modules as $index => $moduleDefinition) {
+            $name = (string) $moduleDefinition['testModule'];
+            io()
+                ->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
+            $started = microtime(true);
+            $run = conformance_run_module($suite, $planId, $moduleDefinition);
+            $elapsed = microtime(true) - $started;
+            $rows[] = [$definition['name'], $name, $run['result'], sprintf('%ds', (int) $elapsed), $run['url']];
+            $verdict[$run['result']] = ($verdict[$run['result']] ?? 0) + 1;
+            io()
+                ->text(sprintf('  %s in %ds: %s', $run['result'], (int) $elapsed, $run['url']));
+            foreach ($run['findings'] as $finding) {
+                io()->text('    ' . $finding);
+            }
+        }
+    }
+    if ($rows === []) {
+        io()->error(sprintf('No module of any plan matches %s.', implode(', ', $module)));
+        exit(1);
     }
 
     io()
         ->newLine();
     io()
-        ->table(['Module', 'Result', 'Time', 'Log'], $rows);
+        ->table(['Plan', 'Module', 'Result', 'Time', 'Log'], $rows);
     io()
-        ->text(sprintf('Plan %s on suite %s: %s', $planId, $server['version'] ?? '?', implode(', ', array_map(
+        ->text(sprintf('%d plan(s) on suite %s: %s', count($planUrls), $server['version'] ?? '?', implode(', ', array_map(
             static fn (string $result, int $count): string => sprintf('%d %s', $count, $result),
             array_keys($verdict),
             $verdict,
         ))));
     io()
-        ->text($planUrl);
+        ->listing($planUrls);
 
     // WARNING and REVIEW are what a human reads before submitting; SKIPPED is the suite's own choice.
-    // Under --strict a WARNING is a failure: the CI keeps the plan at the state a submission needs, and
-    // REVIEW and SKIPPED stay accepted because no run of the plan can avoid them (tests/conformance/README.md).
+    // Under --strict a WARNING is a failure: the CI keeps the plans at the state a submission needs, and
+    // REVIEW and SKIPPED stay accepted because no run of a plan can avoid them (tests/conformance/README.md).
     $accepted = $strict ? ['PASSED', 'REVIEW', 'SKIPPED'] : ['PASSED', 'WARNING', 'REVIEW', 'SKIPPED'];
     $failed = array_sum(array_filter($verdict, static fn (string $result): bool => ! in_array($result, $accepted, true), \ARRAY_FILTER_USE_KEY));
     if ($failed > 0) {
