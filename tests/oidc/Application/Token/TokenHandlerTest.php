@@ -15,6 +15,7 @@ use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
 use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
+use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
@@ -87,7 +88,7 @@ final class TokenHandlerTest extends TestCase
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->events = new RecordingEventDispatcher();
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, $this->events);
-        $this->codeGrant = new AuthorizationCodeGrant($this->codes, $this->refreshTokens, $issuer, $this->clock, $this->events);
+        $this->codeGrant = new AuthorizationCodeGrant($this->codes, $this->refreshTokens, new InMemoryAccessTokenRepository(), $issuer, $this->clock, $this->events);
         $refreshGrant = new RefreshTokenGrant($this->refreshTokens, $issuer, $this->clock, $this->events);
         $this->handler = new TokenHandler($this->authenticator(), [$this->codeGrant, $refreshGrant]);
     }

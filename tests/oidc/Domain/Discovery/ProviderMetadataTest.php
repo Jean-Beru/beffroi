@@ -21,10 +21,14 @@ use PHPUnit\Framework\TestCase;
 final class ProviderMetadataTest extends TestCase
 {
     /**
-     * OIDC Discovery §3: the members, in the order the section lists them, then "code_challenge_methods_supported"
-     * (RFC 8414 §2), "authorization_response_iss_parameter_supported" (RFC 9207 §3) and "end_session_endpoint"
-     * (RP-Initiated Logout §2.1). Only what the provider does: "code", "query", "S256", "public", "RS256",
-     * the three client authentication methods of RFC 6749 §2.3, the one "acr" it asserts, no request object.
+     * OIDC Discovery §3: the members, in the order the section lists them, then those of RFC 8414 §2
+     * ("code_challenge_methods_supported", the revocation and introspection endpoints with their
+     * authentication methods, RFC 7009 §2.1 and RFC 7662 §2.1, and the algorithms of a signed introspection
+     * response, RFC 9701 §6), "authorization_response_iss_parameter_supported" (RFC 9207 §3) and
+     * "end_session_endpoint" (RP-Initiated Logout §2.1). Only what the provider does: "code", "query",
+     * "S256", "public", "RS256", the three client authentication methods of RFC 6749 §2.3 at the token and
+     * revocation endpoints, the two that prove a secret at introspection, the one "acr" it asserts, no
+     * request object.
      */
     #[Test]
     public function itDescribesWhatTheProviderDoesAndNothingElse(): void
@@ -52,6 +56,11 @@ final class ProviderMetadataTest extends TestCase
             'request_parameter_supported' => false,
             'request_uri_parameter_supported' => false,
             'code_challenge_methods_supported' => ['S256'],
+            'revocation_endpoint' => 'https://id.acme.example/revoke',
+            'revocation_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'none'],
+            'introspection_endpoint' => 'https://id.acme.example/introspect',
+            'introspection_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post'],
+            'introspection_signing_alg_values_supported' => ['RS256'],
             'authorization_response_iss_parameter_supported' => true,
             'end_session_endpoint' => 'https://id.acme.example/logout',
         ], $document);
@@ -198,11 +207,11 @@ final class ProviderMetadataTest extends TestCase
     public function itPassesTheChecksOfSymfonyOidcDiscovery(string $issuer): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout'), [], [], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke'), [], [], 60)->toArray();
 
         // Then
         static::assertSame($issuer, $document['issuer']);
-        foreach (['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'end_session_endpoint'] as $endpoint) {
+        foreach (['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'end_session_endpoint', 'introspection_endpoint', 'revocation_endpoint'] as $endpoint) {
             static::assertIsString($document[$endpoint]);
             static::assertStringStartsWith('https://', $document[$endpoint]);
         }
@@ -241,6 +250,6 @@ final class ProviderMetadataTest extends TestCase
 
     private static function endpoints(): ProviderEndpoints
     {
-        return new ProviderEndpoints('https://id.acme.example/authorize', 'https://id.acme.example/token', 'https://id.acme.example/userinfo', 'https://id.acme.example/jwks', 'https://id.acme.example/logout');
+        return new ProviderEndpoints('https://id.acme.example/authorize', 'https://id.acme.example/token', 'https://id.acme.example/userinfo', 'https://id.acme.example/jwks', 'https://id.acme.example/logout', 'https://id.acme.example/introspect', 'https://id.acme.example/revoke');
     }
 }

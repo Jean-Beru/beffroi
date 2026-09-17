@@ -6,12 +6,14 @@ namespace Heidi\Oidc\Tests\Application\Token;
 
 use function array_map;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
@@ -37,13 +39,15 @@ final class AccessTokenVerifierTest extends TestCase
     /**
      * A payload as JwtAccessTokenIssuer writes it, valid for ten minutes from Fixtures::now().
      */
-    private const string PAYLOAD = '{"iss":"https://id.acme.example","exp":1789467000,"aud":"spa","sub":"alice-subject","client_id":"spa","iat":1789466400,"jti":"6f1c2b7e-1d2a-4c3b-8e9f-0a1b2c3d4e5f","auth_time":1789466400,"amr":["pwd"],"scope":"openid profile","sid":"01997b9e-0000-7000-8000-000000000000","grant_id":"01997b9e-0000-7000-8000-00000000000a"}';
+    private const string PAYLOAD = '{"iss":"https://id.acme.example","exp":1789467000,"aud":"spa","sub":"alice-subject","client_id":"spa","iat":1789466400,"jti":"6f1c2b7e-1d2a-4c3b-8e9f-0a1b2c3d4e5f","auth_time":1789466400,"acr":"1","amr":["pwd"],"scope":"openid profile","sid":"01997b9e-0000-7000-8000-000000000000","grant_id":"01997b9e-0000-7000-8000-00000000000a"}';
 
     private Tenant $tenant;
 
     private Client $client;
 
     private FakeJwsVerifier $jws;
+
+    private InMemoryAccessTokenRepository $storedTokens;
 
     private AccessTokenVerifier $verifier;
 
@@ -54,7 +58,8 @@ final class AccessTokenVerifierTest extends TestCase
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
         $this->jws = new FakeJwsVerifier();
-        $this->verifier = new AccessTokenVerifier($this->jws, $clients);
+        $this->storedTokens = new InMemoryAccessTokenRepository();
+        $this->verifier = new AccessTokenVerifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
     }
 
     /**
@@ -74,7 +79,7 @@ final class AccessTokenVerifierTest extends TestCase
             ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now());
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $verifier = new AccessTokenVerifier(new JwtFrameworkJwsVerifier($jwts->keys), $clients);
+        $verifier = new AccessTokenVerifier(new JwtFrameworkJwsVerifier($jwts->keys), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
 
         // When
         $token = $verifier->verify($this->tenant, $minted->value, Fixtures::now()->modify('+9 minutes'));
@@ -88,7 +93,137 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertFalse($token->hasScope(new Scope('profile')));
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
         static::assertTrue($code->grantId->equals($token->grantId));
+        static::assertTrue($session->id->equals($token->sessionId));
+        static::assertEquals($session->authenticatedAt(), $token->authenticatedAt);
+        static::assertSame(['pwd'], $token->authenticationMethods);
+        static::assertSame('1', $token->authenticationContextClass);
+        static::assertEquals(Fixtures::now(), $token->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
+    }
+
+    /**
+     * Architecture §4.6: an opaque token is the record the repository keeps under its hash, read the
+     * way the JWT claims are, with "sub" through the same resolver that names the subject in a JWT.
+     */
+    #[Test]
+    public function itReadsTheRecordOfAnOpaqueToken(): void
+    {
+        // Given
+        $session = Fixtures::session(Fixtures::user($this->tenant));
+        $record = Tokens::storedAccessToken('the-opaque-token', $this->client, $session, Fixtures::now(), scopes: ['openid', 'email'], claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}}}'));
+        $this->storedTokens->keep($record);
+
+        // When
+        $token = $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame($this->client, $token->client);
+        static::assertSame('alice-subject', (string) $token->subject);
+        static::assertSame(['openid', 'email'], array_map(strval(...), $token->scopes));
+        static::assertSame(['name', 'picture'], $token->userinfoClaims);
+        static::assertTrue($record->grantId->equals($token->grantId));
+        static::assertTrue($session->id->equals($token->sessionId));
+        static::assertEquals($session->authenticatedAt(), $token->authenticatedAt);
+        static::assertSame(['pwd'], $token->authenticationMethods);
+        static::assertSame('1', $token->authenticationContextClass);
+        static::assertEquals(Fixtures::now(), $token->issuedAt);
+        static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
+    }
+
+    /**
+     * A record without claims asked for by name is a token that asked for none.
+     */
+    #[Test]
+    public function anOpaqueTokenWithoutAClaimsRequestAskedForNoClaimByName(): void
+    {
+        // Given
+        $this->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', $this->client, Fixtures::session(Fixtures::user($this->tenant)), Fixtures::now()));
+
+        // When
+        $token = $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now());
+
+        // Then
+        static::assertSame([], $token->userinfoClaims);
+    }
+
+    /**
+     * RFC 6750 §3.1: a value the repository does not know, in this tenant, is not a token of the provider.
+     *
+     * @param callable(self): void $given
+     */
+    #[Test]
+    #[DataProvider('provideUnknownOpaqueTokens')]
+    public function itRefusesAnOpaqueTokenItDoesNotKeep(callable $given): void
+    {
+        // Given
+        $given($this);
+
+        // When
+        try {
+            $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now());
+            static::fail('The token should have been refused.');
+        } catch (InvalidTokenException $exception) {
+            // Then
+            static::assertSame('invalid_token', $exception->error);
+            static::assertSame('The access token is not an access token issued by this provider.', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): void}>
+     */
+    public static function provideUnknownOpaqueTokens(): iterable
+    {
+        yield 'no record' => [static function (): void {
+        }];
+        yield 'another value' => [static function (self $test): void {
+            $test->storedTokens->keep(Tokens::storedAccessToken('another-token', $test->client, Fixtures::session(Fixtures::user($test->tenant)), Fixtures::now()));
+        }];
+        yield 'a record of another tenant' => [static function (self $test): void {
+            $other = Fixtures::tenant('other', 'https://id.other.example');
+            $test->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', Clients::public($other), Fixtures::session(Fixtures::user($other)), Fixtures::now()));
+        }];
+    }
+
+    /**
+     * RFC 7519 §4.1.4 applied to the record: the second of expiry included is too late, and the client
+     * is told to refresh.
+     */
+    #[Test]
+    public function itRefusesAnExpiredOpaqueToken(): void
+    {
+        // Given
+        $this->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', $this->client, Fixtures::session(Fixtures::user($this->tenant)), Fixtures::now()));
+
+        // When
+        try {
+            $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now()->modify('+10 minutes'));
+            static::fail('The token should have been refused.');
+        } catch (InvalidTokenException $exception) {
+            // Then
+            static::assertSame('The access token expired.', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * Architecture §4.9: a token of a session that ended is revoked, whatever the store still holds.
+     */
+    #[Test]
+    public function itRefusesAnOpaqueTokenOfAnEndedSession(): void
+    {
+        // Given
+        $session = Fixtures::session(Fixtures::user($this->tenant));
+        $this->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', $this->client, $session, Fixtures::now()));
+        $session->end(SessionEnd::User, Fixtures::now()->modify('+1 minute'));
+
+        // When
+        try {
+            $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now()->modify('+2 minutes'));
+            static::fail('The token should have been refused.');
+        } catch (InvalidTokenException $exception) {
+            // Then
+            static::assertSame('The access token was revoked.', $exception->errorDescription);
+        }
     }
 
     /**
@@ -225,6 +360,29 @@ final class AccessTokenVerifierTest extends TestCase
             'aud' => 1,
         ]), null, null];
         yield 'no sub' => [self::without('sub'), null, null];
+        yield 'no iat' => [self::without('iat'), null, null];
+        yield 'iat as a string' => [self::with([
+            'iat' => '1789466400',
+        ]), null, null];
+        yield 'exp not after iat' => [self::with([
+            'iat' => 1789467000,
+        ]), null, null];
+        yield 'no auth_time' => [self::without('auth_time'), null, null];
+        yield 'no sid' => [self::without('sid'), null, null];
+        yield 'sid not a UUID' => [self::with([
+            'sid' => 'the-session',
+        ]), null, null];
+        yield 'no acr' => [self::without('acr'), null, null];
+        yield 'acr empty' => [self::with([
+            'acr' => '',
+        ]), null, null];
+        yield 'no amr' => [self::without('amr'), null, null];
+        yield 'amr not a list' => [self::with([
+            'amr' => 'pwd',
+        ]), null, null];
+        yield 'amr with an empty value' => [self::with([
+            'amr' => [''],
+        ]), null, null];
         yield 'no grant_id' => [self::without('grant_id'), null, null];
         yield 'grant_id not a string' => [self::with([
             'grant_id' => 1,

@@ -40,6 +40,8 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://op.example/userinfo', $endpoints->userinfo);
         static::assertSame('https://op.example/jwks', $endpoints->jwks);
         static::assertSame('https://op.example/logout', $endpoints->endSession);
+        static::assertSame('https://op.example/introspect', $endpoints->introspection);
+        static::assertSame('https://op.example/revoke', $endpoints->revocation);
     }
 
     /**
@@ -122,6 +124,8 @@ final class RouterEndpointLocatorTest extends TestCase
         $routes->add('heidi_protocol_userinfo', new Route($prefix . '/userinfo'));
         $routes->add('heidi_interaction_authorize', new Route($prefix . '/authorize'));
         $routes->add('heidi_interaction_logout', new Route($prefix . '/logout'));
+        $routes->add('heidi_protocol_introspection', new Route($prefix . '/introspect'));
+        $routes->add('heidi_protocol_revocation', new Route($prefix . '/revoke'));
 
         return new UrlGenerator($routes, $context ?? new RequestContext());
     }

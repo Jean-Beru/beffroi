@@ -238,20 +238,35 @@ function infect(int $minMsi = 0, int $minCoveredMsi = 0): void
     ]);
 }
 
-#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443')]
-function start(bool $conformance = false, bool $build = false): void
-{
+#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens')]
+function start(
+    bool $conformance = false,
+    bool $build = false,
+    #[AsOption(description: 'The access token shape of the clients of the conformance suite: jwt (default) or opaque; the plans must be green with either')]
+    ?string $accessTokenFormat = null,
+): void {
+    if ($accessTokenFormat !== null && ! in_array($accessTokenFormat, ['jwt', 'opaque'], true)) {
+        io()->error(sprintf('Unknown access token format "%s"; the formats are jwt and opaque.', $accessTokenFormat));
+        exit(1);
+    }
     $command = ['docker', 'compose'];
+    $environment = [];
     if ($conformance) {
         $command = [...$command, '--profile', 'conformance'];
+        // A plan of a hundred requests has no use for a hundred profiles, and the toolbar has no place in
+        // the pages the scripted browser of the suite reads.
+        $environment['APP_PROFILER'] = '0';
+    }
+    if ($accessTokenFormat !== null) {
+        $environment['CONFORMANCE_ACCESS_TOKEN_FORMAT'] = $accessTokenFormat;
     }
     $command = [...$command, 'up', '-d', '--remove-orphans', '--wait'];
     if ($build) {
         $command[] = '--build';
     }
-    run($command);
+    run($command, context: context()->withEnvironment($environment));
     io()
-        ->success('OP: https://op.localhost' . ($conformance ? ', conformance suite: https://localhost:8443' : ''));
+        ->success('OP: https://op.localhost' . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '') . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat)));
 }
 
 #[AsTask(description: 'Stop the development stack')]

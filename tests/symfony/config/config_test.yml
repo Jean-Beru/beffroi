@@ -50,7 +50,7 @@ security:
             id: Heidi\Bundle\Security\IdentityUserProvider
     firewalls:
         heidi_protocol:
-            pattern: ^/(\.well-known/openid-configuration|jwks|token|userinfo)$
+            pattern: ^/(\.well-known/openid-configuration|jwks|token|userinfo|introspect|revoke)$
             security: false
         heidi_interaction:
             lazy: true
@@ -84,8 +84,9 @@ doctrine:
                 alias: Host
 
 # A full configuration (architecture §5.1): one tenant, a local KMS, files for the sealed keys, the default
-# lifetimes and three clients, the third one carrying the PKCE exception of decision 0008. The sodium key
-# is a fixture of this kernel and seals nothing outside of it.
+# lifetimes and four clients, the third one carrying the PKCE exception of decision 0008, the fourth one
+# registered for opaque access tokens. The sodium key is a fixture of this kernel and seals nothing outside
+# of it.
 heidi:
     tenant:
         issuer: 'https://op.test'
@@ -110,6 +111,13 @@ heidi:
             redirect_uris: ['https://legacy.test/callback']
             token_endpoint_auth_method: client_secret_post
             requires_pkce: false
+        opaque-app:
+            name: 'Application with opaque tokens'
+            secret: 'opaque-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://opaque.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            access_token_format: opaque
 
 services:
     # The 404s the plane tests expect are not worth a line on stderr.
@@ -186,6 +194,9 @@ services:
         public: true
     test.heidi.refresh_tokens:
         alias: Heidi\Oidc\Port\RefreshTokenRepositoryInterface
+        public: true
+    test.heidi.access_tokens_store:
+        alias: Heidi\Oidc\Port\AccessTokenRepositoryInterface
         public: true
     test.heidi.consents:
         alias: Heidi\Oidc\Port\ConsentRepositoryInterface

@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -16,7 +17,7 @@ final class Clients
 {
     public const string SECRET = 'a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3e7f2a6b0c4d8e1f5a9b3c7d0e4f8a2b6';
 
-    public static function confidential(Tenant $tenant, PasswordHash $secretHash, TokenEndpointAuthMethod $method = TokenEndpointAuthMethod::ClientSecretBasic, string $clientId = 'oidc-demo', bool $requiresPkce = true): Client
+    public static function confidential(Tenant $tenant, PasswordHash $secretHash, TokenEndpointAuthMethod $method = TokenEndpointAuthMethod::ClientSecretBasic, string $clientId = 'oidc-demo', bool $requiresPkce = true, AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt): Client
     {
         return new Client(
             $tenant,
@@ -29,6 +30,7 @@ final class Clients
             [GrantType::AuthorizationCode, GrantType::RefreshToken],
             [new Scope('openid'), new Scope('profile'), new Scope('email')],
             requiresPkce: $requiresPkce,
+            accessTokenFormat: $accessTokenFormat,
         );
     }
 

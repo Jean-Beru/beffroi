@@ -38,7 +38,7 @@ The firewall of the demo: `client_authentication: { client_secret_post: ... }` (
 
 | Service | Where | Notes |
 |---|---|---|
-| `op` | https://op.localhost | FrankenPHP, TLS from Caddy's internal CA. Every `*.localhost` name is loopback for browsers and modern resolvers. The web debug toolbar is on every page and the profiler at `/_profiler` (`symfony/web-profiler-bundle` and `symfony/debug-bundle` in `require-dev`, `dev` only; the production stage of the Dockerfile installs with `--no-dev`, so neither ships). Requests to `/.well-known/` are not collected. |
+| `op` | https://op.localhost | FrankenPHP, TLS from Caddy's internal CA. Every `*.localhost` name is loopback for browsers and modern resolvers. The web debug toolbar is on every page and the profiler at `/_profiler` (`symfony/web-profiler-bundle` and `symfony/debug-bundle` in `require-dev`, `dev` only; the production stage of the Dockerfile installs with `--no-dev`, so neither ships). Requests to `/.well-known/` are not collected, and nothing is while the stack serves the conformance suite (`castor start --conformance` sets `APP_PROFILER=0`). |
 | `database` | internal | PostgreSQL 16, user and database `heidi` |
 | `rabbitmq` | http://localhost:15672 | Management UI, `heidi` / `heidi` |
 | conformance suite | https://localhost:8443 | `castor start --conformance`, then `castor conformance` runs the plan; see [Conformance suite](conformance-suite.md) |

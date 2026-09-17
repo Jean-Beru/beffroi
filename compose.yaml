@@ -20,6 +20,9 @@ services:
       MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-heidi}:${RABBITMQ_PASSWORD:-heidi}@rabbitmq:5672/%2f/messages
       # https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
+      # Both documented in apps/op/.env; "castor start --conformance" sets them for a stack that serves the suite.
+      APP_PROFILER: ${APP_PROFILER:-1}
+      CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
     volumes:
       - ./apps/op:/app
       - ./src:/src

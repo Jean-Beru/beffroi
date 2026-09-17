@@ -25,6 +25,8 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/userinfo',
             'https://id.acme.example/jwks',
             'https://id.acme.example/logout',
+            'https://id.acme.example/introspect',
+            'https://id.acme.example/revoke',
         );
 
         // Then
@@ -33,6 +35,8 @@ final class ProviderEndpointsTest extends TestCase
         static::assertSame('https://id.acme.example/userinfo', $endpoints->userinfo);
         static::assertSame('https://id.acme.example/jwks', $endpoints->jwks);
         static::assertSame('https://id.acme.example/logout', $endpoints->endSession);
+        static::assertSame('https://id.acme.example/introspect', $endpoints->introspection);
+        static::assertSame('https://id.acme.example/revoke', $endpoints->revocation);
     }
 
     /**
@@ -43,7 +47,7 @@ final class ProviderEndpointsTest extends TestCase
     public function itToleratesPlainHttpOnLoopback(): void
     {
         // When
-        $endpoints = new ProviderEndpoints('http://localhost:8000/authorize', 'HTTPS://op.localhost/token', 'http://OP.LOCALHOST/userinfo', 'http://127.0.0.1/jwks', 'http://[::1]/logout');
+        $endpoints = new ProviderEndpoints('http://localhost:8000/authorize', 'HTTPS://op.localhost/token', 'http://OP.LOCALHOST/userinfo', 'http://127.0.0.1/jwks', 'http://[::1]/logout', 'https://op.localhost/introspect', 'https://op.localhost/revoke');
 
         // Then
         static::assertSame('http://localhost:8000/authorize', $endpoints->authorization);
@@ -53,17 +57,33 @@ final class ProviderEndpointsTest extends TestCase
 
     /**
      * RFC 6749 §3.2 requires TLS on the token endpoint, and oidc_login refuses a token endpoint in clear
-     * even on loopback.
+     * even on loopback; RFC 7662 §2.1 and RFC 7009 §2 require it of the two endpoints that take the
+     * client credentials and a token the same way.
      */
     #[Test]
-    public function itRefusesATokenEndpointInClearEvenOnLoopback(): void
+    #[DataProvider('provideEndpointsRequiringTls')]
+    public function itRefusesAnEndpointThatCarriesCredentialsInClearEvenOnLoopback(string $name, int $position): void
     {
+        // Given
+        $urls = ['https://op.localhost/authorize', 'https://op.localhost/token', 'https://op.localhost/userinfo', 'https://op.localhost/jwks', 'https://op.localhost/logout', 'https://op.localhost/introspect', 'https://op.localhost/revoke'];
+        $urls[$position] = 'http://localhost/x';
+
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIsOrContains('token endpoint "http://localhost/token" must use HTTPS (RFC 6749 section 3.2), on a loopback host too');
+        $this->expectExceptionMessageIsOrContains($name . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2), on a loopback host too');
 
         // When
-        new ProviderEndpoints('https://op.localhost/authorize', 'http://localhost/token', 'https://op.localhost/userinfo', 'https://op.localhost/jwks', 'https://op.localhost/logout');
+        new ProviderEndpoints(...$urls);
+    }
+
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function provideEndpointsRequiringTls(): iterable
+    {
+        yield 'token' => ['token', 1];
+        yield 'introspection' => ['introspection', 5];
+        yield 'revocation' => ['revocation', 6];
     }
 
     /**
@@ -79,7 +99,7 @@ final class ProviderEndpointsTest extends TestCase
         $this->expectExceptionMessageIsOrContains('The authorization endpoint "' . $url . '" ' . $reason);
 
         // When
-        new ProviderEndpoints($url, 'https://id.acme.example/token', 'https://id.acme.example/userinfo', 'https://id.acme.example/jwks', 'https://id.acme.example/logout');
+        new ProviderEndpoints($url, 'https://id.acme.example/token', 'https://id.acme.example/userinfo', 'https://id.acme.example/jwks', 'https://id.acme.example/logout', 'https://id.acme.example/introspect', 'https://id.acme.example/revoke');
     }
 
     /**
@@ -105,7 +125,7 @@ final class ProviderEndpointsTest extends TestCase
     public function everyEndpointIsCheckedAndNamed(string $name, int $position, string $url): void
     {
         // Given
-        $urls = array_fill(0, 5, 'https://id.acme.example/x');
+        $urls = array_fill(0, 7, 'https://id.acme.example/x');
         $urls[$position] = $url;
 
         // Then
@@ -126,5 +146,7 @@ final class ProviderEndpointsTest extends TestCase
         yield 'userinfo' => ['userinfo', 2, 'https://id.acme.example/u#f'];
         yield 'JWK Set' => ['JWK Set', 3, 'https://id.acme.example/j#f'];
         yield 'end session' => ['end session', 4, 'https://id.acme.example/e#f'];
+        yield 'introspection' => ['introspection', 5, 'https://id.acme.example/i#f'];
+        yield 'revocation' => ['revocation', 6, 'https://id.acme.example/r#f'];
     }
 }

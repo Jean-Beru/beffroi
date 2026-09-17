@@ -9,7 +9,8 @@ use function str_starts_with;
 /**
  * The plane a process serves (architecture §5.2, §6). Every route of the bundle carries its plane in its
  * name: "heidi_interaction_*" is what the browser of the user calls (authorize, login, consent, logout),
- * "heidi_protocol_*" what the relying parties call server to server (discovery, jwks, token, userinfo).
+ * "heidi_protocol_*" what the relying parties call server to server (discovery, jwks, token, userinfo,
+ * introspection, revocation).
  * A process dedicated to one plane refuses the routes of the other with a 404, so that a flood on the
  * login cannot take "/token" and "/jwks" down with it, and a protocol process cannot be diverted to the
  * login. Read from HEIDI_PLANE; "all" serves both, which is what development and a single process do.

@@ -29,8 +29,10 @@ use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use function is_array;
@@ -126,7 +128,7 @@ final class HeidiBundle extends AbstractBundle
             ->max(self::MAX_AUTHORIZATION_CODE_TTL)
             ->end()
             ->integerNode('access_token_ttl')
-            ->info('Access tokens are stateless and cannot be revoked: a short lifetime bounds the exposure.')
+            ->info('Both shapes of access token (architecture §4.6): the self-contained one cannot be revoked, and a short lifetime bounds the exposure; the opaque one gets the same, a revocation is a facility and not a reason to live longer.')
             ->defaultValue(600)
             ->min(1)
             ->end()
@@ -199,6 +201,11 @@ final class HeidiBundle extends AbstractBundle
             ->enumNode('id_token_signed_response_alg')
             ->values(array_column(SignatureAlgorithm::cases(), 'value'))
             ->defaultValue(SignatureAlgorithm::RS256->value)
+            ->end()
+            ->enumNode('access_token_format')
+            ->info('The shape of the access tokens: "jwt" (RFC 9068, verified offline against the JWK Set) or "opaque" (a reference the resource server introspects, RFC 7662, revocable at once). Per client, nothing global.')
+            ->values(array_column(AccessTokenFormat::cases(), 'value'))
+            ->defaultValue(AccessTokenFormat::Jwt->value)
             ->end()
             ->end()
             ->end()
@@ -318,6 +325,8 @@ final class HeidiBundle extends AbstractBundle
         $services->get(AuthorizationHandler::class)
             ->arg('$codeLifetime', self::seconds($tokens, 'authorization_code_ttl'));
         $services->get(JwtAccessTokenIssuer::class)
+            ->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
+        $services->get(OpaqueAccessTokenIssuer::class)
             ->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
         $services->get(JwtIdTokenIssuer::class)
             ->arg('$lifetime', self::seconds($tokens, 'id_token_ttl'));

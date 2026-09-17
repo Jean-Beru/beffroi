@@ -38,12 +38,13 @@ The core never depends on a protocol; protocols never depend on each other; noth
 - `AuthorizationRequest` validated in two stages: client and redirect URI first (errors are shown, never redirected), everything else after (errors are redirected with `error`, `state`, `iss`).
 - `Interaction`: the authorization endpoint parks the request; the integration authenticates and asks for consent; `AuthorizationHandler::begin()` returns `LoginRequired`, `ConsentRequired` or `Granted(code)`.
 - Grants: `authorization_code` with PKCE S256 and replay detection, `refresh_token` with rotation and reuse detection.
-- Tokens: `at+jwt` access tokens, ID tokens with `at_hash` and `sid`, opaque refresh tokens stored hashed.
-- Discovery, JWKS with several keys, UserInfo, RP-Initiated Logout revoking the session's refresh tokens.
+- Tokens: access tokens in the shape the client is registered for (`access_token_format`: `at+jwt` verified offline, or opaque, a random value whose record the provider keeps hashed and removes on revocation; one issuer per format, `AccessTokenIssuer`), ID tokens with `at_hash` and `sid`, opaque refresh tokens stored hashed.
+- Discovery, JWKS with several keys, UserInfo, introspection (RFC 7662, signed when asked, RFC 9701) and revocation (RFC 7009) for what can be revoked, RP-Initiated Logout revoking the session's refresh tokens and opaque access tokens. `AccessTokenVerifier` reads both shapes, `AccessTokenInspector` adds the grant and user checks the provider's own resources make.
+- The access token store is `AccessTokenRepositoryInterface`; what a store can revoke is declared by the companion interfaces it implements (`CanRevokeAccessTokenInterface`, `CanRevokeAccessTokensByGrantInterface`, `CanRevokeAccessTokensBySessionInterface`), which the callers ask with `instanceof`.
 
 ## The bundle
 
-- Routes belong to one of two planes, and the route name says which: `heidi_interaction_*` (browser: authorize, login, consent, logout) and `heidi_protocol_*` (server to server: discovery, jwks, token, userinfo). `HEIDI_PLANE` makes a process refuse the routes of the other plane, so that an attack on login cannot take the token endpoint down.
+- Routes belong to one of two planes, and the route name says which: `heidi_interaction_*` (browser: authorize, login, consent, logout) and `heidi_protocol_*` (server to server: discovery, jwks, token, userinfo, introspect, revoke). `HEIDI_PLANE` makes a process refuse the routes of the other plane, so that an attack on login cannot take the token endpoint down.
 - Messenger with RabbitMQ: three buses (`command.bus` transactional, `query.bus`, `event.bus`), three AMQP transports by priority, `failed` on Doctrine, everything synchronous in tests. The core's PSR-14 events are replayed on `event.bus`.
 - Doctrine XML mapping of the pure classes, tables prefixed `heidi_`, `tenant_id` everywhere.
 - Own user provider and form login on the bundle's identity store; never the host application's `User`.

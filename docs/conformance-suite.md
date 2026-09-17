@@ -7,7 +7,9 @@ castor start --conformance
 castor logs conformance-server
 ```
 
-Then open https://localhost:8443 (self-signed certificate of the suite's nginx).
+Then open https://localhost:8443 (self-signed certificate of the suite's nginx). `castor start --conformance` recreates the `op` container with `APP_PROFILER=0`: a plan of a hundred requests has no use for a hundred profiles, and the toolbar has no place in the pages the scripted browser reads. `castor start` alone puts the profiler back.
+
+The three clients of the suite receive access tokens in the shape `CONFORMANCE_ACCESS_TOKEN_FORMAT` names (`jwt` by default): `castor start --conformance --access-token-format opaque` recreates the `op` container with opaque ones, and the plans must be green with either, since the suite presents the access token to UserInfo without looking at it. Both switches are environment variables of the container, documented in `apps/op/.env`.
 
 ## How the suite reaches the OP
 

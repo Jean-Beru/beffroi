@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Bridge\InMemory;
 
+use function array_map;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
@@ -18,6 +20,8 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -338,6 +342,122 @@ final class InMemoryRepositoriesTest extends TestCase
         // Then
         static::assertSame([$first, $second], $repository->all());
         static::assertSame(3, $repository->saves);
+    }
+
+    /**
+     * Architecture §4.6: a token is issued as a value the store never keeps, and found by that value.
+     */
+    #[Test]
+    public function itIssuesAnAccessTokenAndFindsItByItsValue(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'email']));
+
+        // When
+        $value = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // Then
+        static::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $value);
+        $record = $repository->find($value) ?? static::fail('The token was kept.');
+        static::assertSame(OpaqueTokenValue::hash($value), $record->tokenHash);
+        static::assertSame($this->client, $record->client);
+        static::assertSame($this->session, $record->session);
+        static::assertTrue($authorization->grantId->equals($record->grantId));
+        static::assertSame(['openid', 'email'], array_map(strval(...), $record->scopes));
+        static::assertEquals(Fixtures::now(), $record->issuedAt);
+        static::assertEquals(Fixtures::now()->modify('+10 minutes'), $record->expiresAt);
+        static::assertNull($repository->find(OpaqueTokenValue::hash($value)), 'the hash is not the value');
+    }
+
+    #[Test]
+    public function twoAccessTokensIssuedFromTheSameAuthorizationDiffer(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+
+        // When
+        $first = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $second = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // Then
+        static::assertNotSame($first, $second);
+        static::assertCount(2, $repository->all());
+    }
+
+    #[Test]
+    public function anEmptyAccessTokenRepositoryFindsNothing(): void
+    {
+        // When / Then
+        static::assertNull(new InMemoryAccessTokenRepository()->find('unknown'));
+    }
+
+    /**
+     * RFC 7009: a revoked token is gone; the others stay.
+     */
+    #[Test]
+    public function itRevokesOneAccessToken(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $revoked = Tokens::storedAccessToken('revoked', $this->client, $this->session, Fixtures::now());
+        $kept = Tokens::storedAccessToken('kept', $this->client, $this->session, Fixtures::now());
+        $repository->keep($revoked);
+        $repository->keep($kept);
+
+        // When
+        $repository->revoke($revoked);
+
+        // Then
+        static::assertNull($repository->find('revoked'));
+        static::assertSame([$kept], $repository->all());
+    }
+
+    /**
+     * RFC 6749 §4.1.2: the tokens of a grant go together, and are told; one of another grant stays.
+     */
+    #[Test]
+    public function itRevokesTheAccessTokensOfAGrant(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $grant = Uuid::v7();
+        $first = Tokens::storedAccessToken('first', $this->client, $this->session, Fixtures::now(), $grant);
+        $second = Tokens::storedAccessToken('second', $this->client, $this->session, Fixtures::now(), $grant);
+        $other = Tokens::storedAccessToken('other', $this->client, $this->session, Fixtures::now());
+        foreach ([$first, $second, $other] as $token) {
+            $repository->keep($token);
+        }
+
+        // When
+        $revoked = $repository->revokeByGrant($grant);
+
+        // Then
+        static::assertSame([$first, $second], $revoked);
+        static::assertSame([$other], $repository->all());
+        static::assertSame([], $repository->revokeByGrant($grant), 'nothing left');
+    }
+
+    /**
+     * Architecture §4.9: the tokens of a session go together; one of another session stays.
+     */
+    #[Test]
+    public function itRevokesTheAccessTokensOfASession(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $here = Tokens::storedAccessToken('here', $this->client, $this->session, Fixtures::now());
+        $elsewhere = Tokens::storedAccessToken('elsewhere', $this->client, Fixtures::session(Fixtures::user($this->session->tenant, 'bob', 'bob-subject')), Fixtures::now());
+        $repository->keep($here);
+        $repository->keep($elsewhere);
+
+        // When
+        $revoked = $repository->revokeBySession($this->session->id);
+
+        // Then
+        static::assertSame([$here], $revoked);
+        static::assertSame([$elsewhere], $repository->all());
     }
 
     private function interaction(): Interaction

@@ -48,6 +48,8 @@ final readonly class RouterEndpointLocator implements EndpointLocatorInterface
             $origin . $this->router->generate('heidi_protocol_userinfo', [], UrlGeneratorInterface::ABSOLUTE_PATH),
             $origin . $this->router->generate('heidi_protocol_jwks', [], UrlGeneratorInterface::ABSOLUTE_PATH),
             $origin . $this->router->generate('heidi_interaction_logout', [], UrlGeneratorInterface::ABSOLUTE_PATH),
+            $origin . $this->router->generate('heidi_protocol_introspection', [], UrlGeneratorInterface::ABSOLUTE_PATH),
+            $origin . $this->router->generate('heidi_protocol_revocation', [], UrlGeneratorInterface::ABSOLUTE_PATH),
         );
     }
 }

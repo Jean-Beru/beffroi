@@ -10,15 +10,18 @@ use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Token\AccessTokenIssuer;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * What the extension hands the services from the configuration, read on the definitions before the
@@ -44,6 +47,7 @@ final class HeidiBundleExtensionTest extends TestCase
         // Then
         static::assertSame('PT45S', self::interval($container, AuthorizationHandler::class, '$codeLifetime'));
         static::assertSame('PT300S', self::interval($container, JwtAccessTokenIssuer::class, '$lifetime'));
+        static::assertSame('PT300S', self::interval($container, OpaqueAccessTokenIssuer::class, '$lifetime'));
         static::assertSame('PT120S', self::interval($container, JwtIdTokenIssuer::class, '$lifetime'));
         static::assertSame('PT1000S', self::interval($container, TokenIssuer::class, '$refreshTokenLifetime'));
         static::assertSame('PT2000S', self::interval($container, AuthorizationCodeGrant::class, '$refreshTokenFamilyLifetime'));
@@ -93,6 +97,55 @@ final class HeidiBundleExtensionTest extends TestCase
         $clients = $container->getDefinition(ConfigurationClientRepository::class)->getArgument('$definitions');
         static::assertIsArray($clients);
         static::assertSame(['app'], array_keys($clients));
+    }
+
+    /**
+     * Architecture §4.6: the format is a per-client option, "jwt" unless the client says "opaque".
+     */
+    #[Test]
+    public function theAccessTokenFormatOfAClientIsRead(): void
+    {
+        // When
+        $container = self::load([
+            'clients' => [
+                'app' => [
+                    'redirect_uris' => ['https://app.test/cb'],
+                    'token_endpoint_auth_method' => 'none',
+                ],
+                'api-app' => [
+                    'redirect_uris' => ['https://api.test/cb'],
+                    'token_endpoint_auth_method' => 'none',
+                    'access_token_format' => 'opaque',
+                ],
+            ],
+        ]);
+
+        // Then
+        $clients = $container->getDefinition(ConfigurationClientRepository::class)->getArgument('$definitions');
+        static::assertIsArray($clients);
+        static::assertIsArray($clients['app']);
+        static::assertIsArray($clients['api-app']);
+        static::assertSame('jwt', $clients['app']['access_token_format']);
+        static::assertSame('opaque', $clients['api-app']['access_token_format']);
+    }
+
+    /**
+     * Architecture §4.6: one issuer per format, named by the format it writes.
+     */
+    #[Test]
+    public function theAccessTokenIssuersAreNamedByTheirFormat(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        $issuers = $container->getDefinition(AccessTokenIssuer::class)->getArgument('$issuers');
+        static::assertIsArray($issuers);
+        static::assertSame(['jwt', 'opaque'], array_keys($issuers));
+        static::assertInstanceOf(Reference::class, $issuers['jwt']);
+        static::assertInstanceOf(Reference::class, $issuers['opaque']);
+        static::assertSame(JwtAccessTokenIssuer::class, (string) $issuers['jwt']);
+        static::assertSame(OpaqueAccessTokenIssuer::class, (string) $issuers['opaque']);
     }
 
     /**
