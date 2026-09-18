@@ -213,14 +213,26 @@ jobs:
   infection:
     name: "9️⃣ Mutation Testing"
     needs: [tests]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || endsWith(github.ref, '.x'))
+    # Every run mutates only the lines added or modified: a pull request against its base branch, a push against
+    # the commit before it (the pull request just merged). The whole source takes hours with the functional tests
+    # covering most of it; "castor infect" without --diff stays a local, deliberate run.
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || endsWith(github.ref, '.x')) && github.event.before != '0000000000000000000000000000000000000000')
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The diff needs the base branch and the merge base with it, not the single commit of a shallow clone.
+          fetch-depth: 0
       - uses: ramsey/composer-install@v4
         with:
           dependency-versions: highest
           composer-options: --optimize-autoloader
-      - run: castor infect
+      # Infection counts the two cores of the runner and keeps one for itself; both can run mutants.
+      - name: "Mutations of the pull request"
+        if: github.event_name == 'pull_request'
+        run: castor infect --diff --base="origin/${{ github.base_ref }}" --threads=2
+      - name: "Mutations of the push"
+        if: github.event_name == 'push'
+        run: castor infect --diff --base="${{ github.event.before }}" --threads=2

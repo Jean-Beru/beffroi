@@ -216,26 +216,46 @@ function lint(): void
     phpqa(['composer', 'exec', '--', 'parallel-lint', 'src', 'tests']);
 }
 
-#[AsTask(description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run')]
-function infect(int $minMsi = 0, int $minCoveredMsi = 0): void
-{
+#[AsTask(description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run. --diff keeps only the mutants of the lines added or modified since the base branch, the shape of every CI run; without it the whole source is mutated, which takes hours')]
+function infect(
+    int $minMsi = 0,
+    int $minCoveredMsi = 0,
+    #[AsOption(description: 'Mutate only the lines added or modified since --base, committed or not')]
+    bool $diff = false,
+    #[AsOption(description: 'The branch or commit the diff of --diff is taken from; Infection narrows it to the merge base with HEAD')]
+    string $base = 'origin/main',
+    #[AsOption(description: 'Mutant processes run in parallel; "max" is the number of cores minus one')]
+    string $threads = 'max',
+): void {
     // The XML coverage and the JUnit report of this run are what Infection reads from .ci-tools/coverage.
     phpunit();
 
-    phpqa([
-        'composer', 'exec', '--', 'infection',
-        '--coverage=coverage',
+    $options = [
+        '--coverage=.ci-tools/coverage',
         '--skip-initial-tests',
         sprintf('--min-msi=%d', $minMsi),
         sprintf('--min-covered-msi=%d', $minCoveredMsi),
-        '--threads=max',
+        '--threads=' . $threads,
         '--logger-github',
         '-s',
-        // Infection 0.32 generates a PHPUnit configuration with executionOrder="defects" and cacheResult="false";
-        // PHPUnit 13 answers with a runner warning and, stopOnDefect being set too, executes no test at all.
-        // Until Infection catches up, infection.json.dist points it at the PHPUnit 12 phar of the phpqa image.
-        '--configuration=.ci-tools/infection.json.dist',
-    ], [
+        // Each mutant runs only the test cases that cover its line (PHPUnit --filter), not the whole test files:
+        // the functional tests cover most of the source, and the files they live in take minutes to run.
+        // Infection still decides whether to skip a mutant from the summed duration of the covering test files
+        // as reported by junit.xml, which is why the timeout of infection.json.dist is far above any single run.
+        '--only-covering-test-cases',
+    ];
+
+    if ($diff) {
+        // Infection runs "git diff <merge base> -- <source directories>" from the working directory and passes the
+        // directories of infection.json.dist as they are written: this is why that file sits at the root of the
+        // repository, not in .ci-tools with the other configurations. A diff that touches no source file is a success.
+        $options[] = '--git-diff-lines';
+        $options[] = '--git-diff-base=' . $base;
+    }
+
+    // The PHPUnit configuration Infection 0.32 generates still carries cacheResult="false", which PHPUnit 13
+    // reports as a deprecation ("recordTestRunHistory" replaces it) and PHPUnit 14 will refuse.
+    phpqa(['composer', 'exec', '--', 'infection', ...$options], [
         'XDEBUG_MODE' => 'coverage',
     ]);
 }

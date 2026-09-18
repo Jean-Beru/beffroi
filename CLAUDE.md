@@ -35,7 +35,8 @@ castor deptrac
 castor lint
 castor check-licenses
 castor prepare-pr         # ecs-fix, rector-fix, phpstan-baseline, deptrac, lint
-castor infect             # mutation testing (core and oidc); runs on the PHPUnit 12 phar, see castor.php
+castor infect --diff      # mutation testing of the lines changed since origin/main (--base to change), what CI runs on every PR and push
+castor infect             # the whole source (core and oidc): hours, deliberate only; infection.json.dist sits at the root for the git diff, see castor.php
 ```
 
 Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `-i` on its own.
