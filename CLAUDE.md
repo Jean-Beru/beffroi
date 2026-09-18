@@ -22,7 +22,7 @@ composer install                  # monorepo (packages, tests)
 (cd apps/op && composer install)  # the application, path repositories to ../../src/*
 castor start                      # https://op.localhost (FrankenPHP), PostgreSQL, RabbitMQ
 castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443, profiler off; --access-token-format opaque for the suite clients
-castor conformance [--plan P] [--module X]  # run the certification plans (basic, config, rp-initiated-logout) through the API of the suite, scripted browser; result per module
+castor conformance [--plan P] [--module X]  # run the certification plans (basic, config, rp-initiated-logout, rotate-keys) through the API of the suite, scripted browser, key rotation done by the task; result per module
 castor provision                  # apps/op/.env.local (KMS key, client secrets, password), tenant, signing key, user "alice" with a profile
 castor demo [--check]             # point ../oidc-demo (Symfony oidc_login) at the OP and start it on https://localhost:8002; --check signs in, opens /profile, logs out
 castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI) inside the op container

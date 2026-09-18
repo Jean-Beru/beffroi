@@ -504,7 +504,9 @@ function provision_env_local(): array
  * The certification plans the OP answers (tests/conformance/README.md), by the short name "--plan" takes:
  * the name of each in the suite and the variants it is created with (the modules carry their own). One
  * configuration serves them all: the file whose {PLACEHOLDERS} the task fills from apps/op/.env.local,
- * and the values that must be there for the plans to make sense.
+ * and the values that must be there for the plans to make sense. An entry with "module" is not a plan
+ * of the suite but one module run on its own, the suite having no plan for a single module; "before_start"
+ * names what the task does between its creation and its start, in place of a human.
  */
 const CONFORMANCE_PLANS = [
     'basic' => [
@@ -524,6 +526,19 @@ const CONFORMANCE_PLANS = [
             'response_type' => 'code',
             'client_registration' => 'static_client',
         ],
+    ],
+    // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
+    // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
+    // new key with the old one still there. The other plans of the suite are for response types, response
+    // modes and features the OP does not have (implicit and hybrid, form_post, dynamic registration,
+    // back-channel and front-channel logout, session management, third-party initiated login).
+    'rotate-keys' => [
+        'name' => 'oidcc-server-rotate-keys',
+        'module' => true,
+        'variant' => [
+            'server_metadata' => 'discovery',
+        ],
+        'before_start' => 'rotate',
     ],
 ];
 
@@ -552,9 +567,9 @@ const CONFORMANCE_SUITE_TIMEOUT = 180;
  * @param array<string> $plan
  * @param array<string> $module
  */
-#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, RP-Initiated Logout OP) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user, and print the result of every module')]
+#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module')]
 function conformance(
-    #[AsOption(description: 'Run only this plan: basic, config or rp-initiated-logout (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
+    #[AsOption(description: 'Run only this plan: basic, config, rp-initiated-logout or rotate-keys (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $plan = [],
     #[AsOption(description: 'Run only the modules whose name contains this text (repeatable)', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $module = [],
@@ -588,28 +603,45 @@ function conformance(
     $verdict = [];
     $planUrls = [];
     foreach ($plans as $definition) {
-        $created = conformance_request($suite, 'POST', '/api/plan', [
-            'query' => [
-                'planName' => $definition['name'],
-                'variant' => json_encode((object) $definition['variant'], \JSON_THROW_ON_ERROR),
-            ],
-            'headers' => [
-                'Content-Type' => 'application/json',
-            ],
-            'body' => $configuration,
-        ], 201);
-        $planId = (string) $created['id'];
-        $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
-        $planUrls[] = sprintf('%s: %s', $definition['name'], $planUrl);
+        if ($definition['module'] ?? false) {
+            $planId = null;
+            $planUrl = null;
+            $created = [
+                'modules' => [
+                    [
+                        'testModule' => $definition['name'],
+                        'variant' => $definition['variant'],
+                    ],
+                ],
+            ];
+        } else {
+            $created = conformance_request($suite, 'POST', '/api/plan', [
+                'query' => [
+                    'planName' => $definition['name'],
+                    'variant' => json_encode((object) $definition['variant'], \JSON_THROW_ON_ERROR),
+                ],
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ],
+                'body' => $configuration,
+            ], 201);
+            $planId = (string) $created['id'];
+            $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
+            $planUrls[] = sprintf('%s: %s', $definition['name'], $planUrl);
+        }
         $modules = array_values(array_filter(
             $created['modules'],
             static fn (array $moduleDefinition): bool => $module === []
                 || array_any($module, static fn (string $needle): bool => str_contains((string) $moduleDefinition['testModule'], $needle)),
         ));
         io()
-            ->section(sprintf('%s: plan %s, %d module(s)', $definition['name'], $planId, count($modules)));
-        io()
-            ->text($planUrl);
+            ->section($planId === null
+                ? sprintf('%s: one module on its own, no plan', $definition['name'])
+                : sprintf('%s: plan %s, %d module(s)', $definition['name'], $planId, count($modules)));
+        if ($planUrl !== null) {
+            io()
+                ->text($planUrl);
+        }
         if ($modules === []) {
             io()->warning(sprintf('No module of %s matches %s.', $definition['name'], implode(', ', $module)));
             continue;
@@ -620,7 +652,10 @@ function conformance(
             io()
                 ->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
             $started = microtime(true);
-            $run = conformance_run_module($suite, $planId, $moduleDefinition);
+            $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, $definition['before_start'] ?? null);
+            if ($planUrl === null) {
+                $planUrls[] = sprintf('%s: %s', $name, $run['url']);
+            }
             $elapsed = microtime(true) - $started;
             $rows[] = [$definition['name'], $name, $run['result'], sprintf('%ds', (int) $elapsed), $run['url']];
             $verdict[$run['result']] = ($verdict[$run['result']] ?? 0) + 1;
@@ -718,29 +753,37 @@ function conformance_configuration(array $env): string
 }
 
 /**
- * Creates one module of the plan, starts it when the suite waits for that, waits for it to finish while
- * the scripted browser does the interaction, and returns its result with the failures and warnings of
- * its log. A module the browser cannot finish is left to a human: the task prints the URLs the suite
- * exposes and keeps waiting until CONFORMANCE_MODULE_TIMEOUT.
+ * Creates one module of the plan, or on its own with the configuration when there is no plan, starts it
+ * when the suite waits for that, waits for it to finish while the scripted browser does the interaction,
+ * and returns its result with the failures and warnings of its log. A module the browser cannot finish is
+ * left to a human: the task prints the URLs the suite exposes and keeps waiting until
+ * CONFORMANCE_MODULE_TIMEOUT. What the suite asks of the operator before the start ("Please rotate the
+ * keys ... then press the 'Start' button") is $beforeStart, done by the task.
  *
  * @param array{testModule: string, variant?: array<string, string>} $definition
  * @return array{result: string, url: string, findings: array<string>}
  */
-function conformance_run_module(string $suite, string $planId, array $definition): array
+function conformance_run_module(string $suite, ?string $planId, array $definition, string $configuration = '', ?string $beforeStart = null): array
 {
     $query = [
         'test' => $definition['testModule'],
-        'plan' => $planId,
     ];
+    if ($planId !== null) {
+        $query['plan'] = $planId;
+    }
     if (($definition['variant'] ?? []) !== []) {
         $query['variant'] = json_encode($definition['variant'], \JSON_THROW_ON_ERROR);
     }
     $created = conformance_request($suite, 'POST', '/api/runner', [
         'query' => $query,
-        // The configuration is the plan's; an empty POST must not be declared as a form.
+        // The configuration is the plan's, or the module's own when it has no plan; an empty POST must not
+        // be declared as a form.
         'headers' => [
             'Content-Type' => 'application/json',
         ],
+        ...($planId === null ? [
+            'body' => $configuration,
+        ] : []),
     ], 201);
     $id = (string) $created['id'];
     $url = sprintf('%s/log-detail.html?log=%s', $suite, $id);
@@ -748,6 +791,9 @@ function conformance_run_module(string $suite, string $planId, array $definition
 
     $state = conformance_wait_state($suite, $id, ['CONFIGURED', 'WAITING', 'FINISHED'], $deadline);
     if ($state === 'CONFIGURED') {
+        if ($beforeStart === 'rotate') {
+            conformance_rotate_signing_key();
+        }
         conformance_request($suite, 'POST', sprintf('/api/runner/%s', $id), [
             'headers' => [
                 'Content-Type' => 'application/json',
@@ -790,6 +836,26 @@ function conformance_run_module(string $suite, string $planId, array $definition
         'url' => $url,
         'findings' => $findings,
     ];
+}
+
+/**
+ * The rotation the key rotation module asks for, on the OP of the stack: the new key signs at once
+ * (--now), the one that signed stays in the JWK Set for its retirement window, which is what the module
+ * wants to see. The output of the command is shown: the two identifiers are what the log of the module
+ * names.
+ */
+function conformance_rotate_signing_key(): void
+{
+    io()->text('  The suite asks for a rotation: "heidi:keys:rotate --now" on the OP.');
+    $rotated = op_console(['heidi:keys:rotate', '--now', '--no-ansi'], context()->withAllowFailure()->withQuiet());
+    if (! $rotated->isSuccessful()) {
+        io()->error(['The signing key could not be rotated; the module will see no new key.', trim($rotated->getErrorOutput() . $rotated->getOutput())]);
+
+        return;
+    }
+    foreach (preg_split('/\R/', trim($rotated->getOutput())) ?: [] as $line) {
+        io()->text('  ' . $line);
+    }
 }
 
 /**

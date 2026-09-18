@@ -27,7 +27,7 @@ The three clients of the suite receive access tokens in the shape `CONFORMANCE_A
 
 ## The certification plans
 
-Three plans, one configuration, one task. `castor conformance` runs them all; `--plan basic`, `--plan config` or `--plan rp-initiated-logout` (repeatable) runs one.
+Three plans and one module on its own, one configuration, one task. `castor conformance` runs them all; `--plan basic`, `--plan config`, `--plan rp-initiated-logout` or `--plan rotate-keys` (repeatable) runs one.
 
 ### Basic OP
 
@@ -42,6 +42,12 @@ The clients are registered in `apps/op/config/packages/heidi.yaml` (development 
 ### RP-Initiated Logout OP
 
 `oidcc-rp-initiated-logout-certification-test-plan`, created with `response_type=code` and `client_registration=static_client`; its eleven modules run with `client_secret_basic` on `client`. One checks the discovery document (`end_session_endpoint`), ten sign in through the authorization flow then call the end session endpoint: the nominal request (verified `id_token_hint`, registered `post_logout_redirect_uri`, `state`) and the same without `state` must land on `https://localhost:8443/test/a/heidi/post_logout_redirect`; a request with nowhere to go (`no-params`, `only-state`, `no-post-logout-redirect-uri`) must end the session and show it; a request that cannot be honoured (`post_logout_redirect_uri` not registered or with a query added, `id_token_hint` modified or issued to no client, `post_logout_redirect_uri` without `id_token_hint` or `client_id`) must show an error page and redirect nowhere (RP-Initiated Logout 1.0 §2, §3). The OP needed nothing for it: a verified hint ends the session and redirects at once, an unverified request goes through the confirmation page, every refusal is the `Request refused` page. Eight modules end in `REVIEW`, the screenshot of the page shown.
+
+### Key rotation
+
+`oidcc-server-rotate-keys` is the one module of `oidcc-dynamic-certification-test-plan` the OP answers (the rest of that plan wants dynamic client registration and request URIs), and the external judge of the key rotation of spike 2. The suite has no plan for a single module, so `castor conformance` creates it on its own through `/api/runner`, with the configuration and the variant `server_metadata=discovery`, the only one it takes. The module reads the JWK Set at its creation and then waits for the operator to rotate the keys before it is started; the task runs `heidi:keys:rotate --now` on the OP in the operator's place, then starts it. The module reads the JWK Set again and passes when a new key is there and one of the former keys still is: the new key signs at once, the one that signed retires over its window (architecture §3.3). A run therefore leaves one more key in the JWK Set until that window closes. The page of the module is its log; there is no plan page.
+
+The other plans of the suite are for what the OP does not have: `implicit`, `hybrid` and their `formpost` variants (decision 0006), `formpost-basic` (`response_mode=form_post`), `dynamic` (registration, `request_uri`), the back-channel and front-channel logout plans, `session-management` (`check_session_iframe`) and `3rdparty-init-login`.
 
 ### Running them
 
