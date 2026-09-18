@@ -16,6 +16,11 @@ concurrency:
 # Quality and tests run on the latest PHP only for now (the "env" context is not available in
 # "container.image", hence the literal version in every job). The test matrix stays in place so
 # that older versions can be re-added by listing them (see the "tests" job).
+#
+# Every job with "container:" pulls the phpqa image on a fresh runner (735 MB compressed, 3.3 GB
+# extracted) before its first step, out of reach of actions/cache. The quality checks therefore
+# share one job: one pull and one Composer install instead of one of each per tool. The steps run
+# to the end whatever the outcome of the previous ones, so that every tool reports its verdict.
 
 jobs:
   pre_checks:
@@ -38,119 +43,47 @@ jobs:
             exit 1
           fi
 
-  prepare_dependencies:
-    name: "📦 Prepare Composer Dependencies"
+  quality:
+    name: "1️⃣ Quality (PHPStan, ECS, Rector, composer.json, syntax, licenses, Deptrac)"
     needs: [pre_checks]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
       - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
+      - id: dependencies
+        uses: ramsey/composer-install@v4
         with:
           dependency-versions: highest
           composer-options: --optimize-autoloader
-
-  phpstan:
-    name: "1️⃣ Static Analysis (PHPStan)"
-    needs: [prepare_dependencies]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - run: castor phpstan
-
-  ecs:
-    name: "2️⃣ Coding Standards (ECS)"
-    needs: [prepare_dependencies]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - run: castor ecs
-
-  rector:
-    name: "3️⃣ Refactoring (Rector)"
-    needs: [prepare_dependencies]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - run: castor rector
-
-  validate:
-    name: "4️⃣ Validate composer.json"
-    needs: [prepare_dependencies]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - run: |
+      - name: "Static Analysis (PHPStan)"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: castor phpstan
+      - name: "Coding Standards (ECS)"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: castor ecs
+      - name: "Refactoring (Rector)"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: castor rector
+      - name: "Validate composer.json"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
           composer dump-autoload --optimize --strict-psr
           composer validate --strict
           for f in src/*/composer.json; do composer validate --strict --no-check-all "$f"; done
-
-  lint:
-    name: "5️⃣ Syntax Check"
-    needs: [prepare_dependencies]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    steps:
-      - uses: actions/checkout@v7
-      - run: composer exec -- parallel-lint src tests
-
-  check_licenses:
-    name: "6️⃣ License Check"
-    needs: [prepare_dependencies]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - run: castor check-licenses
-
-  deptrac:
-    name: "7️⃣ Architecture Layer Check (Deptrac)"
-    needs: [prepare_dependencies]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - run: castor deptrac
+      - name: "Syntax Check"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: composer exec -- parallel-lint src tests
+      - name: "License Check"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: castor check-licenses
+      - name: "Architecture Layer Check (Deptrac)"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: castor deptrac
 
   tests:
-    name: "8️⃣ Tests (PHP ${{ matrix.php-version }})"
-    needs: [phpstan, ecs, rector, validate, lint, check_licenses, deptrac]
+    name: "2️⃣ Tests (PHP ${{ matrix.php-version }})"
+    needs: [quality]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:${{ matrix.php-version }}
@@ -179,7 +112,7 @@ jobs:
           if-no-files-found: error
 
   conformance:
-    name: "🔟 OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
+    name: "4️⃣ OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
     needs: [tests]
     # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image.
     runs-on: ubuntu-latest
@@ -218,7 +151,7 @@ jobs:
         run: castor stop
 
   infection:
-    name: "9️⃣ Mutation Testing"
+    name: "3️⃣ Mutation Testing"
     needs: [tests]
     # Every run mutates only the lines added or modified: a pull request against its base branch, a push against
     # the commit before it (the pull request just merged). The whole source takes hours with the functional tests
