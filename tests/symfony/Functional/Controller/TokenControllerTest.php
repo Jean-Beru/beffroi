@@ -135,6 +135,31 @@ final class TokenControllerTest extends BrowserTestCase
         static::assertSame('invalid_grant', self::json($this->browser->getResponse())['error']);
     }
 
+    /**
+     * OIDC Core §10.1.1 and architecture §3.3: the opaque refresh token depends on no key; a rotation
+     * changes nothing for it, and the tokens it gets are signed by the key that signs now.
+     */
+    #[Test]
+    public function aRefreshAfterARotationIssuesTokensSignedByTheNewKey(): void
+    {
+        // Given
+        $previous = self::signingKey();
+        $refreshToken = $this->refreshTokenOfTheDemoClient();
+        $active = self::signingKey();
+
+        // When
+        $this->refresh($refreshToken);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        $renewed = self::json($response);
+        static::assertNotSame($previous->kid, $active->kid);
+        static::assertSame($active->kid, self::kidOf(self::string($renewed['access_token'])));
+        static::assertSame($active->kid, self::kidOf(self::string($renewed['id_token'])));
+        static::assertIsString($renewed['refresh_token']);
+    }
+
     private function postWithAWrongSecret(): void
     {
         $this->browser->request('POST', '/token', [

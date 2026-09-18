@@ -10,7 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * OIDC Core §5.3, RFC 6750 §2 and §3, architecture §4.7: where the token is read from, and how a
- * refusal is answered.
+ * refusal is answered; across a rotation (OIDC Core §10.1.1, architecture §3.3), which tokens still
+ * open the door.
  */
 final class UserInfoControllerTest extends BrowserTestCase
 {
@@ -76,6 +77,73 @@ final class UserInfoControllerTest extends BrowserTestCase
     {
         // Given
         self::signingKey();
+        $accessToken = $this->accessTokenOfTheDemoClient();
+
+        // When
+        $this->browser->request('POST', '/userinfo', [
+            'access_token' => $accessToken,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame('alice-subject', self::json($response)['sub']);
+    }
+
+    /**
+     * OIDC Core §10.1.1: an "at+jwt" signed before a rotation is accepted after it, while the key that
+     * signed it is retiring, until the token expires.
+     */
+    #[Test]
+    public function anAccessTokenSignedBeforeARotationIsAcceptedAfterIt(): void
+    {
+        // Given
+        $previous = self::signingKey();
+        $accessToken = $this->accessTokenOfTheDemoClient();
+        self::signingKey();
+
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame($previous->kid, self::kidOf($accessToken));
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame('alice-subject', self::json($response)['sub']);
+    }
+
+    /**
+     * Architecture §3.3: once the key that signed a token is retired, the token is refused like one
+     * signed by nobody the provider knows: invalid_token (RFC 6750 §3.1), whatever its "exp".
+     */
+    #[Test]
+    public function anAccessTokenSignedByARetiredKeyIsInvalid(): void
+    {
+        // Given
+        $previous = self::signingKey();
+        $accessToken = $this->accessTokenOfTheDemoClient();
+        self::signingKey();
+        self::retireKey($previous);
+
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+        static::assertStringStartsWith('Bearer error="invalid_token"', self::string($response->headers->get('WWW-Authenticate')));
+        static::assertSame('invalid_token', self::json($response)['error']);
+    }
+
+    /**
+     * The "at+jwt" oidc-demo gets from the code flow of alice, signed by the key active at that moment.
+     */
+    private function accessTokenOfTheDemoClient(): string
+    {
         $this->signIn(self::user('alice'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
@@ -87,16 +155,7 @@ final class UserInfoControllerTest extends BrowserTestCase
         ], server: [
             'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
         ]);
-        $accessToken = self::string(self::json($this->browser->getResponse())['access_token']);
 
-        // When
-        $this->browser->request('POST', '/userinfo', [
-            'access_token' => $accessToken,
-        ]);
-
-        // Then
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
-        static::assertSame('alice-subject', self::json($response)['sub']);
+        return self::string(self::json($this->browser->getResponse())['access_token']);
     }
 }

@@ -522,14 +522,14 @@
                     ]
                 },
                 {
-                    "comment": "The request cannot be honoured (RP-Initiated Logout 1.0 §2: unregistered post_logout_redirect_uri, id_token_hint invalid or issued to no client, post_logout_redirect_uri without id_token_hint or client_id): the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
+                    "comment": "A signed JWT the OP cannot verify is an invalid id_token_hint (RP-Initiated Logout 1.0 §2, §6): the OP identifies no client from it, drops the post_logout_redirect_uri and asks the user; the confirmation page fills the screenshot placeholder, and nobody answers it.",
                     "match": "{HEIDI_ISSUER}/logout*",
                     "tasks": [
                         {
-                            "task": "Expect the error page",
+                            "task": "Expect the confirmation page",
                             "match": "{HEIDI_ISSUER}/logout*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                                ["wait", "xpath", "//*", 10, "Do you want to sign out|Voulez-vous vous déconnecter", "update-image-placeholder"]
                             ]
                         }
                     ]

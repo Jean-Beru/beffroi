@@ -26,6 +26,7 @@ use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
@@ -114,6 +115,11 @@ final class HeidiBundle extends AbstractBundle
             ->info('Directory of the sealed signing keys, one file per key and per tenant.')
             ->defaultValue('%kernel.project_dir%/var/keys')
             ->cannotBeEmpty()
+            ->end()
+            ->integerNode('jwks_max_age')
+            ->info('How long a relying party may cache the JWK Set, in seconds (RFC 7517 §5, architecture §4.8); the staging window of a rotation derives from it, so that the two cannot drift apart (§3.3).')
+            ->defaultValue(JwksHandler::DEFAULT_MAX_AGE)
+            ->min(0)
             ->end()
             ->end()
             ->end()
@@ -321,6 +327,8 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileSigningKeyRepository::class)
             ->arg('$directory', self::string($keys, 'storage'));
+        $services->get(JwksHandler::class)
+            ->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
 
         $services->get(AuthorizationHandler::class)
             ->arg('$codeLifetime', self::seconds($tokens, 'authorization_code_ttl'));
@@ -360,6 +368,21 @@ final class HeidiBundle extends AbstractBundle
         $value = $section[$key] ?? null;
         if (! is_string($value)) {
             throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a string.', $key));
+        }
+
+        return $value;
+    }
+
+    /**
+     * A number, or the environment placeholder that stands for it until runtime.
+     *
+     * @param array<array-key, mixed> $section
+     */
+    private static function integer(array $section, string $key): int|string
+    {
+        $value = $section[$key] ?? null;
+        if (! is_int($value) && ! is_string($value)) {
+            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a number.', $key));
         }
 
         return $value;
