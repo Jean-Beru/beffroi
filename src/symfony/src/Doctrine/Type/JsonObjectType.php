@@ -24,10 +24,7 @@ use JsonException;
 use function sprintf;
 
 /**
- * A value object stored as a JSON document. What the document must look like is the business of each
- * subclass; what a document that does not look like it gets is the same everywhere: a conversion error,
- * never a guess. A JSON column is what both PostgreSQL and SQLite offer for a structured value that no
- * query filters on.
+ * A value object stored as a JSON document; a document that does not look like it is a conversion error, never a guess.
  *
  * @template T of object
  */
@@ -43,9 +40,9 @@ abstract class JsonObjectType extends Type
     /**
      * @param array<array-key, mixed> $data
      *
-     * @throws ValueNotConvertible when the document has not the members expected
-     * @throws CoreInvalidArgumentException when the value object refuses what the members hold
-     * @throws OidcInvalidArgumentException when the value object refuses what the members hold
+     * @throws ValueNotConvertible
+     * @throws CoreInvalidArgumentException
+     * @throws OidcInvalidArgumentException
      *
      * @return T
      */

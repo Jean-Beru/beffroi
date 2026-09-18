@@ -16,11 +16,8 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Authorization codes in heidi_authorization_code (architecture §4.4), keyed by their hash. A code of a
- * client that is no longer registered is not found: an unknown code, which is what the grant refuses.
- *
- * consume() is one conditional statement, not a read followed by a write: the database decides which of
- * the requests presenting the same code at once is the first, and the others are replays.
+ * Authorization codes in heidi_authorization_code (architecture §4.4). A code of a client no longer
+ * registered is not found.
  *
  * @extends DoctrineRepository<AuthorizationCode>
  */
@@ -52,12 +49,9 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
     }
 
     /**
-     * One UPDATE ... WHERE used_at IS NULL: the row is claimed by whoever the database lets write it,
-     * and the count of affected rows says who that was. The statement goes through the connection
-     * rather than the unit of work, which would read the entity it already holds. The loser reads the
-     * date back and records it, so that its copy says what the winner wrote and so that saving the
-     * revocation of the grant does not write a null over it; the record cannot be rehydrated, its
-     * properties being readonly.
+     * One UPDATE ... WHERE used_at IS NULL through the connection, not the unit of work: the count of
+     * affected rows says who claimed the row. The loser reads the date back so that its copy says what
+     * the winner wrote.
      */
     public function consume(AuthorizationCode $code, DateTimeImmutable $now): bool
     {

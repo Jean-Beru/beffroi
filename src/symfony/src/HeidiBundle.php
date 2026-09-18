@@ -52,20 +52,17 @@ use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 
 /**
  * The configuration of architecture §5.1, and nothing that decision 0006 forbids: no "insecure_*" key, no
- * compatibility switch, no way to turn PKCE, the exact redirect URI match or the "iss" parameter off. An
- * option that does not exist cannot be copied from a tutorial.
+ * compatibility switch.
  */
 final class HeidiBundle extends AbstractBundle
 {
     /**
-     * RFC 6749 §4.1.2: "A maximum authorization code lifetime of 10 minutes is RECOMMENDED". The bundle
-     * makes the recommendation a bound.
+     * RFC 6749 §4.1.2, the recommendation made a bound.
      */
     public const int MAX_AUTHORIZATION_CODE_TTL = 600;
 
     /**
-     * The default the module applies when a client declares nothing; restated here because the
-     * configuration tree cannot tell an absent list from an empty one.
+     * Restated from the module: the configuration tree cannot tell an absent list from an empty one.
      */
     public const array DEFAULT_GRANT_TYPES = [GrantType::AuthorizationCode->value, GrantType::RefreshToken->value];
 
@@ -220,8 +217,7 @@ final class HeidiBundle extends AbstractBundle
     }
 
     /**
-     * The value objects of the core and of the module that a column holds as one value, by the name the
-     * mappings use (architecture §5.3).
+     * By the name the mappings use (architecture §5.3).
      */
     public const array DBAL_TYPES = [
         IssuerType::NAME => IssuerType::class,
@@ -238,13 +234,8 @@ final class HeidiBundle extends AbstractBundle
     ];
 
     /**
-     * Doctrine gets the mappings of the pure classes, the types their value objects need and the
-     * migrations of the bundle without a line in the application (architecture §5.3): the same schema
-     * installs in an existing application or alone (decision 0002). The classes live in the core and in the
-     * module, so the bundle cannot rely on the mapping Doctrine infers from a bundle's own namespace.
-     *
-     * The security component gets the hasher of the users of the bundle (architecture §5.4): the firewall
-     * is the application's to declare, the hasher of a SecurityUser is nobody's choice but the core's.
+     * Doctrine gets the mappings, the types and the migrations of the bundle (architecture §5.3); the
+     * security component gets the hasher of its users (§5.4). The firewall is the application's to declare.
      */
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -299,7 +290,6 @@ final class HeidiBundle extends AbstractBundle
     {
         $container->import('../config/services.php');
 
-        // A process serves both planes unless its environment says otherwise (architecture §5.2, §6).
         if (! $builder->hasParameter('env(HEIDI_PLANE)')) {
             $builder->setParameter('env(HEIDI_PLANE)', Plane::All->value);
         }
@@ -314,9 +304,7 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$slug', self::string($tenant, 'slug'))
             ->arg('$name', is_string($tenant['name'] ?? null) ? $tenant['name'] : null);
 
-        // Built from the DSN by the factory registry of symfony/key-management, so that every backend the
-        // application installed (local, Vault, cloud) answers to its scheme; the DSN is an argument, not a
-        // parameter, because it may carry key material.
+        // the DSN is an argument, not a parameter: it may carry key material
         $services->set('heidi.kms', EncrypterInterface::class)
             ->factory([service('key_management.factory'), 'fromString'])
             ->args([self::string($keys, 'kms')]);
@@ -374,9 +362,9 @@ final class HeidiBundle extends AbstractBundle
     }
 
     /**
-     * A number, or the environment placeholder that stands for it until runtime.
-     *
      * @param array<array-key, mixed> $section
+     *
+     * @return int|string a number, or the environment placeholder that stands for it until runtime
      */
     private static function integer(array $section, string $key): int|string
     {
@@ -389,8 +377,7 @@ final class HeidiBundle extends AbstractBundle
     }
 
     /**
-     * A DateInterval built by the container, from a number of seconds or from the environment placeholder
-     * that stands for it until runtime.
+     * A DateInterval built by the container from a number of seconds.
      *
      * @param array<array-key, mixed> $section
      */

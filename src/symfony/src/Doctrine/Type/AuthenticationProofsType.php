@@ -12,9 +12,7 @@ use function is_string;
 
 /**
  * The proofs of a session (architecture §3.2) as a JSON object of method reference to Unix timestamp,
- * the shape Symfony's security token gives them (TokenInterface::getAuthenticationProofs()). A timestamp
- * has the precision of the datetime columns next to it, so that "no proof is dated after the session was
- * established" holds after a round trip as it held before.
+ * the shape of TokenInterface::getAuthenticationProofs().
  *
  * @extends JsonObjectType<AuthenticationProofs>
  */

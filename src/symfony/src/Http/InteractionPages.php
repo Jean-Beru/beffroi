@@ -9,15 +9,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;
 
 /**
- * The responses of the interaction plane (architecture §5.2): pages rendered from the templates of the
- * bundle, which an application overrides under "templates/bundles/HeidiBundle/", and redirections. Every
- * one of them carries the headers the pages of a provider need: no framing (RFC 9700 §4.15, both the
- * header browsers have honoured for years and the directive that replaces it), no referrer, because the
- * URLs of these pages carry an interaction identifier and the redirections carry a code or a state
- * (a Referrer-Policy on a redirection applies to the redirected request), and no caching, because every
- * page holds a form token or a state of the flow. The pages extend the layout of the bundle, which an
- * application overrides first to give them its look; their words are in the "heidi" translation domain,
- * in the locale InteractionLocale chose (architecture §5.7).
+ * The responses of the interaction plane (architecture §5.2): pages from the templates of the bundle,
+ * which an application overrides, and redirections, every one with the headers a provider needs: no
+ * framing (RFC 9700 §4.15), no referrer, no caching.
  */
 final readonly class InteractionPages
 {
@@ -42,15 +36,10 @@ final readonly class InteractionPages
     }
 
     /**
-     * The page shown when a request cannot go on and nothing may be sent back to a client: an error the
-     * authorization endpoint found before validating the redirect URI (RFC 9700 §4.1), an error of a
-     * logout request (RP-Initiated Logout §4), an interaction that expired or was already completed. What
-     * the user reads is the sentence the template has for the code, in the locale of the request
-     * (architecture §5.7); the description, when there is one, is shown to them as the detail the
-     * developer of the application needs.
+     * The page shown when nothing may be sent back to a client (RFC 9700 §4.1, RP-Initiated Logout §4).
      *
-     * @param string $error a code the template translates: "invalid_request", or one of the constants of AuthorizationResponder and of the controllers
-     * @param string|null $description the error_description of the protocol (RFC 6749 §4.1.2.1), in the language of the specification; never an internal message
+     * @param string $error a code the template translates
+     * @param string|null $description the error_description of the protocol, never an internal message
      */
     public function error(int $status, string $error, ?string $description = null): Response
     {

@@ -8,9 +8,7 @@ use RuntimeException;
 use function sprintf;
 
 /**
- * The row of the configured tenant is not what the configuration says, or is not there. Nothing is served
- * until it is: an issuer that differs between the configuration and the database would sign tokens for
- * one and store rows for the other.
+ * The row of the configured tenant is missing or disagrees with the configuration; nothing is served until it is.
  */
 final class TenantNotSynchronizedException extends RuntimeException
 {

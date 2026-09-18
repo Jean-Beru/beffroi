@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Doctrine\Type;
 use Heidi\Core\Domain\Tenant\Issuer;
 
 /**
- * The issuer identifier of a tenant (OIDC Discovery §3), stored as the string clients compare byte for byte.
+ * The issuer identifier of a tenant (OIDC Discovery §3), stored as is.
  *
  * @extends StringObjectType<Issuer>
  */

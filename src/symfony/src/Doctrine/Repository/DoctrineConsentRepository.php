@@ -13,8 +13,7 @@ use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
- * Consents in heidi_consent (architecture §4.3). The consent in force is the active one granted last;
- * on a tie, the one recorded last.
+ * Consents in heidi_consent (architecture §4.3); the one in force is the active one granted last.
  *
  * @extends DoctrineRepository<Consent>
  */

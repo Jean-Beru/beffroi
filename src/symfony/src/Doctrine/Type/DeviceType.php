@@ -9,8 +9,7 @@ use Heidi\Core\Domain\Session\Device;
 use Heidi\Core\Domain\Session\DeviceType as DeviceKind;
 
 /**
- * What a user agent parser said about a request (architecture §3.5), as one JSON document on the session,
- * for the same reasons as the location.
+ * What a user agent parser said (architecture §3.5), as one JSON document on the session.
  *
  * @extends JsonObjectType<Device>
  */

@@ -99,9 +99,8 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 /*
- * Every service of the core and of the module, autowired, the ports aliased to the one implementation
- * spike 1 has (architecture §3.4, §4.11, §5.2, §5.3), the controllers of the two planes and what the firewall
- * of the interaction pages is made of (§5.4).
+ * Every service of the core, of the module and of the bundle, autowired, the ports aliased to their one
+ * implementation (architecture §3.4, §4.11, §5.2 to §5.4).
  */
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
@@ -109,8 +108,7 @@ return static function (ContainerConfigurator $container): void {
         ->autowire()
         ->autoconfigure()
         ->private()
-        // The core announces its events in PSR-14 and knows nothing of Messenger; what listens is the
-        // event bus, never the dispatcher of the kernel.
+        // the core announces in PSR-14; what listens is the event bus, never the dispatcher of the kernel
         ->bind(EventDispatcherInterface::class, service(EventBusDispatcher::class));
 
     // The bundle
@@ -120,8 +118,7 @@ return static function (ContainerConfigurator $container): void {
         ->args(['%env(enum:' . Plane::class . ':HEIDI_PLANE)%']);
     $services->set(TenantFactory::class);
 
-    // The bundle: the two planes (architecture §5.2). The controllers translate the request into the objects
-    // of the module and the decisions into responses; what they share is here.
+    // The bundle: the two planes (architecture §5.2)
     $services->load('Heidi\\Bundle\\Controller\\', '../src/Controller/');
     $services->set(RequestContextFactory::class);
     $services->set(BrowserSession::class);
@@ -135,12 +132,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
 
-    // The bundle: provisioning from the console (architecture §5.5), the tenant first, then keys and users.
+    // The bundle: the console (architecture §5.5)
     $services->load('Heidi\\Bundle\\Command\\', '../src/Command/');
 
-    // The bundle: security (architecture §5.4). The application names the provider, the checker and the
-    // handlers in its firewall; the hasher is mapped to the users of the bundle by the bundle itself; the
-    // listeners are global, the security bundle hands them to every firewall.
+    // The bundle: security (architecture §5.4); the application names these in its firewall
     $services->set(IdentityUserProvider::class);
     $services->set(CorePasswordHasher::class);
     $services->set(UserChecker::class);
@@ -148,9 +143,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginSuccessListener::class);
     $services->set(LoginFailureListener::class);
 
-    // The bundle: persistence (architecture §5.3). The tenant of a request is the row Doctrine manages,
-    // checked against the configuration, held for one request and forgotten with the unit of work; the
-    // synchroniser writes that row. No service holds a Tenant: an entity is not a service.
+    // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
     $services->set(TenantProvider::class)
         ->tag('kernel.reset', [
             'method' => 'reset',
@@ -191,22 +184,20 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JwsSignerInterface::class, JwtFrameworkJwsSigner::class);
     $services->set(JwtFrameworkJwsVerifier::class);
     $services->alias(JwsVerifierInterface::class, JwtFrameworkJwsVerifier::class);
-    // The kinds of JWS the tenant issues date the retirement of a key (architecture §3.3): the modules tag
-    // theirs, the core adds them up.
+    // the modules tag the kinds of JWS they issue, the rotation dates a retirement from them (architecture §3.3)
     $services->set(SigningKeyRotator::class)
         ->args([
             '$issuedJws' => tagged_iterator('heidi.issued_jws'),
         ]);
 
-    // The core: passwords. Hashers are tagged by hand: the registry implements the port too and must not
-    // find itself among them.
+    // The core: passwords; hashers are tagged by hand, the registry implements the port too
     $services->set(NativePasswordHasher::class)
         ->tag('heidi.password_hasher');
     $services->set(PasswordHasherRegistry::class)
         ->args([tagged_iterator('heidi.password_hasher')]);
     $services->alias(PasswordHasherInterface::class, PasswordHasherRegistry::class);
 
-    // The core: request context enrichment, null until GeoIP and user agent parsing arrive (architecture §3.5)
+    // The core: request context enrichment (architecture §3.5)
     $services->set(NullGeoLocator::class);
     $services->alias(GeoLocatorInterface::class, NullGeoLocator::class);
     $services->set(NullUserAgentParser::class);
@@ -233,10 +224,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);
 
-    // The module: token endpoint. The grants the handler serves are the two the module ships, tagged by
-    // hand: what the discovery document announces is the enumeration of the module, not what a container
-    // holds. The access token issuers are named by the format each one writes, one per case of the
-    // enumeration, so that a case without an issuer fails at boot.
+    // The module: token endpoint; the grants are tagged by hand, the issuers named by the format each one writes
     $services->set(JwtAccessTokenIssuer::class);
     $services->set(OpaqueAccessTokenIssuer::class);
     $services->set(AccessTokenIssuer::class)

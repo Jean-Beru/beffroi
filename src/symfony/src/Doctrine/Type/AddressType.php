@@ -7,9 +7,8 @@ namespace Heidi\Bundle\Doctrine\Type;
 use Heidi\Core\Domain\Identity\Address;
 
 /**
- * The postal address of a user as one JSON document with the members of the OIDC Core §5.1.1 address
- * claim. A JSON column rather than an embeddable because an absent address is null on the user, and
- * Doctrine hydrates an embeddable whose every column is null as an object, not as null.
+ * The OIDC Core §5.1.1 address as one JSON document: an embeddable whose every column is null would
+ * hydrate as an object, not as null.
  *
  * @extends JsonObjectType<Address>
  */

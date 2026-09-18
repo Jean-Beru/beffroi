@@ -12,8 +12,7 @@ use Heidi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Users in heidi_user (architecture §3.4). A lookup by subject or by username is scoped by the tenant, as
- * the port asks, and exact: the columns are compared as they were written.
+ * Users in heidi_user (architecture §3.4); a lookup is scoped by the tenant and exact.
  *
  * @extends DoctrineRepository<User>
  */

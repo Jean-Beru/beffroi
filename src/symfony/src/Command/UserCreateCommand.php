@@ -19,9 +19,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * A user of the tenant (architecture §3.1, §5.5), who cannot sign in until "heidi:user:set-password" gives
- * them a password. The subject is generated unless an import brings the one the clients already know
- * (decision 0002).
+ * A user of the tenant (architecture §3.1, §5.5); the subject is generated unless an import brings one (decision 0002).
  */
 #[AsCommand(
     name: 'heidi:user:create',

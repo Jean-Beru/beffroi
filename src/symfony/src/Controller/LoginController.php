@@ -22,17 +22,9 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 /**
- * The login page of an interaction (architecture §4.3, §5.2). The page is reached with the identifier of
- * an interaction this browser began, before the login and again after it: the handler is resumed with
- * the session the browser holds, and the page is shown only while a login is still required, whether
- * because there is no session or because the request demands a fresh one (prompt=login, max_age).
- *
- * The POST of the form is the check path of the form login of the firewall (architecture §5.4), which
- * verifies the credentials, opens the session of the core and binds the browser to it, then sends the
- * browser back here; the route accepts POST so that the firewall may sit on it, and without a firewall a
- * POST shows the page again. A refused login comes back here too, with the failure the firewall left in
- * the HTTP session, read once and shown as one flat message whatever the reason (decision 0006, the
- * core says no more to a user). The page speaks the language the interaction recorded (architecture §5.7).
+ * The login page of an interaction (architecture §4.3, §5.2), shown while a login is still required. The
+ * POST is the check path of the form login of the firewall (§5.4), which sends the browser back here; a
+ * refused login is one flat message whatever the reason (decision 0006).
  */
 #[AsController]
 final readonly class LoginController

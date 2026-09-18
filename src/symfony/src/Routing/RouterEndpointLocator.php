@@ -15,15 +15,9 @@ use function substr;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * Where the endpoints of a tenant are served (architecture §4.8, §5.2): the paths the router gives the
- * routes of the bundle, under the origin of the issuer. The origin comes from the issuer and not from the
- * Host header of the request, so that what the discovery document announces cannot be steered by whoever
- * sends the request; the path comes from the router, so that a prefix the application mounted the bundle
- * under is announced as it is served.
- *
- * The discovery document itself must sit where a client derives it from the issuer (OIDC Discovery §4.1:
- * the issuer plus "/.well-known/openid-configuration"); a prefix that disagrees with the path of the issuer
- * is a configuration fault, refused at the first request rather than announced.
+ * The paths of the router under the origin of the issuer, never the Host header (architecture §4.8,
+ * §5.2). A prefix that disagrees with the path of the issuer (OIDC Discovery §4.1) is refused at the
+ * first request.
  */
 final readonly class RouterEndpointLocator implements EndpointLocatorInterface
 {

@@ -20,15 +20,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * RFC 6749 §3.1, OIDC Core §3.1.2: the authorization endpoint, GET with the parameters in the query or
- * POST with them in the form body (§3.1.2.1). The two stages of RFC 6749 §4.1.2.1 are two calls: an
- * error of the first (client, redirect URI) is a page, never a redirection; an error of the second, or of
- * the handler, goes back to the client when it may (RFC 9700 §4.1). The endpoint logs nobody in: the
- * handler parks the request and the responder sends the browser where the decision says.
- *
- * The locale of the interaction is chosen here, once (architecture §5.7): "ui_locales" of the request,
- * then the browser, then the deployment; it is recorded on the interaction and applied to this request,
- * whose pages may already be shown in it.
+ * The authorization endpoint (RFC 6749 §3.1, OIDC Core §3.1.2), GET or POST. An error of the first stage
+ * is a page, one of the second goes back to the client (RFC 9700 §4.1). The locale of the interaction is
+ * chosen here, once (architecture §5.7).
  */
 #[AsController]
 final readonly class AuthorizationController

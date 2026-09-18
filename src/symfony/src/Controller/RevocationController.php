@@ -18,10 +18,8 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * RFC 7009 §2: the revocation endpoint, POST only, the client credentials in the Authorization header
- * or in the form body, the token in the form body. A revoked token, and an invalid one, are answered
- * 200 with an empty body (§2.2); the errors are the ones of RFC 6749 §5.2 plus unsupported_token_type
- * (§2.2.1), as JSON, never cached, never a redirect.
+ * The revocation endpoint (RFC 7009 §2), POST only: 200 with an empty body (§2.2), or the errors of
+ * RFC 6749 §5.2 and §2.2.1 as JSON.
  */
 #[AsController]
 final readonly class RevocationController

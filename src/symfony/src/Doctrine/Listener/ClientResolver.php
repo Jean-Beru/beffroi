@@ -14,15 +14,9 @@ use Heidi\Oidc\Port\ClientRepositoryInterface;
 use ReflectionProperty;
 
 /**
- * Puts the client back on what a row of the module names by identifier. A client is a registration the
- * module reads from its repository (the configuration in spike 1, architecture §4.1), not a row Doctrine
- * could join: the tables keep "client_id" and, at load, this listener resolves the object the way the
- * endpoints do, from the tenant of the row and the identifier.
- *
- * Doctrine hydrates without a constructor and sets readonly properties by reflection; the one property it
- * cannot map is set the same way. A client that is no longer registered leaves the property uninitialised:
- * the repositories ask isResolved() and treat the row as absent, because a token or a consent of a client
- * that does not exist is not a token or a consent.
+ * Resolves the client of a loaded row from its "client_id" (architecture §4.1), set by reflection like the
+ * other readonly properties. A client no longer registered leaves the property uninitialised; the
+ * repositories ask isResolved() and treat the row as absent.
  */
 final readonly class ClientResolver
 {
@@ -41,9 +35,6 @@ final readonly class ClientResolver
         $property->setValue($holder, $client);
     }
 
-    /**
-     * Whether the client of the row was registered when the row was loaded.
-     */
     public static function isResolved(Interaction|AuthorizationCode|RefreshToken|StoredAccessToken|Consent $entity): bool
     {
         [$holder, $property] = self::clientProperty($entity);
@@ -52,10 +43,7 @@ final readonly class ClientResolver
     }
 
     /**
-     * The object that holds the client and the property that does: the request of an interaction, the
-     * row itself otherwise.
-     *
-     * @return array{object, ReflectionProperty}
+     * @return array{object, ReflectionProperty} the holder of the client and the property
      */
     private static function clientProperty(Interaction|AuthorizationCode|RefreshToken|StoredAccessToken|Consent $entity): array
     {

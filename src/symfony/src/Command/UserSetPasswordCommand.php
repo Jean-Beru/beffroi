@@ -25,9 +25,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use function trim;
 
 /**
- * The password of a user (architecture §5.5): asked twice, hidden, on a terminal; read from the standard
- * input with --password-stdin when a script provisions. Never an argument nor an option: those end up in
- * the shell history and in the process list.
+ * The password of a user (architecture §5.5), asked on the terminal or read from the standard input;
+ * never an argument nor an option.
  */
 #[AsCommand(
     name: 'heidi:user:set-password',
@@ -89,8 +88,7 @@ final readonly class UserSetPasswordCommand
     }
 
     /**
-     * The first line of the standard input, its line ending removed: what the "echo" of a script hands
-     * over. The stream is the one the input carries when a test drives the command.
+     * The first line of the standard input.
      */
     private static function fromStandardInput(InputInterface $input): string
     {
@@ -101,7 +99,7 @@ final readonly class UserSetPasswordCommand
     }
 
     /**
-     * Asked twice, hidden; null when it could not be asked or was not confirmed, which is said.
+     * Null when it could not be asked or was not confirmed, which is said.
      */
     private static function fromTerminal(SymfonyStyle $io, InputInterface $input): ?string
     {

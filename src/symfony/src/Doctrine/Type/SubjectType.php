@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Doctrine\Type;
 use Heidi\Core\Domain\Identity\Subject;
 
 /**
- * The "sub" of a user (OIDC Core §2), stored as is: it is what clients know the user by, and it never changes.
+ * The "sub" of a user (OIDC Core §2), stored as is.
  *
  * @extends StringObjectType<Subject>
  */

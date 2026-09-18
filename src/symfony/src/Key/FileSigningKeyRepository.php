@@ -40,16 +40,13 @@ use function unlink;
 use function usort;
 
 /**
- * The signing keys of a tenant as files (architecture §3.3: "files in development, a database later"), one
- * JSON document per key under "<storage>/<tenant slug>/<kid>.json". The file holds what the SigningKey
- * holds: the public JWK in clear, the private JWK as the opaque envelope the KMS sealed, the status and the
- * date of every transition (created, activated, retiring, due, retired). Nothing in it is secret on its own, the file mode is tightened all the same. A write goes through a
- * sibling file renamed into place, so that a process reading the directory never sees half a key.
+ * The signing keys of a tenant as files (architecture §3.3), one JSON document per key under
+ * "<storage>/<tenant slug>/<kid>.json", written through a sibling file renamed into place.
  */
 final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInterface
 {
     /**
-     * A kid is an RFC 7638 thumbprint, base64url: nothing else may name a file.
+     * An RFC 7638 thumbprint, base64url: nothing else may name a file.
      */
     private const string KID_PATTERN = '/^[A-Za-z0-9_-]+$/D';
 
@@ -126,7 +123,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
     }
 
     /**
-     * Every key of the tenant, oldest first, so that "published" keeps the creation order the port asks for.
+     * Oldest first, the order the port asks for.
      *
      * @return list<SigningKey>
      */
@@ -151,7 +148,8 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
     }
 
     /**
-     * A file that is not what this repository writes is a fault of the storage, not a missing key.
+     * A file that is not what this repository writes is a fault of the storage, not a missing key. The
+     * transitions are replayed in order with their dates: the file holds facts, the key holds the rules.
      */
     private function read(Tenant $tenant, string $path, string $json): SigningKey
     {
@@ -184,7 +182,6 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         }
 
         try {
-            // The transitions are replayed in order, each with its date: the file holds facts, the key holds the rules.
             $key = new SigningKey($kid, $tenant, $algorithm, $members, $sealed, self::date($path, $document['created_at'] ?? null));
             if ($status !== KeyStatus::Staged) {
                 $key->activate(self::date($path, $document['activated_at'] ?? null));

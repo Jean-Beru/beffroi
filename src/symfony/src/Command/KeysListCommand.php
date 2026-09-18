@@ -14,8 +14,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The keys the JWK Set publishes (architecture §3.3): the active one, and those retiring since a rotation.
- * A retired key is out of the set and out of this list.
+ * The keys the JWK Set publishes (architecture §3.3).
  */
 #[AsCommand(
     name: 'heidi:keys:list',

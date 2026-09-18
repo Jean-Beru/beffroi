@@ -9,9 +9,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The RequestContext of the core (architecture §3.5) for an HTTP request: when it was received, the
- * client IP the trusted proxies leave, the User-Agent header as sent. Nothing is enriched here: location
- * and device are added asynchronously, later, by whoever listens to the events.
+ * The RequestContext of the core (architecture §3.5) for an HTTP request; nothing is enriched here.
  */
 final readonly class RequestContextFactory
 {

@@ -8,13 +8,9 @@ use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Which parameters of an HTTP request the module reads. A browser endpoint (RFC 6749 §3.1, OIDC Core
- * §3.1.2.1, RP-Initiated Logout §2) reads the query of a GET and the form body of a POST, never both. A
- * server-to-server endpoint (RFC 6749 §3.2, RFC 6750 §2.2) reads the form body only: a token in the query
- * string ends up in logs and referrers, which is why RFC 6750 §2.3 exists and RFC 9700 §4.3.2 forbids it.
- * The values are handed over as PHP decoded them, arrays included, so that the module refuses a repeated
- * parameter rather than reading one of its values. A key that is not a name (a bare "?0=") is dropped:
- * no parameter of the protocol is a number.
+ * Which parameters of an HTTP request the module reads: the query of a GET or the form body of a POST
+ * for a browser endpoint, the form body only for a server-to-server one (RFC 6750 §2.3, RFC 9700
+ * §4.3.2). The values are handed over as PHP decoded them, arrays included; a numeric key is dropped.
  */
 final readonly class RequestParameters
 {

@@ -11,8 +11,7 @@ use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 
 /**
- * Credentials, one table per kind (architecture §3.4): the password today, passkeys and TOTP when they
- * come, each with its own columns. The credentials of a user are the union of the kinds.
+ * Credentials, one table per kind (architecture §3.4).
  *
  * @extends DoctrineRepository<PasswordCredential>
  */

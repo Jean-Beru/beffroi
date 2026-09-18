@@ -7,9 +7,7 @@ namespace Heidi\Bundle\Doctrine\Type;
 use Heidi\Core\Domain\Session\GeoLocation;
 
 /**
- * What a GeoIP lookup said about an address (architecture §3.5), as one JSON document on the session: the
- * enrichment is asynchronous and optional, and no query of spike 1 filters on it. PostgreSQL reads inside
- * the document when a query needs a country.
+ * What a GeoIP lookup said (architecture §3.5), as one JSON document on the session.
  *
  * @extends JsonObjectType<GeoLocation>
  */

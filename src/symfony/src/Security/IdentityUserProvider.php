@@ -25,13 +25,8 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 use function trim;
 
 /**
- * The user provider of the firewall (architecture §5.4): a user of the core and its password credential,
- * found by what was typed on the login form, in the tenant of the request, behind a SecurityUser. Never
- * the User of a host application (decision 0002).
- *
- * The provider is also where the firewall brings a hash to upgrade: a password verified against a hash
- * weaker than the policy of the core is stored again with the current one, on the login that verified
- * it, and the core is told (PasswordRehashed).
+ * The user provider of the firewall (architecture §5.4): a user of the core behind a SecurityUser, never
+ * the User of a host application (decision 0002). Also where the firewall brings a hash to upgrade.
  *
  * @implements UserProviderInterface<SecurityUser>
  */
@@ -49,9 +44,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
     }
 
     /**
-     * A disabled user is loaded like any other: the firewall checks the password first, then the state
-     * (UserChecker), so that a disabled account answers exactly like a wrong password to whoever does not
-     * know the password.
+     * A disabled user is loaded like any other; the state is checked after the password (UserChecker).
      */
     public function loadUserByIdentifier(string $identifier): SecurityUser
     {
@@ -67,9 +60,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
     }
 
     /**
-     * Read again from the rows on every request, by identifier and not by username, so that a rename
-     * does not sign the user out; a user that is gone, moved to another tenant or disabled is not
-     * refreshed, which signs them out.
+     * By identifier, so that a rename does not sign the user out; a user gone or disabled is signed out.
      */
     public function refreshUser(UserInterface $user): SecurityUser
     {
