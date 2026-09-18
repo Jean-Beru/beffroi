@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
+use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
@@ -64,16 +65,23 @@ use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
+use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
+use Heidi\Oidc\Application\Revocation\RevocationHandler;
+use Heidi\Oidc\Application\Token\AccessTokenInspector;
+use Heidi\Oidc\Application\Token\AccessTokenIssuer;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
 use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
+use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
@@ -163,6 +171,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
+    $services->set(DoctrineAccessTokenRepository::class);
+    $services->alias(AccessTokenRepositoryInterface::class, DoctrineAccessTokenRepository::class);
     $services->set(DoctrineConsentRepository::class);
     $services->alias(ConsentRepositoryInterface::class, DoctrineConsentRepository::class);
 
@@ -218,9 +228,18 @@ return static function (ContainerConfigurator $container): void {
 
     // The module: token endpoint. The grants the handler serves are the two the module ships, tagged by
     // hand: what the discovery document announces is the enumeration of the module, not what a container
-    // holds.
+    // holds. The access token issuers are named by the format each one writes, one per case of the
+    // enumeration, so that a case without an issuer fails at boot.
     $services->set(JwtAccessTokenIssuer::class);
-    $services->alias(AccessTokenIssuerInterface::class, JwtAccessTokenIssuer::class);
+    $services->set(OpaqueAccessTokenIssuer::class);
+    $services->set(AccessTokenIssuer::class)
+        ->args([
+            '$issuers' => [
+                AccessTokenFormat::Jwt->value => service(JwtAccessTokenIssuer::class),
+                AccessTokenFormat::Opaque->value => service(OpaqueAccessTokenIssuer::class),
+            ],
+        ]);
+    $services->alias(AccessTokenIssuerInterface::class, AccessTokenIssuer::class);
     $services->set(JwtIdTokenIssuer::class);
     $services->alias(IdTokenIssuerInterface::class, JwtIdTokenIssuer::class);
     $services->set(TokenIssuer::class);
@@ -233,9 +252,12 @@ return static function (ContainerConfigurator $container): void {
             '$grants' => tagged_iterator('heidi.oidc.grant'),
         ]);
     $services->set(AccessTokenVerifier::class);
+    $services->set(AccessTokenInspector::class);
 
-    // The module: UserInfo, discovery, logout
+    // The module: UserInfo, introspection and revocation, discovery, logout
     $services->set(UserInfoHandler::class);
+    $services->set(IntrospectionHandler::class);
+    $services->set(RevocationHandler::class);
     $services->set(DiscoveryHandler::class);
     $services->set(JwksHandler::class);
     $services->set(EndSessionRequestParser::class);

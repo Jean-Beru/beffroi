@@ -14,10 +14,12 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
+use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
@@ -56,6 +58,8 @@ final class UserInfoHandlerTest extends TestCase
 
     private InMemoryAuthorizationCodeRepository $grants;
 
+    private InMemoryAccessTokenRepository $storedTokens;
+
     private UserInfoHandler $handler;
 
     protected function setUp(): void
@@ -70,6 +74,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->jwts = new Jwts($this->tenant);
         $this->accessTokens = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver());
         $this->grants = new InMemoryAuthorizationCodeRepository();
+        $this->storedTokens = new InMemoryAccessTokenRepository();
         $users = new InMemoryUserRepository();
         $users->save($this->user);
         $this->handler = $this->handler($users);
@@ -97,6 +102,28 @@ final class UserInfoHandlerTest extends TestCase
             'email_verified' => true,
             'phone_number' => '+33612345678',
             'phone_number_verified' => false,
+        ], $response->claims);
+    }
+
+    /**
+     * Architecture §4.6: an opaque token opens the same door, from its record: the scopes, and the claims
+     * asked for by name.
+     */
+    #[Test]
+    public function itServesTheClaimsOfAnOpaqueToken(): void
+    {
+        // Given
+        $token = $this->storedTokens->issue($this->authorization(['openid', 'email'], '{"userinfo":{"nickname":null}}'), Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        static::assertSame([
+            'sub' => 'alice-subject',
+            'nickname' => 'ali',
+            'email' => 'alice@acme.example',
+            'email_verified' => true,
         ], $response->claims);
     }
 
@@ -376,9 +403,7 @@ final class UserInfoHandlerTest extends TestCase
         $clients->save($this->client);
 
         return new UserInfoHandler(
-            new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients),
-            $this->grants,
-            $users,
+            new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->grants, $users),
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
         );

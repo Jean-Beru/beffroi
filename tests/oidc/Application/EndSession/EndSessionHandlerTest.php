@@ -22,6 +22,7 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\IdTokenHint;
@@ -35,6 +36,7 @@ use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Tests\Fixture\Jwts;
@@ -65,6 +67,8 @@ final class EndSessionHandlerTest extends TestCase
 
     private InMemoryRefreshTokenRepository $refreshTokens;
 
+    private InMemoryAccessTokenRepository $accessTokens;
+
     private RecordingEventDispatcher $events;
 
     private EndSessionHandler $handler;
@@ -80,8 +84,9 @@ final class EndSessionHandlerTest extends TestCase
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->sessions->save($this->session);
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->accessTokens = new InMemoryAccessTokenRepository();
         $this->events = new RecordingEventDispatcher();
-        $this->handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), $this->refreshTokens, $this->clock);
+        $this->handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), $this->refreshTokens, $this->accessTokens, $this->clock);
     }
 
     /**
@@ -175,6 +180,43 @@ final class EndSessionHandlerTest extends TestCase
         static::assertEquals($this->clock->now(), $rotated->revokedAt);
         static::assertTrue($current->isRevoked());
         static::assertFalse($elsewhere->isRevoked());
+    }
+
+    /**
+     * Decision 0006: every stored access token issued in the session is revoked; those of other
+     * sessions are not.
+     */
+    #[Test]
+    public function theStoredAccessTokensOfTheSessionAreRevoked(): void
+    {
+        // Given
+        $this->accessTokens->keep(Tokens::storedAccessToken('here', $this->client, $this->session, Fixtures::now()));
+        $otherSession = Fixtures::session($this->alice);
+        $this->sessions->save($otherSession);
+        $elsewhere = Tokens::storedAccessToken('elsewhere', $this->client, $otherSession, Fixtures::now());
+        $this->accessTokens->keep($elsewhere);
+
+        // When
+        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
+
+        // Then
+        static::assertSame([$elsewhere], $this->accessTokens->all());
+    }
+
+    /**
+     * A store that cannot take access tokens back is not asked to: the session ends all the same.
+     */
+    #[Test]
+    public function aStoreThatCannotRevokeIsNotAskedTo(): void
+    {
+        // Given
+        $handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), $this->refreshTokens, static::createStub(AccessTokenRepositoryInterface::class), $this->clock);
+
+        // When
+        $handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
+
+        // Then
+        static::assertTrue($this->session->hasEnded());
     }
 
     /**

@@ -15,6 +15,7 @@ use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\Token\TokenRequest;
+use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
@@ -63,6 +64,8 @@ final class AuthorizationCodeGrantTest extends TestCase
 
     private InMemoryRefreshTokenRepository $refreshTokens;
 
+    private InMemoryAccessTokenRepository $accessTokens;
+
     private FakeIdTokenIssuer $idTokens;
 
     private RecordingEventDispatcher $events;
@@ -81,6 +84,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->context = Fixtures::context($this->clock->now());
         $this->codes = new InMemoryAuthorizationCodeRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->accessTokens = new InMemoryAccessTokenRepository();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
         $this->grant = $this->grant();
@@ -482,6 +486,26 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.1.2: the stored access tokens of the grant go with it; one of another grant stays.
+     */
+    #[Test]
+    public function aReplayedCodeRevokesTheStoredAccessTokensOfItsGrant(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->accessTokens->keep(Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $code->grantId));
+        $other = Tokens::storedAccessToken('of-another-grant', $this->client, $this->session, $this->clock->now());
+        $this->accessTokens->keep($other);
+
+        // When
+        $this->failToGrant($this->client, $this->request());
+
+        // Then
+        static::assertSame([$other], $this->accessTokens->all());
+    }
+
+    /**
      * RFC 6749 §4.1.2: the grant itself is revoked, which is what the provider's own UserInfo reads to
      * refuse the access tokens issued from the code; a third presentation keeps the first date.
      */
@@ -862,7 +886,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     {
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events);
 
-        return new AuthorizationCodeGrant($this->codes, $this->refreshTokens, $issuer, $this->clock, $this->events, $familyLifetime ?? new DateInterval('P90D'), $refreshTokenWithoutOfflineAccess);
+        return new AuthorizationCodeGrant($this->codes, $this->refreshTokens, $this->accessTokens, $issuer, $this->clock, $this->events, $familyLifetime ?? new DateInterval('P90D'), $refreshTokenWithoutOfflineAccess);
     }
 
     /**

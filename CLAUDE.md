@@ -21,7 +21,7 @@ Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available. Cast
 composer install                  # monorepo (packages, tests)
 (cd apps/op && composer install)  # the application, path repositories to ../../src/*
 castor start                      # https://op.localhost (FrankenPHP), PostgreSQL, RabbitMQ
-castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443
+castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443, profiler off; --access-token-format opaque for the suite clients
 castor conformance [--plan P] [--module X]  # run the certification plans (basic, config, rp-initiated-logout) through the API of the suite, scripted browser; result per module
 castor provision                  # apps/op/.env.local (KMS key, client secrets, password), tenant, signing key, user "alice" with a profile
 castor demo [--check]             # point ../oidc-demo (Symfony oidc_login) at the OP and start it on https://localhost:8002; --check signs in, opens /profile, logs out
@@ -47,7 +47,7 @@ Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `
 - Every secret string comes from `random_bytes()`, every secret comparison goes through `hash_equals()`, no boolean coming from a third party is ever cast.
 - Security rules of decision 0006 are code, not configuration: no `insecure_*` option, no global compatibility switch.
 - Functional tests boot `tests/symfony/Functional/AppKernel.php` with `APP_DEBUG=0`; bundles are listed in `tests/symfony/config/bundles.php`.
-- Controllers are `final readonly`, one action per class, `#[Route]` on `__invoke()`. Route names carry their plane: `heidi_interaction_*` (browser: authorize, login, consent, logout) or `heidi_protocol_*` (server to server: discovery, jwks, token, userinfo). `HEIDI_PLANE` restricts a process to one plane.
+- Controllers are `final readonly`, one action per class, `#[Route]` on `__invoke()`. Route names carry their plane: `heidi_interaction_*` (browser: authorize, login, consent, logout) or `heidi_protocol_*` (server to server: discovery, jwks, token, userinfo, introspect, revoke). `HEIDI_PLANE` restricts a process to one plane.
 - No write is synchronous unless the protocol needs its result in the same request; every exception is listed in `apps/op/config/packages/messenger.yaml` with its reason. Messages implement `Heidi\Bundle\Message\{Command,Query,Event,SyncMessage}`; handlers live in `MessageHandler/` and call the use cases of the core. The core dispatches PSR-14 events only.
 - Every user-facing string is translated (XLIFF intl-icu, domain `heidi`, `en` and `fr`). The locale of an interaction comes from `ui_locales`, then `Accept-Language`, never from the URL.
 - Every session and event carries a `RequestContext` (IP, user agent, later GeoIP and device); enrichment is always asynchronous.

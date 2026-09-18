@@ -9,6 +9,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\Token\RefreshToken;
+use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use ReflectionProperty;
 
@@ -30,7 +31,7 @@ final readonly class ClientResolver
     ) {
     }
 
-    public function postLoad(Interaction|AuthorizationCode|RefreshToken|Consent $entity): void
+    public function postLoad(Interaction|AuthorizationCode|RefreshToken|StoredAccessToken|Consent $entity): void
     {
         $client = $this->clients->findByClientId($entity->tenant, $entity->clientId);
         if ($client === null) {
@@ -43,7 +44,7 @@ final readonly class ClientResolver
     /**
      * Whether the client of the row was registered when the row was loaded.
      */
-    public static function isResolved(Interaction|AuthorizationCode|RefreshToken|Consent $entity): bool
+    public static function isResolved(Interaction|AuthorizationCode|RefreshToken|StoredAccessToken|Consent $entity): bool
     {
         [$holder, $property] = self::clientProperty($entity);
 
@@ -56,7 +57,7 @@ final readonly class ClientResolver
      *
      * @return array{object, ReflectionProperty}
      */
-    private static function clientProperty(Interaction|AuthorizationCode|RefreshToken|Consent $entity): array
+    private static function clientProperty(Interaction|AuthorizationCode|RefreshToken|StoredAccessToken|Consent $entity): array
     {
         if ($entity instanceof Interaction) {
             return [$entity->request, new ReflectionProperty(AuthorizationRequest::class, 'client')];

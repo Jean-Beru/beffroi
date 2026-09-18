@@ -40,6 +40,8 @@ final class DiscoveryHandlerTest extends TestCase
         static::assertSame('https://as.example/acme/userinfo', $document['userinfo_endpoint']);
         static::assertSame('https://as.example/acme/jwks', $document['jwks_uri']);
         static::assertSame('https://as.example/acme/logout', $document['end_session_endpoint']);
+        static::assertSame('https://as.example/acme/introspect', $document['introspection_endpoint']);
+        static::assertSame('https://as.example/acme/revoke', $document['revocation_endpoint']);
     }
 
     /**
@@ -109,7 +111,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theDocumentsOfTwoTenantsDifferByTheirLocationsOnly(): void
     {
         // Given
-        $locations = ['issuer', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'end_session_endpoint'];
+        $locations = ['issuer', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'end_session_endpoint', 'introspection_endpoint', 'revocation_endpoint'];
 
         // When
         $acme = $this->handler->handle(Fixtures::tenant('acme', 'https://id.acme.example'))->toArray();
@@ -174,7 +176,7 @@ final class DiscoveryHandlerTest extends TestCase
             {
                 $issuer = $tenant->issuer->value;
 
-                return new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout');
+                return new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke');
             }
         };
     }

@@ -31,6 +31,8 @@ final class DiscoveryControllerTest extends BrowserTestCase
         static::assertSame('https://op.test/userinfo', $metadata['userinfo_endpoint']);
         static::assertSame('https://op.test/jwks', $metadata['jwks_uri']);
         static::assertSame('https://op.test/logout', $metadata['end_session_endpoint']);
+        static::assertSame('https://op.test/introspect', $metadata['introspection_endpoint']);
+        static::assertSame('https://op.test/revoke', $metadata['revocation_endpoint']);
     }
 
     #[Test]

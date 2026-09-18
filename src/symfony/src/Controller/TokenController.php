@@ -25,8 +25,6 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class TokenController
 {
-    private const string CONTENT_TYPE = 'application/json';
-
     public function __construct(
         private TenantProvider $tenants,
         private TokenHandler $handler,
@@ -48,12 +46,12 @@ final readonly class TokenController
             $error = TokenErrorResponse::fromException($exception);
 
             return new Response(JwtPayload::encode($error->parameters()), $error->statusCode, [
-                'Content-Type' => self::CONTENT_TYPE,
+                'Content-Type' => TokenErrorResponse::CONTENT_TYPE,
             ] + $error->headers());
         }
 
         return new Response(JwtPayload::encode($response->parameters()), Response::HTTP_OK, [
-            'Content-Type' => self::CONTENT_TYPE,
+            'Content-Type' => TokenResponse::CONTENT_TYPE,
         ] + TokenResponse::HEADERS);
     }
 }

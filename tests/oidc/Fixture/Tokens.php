@@ -13,8 +13,10 @@ use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
+use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Symfony\Component\Uid\Uuid;
 
 final class Tokens
@@ -57,6 +59,37 @@ final class Tokens
                 ->value,
             $issuedAt,
             $issuedAt->modify('+60 seconds'),
+        );
+    }
+
+    /**
+     * The record of an opaque access token issued now for ten minutes, under the hash of the value given,
+     * with the authentication of the session.
+     *
+     * @param list<string> $scopes
+     */
+    public static function storedAccessToken(
+        string $value,
+        Client $client,
+        AuthenticationSession $session,
+        DateTimeImmutable $issuedAt,
+        ?Uuid $grantId = null,
+        array $scopes = ['openid'],
+        ?ClaimsRequest $claims = null,
+    ): StoredAccessToken {
+        return new StoredAccessToken(
+            OpaqueTokenValue::hash($value),
+            $grantId ?? Uuid::v7(),
+            $client,
+            $session,
+            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            $claims,
+            $session->authenticatedAt(),
+            $session->methodReferences(),
+            $session->authenticationContextClass()
+                ->value,
+            $issuedAt,
+            $issuedAt->modify('+10 minutes'),
         );
     }
 
