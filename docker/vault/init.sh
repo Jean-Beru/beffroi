@@ -1,9 +1,10 @@
 #!/bin/sh
 # Prepares a Vault server for the OP (issue #57): the Transit engine, the key of the tenant and the policy
 # of the credential the OP holds. Runs with the root token of the dev server, the one credential that never
-# reaches the OP: "castor provision --kms vault" mints a token under the policy for it.
+# reaches the OP: "castor provision --kms vault" mints a token under the policy for it. The vault container
+# of compose.yaml runs it at every start, the CI runs it with the Vault CLI against a service container.
 #
-# Idempotent, so that the service can be restarted at will: the engine is enabled once, writing a key that
+# Idempotent, so that the server can be restarted at will: the engine is enabled once, writing a key that
 # exists is a no-op for Vault, writing a policy replaces it with the same text.
 set -eu
 

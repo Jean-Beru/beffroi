@@ -295,7 +295,7 @@ function start(
     bool $build = false,
     #[AsOption(description: 'The access token shape of the clients of the conformance suite: jwt (default) or opaque; the plans must be green with either')]
     ?string $accessTokenFormat = null,
-    #[AsOption(description: 'The KMS that seals the signing keys: sodium (default, in the process, nothing to start) or vault (HashiCorp Vault Transit, dev mode, initialised by docker/vault/init.sh)')]
+    #[AsOption(description: 'The KMS that seals the signing keys: sodium (default, in the process, nothing to start) or vault (HashiCorp Vault Transit, dev mode, initialised at every start by docker/vault/init.sh)')]
     string $kms = 'sodium',
 ): void {
     if ($accessTokenFormat !== null && ! in_array($accessTokenFormat, ['jwt', 'opaque'], true)) {
