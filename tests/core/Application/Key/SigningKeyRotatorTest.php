@@ -46,6 +46,11 @@ final class SigningKeyRotatorTest extends TestCase
      */
     private const string LONGEST_LIFETIME = 'PT1H';
 
+    /**
+     * The staging window under test: six minutes, the JWKS max-age of five plus the refetch cooldown.
+     */
+    private const string STAGING_DELAY = 'PT6M';
+
     private Tenant $tenant;
 
     private InMemorySigningKeyRepository $repository;
@@ -101,6 +106,32 @@ final class SigningKeyRotatorTest extends TestCase
         static::assertSame($first, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
     }
 
+    /**
+     * The staging window ends after the configured delay: the date is written on the key.
+     */
+    #[Test]
+    public function stagingDatesTheActivationAfterTheStagingDelay(): void
+    {
+        // When
+        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+
+        // Then
+        static::assertEquals($this->clock->now()->add(new DateInterval(self::STAGING_DELAY)), $staged->activationDueAt);
+    }
+
+    /**
+     * Nothing to wait for when the key signs at once.
+     */
+    #[Test]
+    public function aRotationDatesTheActivationAtOnce(): void
+    {
+        // When
+        $key = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+
+        // Then
+        static::assertEquals($this->clock->now(), $key->activationDueAt);
+    }
+
     #[Test]
     public function stagingSealsThePrivateKeyForTheTenant(): void
     {
@@ -142,6 +173,102 @@ final class SigningKeyRotatorTest extends TestCase
         static::assertEquals($this->clock->now(), $activated->activatedAt);
         static::assertSame($activated, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
         static::assertSame(Keys::otherPair()->privateJwk, new SealedKeyProvider($this->repository, Keys::sealer())->activeKey($this->tenant, SignatureAlgorithm::RS256)->privateJwk);
+    }
+
+    /**
+     * The timed step of the staging window: a key past its activation date is activated, and not before.
+     */
+    #[Test]
+    public function activateDueActivatesAKeyPastItsActivationDate(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->clock->modify('+6 minutes');
+
+        // When
+        $activated = $this->rotator->activateDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([$staged], $activated);
+        static::assertTrue($staged->isActive());
+        static::assertEquals($this->clock->now(), $staged->activatedAt);
+        static::assertSame(KeyStatus::Retiring, $first->status);
+        static::assertSame($staged, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+    }
+
+    #[Test]
+    public function activateDueLeavesAKeyInsideItsStagingWindow(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->clock->modify('+5 minutes 59 seconds');
+        $savesBefore = $this->repository->saves;
+
+        // When
+        $activated = $this->rotator->activateDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $activated);
+        static::assertSame(KeyStatus::Staged, $staged->status);
+        static::assertSame($savesBefore, $this->repository->saves);
+        static::assertSame($first, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+    }
+
+    /**
+     * Two keys due in the same tick: both are activated in creation order, the last one signs.
+     */
+    #[Test]
+    public function activateDueActivatesEveryDueKeyTheLastOneSigning(): void
+    {
+        // Given
+        $first = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->clock->modify('+1 second');
+        $second = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->clock->modify('+6 minutes');
+
+        // When
+        $activated = $this->rotator->activateDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([$first, $second], $activated);
+        static::assertSame(KeyStatus::Retiring, $first->status);
+        static::assertSame($second, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+    }
+
+    #[Test]
+    public function activateDueAnnouncesTheRotation(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->clock->modify('+1 hour');
+
+        // When
+        $this->rotator->activateDue($this->tenant, $this->context);
+
+        // Then
+        $event = $this->events->of(SigningKeyRotated::class)[1];
+        static::assertSame($staged, $event->activated);
+        static::assertSame($first, $event->retiring);
+        static::assertSame($this->context, $event->context);
+    }
+
+    #[Test]
+    public function activateDueDoesNothingWithoutAStagedKey(): void
+    {
+        // Given
+        $this->firstRotation();
+        $savesBefore = $this->repository->saves;
+
+        // When
+        $activated = $this->rotator->activateDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $activated);
+        static::assertSame($savesBefore, $this->repository->saves);
+        static::assertCount(1, $this->events->of(SigningKeyRotated::class));
     }
 
     /**
@@ -524,7 +651,7 @@ final class SigningKeyRotatorTest extends TestCase
      */
     private function rotator(array $issuedJws): SigningKeyRotator
     {
-        return new SigningKeyRotator($this->repository, new PrecomputedKeyPairGenerator(Keys::pair(), Keys::otherPair()), Keys::sealer(), $issuedJws, $this->clock, $this->events);
+        return new SigningKeyRotator($this->repository, new PrecomputedKeyPairGenerator(Keys::pair(), Keys::otherPair()), Keys::sealer(), $issuedJws, new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
     }
 }
 

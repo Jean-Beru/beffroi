@@ -27,6 +27,9 @@ services:
       - ./apps/op:/app
       - ./src:/src
       - /app/var/
+      # The sealed signing keys are files (architecture §3.3): the process that serves them and the process
+      # that rotates them (the worker below) share the directory, or a rotation would change nothing here.
+      - keys_data:/app/var/keys
       - caddy_data:/data
       - caddy_config:/config
     ports:
@@ -49,6 +52,35 @@ services:
       rabbitmq:
         condition: service_healthy
     tty: true
+
+  # The worker of architecture §5.6, one in development: the three transports of the buses and the schedule
+  # of the bundle ("scheduler_heidi": the timed steps of the key lifecycle, §3.3). One process consumes the
+  # schedule; the buses could have more. Same image, no HTTP, restarted every hour by Messenger itself.
+  worker:
+    build:
+      context: .
+      dockerfile: apps/op/Dockerfile
+      target: frankenphp_dev
+    restart: unless-stopped
+    command: ["php", "bin/console", "messenger:consume", "scheduler_heidi", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-heidi}:${POSTGRES_PASSWORD:-heidi}@database:5432/${POSTGRES_DB:-heidi}?serverVersion=16&charset=utf8
+      MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-heidi}:${RABBITMQ_PASSWORD:-heidi}@rabbitmq:5672/%2f/messages
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}
+      APP_PROFILER: 0
+      CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
+    volumes:
+      - ./apps/op:/app
+      - ./src:/src
+      - /app/var/
+      - keys_data:/app/var/keys
+    depends_on:
+      op:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
@@ -150,6 +182,7 @@ services:
       - conformance-nginx
 
 volumes:
+  keys_data:
   caddy_data:
   rabbitmq_data:
   caddy_config:

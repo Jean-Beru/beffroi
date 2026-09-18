@@ -56,6 +56,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             'key_id' => 'signing',
             'storage' => '%kernel.project_dir%/var/keys',
             'jwks_max_age' => JwksHandler::DEFAULT_MAX_AGE,
+            'staging_delay' => null,
         ], $config['keys']);
         static::assertSame([
             'authorization_code_ttl' => 60,
@@ -140,6 +141,12 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'jwks_max_age' => -1,
             ],
         ], 'jwks_max_age'];
+        yield 'a negative staging delay' => [[
+            'tenant' => self::MINIMAL['tenant'],
+            'keys' => self::MINIMAL['keys'] + [
+                'staging_delay' => -1,
+            ],
+        ], 'staging_delay'];
         yield 'a sliding refresh lifetime beyond the absolute one' => [self::MINIMAL + [
             'tokens' => [
                 'refresh_token_ttl' => 100,

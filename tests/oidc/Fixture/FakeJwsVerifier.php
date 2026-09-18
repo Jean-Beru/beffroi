@@ -46,7 +46,7 @@ final class FakeJwsVerifier implements JwsVerifierInterface
             'use' => 'sig',
             'n' => 'AQAB',
             'e' => 'AQAB',
-        ], 'sealed', Fixtures::now());
+        ], 'sealed', Fixtures::now(), Fixtures::now());
 
         return new VerifiedJws($key, $header + [
             'alg' => 'RS256',

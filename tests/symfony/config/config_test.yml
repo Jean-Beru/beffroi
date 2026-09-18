@@ -19,6 +19,10 @@ framework:
     # The two locales the bundle ships (architecture §5.7); the pages choose between them, never the URL.
     default_locale: en
     enabled_locales: ['en', 'fr']
+    # The scheduled messages of the bundle go through the routing of Messenger like every other message
+    # (architecture §5.6); synchronous here like the rest.
+    scheduler:
+        use_messenger_routing: true
     # The three buses of architecture §5.6, everything synchronous under test.
     messenger:
         default_bus: command.bus
@@ -184,6 +188,12 @@ services:
         public: true
     test.heidi.event_bus_dispatcher:
         alias: Heidi\Bundle\Messenger\EventBusDispatcher
+        public: true
+    test.heidi.command_bus:
+        alias: command.bus
+        public: true
+    test.heidi.schedule:
+        alias: Heidi\Bundle\Scheduler\HeidiSchedule
         public: true
     test.heidi.tenant_synchronizer:
         alias: Heidi\Bundle\Doctrine\TenantSynchronizer

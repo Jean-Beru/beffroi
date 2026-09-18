@@ -7,7 +7,9 @@ namespace Heidi\Bundle\Tests\Unit;
 use DateInterval;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Token\AccessTokenIssuer;
@@ -78,6 +80,51 @@ final class HeidiBundleExtensionTest extends TestCase
         static::assertSame('sodium://?keys[k]=AAAA', $container->getDefinition('heidi.kms')->getArgument(0));
         static::assertSame('k', $container->getDefinition(EnvelopeKeySealer::class)->getArgument('$kmsKeyId'));
         static::assertSame('/var/lib/heidi/keys', $container->getDefinition(FileSigningKeyRepository::class)->getArgument('$directory'));
+    }
+
+    /**
+     * Architecture §3.3: the staging delay derives from the JWK Set max-age unless the configuration sets
+     * it; the derivation happens at runtime, so that an environment placeholder can stand for either.
+     */
+    #[Test]
+    public function theStagingDelayDerivesFromTheJwksMaxAgeUnlessSet(): void
+    {
+        // When
+        $container = self::load([
+            'keys' => [
+                'kms' => 'sodium://?keys[k]=AAAA',
+                'key_id' => 'k',
+                'jwks_max_age' => 120,
+            ],
+        ]);
+
+        // Then
+        $delay = $container->getDefinition(SigningKeyRotator::class)->getArgument('$stagingDelay');
+        static::assertInstanceOf(Definition::class, $delay);
+        $factory = $delay->getFactory();
+        static::assertIsArray($factory);
+        static::assertSame(StagingDelay::class, $factory[0]);
+        static::assertSame('interval', $factory[1]);
+        static::assertSame([null, 120], $delay->getArguments());
+    }
+
+    #[Test]
+    public function aConfiguredStagingDelayReachesTheRotator(): void
+    {
+        // When
+        $container = self::load([
+            'keys' => [
+                'kms' => 'sodium://?keys[k]=AAAA',
+                'key_id' => 'k',
+                'jwks_max_age' => 120,
+                'staging_delay' => 30,
+            ],
+        ]);
+
+        // Then
+        $delay = $container->getDefinition(SigningKeyRotator::class)->getArgument('$stagingDelay');
+        static::assertInstanceOf(Definition::class, $delay);
+        static::assertSame([30, 120], $delay->getArguments());
     }
 
     #[Test]

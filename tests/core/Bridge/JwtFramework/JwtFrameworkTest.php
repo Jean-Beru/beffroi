@@ -48,7 +48,7 @@ final class JwtFrameworkTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->repository = new InMemorySigningKeyRepository();
-        $this->active = new SigningKey(Keys::pair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now());
+        $this->active = new SigningKey(Keys::pair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now());
         $this->active->activate(Fixtures::now());
         $this->repository->save($this->active);
         $this->provider = new SealedKeyProvider($this->repository, Keys::sealer());
@@ -229,7 +229,7 @@ final class JwtFrameworkTest extends TestCase
     {
         // Given
         $repository = new InMemorySigningKeyRepository();
-        $repository->save(new SigningKey(Keys::pair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now()));
+        $repository->save(new SigningKey(Keys::pair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
         $signer = new JwtFrameworkJwsSigner(new SealedKeyProvider($repository, Keys::sealer()));
 
         // Then
@@ -389,7 +389,7 @@ final class JwtFrameworkTest extends TestCase
         // Given
         $this->provider->activeKey($this->tenant, SignatureAlgorithm::RS256);
         $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-        $next = new SigningKey(Keys::otherPair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now());
+        $next = new SigningKey(Keys::otherPair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now(), Fixtures::now());
         $next->activate(Fixtures::now());
         $this->repository->save($next);
 
@@ -408,14 +408,14 @@ final class JwtFrameworkTest extends TestCase
     public function theProviderPublishesStagedActiveAndRetiringKeys(): void
     {
         // Given
-        $retiring = new SigningKey(Keys::otherPair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now()->modify('-1 day'));
+        $retiring = new SigningKey(Keys::otherPair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
         $retiring->activate(Fixtures::now()->modify('-1 day'));
         $retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $this->repository->save($retiring);
         $staged = new SigningKey('staged-kid', $this->tenant, SignatureAlgorithm::RS256, [
             ...Keys::otherPair()->publicJwk,
             'kid' => 'staged-kid',
-        ], 'sealed', Fixtures::now()->modify('+1 minute'));
+        ], 'sealed', Fixtures::now()->modify('+1 minute'), Fixtures::now()->modify('+7 minutes'));
         $this->repository->save($staged);
 
         // When

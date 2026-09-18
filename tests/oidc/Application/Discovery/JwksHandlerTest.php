@@ -46,12 +46,12 @@ final class JwksHandlerTest extends TestCase
         $this->jwts = new Jwts(Fixtures::tenant());
         $repository = new InMemorySigningKeyRepository();
         $repository->save($this->jwts->key);
-        $this->retiring = new SigningKey(Keys::otherPair()->kid, $this->jwts->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'));
+        $this->retiring = new SigningKey(Keys::otherPair()->kid, $this->jwts->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
         $this->retiring->activate(Fixtures::now()->modify('-1 day'));
         $this->retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $repository->save($this->retiring);
         $repository->save(self::retiredKey($this->jwts->tenant));
-        $globex = new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now());
+        $globex = new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
         $globex->activate(Fixtures::now());
         $repository->save($globex);
         $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
@@ -175,7 +175,7 @@ final class JwksHandlerTest extends TestCase
         $retired = new SigningKey(Keys::otherPair()->kid . '-old', $tenant, SignatureAlgorithm::RS256, [
             ...Keys::otherPair()->publicJwk,
             'kid' => Keys::otherPair()->kid . '-old',
-        ], 'sealed', Fixtures::now()->modify('-2 days'));
+        ], 'sealed', Fixtures::now()->modify('-2 days'), Fixtures::now()->modify('-2 days'));
         $retired->activate(Fixtures::now()->modify('-2 days'));
         $retired->startRetiring(Fixtures::now()->modify('-1 day'), Fixtures::now());
         $retired->retire(Fixtures::now());

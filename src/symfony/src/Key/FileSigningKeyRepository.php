@@ -71,7 +71,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
 
     public function findActive(Tenant $tenant, SignatureAlgorithm $algorithm): ?SigningKey
     {
-        foreach ($this->all($tenant) as $key) {
+        foreach ($this->findAll($tenant) as $key) {
             if ($key->algorithm === $algorithm && $key->isActive()) {
                 return $key;
             }
@@ -83,7 +83,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
     public function findPublished(Tenant $tenant): array
     {
         $published = [];
-        foreach ($this->all($tenant) as $key) {
+        foreach ($this->findAll($tenant) as $key) {
             if ($key->isPublished()) {
                 $published[] = $key;
             }
@@ -111,6 +111,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
             'sealed_private_jwk' => base64_encode($key->sealedPrivateJwk),
             'status' => $key->status->value,
             'created_at' => $key->createdAt->format(DateTimeInterface::RFC3339_EXTENDED),
+            'activation_due_at' => $key->activationDueAt->format(DateTimeInterface::RFC3339_EXTENDED),
             'activated_at' => $key->activatedAt?->format(DateTimeInterface::RFC3339_EXTENDED),
             'retiring_at' => $key->retiringAt?->format(DateTimeInterface::RFC3339_EXTENDED),
             'retirement_due_at' => $key->retirementDueAt?->format(DateTimeInterface::RFC3339_EXTENDED),
@@ -124,10 +125,8 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
 
     /**
      * Oldest first, the order the port asks for.
-     *
-     * @return list<SigningKey>
      */
-    private function all(Tenant $tenant): array
+    public function findAll(Tenant $tenant): array
     {
         $paths = glob($this->tenantDirectory($tenant) . '/*.json');
         if ($paths === false || $paths === []) {
@@ -182,7 +181,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         }
 
         try {
-            $key = new SigningKey($kid, $tenant, $algorithm, $members, $sealed, self::date($path, $document['created_at'] ?? null));
+            $key = new SigningKey($kid, $tenant, $algorithm, $members, $sealed, self::date($path, $document['created_at'] ?? null), self::date($path, $document['activation_due_at'] ?? null));
             if ($status !== KeyStatus::Staged) {
                 $key->activate(self::date($path, $document['activated_at'] ?? null));
             }

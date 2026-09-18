@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Key;
 use function array_keys;
 use function array_map;
 use function base64_decode;
+use DateInterval;
 use function explode;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
@@ -145,6 +146,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
             self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class),
             self::service('test.heidi.key_sealer', KeySealerInterface::class),
             [],
+            new DateInterval('PT6M'),
             new NativeClock(),
             new RecordingEventDispatcher(),
         );
