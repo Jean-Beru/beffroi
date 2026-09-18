@@ -73,6 +73,10 @@ services:
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
+    # The image's HEALTHCHECK probes the Caddy admin API (port 2019), which this process does not run. A
+    # dead consumer exits and the restart policy brings it back; there is nothing else to probe.
+    healthcheck:
+      disable: true
     volumes:
       - ./apps/op:/app
       - ./src:/src
