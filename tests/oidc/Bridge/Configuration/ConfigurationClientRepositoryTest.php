@@ -12,6 +12,7 @@ use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
@@ -422,6 +423,62 @@ final class ConfigurationClientRepositoryTest extends TestCase
 
         // When
         $definition->hashSecret(new FakePasswordHasher());
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $clients
+     */
+    /**
+     * Architecture §4.6: what the tenant issues is read from its registrations, a rotation asks.
+     *
+     * @param array<string, array<string, mixed>> $clients
+     */
+    #[Test]
+    #[DataProvider('provideRegistrationsAndTheFormatsTheyIssue')]
+    public function theTenantIssuesTheAccessTokenFormatsItsClientsAreRegisteredFor(array $clients, AccessTokenFormat $format, bool $expected): void
+    {
+        // Given
+        $repository = $this->repository($clients);
+
+        // When / Then
+        static::assertSame($expected, $repository->issuesAccessTokensIn($this->tenant, $format));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, array<string, mixed>>, AccessTokenFormat, bool}>
+     */
+    public static function provideRegistrationsAndTheFormatsTheyIssue(): iterable
+    {
+        $opaque = [
+            ...self::SPA,
+            'access_token_format' => 'opaque',
+        ];
+        yield 'jwt by default' => [[
+            'spa' => self::SPA,
+        ], AccessTokenFormat::Jwt, true];
+        yield 'no opaque client' => [[
+            'spa' => self::SPA,
+        ], AccessTokenFormat::Opaque, false];
+        yield 'one opaque client among jwt ones' => [[
+            'spa' => self::SPA,
+            'api' => $opaque,
+        ], AccessTokenFormat::Opaque, true];
+        yield 'every client opaque, no jwt' => [[
+            'api' => $opaque,
+        ], AccessTokenFormat::Jwt, false];
+        yield 'no client at all' => [[], AccessTokenFormat::Jwt, false];
+    }
+
+    #[Test]
+    public function anotherTenantIssuesNothingHere(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'spa' => self::SPA,
+        ]);
+
+        // When / Then
+        static::assertFalse($repository->issuesAccessTokensIn(Fixtures::tenant('other', 'https://id.other.example'), AccessTokenFormat::Jwt));
     }
 
     /**

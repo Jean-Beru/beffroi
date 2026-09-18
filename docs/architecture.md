@@ -29,7 +29,7 @@ The core never depends on a protocol; protocols never depend on each other; noth
 - `Credential`: N per user. `PasswordCredential` carries a typed `PasswordHash` (algorithm and parameters). Passkeys and TOTP are future subclasses.
 - `LinkedIdentity`: an identity at an upstream provider. `Group` and `GroupMembership` carry a `source` (local, upstream claims, SCIM); the source wins over manual edits.
 - `AuthenticationSession`: who is authenticated, since when (`auth_time`), how (`amr`, and `acr` computed from the proofs: `"1"` for a password, the numeric level Keycloak emits by default, never stored nor configured) and from where: two `RequestContext` (creation, last seen) with IP, user agent, and later GeoIP and device. Sessions end one by one.
-- Signing keys: `SigningKeyProviderInterface` gives the active key and the publishable set of a tenant. The private key is sealed as a `symfony/key-management` envelope and exists in clear only in process memory; jwt-framework signs. The KMS keeps, it does not sign.
+- Signing keys: `SigningKeyProviderInterface` gives the active key and the publishable set of a tenant. The private key is sealed as a `symfony/key-management` envelope, under a KMS key named from the tenant, and exists in clear only in process memory; jwt-framework signs. The KMS keeps, it does not sign. A key is staged (published, signs nothing), active, retiring (published while a JWS it signed can be alive, its retirement date computed from the kinds of JWS the tenant issues, `IssuedJwsKindInterface`), then retired; `SigningKeyRotator` drives the four states, a compromised key leaves the JWK Set at once.
 - Events: every event carries `occurredAt`, the tenant and the `RequestContext` of the request that produced it.
 
 ## The OIDC module

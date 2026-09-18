@@ -66,6 +66,8 @@ use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
+use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
+use Heidi\Oidc\Application\Key\IdTokenJwsKind;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenIssuer;
@@ -189,7 +191,12 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JwsSignerInterface::class, JwtFrameworkJwsSigner::class);
     $services->set(JwtFrameworkJwsVerifier::class);
     $services->alias(JwsVerifierInterface::class, JwtFrameworkJwsVerifier::class);
-    $services->set(SigningKeyRotator::class);
+    // The kinds of JWS the tenant issues date the retirement of a key (architecture §3.3): the modules tag
+    // theirs, the core adds them up.
+    $services->set(SigningKeyRotator::class)
+        ->args([
+            '$issuedJws' => tagged_iterator('heidi.issued_jws'),
+        ]);
 
     // The core: passwords. Hashers are tagged by hand: the registry implements the port too and must not
     // find itself among them.
@@ -242,6 +249,10 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AccessTokenIssuerInterface::class, AccessTokenIssuer::class);
     $services->set(JwtIdTokenIssuer::class);
     $services->alias(IdTokenIssuerInterface::class, JwtIdTokenIssuer::class);
+    $services->set(IdTokenJwsKind::class)
+        ->tag('heidi.issued_jws');
+    $services->set(AccessTokenJwsKind::class)
+        ->tag('heidi.issued_jws');
     $services->set(TokenIssuer::class);
     $services->set(AuthorizationCodeGrant::class)
         ->tag('heidi.oidc.grant');

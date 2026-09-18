@@ -9,6 +9,7 @@ use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Event\SigningKeyRotated;
+use Heidi\Core\Domain\Event\SigningKeyStaged;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
@@ -251,7 +252,8 @@ final class ProvisioningTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.3: the rotation is announced, with the context of a process that is no request.
+     * Architecture §3.3: the key is staged then activated at once, both announced, with the context of a
+     * process that is no request.
      */
     #[Test]
     public function aGeneratedKeyIsAnnounced(): void
@@ -261,12 +263,14 @@ final class ProvisioningTest extends BrowserTestCase
 
         // Then
         $events = self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events;
-        static::assertCount(1, $events);
-        static::assertInstanceOf(SigningKeyRotated::class, $events[0]);
-        static::assertSame($kid, $events[0]->activated->kid);
-        static::assertNull($events[0]->retiring);
-        static::assertNull($events[0]->context->ipAddress);
-        static::assertNull($events[0]->context->userAgent);
+        static::assertCount(2, $events);
+        static::assertInstanceOf(SigningKeyStaged::class, $events[0]);
+        static::assertSame($kid, $events[0]->staged->kid);
+        static::assertInstanceOf(SigningKeyRotated::class, $events[1]);
+        static::assertSame($kid, $events[1]->activated->kid);
+        static::assertNull($events[1]->retiring);
+        static::assertNull($events[1]->context->ipAddress);
+        static::assertNull($events[1]->context->userAgent);
     }
 
     #[Test]

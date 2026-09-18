@@ -90,6 +90,8 @@ function phpqa(array $command, array $environment = []): void
     $phpVersion = getenv('PHP_VERSION') ?: \PHP_MAJOR_VERSION . '.' . \PHP_MINOR_VERSION;
     $environment += [
         'XDEBUG_MODE' => 'off',
+        // The tests take longer than the 300 s composer allows a script by default; the runner decides when to stop.
+        'COMPOSER_PROCESS_TIMEOUT' => '0',
     ];
 
     if (! $hasDocker || $inContainer) {
