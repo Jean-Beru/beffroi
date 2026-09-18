@@ -312,6 +312,43 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
+     * §2, §6: a hint the provider could not verify (signed by a retired key, or forged) proves nothing;
+     * the user is asked, and told why.
+     */
+    #[Test]
+    public function itAsksWhenTheHintCouldNotBeVerified(): void
+    {
+        // Given
+        $request = new EndSessionRequest($this->tenant, null, null, null, invalidIdTokenHint: true);
+
+        // When
+        $decision = $this->handler->begin($request, $this->session, $this->context);
+
+        // Then
+        static::assertInstanceOf(LogoutConfirmationRequired::class, $decision);
+        static::assertSame(LogoutConfirmationReason::InvalidHint, $decision->reason);
+    }
+
+    /**
+     * §2: once the user says yes, the session ends whatever the hint was worth; nothing redirects,
+     * since the hint identified no client.
+     */
+    #[Test]
+    public function itEndsTheSessionWhenTheUserConfirmsDespiteAnInvalidHint(): void
+    {
+        // Given
+        $request = new EndSessionRequest($this->tenant, null, null, null, invalidIdTokenHint: true);
+
+        // When
+        $decision = $this->handler->confirm($request, $this->session, $this->context);
+
+        // Then
+        static::assertSame($this->session, $decision->endedSession);
+        static::assertNull($decision->redirect);
+        static::assertTrue($this->session->hasEnded());
+    }
+
+    /**
      * §2: "If the End-User says yes, then the OP MUST log out the End-User": after the confirmation
      * page, the session ends whatever the hint said, and the redirect is honoured.
      *

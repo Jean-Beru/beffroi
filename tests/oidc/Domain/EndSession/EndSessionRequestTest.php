@@ -91,7 +91,8 @@ final class EndSessionRequestTest extends TestCase
 
     /**
      * What the parser establishes, checked again: the client belongs to the tenant, the hint was issued
-     * to it, the redirect URI is registered on it (§3), the state is not empty.
+     * to it, the redirect URI is registered on it (§3), the state is not empty, a hint is verified or
+     * invalid, not both.
      */
     #[Test]
     #[DataProvider('provideInconsistentRequests')]
@@ -129,6 +130,9 @@ final class EndSessionRequestTest extends TestCase
         ];
         yield 'empty state' => [
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, null, ''),
+        ];
+        yield 'verified hint marked invalid' => [
+            static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, null, invalidIdTokenHint: true),
         ];
     }
 }

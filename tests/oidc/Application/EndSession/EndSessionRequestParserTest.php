@@ -191,7 +191,8 @@ final class EndSessionRequestParserTest extends TestCase
 
     /**
      * §2, §3, §4: a request the provider cannot honour is refused and shown, never redirected. The
-     * descriptions are the ones the page shows.
+     * descriptions are the ones the page shows. A hint that is not even a signed JWT is one of them; a
+     * signed JWT the provider cannot verify is not (itReadsAHintItCannotVerifyAsAnInvalidHint).
      *
      * @param array<string, mixed> $parameters
      */
@@ -218,9 +219,6 @@ final class EndSessionRequestParserTest extends TestCase
         yield 'hint not a JWS' => [[
             'id_token_hint' => 'not-a-jwt',
         ], 'The id_token_hint parameter is not a signed compact JWT.'];
-        yield 'hint not issued here' => [[
-            'id_token_hint' => self::FORGED_HINT,
-        ], 'The id_token_hint parameter is not an ID token issued by this provider.'];
         yield 'hint issued to no client of the tenant' => [[
             'id_token_hint' => self::GHOST_HINT,
         ], 'The id_token_hint parameter is not an ID token issued to a client of this provider.'];
@@ -288,17 +286,79 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2: the hint is verified against the keys of the tenant the request reaches, not any tenant.
+     * §2, §6: a signed JWT the provider cannot verify (signed by a key it retired, or by nobody it
+     * knows) is not an error of the request but an invalid hint: it identifies no client, proves no
+     * session, and the request goes on for the handler to ask the user.
+     */
+    #[Test]
+    public function itReadsAHintItCannotVerifyAsAnInvalidHint(): void
+    {
+        // When
+        $request = $this->parser->parse($this->tenant, [
+            'id_token_hint' => self::FORGED_HINT,
+            'state' => 'af0ifjsldkj',
+        ]);
+
+        // Then
+        static::assertTrue($request->invalidIdTokenHint);
+        static::assertNull($request->idTokenHint);
+        static::assertNull($request->client);
+        static::assertSame('af0ifjsldkj', $request->state);
+    }
+
+    /**
+     * §3: the provider never redirects on the word of a token it did not verify; the URI an invalid
+     * hint came with is dropped, not refused, so that the user is asked (§2) instead of shown an error.
+     */
+    #[Test]
+    public function itDropsTheRedirectThatCameWithAnInvalidHint(): void
+    {
+        // When
+        $request = $this->parser->parse($this->tenant, [
+            'id_token_hint' => self::FORGED_HINT,
+            'post_logout_redirect_uri' => 'https://demo.localhost/',
+            'state' => 'af0ifjsldkj',
+        ]);
+
+        // Then
+        static::assertNull($request->postLogoutRedirectUri);
+        static::assertNull($request->redirect());
+    }
+
+    /**
+     * §2: beside an invalid hint, client_id alone identifies the client, and §3 honours the redirect
+     * that client registered, after the confirmation the handler asks for.
+     */
+    #[Test]
+    public function itFindsTheClientByClientIdBesideAnInvalidHint(): void
+    {
+        // When
+        $request = $this->parser->parse($this->tenant, [
+            'id_token_hint' => self::FORGED_HINT,
+            'client_id' => 'oidc-demo',
+            'post_logout_redirect_uri' => 'https://demo.localhost/',
+        ]);
+
+        // Then
+        static::assertTrue($request->invalidIdTokenHint);
+        static::assertSame($this->client, $request->client);
+        static::assertSame('https://demo.localhost/', $request->redirect()?->toUri());
+    }
+
+    /**
+     * §2: the hint is verified against the keys of the tenant the request reaches, not any tenant; one
+     * of another tenant is an invalid hint here.
      */
     #[Test]
     public function itVerifiesTheHintAgainstTheKeysOfTheTenant(): void
     {
-        // Then
-        $this->expectException(InvalidRequestException::class);
-
         // When
-        $this->parser->parse(Fixtures::tenant('other', 'https://id.other.example'), [
+        $request = $this->parser->parse(Fixtures::tenant('other', 'https://id.other.example'), [
             'id_token_hint' => self::ALICE_HINT,
         ]);
+
+        // Then
+        static::assertTrue($request->invalidIdTokenHint);
+        static::assertNull($request->idTokenHint);
     }
 }

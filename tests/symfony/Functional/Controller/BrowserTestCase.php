@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
+use function base64_decode;
 use function base64_encode;
 use DateTimeImmutable;
+use function explode;
 use function hash;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
@@ -15,6 +17,7 @@ use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
@@ -131,12 +134,55 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * A key the tenant signs with, so that the token endpoint can answer.
+     * A key the tenant signs with, so that the token endpoint can answer. Called again, it is a rotation:
+     * the key that signed starts retiring, this one signs (architecture §3.3).
      */
-    protected static function signingKey(): void
+    protected static function signingKey(): SigningKey
     {
-        self::service('test.heidi.key_rotator', SigningKeyRotator::class)
+        return self::rotator()
             ->rotate(self::tenant(), SignatureAlgorithm::RS256, self::context());
+    }
+
+    /**
+     * A key published before it signs: the first half of a rotation.
+     */
+    protected static function stagedKey(): SigningKey
+    {
+        return self::rotator()
+            ->stage(self::tenant(), SignatureAlgorithm::RS256, self::context());
+    }
+
+    /**
+     * Out of the JWK Set before its retirement date: what an operator does after a compromise.
+     */
+    protected static function retireKey(SigningKey $key): void
+    {
+        self::rotator()
+            ->retire(self::tenant(), $key->kid, self::context(), force: true);
+    }
+
+    protected static function rotator(): SigningKeyRotator
+    {
+        return self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+    }
+
+    /**
+     * The "kid" a compact JWS names in its protected header (RFC 7515 §4.1.4).
+     */
+    protected static function kidOf(string $compactJws): string
+    {
+        $header = json_decode(self::base64UrlDecode(explode('.', $compactJws)[0]), true, 2, JSON_THROW_ON_ERROR);
+        static::assertIsArray($header);
+
+        return self::string($header['kid'] ?? null);
+    }
+
+    private static function base64UrlDecode(string $value): string
+    {
+        $decoded = base64_decode(strtr($value, '-_', '+/'), true);
+        static::assertIsString($decoded);
+
+        return $decoded;
     }
 
     /**

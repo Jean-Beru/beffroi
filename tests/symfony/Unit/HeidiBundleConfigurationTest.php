@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Tests\Unit;
 
 use function array_map;
 use Heidi\Bundle\HeidiBundle;
+use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -54,6 +55,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             'kms' => 'sodium://?keys[signing]=AAAA',
             'key_id' => 'signing',
             'storage' => '%kernel.project_dir%/var/keys',
+            'jwks_max_age' => JwksHandler::DEFAULT_MAX_AGE,
         ], $config['keys']);
         static::assertSame([
             'authorization_code_ttl' => 60,
@@ -132,6 +134,12 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'access_token_ttl' => 0,
             ],
         ], 'access_token_ttl'];
+        yield 'a negative cache lifetime of the JWK Set' => [[
+            'tenant' => self::MINIMAL['tenant'],
+            'keys' => self::MINIMAL['keys'] + [
+                'jwks_max_age' => -1,
+            ],
+        ], 'jwks_max_age'];
         yield 'a sliding refresh lifetime beyond the absolute one' => [self::MINIMAL + [
             'tokens' => [
                 'refresh_token_ttl' => 100,

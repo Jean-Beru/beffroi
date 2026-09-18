@@ -6,7 +6,9 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
 use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -163,6 +165,87 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Core §10.1.1 and architecture §3.3: a hint signed before a rotation still proves the session
+     * while its key is retiring; what oidc_login sends after a rotation ends the session without a
+     * question.
+     */
+    #[Test]
+    public function aHintSignedByARetiringKeyEndsTheSessionWithoutAQuestion(): void
+    {
+        // Given
+        $previous = self::signingKey();
+        $idToken = $this->idTokenOf(self::user('alice'));
+        self::signingKey();
+
+        // When
+        $this->browser->request('GET', '/logout', [
+            'id_token_hint' => $idToken,
+            'post_logout_redirect_uri' => 'https://demo.test/',
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame($previous->kid, self::kidOf($idToken));
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertSame('https://demo.test/', $response->headers->get('Location'));
+    }
+
+    /**
+     * §2, §6: a hint signed by a retired key is an invalid hint; the provider asks the user instead of
+     * failing, and drops the redirect the hint came with.
+     */
+    #[Test]
+    public function aHintSignedByARetiredKeyAsksTheUser(): void
+    {
+        // Given
+        $previous = self::signingKey();
+        $idToken = $this->idTokenOf(self::user('alice'));
+        self::signingKey();
+        self::retireKey($previous);
+
+        // When
+        $crawler = $this->browser->request('GET', '/logout', [
+            'id_token_hint' => $idToken,
+            'post_logout_redirect_uri' => 'https://demo.test/',
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertFalse($response->headers->has('Location'));
+        static::assertSame('invalid_hint', $crawler->filter('[data-reason]')->attr('data-reason'));
+    }
+
+    /**
+     * §2: on yes the session ends; §3: the browser goes nowhere, the hint having identified no client.
+     */
+    #[Test]
+    public function aConfirmedLogoutWithAHintSignedByARetiredKeyEndsTheSessionAndRedirectsNowhere(): void
+    {
+        // Given
+        $previous = self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $idToken = $this->idTokenOfTheBoundBrowser();
+        self::signingKey();
+        self::retireKey($previous);
+        $crawler = $this->browser->request('GET', '/logout', [
+            'id_token_hint' => $idToken,
+            'post_logout_redirect_uri' => 'https://demo.test/',
+        ]);
+
+        // When
+        $this->browser->submit($crawler->selectButton('Sign out')->form());
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertFalse($response->headers->has('Location'));
+        static::assertStringContainsString('data-logged-out="yes"', self::string($response->getContent()));
+        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        static::assertTrue($ended->hasEnded());
+    }
+
+    /**
      * §4: a request found wrong is shown to the user, never redirected.
      */
     #[Test]
@@ -216,12 +299,23 @@ final class EndSessionControllerTest extends BrowserTestCase
 
     /**
      * An ID token issued to oidc-demo for a session of the user, obtained through the code flow, which
-     * leaves the browser bound to that session.
+     * leaves the browser bound to that session. The tenant signs with the key active at that moment.
      */
     private function idTokenOf(User $user): string
     {
-        self::signingKey();
+        if (self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)->findActive(self::tenant(), SignatureAlgorithm::RS256) === null) {
+            self::signingKey();
+        }
         $this->signIn($user);
+
+        return $this->idTokenOfTheBoundBrowser();
+    }
+
+    /**
+     * An ID token issued to oidc-demo for the session the browser is bound to.
+     */
+    private function idTokenOfTheBoundBrowser(): string
+    {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
         $this->browser->request('POST', '/token', [

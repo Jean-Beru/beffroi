@@ -83,7 +83,8 @@ doctrine:
                 prefix: 'Heidi\Bundle\Tests\Functional\Doctrine\Host'
                 alias: Host
 
-# A full configuration (architecture §5.1): one tenant, a local KMS, files for the sealed keys, the default
+# A full configuration (architecture §5.1): one tenant, a local KMS, files for the sealed keys, a JWK Set
+# cached for two minutes rather than the default five so that the tests see the value travel, the default
 # lifetimes and four clients, the third one carrying the PKCE exception of decision 0008, the fourth one
 # registered for opaque access tokens. The sodium key is a fixture of this kernel and seals nothing outside
 # of it.
@@ -94,6 +95,7 @@ heidi:
         kms: 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
         key_id: signing
         storage: '%kernel.cache_dir%/keys'
+        jwks_max_age: 120
     clients:
         oidc-demo:
             name: 'Demo application'
@@ -146,6 +148,15 @@ services:
         public: true
     test.heidi.keys:
         alias: Heidi\Core\Port\SigningKeyRepositoryInterface
+        public: true
+    test.heidi.key_sealer:
+        alias: Heidi\Core\Port\KeySealerInterface
+        public: true
+    test.heidi.key_pair_generator:
+        alias: Heidi\Core\Port\KeyPairGeneratorInterface
+        public: true
+    test.heidi.jws_signer:
+        alias: Heidi\Core\Port\JwsSignerInterface
         public: true
     test.heidi.key_provider:
         alias: Heidi\Core\Port\SigningKeyProviderInterface
