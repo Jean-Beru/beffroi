@@ -42,8 +42,8 @@ use function usort;
 /**
  * The signing keys of a tenant as files (architecture §3.3: "files in development, a database later"), one
  * JSON document per key under "<storage>/<tenant slug>/<kid>.json". The file holds what the SigningKey
- * holds: the public JWK in clear, the private JWK as the opaque envelope the KMS sealed, the status and its
- * dates. Nothing in it is secret on its own, the file mode is tightened all the same. A write goes through a
+ * holds: the public JWK in clear, the private JWK as the opaque envelope the KMS sealed, the status and the
+ * date of every transition (created, activated, retiring, due, retired). Nothing in it is secret on its own, the file mode is tightened all the same. A write goes through a
  * sibling file renamed into place, so that a process reading the directory never sees half a key.
  */
 final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInterface
@@ -114,7 +114,9 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
             'sealed_private_jwk' => base64_encode($key->sealedPrivateJwk),
             'status' => $key->status->value,
             'created_at' => $key->createdAt->format(DateTimeInterface::RFC3339_EXTENDED),
+            'activated_at' => $key->activatedAt?->format(DateTimeInterface::RFC3339_EXTENDED),
             'retiring_at' => $key->retiringAt?->format(DateTimeInterface::RFC3339_EXTENDED),
+            'retirement_due_at' => $key->retirementDueAt?->format(DateTimeInterface::RFC3339_EXTENDED),
             'retired_at' => $key->retiredAt?->format(DateTimeInterface::RFC3339_EXTENDED),
         ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         if (@file_put_contents($temporary, $json, LOCK_EX) === false || ! @chmod($temporary, 0o600) || ! @rename($temporary, $path)) {
@@ -182,9 +184,13 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         }
 
         try {
+            // The transitions are replayed in order, each with its date: the file holds facts, the key holds the rules.
             $key = new SigningKey($kid, $tenant, $algorithm, $members, $sealed, self::date($path, $document['created_at'] ?? null));
-            if ($status !== KeyStatus::Active) {
-                $key->startRetiring(self::date($path, $document['retiring_at'] ?? null));
+            if ($status !== KeyStatus::Staged) {
+                $key->activate(self::date($path, $document['activated_at'] ?? null));
+            }
+            if ($status === KeyStatus::Retiring || $status === KeyStatus::Retired) {
+                $key->startRetiring(self::date($path, $document['retiring_at'] ?? null), self::date($path, $document['retirement_due_at'] ?? null));
             }
             if ($status === KeyStatus::Retired) {
                 $key->retire(self::date($path, $document['retired_at'] ?? null));

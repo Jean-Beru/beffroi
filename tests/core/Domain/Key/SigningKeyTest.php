@@ -18,16 +18,22 @@ use PHPUnit\Framework\TestCase;
 
 final class SigningKeyTest extends TestCase
 {
+    /**
+     * OIDC Core §10.1.1: the key is published before it signs, so that a relying party caching the JWK Set
+     * learns it.
+     */
     #[Test]
-    public function aNewKeyIsActiveAndPublished(): void
+    public function aNewKeyIsStagedPublishedAndNotActive(): void
     {
         // When
         $key = self::key();
 
         // Then
-        static::assertSame(KeyStatus::Active, $key->status);
-        static::assertTrue($key->isActive());
+        static::assertSame(KeyStatus::Staged, $key->status);
+        static::assertTrue($key->isStaged());
+        static::assertFalse($key->isActive());
         static::assertTrue($key->isPublished());
+        static::assertNull($key->activatedAt);
     }
 
     #[Test]
@@ -42,34 +48,115 @@ final class SigningKeyTest extends TestCase
     }
 
     /**
-     * The rotation window: active, then retiring, still published.
+     * The staging window ends: staged, then active.
+     */
+    #[Test]
+    public function anActivatedKeyIsActiveAndPublished(): void
+    {
+        // Given
+        $key = self::key();
+        $activatedAt = Fixtures::now()->modify('+6 minutes');
+
+        // When
+        $key->activate($activatedAt);
+
+        // Then
+        static::assertSame(KeyStatus::Active, $key->status);
+        static::assertTrue($key->isActive());
+        static::assertTrue($key->isPublished());
+        static::assertSame($activatedAt, $key->activatedAt);
+    }
+
+    #[Test]
+    public function onlyAStagedKeyActivates(): void
+    {
+        // Given
+        $key = self::activeKey();
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('Only a staged key can be activated; this one is active.');
+
+        // When
+        $key->activate(Fixtures::now());
+    }
+
+    /**
+     * The retirement window: active, then retiring, still published, due at the date given.
      */
     #[Test]
     public function aRetiringKeyIsNoLongerActiveButStillPublished(): void
     {
         // Given
-        $key = self::key();
+        $key = self::activeKey();
         $retiringAt = Fixtures::now()->modify('+1 day');
+        $dueAt = $retiringAt->modify('+10 minutes');
 
         // When
-        $key->startRetiring($retiringAt);
+        $key->startRetiring($retiringAt, $dueAt);
 
         // Then
         static::assertSame(KeyStatus::Retiring, $key->status);
         static::assertFalse($key->isActive());
         static::assertTrue($key->isPublished());
         static::assertSame($retiringAt, $key->retiringAt);
+        static::assertSame($dueAt, $key->retirementDueAt);
+    }
+
+    #[Test]
+    public function aRetirementIsNotDueBeforeItsDate(): void
+    {
+        // Given
+        $key = self::activeKey();
+        $key->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // When / Then
+        static::assertFalse($key->isDue(Fixtures::now()->modify('+9 minutes 59 seconds')));
+    }
+
+    #[Test]
+    public function aRetirementIsDueFromItsDate(): void
+    {
+        // Given
+        $key = self::activeKey();
+        $key->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // When / Then
+        static::assertTrue($key->isDue(Fixtures::now()->modify('+10 minutes')));
+    }
+
+    #[Test]
+    public function aKeyThatIsNotRetiringIsNeverDue(): void
+    {
+        // Given
+        $key = self::activeKey();
+
+        // When / Then
+        static::assertFalse($key->isDue(Fixtures::now()->modify('+1 year')));
+    }
+
+    #[Test]
+    public function aRetirementCannotBeDueBeforeItStarts(): void
+    {
+        // Given
+        $key = self::activeKey();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+
+        // When
+        $key->startRetiring(Fixtures::now(), Fixtures::now()->modify('-1 second'));
     }
 
     /**
-     * The rotation window: retiring, then retired, gone from the JWK Set.
+     * The retirement window: retiring, then retired, gone from the JWK Set.
      */
     #[Test]
     public function aRetiredKeyIsNoLongerPublished(): void
     {
         // Given
-        $key = self::key();
-        $key->startRetiring(Fixtures::now()->modify('+1 day'));
+        $key = self::activeKey();
+        $key->startRetiring(Fixtures::now()->modify('+1 day'), Fixtures::now()->modify('+2 days'));
         $retiredAt = Fixtures::now()->modify('+2 days');
 
         // When
@@ -78,34 +165,52 @@ final class SigningKeyTest extends TestCase
         // Then
         static::assertSame(KeyStatus::Retired, $key->status);
         static::assertFalse($key->isPublished());
+        static::assertFalse($key->isDue($retiredAt));
         static::assertSame($retiredAt, $key->retiredAt);
     }
 
     #[Test]
-    public function onlyAnActiveKeyStartsRetiring(): void
+    #[DataProvider('provideKeysThatCannotStartRetiring')]
+    public function onlyAnActiveKeyStartsRetiring(SigningKey $key): void
     {
-        // Given
-        $key = self::key();
-        $key->startRetiring(Fixtures::now());
-
         // Then
         $this->expectException(LogicException::class);
 
         // When
-        $key->startRetiring(Fixtures::now());
+        $key->startRetiring(Fixtures::now(), Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{SigningKey}>
+     */
+    public static function provideKeysThatCannotStartRetiring(): iterable
+    {
+        yield 'staged' => [self::key()];
+        $retiring = self::activeKey();
+        $retiring->startRetiring(Fixtures::now(), Fixtures::now());
+        yield 'retiring' => [$retiring];
+        yield 'retired' => [self::retiredKey()];
     }
 
     #[Test]
-    public function onlyARetiringKeyRetires(): void
+    #[DataProvider('provideKeysThatCannotRetire')]
+    public function onlyARetiringKeyRetires(SigningKey $key): void
     {
-        // Given
-        $key = self::key();
-
         // Then
         $this->expectException(LogicException::class);
 
         // When
         $key->retire(Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{SigningKey}>
+     */
+    public static function provideKeysThatCannotRetire(): iterable
+    {
+        yield 'staged' => [self::key()];
+        yield 'active' => [self::activeKey()];
+        yield 'retired' => [self::retiredKey()];
     }
 
     /**
@@ -165,23 +270,23 @@ final class SigningKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5: the JWK Set lists the published keys only.
+     * RFC 7517 §5: the JWK Set lists the published keys only, a staged one included.
      */
     #[Test]
     public function thePublicKeySetServesPublishedKeysOnly(): void
     {
         // Given
-        $active = self::key();
+        $staged = self::key();
         $retired = self::retiredKey();
 
         // When
-        $set = new PublicKeySet([$active, $retired]);
+        $set = new PublicKeySet([$staged, $retired]);
 
         // Then
         static::assertFalse($set->isEmpty());
-        static::assertSame([$active], $set->keys);
+        static::assertSame([$staged], $set->keys);
         static::assertSame([
-            'keys' => [$active->publicJwk],
+            'keys' => [$staged->publicJwk],
         ], $set->toJwks());
     }
 
@@ -189,7 +294,7 @@ final class SigningKeyTest extends TestCase
     public function thePublicKeySetFindsAPublishedKeyByKid(): void
     {
         // Given
-        $active = self::key();
+        $active = self::activeKey();
         $set = new PublicKeySet([$active, self::retiredKey()]);
 
         // When / Then
@@ -238,10 +343,19 @@ final class SigningKeyTest extends TestCase
         return new SigningKey($kid ?? Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, $publicJwk ?? Keys::pair()->publicJwk, 'sealed', Fixtures::now());
     }
 
+    private static function activeKey(): SigningKey
+    {
+        $key = self::key();
+        $key->activate(Fixtures::now());
+
+        return $key;
+    }
+
     private static function retiredKey(): SigningKey
     {
         $key = self::key(Keys::otherPair()->kid, Keys::otherPair()->publicJwk);
-        $key->startRetiring(Fixtures::now());
+        $key->activate(Fixtures::now());
+        $key->startRetiring(Fixtures::now(), Fixtures::now());
         $key->retire(Fixtures::now());
 
         return $key;

@@ -48,7 +48,8 @@ final readonly class Jwts
         public Tenant $tenant,
     ) {
         $repository = new InMemorySigningKeyRepository();
-        $this->key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal(Keys::pair()->privateJwk), Fixtures::now());
+        $this->key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now());
+        $this->key->activate(Fixtures::now());
         $repository->save($this->key);
         $this->keys = new SealedKeyProvider($repository, Keys::sealer());
         $this->signer = new JwtFrameworkJwsSigner($this->keys);

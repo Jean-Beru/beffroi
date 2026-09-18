@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Bridge\JwtFramework;
 
+use function array_keys;
 use function base64_decode;
 use function explode;
 use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
@@ -30,6 +31,7 @@ use Jose\Component\Signature\Serializer\CompactSerializer;
 use function json_decode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 use function strtr;
 
 final class JwtFrameworkTest extends TestCase
@@ -46,7 +48,8 @@ final class JwtFrameworkTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->repository = new InMemorySigningKeyRepository();
-        $this->active = new SigningKey(Keys::pair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal(Keys::pair()->privateJwk), Fixtures::now());
+        $this->active = new SigningKey(Keys::pair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now());
+        $this->active->activate(Fixtures::now());
         $this->repository->save($this->active);
         $this->provider = new SealedKeyProvider($this->repository, Keys::sealer());
     }
@@ -186,11 +189,14 @@ final class JwtFrameworkTest extends TestCase
         $signer->sign($this->tenant, SignatureAlgorithm::RS256, 'x');
     }
 
+    /**
+     * OIDC Core §10.1.1: what the previous key signed stays verifiable while it is in the JWK Set.
+     */
     #[Test]
     public function aRetiringKeyStillVerifies(): void
     {
         // Given
-        $this->active->startRetiring(Fixtures::now());
+        $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $jws = self::signWith(Keys::pair()->privateJwk, 'payload');
 
         // When
@@ -205,7 +211,7 @@ final class JwtFrameworkTest extends TestCase
     public function aRetiringKeyNoLongerSigns(): void
     {
         // Given
-        $this->active->startRetiring(Fixtures::now());
+        $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $signer = new JwtFrameworkJwsSigner($this->provider);
 
         // Then
@@ -215,11 +221,32 @@ final class JwtFrameworkTest extends TestCase
         $signer->sign($this->tenant, SignatureAlgorithm::RS256, 'x');
     }
 
+    /**
+     * A staged key is published so that a cache learns it, and signs nothing until it is activated.
+     */
+    #[Test]
+    public function aStagedKeyDoesNotSign(): void
+    {
+        // Given
+        $repository = new InMemorySigningKeyRepository();
+        $repository->save(new SigningKey(Keys::pair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now()));
+        $signer = new JwtFrameworkJwsSigner(new SealedKeyProvider($repository, Keys::sealer()));
+
+        // Then
+        $this->expectException(KeyNotFoundException::class);
+
+        // When
+        $signer->sign($this->tenant, SignatureAlgorithm::RS256, 'x');
+    }
+
+    /**
+     * A JWS naming a retired kid is refused like one naming a key that never existed.
+     */
     #[Test]
     public function aRetiredKeyNoLongerVerifies(): void
     {
         // Given
-        $this->active->startRetiring(Fixtures::now());
+        $this->active->startRetiring(Fixtures::now(), Fixtures::now());
         $this->active->retire(Fixtures::now());
         $jws = self::signWith(Keys::pair()->privateJwk, 'payload');
 
@@ -352,19 +379,50 @@ final class JwtFrameworkTest extends TestCase
         static::assertSame($first, $second);
     }
 
+    /**
+     * The opened private half of a key that stopped signing leaves the memory of the provider: the next
+     * active key is opened, the previous one is not kept beside it.
+     */
     #[Test]
-    public function theProviderPublishesActiveAndRetiringKeys(): void
+    public function theProviderForgetsAKeyOnceItIsNoLongerActive(): void
     {
         // Given
-        $other = new SigningKey(Keys::otherPair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, Keys::sealer()->seal(Keys::otherPair()->privateJwk), Fixtures::now());
-        $other->startRetiring(Fixtures::now());
-        $this->repository->save($other);
+        $this->provider->activeKey($this->tenant, SignatureAlgorithm::RS256);
+        $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $next = new SigningKey(Keys::otherPair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now());
+        $next->activate(Fixtures::now());
+        $this->repository->save($next);
+
+        // When
+        $opened = $this->provider->activeKey($this->tenant, SignatureAlgorithm::RS256);
+
+        // Then
+        static::assertSame($next, $opened->key);
+        $kept = new ReflectionProperty($this->provider, 'opened')
+            ->getValue($this->provider);
+        static::assertIsArray($kept);
+        static::assertSame([Keys::otherPair()->kid], array_keys($kept));
+    }
+
+    #[Test]
+    public function theProviderPublishesStagedActiveAndRetiringKeys(): void
+    {
+        // Given
+        $retiring = new SigningKey(Keys::otherPair()->kid, $this->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now()->modify('-1 day'));
+        $retiring->activate(Fixtures::now()->modify('-1 day'));
+        $retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $this->repository->save($retiring);
+        $staged = new SigningKey('staged-kid', $this->tenant, SignatureAlgorithm::RS256, [
+            ...Keys::otherPair()->publicJwk,
+            'kid' => 'staged-kid',
+        ], 'sealed', Fixtures::now()->modify('+1 minute'));
+        $this->repository->save($staged);
 
         // When
         $published = $this->provider->publicKeys($this->tenant);
 
         // Then
-        static::assertCount(2, $published->keys);
+        static::assertSame([$retiring, $this->active, $staged], $published->keys);
     }
 
     #[Test]

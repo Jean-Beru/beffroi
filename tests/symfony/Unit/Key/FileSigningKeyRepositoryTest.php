@@ -66,7 +66,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal(Keys::pair()->privateJwk), Fixtures::now());
+        $key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now());
         $this->repository->save($key);
 
         // When
@@ -79,20 +79,40 @@ final class FileSigningKeyRepositoryTest extends TestCase
         static::assertSame('RS256', $found->algorithm->value);
         static::assertSame($key->publicJwk, $found->publicJwk);
         static::assertSame($key->sealedPrivateJwk, $found->sealedPrivateJwk);
-        static::assertSame(Keys::pair()->privateJwk, Keys::sealer()->unseal($found->sealedPrivateJwk));
+        static::assertSame(Keys::pair()->privateJwk, Keys::sealer()->unseal($tenant, $found->sealedPrivateJwk));
         static::assertEquals(Fixtures::now(), $found->createdAt);
-        static::assertSame(KeyStatus::Active, $found->status);
+        static::assertSame(KeyStatus::Staged, $found->status);
+        static::assertNull($found->activatedAt);
         static::assertNull($found->retiringAt);
+        static::assertNull($found->retirementDueAt);
         static::assertNull($found->retiredAt);
     }
 
     #[Test]
-    public function aRetiringStatusAndItsDateSurviveTheRoundTrip(): void
+    public function anActiveStatusAndItsDateSurviveTheRoundTrip(): void
     {
         // Given
         $tenant = Fixtures::tenant();
         $key = self::key($tenant, Keys::pair()->kid);
-        $key->startRetiring(Fixtures::now()->modify('+1 day'));
+        $key->activate(Fixtures::now()->modify('+6 minutes'));
+        $this->repository->save($key);
+
+        // When
+        $active = $this->repository->find($tenant, $key->kid) ?? static::fail('The key is found.');
+
+        // Then
+        static::assertSame(KeyStatus::Active, $active->status);
+        static::assertEquals(Fixtures::now()->modify('+6 minutes'), $active->activatedAt);
+        static::assertNull($active->retiringAt);
+    }
+
+    #[Test]
+    public function aRetiringStatusAndItsDatesSurviveTheRoundTrip(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $key = self::activeKey($tenant, Keys::pair()->kid);
+        $key->startRetiring(Fixtures::now()->modify('+1 day'), Fixtures::now()->modify('+1 day +10 minutes'));
         $this->repository->save($key);
 
         // When
@@ -100,7 +120,9 @@ final class FileSigningKeyRepositoryTest extends TestCase
 
         // Then
         static::assertSame(KeyStatus::Retiring, $retiring->status);
+        static::assertEquals(Fixtures::now(), $retiring->activatedAt);
         static::assertEquals(Fixtures::now()->modify('+1 day'), $retiring->retiringAt);
+        static::assertEquals(Fixtures::now()->modify('+1 day +10 minutes'), $retiring->retirementDueAt);
         static::assertNull($retiring->retiredAt);
     }
 
@@ -109,8 +131,8 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $key = self::key($tenant, Keys::pair()->kid);
-        $key->startRetiring(Fixtures::now()->modify('+1 day'));
+        $key = self::activeKey($tenant, Keys::pair()->kid);
+        $key->startRetiring(Fixtures::now()->modify('+1 day'), Fixtures::now()->modify('+2 days'));
         $key->retire(Fixtures::now()->modify('+2 days'));
         $this->repository->save($key);
 
@@ -120,11 +142,13 @@ final class FileSigningKeyRepositoryTest extends TestCase
         // Then
         static::assertSame(KeyStatus::Retired, $retired->status);
         static::assertEquals(Fixtures::now()->modify('+1 day'), $retired->retiringAt);
+        static::assertEquals(Fixtures::now()->modify('+2 days'), $retired->retirementDueAt);
         static::assertEquals(Fixtures::now()->modify('+2 days'), $retired->retiredAt);
     }
 
     /**
-     * SigningKeyRepositoryInterface::findPublished(): active and retiring keys, in creation order.
+     * SigningKeyRepositoryInterface::findPublished(): staged, active and retiring keys, in creation order;
+     * findActive(): never a staged key.
      */
     #[Test]
     public function theActiveKeyIsFoundAmongTheOthers(): void
@@ -151,7 +175,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
         $published = $this->repository->findPublished($tenant);
 
         // Then
-        static::assertSame(['zzz-oldest', 'mmm-newest'], array_map(static fn (SigningKey $key): string => $key->kid, $published));
+        static::assertSame(['zzz-oldest', 'mmm-newest', 'bbb-staged'], array_map(static fn (SigningKey $key): string => $key->kid, $published));
     }
 
     #[Test]
@@ -291,8 +315,21 @@ final class FileSigningKeyRepositoryTest extends TestCase
         yield 'a date that is not RFC 3339' => [json_encode(self::document([
             'created_at' => 'yesterday',
         ]), JSON_THROW_ON_ERROR)];
+        yield 'an active key without its activation date' => [json_encode(self::document([
+            'activated_at' => null,
+        ]), JSON_THROW_ON_ERROR)];
         yield 'a retiring key without its date' => [json_encode(self::document([
             'status' => 'retiring',
+            'retirement_due_at' => '2026-09-15T10:20:00.000+00:00',
+        ]), JSON_THROW_ON_ERROR)];
+        yield 'a retiring key without its retirement date' => [json_encode(self::document([
+            'status' => 'retiring',
+            'retiring_at' => '2026-09-15T10:10:00.000+00:00',
+        ]), JSON_THROW_ON_ERROR)];
+        yield 'a retired key without its date' => [json_encode(self::document([
+            'status' => 'retired',
+            'retiring_at' => '2026-09-15T10:10:00.000+00:00',
+            'retirement_due_at' => '2026-09-15T10:20:00.000+00:00',
         ]), JSON_THROW_ON_ERROR)];
     }
 
@@ -332,17 +369,20 @@ final class FileSigningKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Three keys saved out of creation order: the oldest retiring, the middle one retired, the newest active.
+     * Four keys saved out of creation order: the oldest retiring, the middle one retired, the newest active,
+     * one staged after it.
      */
     private function saveThreeKeys(Tenant $tenant): void
     {
-        $oldest = self::key($tenant, 'zzz-oldest', Fixtures::now()->modify('-2 days'));
-        $oldest->startRetiring(Fixtures::now());
-        $middle = self::key($tenant, 'aaa-middle', Fixtures::now()->modify('-1 day'));
-        $middle->startRetiring(Fixtures::now());
+        $oldest = self::activeKey($tenant, 'zzz-oldest', Fixtures::now()->modify('-2 days'));
+        $oldest->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $middle = self::activeKey($tenant, 'aaa-middle', Fixtures::now()->modify('-1 day'));
+        $middle->startRetiring(Fixtures::now(), Fixtures::now());
         $middle->retire(Fixtures::now());
-        $newest = self::key($tenant, 'mmm-newest', Fixtures::now());
+        $newest = self::activeKey($tenant, 'mmm-newest', Fixtures::now());
+        $staged = self::key($tenant, 'bbb-staged', Fixtures::now()->modify('+1 minute'));
         $this->repository->save($newest);
+        $this->repository->save($staged);
         $this->repository->save($oldest);
         $this->repository->save($middle);
     }
@@ -364,7 +404,9 @@ final class FileSigningKeyRepositoryTest extends TestCase
             'sealed_private_jwk' => base64_encode('sealed'),
             'status' => 'active',
             'created_at' => '2026-09-15T10:00:00.000+00:00',
+            'activated_at' => '2026-09-15T10:06:00.000+00:00',
             'retiring_at' => null,
+            'retirement_due_at' => null,
             'retired_at' => null,
         ];
     }
@@ -374,5 +416,13 @@ final class FileSigningKeyRepositoryTest extends TestCase
         return new SigningKey($kid, $tenant, SignatureAlgorithm::RS256, [
             'kid' => $kid,
         ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now());
+    }
+
+    private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): SigningKey
+    {
+        $key = self::key($tenant, $kid, $createdAt);
+        $key->activate(Fixtures::now());
+
+        return $key;
     }
 }

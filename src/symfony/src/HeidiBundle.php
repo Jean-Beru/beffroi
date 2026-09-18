@@ -106,7 +106,7 @@ final class HeidiBundle extends AbstractBundle
             ->cannotBeEmpty()
             ->end()
             ->scalarNode('key_id')
-            ->info('The key of that KMS the signing keys are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN).')
+            ->info('The key of that KMS the signing keys are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); "{tenant}" stands for the slug of the tenant, one master key each.')
             ->isRequired()
             ->cannotBeEmpty()
             ->end()
