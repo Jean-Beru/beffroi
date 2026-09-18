@@ -170,6 +170,13 @@ jobs:
           dependency-versions: highest
           composer-options: --optimize-autoloader
       - run: castor phpunit
+      # The XML coverage and the JUnit report feed the mutation testing job, which does not run the tests again.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage-php${{ matrix.php-version }}
+          path: .ci-tools/coverage
+          retention-days: 1
+          if-no-files-found: error
 
   conformance:
     name: "🔟 OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
@@ -229,10 +236,15 @@ jobs:
         with:
           dependency-versions: highest
           composer-options: --optimize-autoloader
+      # The coverage of the tests job, same image, same checkout, same paths: Infection reads it as is.
+      - uses: actions/download-artifact@v8
+        with:
+          name: coverage-php8.5
+          path: .ci-tools/coverage
       # Infection counts the two cores of the runner and keeps one for itself; both can run mutants.
       - name: "Mutations of the pull request"
         if: github.event_name == 'pull_request'
-        run: castor infect --diff --base="origin/${{ github.base_ref }}" --threads=2
+        run: castor infect --diff --reuse-coverage --base="origin/${{ github.base_ref }}" --threads=2
       - name: "Mutations of the push"
         if: github.event_name == 'push'
-        run: castor infect --diff --base="${{ github.event.before }}" --threads=2
+        run: castor infect --diff --reuse-coverage --base="${{ github.event.before }}" --threads=2

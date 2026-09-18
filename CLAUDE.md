@@ -35,7 +35,7 @@ castor deptrac
 castor lint
 castor check-licenses
 castor prepare-pr         # ecs-fix, rector-fix, phpstan-baseline, deptrac, lint
-castor infect --diff      # mutation testing of the lines changed since origin/main (--base to change), what CI runs on every PR and push
+castor infect --diff      # mutation testing of the lines changed since origin/main (--base to change), what CI runs on every PR and push; --reuse-coverage skips the PHPUnit run when .ci-tools/coverage is fresh
 castor infect             # the whole source (core and oidc): hours, deliberate only; infection.json.dist sits at the root for the git diff, see castor.php
 ```
 

@@ -226,9 +226,18 @@ function infect(
     string $base = 'origin/main',
     #[AsOption(description: 'Mutant processes run in parallel; "max" is the number of cores minus one')]
     string $threads = 'max',
+    #[AsOption(description: 'Reuse the coverage of the last "castor phpunit" in .ci-tools/coverage instead of running the tests again; it must come from the same source and the same paths')]
+    bool $reuseCoverage = false,
 ): void {
-    // The XML coverage and the JUnit report of this run are what Infection reads from .ci-tools/coverage.
-    phpunit();
+    // The XML coverage and the JUnit report of a "castor phpunit" run are what Infection reads from .ci-tools/coverage.
+    if ($reuseCoverage) {
+        if (! is_file('.ci-tools/coverage/index.xml') || ! is_file('.ci-tools/coverage/junit.xml')) {
+            io()->error('No coverage to reuse in .ci-tools/coverage: run "castor phpunit" first, or drop --reuse-coverage.');
+            exit(1);
+        }
+    } else {
+        phpunit();
+    }
 
     $options = [
         '--coverage=.ci-tools/coverage',
