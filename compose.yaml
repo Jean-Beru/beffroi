@@ -26,11 +26,15 @@ services:
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
       # Worker mode, as in production (architecture §3.3, §6): the kernel, and with it the opened signing key,
       # lives for every request a worker serves; the KMS is asked once per key and per worker, not once per
-      # signature. The workers restart when a file of the application or of the packages changes, .env.local
-      # included: "castor provision" writes it after the first start, and a worker reads it once.
+      # signature. The workers restart when a source file of the application or of the packages changes,
+      # .env.local included ("castor provision" writes it after the first start, and a worker reads it once);
+      # never on a write under var/, or every compiled template and catalogue would restart them.
       FRANKENPHP_CONFIG: "import worker.Caddyfile"
       FRANKENPHP_WORKER_CONFIG: |-
-        watch /app/**/*.{php,yaml,yml,twig,xlf}
+        watch /app/src/**/*.php
+        watch /app/config/**/*.{php,yaml,yml}
+        watch /app/templates/**/*.twig
+        watch /app/translations/**/*.xlf
         watch /app/.env*
         watch /src/**/*.{php,yaml,yml,twig,xlf}
     volumes:
