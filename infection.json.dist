@@ -1,13 +1,13 @@
 {
     "source": {
         "directories": [
-            "../src/core/src",
-            "../src/oidc/src"
+            "src/core/src",
+            "src/oidc/src"
         ]
     },
-    "timeout": 3,
+    "timeout": 600,
     "logs": {
-        "text": "infection.txt"
+        "text": ".ci-tools/infection.txt"
     },
     "mutators": {
         "@default": true,
@@ -16,6 +16,6 @@
         ]
     },
     "phpUnit": {
-        "customPath": "/tools/phpunit-12"
+        "configDir": ".ci-tools"
     }
 }

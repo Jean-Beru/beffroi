@@ -62,9 +62,10 @@ castor deptrac          # package graph and layers
 castor lint
 castor check-licenses
 castor prepare-pr       # ecs-fix, rector-fix, phpstan-baseline, deptrac, lint
+castor infect --diff    # mutation testing of the lines changed since origin/main; escaped mutants are listed in .ci-tools/infection.txt
 ```
 
-CI runs the same tasks on PHP 8.5. Mutation testing (Infection) runs on `main` and release branches.
+CI runs the same tasks on PHP 8.5. Mutation testing (Infection) runs on every pull request and every push to `main` and release branches, on the lines the change adds or modifies; `castor infect` without `--diff` mutates the whole source and takes hours.
 
 ## Conventions in one screen
 
