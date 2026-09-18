@@ -18,9 +18,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * A signing key for the tenant (architecture §3.3, §5.5): generated in this process, sealed by the
- * configured KMS before it is written, active at once. A key that was active starts retiring: it stays in
- * the JWK Set while the tokens it signed are alive, so running this twice is a rotation, not a mistake.
+ * A signing key for the tenant, sealed by the KMS and active at once (architecture §3.3, §5.5); run twice, a rotation.
  */
 #[AsCommand(
     name: 'heidi:keys:generate',
@@ -50,7 +48,6 @@ final readonly class KeysGenerateCommand
         }
 
         $previous = $this->keys->findActive($tenant, $algorithm);
-        // A console has no client address and no user agent: the context says when, and nothing else.
         $key = $this->rotator->rotate($tenant, $algorithm, RequestContext::unknown($this->clock->now()));
 
         $io->definitionList(

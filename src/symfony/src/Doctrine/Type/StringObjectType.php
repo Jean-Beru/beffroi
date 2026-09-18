@@ -13,8 +13,8 @@ use Heidi\Oidc\Exception\InvalidArgumentException as OidcInvalidArgumentExceptio
 use function is_string;
 
 /**
- * A value object that is one validated string, stored as that string. Read back through the constructor
- * of the object, so that a row somebody edited by hand fails at load and not further down.
+ * A value object that is one validated string, read back through its constructor so that a row edited by
+ * hand fails at load.
  *
  * @template T of object
  */
@@ -26,8 +26,8 @@ abstract class StringObjectType extends Type
     abstract protected function encode(object $value): string;
 
     /**
-     * @throws CoreInvalidArgumentException when the value object refuses the string
-     * @throws OidcInvalidArgumentException when the value object refuses the string
+     * @throws CoreInvalidArgumentException
+     * @throws OidcInvalidArgumentException
      *
      * @return T
      */

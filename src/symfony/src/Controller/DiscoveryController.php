@@ -12,8 +12,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * OIDC Discovery §4: the provider metadata of the tenant, at the well-known location a client derives
- * from the issuer. A read of the configuration, cacheable for the time the document says.
+ * OIDC Discovery §4: the provider metadata of the tenant.
  */
 #[AsController]
 final readonly class DiscoveryController

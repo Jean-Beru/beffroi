@@ -15,14 +15,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What the security component of Symfony sees of a user of the core (architecture §5.4, decision 0002):
- * an adapter over the User and its PasswordCredential, never the User of a host application. The
- * firewall reads the identifier, the roles and the hash; the bundle reads the entities behind them to
- * open the session and to rehash the password.
- *
- * The token of the firewall is serialised into the HTTP session between two requests: what is kept is
- * the identifier, the username, the hash and the state, enough to refresh the user through the provider
- * and to tell that a password changed; the entities are read again from the rows, never from the cookie.
+ * What the security component sees of a user of the core (architecture §5.4, decision 0002). Serialised
+ * into the HTTP session as identifier, username, hash and state; the entities are read again from the rows.
  */
 final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
 {
@@ -54,8 +48,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     }
 
     /**
-     * The user of the core, when this adapter was built by the provider during this request; an adapter
-     * restored from the HTTP session holds none and is refreshed by the provider before it is used.
+     * An adapter restored from the HTTP session holds none until the provider refreshed it.
      */
     public function user(): User
     {
@@ -93,8 +86,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     }
 
     /**
-     * The same user as long as the identifier and the hash did not change: a password change signs every
-     * other browser out, a rename does not.
+     * A password change signs every other browser out, a rename does not.
      */
     public function isEqualTo(UserInterface $user): bool
     {

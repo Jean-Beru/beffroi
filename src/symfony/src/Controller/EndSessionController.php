@@ -26,13 +26,9 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
- * OIDC RP-Initiated Logout 1.0 §2: the end session endpoint, GET with the parameters in the query or
- * POST with them in the form body. An error in the request is a page, never a redirection (§4). When
- * the handler must ask, the confirmation page re-submits the same parameters with the answer and the
- * CSRF token of the form; the request is parsed again, the same way, and confirm() ends the session. A
- * "no" ends nothing and sends the user nowhere: the client asked for a logout that did not happen. There
- * is no interaction to record a locale on: the pages speak the language "ui_locales" of the request
- * asks for (§2), which the confirmation form carries over, then the browser's (architecture §5.7).
+ * The end session endpoint (RP-Initiated Logout §2), GET or POST. An error is a page, never a
+ * redirection (§4). The confirmation page re-submits the same parameters with the answer and the CSRF
+ * token; a "no" ends nothing and sends the user nowhere.
  */
 #[AsController]
 final readonly class EndSessionController
@@ -41,15 +37,12 @@ final readonly class EndSessionController
 
     public const string INVALID_CSRF_TOKEN = 'invalid_csrf_token';
 
-    /**
-     * The name of the form field that carries the answer of the confirmation page.
-     */
     public const string CONFIRM_PARAMETER = 'confirm';
 
     public const string CONFIRM_YES = 'yes';
 
     /**
-     * The parameters of §2 the confirmation page carries over, as the request brought them.
+     * The parameters of §2 the confirmation page carries over.
      */
     public const array PARAMETERS = ['id_token_hint', 'client_id', 'post_logout_redirect_uri', 'state', 'logout_hint', 'ui_locales'];
 
@@ -123,7 +116,7 @@ final readonly class EndSessionController
     /**
      * @param array<string, mixed> $parameters
      *
-     * @return array<string, string> the parameters of the request the confirmation form re-submits, the ones that were single strings, which is what the parser accepted
+     * @return array<string, string> the ones that were single strings, which is what the parser accepted
      */
     private static function carriedOver(array $parameters): array
     {

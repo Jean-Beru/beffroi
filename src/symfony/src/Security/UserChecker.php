@@ -10,10 +10,8 @@ use Symfony\Component\Security\Core\User\UserCheckerInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * The state of the account, checked after the password and not before, as the core does: a disabled
- * account answers exactly like a wrong password to whoever does not know the password, in time as in
- * words. The firewall turns the exception into "bad credentials" for the user; the reason stays in the
- * audit trail (LoginFailureListener).
+ * The state of the account, checked after the password as the core does: a disabled account answers like
+ * a wrong password.
  */
 final readonly class UserChecker implements UserCheckerInterface
 {

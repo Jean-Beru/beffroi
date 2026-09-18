@@ -12,9 +12,8 @@ use function sprintf;
 use function str_contains;
 
 /**
- * The PKCE challenge of an authorization request (RFC 7636 §4.3), as "method:challenge" in one column,
- * because an authorization request or a code may carry none when the client does not require PKCE
- * (decision 0008), and an embeddable cannot be null.
+ * The PKCE challenge (RFC 7636 §4.3) as "method:challenge" in one column, because it may be absent
+ * (decision 0008) and an embeddable cannot be null.
  *
  * @extends StringObjectType<CodeChallenge>
  */

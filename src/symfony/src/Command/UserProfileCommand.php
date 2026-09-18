@@ -22,11 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use function trim;
 
 /**
- * The description of a user (architecture §5.5): the standard claims of OIDC Core §5.1 that the "profile",
- * "phone" and "address" scopes stand for, under the names of the specification. The command says the
- * whole description every time: an attribute it does not name is cleared, so that a script provisioning
- * a user is replayable and its result readable from the command line alone. The email address stays
- * with "heidi:user:create".
+ * The standard claims of OIDC Core §5.1 of a user (architecture §5.5); what the command does not say is cleared.
  */
 #[AsCommand(
     name: 'heidi:user:profile',
@@ -170,7 +166,7 @@ final readonly class UserProfileCommand
     }
 
     /**
-     * An option given empty says nothing, like an option not given.
+     * Empty says nothing.
      */
     private static function given(?string $value): ?string
     {

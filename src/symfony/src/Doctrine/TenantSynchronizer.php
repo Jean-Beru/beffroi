@@ -11,10 +11,8 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use LogicException;
 
 /**
- * Writes the row of the configured tenant: created on the first run, renamed when the configuration
- * renamed it, left alone otherwise. The slug is the identifier (TenantFactory), so a renamed slug is a
- * new row; the issuer never changes, because every token issued so far names it, so a changed issuer is
- * refused rather than rewritten. Provisioning, not a request: a console command and the fixtures call it.
+ * Writes the row of the configured tenant: created, renamed, or left alone. A changed issuer is refused,
+ * every token issued so far names it.
  */
 final readonly class TenantSynchronizer
 {

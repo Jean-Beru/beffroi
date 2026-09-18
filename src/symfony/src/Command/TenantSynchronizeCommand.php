@@ -12,9 +12,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The first step of a provisioning (architecture §5.3, §5.5): the row of the configured tenant, which every
- * user, key and token points at. Created on the first run, renamed when the configuration renamed it,
- * refused when the configuration changed its issuer.
+ * The first step of a provisioning (architecture §5.3, §5.5): the row of the configured tenant.
  */
 #[AsCommand(
     name: 'heidi:tenant:synchronize',

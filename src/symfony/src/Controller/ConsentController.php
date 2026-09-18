@@ -27,11 +27,8 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
- * The consent page of an interaction (architecture §4.3, §5.2). GET shows the client and the scopes
- * while a consent is still required; POST carries the answer, "allow" or "deny", with the CSRF token of
- * the form, and calls grantConsent() or deny(). Both resume the handler with the session the browser
- * holds, so that a session that ended between the two pages sends the user back to the login. The page
- * speaks the language the interaction recorded (architecture §5.7).
+ * The consent page of an interaction (architecture §4.3, §5.2): GET shows it, POST carries "allow" or
+ * "deny" with the CSRF token.
  */
 #[AsController]
 final readonly class ConsentController
@@ -113,7 +110,6 @@ final readonly class ConsentController
             $this->handler->deny($interaction);
         }
         if ($answer !== self::ANSWER_ALLOW || $session === null) {
-            // no answer, or a browser that lost its session in between: the same decision as a fresh visit
             return $this->handler->resume($interaction, $session, $context);
         }
 

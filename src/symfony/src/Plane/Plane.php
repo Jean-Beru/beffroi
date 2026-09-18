@@ -7,13 +7,8 @@ namespace Heidi\Bundle\Plane;
 use function str_starts_with;
 
 /**
- * The plane a process serves (architecture §5.2, §6). Every route of the bundle carries its plane in its
- * name: "heidi_interaction_*" is what the browser of the user calls (authorize, login, consent, logout),
- * "heidi_protocol_*" what the relying parties call server to server (discovery, jwks, token, userinfo,
- * introspection, revocation).
- * A process dedicated to one plane refuses the routes of the other with a 404, so that a flood on the
- * login cannot take "/token" and "/jwks" down with it, and a protocol process cannot be diverted to the
- * login. Read from HEIDI_PLANE; "all" serves both, which is what development and a single process do.
+ * The plane a process serves, read from HEIDI_PLANE (architecture §5.2, §6): every route of the bundle
+ * carries its plane in its name, and a process dedicated to one refuses the routes of the other with a 404.
  */
 enum Plane: string
 {
@@ -26,8 +21,7 @@ enum Plane: string
     public const string PROTOCOL_ROUTE_PREFIX = 'heidi_protocol_';
 
     /**
-     * Whether this plane serves the named route. A route that is not one of the bundle's, whatever
-     * its name, belongs to the host application and is never refused here.
+     * A route that is not one of the bundle's is never refused.
      */
     public function serves(string $routeName): bool
     {

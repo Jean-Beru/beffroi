@@ -17,9 +17,7 @@ use function is_array;
 use function is_string;
 
 /**
- * A list of scopes in the form of the wire (RFC 6749 §3.3): space delimited, and a scope token never
- * contains a space, so the form is unambiguous and readable in a row. The list is never empty where it
- * is used; an empty string reads as an empty list all the same.
+ * A list of scopes in the form of the wire (RFC 6749 §3.3), space delimited.
  */
 final class ScopesType extends Type
 {

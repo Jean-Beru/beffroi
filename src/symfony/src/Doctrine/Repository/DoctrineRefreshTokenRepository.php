@@ -13,9 +13,8 @@ use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Refresh tokens in heidi_refresh_token (architecture §4.6), keyed by their hash, found by family, by the
- * code the family descends from and by session. A token of a client that is no longer registered is not
- * a token: it is not found and not listed.
+ * Refresh tokens in heidi_refresh_token (architecture §4.6). A token of a client no longer registered is
+ * not found and not listed.
  *
  * @extends DoctrineRepository<RefreshToken>
  */

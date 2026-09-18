@@ -16,12 +16,8 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerI
 use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
 /**
- * Where the browser goes after the form login of the firewall (architecture §5.2, §5.4): back to the
- * login page of the interaction it was on, in both cases. On success the page resumes the interaction
- * with the session the browser now holds and sends it on, to the consent page or to the client; on
- * failure the page shows the form again with one flat message, whatever the reason. The interaction
- * identifier travels in the query of the form action, so that no target path is read from the request
- * body or from a referer.
+ * After the form login of the firewall, success or failure, the browser goes back to the login page of
+ * its interaction (architecture §5.2, §5.4); no target path is read from the body or a referer.
  */
 final readonly class InteractionLoginHandler implements AuthenticationSuccessHandlerInterface, AuthenticationFailureHandlerInterface
 {
@@ -37,7 +33,7 @@ final readonly class InteractionLoginHandler implements AuthenticationSuccessHan
     }
 
     /**
-     * The failure is kept where the security component keeps it, for the login page to read once.
+     * Kept where the security component keeps it, for the login page to read once.
      */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response
     {

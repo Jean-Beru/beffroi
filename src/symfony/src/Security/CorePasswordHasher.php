@@ -20,14 +20,8 @@ use Symfony\Component\PasswordHasher\Exception\InvalidPasswordException;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
 
 /**
- * The password hasher of Symfony for the users of the bundle, bridged to the hasher of the core
- * (architecture §5.4): the firewall verifies with it and asks it whether a hash needs a rehash, and every
- * answer comes from the port of the core, so that the policy is one, wherever a password is checked.
- *
- * The security component handles a hash as one string; a hash of the core is typed by its algorithm and
- * may carry parameters an import keeps apart from the digest (decision 0002). The string the component
- * sees is the JSON of the three, written and read here only: it lives in a token for the time of a
- * request and never reaches a row.
+ * The password hasher of Symfony bridged to the hasher of the core (architecture §5.4). The string the
+ * component sees is the JSON of a typed hash (decision 0002), written and read here only.
  */
 final readonly class CorePasswordHasher implements PasswordHasherInterface
 {
@@ -81,8 +75,7 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
     }
 
     /**
-     * Null when the string is not one encode() wrote: the component then treats the password as wrong,
-     * it never guesses an algorithm.
+     * Null when the string is not one encode() wrote; no algorithm is guessed.
      */
     public static function decode(string $encoded): ?PasswordHash
     {

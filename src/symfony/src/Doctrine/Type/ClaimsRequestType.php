@@ -20,9 +20,7 @@ use const JSON_UNESCAPED_UNICODE;
 use JsonException;
 
 /**
- * The "claims" parameter of an authorization request (OIDC Core §5.5), stored in the JSON form the client
- * sent it in and read back by the parser of the module: what the store holds is what the wire carries,
- * and nothing is guessed on the way back.
+ * The "claims" parameter (OIDC Core §5.5), stored in the JSON form of the wire and read back by the parser of the module.
  */
 final class ClaimsRequestType extends Type
 {
@@ -71,7 +69,7 @@ final class ClaimsRequestType extends Type
     /**
      * @param array<string, ClaimRequest> $claims
      *
-     * @return array<string, array<string, mixed>|null>|object an empty object, so that the member decodes as an object and not as a list
+     * @return array<string, array<string, mixed>|null>|object an empty object decodes as an object, not a list
      */
     private static function member(array $claims): array|object
     {

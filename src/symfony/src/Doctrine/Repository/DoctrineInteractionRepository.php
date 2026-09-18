@@ -10,8 +10,8 @@ use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 
 /**
- * Interactions in heidi_interaction (architecture §4.3). An interaction whose client is no longer
- * registered is not found: there is nothing to resume it for.
+ * Interactions in heidi_interaction (architecture §4.3). An interaction of a client no longer registered
+ * is not found.
  *
  * @extends DoctrineRepository<Interaction>
  */

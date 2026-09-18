@@ -28,20 +28,10 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The bridge between a login of the firewall and a session of the core (architecture §3.2, §5.4). The
- * firewall verified the credentials; what the core needs is a session that says who, since when, how and
- * from where: it is opened here, with the proof the passport carried, the request context, and a
- * lifetime; the browser is bound to it (BrowserSession) and its pending interactions stay with it.
- *
- * A user who signs in again in a browser already bound to their session, because a client asked for a
- * fresh login (prompt=login, max_age), does not open a second session: the proof is recorded on the one
- * they have, which moves its auth_time and leaves the tokens issued on it alone. A browser bound to the
- * session of someone else ends that session first: two users do not share a cookie.
- *
- * The proofs of the session are copied into the token of Symfony (symfony/symfony#66064), method by
- * method with the moment each was last proven, so that what the firewall calls recent
- * (IS_AUTHENTICATED_RECENTLY, symfony/symfony#66014) and what OIDC Core §2 calls auth_time are read
- * from one record; the most recent entry is that auth_time.
+ * Opens the session of the core after a login of the firewall and binds the browser to it (architecture
+ * §3.2, §5.4). A re-login records a proof on the session the browser holds rather than opening another;
+ * a browser bound to someone else's session ends it first. The proofs are copied into the token of
+ * Symfony (symfony/symfony#66064).
  */
 final readonly class LoginSuccessListener
 {
@@ -106,9 +96,7 @@ final readonly class LoginSuccessListener
     }
 
     /**
-     * What was proven, from what the passport carried: a password today. A firewall that authenticates
-     * a user of the bundle another way must say how, or the session would claim a method it has no
-     * proof of; until it can, it is refused loudly rather than recorded wrongly.
+     * A firewall that authenticates another way is refused loudly rather than recorded wrongly.
      */
     private static function method(Passport $passport): AuthenticationMethod
     {

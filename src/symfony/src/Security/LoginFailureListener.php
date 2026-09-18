@@ -21,10 +21,8 @@ use Symfony\Component\Security\Http\Event\LoginFailureEvent;
 use Throwable;
 
 /**
- * A login the firewall refused, announced to the core the way the core announces its own refusals
- * (AuthenticationFailed, architecture §3.4, §3.5): the reason, the identifier as typed and the user it
- * named, when it named one, go to the audit trail; the user is told nothing more than "failed". Only
- * the login page of the bundle is listened to: the failures of a host application are its own.
+ * A login the firewall refused, announced as AuthenticationFailed (architecture §3.4, §3.5). Only the
+ * login page of the bundle is listened to.
  */
 final readonly class LoginFailureListener
 {
@@ -61,9 +59,7 @@ final readonly class LoginFailureListener
     }
 
     /**
-     * The reason the firewall hides from the user: an unknown user and a disabled account are wrapped in
-     * "bad credentials" before they reach here, the cause is behind it. Anything else (a form token, a
-     * malformed request) is not an attempt on an account and is not recorded as one.
+     * The cause behind "bad credentials"; anything else is not an attempt on an account.
      */
     private static function reason(AuthenticationException $exception, Passport $passport): ?AuthenticationFailureReason
     {
@@ -87,8 +83,7 @@ final readonly class LoginFailureListener
     }
 
     /**
-     * The user the passport loaded, when it loaded one of the bundle; the badge is not asked to load
-     * again what it could not load the first time.
+     * The badge is not asked to load again what it could not load the first time.
      */
     private static function securityUser(Passport $passport): ?SecurityUser
     {

@@ -14,10 +14,8 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Sessions in heidi_authentication_session (architecture §3.2, §3.4). An active session has not ended
- * and has not expired at the instant given, the same rule as AuthenticationSession::isActive(). A DQL
- * parameter that is an identifier names its type: the ORM infers a string from a Uuid and a string is not
- * what a platform without a native uuid stores.
+ * Sessions in heidi_authentication_session (architecture §3.2, §3.4). A DQL parameter that is an
+ * identifier names its type: the ORM would infer a string from a Uuid.
  *
  * @extends DoctrineRepository<AuthenticationSession>
  */

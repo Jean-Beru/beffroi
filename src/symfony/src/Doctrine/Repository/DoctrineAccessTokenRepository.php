@@ -19,9 +19,8 @@ use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The access tokens the provider keeps, in heidi_access_token (architecture §4.6), keyed by their hash,
- * removed one at a time, by grant and by session. A token of a client that is no longer registered is not a token: it is not found, and
- * it is removed with the others without being listed.
+ * Opaque access tokens in heidi_access_token (architecture §4.6). A token of a client no longer registered
+ * is not found, and removed without being listed.
  *
  * @extends DoctrineRepository<StoredAccessToken>
  */
@@ -70,12 +69,9 @@ final readonly class DoctrineAccessTokenRepository extends DoctrineRepository im
     }
 
     /**
-     * The rows are loaded before they go: the caller announces what was revoked, and a row of an
-     * unregistered client goes with the others without being announced.
-     *
      * @param array<string, mixed> $criteria
      *
-     * @return list<StoredAccessToken>
+     * @return list<StoredAccessToken> the rows removed, those of an unregistered client left out
      */
     private function removeMatching(array $criteria): array
     {

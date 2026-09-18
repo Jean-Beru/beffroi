@@ -18,9 +18,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * RFC 6749 §3.2: the token endpoint, POST only, the client credentials in the Authorization header or in
- * the form body, the grant parameters in the form body. Success and errors are JSON (§5.1, §5.2), never
- * cached, never a redirect.
+ * The token endpoint (RFC 6749 §3.2), POST only; success and errors are JSON (§5.1, §5.2).
  */
 #[AsController]
 final readonly class TokenController

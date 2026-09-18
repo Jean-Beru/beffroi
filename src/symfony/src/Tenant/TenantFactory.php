@@ -10,14 +10,13 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The one tenant of spike 1, built from the "heidi.tenant" configuration (architecture §5.1). Its identifier
- * is derived from its slug, so that every process, every deployment and every row that will carry a
- * tenant_id agree on it without a database: renaming the slug is creating another tenant.
+ * The tenant of the "heidi.tenant" configuration (architecture §5.1); its identifier derives from its
+ * slug, so renaming the slug is creating another tenant.
  */
 final readonly class TenantFactory
 {
     /**
-     * RFC 9562 §6.6 name-based identifiers need a namespace; this one is fixed for the life of the project.
+     * RFC 9562 §6.6, fixed for the life of the project.
      */
     private const string NAMESPACE = '55ade059-fda4-45f4-96ca-43dc8ef74d3e';
 

@@ -9,9 +9,8 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * The twelfth table of the bundle (architecture §4.6, §5.3): the opaque access tokens, keyed by their hash,
- * found by grant and by session, which a replayed code, a logout and the revocation endpoint revoke.
- * Generated from the XML mapping against PostgreSQL 16 and kept equal to it by a test.
+ * The opaque access tokens (architecture §4.6, §5.3), generated from the XML mapping against PostgreSQL 16
+ * and kept equal to it by a test.
  */
 final class Version20260917180000 extends AbstractMigration
 {

@@ -9,10 +9,8 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * The first schema of the bundle (architecture §5.3): the eleven tables of the identity core and of the
- * OpenID Connect module, every one prefixed "heidi_", every one but the tenant carrying "tenant_id".
- * Generated from the XML mappings against PostgreSQL 16 and kept equal to them by a test; SQLite, the
- * platform of the functional tests, gets its schema from the mappings directly.
+ * The first schema of the bundle (architecture §5.3), generated from the XML mappings against PostgreSQL 16
+ * and kept equal to them by a test.
  */
 final class Version20260915171732 extends AbstractMigration
 {

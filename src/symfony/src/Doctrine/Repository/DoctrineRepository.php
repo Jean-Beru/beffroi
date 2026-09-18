@@ -12,10 +12,8 @@ use LogicException;
 use function sprintf;
 
 /**
- * What the Doctrine implementations of the ports share: the registry, from which the manager of the
- * entity class is taken at every call, so that a manager the kernel reset between two requests or two
- * messages is never held. The ports name find() with the identifier of the domain, which
- * EntityRepository::find() cannot narrow to, hence composition and not ServiceEntityRepository.
+ * What the Doctrine implementations of the ports share. The manager is taken from the registry at every
+ * call, never held; composition rather than ServiceEntityRepository, whose find() the ports cannot narrow.
  *
  * @template T of object
  */

@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Doctrine\Type;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 
 /**
- * A redirect URI as the client presented it (RFC 6749 §3.1.2), kept byte for byte because the token endpoint compares it again (RFC 6749 §4.1.3).
+ * A redirect URI as the client presented it (RFC 6749 §3.1.2), byte for byte.
  *
  * @extends StringObjectType<RedirectUri>
  */

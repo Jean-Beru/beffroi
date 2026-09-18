@@ -12,17 +12,14 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Refuses, with the same 404 an unknown path gets, the routes of the plane this process does not serve
- * (architecture §5.2). Runs right after the router has named the route and before the firewall, so that a
- * protocol process never starts a session, reads a cookie or hashes anything for a request it will not
- * answer. The plane is read from the environment at runtime: the same compiled container serves the
- * three roles of architecture §6.
+ * Refuses with a 404 the routes of the plane this process does not serve (architecture §5.2), after the
+ * router and before the firewall.
  */
 #[AsEventListener(event: KernelEvents::REQUEST, priority: self::PRIORITY)]
 final readonly class PlaneRequestListener
 {
     /**
-     * Just below the RouterListener (32), which sets the "_route" attribute, and above the firewall (8).
+     * Below the RouterListener (32), above the firewall (8).
      */
     public const int PRIORITY = 31;
 

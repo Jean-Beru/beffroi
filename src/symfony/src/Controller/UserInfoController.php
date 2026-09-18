@@ -19,9 +19,8 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * OIDC Core §5.3: the UserInfo endpoint, GET or POST, the bearer token in the Authorization header (RFC
- * 6750 §2.1) or in the form body of a POST (§2.2), never in the query string (§2.3): a GET hands the
- * module no parameter at all. Errors are the challenge of RFC 6750 §3, never a redirect.
+ * The UserInfo endpoint (OIDC Core §5.3), GET or POST; a GET hands the module no parameter at all
+ * (RFC 6750 §2.3).
  */
 #[AsController]
 final readonly class UserInfoController

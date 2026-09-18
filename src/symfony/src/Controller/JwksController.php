@@ -12,8 +12,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * RFC 7517 §5: the published keys of the tenant, the ones that verify its tokens. A read, cacheable for
- * the time the set says, not at all while it is empty.
+ * RFC 7517 §5: the published keys of the tenant.
  */
 #[AsController]
 final readonly class JwksController

@@ -12,15 +12,9 @@ use LogicException;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * The tenant of the current request or message: the row Doctrine manages, so that every user, session
- * and token can point at it, checked against the configuration it mirrors. The configuration is
- * provisioning input, TenantSynchronizer writes the row; a row that is missing or disagrees with the
- * configuration refuses to serve rather than serving one of the two.
- *
- * An entity is not a service: the instance is kept for one request or one message and forgotten when the
- * kernel resets its services or when the entity manager is cleared, because the next unit of work will not
- * know it. Nothing that lives longer than a request holds a Tenant, which is why ConfigurationClientRepository
- * takes the tenant at every call.
+ * The tenant of the current request or message: the row Doctrine manages, checked against the
+ * configuration. An entity is not a service: the instance is forgotten when the kernel resets or the
+ * entity manager is cleared.
  */
 final class TenantProvider implements ResetInterface
 {
@@ -56,10 +50,6 @@ final class TenantProvider implements ResetInterface
         return $this->tenant = $tenant;
     }
 
-    /**
-     * Forgets the instance: called by the kernel between two requests or two messages, and by Doctrine
-     * when the entity manager is cleared (the "onClear" event).
-     */
     public function reset(): void
     {
         $this->tenant = null;

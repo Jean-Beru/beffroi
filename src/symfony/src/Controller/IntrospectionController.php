@@ -19,11 +19,8 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * RFC 7662 §2: the introspection endpoint, POST only, the client credentials in the Authorization header
- * or in the form body, the token in the form body. The answer is JSON, or the signed JWT of RFC 9701
- * when the Accept header asks for its media type (§4), never cached, never a redirect. A failure to
- * authenticate the caller is the error of RFC 6749 §5.2 (§2.3), with the challenge when the header was
- * used.
+ * The introspection endpoint (RFC 7662 §2), POST only: JSON, or the signed JWT of RFC 9701 when the
+ * Accept header asks for it (§4).
  */
 #[AsController]
 final readonly class IntrospectionController
