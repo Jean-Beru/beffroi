@@ -63,6 +63,10 @@ services:
       target: frankenphp_dev
     restart: unless-stopped
     command: ["php", "bin/console", "messenger:consume", "scheduler_heidi", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
+    # The image checks Caddy; a worker is healthy while the consumer is its first process.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]
+      start_period: 30s
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-heidi}:${POSTGRES_PASSWORD:-heidi}@database:5432/${POSTGRES_DB:-heidi}?serverVersion=16&charset=utf8
       MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-heidi}:${RABBITMQ_PASSWORD:-heidi}@rabbitmq:5672/%2f/messages
