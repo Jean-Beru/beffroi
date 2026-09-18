@@ -123,6 +123,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('active', self::displayed($tester, 'Status'));
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $previous), self::flattened($tester));
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
+        static::assertStringContainsString(sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)), self::flattened($tester));
     }
 
     /**
@@ -167,6 +168,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $previous), self::flattened($tester));
         static::assertSame(KeyStatus::Active, self::key($staged)->status);
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
+        static::assertStringContainsString(sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)), self::flattened($tester));
     }
 
     /**
