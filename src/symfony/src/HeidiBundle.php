@@ -19,10 +19,12 @@ use Heidi\Bundle\Doctrine\Type\RedirectUriType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
@@ -116,6 +118,11 @@ final class HeidiBundle extends AbstractBundle
             ->integerNode('jwks_max_age')
             ->info('How long a relying party may cache the JWK Set, in seconds (RFC 7517 §5, architecture §4.8); the staging window of a rotation derives from it, so that the two cannot drift apart (§3.3).')
             ->defaultValue(JwksHandler::DEFAULT_MAX_AGE)
+            ->min(0)
+            ->end()
+            ->integerNode('staging_delay')
+            ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login, what a relying party with a warm cache needs to see the new key.')
+            ->defaultNull()
             ->min(0)
             ->end()
             ->end()
@@ -317,6 +324,11 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$directory', self::string($keys, 'storage'));
         $services->get(JwksHandler::class)
             ->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
+        // derived at runtime, once the environment placeholders are numbers
+        $services->get(SigningKeyRotator::class)
+            ->arg('$stagingDelay', inline_service(DateInterval::class)
+                ->factory(StagingDelay::interval(...))
+                ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]));
 
         $services->get(AuthorizationHandler::class)
             ->arg('$codeLifetime', self::seconds($tokens, 'authorization_code_ttl'));

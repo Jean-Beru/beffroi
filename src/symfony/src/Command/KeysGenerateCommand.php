@@ -6,11 +6,10 @@ namespace Heidi\Bundle\Command;
 
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
-use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
-use Psr\Clock\ClockInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -18,19 +17,23 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * A signing key for the tenant, sealed by the KMS and active at once (architecture §3.3, §5.5); run twice, a rotation.
+ * A signing key for the tenant, sealed by the KMS and active at once (architecture §3.3, §5.5): what
+ * "heidi:keys:rotate --now" does, kept under this name for the first key of a tenant; run twice, a
+ * rotation without a staging window.
  */
 #[AsCommand(
     name: 'heidi:keys:generate',
-    description: 'Generate a signing key, seal it with the configured KMS and make it the active one.',
+    description: 'Generate a signing key, seal it with the configured KMS and make it the active one at once; "heidi:keys:rotate" is the rotation without an outage.',
 )]
 final readonly class KeysGenerateCommand
 {
+    public const string NAME = 'heidi:keys:generate';
+
     public function __construct(
         private TenantProvider $tenants,
         private SigningKeyRepositoryInterface $keys,
         private SigningKeyRotator $rotator,
-        private ClockInterface $clock,
+        private RequestContextFactory $contexts,
     ) {
     }
 
@@ -48,7 +51,7 @@ final readonly class KeysGenerateCommand
         }
 
         $previous = $this->keys->findActive($tenant, $algorithm);
-        $key = $this->rotator->rotate($tenant, $algorithm, RequestContext::unknown($this->clock->now()));
+        $key = $this->rotator->rotate($tenant, $algorithm, $this->contexts->fromConsole(self::NAME));
 
         $io->definitionList(
             [

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Command;
 
 use function explode;
-use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Event\SigningKeyRotated;
@@ -22,12 +21,9 @@ use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use function preg_match;
 use function sprintf;
 use function str_repeat;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\UuidV4;
@@ -36,7 +32,7 @@ use Symfony\Component\Uid\UuidV4;
  * Architecture §5.5: a fresh application is provisioned from the console only, the tenant first, then a
  * key and a user; nothing else writes before the first login.
  */
-final class ProvisioningTest extends BrowserTestCase
+final class ProvisioningTest extends ConsoleTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
@@ -204,6 +200,13 @@ final class ProvisioningTest extends BrowserTestCase
     public static function provideCommandsThatNeedTheTenant(): iterable
     {
         yield 'heidi:keys:generate' => ['heidi:keys:generate', []];
+        yield 'heidi:keys:rotate' => ['heidi:keys:rotate', []];
+        yield 'heidi:keys:activate' => ['heidi:keys:activate', [
+            'kid' => 'nope',
+        ]];
+        yield 'heidi:keys:retire' => ['heidi:keys:retire', [
+            '--due' => true,
+        ]];
         yield 'heidi:keys:list' => ['heidi:keys:list', []];
         yield 'heidi:user:create' => ['heidi:user:create', [
             'username' => 'alice',
@@ -253,7 +256,7 @@ final class ProvisioningTest extends BrowserTestCase
 
     /**
      * Architecture §3.3: the key is staged then activated at once, both announced, with the context of a
-     * process that is no request.
+     * console that names its command and the user of the shell, and has no address.
      */
     #[Test]
     public function aGeneratedKeyIsAnnounced(): void
@@ -270,7 +273,7 @@ final class ProvisioningTest extends BrowserTestCase
         static::assertSame($kid, $events[1]->activated->kid);
         static::assertNull($events[1]->retiring);
         static::assertNull($events[1]->context->ipAddress);
-        static::assertNull($events[1]->context->userAgent);
+        static::assertStringStartsWith('heidi-console/heidi:keys:generate (', $events[1]->context->userAgent ?? '');
     }
 
     #[Test]
@@ -314,8 +317,8 @@ final class ProvisioningTest extends BrowserTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertMatchesRegularExpression(sprintf('/^\s*%s\s+RS256\s+retiring\s+2026-\S+\s+2026-\S+\s*$/m', $first), $tester->getDisplay());
-        static::assertMatchesRegularExpression(sprintf('/^\s*%s\s+RS256\s+active\s+2026-\S+\s*$/m', $second), $tester->getDisplay());
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retiring\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+Retiring since\s+2026-\S+\s+Retirement due at\s+2026-\S+/', $first), self::flattened($tester));
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+active\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+-/', $second), self::flattened($tester));
     }
 
     #[Test]
@@ -712,47 +715,6 @@ final class ProvisioningTest extends BrowserTestCase
         $this->browser->submit($crawler->selectButton('Allow')->form());
 
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
-    }
-
-    /**
-     * Runs a command of the bundle on the kernel of the test, what "bin/console" does; the inputs are the
-     * lines of the terminal, or of the standard input.
-     *
-     * @param array<string, string|bool> $input
-     * @param list<string> $inputs
-     */
-    private static function console(string $name, array $input = [], array $inputs = [], bool $interactive = true): CommandTester
-    {
-        $kernel = self::$kernel ?? static::fail('The kernel is not booted.');
-        $application = new Application($kernel);
-        $application->setAutoExit(false);
-        $tester = new CommandTester($application->find($name));
-        $tester->setInputs($inputs);
-        $tester->execute($input, [
-            'interactive' => $interactive,
-        ]);
-        self::reload();
-
-        return $tester;
-    }
-
-    /**
-     * The display as one line: what the console wrapped in a block is read as it was written.
-     */
-    private static function flattened(CommandTester $tester): string
-    {
-        return self::string(preg_replace('/\s*\n\s*!?\s*/', ' ', $tester->getDisplay(true)));
-    }
-
-    /**
-     * The value of a line of a definition list, as the console printed it.
-     */
-    private static function displayed(CommandTester $tester, string $label): string
-    {
-        $display = $tester->getDisplay(true);
-        static::assertSame(1, preg_match(sprintf('/^\s*%s\s+(\S.*?)\s*$/m', $label), $display, $matches), sprintf('"%s" is not displayed in: %s', $label, $display));
-
-        return $matches[1];
     }
 
     /**

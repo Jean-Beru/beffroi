@@ -110,7 +110,7 @@ final class JwkSetResponseTest extends TestCase
 
     private static function key(): SigningKey
     {
-        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now());
+        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
         $key->activate(Fixtures::now());
 
         return $key;

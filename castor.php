@@ -404,7 +404,7 @@ function provision(): void
     if (str_contains($keys, 'no published key')) {
         op_console(['heidi:keys:generate']);
     } else {
-        io()->note('A signing key is published already; "castor console heidi:keys:generate" rotates it.');
+        io()->note('A signing key is published already; "castor console heidi:keys:rotate" rotates it without an outage.');
     }
 
     io()

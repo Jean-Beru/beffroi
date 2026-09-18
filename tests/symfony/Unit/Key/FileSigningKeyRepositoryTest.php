@@ -66,7 +66,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now());
+        $key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
         $this->repository->save($key);
 
         // When
@@ -81,6 +81,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
         static::assertSame($key->sealedPrivateJwk, $found->sealedPrivateJwk);
         static::assertSame(Keys::pair()->privateJwk, Keys::sealer()->unseal($tenant, $found->sealedPrivateJwk));
         static::assertEquals(Fixtures::now(), $found->createdAt);
+        static::assertEquals(Fixtures::now()->modify('+6 minutes'), $found->activationDueAt);
         static::assertSame(KeyStatus::Staged, $found->status);
         static::assertNull($found->activatedAt);
         static::assertNull($found->retiringAt);
@@ -259,7 +260,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
         // Given
         $key = new SigningKey('../escape', Fixtures::tenant(), SignatureAlgorithm::RS256, [
             'kid' => '../escape',
-        ] + Keys::pair()->publicJwk, 'sealed', Fixtures::now());
+        ] + Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
 
         // Then
         $this->expectException(RuntimeException::class);
@@ -314,6 +315,9 @@ final class FileSigningKeyRepositoryTest extends TestCase
         ]), JSON_THROW_ON_ERROR)];
         yield 'a date that is not RFC 3339' => [json_encode(self::document([
             'created_at' => 'yesterday',
+        ]), JSON_THROW_ON_ERROR)];
+        yield 'a key without its activation due date' => [json_encode(self::document([
+            'activation_due_at' => null,
         ]), JSON_THROW_ON_ERROR)];
         yield 'an active key without its activation date' => [json_encode(self::document([
             'activated_at' => null,
@@ -404,6 +408,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
             'sealed_private_jwk' => base64_encode('sealed'),
             'status' => 'active',
             'created_at' => '2026-09-15T10:00:00.000+00:00',
+            'activation_due_at' => '2026-09-15T10:06:00.000+00:00',
             'activated_at' => '2026-09-15T10:06:00.000+00:00',
             'retiring_at' => null,
             'retirement_due_at' => null,
@@ -415,7 +420,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         return new SigningKey($kid, $tenant, SignatureAlgorithm::RS256, [
             'kid' => $kid,
-        ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now());
+        ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now(), $createdAt ?? Fixtures::now());
     }
 
     private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): SigningKey

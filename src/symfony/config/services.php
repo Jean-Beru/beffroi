@@ -23,6 +23,7 @@ use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Plane\PlaneRequestListener;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
+use Heidi\Bundle\Scheduler\HeidiSchedule;
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\IdentityUserProvider;
 use Heidi\Bundle\Security\InteractionLoginHandler;
@@ -134,6 +135,10 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle: the console (architecture §5.5)
     $services->load('Heidi\\Bundle\\Command\\', '../src/Command/');
+
+    // The bundle: the handlers of its own messages and what time does on its own (architecture §5.6)
+    $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
+    $services->set(HeidiSchedule::class);
 
     // The bundle: security (architecture §5.4); the application names these in its firewall
     $services->set(IdentityUserProvider::class);
