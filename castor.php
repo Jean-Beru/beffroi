@@ -269,17 +269,40 @@ function infect(
     ]);
 }
 
-#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens')]
+/**
+ * The KMS backends of the development stack, by the value "--kms" takes: the compose profile that runs
+ * the backend, none for a local one, and the scheme of the DSN "castor provision" writes for it.
+ */
+const KMS_BACKENDS = [
+    'sodium' => [
+        'profile' => null,
+        'scheme' => 'sodium',
+    ],
+    'vault' => [
+        'profile' => 'vault',
+        'scheme' => 'hashicorp-vault-transit',
+    ],
+];
+
+/**
+ * The compose profiles a task that stops or reads the whole stack must name.
+ */
+const COMPOSE_PROFILES = ['conformance', 'vault'];
+
+#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, whose Transit engine seals the signing keys once "castor provision --kms vault" ran')]
 function start(
     bool $conformance = false,
     bool $build = false,
     #[AsOption(description: 'The access token shape of the clients of the conformance suite: jwt (default) or opaque; the plans must be green with either')]
     ?string $accessTokenFormat = null,
+    #[AsOption(description: 'The KMS that seals the signing keys: sodium (default, in the process, nothing to start) or vault (HashiCorp Vault Transit, dev mode, initialised by docker/vault/init.sh)')]
+    string $kms = 'sodium',
 ): void {
     if ($accessTokenFormat !== null && ! in_array($accessTokenFormat, ['jwt', 'opaque'], true)) {
         io()->error(sprintf('Unknown access token format "%s"; the formats are jwt and opaque.', $accessTokenFormat));
         exit(1);
     }
+    $backend = kms_backend($kms);
     $command = ['docker', 'compose'];
     $environment = [];
     if ($conformance) {
@@ -287,6 +310,9 @@ function start(
         // A plan of a hundred requests has no use for a hundred profiles, and the toolbar has no place in
         // the pages the scripted browser of the suite reads.
         $environment['APP_PROFILER'] = '0';
+    }
+    if ($backend['profile'] !== null) {
+        $command = [...$command, '--profile', $backend['profile']];
     }
     if ($accessTokenFormat !== null) {
         $environment['CONFORMANCE_ACCESS_TOKEN_FORMAT'] = $accessTokenFormat;
@@ -297,19 +323,46 @@ function start(
     }
     run($command, context: context()->withEnvironment($environment));
     io()
-        ->success('OP: https://op.localhost' . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '') . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat)));
+        ->success('OP: https://op.localhost' . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '') . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat)) . ($kms === 'vault' ? ', Vault: http://localhost:8200 (dev mode, root token in compose.yaml); "castor provision --kms vault" seals the signing keys with it' : ''));
+}
+
+/**
+ * @return array{profile: ?string, scheme: string}
+ */
+function kms_backend(string $kms): array
+{
+    if (! isset(KMS_BACKENDS[$kms])) {
+        io()->error(sprintf('Unknown KMS "%s"; the backends are %s.', $kms, implode(' and ', array_keys(KMS_BACKENDS))));
+        exit(1);
+    }
+
+    return KMS_BACKENDS[$kms];
+}
+
+/**
+ * @return array<string>
+ */
+function compose_profiles(): array
+{
+    $options = [];
+    foreach (COMPOSE_PROFILES as $profile) {
+        $options[] = '--profile';
+        $options[] = $profile;
+    }
+
+    return $options;
 }
 
 #[AsTask(description: 'Stop the development stack')]
 function stop(): void
 {
-    run(['docker', 'compose', '--profile', 'conformance', 'down', '--remove-orphans']);
+    run(['docker', 'compose', ...compose_profiles(), 'down', '--remove-orphans']);
 }
 
 #[AsTask(description: 'Follow the logs of the development stack', ignoreValidationErrors: true)]
 function logs(#[AsRawTokens] array $args = []): void
 {
-    run(['docker', 'compose', '--profile', 'conformance', 'logs', '-f', ...$args]);
+    run(['docker', 'compose', ...compose_profiles(), 'logs', '-f', ...$args]);
 }
 
 #[AsTask(description: 'Run a Symfony console command of the application inside the op container', ignoreValidationErrors: true)]
@@ -384,14 +437,16 @@ const DEV_CLIENT_SECRETS = [
     'OIDC_DEMO_SECRET',
 ];
 
-#[AsTask(description: 'Provision the development OP after "castor start": the local KMS key and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a full profile and a password')]
-function provision(): void
-{
+#[AsTask(description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a full profile and a password')]
+function provision(
+    #[AsOption(description: 'The KMS to seal the signing keys with when apps/op/.env.local names none yet: sodium (default, a key generated in place) or vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault"); the backend already there is kept, switching is a change of KMS')]
+    ?string $kms = null,
+): void {
     io()->title('Provisioning the development OP');
 
     io()
         ->section('Development secrets');
-    $env = provision_env_local();
+    $env = provision_env_local($kms);
 
     io()
         ->section('Tenant');
@@ -444,6 +499,9 @@ function provision(): void
                 'JWKS' => $env['HEIDI_ISSUER'] . '/jwks',
             ],
             [
+                'KMS' => sprintf('%s, key %s', kms_backend_of($env['HEIDI_KMS_DSN']) ?? 'unknown', $env['HEIDI_KMS_KEY_ID']),
+            ],
+            [
                 'Username' => DEV_USERNAME,
             ],
             [
@@ -459,24 +517,54 @@ function provision(): void
 
 /**
  * Writes the development values apps/op/.env.local lacks and returns the environment of the application
- * once they are loaded: a sodium key for the KMS, one secret per client, the password of the development
- * user. An existing value is kept, whoever wrote it: the sealed signing keys depend on the KMS key.
+ * once they are loaded: the DSN of the KMS and the key it seals under (a sodium key generated in place, or
+ * a token minted on the Vault of the stack under the policy of the OP and the Transit key of the tenant),
+ * one secret per client, the password of the development user. An existing value is kept, whoever wrote
+ * it: the sealed signing keys depend on the KMS key, and a KMS is not switched by accident. The one
+ * exception is a Vault token that no longer works (the dev server forgets everything when it restarts): a
+ * new one is minted in its place, the key files are then for a Transit key that no longer exists.
  *
  * @return array<string, string>
  */
-function provision_env_local(): array
+function provision_env_local(?string $kms): array
 {
+    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $current = kms_backend_of($env['HEIDI_KMS_DSN'] ?? '');
+    if ($current !== null && $kms !== null && $kms !== $current) {
+        io()->error([
+            sprintf('%s seals the signing keys with %s; "--kms %s" is a change of KMS, which this task never does by itself.', DEV_ENV_LOCAL, $current, $kms),
+            sprintf('To switch: remove HEIDI_KMS_DSN and HEIDI_KMS_KEY_ID from %s, wipe the sealed keys ("docker compose exec op sh -c \"rm -rf var/keys/*\""), then run this task again with "--kms %s". The envelopes sealed by %s cannot be opened by %s; the relying parties see a new key.', DEV_ENV_LOCAL, $kms, $current, $kms),
+        ]);
+        exit(1);
+    }
+    $kms = $current ?? $kms ?? 'sodium';
+    kms_backend($kms);
+
     $generate = static fn (int $bytes): string => rtrim(strtr(base64_encode(random_bytes($bytes)), '+/', '-_'), '=');
-    $values = [
-        'HEIDI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
-        'HEIDI_KMS_KEY_ID' => static fn (): string => 'signing',
-        'HEIDI_DEV_USER_PASSWORD' => static fn (): string => $generate(24),
-    ];
+    $values = match ($kms) {
+        'sodium' => [
+            'HEIDI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
+            'HEIDI_KMS_KEY_ID' => static fn (): string => 'signing',
+        ],
+        // The scheme and the options of the bridge (symfony/hashicorp-vault-key-management, README): the
+        // token in the user component, the mount at its default, plain HTTP for the dev server.
+        'vault' => [
+            'HEIDI_KMS_DSN' => static fn (): string => 'hashicorp-vault-transit://' . vault_mint_op_token() . '@vault:8200?scheme=http',
+            'HEIDI_KMS_KEY_ID' => static fn (): string => 'heidi-{tenant}',
+        ],
+    };
+    $values['HEIDI_DEV_USER_PASSWORD'] = static fn (): string => $generate(24);
     foreach (DEV_CLIENT_SECRETS as $name) {
         $values[$name] = static fn (): string => $generate(32);
     }
 
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $path = getcwd() . '/' . DEV_ENV_LOCAL;
+    if ($current === 'vault' && ! vault_token_works(vault_token_of($env['HEIDI_KMS_DSN']))) {
+        io()->warning(sprintf('The Vault token of %s no longer works (the dev server forgets its tokens and its keys when it restarts): a new one is minted. The keys sealed before the restart cannot be opened any more; "castor console heidi:keys:rotate --compromised" replaces them.', DEV_ENV_LOCAL));
+        $env['HEIDI_KMS_DSN'] = $values['HEIDI_KMS_DSN']();
+        file_put_contents($path, (string) preg_replace('/^HEIDI_KMS_DSN=.*$/m', sprintf('HEIDI_KMS_DSN="%s"', $env['HEIDI_KMS_DSN']), (string) file_get_contents($path)));
+    }
+
     $lines = [];
     foreach ($values as $name => $value) {
         if (($env[$name] ?? '') !== '') {
@@ -491,13 +579,99 @@ function provision_env_local(): array
         return $env;
     }
 
-    $path = getcwd() . '/' . DEV_ENV_LOCAL;
     $existing = file_exists($path) ? rtrim((string) file_get_contents($path), "\n") . "\n\n" : '';
     file_put_contents($path, $existing . "###> castor provision ###\n" . implode("\n", $lines) . "\n###< castor provision ###\n");
     io()
         ->text(sprintf('Wrote %d development value(s) into %s.', count($lines), DEV_ENV_LOCAL));
 
     return $env;
+}
+
+/**
+ * The backend a KMS DSN names, by its scheme, or null when there is no DSN.
+ */
+function kms_backend_of(string $dsn): ?string
+{
+    if ($dsn === '') {
+        return null;
+    }
+    foreach (KMS_BACKENDS as $name => $backend) {
+        if (str_starts_with($dsn, $backend['scheme'] . '://')) {
+            return $name;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The token of a Vault DSN: its user component.
+ */
+function vault_token_of(string $dsn): string
+{
+    $token = parse_url($dsn, \PHP_URL_USER);
+    if (! is_string($token) || $token === '') {
+        io()->error(sprintf('The Vault DSN of %s carries no token.', DEV_ENV_LOCAL));
+        exit(1);
+    }
+
+    return $token;
+}
+
+/**
+ * Mints the credential of the OP on the Vault of the stack: a token under the policy "heidi-op" written by
+ * docker/vault/init.sh (data keys and decryption under the Transit keys of the tenants, the configuration
+ * of those keys, nothing else), with the root token of the dev server, which never reaches the OP.
+ */
+function vault_mint_op_token(): string
+{
+    $minted = vault_cli(['token', 'create', '-policy=heidi-op', '-no-default-policy', '-display-name=heidi-op', '-format=json']);
+    if (! $minted->isSuccessful()) {
+        io()->error(['The token of the OP could not be minted: is Vault running? "castor start --kms vault" starts it and initialises it.', trim($minted->getErrorOutput())]);
+        exit(1);
+    }
+    $token = json_decode($minted->getOutput(), true)['auth']['client_token'] ?? null;
+    if (! is_string($token) || $token === '') {
+        io()->error('Vault answered without a token.');
+        exit(1);
+    }
+    io()
+        ->text('Minted a token for the OP on Vault, under the policy "heidi-op".');
+
+    return $token;
+}
+
+/**
+ * Whether a token still opens a session on the Vault of the stack.
+ */
+function vault_token_works(string $token): bool
+{
+    return vault_cli(['token', 'lookup'], [
+        'VAULT_TOKEN' => $token,
+    ])->isSuccessful();
+}
+
+/**
+ * Runs the Vault CLI inside the vault container, with the root token of the dev server unless another one
+ * is given; the output is captured, never shown.
+ *
+ * @param array<string> $args
+ * @param array<string, string> $environment
+ */
+function vault_cli(array $args, array $environment = []): Process
+{
+    $options = [];
+    foreach ($environment as $name => $value) {
+        $options[] = '-e';
+        $options[] = $name . '=' . $value;
+    }
+
+    return run(
+        ['docker', 'compose', 'exec', '-T', ...$options, 'vault', 'vault', ...$args],
+        context: context()
+            ->withAllowFailure()
+            ->withQuiet(),
+    );
 }
 
 /**

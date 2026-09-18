@@ -111,6 +111,51 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  vault:
+    name: "5️⃣ Key custody (Vault Transit)"
+    needs: [tests]
+    # The bundle suite once more, the kernel sealing its signing keys with a Vault service instead of sodium
+    # (issue #57): the same tests, only the DSN changes. The service is prepared by the script of the
+    # development stack (docker/vault/init.sh) with the Vault CLI, and the tests hold a token minted under
+    # the policy of the OP, never the root token.
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/spomky-labs/phpqa:8.5
+    services:
+      vault:
+        image: hashicorp/vault:2.1
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: ci-root-token
+          VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+        options: --cap-add=IPC_LOCK
+    env:
+      VAULT_ADDR: http://vault:8200
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ramsey/composer-install@v4
+        with:
+          dependency-versions: highest
+          composer-options: --optimize-autoloader
+      - name: "Install the Vault CLI"
+        run: |
+          curl -fsSL -o "${RUNNER_TEMP}/vault.zip" https://releases.hashicorp.com/vault/2.1.1/vault_2.1.1_linux_amd64.zip
+          unzip -q -o "${RUNNER_TEMP}/vault.zip" -d "${RUNNER_TEMP}/vault-cli" vault
+          echo "${RUNNER_TEMP}/vault-cli" >> "$GITHUB_PATH"
+      - name: "Prepare Vault: the Transit engine, the key of the tenant, the policy of the OP"
+        run: sh docker/vault/init.sh
+        env:
+          VAULT_TOKEN: ci-root-token
+      - name: "Mint the token of the OP under its policy"
+        run: |
+          TOKEN=$(vault token create -policy=heidi-op -no-default-policy -display-name=heidi-op -field=token)
+          echo "::add-mask::$TOKEN"
+          echo "HEIDI_TEST_KMS_DSN=hashicorp-vault-transit://${TOKEN}@vault:8200?scheme=http" >> "$GITHUB_ENV"
+          echo "HEIDI_TEST_KMS_KEY_ID=heidi-{tenant}" >> "$GITHUB_ENV"
+        env:
+          VAULT_TOKEN: ci-root-token
+      - name: "Bundle suite against Vault"
+        run: castor phpunit -- --testsuite symfony --no-coverage
+
   conformance:
     name: "4️⃣ OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
     needs: [tests]
