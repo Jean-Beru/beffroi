@@ -121,7 +121,7 @@ final class HeidiBundle extends AbstractBundle
             ->min(0)
             ->end()
             ->integerNode('staging_delay')
-            ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login, what a relying party with a warm cache needs to see the new key.')
+            ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it.')
             ->defaultNull()
             ->min(0)
             ->end()
