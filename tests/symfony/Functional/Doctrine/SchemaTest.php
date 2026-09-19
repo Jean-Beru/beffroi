@@ -24,6 +24,7 @@ final class SchemaTest extends DatabaseTestCase
         'heidi_tenant',
         'heidi_user',
         'heidi_password_credential',
+        'heidi_passkey_credential',
         'heidi_linked_identity',
         'heidi_group',
         'heidi_group_membership',
@@ -62,7 +63,7 @@ final class SchemaTest extends DatabaseTestCase
      * Architecture §5.3: the tables of the bundle, every one prefixed "heidi_", and no other.
      */
     #[Test]
-    public function theBundleDeclaresItsTwelvePrefixedTables(): void
+    public function theBundleDeclaresItsThirteenPrefixedTables(): void
     {
         // When
         $tables = array_keys(self::tablesOfTheBundle());

@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Command;
 use function explode;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Event\SigningKeyRotated;
 use Heidi\Core\Domain\Event\SigningKeyStaged;
 use Heidi\Core\Domain\Identity\Subject;
@@ -596,7 +597,7 @@ final class ProvisioningTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($user) ?? static::fail('No credential was created.');
+        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
         static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
         static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD));
         static::assertFalse(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD . "\n"));
@@ -611,7 +612,7 @@ final class ProvisioningTest extends ConsoleTestCase
             'username' => 'alice',
             '--password-stdin' => true,
         ], ['first password']);
-        $first = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($user)->id ?? static::fail('No credential was created.');
+        $first = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0]->id ?? static::fail('No credential was created.');
         self::reload();
 
         // When
@@ -621,7 +622,7 @@ final class ProvisioningTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($user) ?? static::fail('The credential is gone.');
+        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
         static::assertTrue($first->equals($credential->id));
         static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'second password'));
         static::assertFalse(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'first password'));
@@ -644,7 +645,7 @@ final class ProvisioningTest extends ConsoleTestCase
         // Then
         static::assertSame($status, $tester->getStatusCode());
         static::assertStringContainsString($message, $tester->getDisplay());
-        static::assertNull(self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($user));
+        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
     }
 
     /**

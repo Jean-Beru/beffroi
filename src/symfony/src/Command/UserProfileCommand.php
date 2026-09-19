@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Command;
 
 use function array_filter;
+use function array_map;
+use DateTimeImmutable;
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Application\Identity\UserProvisioner;
+use Heidi\Core\Domain\Credential\Credential;
+use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Exception\InvalidArgumentException;
+use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use function implode;
 use function sprintf;
@@ -22,17 +27,19 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use function trim;
 
 /**
- * The standard claims of OIDC Core §5.1 of a user (architecture §5.5); what the command does not say is cleared.
+ * The standard claims of OIDC Core §5.1 of a user (architecture §5.5); what the command does not say is
+ * cleared. The credentials of the user are listed after, with their kind, name and dates.
  */
 #[AsCommand(
     name: 'heidi:user:profile',
-    description: 'Describe a user with the standard claims of OIDC Core section 5.1; what is not said is cleared.',
+    description: 'Describe a user with the standard claims of OIDC Core section 5.1, what is not said is cleared, and list the credentials of the user.',
 )]
 final readonly class UserProfileCommand
 {
     public function __construct(
         private TenantProvider $tenants,
         private UserRepositoryInterface $users,
+        private CredentialRepositoryInterface $credentials,
         private UserProvisioner $provisioner,
     ) {
     }
@@ -160,9 +167,31 @@ final readonly class UserProfileCommand
                 ], static fn (?string $member): bool => $member !== null)),
             ],
         );
+        $io->section('Credentials');
+        $credentials = $this->credentials->findByUser($user);
+        if ($credentials === []) {
+            $io->text('The user has no credential.');
+        } else {
+            $io->table(
+                ['Kind', 'Id', 'Name', 'Created', 'Last used', 'Revoked'],
+                array_map(static fn (Credential $credential): array => [
+                    $credential->kind(),
+                    $credential->id->toRfc4122(),
+                    $credential->label() ?? '',
+                    self::date($credential->createdAt),
+                    self::date($credential->lastUsedAt),
+                    $credential instanceof RevocableCredentialInterface ? self::date($credential->revokedAt) : '',
+                ], $credentials),
+            );
+        }
         $io->success(sprintf('The user "%s" is described.', $user->username));
 
         return Command::SUCCESS;
+    }
+
+    private static function date(?DateTimeImmutable $date): string
+    {
+        return $date?->format('Y-m-d H:i:s') ?? '';
     }
 
     /**

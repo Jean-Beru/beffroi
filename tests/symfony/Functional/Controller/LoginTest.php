@@ -122,7 +122,7 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // Then
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($this->boundSession()->user) ?? static::fail('The credential is gone.');
+        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($this->boundSession()->user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
         static::assertNotNull($credential->lastUsedAt);
     }
 
@@ -808,7 +808,7 @@ final class LoginTest extends BrowserTestCase
     {
         $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
 
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findPasswordCredential($managed) ?? static::fail('The credential is gone.');
+        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($managed, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
     }
 
     /**

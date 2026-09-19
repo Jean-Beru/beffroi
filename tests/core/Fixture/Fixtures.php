@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Fixture;
 
+use function chr;
 use DateTimeImmutable;
+use Heidi\Core\Domain\Credential\PasskeyCredential;
+use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -13,7 +16,9 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Domain\Tenant\Tenant;
+use function str_repeat;
 use Symfony\Component\Uid\Uuid;
+use Webauthn\AuthenticatorData;
 
 final class Fixtures
 {
@@ -38,6 +43,27 @@ final class Fixtures
         $authenticatedAt ??= self::now();
 
         return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
+    }
+
+    /**
+     * A device-bound passkey, unused, with a handle of its own unless one is given.
+     */
+    public static function passkey(?User $user = null, string $name = 'YubiKey 5', string $credentialId = 'credential-id', ?PasskeyUserHandle $userHandle = null, bool $backupEligible = false, bool $backedUp = false, ?DateTimeImmutable $createdAt = null): PasskeyCredential
+    {
+        return new PasskeyCredential(Uuid::v7(), $user ?? self::user(), $name, $credentialId, 'cose-public-key', 0, ['usb'], $backupEligible, $backedUp, Uuid::v4(), $userHandle ?? PasskeyUserHandle::generate(), $createdAt ?? self::now());
+    }
+
+    /**
+     * The authenticator data of an assertion (WebAuthn Level 3 §6.1), its flags chosen by the test.
+     */
+    public static function authenticatorData(bool $userPresent = true, bool $userVerified = false, bool $backupEligible = false, bool $backedUp = false, int $signCount = 0): AuthenticatorData
+    {
+        $flags = ($userPresent ? AuthenticatorData::FLAG_UP : 0)
+            | ($userVerified ? AuthenticatorData::FLAG_UV : 0)
+            | ($backupEligible ? AuthenticatorData::FLAG_BE : 0)
+            | ($backedUp ? AuthenticatorData::FLAG_BS : 0);
+
+        return AuthenticatorData::create('', str_repeat("\0", 32), chr($flags), $signCount);
     }
 
     public static function user(?Tenant $tenant = null, string $username = 'alice', string $subject = 'alice-subject'): User

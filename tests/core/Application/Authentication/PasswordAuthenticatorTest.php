@@ -101,7 +101,7 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
 
         // Then
-        static::assertEquals($this->clock->now(), $this->credentials->findPasswordCredential($this->alice)?->lastUsedAt);
+        static::assertEquals($this->clock->now(), $this->credentials->findByUser($this->alice, PasswordCredential::class)[0]->lastUsedAt);
     }
 
     #[Test]
@@ -305,7 +305,7 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
 
         // Then
-        $credential = $this->credentials->findPasswordCredential($carol);
+        $credential = $this->credentials->findByUser($carol, PasswordCredential::class)[0];
         static::assertSame(PasswordAlgorithm::Argon2id, $credential?->hash->algorithm);
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);
         static::assertTrue(new NativePasswordHasher()->verify($credential->hash, 'carol pass'));
@@ -324,7 +324,7 @@ final class PasswordAuthenticatorTest extends TestCase
 
         // Then
         static::assertCount(1, $this->events->of(PasswordRehashed::class));
-        static::assertSame($this->credentials->findPasswordCredential($carol), $this->events->of(PasswordRehashed::class)[0]->credential);
+        static::assertSame($this->credentials->findByUser($carol, PasswordCredential::class)[0], $this->events->of(PasswordRehashed::class)[0]->credential);
     }
 
     #[Test]

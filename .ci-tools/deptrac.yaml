@@ -46,6 +46,10 @@ deptrac:
     - name: 'Jose'
       collectors:
         - { type: classLike, value: '^Jose\\' }
+    - name: 'Webauthn'
+      collectors:
+        # webauthn-lib, the WebAuthn brick (docs/09-briques.md): the core reads its records and authenticator data, parses nothing
+        - { type: classLike, value: '^Webauthn\\' }
     - name: 'Symfony'
       collectors:
         # Everything of Symfony except the standalone components the pure-PHP packages may use, which have layers of their own above
@@ -60,15 +64,18 @@ deptrac:
     CoreDomain:
       - 'Psr'
       - 'Uid'
+      - 'Webauthn'
     CorePort:
       - 'CoreDomain'
       - 'Psr'
       - 'Uid'
+      - 'Webauthn'
     CoreApplication:
       - 'CoreDomain'
       - 'CorePort'
       - 'Psr'
       - 'Uid'
+      - 'Webauthn'
     CoreBridge:
       - 'CoreDomain'
       - 'CorePort'
@@ -77,6 +84,7 @@ deptrac:
       - 'KeyManagement'
       - 'Uid'
       - 'Jose'
+      - 'Webauthn'
     OidcDomain:
       - 'CoreDomain'
       - 'Psr'
@@ -118,5 +126,6 @@ deptrac:
       - 'KeyManagement'
       - 'Uid'
       - 'Jose'
+      - 'Webauthn'
       - 'Doctrine'
       - 'Twig'

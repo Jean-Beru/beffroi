@@ -17,6 +17,7 @@ use Doctrine\Migrations\Query\Query;
 use Doctrine\ORM\Tools\SchemaTool;
 use Heidi\Bundle\Migrations\Version20260915171732;
 use Heidi\Bundle\Migrations\Version20260917180000;
+use Heidi\Bundle\Migrations\Version20260919150000;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\NullLogger;
@@ -36,7 +37,7 @@ final class MigrationTest extends DatabaseTestCase
      *
      * @return list<class-string<AbstractMigration>>
      */
-    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class];
+    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class];
 
     #[Test]
     public function theMigrationsCreateWhatTheMappingsDescribeOnPostgreSql(): void
@@ -66,7 +67,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheTwelveTablesOfTheBundle(): void
+    public function theMigrationsCreateTheThirteenTablesOfTheBundle(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -78,7 +79,7 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(12, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(13, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**
@@ -101,6 +102,30 @@ final class MigrationTest extends DatabaseTestCase
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         foreach ($statements as $statement) {
             static::assertStringContainsString('heidi_access_token', $statement);
+        }
+        static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+    }
+
+    /**
+     * The third migration adds the one table of the passkeys and nothing else, so that a deployment of
+     * spike 2 upgrades by one table.
+     */
+    #[Test]
+    public function theThirdMigrationAddsThePasskeyTableAlone(): void
+    {
+        // Given
+        $migration = new Version20260919150000(DriverManager::getConnection([
+            'driver' => 'pdo_pgsql',
+            'serverVersion' => '16',
+        ]), new NullLogger());
+
+        // When
+        $migration->up(new Schema());
+
+        // Then
+        $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
+        foreach ($statements as $statement) {
+            static::assertStringContainsString('heidi_passkey_credential', $statement);
         }
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
