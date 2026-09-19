@@ -3,6 +3,7 @@
 #   docker compose up -d                          the OP on https://op.localhost and PostgreSQL
 #   docker compose --profile conformance up -d    plus the OpenID conformance suite on https://localhost:8443
 #   docker compose --profile vault up -d          plus HashiCorp Vault (dev mode), whose Transit engine seals the signing keys
+#   docker compose --profile aws up -d            plus LocalStack (KMS only), an AWS KMS on the desk that seals them the same way
 #
 # The OP answers on op.localhost for the browser (every *.localhost name is loopback) and for the
 # conformance suite container (network alias). Caddy issues the certificate from its internal CA;
@@ -44,6 +45,10 @@ services:
       # The sealed signing keys are files (architecture §3.3): the process that serves them and the process
       # that rotates them (the worker below) share the directory, or a rotation would change nothing here.
       - keys_data:/app/var/keys
+      # The key of the file backend ("castor provision --kms file", architecture §3.3): a directory of its own,
+      # outside the web root and outside the sealed keys, shared for the same reason; the process that rotates
+      # seals with it, the process that serves opens with it.
+      - kms_data:/app/var/kms
       - caddy_data:/data
       - caddy_config:/config
     ports:
@@ -92,6 +97,7 @@ services:
       - ./src:/src
       - /app/var/
       - keys_data:/app/var/keys
+      - kms_data:/app/var/kms
     depends_on:
       op:
         condition: service_healthy
@@ -131,6 +137,36 @@ services:
       - "${VAULT_PORT:-8200}:8200"
     volumes:
       - ./docker/vault:/init:ro
+
+  # AWS KMS on the desk (architecture §3.3, issue #58): LocalStack with the KMS service alone, the same bridge
+  # and the same envelope as against AWS, only the endpoint differs (host "localstack", scheme http). The
+  # version is the last one of the community edition, which LocalStack ended on 2026-03-23: every image
+  # since (2026.x) refuses to start without an account and an auth token, and its free tier is for
+  # non-commercial use. No persistence in this edition: a restart loses the key, and the envelopes sealed
+  # before it cannot be opened again, which "castor provision" notices. LocalStack runs
+  # docker/localstack/init.sh once it is ready, at every start, idempotent: the key of the tenant
+  # (SYMMETRIC_DEFAULT, ENCRYPT_DECRYPT) under the alias heidi-<slug>, which the DSN names; healthy once the
+  # alias resolves. The credentials are the "test" pair LocalStack accepts, with no IAM in this edition:
+  # what the key policy of a real account refuses is written in the CISO page, not proved here.
+  localstack:
+    image: localstack/localstack:${LOCALSTACK_VERSION:-4.14.0}
+    profiles: [aws]
+    environment:
+      SERVICES: kms
+      HEIDI_TENANT_SLUG: ${HEIDI_TENANT_SLUG:-default}
+      # The region of the DSN "castor provision --kms aws" writes; the image sets its own default, which
+      # the script and the healthcheck do not read.
+      KMS_REGION: ${KMS_REGION:-eu-west-3}
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal kms describe-key --region ${KMS_REGION:-eu-west-3} --key-id alias/heidi-${HEIDI_TENANT_SLUG:-default} >/dev/null"]
+      interval: 3s
+      timeout: 10s
+      retries: 30
+      start_period: 15s
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+    volumes:
+      - ./docker/localstack:/etc/localstack/init/ready.d:ro
 
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
@@ -233,6 +269,7 @@ services:
 
 volumes:
   keys_data:
+  kms_data:
   caddy_data:
   rabbitmq_data:
   caddy_config:
