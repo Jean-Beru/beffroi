@@ -1,0 +1,256 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Core\Tests\Bridge\Webauthn;
+
+use function array_map;
+use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
+use Heidi\Core\Domain\Credential\PasskeyUserHandle;
+use Heidi\Core\Domain\Identity\Profile;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Exception\PasskeyCeremonyFailedException;
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use function str_repeat;
+use function strlen;
+use Symfony\Component\Clock\MockClock;
+use Webauthn\PublicKeyCredentialCreationOptions;
+use Webauthn\PublicKeyCredentialDescriptor;
+use Webauthn\PublicKeyCredentialParameters;
+
+/**
+ * The registration ceremony of WebAuthn Level 3 §7.1 on webauthn-lib, answered by a software authenticator.
+ */
+final class WebauthnPasskeyRegistrarTest extends TestCase
+{
+    private Tenant $tenant;
+
+    private User $alice;
+
+    private WebauthnCeremonies $ceremonies;
+
+    private WebauthnPasskeyRegistrar $registrar;
+
+    protected function setUp(): void
+    {
+        $this->tenant = Fixtures::tenant();
+        $this->alice = Fixtures::user($this->tenant);
+        $this->ceremonies = new WebauthnCeremonies(new MockClock());
+        $this->registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
+    }
+
+    /**
+     * §5.4: the relying party is the tenant, the user entity carries the handle, a passkey is discoverable
+     * (§5.4.6), user verification preferred, no attestation asked for (§5.4.7).
+     */
+    #[Test]
+    public function theCreationOptionsAreThoseOfAPasskeyOfTheTenant(): void
+    {
+        // Given
+        $handle = PasskeyUserHandle::generate();
+
+        // When
+        $options = $this->registrar->creationOptions($this->alice, $handle, []);
+
+        // Then
+        static::assertSame('id.acme.example', $options->rp->id);
+        static::assertSame($handle->value, $options->user->id);
+        static::assertSame('alice', $options->user->name);
+        static::assertSame('alice', $options->user->displayName);
+        static::assertSame(32, strlen($options->challenge));
+        static::assertSame([-7, -257], array_map(static fn (PublicKeyCredentialParameters $parameters): int => $parameters->alg, $options->pubKeyCredParams));
+        static::assertSame('required', $options->authenticatorSelection?->residentKey);
+        static::assertSame('preferred', $options->authenticatorSelection->userVerification);
+        static::assertNull($options->authenticatorSelection->authenticatorAttachment);
+        static::assertSame('none', $options->attestation);
+        static::assertSame([], $options->excludeCredentials);
+    }
+
+    #[Test]
+    public function theDisplayNameIsTheNameOfTheProfileWhenThereIsOne(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(name: 'Alice Martin'), Fixtures::now());
+
+        // When
+        $options = $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+
+        // Then
+        static::assertSame('Alice Martin', $options->user->displayName);
+    }
+
+    #[Test]
+    public function eachCallDrawsAnotherChallenge(): void
+    {
+        // Given
+        $handle = PasskeyUserHandle::generate();
+
+        // When
+        $first = $this->registrar->creationOptions($this->alice, $handle, []);
+        $second = $this->registrar->creationOptions($this->alice, $handle, []);
+
+        // Then
+        static::assertNotSame($first->challenge, $second->challenge);
+    }
+
+    /**
+     * §5.4, excludeCredentials: the passkeys given, with their transports.
+     */
+    #[Test]
+    public function theExistingPasskeysAreExcluded(): void
+    {
+        // Given
+        $handle = PasskeyUserHandle::generate();
+        $existing = [Fixtures::passkey($this->alice, credentialId: 'first', userHandle: $handle), Fixtures::passkey($this->alice, credentialId: 'second', userHandle: $handle)];
+
+        // When
+        $options = $this->registrar->creationOptions($this->alice, $handle, $existing);
+
+        // Then
+        static::assertSame(['first', 'second'], array_map(static fn (PublicKeyCredentialDescriptor $descriptor): string => $descriptor->id, $options->excludeCredentials));
+        static::assertSame(['usb'], $options->excludeCredentials[0]->transports);
+    }
+
+    /**
+     * §7.1: the record of the new credential, the flags of the authenticator data kept.
+     */
+    #[Test]
+    #[DataProvider('provideAuthenticators')]
+    public function anAttestationOfTheTenantIsVerifiedIntoARecord(bool $backupEligible, bool $backedUp): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', backupEligible: $backupEligible, backedUp: $backedUp);
+        $options = $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+
+        // When
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+
+        // Then
+        static::assertSame($authenticator->credentialId, $record->publicKeyCredentialId);
+        static::assertSame($authenticator->cosePublicKey(), $record->credentialPublicKey);
+        static::assertSame($options->user->id, $record->userHandle);
+        static::assertSame('none', $record->attestationType);
+        static::assertSame(0, $record->counter);
+        static::assertSame($backupEligible, $record->backupEligible);
+        static::assertSame($backedUp, $record->backupStatus);
+        static::assertSame($authenticator->aaguid, $record->aaguid->toBinary());
+    }
+
+    /**
+     * @return iterable<string, array{bool, bool}>
+     */
+    public static function provideAuthenticators(): iterable
+    {
+        yield 'a hardware key' => [false, false];
+        yield 'a synced passkey' => [true, true];
+    }
+
+    #[Test]
+    public function anAttestationFromAnotherOriginIsRefused(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://phishing.example');
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+    }
+
+    #[Test]
+    public function anAttestationScopedToAnotherRelyingPartyIsRefused(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', relyingPartyId: 'acme.example');
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+    }
+
+    /**
+     * §7.1, step 8: the challenge of the response is the one of the options.
+     */
+    #[Test]
+    public function anAttestationOfAnotherChallengeIsRefused(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example');
+        $options = $this->creationOptions();
+        $response = $authenticator->create($this->ceremonies->optionsToJson($this->creationOptions()));
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $response);
+    }
+
+    /**
+     * §7.1, step 14: a user must be present at creation.
+     */
+    #[Test]
+    public function anAttestationWithoutUserPresenceIsRefused(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', userPresent: false);
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+    }
+
+    #[Test]
+    public function anAssertionIsNotAnAttestation(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example');
+        $options = $this->creationOptions();
+        $authenticator->create($this->ceremonies->optionsToJson($options));
+        $assertion = $authenticator->get('{"challenge":"' . str_repeat('A', 43) . '","rpId":"id.acme.example"}');
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIs('The response of the browser is not the attestation of a new passkey.');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $assertion);
+    }
+
+    #[Test]
+    public function aResponseThatIsNotACredentialIsRefused(): void
+    {
+        // Given
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The response of the browser cannot be read');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, 'not json');
+    }
+
+    private function creationOptions(): PublicKeyCredentialCreationOptions
+    {
+        return $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+    }
+}

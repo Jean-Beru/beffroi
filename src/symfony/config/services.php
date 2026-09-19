@@ -17,6 +17,8 @@ use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\PasskeyOptionsStore;
+use Heidi\Bundle\Http\PasskeysPage;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
@@ -29,6 +31,7 @@ use Heidi\Bundle\Security\IdentityUserProvider;
 use Heidi\Bundle\Security\InteractionLoginHandler;
 use Heidi\Bundle\Security\LoginFailureListener;
 use Heidi\Bundle\Security\LoginSuccessListener;
+use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
@@ -36,6 +39,8 @@ use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Application\Credential\CredentialRevocation;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Passkey\PasskeyAuthentication;
+use Heidi\Core\Application\Passkey\PasskeyEnrolment;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsSigner;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkKeyPairGenerator;
@@ -45,6 +50,9 @@ use Heidi\Core\Bridge\Null\NullGeoLocator;
 use Heidi\Core\Bridge\Null\NullUserAgentParser;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
+use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
+use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\GeoLocatorInterface;
@@ -52,6 +60,8 @@ use Heidi\Core\Port\JwsSignerInterface;
 use Heidi\Core\Port\JwsVerifierInterface;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
+use Heidi\Core\Port\PasskeyAuthenticatorInterface;
+use Heidi\Core\Port\PasskeyRegistrarInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
@@ -131,6 +141,8 @@ return static function (ContainerConfigurator $container): void {
             '$defaultLocale' => '%kernel.default_locale%',
         ]);
     $services->set(AuthorizationResponder::class);
+    $services->set(PasskeyOptionsStore::class);
+    $services->set(PasskeysPage::class);
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
 
@@ -148,6 +160,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(InteractionLoginHandler::class);
     $services->set(LoginSuccessListener::class);
     $services->set(LoginFailureListener::class);
+    $services->set(PasskeyLoginAuthenticator::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
     $services->set(TenantProvider::class)
@@ -203,6 +216,13 @@ return static function (ContainerConfigurator $container): void {
         ->args([tagged_iterator('heidi.password_hasher')]);
     $services->alias(PasswordHasherInterface::class, PasswordHasherRegistry::class);
 
+    // The core: the WebAuthn ceremonies on webauthn-lib (architecture §3.4)
+    $services->set(WebauthnCeremonies::class);
+    $services->set(WebauthnPasskeyRegistrar::class);
+    $services->alias(PasskeyRegistrarInterface::class, WebauthnPasskeyRegistrar::class);
+    $services->set(WebauthnPasskeyAuthenticator::class);
+    $services->alias(PasskeyAuthenticatorInterface::class, WebauthnPasskeyAuthenticator::class);
+
     // The core: request context enrichment (architecture §3.5)
     $services->set(NullGeoLocator::class);
     $services->alias(GeoLocatorInterface::class, NullGeoLocator::class);
@@ -211,6 +231,8 @@ return static function (ContainerConfigurator $container): void {
 
     // The core: use cases
     $services->set(PasswordAuthenticator::class);
+    $services->set(PasskeyEnrolment::class);
+    $services->set(PasskeyAuthentication::class);
     $services->set(CredentialRevocation::class);
     $services->set(SessionTerminator::class);
     $services->set(UserProvisioner::class);

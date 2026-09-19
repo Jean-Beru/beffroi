@@ -69,6 +69,10 @@ security:
                 csrf_token_id: authenticate
                 success_handler: Heidi\Bundle\Security\InteractionLoginHandler
                 failure_handler: Heidi\Bundle\Security\InteractionLoginHandler
+            # The passkey login on the same firewall: the assertion posted by the login page, one
+            # LoginSuccessListener for both (architecture §5.4).
+            custom_authenticators:
+                - Heidi\Bundle\Security\PasskeyLoginAuthenticator
 
 # SQLite in a file of the cache directory (architecture §7): a kernel reboot between two requests keeps the
 # rows, a fresh schema is created by the tests that need one. The mappings and the types of the bundle are

@@ -295,8 +295,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected function readHttpSession(): SessionInterface
     {
         $httpSession = self::service('session.factory', SessionFactoryInterface::class)->createSession();
-        $cookie = $this->browser->getCookieJar()
-            ->get($httpSession->getName()) ?? static::fail('The browser holds no session cookie.');
+        $cookie = $this->sessionCookie($httpSession->getName()) ?? static::fail('The browser holds no session cookie.');
         $httpSession->setId($cookie->getValue());
         $httpSession->start();
 
@@ -312,6 +311,22 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
+     * The session cookie the browser will send: the one the kernel set, which carries a domain, over the
+     * one a test wrote without one before any request, once a login migrated the session behind it.
+     */
+    private function sessionCookie(string $name): ?Cookie
+    {
+        $found = null;
+        foreach ($this->browser->getCookieJar()->all() as $cookie) {
+            if ($cookie->getName() === $name && ($found === null || $cookie->getDomain() !== '')) {
+                $found = $cookie;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * Writes an HTTP session the browser will present on its next request, through the same session
      * factory and storage the kernel uses.
      *
@@ -320,8 +335,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     private function httpSession(callable $write): void
     {
         $httpSession = self::service('session.factory', SessionFactoryInterface::class)->createSession();
-        $cookie = $this->browser->getCookieJar()
-            ->get($httpSession->getName());
+        $cookie = $this->sessionCookie($httpSession->getName());
         if ($cookie !== null) {
             $httpSession->setId($cookie->getValue());
         }

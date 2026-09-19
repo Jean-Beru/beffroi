@@ -145,6 +145,90 @@
         <source>error.invalid_request</source>
         <target>The application sent a request this provider cannot serve. Start again from the application.</target>
       </trans-unit>
+      <trans-unit id="276b888c75" resname="login.passkey">
+        <source>login.passkey</source>
+        <target>Use a passkey</target>
+      </trans-unit>
+      <trans-unit id="d88f3b782b" resname="login.passkey_failed">
+        <source>login.passkey_failed</source>
+        <target>The passkey could not be used. Try again, or sign in with your password.</target>
+      </trans-unit>
+      <trans-unit id="465d5b10ab" resname="passkeys.title">
+        <source>passkeys.title</source>
+        <target>Your passkeys</target>
+      </trans-unit>
+      <trans-unit id="de5f138c01" resname="passkeys.signed_in_as">
+        <source>passkeys.signed_in_as</source>
+        <target>Signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="81402f59a0" resname="passkeys.none">
+        <source>passkeys.none</source>
+        <target>You have no passkey yet.</target>
+      </trans-unit>
+      <trans-unit id="ef84f1b8d3" resname="passkeys.name">
+        <source>passkeys.name</source>
+        <target>Name</target>
+      </trans-unit>
+      <trans-unit id="1b6d07e1ac" resname="passkeys.created_at">
+        <source>passkeys.created_at</source>
+        <target>Created</target>
+      </trans-unit>
+      <trans-unit id="c5a67d1c58" resname="passkeys.last_used_at">
+        <source>passkeys.last_used_at</source>
+        <target>Last used</target>
+      </trans-unit>
+      <trans-unit id="09f630d338" resname="passkeys.never_used">
+        <source>passkeys.never_used</source>
+        <target>Never</target>
+      </trans-unit>
+      <trans-unit id="af1fd41fc5" resname="passkeys.state">
+        <source>passkeys.state</source>
+        <target>State</target>
+      </trans-unit>
+      <trans-unit id="63f5c7f0e8" resname="passkeys.active">
+        <source>passkeys.active</source>
+        <target>Active</target>
+      </trans-unit>
+      <trans-unit id="71000a07e6" resname="passkeys.revoked_at">
+        <source>passkeys.revoked_at</source>
+        <target>Revoked on {date}</target>
+      </trans-unit>
+      <trans-unit id="2ce8b47f35" resname="passkeys.revoke">
+        <source>passkeys.revoke</source>
+        <target>Revoke</target>
+      </trans-unit>
+      <trans-unit id="2879167539" resname="passkeys.new_name">
+        <source>passkeys.new_name</source>
+        <target>Name of the new passkey</target>
+      </trans-unit>
+      <trans-unit id="08af99ba89" resname="passkeys.enrol">
+        <source>passkeys.enrol</source>
+        <target>Add a passkey</target>
+      </trans-unit>
+      <trans-unit id="5b94e18bc6" resname="passkeys.unsupported">
+        <source>passkeys.unsupported</source>
+        <target>This browser cannot create a passkey.</target>
+      </trans-unit>
+      <trans-unit id="f86312f8a9" resname="passkeys.error.browser">
+        <source>passkeys.error.browser</source>
+        <target>The passkey could not be created. Try again.</target>
+      </trans-unit>
+      <trans-unit id="d3eb8fcaa3" resname="passkeys.error.invalid_name">
+        <source>passkeys.error.invalid_name</source>
+        <target>Give the passkey a name of 1 to 255 characters.</target>
+      </trans-unit>
+      <trans-unit id="769bbfbeaa" resname="passkeys.error.no_ceremony">
+        <source>passkeys.error.no_ceremony</source>
+        <target>No passkey was being created. Try again.</target>
+      </trans-unit>
+      <trans-unit id="c5d11b8713" resname="passkeys.error.refused">
+        <source>passkeys.error.refused</source>
+        <target>This provider refused the passkey. Try again with another one.</target>
+      </trans-unit>
+      <trans-unit id="f614d3c6a6" resname="error.login_required">
+        <source>error.login_required</source>
+        <target>Sign in first, from an application, then come back to this page.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
