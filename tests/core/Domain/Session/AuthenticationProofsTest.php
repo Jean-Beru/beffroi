@@ -95,6 +95,24 @@ final class AuthenticationProofsTest extends TestCase
         yield 'a presence check alone' => [AuthenticationProofs::of(new AuthenticationMethod('user'), $now), []];
     }
 
+    /**
+     * An assertion of a passkey proves several methods at once, all dated the same.
+     */
+    #[Test]
+    public function severalMethodsProvenAtOnceAreAllDatedTheSame(): void
+    {
+        // Given
+        $now = Fixtures::now();
+
+        // When
+        $proofs = AuthenticationProofs::ofAll([new AuthenticationMethod('hwk'), new AuthenticationMethod('user')], $now);
+
+        // Then
+        static::assertSame(['hwk', 'user'], $proofs->methodReferences());
+        static::assertSame($now, $proofs->provenAt(new AuthenticationMethod('user')));
+        static::assertSame($now, $proofs->latest());
+    }
+
     #[Test]
     public function itKnowsTheMethodsItHolds(): void
     {

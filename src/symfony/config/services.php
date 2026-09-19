@@ -33,6 +33,7 @@ use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SessionTerminator;
+use Heidi\Core\Application\Credential\CredentialRevocation;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsSigner;
@@ -210,6 +211,7 @@ return static function (ContainerConfigurator $container): void {
 
     // The core: use cases
     $services->set(PasswordAuthenticator::class);
+    $services->set(CredentialRevocation::class);
     $services->set(SessionTerminator::class);
     $services->set(UserProvisioner::class);
 

@@ -9,12 +9,14 @@ use DateInterval;
 use function dirname;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
+use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
 use Heidi\Bundle\Doctrine\Type\GeoLocationType;
 use Heidi\Bundle\Doctrine\Type\IssuerType;
+use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
@@ -238,6 +240,8 @@ final class HeidiBundle extends AbstractBundle
         ScopesType::NAME => ScopesType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
+        BytesType::NAME => BytesType::class,
+        PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
     ];
 
     /**

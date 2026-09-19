@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Security;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
+use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Event\PasswordRehashed;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Port\CredentialRepositoryInterface;
@@ -56,7 +57,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
             throw $exception;
         }
 
-        return new SecurityUser($user, $this->credentials->findPasswordCredential($user));
+        return new SecurityUser($user, $this->credentials->findByUser($user, PasswordCredential::class)[0] ?? null);
     }
 
     /**
@@ -75,7 +76,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
             throw $exception;
         }
 
-        return new SecurityUser($found, $this->credentials->findPasswordCredential($found));
+        return new SecurityUser($found, $this->credentials->findByUser($found, PasswordCredential::class)[0] ?? null);
     }
 
     public function supportsClass(string $class): bool

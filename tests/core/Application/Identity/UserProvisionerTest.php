@@ -10,6 +10,7 @@ use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Profile;
@@ -239,7 +240,7 @@ final class UserProvisionerTest extends TestCase
         $credential = $this->provisioner->setPassword($user, 'correct horse battery staple');
 
         // Then
-        static::assertSame($credential, $this->credentials->findPasswordCredential($user));
+        static::assertSame($credential, $this->credentials->findByUser($user, PasswordCredential::class)[0]);
         static::assertSame($user, $credential->user);
         static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
         static::assertTrue($this->hasher->verify($credential->hash, 'correct horse battery staple'));
@@ -280,7 +281,7 @@ final class UserProvisionerTest extends TestCase
         $this->provisioner->setPassword($user, 'éééééééé');
 
         // Then
-        static::assertNotNull($this->credentials->findPasswordCredential($user));
+        static::assertCount(1, $this->credentials->findByUser($user, PasswordCredential::class));
     }
 
     #[Test]
@@ -311,7 +312,7 @@ final class UserProvisionerTest extends TestCase
         }
 
         // Then
-        static::assertTrue($this->hasher->verify($this->credentials->findPasswordCredential($user)->hash ?? static::fail('The credential is gone.'), 'éééééééé'));
+        static::assertTrue($this->hasher->verify($this->credentials->findByUser($user, PasswordCredential::class)[0]->hash ?? static::fail('The credential is gone.'), 'éééééééé'));
     }
 
     #[Test]

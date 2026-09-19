@@ -31,6 +31,17 @@ final class PasswordCredentialTest extends TestCase
     }
 
     #[Test]
+    public function itNamesItsKindAndHasNoLabel(): void
+    {
+        // Given
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+
+        // When / Then
+        static::assertSame('password', $credential->kind());
+        static::assertNull($credential->label());
+    }
+
+    #[Test]
     public function itRecordsWhenItWasUsed(): void
     {
         // Given

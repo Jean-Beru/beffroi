@@ -6,6 +6,7 @@ namespace Heidi\Core\Tests\Bridge\InMemory;
 
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
@@ -82,38 +83,78 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     #[Test]
-    public function aUserWithoutCredentialHasNoPasswordCredential(): void
+    public function aUserWithoutCredentialHasNone(): void
     {
         // Given
         $repository = new InMemoryCredentialRepository();
 
         // When / Then
-        static::assertNull($repository->findPasswordCredential($this->alice));
+        static::assertSame([], $repository->findByUser($this->alice, PasswordCredential::class));
     }
 
     #[Test]
-    public function thePasswordCredentialOfAUserIsFoundAmongThoseOfOtherUsers(): void
+    public function theCredentialsOfAKindAreFoundAmongThoseOfOtherUsersAndKinds(): void
     {
         // Given
         $repository = new InMemoryCredentialRepository();
         $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
         $repository->save($password);
+        $repository->save(Fixtures::passkey($this->alice));
         $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
 
         // When / Then
-        static::assertSame($password, $repository->findPasswordCredential($this->alice));
+        static::assertSame([$password], $repository->findByUser($this->alice, PasswordCredential::class));
     }
 
     #[Test]
-    public function theCredentialsOfAUserAreListedWithoutThoseOfOtherUsers(): void
+    public function theCredentialsOfAUserAreListedOldestFirstWithoutThoseOfOtherUsers(): void
+    {
+        // Given
+        $repository = new InMemoryCredentialRepository();
+        $passkey = Fixtures::passkey($this->alice, createdAt: Fixtures::now()->modify('-1 day'));
+        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+        $repository->save($password);
+        $repository->save($passkey);
+        $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
+
+        // When / Then
+        static::assertSame([$passkey, $password], $repository->findByUser($this->alice));
+    }
+
+    #[Test]
+    public function aCredentialIsFoundByItsIdentifierWhateverItsKind(): void
+    {
+        // Given
+        $repository = new InMemoryCredentialRepository();
+        $passkey = Fixtures::passkey($this->alice);
+        $repository->save($passkey);
+
+        // When / Then
+        static::assertSame($passkey, $repository->find($passkey->id));
+        static::assertNull($repository->find(Uuid::v7()));
+    }
+
+    #[Test]
+    public function aPasskeyIsFoundByItsCredentialIdWithinItsTenant(): void
+    {
+        // Given
+        $repository = new InMemoryCredentialRepository();
+        $passkey = Fixtures::passkey($this->alice, credentialId: 'credential-of-alice');
+        $repository->save($passkey);
+
+        // When / Then
+        static::assertSame($passkey, $repository->findByExternalId($this->tenant, PasskeyCredential::class, 'credential-of-alice'));
+        static::assertNull($repository->findByExternalId($this->other, PasskeyCredential::class, 'credential-of-alice'));
+    }
+
+    #[Test]
+    public function aPasswordIsNeverFoundByAnExternalIdentifier(): void
     {
         // Given
         $repository = new InMemoryCredentialRepository();
         $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now()));
-        $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$z'), Fixtures::now()));
-        $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
 
         // When / Then
-        static::assertCount(2, $repository->findByUser($this->alice));
+        static::assertNull($repository->findByExternalId($this->tenant, PasswordCredential::class, '$argon2id$x'));
     }
 }

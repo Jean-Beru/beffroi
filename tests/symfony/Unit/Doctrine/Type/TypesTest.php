@@ -18,10 +18,12 @@ use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
 use Heidi\Bundle\Doctrine\Type\GeoLocationType;
 use Heidi\Bundle\Doctrine\Type\IssuerType;
+use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\HeidiBundle;
+use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Subject;
@@ -41,6 +43,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
+use function str_repeat;
 
 /**
  * Architecture §5.3: every value object a column holds as one value goes to the database and comes back
@@ -72,6 +75,7 @@ final class TypesTest extends TestCase
             'auth_time' => new ClaimRequest(true, 1789000000),
         ]), '{"userinfo":{"email":{"essential":true},"name":null},"id_token":{"acr":{"values":["silver","gold"]},"auth_time":{"essential":true,"value":1789000000}}}'];
         yield 'claims request asking for nothing' => [ClaimsRequestType::class, new ClaimsRequest(), '{"userinfo":{},"id_token":{}}'];
+        yield 'passkey user handle' => [PasskeyUserHandleType::class, new PasskeyUserHandle(str_repeat("\xff", 64)), str_repeat('_', 85) . 'w'];
     }
 
     /**
@@ -140,6 +144,7 @@ final class TypesTest extends TestCase
             'pwd' => 1,
         ]];
         yield 'a string for a claims request' => [ClaimsRequestType::class, '{}'];
+        yield 'a string for a user handle' => [PasskeyUserHandleType::class, str_repeat('h', 64)];
     }
 
     /**
@@ -189,6 +194,8 @@ final class TypesTest extends TestCase
         yield 'a claims request that is a list' => [ClaimsRequestType::class, '[1]'];
         yield 'a claims request with a string essential' => [ClaimsRequestType::class, '{"userinfo":{"email":{"essential":"true"}}}'];
         yield 'a claims request that is not a string' => [ClaimsRequestType::class, 12];
+        yield 'a user handle of 63 bytes' => [PasskeyUserHandleType::class, str_repeat('a', 84)];
+        yield 'a user handle that is not base64url' => [PasskeyUserHandleType::class, str_repeat('*', 86)];
     }
 
     /**
@@ -271,10 +278,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresElevenTypes(): void
+    public function theBundleDeclaresThirteenTypes(): void
     {
         // When / Then
-        static::assertCount(11, HeidiBundle::DBAL_TYPES);
+        static::assertCount(13, HeidiBundle::DBAL_TYPES);
     }
 
     /**
