@@ -8,6 +8,7 @@ use function array_map;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\PasskeyCeremonyFailedException;
 use Heidi\Core\Port\PasskeyRegistrarInterface;
 use function str_repeat;
@@ -66,7 +67,7 @@ final class FakePasskeyRegistrar implements PasskeyRegistrarInterface
         );
     }
 
-    public function verifyAttestation(PublicKeyCredentialCreationOptions $options, string $response): CredentialRecord
+    public function verifyAttestation(Tenant $tenant, PublicKeyCredentialCreationOptions $options, string $response): CredentialRecord
     {
         if ($this->refusal !== null) {
             throw new PasskeyCeremonyFailedException($this->refusal);

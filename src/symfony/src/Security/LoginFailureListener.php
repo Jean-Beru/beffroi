@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Security;
 
+use Heidi\Bundle\Controller\PasskeyLoginController;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Domain\Event\AuthenticationFailed;
@@ -21,8 +22,8 @@ use Symfony\Component\Security\Http\Event\LoginFailureEvent;
 use Throwable;
 
 /**
- * A login the firewall refused, announced as AuthenticationFailed (architecture §3.4, §3.5). Only the
- * login page of the bundle is listened to.
+ * A login the firewall refused, with a password or with a passkey, announced as AuthenticationFailed
+ * (architecture §3.4, §3.5). Only the two login routes of the bundle are listened to.
  */
 final readonly class LoginFailureListener
 {
@@ -37,13 +38,13 @@ final readonly class LoginFailureListener
     public function onLoginFailure(LoginFailureEvent $event): void
     {
         $request = $event->getRequest();
-        $passport = $event->getPassport();
-        $badge = $passport?->getBadge(UserBadge::class);
-        if ($request->attributes->get('_route') !== 'heidi_interaction_login' || $passport === null || ! $badge instanceof UserBadge) {
-            return;
-        }
-        $reason = self::reason($event->getException(), $passport);
-        if ($reason === null) {
+        $route = $request->attributes->get('_route');
+        $failure = match ($route) {
+            'heidi_interaction_login' => self::passwordFailure($event->getException(), $event->getPassport()),
+            PasskeyLoginController::ROUTE => self::passkeyFailure($event->getException(), $event->getPassport()),
+            default => null,
+        };
+        if ($failure === null) {
             return;
         }
         $context = $this->contexts->fromRequest($request);
@@ -51,17 +52,56 @@ final readonly class LoginFailureListener
             $context->receivedAt,
             $this->tenants->provide(),
             $context,
-            AuthenticationMethod::password(),
-            $reason,
-            $badge->getUserIdentifier(),
-            $reason === AuthenticationFailureReason::UnknownUser ? null : self::securityUser($passport)?->user(),
+            $failure->method,
+            $failure->reason,
+            $failure->identifier,
+            $failure->user,
         ));
     }
 
     /**
      * The cause behind "bad credentials"; anything else is not an attempt on an account.
      */
-    private static function reason(AuthenticationException $exception, Passport $passport): ?AuthenticationFailureReason
+    private static function passwordFailure(AuthenticationException $exception, ?Passport $passport): ?LoginFailure
+    {
+        $badge = $passport?->getBadge(UserBadge::class);
+        if ($passport === null || ! $badge instanceof UserBadge) {
+            return null;
+        }
+        $user = self::securityUser($passport);
+        $reason = self::reasonBehind($exception);
+        if ($reason === null) {
+            if (! $exception instanceof BadCredentialsException || $user === null) {
+                return null;
+            }
+            $reason = $user->getPassword() === null ? AuthenticationFailureReason::NoSuchCredential : AuthenticationFailureReason::InvalidCredential;
+        }
+
+        return new LoginFailure(AuthenticationMethod::password(), $reason, $badge->getUserIdentifier(), $reason === AuthenticationFailureReason::UnknownUser ? null : $user?->user());
+    }
+
+    /**
+     * What the authenticator of the bundle refused, with the reason it gave, or the account the checker
+     * refused after the signature; nothing was typed, the identifier is null. A request without a pending
+     * ceremony, without an assertion or without its form token is not an attempt on an account.
+     */
+    private static function passkeyFailure(AuthenticationException $exception, ?Passport $passport): ?LoginFailure
+    {
+        for ($cause = $exception; $cause instanceof Throwable; $cause = $cause->getPrevious()) {
+            if ($cause instanceof PasskeyLoginException) {
+                return new LoginFailure($cause->method, $cause->reason, null, $cause->user);
+            }
+        }
+        $passkey = $passport?->getBadge(PasskeyCredentials::class);
+        if (! $passkey instanceof PasskeyCredentials || self::reasonBehind($exception) !== AuthenticationFailureReason::DisabledUser) {
+            return null;
+        }
+        $credential = $passkey->assertion->credential;
+
+        return new LoginFailure($credential->methods($passkey->assertion->authenticatorData)[0], AuthenticationFailureReason::DisabledUser, null, $credential->user);
+    }
+
+    private static function reasonBehind(AuthenticationException $exception): ?AuthenticationFailureReason
     {
         for ($cause = $exception; $cause instanceof Throwable; $cause = $cause->getPrevious()) {
             if ($cause instanceof UserNotFoundException) {
@@ -71,15 +111,8 @@ final readonly class LoginFailureListener
                 return AuthenticationFailureReason::DisabledUser;
             }
         }
-        if (! $exception instanceof BadCredentialsException) {
-            return null;
-        }
-        $user = self::securityUser($passport);
-        if ($user === null) {
-            return null;
-        }
 
-        return $user->getPassword() === null ? AuthenticationFailureReason::NoSuchCredential : AuthenticationFailureReason::InvalidCredential;
+        return null;
     }
 
     /**

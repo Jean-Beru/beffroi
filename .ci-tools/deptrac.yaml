@@ -48,12 +48,17 @@ deptrac:
         - { type: classLike, value: '^Jose\\' }
     - name: 'Webauthn'
       collectors:
-        # webauthn-lib, the WebAuthn brick (docs/09-briques.md): the core reads its records and authenticator data, parses nothing
+        # webauthn-lib and cose-lib, the WebAuthn brick (docs/09-briques.md): the core reads its records and authenticator data, parses nothing; its Bridge runs the ceremonies on it
         - { type: classLike, value: '^Webauthn\\' }
+        - { type: classLike, value: '^Cose\\' }
+    - name: 'Serializer'
+      collectors:
+        # The serializer webauthn-lib reads the responses of the browser with and writes the options for it; a dependency of the brick, used by the Bridge of the core only through it
+        - { type: classLike, value: '^Symfony\\Component\\Serializer\\' }
     - name: 'Symfony'
       collectors:
         # Everything of Symfony except the standalone components the pure-PHP packages may use, which have layers of their own above
-        - { type: classLike, value: '^Symfony\\(?!Component\\(?:Uid|KeyManagement)\\)' }
+        - { type: classLike, value: '^Symfony\\(?!Component\\(?:Uid|KeyManagement|Serializer)\\)' }
     - name: 'Doctrine'
       collectors:
         - { type: classLike, value: '^Doctrine\\' }
@@ -85,6 +90,7 @@ deptrac:
       - 'Uid'
       - 'Jose'
       - 'Webauthn'
+      - 'Serializer'
     OidcDomain:
       - 'CoreDomain'
       - 'Psr'
@@ -127,5 +133,6 @@ deptrac:
       - 'Uid'
       - 'Jose'
       - 'Webauthn'
+      - 'Serializer'
       - 'Doctrine'
       - 'Twig'

@@ -1,10 +1,17 @@
 {# The login page of an interaction, in the locale the interaction recorded. The form is the one the form
    login of the firewall reads (architecture §5.4); a refused login shows one message, whatever the reason.
+   Below it, the passkey: hidden until the script of the bundle finds a browser that can hold one, then
+   a button, and the autofill of the username field when the browser offers it (conditional UI); the
+   signed assertion is posted as a form to the passkey authenticator of the same firewall.
    Overridable by an application under templates/bundles/HeidiBundle/. #}
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
 
 {% block title %}{{ 'login.title'|trans }}{% endblock %}
+
+{% block head %}
+    <script src="{{ path('heidi_interaction_passkey_script') }}" defer></script>
+{% endblock %}
 
 {% block content %}
     <p>{{ 'login.prompt'|trans({client: client.name}) }}</p>
@@ -17,9 +24,15 @@
     <form method="post" action="{{ path('heidi_interaction_login', {interaction: interaction.id}) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
         <label for="username">{{ 'login.username'|trans }}</label>
-        <input type="text" id="username" name="_username" value="{{ username ?? '' }}" autocomplete="username" required autofocus>
+        <input type="text" id="username" name="_username" value="{{ username ?? '' }}" autocomplete="username webauthn" required autofocus>
         <label for="password">{{ 'login.password'|trans }}</label>
         <input type="password" id="password" name="_password" autocomplete="current-password" required>
         <button type="submit">{{ 'login.submit'|trans }}</button>
+    </form>
+    <form method="post" action="{{ path('heidi_interaction_passkey_login', {interaction: interaction.id}) }}" data-passkey="login" data-options-url="{{ path('heidi_interaction_passkey_login_options', {interaction: interaction.id}) }}" hidden>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+        <input type="hidden" name="_passkey" value="">
+        <button type="button" data-passkey-button>{{ 'login.passkey'|trans }}</button>
+        <p data-passkey-error hidden>{{ 'login.passkey_failed'|trans }}</p>
     </form>
 {% endblock %}

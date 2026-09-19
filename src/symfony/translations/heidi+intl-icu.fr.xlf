@@ -145,6 +145,90 @@
         <source>error.invalid_request</source>
         <target>L’application a envoyé une requête que ce fournisseur ne peut pas servir. Recommencez depuis l’application.</target>
       </trans-unit>
+      <trans-unit id="276b888c75" resname="login.passkey">
+        <source>login.passkey</source>
+        <target>Utiliser une passkey</target>
+      </trans-unit>
+      <trans-unit id="d88f3b782b" resname="login.passkey_failed">
+        <source>login.passkey_failed</source>
+        <target>La passkey n’a pas pu être utilisée. Réessayez, ou connectez-vous avec votre mot de passe.</target>
+      </trans-unit>
+      <trans-unit id="465d5b10ab" resname="passkeys.title">
+        <source>passkeys.title</source>
+        <target>Vos passkeys</target>
+      </trans-unit>
+      <trans-unit id="de5f138c01" resname="passkeys.signed_in_as">
+        <source>passkeys.signed_in_as</source>
+        <target>Connecté en tant que {username}.</target>
+      </trans-unit>
+      <trans-unit id="81402f59a0" resname="passkeys.none">
+        <source>passkeys.none</source>
+        <target>Vous n’avez pas encore de passkey.</target>
+      </trans-unit>
+      <trans-unit id="ef84f1b8d3" resname="passkeys.name">
+        <source>passkeys.name</source>
+        <target>Nom</target>
+      </trans-unit>
+      <trans-unit id="1b6d07e1ac" resname="passkeys.created_at">
+        <source>passkeys.created_at</source>
+        <target>Créée le</target>
+      </trans-unit>
+      <trans-unit id="c5a67d1c58" resname="passkeys.last_used_at">
+        <source>passkeys.last_used_at</source>
+        <target>Dernier usage</target>
+      </trans-unit>
+      <trans-unit id="09f630d338" resname="passkeys.never_used">
+        <source>passkeys.never_used</source>
+        <target>Jamais</target>
+      </trans-unit>
+      <trans-unit id="af1fd41fc5" resname="passkeys.state">
+        <source>passkeys.state</source>
+        <target>État</target>
+      </trans-unit>
+      <trans-unit id="63f5c7f0e8" resname="passkeys.active">
+        <source>passkeys.active</source>
+        <target>Active</target>
+      </trans-unit>
+      <trans-unit id="71000a07e6" resname="passkeys.revoked_at">
+        <source>passkeys.revoked_at</source>
+        <target>Révoquée le {date}</target>
+      </trans-unit>
+      <trans-unit id="2ce8b47f35" resname="passkeys.revoke">
+        <source>passkeys.revoke</source>
+        <target>Révoquer</target>
+      </trans-unit>
+      <trans-unit id="2879167539" resname="passkeys.new_name">
+        <source>passkeys.new_name</source>
+        <target>Nom de la nouvelle passkey</target>
+      </trans-unit>
+      <trans-unit id="08af99ba89" resname="passkeys.enrol">
+        <source>passkeys.enrol</source>
+        <target>Ajouter une passkey</target>
+      </trans-unit>
+      <trans-unit id="5b94e18bc6" resname="passkeys.unsupported">
+        <source>passkeys.unsupported</source>
+        <target>Ce navigateur ne peut pas créer de passkey.</target>
+      </trans-unit>
+      <trans-unit id="f86312f8a9" resname="passkeys.error.browser">
+        <source>passkeys.error.browser</source>
+        <target>La passkey n’a pas pu être créée. Réessayez.</target>
+      </trans-unit>
+      <trans-unit id="d3eb8fcaa3" resname="passkeys.error.invalid_name">
+        <source>passkeys.error.invalid_name</source>
+        <target>Donnez à la passkey un nom de 1 à 255 caractères.</target>
+      </trans-unit>
+      <trans-unit id="769bbfbeaa" resname="passkeys.error.no_ceremony">
+        <source>passkeys.error.no_ceremony</source>
+        <target>Aucune passkey n’était en cours de création. Réessayez.</target>
+      </trans-unit>
+      <trans-unit id="c5d11b8713" resname="passkeys.error.refused">
+        <source>passkeys.error.refused</source>
+        <target>Ce fournisseur a refusé la passkey. Réessayez avec une autre.</target>
+      </trans-unit>
+      <trans-unit id="f614d3c6a6" resname="error.login_required">
+        <source>error.login_required</source>
+        <target>Connectez-vous d’abord, depuis une application, puis revenez sur cette page.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
