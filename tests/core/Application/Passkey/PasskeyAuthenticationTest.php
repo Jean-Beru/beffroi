@@ -78,7 +78,7 @@ final class PasskeyAuthenticationTest extends TestCase
     public function aUserWhoNamedThemselfIsAskedForTheirActivePasskeys(): void
     {
         // Given
-        $revoked = Fixtures::passkey($this->alice, credentialId: 'old-key');
+        $revoked = Fixtures::passkey($this->alice, credentialId: 'old-key', createdAt: Fixtures::now()->modify('-1 day'));
         $revoked->revoke(Fixtures::now());
         $this->credentials->save($revoked);
 
@@ -122,6 +122,20 @@ final class PasskeyAuthenticationTest extends TestCase
         // Then
         static::assertSame(3, $this->passkey->signCount);
         static::assertEquals($this->clock->now(), $this->passkey->lastUsedAt);
+    }
+
+    #[Test]
+    public function aVerifiedAssertionSavesThePasskey(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey($this->alice, credentialId: 'unsaved-key');
+        $this->ceremony->verifies($passkey, Fixtures::authenticatorData(signCount: 3));
+
+        // When
+        $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame($passkey, $this->credentials->find($passkey->id));
     }
 
     #[Test]
@@ -219,7 +233,9 @@ final class PasskeyAuthenticationTest extends TestCase
         } catch (AuthenticationFailedException $exception) {
             // Then
             static::assertSame(AuthenticationFailureReason::DisabledUser, $exception->reason);
-            static::assertSame($this->alice, $this->events->of(AuthenticationFailed::class)[0]->user);
+            $failed = $this->events->of(AuthenticationFailed::class)[0];
+            static::assertSame('hwk', $failed->method?->value);
+            static::assertSame($this->alice, $failed->user);
         }
     }
 
@@ -237,7 +253,9 @@ final class PasskeyAuthenticationTest extends TestCase
         } catch (AuthenticationFailedException $exception) {
             // Then
             static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
-            static::assertNull($this->events->of(AuthenticationFailed::class)[0]->user);
+            $failed = $this->events->of(AuthenticationFailed::class)[0];
+            static::assertSame('hwk', $failed->method?->value);
+            static::assertNull($failed->user);
         }
     }
 }

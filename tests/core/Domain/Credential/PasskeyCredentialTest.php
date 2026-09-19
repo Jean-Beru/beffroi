@@ -248,6 +248,7 @@ final class PasskeyCredentialTest extends TestCase
         yield 'trimmed' => ['  Pixel ', 'Pixel'];
         yield 'empty' => ['   ', null];
         yield 'too long' => [str_repeat('n', 256), null];
+        yield 'multibyte characters at the bound' => [str_repeat('é', 255), str_repeat('é', 255)];
     }
 
     #[Test]
@@ -257,7 +258,10 @@ final class PasskeyCredentialTest extends TestCase
         $user = Fixtures::user();
         $handle = PasskeyUserHandle::generate();
         $aaguid = Uuid::v4();
-        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, ['internal', 'hybrid'], 'none', EmptyTrustPath::create(), $aaguid, 'cose', $handle->value, 3, null, true, true, true);
+        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, [
+            1 => 'internal',
+            2 => 'hybrid',
+        ], 'none', EmptyTrustPath::create(), $aaguid, 'cose', $handle->value, 3, null, true, true, true);
 
         // When
         $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $user, 'Pixel', $record, Fixtures::now());
@@ -274,10 +278,11 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     #[Test]
-    public function aRecordWithoutBackupFlagsIsRefused(): void
+    #[DataProvider('provideMissingBackupFlags')]
+    public function aRecordWithoutBothBackupFlagsIsRefused(?bool $backupEligible, ?bool $backupStatus): void
     {
         // Given
-        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, [], 'none', EmptyTrustPath::create(), Uuid::v4(), 'cose', str_repeat('h', 64), 0);
+        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, [], 'none', EmptyTrustPath::create(), Uuid::v4(), 'cose', str_repeat('h', 64), 0, null, $backupEligible, $backupStatus);
 
         // Then
         $this->expectException(InvalidArgumentException::class);
@@ -285,6 +290,16 @@ final class PasskeyCredentialTest extends TestCase
 
         // When
         PasskeyCredential::fromRecord(Uuid::v7(), Fixtures::user(), 'Pixel', $record, Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{bool|null, bool|null}>
+     */
+    public static function provideMissingBackupFlags(): iterable
+    {
+        yield 'neither flag' => [null, null];
+        yield 'no backup eligible flag' => [null, false];
+        yield 'no backup status flag' => [false, null];
     }
 
     #[Test]
