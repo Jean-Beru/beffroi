@@ -200,6 +200,24 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
     }
 
+    /**
+     * §13.4.9: the origin is the whole of it, port included; the issuer of the tenant names it.
+     */
+    #[Test]
+    public function anAttestationFromTheSameHostOnAnotherPortIsRefused(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example:8443');
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+    }
+
     #[Test]
     public function anAttestationScopedToAnotherRelyingPartyIsRefused(): void
     {
