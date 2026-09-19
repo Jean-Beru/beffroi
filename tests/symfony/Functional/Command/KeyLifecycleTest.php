@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Heidi\Bundle\Message\AdvanceKeyLifecycle;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Domain\Event\SigningKeyRetired;
 use Heidi\Core\Domain\Event\SigningKeyRotated;
 use Heidi\Core\Domain\Event\SigningKeyStaged;
@@ -21,9 +22,14 @@ use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use function preg_match;
 use function preg_quote;
+use function random_bytes;
 use function sprintf;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\KeyManagement\EnvelopeEncrypter;
+use Symfony\Component\KeyManagement\KeyLoader\InMemoryKeyLoader;
+use Symfony\Component\KeyManagement\Local\SodiumKms;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -346,6 +352,70 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
+     * Issue #58: what "castor provision" asks before it trusts the published key. The active key opens
+     * with the KMS of this kernel, whichever backend the environment named.
+     */
+    #[Test]
+    public function theCheckSaysTheActiveKeyOpensWithTheKms(): void
+    {
+        // Given
+        self::console('heidi:keys:rotate');
+
+        // When
+        $tester = self::console('heidi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('yes', self::displayed($tester, 'Opens with the KMS'));
+    }
+
+    /**
+     * A key sealed under a master key the KMS no longer has (a Vault in dev mode or a LocalStack restarted,
+     * a DSN switched to another backend): the check says which key, why, and what to do; it deletes nothing.
+     */
+    #[Test]
+    public function theCheckFailsOnAKeyTheKmsCannotOpen(): void
+    {
+        // Given
+        $dead = self::stagedKeySealedUnderAnotherMasterKey();
+
+        // When
+        $tester = self::console('heidi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringStartsWith('no: The sealed signing key could not be opened.', self::displayed($tester, 'Opens with the KMS'));
+        static::assertStringContainsString(sprintf('The KMS cannot open the key %s of "default"', $dead->kid), self::flattened($tester));
+        static::assertStringContainsString('"heidi:keys:rotate --now" publishes a key sealed under the key it has now', self::flattened($tester));
+        static::assertSame(KeyStatus::Staged, self::key($dead->kid)->status);
+    }
+
+    /**
+     * A retiring key is never opened again (architecture §3.3): the check does not ask the KMS about it.
+     */
+    #[Test]
+    public function theCheckLeavesARetiringKeyClosed(): void
+    {
+        // Given
+        $retiring = self::retiringKey();
+
+        // When
+        $tester = self::console('heidi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(1, preg_match(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retiring\s+(.*?)Key identifier/', $retiring), self::flattened($tester), $matches), self::flattened($tester));
+        static::assertStringNotContainsString('Opens with the KMS', $matches[1]);
+        static::assertMatchesRegularExpression('/Status\s+active\s+Created at\s+\S+\s+Activated at\s+\S+\s+Opens with the KMS\s+yes/', self::flattened($tester));
+    }
+
+    /**
      * The acceptance criterion: the scheduled message activates the staged key once the delay elapsed.
      */
     #[Test]
@@ -498,6 +568,23 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $key = self::stagedKeyDated($yesterday->modify('-1 hour'), $yesterday->modify('-1 hour'));
         $key->activate($yesterday->modify('-1 hour'));
         $key->startRetiring($yesterday, $yesterday->modify('+10 minutes'));
+        self::keys()
+            ->save($key);
+
+        return $key;
+    }
+
+    /**
+     * A staged key sealed under a sodium master key this kernel does not have: what the files hold once the
+     * KMS lost its key, or once the DSN names another backend.
+     */
+    private static function stagedKeySealedUnderAnotherMasterKey(): SigningKey
+    {
+        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(SignatureAlgorithm::RS256);
+        $sealer = new EnvelopeKeySealer(new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
+            'signing' => random_bytes(32),
+        ]))), 'signing');
+        $key = new SigningKey($pair->kid, self::tenant(), SignatureAlgorithm::RS256, $pair->publicJwk, $sealer->seal(self::tenant(), $pair->privateJwk), self::currentSecond(), self::currentSecond()->modify(self::STAGING_DELAY));
         self::keys()
             ->save($key);
 

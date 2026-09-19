@@ -156,6 +156,69 @@ jobs:
       - name: "Bundle suite against Vault"
         run: castor phpunit -- --testsuite symfony --no-coverage
 
+  key_file:
+    name: "6️⃣ Key custody (key file)"
+    needs: [tests]
+    # The bundle suite once more, the kernel sealing its signing keys with the sodium key read from a file
+    # instead of the environment (issue #58, the self-hosted default without a KMS): the same tests, only
+    # the DSN changes. The file is written the way "castor provision --kms file" writes it: 32 bytes, mode
+    # 0600, in a directory 0700 of its own.
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/spomky-labs/phpqa:8.5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ramsey/composer-install@v4
+        with:
+          dependency-versions: highest
+          composer-options: --optimize-autoloader
+      - name: "Write the key of the tenant"
+        run: |
+          mkdir -m 700 "${RUNNER_TEMP}/kms"
+          (umask 077 && head -c 32 /dev/urandom > "${RUNNER_TEMP}/kms/heidi-default.key")
+          echo "HEIDI_TEST_KMS_DSN=sodium+dir://${RUNNER_TEMP}/kms?ext=.key" >> "$GITHUB_ENV"
+          echo "HEIDI_TEST_KMS_KEY_ID=heidi-{tenant}" >> "$GITHUB_ENV"
+      - name: "Bundle suite against the key file"
+        run: castor phpunit -- --testsuite symfony --no-coverage
+
+  aws:
+    name: "7️⃣ Key custody (AWS KMS, LocalStack)"
+    needs: [tests]
+    # The bundle suite once more, the kernel sealing its signing keys with an AWS KMS served by LocalStack
+    # (issue #58): the same tests, only the DSN changes. The service is the last image of the community
+    # edition (compose.yaml says why), prepared by the script of the development stack
+    # (docker/localstack/init.sh) with the AWS CLI installed in the job, the same script the container of
+    # the stack runs on its own.
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/spomky-labs/phpqa:8.5
+    services:
+      localstack:
+        image: localstack/localstack:4.14.0
+        env:
+          SERVICES: kms
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ramsey/composer-install@v4
+        with:
+          dependency-versions: highest
+          composer-options: --optimize-autoloader
+      - name: "Install the AWS CLI"
+        run: |
+          curl -fsSL -o "${RUNNER_TEMP}/awscli.zip" https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+          unzip -q "${RUNNER_TEMP}/awscli.zip" -d "${RUNNER_TEMP}/awscli"
+          "${RUNNER_TEMP}/awscli/aws/install" --install-dir "${RUNNER_TEMP}/aws-cli" --bin-dir "${RUNNER_TEMP}/aws-bin"
+          echo "${RUNNER_TEMP}/aws-bin" >> "$GITHUB_PATH"
+      - name: "Prepare LocalStack: the key of the tenant under its alias"
+        run: sh docker/localstack/init.sh
+        env:
+          KMS_ENDPOINT_URL: http://localstack:4566
+      - name: "Bundle suite against LocalStack"
+        run: castor phpunit -- --testsuite symfony --no-coverage
+        env:
+          HEIDI_TEST_KMS_DSN: aws-kms://test:test@localstack:4566?region=eu-west-3&scheme=http
+          HEIDI_TEST_KMS_KEY_ID: alias/heidi-{tenant}
+
   conformance:
     name: "4️⃣ OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
     needs: [tests]

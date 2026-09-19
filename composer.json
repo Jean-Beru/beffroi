@@ -52,6 +52,7 @@
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",
+        "symfony/aws-key-management": "8.2.*",
         "symfony/browser-kit": "8.2.*",
         "symfony/css-selector": "8.2.*",
         "symfony/hashicorp-vault-key-management": "8.2.*",

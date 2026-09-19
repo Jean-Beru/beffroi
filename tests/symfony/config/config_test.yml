@@ -91,9 +91,9 @@ doctrine:
 # for two minutes rather than the default five so that the tests see the value travel, the default
 # lifetimes and four clients, the third one carrying the PKCE exception of decision 0008, the fourth one
 # registered for opaque access tokens. The KMS is sodium unless the environment names another one: the
-# CI runs this suite a second time against a Vault service, with a token under the policy of the OP, to
-# prove that the code between the two backends is the same (issue #57). The sodium key is a fixture of
-# this kernel and seals nothing outside of it.
+# CI runs this suite again against a Vault service, with a token under the policy of the OP (issue #57),
+# against a key file and against a LocalStack KMS (issue #58), to prove that the code between the
+# backends is the same. The sodium key is a fixture of this kernel and seals nothing outside of it.
 parameters:
     env(HEIDI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(HEIDI_TEST_KMS_KEY_ID): signing
@@ -136,11 +136,14 @@ services:
     logger:
         class: Psr\Log\NullLogger
 
-    # The Vault bridge is a development dependency of the monorepo (the bundle stays backend-agnostic, the
-    # application requires the bridge it deploys with), and KeyManagementBundle registers a factory only for
-    # a bridge the root package requires outside of "require-dev" (ContainerBuilder::willBeAvailable()):
-    # this kernel registers it itself, for the runs where HEIDI_TEST_KMS_DSN names a Vault.
+    # The Vault and AWS bridges are development dependencies of the monorepo (the bundle stays
+    # backend-agnostic, the application requires the bridges it deploys with), and KeyManagementBundle
+    # registers a factory only for a bridge the root package requires outside of "require-dev"
+    # (ContainerBuilder::willBeAvailable()): this kernel registers them itself, for the runs where
+    # HEIDI_TEST_KMS_DSN names a Vault or an AWS KMS (LocalStack in the CI).
     Symfony\Component\KeyManagement\Bridge\HashiCorpVault\TransitKmsFactory:
+        tags: ['key_management.factory']
+    Symfony\Component\KeyManagement\Bridge\AwsKms\AwsKmsFactory:
         tags: ['key_management.factory']
 
     # Reachable from the tests: the use cases and ports the bundle wires in full today. A private service
