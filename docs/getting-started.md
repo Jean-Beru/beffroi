@@ -35,7 +35,7 @@ Dev mode forgets everything on restart. After `castor stop`, `castor start --kms
 
 ## The same code against a key file and against AWS KMS
 
-The DSN is the only difference between the four backends (`apps/op/.env` documents each form), and the bundle suite runs against each of them in the CI (jobs "Key custody"): the tests are the same files, only `HEIDI_TEST_KMS_DSN` changes.
+The DSN is the only difference between the four backends (`apps/op/.env` documents each form), and the bundle suite runs against any of them: the tests are the same files, only `HEIDI_TEST_KMS_DSN` changes. The CI runs it against one, the key file (job "Key custody", the fastest); Vault and AWS KMS are exercised by their custody tests on the development stack (`VaultTransitCustodyTest`, `AwsKmsCustodyTest`, skipped without their DSN), the backends themselves being the business of `symfony/key-management` and its bridges, not of this repository.
 
 `castor provision --kms file` is the self-hosted default when there is no KMS: the same sodium backend, its key read from a file instead of the environment (`sodium+dir:///app/var/kms?ext=.key`, `heidi-{tenant}`: one file per tenant, `var/kms/heidi-default.key`, read verbatim by `FilesystemKeyLoader`). The task writes it in the `op` container, 32 bytes of `/dev/urandom`, mode 0600 in a directory 0700, in the volume `kms_data` that `op` and `worker` share, outside the web root and outside the sealed keys of `keys_data`; a file that exists is kept. It is worth what it costs: a dump of the sealed keys, or of the database once they live there, gives nothing without the file; a compromise of the host gives everything, the file and the envelopes together. `tests/symfony/Functional/Key/KeyFileCustodyTest.php` checks the mode and the separation.
 
@@ -89,7 +89,7 @@ castor prepare-pr       # ecs-fix, rector-fix, phpstan-baseline, deptrac, lint
 castor infect --diff    # mutation testing of the lines changed since origin/main; escaped mutants are listed in .ci-tools/infection.txt
 ```
 
-CI runs the same tasks on PHP 8.5. Mutation testing (Infection) runs on every pull request and every push to `main` and release branches, on the lines the change adds or modifies; `castor infect` without `--diff` mutates the whole source and takes hours.
+CI runs the same tasks on PHP 8.5. Mutation testing (Infection) runs on every pull request and every push to `main` and release branches, on the lines the change adds or modifies; `castor infect` without `--diff` mutates the whole source and takes hours. The conformance plans run on pushes to `main` and release branches only (and by hand, `workflow_dispatch`), not on pull requests: they take the better part of an hour, and `castor conformance` runs them on the development stack before a merge that touches them.
 
 ## Conventions in one screen
 

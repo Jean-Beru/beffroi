@@ -111,58 +111,16 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  vault:
-    name: "5️⃣ Key custody (Vault Transit)"
-    needs: [tests]
-    # The bundle suite once more, the kernel sealing its signing keys with a Vault service instead of sodium
-    # (issue #57): the same tests, only the DSN changes. The service is prepared by the script of the
-    # development stack (docker/vault/init.sh) with the Vault CLI, and the tests hold a token minted under
-    # the policy of the OP, never the root token.
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    services:
-      vault:
-        image: hashicorp/vault:2.1
-        env:
-          VAULT_DEV_ROOT_TOKEN_ID: ci-root-token
-          VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
-        options: --cap-add=IPC_LOCK
-    env:
-      VAULT_ADDR: http://vault:8200
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - name: "Install the Vault CLI"
-        run: |
-          curl -fsSL -o "${RUNNER_TEMP}/vault.zip" https://releases.hashicorp.com/vault/2.1.1/vault_2.1.1_linux_amd64.zip
-          unzip -q -o "${RUNNER_TEMP}/vault.zip" -d "${RUNNER_TEMP}/vault-cli" vault
-          echo "${RUNNER_TEMP}/vault-cli" >> "$GITHUB_PATH"
-      - name: "Prepare Vault: the Transit engine, the key of the tenant, the policy of the OP"
-        run: sh docker/vault/init.sh
-        env:
-          VAULT_TOKEN: ci-root-token
-      - name: "Mint the token of the OP under its policy"
-        run: |
-          TOKEN=$(vault token create -policy=heidi-op -no-default-policy -display-name=heidi-op -field=token)
-          echo "::add-mask::$TOKEN"
-          echo "HEIDI_TEST_KMS_DSN=hashicorp-vault-transit://${TOKEN}@vault:8200?scheme=http" >> "$GITHUB_ENV"
-          echo "HEIDI_TEST_KMS_KEY_ID=heidi-{tenant}" >> "$GITHUB_ENV"
-        env:
-          VAULT_TOKEN: ci-root-token
-      - name: "Bundle suite against Vault"
-        run: castor phpunit -- --testsuite symfony --no-coverage
-
   key_file:
-    name: "6️⃣ Key custody (key file)"
+    name: "5️⃣ Key custody (key file)"
     needs: [tests]
     # The bundle suite once more, the kernel sealing its signing keys with the sodium key read from a file
     # instead of the environment (issue #58, the self-hosted default without a KMS): the same tests, only
     # the DSN changes. The file is written the way "castor provision --kms file" writes it: 32 bytes, mode
-    # 0600, in a directory 0700 of its own.
+    # 0600, in a directory 0700 of its own. One backend here, the fastest: the others (Vault Transit,
+    # AWS KMS on LocalStack) are the business of symfony/key-management and of its bridges, and their
+    # custody tests run on the development stack (VaultTransitCustodyTest, AwsKmsCustodyTest, skipped
+    # without their DSN).
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
@@ -181,48 +139,13 @@ jobs:
       - name: "Bundle suite against the key file"
         run: castor phpunit -- --testsuite symfony --no-coverage
 
-  aws:
-    name: "7️⃣ Key custody (AWS KMS, LocalStack)"
-    needs: [tests]
-    # The bundle suite once more, the kernel sealing its signing keys with an AWS KMS served by LocalStack
-    # (issue #58): the same tests, only the DSN changes. The service is the last image of the community
-    # edition (compose.yaml says why), prepared by the script of the development stack
-    # (docker/localstack/init.sh) with the AWS CLI installed in the job, the same script the container of
-    # the stack runs on its own.
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/spomky-labs/phpqa:8.5
-    services:
-      localstack:
-        image: localstack/localstack:4.14.0
-        env:
-          SERVICES: kms
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ramsey/composer-install@v4
-        with:
-          dependency-versions: highest
-          composer-options: --optimize-autoloader
-      - name: "Install the AWS CLI"
-        run: |
-          curl -fsSL -o "${RUNNER_TEMP}/awscli.zip" https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
-          unzip -q "${RUNNER_TEMP}/awscli.zip" -d "${RUNNER_TEMP}/awscli"
-          "${RUNNER_TEMP}/awscli/aws/install" --install-dir "${RUNNER_TEMP}/aws-cli" --bin-dir "${RUNNER_TEMP}/aws-bin"
-          echo "${RUNNER_TEMP}/aws-bin" >> "$GITHUB_PATH"
-      - name: "Prepare LocalStack: the key of the tenant under its alias"
-        run: sh docker/localstack/init.sh
-        env:
-          KMS_ENDPOINT_URL: http://localstack:4566
-      - name: "Bundle suite against LocalStack"
-        run: castor phpunit -- --testsuite symfony --no-coverage
-        env:
-          HEIDI_TEST_KMS_DSN: aws-kms://test:test@localstack:4566?region=eu-west-3&scheme=http
-          HEIDI_TEST_KMS_KEY_ID: alias/heidi-{tenant}
-
   conformance:
     name: "4️⃣ OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
     needs: [tests]
-    # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image.
+    # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image. On main
+    # only (and by hand): the suite takes the better part of an hour, and a pull request has the bundle
+    # suite; "castor conformance" runs the plans on the development stack before a merge that touches them.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
