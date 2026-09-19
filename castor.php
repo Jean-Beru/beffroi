@@ -269,17 +269,40 @@ function infect(
     ]);
 }
 
-#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens')]
+/**
+ * The KMS backends of the development stack, by the value "--kms" takes: the compose profile that runs
+ * the backend, none for a local one, and the scheme of the DSN "castor provision" writes for it.
+ */
+const KMS_BACKENDS = [
+    'sodium' => [
+        'profile' => null,
+        'scheme' => 'sodium',
+    ],
+    'vault' => [
+        'profile' => 'vault',
+        'scheme' => 'hashicorp-vault-transit',
+    ],
+];
+
+/**
+ * The compose profiles a task that stops or reads the whole stack must name.
+ */
+const COMPOSE_PROFILES = ['conformance', 'vault'];
+
+#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, whose Transit engine seals the signing keys once "castor provision --kms vault" ran')]
 function start(
     bool $conformance = false,
     bool $build = false,
     #[AsOption(description: 'The access token shape of the clients of the conformance suite: jwt (default) or opaque; the plans must be green with either')]
     ?string $accessTokenFormat = null,
+    #[AsOption(description: 'The KMS that seals the signing keys: sodium (default, in the process, nothing to start) or vault (HashiCorp Vault Transit, dev mode, initialised at every start by docker/vault/init.sh)')]
+    string $kms = 'sodium',
 ): void {
     if ($accessTokenFormat !== null && ! in_array($accessTokenFormat, ['jwt', 'opaque'], true)) {
         io()->error(sprintf('Unknown access token format "%s"; the formats are jwt and opaque.', $accessTokenFormat));
         exit(1);
     }
+    $backend = kms_backend($kms);
     $command = ['docker', 'compose'];
     $environment = [];
     if ($conformance) {
@@ -287,6 +310,9 @@ function start(
         // A plan of a hundred requests has no use for a hundred profiles, and the toolbar has no place in
         // the pages the scripted browser of the suite reads.
         $environment['APP_PROFILER'] = '0';
+    }
+    if ($backend['profile'] !== null) {
+        $command = [...$command, '--profile', $backend['profile']];
     }
     if ($accessTokenFormat !== null) {
         $environment['CONFORMANCE_ACCESS_TOKEN_FORMAT'] = $accessTokenFormat;
@@ -297,19 +323,46 @@ function start(
     }
     run($command, context: context()->withEnvironment($environment));
     io()
-        ->success('OP: https://op.localhost' . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '') . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat)));
+        ->success('OP: https://op.localhost' . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '') . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat)) . ($kms === 'vault' ? ', Vault: http://localhost:8200 (dev mode, root token in compose.yaml); "castor provision --kms vault" seals the signing keys with it' : ''));
+}
+
+/**
+ * @return array{profile: ?string, scheme: string}
+ */
+function kms_backend(string $kms): array
+{
+    if (! isset(KMS_BACKENDS[$kms])) {
+        io()->error(sprintf('Unknown KMS "%s"; the backends are %s.', $kms, implode(' and ', array_keys(KMS_BACKENDS))));
+        exit(1);
+    }
+
+    return KMS_BACKENDS[$kms];
+}
+
+/**
+ * @return array<string>
+ */
+function compose_profiles(): array
+{
+    $options = [];
+    foreach (COMPOSE_PROFILES as $profile) {
+        $options[] = '--profile';
+        $options[] = $profile;
+    }
+
+    return $options;
 }
 
 #[AsTask(description: 'Stop the development stack')]
 function stop(): void
 {
-    run(['docker', 'compose', '--profile', 'conformance', 'down', '--remove-orphans']);
+    run(['docker', 'compose', ...compose_profiles(), 'down', '--remove-orphans']);
 }
 
 #[AsTask(description: 'Follow the logs of the development stack', ignoreValidationErrors: true)]
 function logs(#[AsRawTokens] array $args = []): void
 {
-    run(['docker', 'compose', '--profile', 'conformance', 'logs', '-f', ...$args]);
+    run(['docker', 'compose', ...compose_profiles(), 'logs', '-f', ...$args]);
 }
 
 #[AsTask(description: 'Run a Symfony console command of the application inside the op container', ignoreValidationErrors: true)]
@@ -384,14 +437,16 @@ const DEV_CLIENT_SECRETS = [
     'OIDC_DEMO_SECRET',
 ];
 
-#[AsTask(description: 'Provision the development OP after "castor start": the local KMS key and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a full profile and a password')]
-function provision(): void
-{
+#[AsTask(description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key and the user "alice" with a full profile and a password')]
+function provision(
+    #[AsOption(description: 'The KMS to seal the signing keys with when apps/op/.env.local names none yet: sodium (default, a key generated in place) or vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault"); the backend already there is kept, switching is a change of KMS')]
+    ?string $kms = null,
+): void {
     io()->title('Provisioning the development OP');
 
     io()
         ->section('Development secrets');
-    $env = provision_env_local();
+    $env = provision_env_local($kms);
 
     io()
         ->section('Tenant');
@@ -444,6 +499,9 @@ function provision(): void
                 'JWKS' => $env['HEIDI_ISSUER'] . '/jwks',
             ],
             [
+                'KMS' => sprintf('%s, key %s', kms_backend_of($env['HEIDI_KMS_DSN']) ?? 'unknown', $env['HEIDI_KMS_KEY_ID']),
+            ],
+            [
                 'Username' => DEV_USERNAME,
             ],
             [
@@ -459,24 +517,54 @@ function provision(): void
 
 /**
  * Writes the development values apps/op/.env.local lacks and returns the environment of the application
- * once they are loaded: a sodium key for the KMS, one secret per client, the password of the development
- * user. An existing value is kept, whoever wrote it: the sealed signing keys depend on the KMS key.
+ * once they are loaded: the DSN of the KMS and the key it seals under (a sodium key generated in place, or
+ * a token minted on the Vault of the stack under the policy of the OP and the Transit key of the tenant),
+ * one secret per client, the password of the development user. An existing value is kept, whoever wrote
+ * it: the sealed signing keys depend on the KMS key, and a KMS is not switched by accident. The one
+ * exception is a Vault token that no longer works (the dev server forgets everything when it restarts): a
+ * new one is minted in its place, the key files are then for a Transit key that no longer exists.
  *
  * @return array<string, string>
  */
-function provision_env_local(): array
+function provision_env_local(?string $kms): array
 {
+    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $current = kms_backend_of($env['HEIDI_KMS_DSN'] ?? '');
+    if ($current !== null && $kms !== null && $kms !== $current) {
+        io()->error([
+            sprintf('%s seals the signing keys with %s; "--kms %s" is a change of KMS, which this task never does by itself.', DEV_ENV_LOCAL, $current, $kms),
+            sprintf('To switch: remove HEIDI_KMS_DSN and HEIDI_KMS_KEY_ID from %s, wipe the sealed keys ("docker compose exec op sh -c \"rm -rf var/keys/*\""), then run this task again with "--kms %s". The envelopes sealed by %s cannot be opened by %s; the relying parties see a new key.', DEV_ENV_LOCAL, $kms, $current, $kms),
+        ]);
+        exit(1);
+    }
+    $kms = $current ?? $kms ?? 'sodium';
+    kms_backend($kms);
+
     $generate = static fn (int $bytes): string => rtrim(strtr(base64_encode(random_bytes($bytes)), '+/', '-_'), '=');
-    $values = [
-        'HEIDI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
-        'HEIDI_KMS_KEY_ID' => static fn (): string => 'signing',
-        'HEIDI_DEV_USER_PASSWORD' => static fn (): string => $generate(24),
-    ];
+    $values = match ($kms) {
+        'sodium' => [
+            'HEIDI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
+            'HEIDI_KMS_KEY_ID' => static fn (): string => 'signing',
+        ],
+        // The scheme and the options of the bridge (symfony/hashicorp-vault-key-management, README): the
+        // token in the user component, the mount at its default, plain HTTP for the dev server.
+        'vault' => [
+            'HEIDI_KMS_DSN' => static fn (): string => 'hashicorp-vault-transit://' . vault_mint_op_token() . '@vault:8200?scheme=http',
+            'HEIDI_KMS_KEY_ID' => static fn (): string => 'heidi-{tenant}',
+        ],
+    };
+    $values['HEIDI_DEV_USER_PASSWORD'] = static fn (): string => $generate(24);
     foreach (DEV_CLIENT_SECRETS as $name) {
         $values[$name] = static fn (): string => $generate(32);
     }
 
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $path = getcwd() . '/' . DEV_ENV_LOCAL;
+    if ($current === 'vault' && ! vault_token_works(vault_token_of($env['HEIDI_KMS_DSN']))) {
+        io()->warning(sprintf('The Vault token of %s no longer works (the dev server forgets its tokens and its keys when it restarts): a new one is minted. The keys sealed before the restart cannot be opened any more; "castor console heidi:keys:rotate --compromised" replaces them.', DEV_ENV_LOCAL));
+        $env['HEIDI_KMS_DSN'] = $values['HEIDI_KMS_DSN']();
+        file_put_contents($path, (string) preg_replace('/^HEIDI_KMS_DSN=.*$/m', sprintf('HEIDI_KMS_DSN="%s"', $env['HEIDI_KMS_DSN']), (string) file_get_contents($path)));
+    }
+
     $lines = [];
     foreach ($values as $name => $value) {
         if (($env[$name] ?? '') !== '') {
@@ -491,7 +579,6 @@ function provision_env_local(): array
         return $env;
     }
 
-    $path = getcwd() . '/' . DEV_ENV_LOCAL;
     $existing = file_exists($path) ? rtrim((string) file_get_contents($path), "\n") . "\n\n" : '';
     file_put_contents($path, $existing . "###> castor provision ###\n" . implode("\n", $lines) . "\n###< castor provision ###\n");
     io()
@@ -501,10 +588,99 @@ function provision_env_local(): array
 }
 
 /**
+ * The backend a KMS DSN names, by its scheme, or null when there is no DSN.
+ */
+function kms_backend_of(string $dsn): ?string
+{
+    if ($dsn === '') {
+        return null;
+    }
+    foreach (KMS_BACKENDS as $name => $backend) {
+        if (str_starts_with($dsn, $backend['scheme'] . '://')) {
+            return $name;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The token of a Vault DSN: its user component.
+ */
+function vault_token_of(string $dsn): string
+{
+    $token = parse_url($dsn, \PHP_URL_USER);
+    if (! is_string($token) || $token === '') {
+        io()->error(sprintf('The Vault DSN of %s carries no token.', DEV_ENV_LOCAL));
+        exit(1);
+    }
+
+    return $token;
+}
+
+/**
+ * Mints the credential of the OP on the Vault of the stack: a token under the policy "heidi-op" written by
+ * docker/vault/init.sh (data keys and decryption under the Transit keys of the tenants, the configuration
+ * of those keys, nothing else), with the root token of the dev server, which never reaches the OP.
+ */
+function vault_mint_op_token(): string
+{
+    $minted = vault_cli(['token', 'create', '-policy=heidi-op', '-no-default-policy', '-display-name=heidi-op', '-format=json']);
+    if (! $minted->isSuccessful()) {
+        io()->error(['The token of the OP could not be minted: is Vault running? "castor start --kms vault" starts it and initialises it.', trim($minted->getErrorOutput())]);
+        exit(1);
+    }
+    $token = json_decode($minted->getOutput(), true)['auth']['client_token'] ?? null;
+    if (! is_string($token) || $token === '') {
+        io()->error('Vault answered without a token.');
+        exit(1);
+    }
+    io()
+        ->text('Minted a token for the OP on Vault, under the policy "heidi-op".');
+
+    return $token;
+}
+
+/**
+ * Whether a token still opens a session on the Vault of the stack.
+ */
+function vault_token_works(string $token): bool
+{
+    return vault_cli(['token', 'lookup'], [
+        'VAULT_TOKEN' => $token,
+    ])->isSuccessful();
+}
+
+/**
+ * Runs the Vault CLI inside the vault container, with the root token of the dev server unless another one
+ * is given; the output is captured, never shown.
+ *
+ * @param array<string> $args
+ * @param array<string, string> $environment
+ */
+function vault_cli(array $args, array $environment = []): Process
+{
+    $options = [];
+    foreach ($environment as $name => $value) {
+        $options[] = '-e';
+        $options[] = $name . '=' . $value;
+    }
+
+    return run(
+        ['docker', 'compose', 'exec', '-T', ...$options, 'vault', 'vault', ...$args],
+        context: context()
+            ->withAllowFailure()
+            ->withQuiet(),
+    );
+}
+
+/**
  * The certification plans the OP answers (tests/conformance/README.md), by the short name "--plan" takes:
  * the name of each in the suite and the variants it is created with (the modules carry their own). One
  * configuration serves them all: the file whose {PLACEHOLDERS} the task fills from apps/op/.env.local,
- * and the values that must be there for the plans to make sense.
+ * and the values that must be there for the plans to make sense. An entry with "module" is not a plan
+ * of the suite but one module run on its own, the suite having no plan for a single module; "before_start"
+ * names what the task does between its creation and its start, in place of a human.
  */
 const CONFORMANCE_PLANS = [
     'basic' => [
@@ -524,6 +700,19 @@ const CONFORMANCE_PLANS = [
             'response_type' => 'code',
             'client_registration' => 'static_client',
         ],
+    ],
+    // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
+    // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
+    // new key with the old one still there. The other plans of the suite are for response types, response
+    // modes and features the OP does not have (implicit and hybrid, form_post, dynamic registration,
+    // back-channel and front-channel logout, session management, third-party initiated login).
+    'rotate-keys' => [
+        'name' => 'oidcc-server-rotate-keys',
+        'module' => true,
+        'variant' => [
+            'server_metadata' => 'discovery',
+        ],
+        'before_start' => 'rotate',
     ],
 ];
 
@@ -552,9 +741,9 @@ const CONFORMANCE_SUITE_TIMEOUT = 180;
  * @param array<string> $plan
  * @param array<string> $module
  */
-#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, RP-Initiated Logout OP) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user, and print the result of every module')]
+#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module')]
 function conformance(
-    #[AsOption(description: 'Run only this plan: basic, config or rp-initiated-logout (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
+    #[AsOption(description: 'Run only this plan: basic, config, rp-initiated-logout or rotate-keys (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $plan = [],
     #[AsOption(description: 'Run only the modules whose name contains this text (repeatable)', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $module = [],
@@ -588,28 +777,45 @@ function conformance(
     $verdict = [];
     $planUrls = [];
     foreach ($plans as $definition) {
-        $created = conformance_request($suite, 'POST', '/api/plan', [
-            'query' => [
-                'planName' => $definition['name'],
-                'variant' => json_encode((object) $definition['variant'], \JSON_THROW_ON_ERROR),
-            ],
-            'headers' => [
-                'Content-Type' => 'application/json',
-            ],
-            'body' => $configuration,
-        ], 201);
-        $planId = (string) $created['id'];
-        $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
-        $planUrls[] = sprintf('%s: %s', $definition['name'], $planUrl);
+        if ($definition['module'] ?? false) {
+            $planId = null;
+            $planUrl = null;
+            $created = [
+                'modules' => [
+                    [
+                        'testModule' => $definition['name'],
+                        'variant' => $definition['variant'],
+                    ],
+                ],
+            ];
+        } else {
+            $created = conformance_request($suite, 'POST', '/api/plan', [
+                'query' => [
+                    'planName' => $definition['name'],
+                    'variant' => json_encode((object) $definition['variant'], \JSON_THROW_ON_ERROR),
+                ],
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ],
+                'body' => $configuration,
+            ], 201);
+            $planId = (string) $created['id'];
+            $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
+            $planUrls[] = sprintf('%s: %s', $definition['name'], $planUrl);
+        }
         $modules = array_values(array_filter(
             $created['modules'],
             static fn (array $moduleDefinition): bool => $module === []
                 || array_any($module, static fn (string $needle): bool => str_contains((string) $moduleDefinition['testModule'], $needle)),
         ));
         io()
-            ->section(sprintf('%s: plan %s, %d module(s)', $definition['name'], $planId, count($modules)));
-        io()
-            ->text($planUrl);
+            ->section($planId === null
+                ? sprintf('%s: one module on its own, no plan', $definition['name'])
+                : sprintf('%s: plan %s, %d module(s)', $definition['name'], $planId, count($modules)));
+        if ($planUrl !== null) {
+            io()
+                ->text($planUrl);
+        }
         if ($modules === []) {
             io()->warning(sprintf('No module of %s matches %s.', $definition['name'], implode(', ', $module)));
             continue;
@@ -620,7 +826,10 @@ function conformance(
             io()
                 ->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
             $started = microtime(true);
-            $run = conformance_run_module($suite, $planId, $moduleDefinition);
+            $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, $definition['before_start'] ?? null);
+            if ($planUrl === null) {
+                $planUrls[] = sprintf('%s: %s', $name, $run['url']);
+            }
             $elapsed = microtime(true) - $started;
             $rows[] = [$definition['name'], $name, $run['result'], sprintf('%ds', (int) $elapsed), $run['url']];
             $verdict[$run['result']] = ($verdict[$run['result']] ?? 0) + 1;
@@ -718,29 +927,37 @@ function conformance_configuration(array $env): string
 }
 
 /**
- * Creates one module of the plan, starts it when the suite waits for that, waits for it to finish while
- * the scripted browser does the interaction, and returns its result with the failures and warnings of
- * its log. A module the browser cannot finish is left to a human: the task prints the URLs the suite
- * exposes and keeps waiting until CONFORMANCE_MODULE_TIMEOUT.
+ * Creates one module of the plan, or on its own with the configuration when there is no plan, starts it
+ * when the suite waits for that, waits for it to finish while the scripted browser does the interaction,
+ * and returns its result with the failures and warnings of its log. A module the browser cannot finish is
+ * left to a human: the task prints the URLs the suite exposes and keeps waiting until
+ * CONFORMANCE_MODULE_TIMEOUT. What the suite asks of the operator before the start ("Please rotate the
+ * keys ... then press the 'Start' button") is $beforeStart, done by the task.
  *
  * @param array{testModule: string, variant?: array<string, string>} $definition
  * @return array{result: string, url: string, findings: array<string>}
  */
-function conformance_run_module(string $suite, string $planId, array $definition): array
+function conformance_run_module(string $suite, ?string $planId, array $definition, string $configuration = '', ?string $beforeStart = null): array
 {
     $query = [
         'test' => $definition['testModule'],
-        'plan' => $planId,
     ];
+    if ($planId !== null) {
+        $query['plan'] = $planId;
+    }
     if (($definition['variant'] ?? []) !== []) {
         $query['variant'] = json_encode($definition['variant'], \JSON_THROW_ON_ERROR);
     }
     $created = conformance_request($suite, 'POST', '/api/runner', [
         'query' => $query,
-        // The configuration is the plan's; an empty POST must not be declared as a form.
+        // The configuration is the plan's, or the module's own when it has no plan; an empty POST must not
+        // be declared as a form.
         'headers' => [
             'Content-Type' => 'application/json',
         ],
+        ...($planId === null ? [
+            'body' => $configuration,
+        ] : []),
     ], 201);
     $id = (string) $created['id'];
     $url = sprintf('%s/log-detail.html?log=%s', $suite, $id);
@@ -748,6 +965,9 @@ function conformance_run_module(string $suite, string $planId, array $definition
 
     $state = conformance_wait_state($suite, $id, ['CONFIGURED', 'WAITING', 'FINISHED'], $deadline);
     if ($state === 'CONFIGURED') {
+        if ($beforeStart === 'rotate') {
+            conformance_rotate_signing_key();
+        }
         conformance_request($suite, 'POST', sprintf('/api/runner/%s', $id), [
             'headers' => [
                 'Content-Type' => 'application/json',
@@ -790,6 +1010,26 @@ function conformance_run_module(string $suite, string $planId, array $definition
         'url' => $url,
         'findings' => $findings,
     ];
+}
+
+/**
+ * The rotation the key rotation module asks for, on the OP of the stack: the new key signs at once
+ * (--now), the one that signed stays in the JWK Set for its retirement window, which is what the module
+ * wants to see. The output of the command is shown: the two identifiers are what the log of the module
+ * names.
+ */
+function conformance_rotate_signing_key(): void
+{
+    io()->text('  The suite asks for a rotation: "heidi:keys:rotate --now" on the OP.');
+    $rotated = op_console(['heidi:keys:rotate', '--now', '--no-ansi'], context()->withAllowFailure()->withQuiet());
+    if (! $rotated->isSuccessful()) {
+        io()->error(['The signing key could not be rotated; the module will see no new key.', trim($rotated->getErrorOutput() . $rotated->getOutput())]);
+
+        return;
+    }
+    foreach (preg_split('/\R/', trim($rotated->getOutput())) ?: [] as $line) {
+        io()->text('  ' . $line);
+    }
 }
 
 /**

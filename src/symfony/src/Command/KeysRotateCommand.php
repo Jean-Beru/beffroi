@@ -70,7 +70,9 @@ final readonly class KeysRotateCommand
         } elseif ($now) {
             $key = $this->rotator->rotate($tenant, $algorithm, $context);
             self::describe($io, $tenant, $key);
-            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while the tokens it signed are alive.', $previous->kid, $previous->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
+            // Read again: the repository may hand a fresh object on every read, and the rotation just dated this one.
+            $retiring = $this->keys->find($tenant, $previous->kid) ?? $previous;
+            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while the tokens it signed are alive.', $retiring->kid, $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
         } else {
             $key = $this->rotator->stage($tenant, $algorithm, $context);
             self::describe($io, $tenant, $key);

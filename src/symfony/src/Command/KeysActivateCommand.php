@@ -77,7 +77,9 @@ final readonly class KeysActivateCommand
             ],
         );
         if ($previous !== null) {
-            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while the tokens it signed are alive.', $previous->kid, $previous->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
+            // Read again: the repository may hand a fresh object on every read, and the rotation just dated this one.
+            $retiring = $this->keys->find($tenant, $previous->kid) ?? $previous;
+            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while the tokens it signed are alive.', $retiring->kid, $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
         }
         $io->success(sprintf('The key "%s" signs the tokens of "%s" from now on.', $key->kid, $tenant->slug));
 

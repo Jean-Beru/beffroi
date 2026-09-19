@@ -2,6 +2,7 @@
 #
 #   docker compose up -d                          the OP on https://op.localhost and PostgreSQL
 #   docker compose --profile conformance up -d    plus the OpenID conformance suite on https://localhost:8443
+#   docker compose --profile vault up -d          plus HashiCorp Vault (dev mode), whose Transit engine seals the signing keys
 #
 # The OP answers on op.localhost for the browser (every *.localhost name is loopback) and for the
 # conformance suite container (network alias). Caddy issues the certificate from its internal CA;
@@ -23,6 +24,19 @@ services:
       # Both documented in apps/op/.env; "castor start --conformance" sets them for a stack that serves the suite.
       APP_PROFILER: ${APP_PROFILER:-1}
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
+      # Worker mode, as in production (architecture §3.3, §6): the kernel, and with it the opened signing key,
+      # lives for every request a worker serves; the KMS is asked once per key and per worker, not once per
+      # signature. The workers restart when a source file of the application or of the packages changes,
+      # .env.local included ("castor provision" writes it after the first start, and a worker reads it once);
+      # never on a write under var/, or every compiled template and catalogue would restart them.
+      FRANKENPHP_CONFIG: "import worker.Caddyfile"
+      FRANKENPHP_WORKER_CONFIG: |-
+        watch /app/src/**/*.php
+        watch /app/config/**/*.{php,yaml,yml}
+        watch /app/templates/**/*.twig
+        watch /app/translations/**/*.xlf
+        watch /app/.env*
+        watch /src/**/*.{php,yaml,yml,twig,xlf}
     volumes:
       - ./apps/op:/app
       - ./src:/src
@@ -73,10 +87,6 @@ services:
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
-    # The image's HEALTHCHECK probes the Caddy admin API (port 2019), which this process does not run. A
-    # dead consumer exits and the restart policy brings it back; there is nothing else to probe.
-    healthcheck:
-      disable: true
     volumes:
       - ./apps/op:/app
       - ./src:/src
@@ -89,6 +99,38 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+
+  # HashiCorp Vault, the KMS of the spike (architecture §3.3): its Transit engine wraps the data key of every
+  # envelope, the private JWK never reaches it. Dev mode, in memory: a restart loses the key of the tenant
+  # and every token, and the envelopes sealed before it cannot be opened again. The container runs
+  # docker/vault/init.sh against its own server on every start, idempotent: Transit enabled, the key of the
+  # tenant heidi-<slug> (derived, not exportable, without plaintext backup), the policy of the OP
+  # (docker/vault/heidi-op.hcl); it is healthy once the key exists. The root token stays here, for the
+  # script and for "castor provision --kms vault", which mints the token of the OP under that policy.
+  # (A separate one-shot init service would make "docker compose up --wait" fail the moment it exits.)
+  vault:
+    image: hashicorp/vault:${VAULT_VERSION:-2.1}
+    profiles: [vault]
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_ROOT_TOKEN:-dev-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://127.0.0.1:8200
+      VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-dev-root-token}
+      HEIDI_TENANT_SLUG: ${HEIDI_TENANT_SLUG:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["docker-entrypoint.sh server -dev & pid=$$!; trap 'kill $$pid' TERM INT; /init/init.sh; wait $$pid"]
+    healthcheck:
+      test: ["CMD", "vault", "read", "transit/keys/heidi-${HEIDI_TENANT_SLUG:-default}"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    volumes:
+      - ./docker/vault:/init:ro
 
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine

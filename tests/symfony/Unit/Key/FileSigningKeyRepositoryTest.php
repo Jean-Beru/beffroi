@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Tests\Unit\Key;
 
 use DateTimeImmutable;
 use function decoct;
+use function file_get_contents;
 use function file_put_contents;
 use function fileperms;
 use function glob;
@@ -23,6 +24,7 @@ use function mkdir;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
 use Symfony\Component\Filesystem\Filesystem;
 use function sys_get_temp_dir;
 use function uniqid;
@@ -346,6 +348,33 @@ final class FileSigningKeyRepositoryTest extends TestCase
         // Then
         static::assertSame('700', decoct(fileperms($this->directory . '/acme') & 0o777));
         static::assertSame('600', decoct(fileperms($this->directory . '/acme/' . Keys::pair()->kid . '.json') & 0o777));
+    }
+
+    /**
+     * The proof of custody of issue #57, on the files: whatever the KMS, a key file carries the public JWK
+     * in clear and the private one sealed, so no private member of RFC 7518 §6.3.2 appears in it, nor the
+     * private members themselves as the sealer received them.
+     */
+    #[Test]
+    public function noKeyFileCarriesAPrivateMemberInClear(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
+
+        // When
+        $files = glob($this->directory . '/*/*.json');
+
+        // Then
+        static::assertIsArray($files);
+        static::assertCount(1, $files);
+        foreach ($files as $file) {
+            $document = (string) file_get_contents($file);
+            foreach (['d', 'p', 'q', 'dp', 'dq', 'qi'] as $member) {
+                static::assertStringNotContainsString(sprintf('"%s":', $member), $document);
+                static::assertStringNotContainsString(Keys::pair()->privateJwk[$member], $document);
+            }
+        }
     }
 
     #[Test]
