@@ -29,6 +29,7 @@ use ParagonIE\ConstantTime\Base64UrlSafe;
 use function random_bytes;
 use function str_pad;
 use const STR_PAD_LEFT;
+use function str_repeat;
 use function strlen;
 use Webauthn\AuthenticatorData;
 
@@ -54,6 +55,13 @@ final class SoftwareAuthenticator
 
     private OpenSSLAsymmetricKey $key;
 
+    /**
+     * @param string $attestation the format of the attestation statement at creation (§8): "none", what a
+     *                            browser sends when the provider asked for none, or "packed" in self
+     *                            attestation (§8.2), what an authenticator may send anyway
+     * @param bool $forgesAttestation a packed statement whose signature does not hold: the test of a
+     *                                statement verified rather than skipped
+     */
     public function __construct(
         private string $origin,
         private ?string $relyingPartyId = null,
@@ -61,6 +69,8 @@ final class SoftwareAuthenticator
         private bool $userVerified = false,
         private bool $backupEligible = false,
         private bool $backedUp = false,
+        private string $attestation = 'none',
+        private bool $forgesAttestation = false,
     ) {
         $this->credentialId = random_bytes(32);
         $this->aaguid = random_bytes(16);
@@ -126,9 +136,10 @@ final class SoftwareAuthenticator
         $relyingPartyId = $this->relyingPartyId ?? (is_array($rp) && is_string($rp['id'] ?? null) ? $rp['id'] : throw new LogicException('The creation options name no relying party.'));
         $attestedCredentialData = $this->aaguid . pack('n', strlen($this->credentialId)) . $this->credentialId . $this->cosePublicKey();
         $authenticatorData = $this->authenticatorData($relyingPartyId, AuthenticatorData::FLAG_AT, $attestedCredentialData);
+        $clientDataJson = $this->clientDataJson('webauthn.create', self::challenge($options));
         $attestationObject = (string) MapObject::create([
-            MapItem::create(TextStringObject::create('fmt'), TextStringObject::create('none')),
-            MapItem::create(TextStringObject::create('attStmt'), MapObject::create()),
+            MapItem::create(TextStringObject::create('fmt'), TextStringObject::create($this->attestation)),
+            MapItem::create(TextStringObject::create('attStmt'), $this->attestationStatement($authenticatorData . hash('sha256', $clientDataJson, true))),
             MapItem::create(TextStringObject::create('authData'), ByteStringObject::create($authenticatorData)),
         ]);
 
@@ -137,7 +148,7 @@ final class SoftwareAuthenticator
             'rawId' => Base64UrlSafe::encodeUnpadded($this->credentialId),
             'type' => 'public-key',
             'response' => [
-                'clientDataJSON' => Base64UrlSafe::encodeUnpadded($this->clientDataJson('webauthn.create', self::challenge($options))),
+                'clientDataJSON' => Base64UrlSafe::encodeUnpadded($clientDataJson),
                 'attestationObject' => Base64UrlSafe::encodeUnpadded($attestationObject),
                 'transports' => [$this->backupEligible ? 'internal' : 'usb'],
             ],
@@ -161,9 +172,7 @@ final class SoftwareAuthenticator
         }
         $clientDataJson = $this->clientDataJson('webauthn.get', self::challenge($options));
         $authenticatorData = $this->authenticatorData($relyingPartyId, 0, '');
-        if (! openssl_sign($authenticatorData . hash('sha256', $clientDataJson, true), $signature, $this->key, OPENSSL_ALGO_SHA256) || ! is_string($signature)) {
-            throw new LogicException('OpenSSL could not sign the assertion.');
-        }
+        $signature = $this->sign($authenticatorData . hash('sha256', $clientDataJson, true));
 
         return json_encode([
             'id' => Base64UrlSafe::encodeUnpadded($this->credentialId),
@@ -200,6 +209,35 @@ final class SoftwareAuthenticator
             MapItem::create(NegativeIntegerObject::create(-2), ByteStringObject::create(str_pad($x, 32, "\0", STR_PAD_LEFT))),
             MapItem::create(NegativeIntegerObject::create(-3), ByteStringObject::create(str_pad($y, 32, "\0", STR_PAD_LEFT))),
         ]);
+    }
+
+    /**
+     * §8.2, packed in self attestation: the signature over the same data as an assertion, with the
+     * credential key itself; nothing for "none" (§8.7).
+     */
+    private function attestationStatement(string $data): MapObject
+    {
+        if ($this->attestation !== 'packed') {
+            return MapObject::create();
+        }
+        $signature = $this->sign($data);
+
+        return MapObject::create([
+            MapItem::create(TextStringObject::create('alg'), NegativeIntegerObject::create(-7)),
+            MapItem::create(TextStringObject::create('sig'), ByteStringObject::create($this->forgesAttestation ? str_repeat("\0", strlen($signature)) : $signature)),
+        ]);
+    }
+
+    /**
+     * ES256 (RFC 9053 §2.1), as an authenticator signs.
+     */
+    private function sign(string $data): string
+    {
+        if (! openssl_sign($data, $signature, $this->key, OPENSSL_ALGO_SHA256) || ! is_string($signature)) {
+            throw new LogicException('OpenSSL could not sign.');
+        }
+
+        return $signature;
     }
 
     /**

@@ -151,6 +151,40 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         yield 'a synced passkey' => [true, true];
     }
 
+    /**
+     * §7.1, step 21, and the spike README: an attestation statement the authenticator sends although none
+     * was asked for is verified, here a packed one in self attestation (§8.2).
+     */
+    #[Test]
+    public function anAttestationStatementSentAnywayIsVerified(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed');
+        $options = $this->creationOptions();
+
+        // When
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+
+        // Then
+        static::assertSame('self', $record->attestationType);
+        static::assertSame($authenticator->credentialId, $record->publicKeyCredentialId);
+    }
+
+    #[Test]
+    public function anAttestationStatementThatDoesNotHoldIsRefused(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed', forgesAttestation: true);
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+    }
+
     #[Test]
     public function anAttestationFromAnotherOriginIsRefused(): void
     {
