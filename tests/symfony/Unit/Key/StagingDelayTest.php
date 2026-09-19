@@ -12,7 +12,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Architecture §3.3 and §9: the staging window is at least the JWK Set max-age plus the refetch cooldown
- * of oidc_login, so that a relying party with a warm cache sees the new key when it starts signing.
+ * of oidc_login, so that a relying party with a warm cache, even one served by a shared HTTP cache, sees
+ * the new key when it starts signing.
  */
 final class StagingDelayTest extends TestCase
 {

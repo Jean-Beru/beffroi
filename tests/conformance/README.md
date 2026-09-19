@@ -5,7 +5,7 @@ The suite runs locally from the prebuilt images of `registry.gitlab.com/openid/c
 ```bash
 castor start --conformance     # OP on https://op.localhost, suite on https://localhost:8443
 castor conformance             # every plan; --plan rp-initiated-logout for one (repeatable), --module oidcc-server for one module (repeatable, substring)
-castor conformance --strict    # a WARNING fails too, which is what the CI runs
+castor conformance --strict    # a WARNING fails too, which is what the CI runs on main
 castor logs conformance-server
 ```
 

@@ -44,7 +44,7 @@ final readonly class KeysRotateCommand
         SymfonyStyle $io,
         #[Option(description: 'The JWS algorithm the key signs with.')]
         SignatureAlgorithm $algorithm = SignatureAlgorithm::RS256,
-        #[Option(description: 'Activate the key at once, without the staging delay: for an operator who knows every relying party is cold.')]
+        #[Option(description: 'Activate the key at once, without the staging delay: a relying party whose JWK Set copy is younger than 60 s refuses the new tokens until it is that old (oidc_login refetches once then); for an operator who knows every relying party is cold.')]
         bool $now = false,
         #[Option(description: 'The active key is compromised: the new key signs at once and the compromised one leaves the JWK Set with no window.')]
         bool $compromised = false,

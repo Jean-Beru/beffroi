@@ -26,7 +26,7 @@ castor start --kms vault          # plus HashiCorp Vault (dev mode, docker/vault
 castor start --kms aws            # plus LocalStack 4.14.0 (KMS only, docker/localstack/init.sh at every start: the key of the tenant under alias/heidi-<slug>); the last community image, the 2026.x ones need an account
 castor conformance [--plan P] [--module X]  # run the certification plans (basic, config, rp-initiated-logout, rotate-keys) through the API of the suite, scripted browser, key rotation done by the task; result per module
 castor provision [--kms sodium|file|vault|aws]  # apps/op/.env.local (KMS DSN: a sodium key inline or in a file of the op container, a Vault token minted under the policy of the OP, or the LocalStack alias; client secrets, password), tenant, signing key (a published one is opened with the KMS first, heidi:keys:list --check), user "alice" with a profile
-castor demo [--check]             # point ../oidc-demo (Symfony oidc_login) at the OP and start it on https://localhost:8002; --check signs in, opens /profile, logs out
+castor demo [--check] [--rotate]  # point ../oidc-demo (Symfony oidc_login) at the OP and start it on https://localhost:8002; --check signs in, opens /profile, logs out; --rotate runs a whole key rotation against it (about six minutes, short windows written into apps/op/.env.local for the run) and measures the refetch cooldown of oidc_login
 castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI) inside the op container
 castor stop / castor logs / castor console <cmd>
 castor phpunit            # tests with coverage
