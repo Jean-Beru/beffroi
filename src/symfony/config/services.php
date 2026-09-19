@@ -35,6 +35,7 @@ use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
+use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Application\Credential\CredentialRevocation;
 use Heidi\Core\Application\Identity\UserProvisioner;
@@ -209,7 +210,7 @@ return static function (ContainerConfigurator $container): void {
             '$issuedJws' => tagged_iterator('heidi.issued_jws'),
         ]);
 
-    // The core: passwords; hashers are tagged by hand, the registry implements the port too
+    // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
     $services->set(NativePasswordHasher::class)
         ->tag('heidi.password_hasher');
     $services->set(PasswordHasherRegistry::class)
@@ -234,6 +235,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PasskeyEnrolment::class);
     $services->set(PasskeyAuthentication::class);
     $services->set(CredentialRevocation::class);
+    $services->set(SessionOpener::class);
     $services->set(SessionTerminator::class);
     $services->set(UserProvisioner::class);
 

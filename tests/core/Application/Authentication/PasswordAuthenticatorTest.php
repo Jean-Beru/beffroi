@@ -7,6 +7,7 @@ namespace Heidi\Core\Tests\Application\Authentication;
 use DateInterval;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
+use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
@@ -58,7 +59,7 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), $this->sessions, $this->clock, $this->events, new DateInterval('PT8H'));
+        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->clock, $this->events);
     }
 
     #[Test]
@@ -325,18 +326,5 @@ final class PasswordAuthenticatorTest extends TestCase
         // Then
         static::assertCount(1, $this->events->of(PasswordRehashed::class));
         static::assertSame($this->credentials->findByUser($carol, PasswordCredential::class)[0], $this->events->of(PasswordRehashed::class)[0]->credential);
-    }
-
-    #[Test]
-    public function theDefaultSessionLifetimeIsTwelveHours(): void
-    {
-        // Given
-        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), $this->sessions, $this->clock, $this->events);
-
-        // When
-        $session = $authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context());
-
-        // Then
-        static::assertEquals($this->clock->now()->modify('+12 hours'), $session->expiresAt);
     }
 }

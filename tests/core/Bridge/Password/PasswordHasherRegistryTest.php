@@ -11,7 +11,7 @@ use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Port\PasswordHasherInterface;
+use Heidi\Core\Port\AlgorithmPasswordHasherInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use SensitiveParameter;
@@ -96,7 +96,7 @@ final class PasswordHasherRegistryTest extends TestCase
 /**
  * Stands for an import hasher: "verifies" by comparing the plain password with the digest prefix.
  */
-final class FakePbkdf2Hasher implements PasswordHasherInterface
+final class FakePbkdf2Hasher implements AlgorithmPasswordHasherInterface
 {
     public function supports(PasswordAlgorithm $algorithm): bool
     {

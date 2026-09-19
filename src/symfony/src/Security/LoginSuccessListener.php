@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Security;
 
 use function array_map;
-use DateInterval;
 use DateTimeImmutable;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\RequestContextFactory;
+use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Domain\Event\PasskeyUsed;
-use Heidi\Core\Domain\Event\UserAuthenticated;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
-use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
@@ -27,13 +24,12 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
-use Symfony\Component\Uid\Uuid;
 
 /**
- * Opens the session of the core after a login of the firewall, with a password or with a passkey, and
- * binds the browser to it (architecture §3.2, §5.4). A re-login records its proofs on the session the
- * browser holds rather than opening another; a browser bound to someone else's session ends it first.
- * The proofs are copied into the token of Symfony (symfony/symfony#66064).
+ * Opens the session of the core after a login of the firewall, with a password or with a passkey, through
+ * the SessionOpener of the core, and binds the browser to it (architecture §3.2, §5.4). A re-login records
+ * its proofs on the session the browser holds rather than opening another; a browser bound to someone
+ * else's session ends it first. The proofs are copied into the token of Symfony (symfony/symfony#66064).
  */
 final readonly class LoginSuccessListener
 {
@@ -42,10 +38,10 @@ final readonly class LoginSuccessListener
         private BrowserSession $browser,
         private AuthenticationSessionRepositoryInterface $sessions,
         private CredentialRepositoryInterface $credentials,
+        private SessionOpener $opener,
         private SessionTerminator $terminator,
         private RequestContextFactory $contexts,
         private EventDispatcherInterface $events,
-        private DateInterval $sessionLifetime = new DateInterval('PT12H'),
     ) {
     }
 
@@ -73,17 +69,7 @@ final readonly class LoginSuccessListener
             if ($session !== null) {
                 $this->terminator->end($session, SessionEnd::User, $context);
             }
-            $session = new AuthenticationSession(
-                Uuid::v7(),
-                $tenant,
-                $user->user(),
-                $now,
-                AuthenticationProofs::ofAll($methods, $now),
-                $context,
-                $now->add($this->sessionLifetime),
-            );
-            $this->sessions->save($session);
-            $this->events->dispatch(new UserAuthenticated($session));
+            $session = $this->opener->open($tenant, $user->user(), $methods, $context);
         }
 
         $this->recordUse($passport, $user, $now, $context);

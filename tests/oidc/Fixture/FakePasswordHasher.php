@@ -27,11 +27,6 @@ final class FakePasswordHasher implements PasswordHasherInterface
      */
     public private(set) int $hashed = 0;
 
-    public function supports(PasswordAlgorithm $algorithm): bool
-    {
-        return $algorithm === PasswordAlgorithm::Argon2id;
-    }
-
     public function hash(#[SensitiveParameter] string $plainPassword): PasswordHash
     {
         ++$this->hashed;
