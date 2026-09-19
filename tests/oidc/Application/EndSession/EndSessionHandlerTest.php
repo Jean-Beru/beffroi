@@ -22,6 +22,7 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
@@ -86,7 +87,7 @@ final class EndSessionHandlerTest extends TestCase
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->accessTokens = new InMemoryAccessTokenRepository();
         $this->events = new RecordingEventDispatcher();
-        $this->handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), $this->refreshTokens, $this->accessTokens, $this->clock);
+        $this->handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), new RefreshTokenRevocation($this->refreshTokens), $this->accessTokens, $this->clock);
     }
 
     /**
@@ -210,7 +211,7 @@ final class EndSessionHandlerTest extends TestCase
     public function aStoreThatCannotRevokeIsNotAskedTo(): void
     {
         // Given
-        $handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), $this->refreshTokens, static::createStub(AccessTokenRepositoryInterface::class), $this->clock);
+        $handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), new RefreshTokenRevocation($this->refreshTokens), static::createStub(AccessTokenRepositoryInterface::class), $this->clock);
 
         // When
         $handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);

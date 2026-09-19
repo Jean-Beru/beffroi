@@ -90,6 +90,7 @@ use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
+use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
@@ -273,6 +274,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AccessTokenJwsKind::class)
         ->tag('heidi.issued_jws');
     $services->set(TokenIssuer::class);
+    $services->set(RefreshTokenRevocation::class);
     $services->set(AuthorizationCodeGrant::class)
         ->tag('heidi.oidc.grant');
     $services->set(RefreshTokenGrant::class)
