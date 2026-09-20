@@ -26,7 +26,7 @@ use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Security\CorePasswordHasher;
-use Heidi\Bundle\Security\RateLimitedCodeAttempts;
+use Heidi\Bundle\Security\RateLimitedAttempts;
 use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
@@ -327,14 +327,16 @@ final class HeidiBundle extends AbstractBundle
             ]);
         }
         if ($builder->hasExtension('rate_limiter')) {
+            $limiters = [];
+            foreach (RateLimitedAttempts::LIMITERS as $limiter) {
+                $limiters[$limiter] = [
+                    'policy' => 'sliding_window',
+                    'limit' => RateLimitedAttempts::LIMIT,
+                    'interval' => RateLimitedAttempts::INTERVAL,
+                ];
+            }
             $builder->prependExtensionConfig('rate_limiter', [
-                'limiters' => [
-                    RateLimitedCodeAttempts::LIMITER => [
-                        'policy' => 'sliding_window',
-                        'limit' => RateLimitedCodeAttempts::LIMIT,
-                        'interval' => RateLimitedCodeAttempts::INTERVAL,
-                    ],
-                ],
+                'limiters' => $limiters,
             ]);
         }
         if ($builder->hasExtension('doctrine_migrations')) {

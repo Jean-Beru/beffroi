@@ -18,7 +18,7 @@ use Heidi\Core\Domain\Event\TotpUsed;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Tests\Fixture\FakeCodeAttemptLimiter;
+use Heidi\Core\Tests\Fixture\FakeAttemptLimiter;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -38,7 +38,7 @@ final class TotpAuthenticationTest extends TestCase
 
     private FakePasswordHasher $hasher;
 
-    private FakeCodeAttemptLimiter $attempts;
+    private FakeAttemptLimiter $attempts;
 
     private RecordingEventDispatcher $events;
 
@@ -53,7 +53,7 @@ final class TotpAuthenticationTest extends TestCase
         $this->alice = Fixtures::user();
         $credentials = new InMemoryCredentialRepository();
         $this->hasher = new FakePasswordHasher();
-        $this->attempts = new FakeCodeAttemptLimiter(5);
+        $this->attempts = new FakeAttemptLimiter(5);
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
         // enrolled an hour ago: the step of its first code is long past

@@ -5,19 +5,22 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Fixture;
 
 use function array_filter;
+use function array_values;
 use function count;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Port\CodeAttemptLimiterInterface;
+use Heidi\Core\Port\PasswordAttemptLimiterInterface;
 use const PHP_INT_MAX;
 
 /**
  * Counts the attempts of each user and refuses past the number allowed, without a clock: a window that
- * never slides, enough to see that the use case asks before it verifies.
+ * never slides, enough to see that a use case asks before it verifies and forgets when it should. One
+ * fixture for the two ports, as the bundle has one class for the two limiters.
  */
-final class FakeCodeAttemptLimiter implements CodeAttemptLimiterInterface
+final class FakeAttemptLimiter implements CodeAttemptLimiterInterface, PasswordAttemptLimiterInterface
 {
     /**
-     * @var list<string> the users of every attempt, in order
+     * @var list<string> the users of every attempt still counted, in order
      */
     public private(set) array $attempts = [];
 
@@ -32,5 +35,11 @@ final class FakeCodeAttemptLimiter implements CodeAttemptLimiterInterface
         $this->attempts[] = $id;
 
         return count(array_filter($this->attempts, static fn (string $attempt): bool => $attempt === $id)) <= $this->allowed;
+    }
+
+    public function reset(User $user): void
+    {
+        $id = $user->id->toRfc4122();
+        $this->attempts = array_values(array_filter($this->attempts, static fn (string $attempt): bool => $attempt !== $id));
     }
 }

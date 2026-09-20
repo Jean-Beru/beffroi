@@ -15,6 +15,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 use Symfony\Component\Security\Core\Exception\DisabledException;
+use Symfony\Component\Security\Core\Exception\TooManyLoginAttemptsAuthenticationException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
@@ -109,6 +110,9 @@ final readonly class LoginFailureListener
             }
             if ($cause instanceof DisabledException) {
                 return AuthenticationFailureReason::DisabledUser;
+            }
+            if ($cause instanceof TooManyLoginAttemptsAuthenticationException) {
+                return AuthenticationFailureReason::TooManyAttempts;
             }
         }
 

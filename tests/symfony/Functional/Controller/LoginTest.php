@@ -454,6 +454,128 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
+     * Decision 0006 and architecture §3.4: five attempts a minute on a user, counted before the hash is
+     * verified; the sixth is refused whatever the password, the right one included.
+     */
+    #[Test]
+    public function theSixthAttemptInAMinuteOpensNoSessionWhateverThePassword(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->submitLogin($interaction, 'alice', 'not the password');
+        }
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
+        static::assertFalse($this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY));
+        static::assertSame([], self::sessionsOf('alice'));
+        static::assertSame([], self::events(UserAuthenticated::class));
+    }
+
+    /**
+     * Architecture §3.4: the audit trail says the attempt was refused before the password was looked at.
+     */
+    #[Test]
+    public function aRefusedAttemptIsRecordedWithItsReason(): void
+    {
+        // Given
+        $user = self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->submitLogin($interaction, 'alice', 'not the password');
+        }
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
+        $failures = self::events(AuthenticationFailed::class);
+        static::assertCount(1, $failures);
+        static::assertSame(AuthenticationFailureReason::TooManyAttempts, $failures[0]->reason);
+        static::assertSame('alice', $failures[0]->identifier);
+        static::assertTrue($failures[0]->user?->id->equals($user->id));
+    }
+
+    /**
+     * Decision 0006: the user is told "failed" and nothing more, as after any other refusal.
+     */
+    #[Test]
+    public function aRefusedAttemptIsShownLikeAnyOtherFailure(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->submitLogin($interaction, 'alice', 'not the password');
+        }
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // When
+        $crawler = $this->loginPage($interaction);
+
+        // Then
+        static::assertSame('authentication_failed', $crawler->filter('p[data-error]')->attr('data-error'));
+    }
+
+    /**
+     * The count is per user and never per address: what was tried on alice does not count for bob.
+     */
+    #[Test]
+    public function theAttemptsOnOneUserDoNotCountForAnother(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $bob = self::userWithPassword('bob', self::PASSWORD);
+        $interaction = $this->authorize();
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->submitLogin($interaction, 'alice', 'not the password');
+        }
+
+        // When
+        $this->submitLogin($interaction, 'bob', self::PASSWORD);
+
+        // Then
+        static::assertTrue($this->boundSession()->user->id->equals($bob->id));
+    }
+
+    /**
+     * Architecture §3.4: a password the firewall accepted empties the count of the user, so that four
+     * mistakes before a login do not count against the next one.
+     */
+    #[Test]
+    public function aSuccessfulLoginEmptiesTheCountOfTheUser(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        for ($attempt = 1; $attempt <= 4; ++$attempt) {
+            $this->submitLogin($interaction, 'alice', 'not the password');
+        }
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+        $this->aSecondLater();
+        $interaction = $this->authorize([
+            'prompt' => 'login',
+        ]);
+        for ($attempt = 1; $attempt <= 4; ++$attempt) {
+            $this->submitLogin($interaction, 'alice', 'not the password');
+        }
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
+        static::assertSame([], self::events(AuthenticationFailed::class));
+        static::assertCount(1, self::sessionsOf('alice'));
+    }
+
+    /**
      * A form posted without the token of this browser is refused.
      */
     #[Test]
