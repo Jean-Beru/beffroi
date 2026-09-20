@@ -16,7 +16,8 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  * counts them (architecture §3.4, §5.4): once the user of the bundle is loaded and before the hash is
  * verified, after the form token, so that a form without its token is not an attempt on an account; the
  * sixth in a minute refused with the exception of Symfony's own throttling, which the failure listener
- * reads as too_many_attempts and the login page shows as any other failure. A password the firewall
+ * reads as too_many_attempts and the login page shows as any other failure, after the decoy hash was
+ * paid (RefusalCost), so that the refusal costs what a wrong password costs. A password the firewall
  * accepted empties the count, held by the SecondFactorGate or not. An unknown username is loaded by no
  * provider and counted nowhere; a passkey and a code carry no password and are not concerned.
  */
@@ -29,6 +30,7 @@ final readonly class PasswordAttemptListener
 
     public function __construct(
         private PasswordAttemptLimiterInterface $attempts,
+        private RefusalCost $cost,
     ) {
     }
 
@@ -44,6 +46,8 @@ final readonly class PasswordAttemptListener
             return;
         }
         if (! $this->attempts->attempt($user->user())) {
+            $this->cost->pay($passport);
+
             throw new TooManyLoginAttemptsAuthenticationException();
         }
     }

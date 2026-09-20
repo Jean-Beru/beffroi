@@ -32,6 +32,7 @@ use Heidi\Bundle\Plane\PlaneRequestListener;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
 use Heidi\Bundle\Scheduler\HeidiSchedule;
 use Heidi\Bundle\Security\CorePasswordHasher;
+use Heidi\Bundle\Security\DecoyHashListener;
 use Heidi\Bundle\Security\IdentityUserProvider;
 use Heidi\Bundle\Security\InteractionLoginHandler;
 use Heidi\Bundle\Security\LoginFailureListener;
@@ -40,11 +41,13 @@ use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\PassportProofs;
 use Heidi\Bundle\Security\PasswordAttemptListener;
 use Heidi\Bundle\Security\RateLimitedAttempts;
+use Heidi\Bundle\Security\RefusalCost;
 use Heidi\Bundle\Security\SecondFactorGate;
 use Heidi\Bundle\Security\TotpLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
+use Heidi\Core\Application\Authentication\DecoyHash;
 use Heidi\Core\Application\Authentication\LoginCompletion;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
@@ -219,6 +222,9 @@ return static function (ContainerConfigurator $container): void {
         ->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
     $services->alias(PasswordAttemptLimiterInterface::class, 'heidi.security.password_attempts');
     $services->set(PasswordAttemptListener::class);
+    // the decoy hash of the core paid where the firewall refuses a password before any hash (architecture §5.4)
+    $services->set(RefusalCost::class);
+    $services->set(DecoyHashListener::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
     $services->set(TenantProvider::class)
@@ -275,6 +281,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PasswordHasherRegistry::class)
         ->args([tagged_iterator('heidi.password_hasher')]);
     $services->alias(PasswordHasherInterface::class, PasswordHasherRegistry::class);
+    // the hash a refused password is verified against when none of the user could be, computed once per process
+    $services->set(DecoyHash::class);
 
     // The core: the WebAuthn ceremonies on webauthn-lib (architecture §3.4), on the FIDO metadata of the store
     // the console fills (the two commands), read once per process; the chains of a blob and of an attestation

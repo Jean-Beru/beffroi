@@ -7,6 +7,7 @@ namespace Heidi\Core\Tests\Application\Authentication;
 use function array_map;
 use DateInterval;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
+use Heidi\Core\Application\Authentication\DecoyHash;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Application\Authentication\SessionOpener;
@@ -32,6 +33,7 @@ use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Core\Tests\Fixture\Totps;
 use const PASSWORD_BCRYPT;
 use function password_hash;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -69,7 +71,8 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->attempts, new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
+        $hasher = new NativePasswordHasher();
+        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new DecoyHash($hasher), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->attempts, new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
     }
 
     #[Test]
@@ -393,18 +396,21 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * A refused attempt still pays a hash, so that its time does not tell a known user from an unknown one.
+     * Decision 0006: a refusal before the hash, the user unknown, without a password or past the limit,
+     * still pays a hash, the decoy, so that its time does not tell a known user from an unknown one.
      */
     #[Test]
-    public function aRefusedAttemptCostsAHashLikeAWrongPassword(): void
+    #[DataProvider('provideRefusalsBeforeTheHash')]
+    public function aRefusalBeforeTheHashCostsAHashLikeAWrongPassword(string $username, int $allowedAttempts): void
     {
         // Given
+        $this->users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $hasher = new FakePasswordHasher();
-        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), new FakeAttemptLimiter(0), new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
+        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new DecoyHash($hasher), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), new FakeAttemptLimiter($allowedAttempts), new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
 
         // When
         try {
-            $authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+            $authenticator->authenticate($this->tenant, $username, 'correct horse', Fixtures::context($this->clock->now()));
         } catch (AuthenticationFailedException) {
         }
 
@@ -412,6 +418,16 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertCount(1, $hasher->verifiedAgainst);
         static::assertStringStartsWith('fake:', $hasher->verifiedAgainst[0]);
         static::assertNotSame($hasher->hash('correct horse')->encoded, $hasher->verifiedAgainst[0]);
+    }
+
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function provideRefusalsBeforeTheHash(): iterable
+    {
+        yield 'an unknown user' => ['mallory', 5];
+        yield 'a user without a password' => ['bob', 5];
+        yield 'an attempt too many' => ['alice', 0];
     }
 
     /**
