@@ -6,6 +6,7 @@ namespace Heidi\Core\Tests\Application\Totp;
 
 use function array_filter;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
+use Heidi\Core\Application\Totp\ActiveTotp;
 use Heidi\Core\Application\Totp\TotpAuthentication;
 use Heidi\Core\Application\Totp\TotpCodeMatcher;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
@@ -58,7 +59,7 @@ final class TotpAuthenticationTest extends TestCase
         // enrolled an hour ago: the step of its first code is long past
         $this->totp = Totps::credential($this->alice, $this->hasher, Totps::stepAt($this->clock->now()->modify('-1 hour')), createdAt: $this->clock->now()->modify('-1 hour'));
         $credentials->save($this->totp);
-        $this->authentication = new TotpAuthentication($credentials, new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
+        $this->authentication = new TotpAuthentication($credentials, new ActiveTotp($credentials), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
     }
 
     #[Test]
@@ -94,7 +95,7 @@ final class TotpAuthenticationTest extends TestCase
         $credentials->method('findByUser')
             ->willReturn([$this->totp]);
         $credentials->expects(static::once())->method('save')->with($this->totp);
-        $authentication = new TotpAuthentication($credentials, new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
+        $authentication = new TotpAuthentication($credentials, new ActiveTotp($credentials), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
 
         // When
         $authentication->authenticate($this->alice, $code === 'totp' ? Totps::codeAt($this->clock->now()) : $code, Fixtures::context($this->clock->now()));

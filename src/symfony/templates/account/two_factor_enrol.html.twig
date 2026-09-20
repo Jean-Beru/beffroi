@@ -1,0 +1,25 @@
+{# The enrolment of an authenticator app (architecture §5.2): the QR code the app scans, drawn by the
+   bundle as an SVG embedded here (no image loaded from anywhere), the key for an app that takes it by
+   hand, and the first code the app shows, posted with the CSRF token. Nothing exists until that code
+   holds. "error" is a code of TotpEnrolmentController, shown when the code did not match; the same QR
+   code stays. Overridable by an application under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% block title %}{{ 'two_factor.enrol.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p>{{ 'two_factor.signed_in_as'|trans({username: user.username}) }}</p>
+    {% if error is not null %}
+        <p data-error="{{ error }}">{{ ('two_factor.error.' ~ error)|trans }}</p>
+    {% endif %}
+    <p>{{ 'two_factor.enrol.scan'|trans }}</p>
+    <figure data-two-factor="qr-code">{{ qr_code|raw }}</figure>
+    <p>{{ 'two_factor.enrol.manual'|trans }} <code data-two-factor="key">{{ key }}</code></p>
+    <form method="post" action="{{ path('heidi_interaction_account_two_factor_enrol') }}" data-two-factor="enrol">
+        <input type="hidden" name="_token" value="{{ csrf_token('heidi_two_factor_enrol') }}">
+        <label for="code">{{ 'two_factor.enrol.code'|trans }}</label>
+        <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" required autofocus>
+        <button type="submit">{{ 'two_factor.enrol.submit'|trans }}</button>
+    </form>
+{% endblock %}

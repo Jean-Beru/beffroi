@@ -22,10 +22,12 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
 /**
- * Opens the session of the core after a login of the firewall, with a password or with a passkey, through
- * the SessionOpener of the core, and binds the browser to it (architecture §3.2, §5.4). A re-login records
- * its proofs on the session the browser holds rather than opening another; a browser bound to someone
- * else's session ends it first. The proofs are copied into the token of Symfony (symfony/symfony#66064).
+ * Opens the session of the core after a login of the firewall, with a password, with a passkey or with
+ * the code that completes a password, through the SessionOpener of the core, and binds the browser to it
+ * (architecture §3.2, §5.4). A password of a user who holds a second factor opens nothing yet: the
+ * SecondFactorGate holds the login until the code. A re-login records its proofs on the session the
+ * browser holds rather than opening another; a browser bound to someone else's session ends it first.
+ * The proofs are copied into the token of Symfony (symfony/symfony#66064).
  */
 final readonly class LoginSuccessListener
 {
@@ -39,6 +41,7 @@ final readonly class LoginSuccessListener
         private RequestContextFactory $contexts,
         private EventDispatcherInterface $events,
         private PassportProofs $proofs,
+        private SecondFactorGate $gate,
     ) {
     }
 
@@ -54,6 +57,9 @@ final readonly class LoginSuccessListener
         $request = $event->getRequest();
         $context = $this->contexts->fromRequest($request);
         $now = $context->receivedAt;
+        if ($this->gate->holds($event, $user, $methods, $now)) {
+            return;
+        }
         $tenant = $this->tenants->provide();
 
         $session = $this->browser->authenticationSession($request, $tenant);
@@ -82,6 +88,7 @@ final readonly class LoginSuccessListener
     /**
      * The credential that proved the login is dated; a passkey also records its sign count and its backup
      * state (WebAuthn Level 3 §7.2, step 26) and is announced, a count that did not grow told, not refused.
+     * After a code, the password of the first step is dated here, the TOTP having been dated by the core.
      */
     private function recordUse(Passport $passport, SecurityUser $user, DateTimeImmutable $now, RequestContext $context): void
     {

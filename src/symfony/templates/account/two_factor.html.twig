@@ -1,0 +1,35 @@
+{# The second factor of the signed-in user (architecture §5.2), in the language of the browser: the
+   authenticator app the account holds, with its dates and the backup codes left, and the button that
+   removes it; or the button that sets one up. "error" is a code of TotpEnrolmentBeginController or
+   TotpEnrolmentController, shown when the enrolment could not start or go on. Overridable by an
+   application under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% block title %}{{ 'two_factor.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p>{{ 'two_factor.signed_in_as'|trans({username: user.username}) }}</p>
+    {% if error is not null %}
+        <p data-error="{{ error }}">{{ ('two_factor.error.' ~ error)|trans }}</p>
+    {% endif %}
+    {% if totp is null %}
+        <p data-two-factor="none">{{ 'two_factor.none'|trans }}</p>
+        <form method="post" action="{{ path('heidi_interaction_account_two_factor_begin') }}" data-two-factor="begin">
+            <input type="hidden" name="_token" value="{{ csrf_token('heidi_two_factor_begin') }}">
+            <button type="submit">{{ 'two_factor.set_up'|trans }}</button>
+        </form>
+    {% else %}
+        <p data-two-factor="{{ totp.id }}" data-backup-codes-left="{{ backup_codes_left }}">{{ 'two_factor.active'|trans({date: totp.createdAt|date('Y-m-d H:i')}) }}</p>
+        <dl>
+            <dt>{{ 'two_factor.last_used_at'|trans }}</dt>
+            <dd>{% if totp.lastUsedAt is not null %}<time datetime="{{ totp.lastUsedAt|date('c') }}">{{ totp.lastUsedAt|date('Y-m-d H:i') }}</time>{% else %}{{ 'two_factor.never_used'|trans }}{% endif %}</dd>
+            <dt>{{ 'two_factor.backup_codes'|trans }}</dt>
+            <dd>{{ 'two_factor.backup_codes_left'|trans({count: backup_codes_left}) }}</dd>
+        </dl>
+        <form method="post" action="{{ path('heidi_interaction_account_two_factor_revoke') }}" data-two-factor="revoke">
+            <input type="hidden" name="_token" value="{{ csrf_token('heidi_two_factor_revoke') }}">
+            <button type="submit">{{ 'two_factor.revoke'|trans }}</button>
+        </form>
+    {% endif %}
+{% endblock %}

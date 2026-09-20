@@ -1,0 +1,22 @@
+{# The code page of an interaction (architecture §5.2, §5.4), in the locale the interaction recorded: the
+   second step of a login whose password was verified, one field for the code of the authenticator app
+   or for a backup code, posted to the TOTP authenticator of the firewall with the same token as the
+   login page; a refused code shows one message, whatever the reason. Overridable by an application
+   under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% block title %}{{ 'code.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p>{{ 'code.prompt'|trans({client: client.name}) }}</p>
+    {% if failed %}
+        <p data-error="code_refused">{{ 'code.failed'|trans }}</p>
+    {% endif %}
+    <form method="post" action="{{ path('heidi_interaction_login_code', {interaction: interaction.id}) }}" data-login="code">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+        <label for="code">{{ 'code.code'|trans }}</label>
+        <input type="text" id="code" name="_code" inputmode="numeric" autocomplete="one-time-code" required autofocus>
+        <button type="submit">{{ 'code.submit'|trans }}</button>
+    </form>
+{% endblock %}

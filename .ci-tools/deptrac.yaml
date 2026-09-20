@@ -56,6 +56,10 @@ deptrac:
         # spomky-labs/otphp and its base32, the TOTP brick (docs/09-briques.md): the Bridge of the core computes the codes and the provisioning URI on it, the core reads the steps
         - { type: classLike, value: '^OTPHP\\' }
         - { type: classLike, value: '^ParagonIE\\ConstantTime\\' }
+    - name: 'QrCode'
+      collectors:
+        # bacon/bacon-qr-code, what draws the QR code of a TOTP enrolment as an SVG in the bundle (architecture §5.2): the pages embed it, nothing else reads it
+        - { type: classLike, value: '^BaconQrCode\\' }
     - name: 'Serializer'
       collectors:
         # The serializer webauthn-lib reads the responses of the browser with and writes the options for it; a dependency of the brick, used by the Bridge of the core only through it
@@ -140,6 +144,7 @@ deptrac:
       - 'Jose'
       - 'Webauthn'
       - 'Otphp'
+      - 'QrCode'
       - 'Serializer'
       - 'Doctrine'
       - 'Twig'

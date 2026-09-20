@@ -36,7 +36,7 @@ final class InteractionLoginHandlerTest extends TestCase
         $routes = new RouteCollection();
         $routes->add('heidi_interaction_login', new Route('/login'));
         $router = new Router(new ClosureLoader(), static fn (): RouteCollection => $routes, [], new RequestContext());
-        $this->handler = new InteractionLoginHandler(new InteractionPages(new Environment(new ArrayLoader())), $router);
+        $this->handler = new InteractionLoginHandler(new InteractionPages(new Environment(new ArrayLoader()), $router));
     }
 
     #[Test]

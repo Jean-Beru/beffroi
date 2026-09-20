@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Http;
 
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
 
 /**
@@ -24,6 +26,7 @@ final readonly class InteractionPages
 
     public function __construct(
         private Environment $twig,
+        private UrlGeneratorInterface $router,
     ) {
     }
 
@@ -53,5 +56,19 @@ final readonly class InteractionPages
     public function redirect(string $uri): RedirectResponse
     {
         return new RedirectResponse($uri, Response::HTTP_FOUND, self::HEADERS);
+    }
+
+    /**
+     * A redirection to a page of the interaction the query of the request names (?interaction=), the
+     * way the login page and what posts to it carry it (§4.3), or to the page alone when it names none;
+     * the identifier is never read from the body nor from a referer.
+     */
+    public function redirectToPage(string $route, Request $request): RedirectResponse
+    {
+        $interaction = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
+
+        return $this->redirect($this->router->generate($route, $interaction === '' ? [] : [
+            AuthorizationResponder::INTERACTION_PARAMETER => $interaction,
+        ]));
     }
 }

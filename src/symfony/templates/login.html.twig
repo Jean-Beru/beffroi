@@ -4,7 +4,8 @@
    a button, and the autofill of the username field when the browser offers it (conditional UI); the
    signed assertion is posted as a form to the passkey authenticator of the same firewall. On a step-up
    (decision 0010) the page names the classes the client accepts and says which way of signing in would
-   satisfy one; both stay offered.
+   satisfy one (a passkey, the password, or the password followed by the code of an authenticator app);
+   both forms stay offered.
    Overridable by an application under templates/bundles/HeidiBundle/. #}
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
@@ -24,6 +25,8 @@
         {% endif %}
         {% if step_up.password %}
             <p data-step-up="password">{{ 'login.step_up.password'|trans }}</p>
+        {% elseif step_up.code %}
+            <p data-step-up="code">{{ 'login.step_up.code'|trans }}</p>
         {% endif %}
     {% elseif requirement.value != 'no_session' %}
         <p data-requirement="{{ requirement.value }}">{{ 'login.reauthentication'|trans }}</p>
