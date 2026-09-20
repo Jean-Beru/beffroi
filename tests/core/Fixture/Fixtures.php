@@ -6,6 +6,9 @@ namespace Heidi\Core\Tests\Fixture;
 
 use function chr;
 use DateTimeImmutable;
+use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Heidi\Core\Bridge\Webauthn\StoredMetadata;
+use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Identity\Subject;
@@ -16,9 +19,14 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Port\MetadataBlobStoreInterface;
+use Psr\Clock\ClockInterface;
 use function str_repeat;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\AuthenticatorData;
+use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 
 final class Fixtures
 {
@@ -72,5 +80,17 @@ final class Fixtures
     public static function user(?Tenant $tenant = null, string $username = 'alice', string $subject = 'alice-subject'): User
     {
         return User::create(Uuid::v7(), $tenant ?? self::tenant(), new Subject($subject), $username, self::now());
+    }
+
+    /**
+     * The ceremonies on the metadata of a store, empty unless one is given; the chains are checked
+     * without a CRL fetched, as the library does when none can be.
+     */
+    public static function ceremonies(?MetadataBlobStoreInterface $metadata = null, ?ClockInterface $clock = null): WebauthnCeremonies
+    {
+        $clock ??= new MockClock(self::now());
+        $stored = new StoredMetadata($metadata ?? new InMemoryMetadataBlobStore());
+
+        return new WebauthnCeremonies($clock, $stored, $stored, PhpCertificateChainValidator::create(new MockHttpClient(), $clock));
     }
 }

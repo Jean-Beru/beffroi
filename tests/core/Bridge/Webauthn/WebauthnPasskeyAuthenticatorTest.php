@@ -22,7 +22,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_replace;
 use function strlen;
-use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\PublicKeyCredentialDescriptor;
 
@@ -47,7 +46,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
         $this->credentials = new InMemoryCredentialRepository();
-        $this->ceremonies = new WebauthnCeremonies(new MockClock());
+        $this->ceremonies = Fixtures::ceremonies();
         $this->authenticator = new WebauthnPasskeyAuthenticator($this->ceremonies, $this->credentials);
     }
 

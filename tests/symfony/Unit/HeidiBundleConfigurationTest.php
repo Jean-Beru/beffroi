@@ -63,6 +63,9 @@ final class HeidiBundleConfigurationTest extends TestCase
             'staging_delay' => null,
         ], $config['keys']);
         static::assertSame([
+            'metadata_storage' => '%kernel.project_dir%/var/webauthn',
+        ], $config['webauthn']);
+        static::assertSame([
             'authorization_code_ttl' => 60,
             'access_token_ttl' => 600,
             'id_token_ttl' => 600,

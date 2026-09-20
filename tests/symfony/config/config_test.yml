@@ -112,6 +112,8 @@ heidi:
         key_id: '%env(HEIDI_TEST_KMS_KEY_ID)%'
         storage: '%kernel.cache_dir%/keys'
         jwks_max_age: 120
+    webauthn:
+        metadata_storage: '%kernel.cache_dir%/webauthn'
     clients:
         oidc-demo:
             name: 'Demo application'
@@ -237,6 +239,9 @@ services:
         public: true
     test.heidi.credentials:
         alias: Heidi\Core\Port\CredentialRepositoryInterface
+        public: true
+    test.heidi.metadata_store:
+        alias: Heidi\Core\Port\MetadataBlobStoreInterface
         public: true
     test.heidi.sessions:
         alias: Heidi\Core\Port\AuthenticationSessionRepositoryInterface

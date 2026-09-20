@@ -1,0 +1,363 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Tests\Functional\Fido;
+
+use Heidi\Bundle\Fido\Conformance\AttestationResultController;
+use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use Heidi\Core\Domain\Credential\PasskeyCredential;
+use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Port\MetadataBlobStoreInterface;
+use Heidi\Core\Port\UserRepositoryInterface;
+use Heidi\Core\Tests\Fixture\MetadataBlobs;
+use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use function is_array;
+use function json_decode;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
+use ParagonIE\ConstantTime\Base64UrlSafe;
+use PHPUnit\Framework\Attributes\Test;
+use function strlen;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
+use Webauthn\MetadataService\Statement\AuthenticatorStatus;
+
+/**
+ * The endpoints of the FIDO2 server API the FIDO Conformance Tools drive (architecture §7), imported by
+ * the test kernel under /fido/conformance as an application imports them in development: the four
+ * ceremonies of the tools on the enrolment and the authentication of the core, with what the tools ask
+ * for. The tools themselves run by hand against the stack; what they check is played here with the
+ * software authenticator.
+ */
+final class FidoConformanceTest extends BrowserTestCase
+{
+    private const string ORIGIN = 'https://op.test';
+
+    /**
+     * ServerPublicKeyCredentialCreationOptionsRequest: what the tools send, echoed in the options
+     * (WebAuthn Level 3 §5.4), the user created on the way.
+     */
+    #[Test]
+    public function theAttestationOptionsAreDrawnForTheUserTheToolsNameWithWhatTheyAskFor(): void
+    {
+        // When
+        $options = $this->post('/fido/conformance/attestation/options', [
+            'username' => 'johndoe@example.com',
+            'displayName' => 'John Doe',
+            'authenticatorSelection' => [
+                'residentKey' => 'required',
+                'authenticatorAttachment' => 'cross-platform',
+                'userVerification' => 'required',
+            ],
+            'attestation' => 'direct',
+            'extensions' => [
+                'example.extension' => true,
+            ],
+        ]);
+
+        // Then
+        static::assertSame('ok', $options['status']);
+        static::assertSame('', $options['errorMessage']);
+        static::assertSame('op.test', self::section($options, 'rp')['id']);
+        static::assertSame('johndoe@example.com', self::section($options, 'user')['name']);
+        static::assertSame('John Doe', self::section($options, 'user')['displayName']);
+        static::assertIsString($options['challenge']);
+        static::assertSame(32, strlen(Base64UrlSafe::decodeNoPadding($options['challenge'])));
+        static::assertSame([-7, -257], self::column($options, 'pubKeyCredParams', 'alg'));
+        static::assertSame([
+            'requireResidentKey' => true,
+            'authenticatorAttachment' => 'cross-platform',
+            'userVerification' => 'required',
+            'residentKey' => 'required',
+        ], self::section($options, 'authenticatorSelection'));
+        static::assertSame('direct', $options['attestation']);
+        static::assertSame([], $options['excludeCredentials']);
+        static::assertSame([
+            'example.extension' => true,
+        ], self::section($options, 'extensions'));
+        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'johndoe@example.com');
+        static::assertSame('John Doe', $user?->profile->name);
+    }
+
+    /**
+     * The two ceremonies of the tools end to end: the passkey enrolled to the user under the name of the
+     * tools, allowed by the assertion options, the assertion opening a session of the core.
+     */
+    #[Test]
+    public function aPasskeyEnrolledThroughTheToolsSignsInThroughTheTools(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN);
+        $enrolled = $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('johndoe@example.com')));
+        static::assertSame('ok', $enrolled['status'], json_encode($enrolled, JSON_THROW_ON_ERROR));
+        $passkey = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByExternalId(self::tenant(), PasskeyCredential::class, $device->credentialId);
+        static::assertSame(AttestationResultController::PASSKEY_NAME, $passkey?->name);
+
+        // When
+        $options = $this->post('/fido/conformance/assertion/options', [
+            'username' => 'johndoe@example.com',
+            'userVerification' => 'preferred',
+        ]);
+        $asserted = $this->post('/fido/conformance/assertion/result', $device->get(json_encode($options, JSON_THROW_ON_ERROR)));
+
+        // Then
+        static::assertSame('ok', $options['status']);
+        static::assertSame('op.test', $options['rpId']);
+        static::assertSame('preferred', $options['userVerification']);
+        static::assertSame([Base64UrlSafe::encodeUnpadded($device->credentialId)], self::column($options, 'allowCredentials', 'id'));
+        static::assertSame([
+            'status' => 'ok',
+            'errorMessage' => '',
+        ], $asserted);
+        self::reload();
+        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'johndoe@example.com') ?? static::fail('The user is gone.');
+        static::assertCount(1, self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, self::now()));
+    }
+
+    /**
+     * §5.4, excludeCredentials: a second ceremony of the same user excludes the passkey enrolled.
+     */
+    #[Test]
+    public function theNextAttestationOptionsExcludeThePasskeyEnrolled(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN);
+        $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('johndoe@example.com')));
+
+        // When
+        $options = $this->post('/fido/conformance/attestation/options', [
+            'username' => 'johndoe@example.com',
+            'displayName' => 'John Doe',
+        ]);
+
+        // Then
+        static::assertSame([Base64UrlSafe::encodeUnpadded($device->credentialId)], self::column($options, 'excludeCredentials', 'id'));
+    }
+
+    #[Test]
+    public function attestationOptionsWithoutUsernameAreRefused(): void
+    {
+        // When
+        $answer = $this->post('/fido/conformance/attestation/options', [
+            'displayName' => 'John Doe',
+        ], Response::HTTP_BAD_REQUEST);
+
+        // Then
+        static::assertSame([
+            'status' => 'failed',
+            'errorMessage' => '"username" is required.',
+        ], $answer);
+    }
+
+    #[Test]
+    public function anAttestationOverAChallengeThatWasNotDrawnIsRefused(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN);
+        $options = $this->creationOptions('johndoe@example.com');
+        $this->post('/fido/conformance/attestation/result', $device->create($options));
+        $again = new SoftwareAuthenticator(self::ORIGIN);
+
+        // When
+        $answer = $this->post('/fido/conformance/attestation/result', $again->create($options), Response::HTTP_BAD_REQUEST);
+
+        // Then
+        static::assertSame('failed', $answer['status']);
+        static::assertSame('No creation options were drawn with this challenge, or they were answered already.', $answer['errorMessage']);
+    }
+
+    /**
+     * §7.1 step 22 through the kernel: the tools ask for an attestation, the metadata of the store say the
+     * authenticator is compromised, the self attestation it sends is refused; the metadata are what
+     * heidi:webauthn:mds-refresh stored.
+     */
+    #[Test]
+    public function anAttestationAskedForIsCheckedAgainstTheStoredMetadata(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN, attestation: 'packed');
+        self::service('test.heidi.metadata_store', MetadataBlobStoreInterface::class)
+            ->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(Uuid::fromBinary($device->aaguid)->toRfc4122(), [AuthenticatorStatus::USER_VERIFICATION_BYPASS])]));
+        $options = $this->creationOptions('johndoe@example.com', 'direct');
+
+        // When
+        $answer = $this->post('/fido/conformance/attestation/result', $device->create($options), Response::HTTP_BAD_REQUEST);
+
+        // Then
+        static::assertSame('failed', $answer['status']);
+        static::assertStringContainsString('The authenticator is compromised and cannot be used', self::string($answer['errorMessage']));
+    }
+
+    #[Test]
+    public function assertionOptionsForAnUnknownUserAreRefused(): void
+    {
+        // When
+        $answer = $this->post('/fido/conformance/assertion/options', [
+            'username' => 'nobody@example.com',
+        ], Response::HTTP_BAD_REQUEST);
+
+        // Then
+        static::assertSame([
+            'status' => 'failed',
+            'errorMessage' => 'This user is unknown.',
+        ], $answer);
+    }
+
+    /**
+     * §7.2 step 13: an assertion signed for another origin.
+     */
+    #[Test]
+    public function anAssertionFromAnotherOriginIsRefused(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN);
+        $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('johndoe@example.com')));
+        $options = $this->post('/fido/conformance/assertion/options', [
+            'username' => 'johndoe@example.com',
+        ]);
+
+        // When
+        $answer = $this->post('/fido/conformance/assertion/result', $device->atOrigin('https://phishing.example')->get(json_encode($options, JSON_THROW_ON_ERROR)), Response::HTTP_BAD_REQUEST);
+
+        // Then
+        static::assertSame([
+            'status' => 'failed',
+            'errorMessage' => 'invalid_credential',
+        ], $answer);
+    }
+
+    /**
+     * §7.2 step 17: the tools ask for user verification, the authenticator did none.
+     */
+    #[Test]
+    public function anAssertionWithoutTheUserVerificationAskedForIsRefused(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN, userVerified: false);
+        $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('johndoe@example.com')));
+        $options = $this->post('/fido/conformance/assertion/options', [
+            'username' => 'johndoe@example.com',
+            'userVerification' => 'required',
+        ]);
+
+        // When
+        $answer = $this->post('/fido/conformance/assertion/result', $device->get(json_encode($options, JSON_THROW_ON_ERROR)), Response::HTTP_BAD_REQUEST);
+
+        // Then
+        static::assertSame('required', $options['userVerification']);
+        static::assertSame([
+            'status' => 'failed',
+            'errorMessage' => 'invalid_credential',
+        ], $answer);
+    }
+
+    /**
+     * §13.4.3: a challenge is answered once.
+     */
+    #[Test]
+    public function anAssertionIsAcceptedOnce(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN);
+        $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('johndoe@example.com')));
+        $options = $this->post('/fido/conformance/assertion/options', [
+            'username' => 'johndoe@example.com',
+        ]);
+        $assertion = $device->get(json_encode($options, JSON_THROW_ON_ERROR));
+        $this->post('/fido/conformance/assertion/result', $assertion);
+
+        // When
+        $answer = $this->post('/fido/conformance/assertion/result', $assertion, Response::HTTP_BAD_REQUEST);
+
+        // Then
+        static::assertSame('failed', $answer['status']);
+        static::assertSame('No request options were drawn with this challenge, or they were answered already.', $answer['errorMessage']);
+    }
+
+    /**
+     * The creation options of the tools for a user, as JSON, the way the tools hand them to their
+     * authenticator.
+     */
+    private function creationOptions(string $username, string $attestation = 'none'): string
+    {
+        return json_encode($this->post('/fido/conformance/attestation/options', [
+            'username' => $username,
+            'displayName' => 'John Doe',
+            'attestation' => $attestation,
+        ]), JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * A request of the tools: a JSON body, a JSON answer.
+     *
+     * @param array<string, mixed>|string $body
+     *
+     * @return array<string, mixed>
+     */
+    private function post(string $path, array|string $body, int $expectedStatus = Response::HTTP_OK): array
+    {
+        $this->browser->request('POST', $path, [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], is_array($body) ? json_encode($body, JSON_THROW_ON_ERROR) : $body);
+        $response = $this->browser->getResponse();
+        $content = $response->getContent();
+        static::assertIsString($content);
+        static::assertSame($expectedStatus, $response->getStatusCode(), $content);
+        static::assertSame('application/json', $response->headers->get('Content-Type'));
+        $answer = json_decode($content, true, 16, JSON_THROW_ON_ERROR);
+        static::assertIsArray($answer);
+
+        return self::members($answer);
+    }
+
+    /**
+     * One member of every item of a list of the answer: the algorithms of the parameters, the ids of the
+     * descriptors.
+     *
+     * @param array<string, mixed> $answer
+     *
+     * @return list<mixed>
+     */
+    private static function column(array $answer, string $list, string $member): array
+    {
+        $items = $answer[$list] ?? null;
+        static::assertIsArray($items, $list);
+        $column = [];
+        foreach ($items as $item) {
+            static::assertIsArray($item);
+            $column[] = $item[$member] ?? null;
+        }
+
+        return $column;
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     *
+     * @return array<string, mixed>
+     */
+    private static function members(array $values): array
+    {
+        $members = [];
+        foreach ($values as $name => $value) {
+            $members[(string) $name] = $value;
+        }
+
+        return $members;
+    }
+
+    /**
+     * @param array<string, mixed> $answer
+     *
+     * @return array<string, mixed>
+     */
+    private static function section(array $answer, string $name): array
+    {
+        $section = $answer[$name] ?? null;
+        static::assertIsArray($section, $name);
+
+        return self::members($section);
+    }
+}

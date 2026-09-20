@@ -43,6 +43,7 @@ use Heidi\Bundle\Security\SecondFactorGate;
 use Heidi\Bundle\Security\TotpLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Application\Authentication\SessionOpener;
@@ -67,6 +68,8 @@ use Heidi\Core\Bridge\Null\NullUserAgentParser;
 use Heidi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
+use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Heidi\Core\Bridge\Webauthn\StoredMetadata;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
@@ -78,6 +81,7 @@ use Heidi\Core\Port\JwsSignerInterface;
 use Heidi\Core\Port\JwsVerifierInterface;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
+use Heidi\Core\Port\MetadataBlobStoreInterface;
 use Heidi\Core\Port\PasskeyAuthenticatorInterface;
 use Heidi\Core\Port\PasskeyRegistrarInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
@@ -131,6 +135,10 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
+use Webauthn\MetadataService\CertificateChain\CertificateChainValidator;
+use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
+use Webauthn\MetadataService\MetadataStatementRepository;
+use Webauthn\MetadataService\StatusReportRepository;
 
 /*
  * Every service of the core, of the module and of the bundle, autowired, the ports aliased to their one
@@ -176,6 +184,11 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle: the console (architecture §5.5)
     $services->load('Heidi\\Bundle\\Command\\', '../src/Command/');
+
+    // The bundle: the endpoints of the FIDO2 server API for the FIDO Conformance Tools (architecture §7); their
+    // routes are a file of their own (config/routes/fido-conformance.php) an application imports in development
+    // only, and a controller no route names is dropped from the container
+    $services->load('Heidi\\Bundle\\Fido\\Conformance\\', '../src/Fido/Conformance/');
 
     // The bundle: the handlers of its own messages and what time does on its own (architecture §5.6)
     $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
@@ -256,7 +269,18 @@ return static function (ContainerConfigurator $container): void {
         ->args([tagged_iterator('heidi.password_hasher')]);
     $services->alias(PasswordHasherInterface::class, PasswordHasherRegistry::class);
 
-    // The core: the WebAuthn ceremonies on webauthn-lib (architecture §3.4)
+    // The core: the WebAuthn ceremonies on webauthn-lib (architecture §3.4), on the FIDO metadata of the store
+    // the console fills (the two commands), read once per process; the chains of a blob and of an attestation
+    // are checked by the validator of the library, which fetches a CRL when the certificate names one and
+    // lets an unreachable one pass, as the library does
+    $services->set(FileMetadataBlobStore::class);
+    $services->alias(MetadataBlobStoreInterface::class, FileMetadataBlobStore::class);
+    $services->set(StoredMetadata::class);
+    $services->alias(MetadataStatementRepository::class, StoredMetadata::class);
+    $services->alias(StatusReportRepository::class, StoredMetadata::class);
+    $services->set(PhpCertificateChainValidator::class);
+    $services->alias(CertificateChainValidator::class, PhpCertificateChainValidator::class);
+    $services->set(MetadataBlobVerifier::class);
     $services->set(WebauthnCeremonies::class);
     $services->set(WebauthnPasskeyRegistrar::class);
     $services->alias(PasskeyRegistrarInterface::class, WebauthnPasskeyRegistrar::class);

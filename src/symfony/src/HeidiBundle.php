@@ -29,6 +29,7 @@ use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\RateLimitedCodeAttempts;
 use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
@@ -151,6 +152,17 @@ final class HeidiBundle extends AbstractBundle
             ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it.')
             ->defaultNull()
             ->min(0)
+            ->end()
+            ->end()
+            ->end()
+            ->arrayNode('webauthn')
+            ->info('What the passkey ceremonies read besides the tenant (architecture §3.4).')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->scalarNode('metadata_storage')
+            ->info('Directory of the FIDO metadata the ceremonies check an attestation against: the documents "heidi:webauthn:mds-refresh" verified and "heidi:webauthn:mds-import" stored, next to the keys; empty until one of them ran, which the enrolment of the provider does not need.')
+            ->defaultValue('%kernel.project_dir%/var/webauthn')
+            ->cannotBeEmpty()
             ->end()
             ->end()
             ->end()
@@ -347,6 +359,7 @@ final class HeidiBundle extends AbstractBundle
 
         $tenant = self::section($config, 'tenant');
         $keys = self::section($config, 'keys');
+        $webauthn = self::section($config, 'webauthn');
         $tokens = self::section($config, 'tokens');
 
         $services = $container->services();
@@ -370,6 +383,8 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileSigningKeyRepository::class)
             ->arg('$directory', self::string($keys, 'storage'));
+        $services->get(FileMetadataBlobStore::class)
+            ->arg('$directory', self::string($webauthn, 'metadata_storage'));
         $services->get(JwksHandler::class)
             ->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
         // derived at runtime, once the environment placeholders are numbers
