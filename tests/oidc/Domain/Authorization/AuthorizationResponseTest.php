@@ -14,11 +14,12 @@ use PHPUnit\Framework\TestCase;
 final class AuthorizationResponseTest extends TestCase
 {
     /**
-     * RFC 6749 §4.1.2: code and state in the query component of the redirect URI; RFC 9207 §2: iss in
-     * every authorization response.
+     * RFC 6749 §4.1.2: code and state; RFC 9207 §2: iss in every authorization response. How they reach
+     * the client is the response mode's business, not the response's (Multiple Response Type Encoding
+     * Practices §2.1).
      */
     #[Test]
-    public function itRedirectsWithCodeStateAndIssuer(): void
+    public function itCarriesTheCodeTheStateAndTheIssuer(): void
     {
         // When
         $response = new AuthorizationResponse(new Issuer('https://id.acme.example'), new RedirectUri('https://spa.example/callback?app=1'), 'af0ifjsldkj', 'SplxlOBeZQQYbYS6WxSbIA');
@@ -29,7 +30,6 @@ final class AuthorizationResponseTest extends TestCase
             'state' => 'af0ifjsldkj',
             'iss' => 'https://id.acme.example',
         ], $response->parameters());
-        static::assertSame('https://spa.example/callback?app=1&code=SplxlOBeZQQYbYS6WxSbIA&state=af0ifjsldkj&iss=https%3A%2F%2Fid.acme.example', $response->toUri());
     }
 
     /**
@@ -46,7 +46,6 @@ final class AuthorizationResponseTest extends TestCase
             'code' => 'SplxlOBeZQQYbYS6WxSbIA',
             'iss' => 'https://id.acme.example',
         ], $response->parameters());
-        static::assertSame('https://spa.example/callback?code=SplxlOBeZQQYbYS6WxSbIA&iss=https%3A%2F%2Fid.acme.example', $response->toUri());
     }
 
     #[Test]

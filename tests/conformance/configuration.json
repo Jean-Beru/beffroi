@@ -1,6 +1,6 @@
 {
     "alias": "heidi",
-    "description": "Heidi: the OpenID Connect certification plans of the OP (Basic OP, Config OP, RP-Initiated Logout OP) against the development OP",
+    "description": "Heidi: the OpenID Connect certification plans of the OP (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP) against the development OP",
     "server": {
         "discoveryUrl": "{HEIDI_ISSUER}/.well-known/openid-configuration",
         "login_hint": "{HEIDI_DEV_USERNAME}",

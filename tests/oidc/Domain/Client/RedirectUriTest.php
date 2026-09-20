@@ -142,4 +142,28 @@ final class RedirectUriTest extends TestCase
         // Then
         static::assertSame('https://rp.example/cb?app=1&state=a%26b', $withParameters);
     }
+
+    /**
+     * RFC 6454 §3.2: the scheme, the host and the port, which a Content-Security-Policy source
+     * expression names; never the path nor the query (Form Post Response Mode §2).
+     */
+    #[Test]
+    #[DataProvider('provideOrigins')]
+    public function itExposesItsOrigin(string $value, string $origin): void
+    {
+        // When / Then
+        static::assertSame($origin, new RedirectUri($value)->origin);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideOrigins(): iterable
+    {
+        yield 'a path' => ['https://rp.example/login/check', 'https://rp.example'];
+        yield 'a port' => ['https://rp.example:8443/cb', 'https://rp.example:8443'];
+        yield 'a registered query' => ['https://rp.example/cb?app=1', 'https://rp.example'];
+        yield 'a host in capitals' => ['https://RP.example/cb', 'https://rp.example'];
+        yield 'a loopback host (RFC 8252 §7.3)' => ['http://127.0.0.1/callback', 'http://127.0.0.1'];
+    }
 }

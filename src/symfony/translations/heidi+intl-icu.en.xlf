@@ -353,6 +353,18 @@
         <source>error.login_required</source>
         <target>Sign in first, from an application, then come back to this page.</target>
       </trans-unit>
+      <trans-unit id="884d5c03f9" resname="form_post.title">
+        <source>form_post.title</source>
+        <target>Returning to the application</target>
+      </trans-unit>
+      <trans-unit id="2965dcacbb" resname="form_post.explanation">
+        <source>form_post.explanation</source>
+        <target>Your browser is sending you back to the application. If nothing happens, use the button below.</target>
+      </trans-unit>
+      <trans-unit id="899a3c277e" resname="form_post.continue">
+        <source>form_post.continue</source>
+        <target>Continue</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

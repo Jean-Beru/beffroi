@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Http;
 
+use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
 use Heidi\Oidc\Domain\Authorization\AuthorizationErrorResponse;
 use Heidi\Oidc\Domain\Authorization\RedirectTarget;
 use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
@@ -22,7 +23,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * Turns a decision of the AuthorizationHandler into where the browser goes (architecture §4.3, §5.2),
- * and a refusal into a redirection when the client may hear it (RFC 6749 §4.1.2.1) or a page otherwise.
+ * and a refusal into an answer to the client when it may hear it (RFC 6749 §4.1.2.1) or a page
+ * otherwise. How the answer reaches the client is the response mode of the request, a refusal as well as
+ * a code (OIDC Core §3.1.2.6); the renderer of that mode shapes it, this class never does.
  */
 final readonly class AuthorizationResponder
 {
@@ -41,6 +44,7 @@ final readonly class AuthorizationResponder
         private InteractionPages $pages,
         private BrowserSession $browser,
         private UrlGeneratorInterface $router,
+        private AuthorizationResponseRenderers $renderers,
     ) {
     }
 
@@ -55,7 +59,7 @@ final readonly class AuthorizationResponder
         if ($decision instanceof Granted) {
             $this->browser->forget($request->getSession(), $decision->interaction);
 
-            return $this->pages->redirect($decision->response->toUri());
+            return $this->renderers->render($decision->interaction->request->responseMode, $decision->response->redirectUri, $decision->response->parameters());
         }
 
         throw new LogicException(sprintf('The decision "%s" is not one the authorization endpoint knows.', $decision::class));
@@ -70,7 +74,9 @@ final readonly class AuthorizationResponder
             $this->browser->forget($request->getSession(), $interaction);
         }
         if ($exception->redirectable) {
-            return $this->pages->redirect(AuthorizationErrorResponse::fromException($target, $exception)->toUri());
+            $error = AuthorizationErrorResponse::fromException($target, $exception);
+
+            return $this->renderers->render($target->responseMode, $error->redirectUri, $error->parameters());
         }
 
         return $this->pages->error($exception->statusCode, $exception->error, $exception->errorDescription);

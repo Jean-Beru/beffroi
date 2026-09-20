@@ -40,7 +40,6 @@ final class AuthorizationErrorResponseTest extends TestCase
             'state' => 'af0ifjsldkj',
             'iss' => 'https://id.acme.example',
         ], $response->parameters());
-        static::assertSame('https://spa.example/callback?error=unsupported_response_type&error_description=Only%20the%20code%20response%20type%20is%20supported.&state=af0ifjsldkj&iss=https%3A%2F%2Fid.acme.example', $response->toUri());
     }
 
     /**
@@ -57,25 +56,24 @@ final class AuthorizationErrorResponseTest extends TestCase
 
         // Then
         static::assertArrayNotHasKey('state', $response->parameters());
-        static::assertSame('https://spa.example/callback?error=invalid_request&error_description=The%20scope%20parameter%20is%20missing.&iss=https%3A%2F%2Fid.acme.example', $response->toUri());
     }
 
     /**
-     * RFC 6749 §3.1.2: the query component the client registered is retained when the response
-     * parameters are added.
+     * RFC 6749 §4.1.2.1: the state comes back as the client sent it, whatever it contains; what encodes
+     * it is the mode that delivers the response (RedirectUri::withParameters for the default one).
      */
     #[Test]
-    public function itKeepsTheQueryOfTheRegisteredRedirectUri(): void
+    public function itCarriesTheStateAsTheClientSentIt(): void
     {
         // Given
         $client = new Client(Fixtures::tenant(), 'app', 'Application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://rp.example/cb?app=1')]);
         $target = new RedirectTarget($client, new RedirectUri('https://rp.example/cb?app=1'), 'a state with spaces & ampersand');
 
         // When
-        $uri = AuthorizationErrorResponse::fromException($target, new InvalidRequestException('The scope parameter is missing.', true))->toUri();
+        $parameters = AuthorizationErrorResponse::fromException($target, new InvalidRequestException('The scope parameter is missing.', true))->parameters();
 
         // Then
-        static::assertSame('https://rp.example/cb?app=1&error=invalid_request&error_description=The%20scope%20parameter%20is%20missing.&state=a%20state%20with%20spaces%20%26%20ampersand&iss=https%3A%2F%2Fid.acme.example', $uri);
+        static::assertSame('a state with spaces & ampersand', $parameters['state']);
     }
 
     /**

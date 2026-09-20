@@ -43,10 +43,12 @@ final readonly class InteractionPages
 
     /**
      * @param array<string, mixed> $context
+     * @param array<string, string> $headers what this page carries over the headers of the plane, a
+     *                                       stricter Content-Security-Policy for one
      */
-    public function render(string $template, array $context = [], int $status = Response::HTTP_OK): Response
+    public function render(string $template, array $context = [], int $status = Response::HTTP_OK, array $headers = []): Response
     {
-        return new Response($this->twig->render('@Heidi/' . $template, $context), $status, self::HEADERS);
+        return new Response($this->twig->render('@Heidi/' . $template, $context), $status, $headers + self::HEADERS);
     }
 
     /**

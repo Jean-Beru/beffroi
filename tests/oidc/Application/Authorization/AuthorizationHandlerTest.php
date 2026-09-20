@@ -58,7 +58,6 @@ use Heidi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function sprintf;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
@@ -310,7 +309,12 @@ final class AuthorizationHandlerTest extends TestCase
             ->response;
         static::assertSame('https://id.acme.example', (string) $response->issuer);
         static::assertSame('af0ifjsldkj', $response->state);
-        static::assertSame(sprintf('https://demo.localhost/login/check?code=%s&state=af0ifjsldkj&iss=https%%3A%%2F%%2Fid.acme.example', $response->code), $response->toUri());
+        static::assertSame('https://demo.localhost/login/check', (string) $response->redirectUri);
+        static::assertSame([
+            'code' => $response->code,
+            'state' => 'af0ifjsldkj',
+            'iss' => 'https://id.acme.example',
+        ], $response->parameters());
     }
 
     #[Test]
