@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\VerifiedAccessToken;
@@ -49,7 +50,7 @@ final class IntrospectionResponseTest extends TestCase
         // Given
         $session = Uuid::v7();
         $grant = Uuid::v7();
-        $token = new VerifiedAccessToken(Clients::public(Fixtures::tenant()), new Subject('alice-subject'), $session, $grant, [Scope::openid(), new Scope('email')], ['name'], new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2', new DateTimeImmutable('@1789466400'), new DateTimeImmutable('@1789467000'));
+        $token = new VerifiedAccessToken(Clients::public(Fixtures::tenant()), new Subject('alice-subject'), $session, $grant, [Scope::openid(), new Scope('email')], ['name'], new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2'), new DateTimeImmutable('@1789466400'), new DateTimeImmutable('@1789467000'));
 
         // When
         $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));

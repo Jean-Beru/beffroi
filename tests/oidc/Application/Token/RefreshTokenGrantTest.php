@@ -128,7 +128,7 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertSame($this->session, $successor->session);
         static::assertEquals($this->clock->now(), $successor->issuedAt);
         static::assertEquals($this->clock->now()->modify('+30 days'), $successor->expiresAt);
-        static::assertEquals($token->authenticatedAt, $successor->authenticatedAt);
+        static::assertEquals($token->authentication->authenticatedAt, $successor->authentication->authenticatedAt);
         static::assertFalse($successor->isRotated());
     }
 
@@ -164,7 +164,7 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertSame(GrantType::RefreshToken, $issued->authorization->grantType);
         static::assertSame($token->scopes, $issued->authorization->scopes);
         static::assertNull($issued->authorization->nonce);
-        static::assertEquals($token->authenticatedAt, $issued->authorization->authenticatedAt);
+        static::assertEquals($token->authentication->authenticatedAt, $issued->authorization->authentication->authenticatedAt);
         static::assertSame('id:oidc-demo:alice-subject:-:' . $this->clock->now()->getTimestamp(), $issued->idToken);
         static::assertSame('openid profile', $issued->toResponse()->parameters()['scope']);
     }

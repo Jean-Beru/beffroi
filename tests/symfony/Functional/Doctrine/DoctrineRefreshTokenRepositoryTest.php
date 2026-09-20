@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -55,9 +56,9 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertEquals($family->expiresAt, $found->family->expiresAt);
         static::assertEquals([new Scope('openid'), new Scope('offline_access')], $found->scopes);
         static::assertEquals($claims, $found->claimsRequest);
-        static::assertEquals(self::now(), $found->authenticatedAt);
-        static::assertSame(['pwd'], $found->authenticationMethods);
-        static::assertSame('1', $found->authenticationContextClass);
+        static::assertEquals(self::now(), $found->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $found->authentication->methods);
+        static::assertSame('1', $found->authentication->contextClass);
         static::assertEquals(self::now()->modify('+1 minute'), $found->issuedAt);
         static::assertEquals(self::now()->modify('+30 days'), $found->expiresAt);
         static::assertNull($found->rotatedAt);
@@ -244,10 +245,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
             $session,
             [new Scope('openid'), new Scope('offline_access')],
             $claims,
-            $session->authenticatedAt(),
-            $session->methodReferences(),
-            $session->authenticationContextClass()
-                ->value,
+            AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
             self::now()->modify('+30 days'),
         );

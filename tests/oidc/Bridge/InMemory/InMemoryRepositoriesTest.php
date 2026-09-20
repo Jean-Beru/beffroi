@@ -13,6 +13,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
@@ -472,7 +473,7 @@ final class InMemoryRepositoriesTest extends TestCase
 
     private function code(string $value): AuthorizationCode
     {
-        return new AuthorizationCode(AuthorizationCode::hash($value), Uuid::v7(), $this->client, $this->session, $this->client->redirectUris[0], [Scope::openid()], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, Fixtures::now(), ['pwd'], '1', Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        return new AuthorizationCode(AuthorizationCode::hash($value), Uuid::v7(), $this->client, $this->session, $this->client->redirectUris[0], [Scope::openid()], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'), Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     /**

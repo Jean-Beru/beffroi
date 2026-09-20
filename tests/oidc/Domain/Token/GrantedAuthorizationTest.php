@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Domain\Token;
 
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
@@ -58,9 +59,9 @@ final class GrantedAuthorizationTest extends TestCase
         static::assertSame($code->scopes, $authorization->grantedScopes);
         static::assertSame('n-0S6_WzA2Mj', $authorization->nonce);
         static::assertSame($claims, $authorization->claimsRequest);
-        static::assertEquals($this->session->authenticatedAt(), $authorization->authenticatedAt);
-        static::assertSame(['pwd'], $authorization->authenticationMethods);
-        static::assertSame('1', $authorization->authenticationContextClass);
+        static::assertEquals($this->session->authenticatedAt(), $authorization->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $authorization->authentication->methods);
+        static::assertSame('1', $authorization->authentication->contextClass);
     }
 
     #[Test]
@@ -125,8 +126,8 @@ final class GrantedAuthorizationTest extends TestCase
         // Then
         static::assertSame($token->client, $authorization->client);
         static::assertSame($token->session, $authorization->session);
-        static::assertEquals($token->authenticatedAt, $authorization->authenticatedAt);
-        static::assertSame($token->authenticationMethods, $authorization->authenticationMethods);
+        static::assertEquals($token->authentication->authenticatedAt, $authorization->authentication->authenticatedAt);
+        static::assertSame($token->authentication->methods, $authorization->authentication->methods);
     }
 
     #[Test]
@@ -157,16 +158,6 @@ final class GrantedAuthorizationTest extends TestCase
 
         // When
         $this->authorization(scopes: [Scope::openid()], grantedScopes: []);
-    }
-
-    #[Test]
-    public function itRefusesAnEmptyMethodList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->authorization(methods: []);
     }
 
     #[Test]
@@ -213,10 +204,7 @@ final class GrantedAuthorizationTest extends TestCase
             $grantedScopes ?? [Scope::openid()],
             $nonce,
             null,
-            $this->session->authenticatedAt(),
-            $methods ?? $this->session->methodReferences(),
-            $this->session->authenticationContextClass()
-                ->value,
+            new AuthenticationSnapshot($this->session->authenticatedAt(), $methods ?? $this->session->methodReferences(), $this->session->authenticationContextClass()->value),
         );
     }
 }

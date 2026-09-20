@@ -18,12 +18,16 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Heidi\Bundle\Migrations\Version20260915171732;
 use Heidi\Bundle\Migrations\Version20260917180000;
 use Heidi\Bundle\Migrations\Version20260919150000;
+use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use function preg_match;
 use Psr\Log\NullLogger;
 use function sort;
 use function str_contains;
+use function str_split;
 use function str_starts_with;
+use function trim;
 
 /**
  * Architecture §5.3: the migrations the bundle ships create on PostgreSQL exactly what the mappings
@@ -61,6 +65,8 @@ final class MigrationTest extends DatabaseTestCase
         $actual = self::statements($connection);
 
         // Then
+        $expected = array_map(self::withColumnsSorted(...), $expected);
+        $actual = array_map(self::withColumnsSorted(...), $actual);
         sort($expected);
         sort($actual);
         static::assertSame($expected, $actual);
@@ -155,6 +161,39 @@ final class MigrationTest extends DatabaseTestCase
         foreach (self::MIGRATIONS as $migration) {
             yield $migration => [$migration];
         }
+    }
+
+    /**
+     * A CREATE TABLE with its column definitions in name order: the schema tool writes the columns of an
+     * embeddable after the identifier, a migration wrote them where the mapping had them, and PostgreSQL
+     * gives the order no meaning. The definitions themselves are compared byte for byte.
+     */
+    private static function withColumnsSorted(string $statement): string
+    {
+        if (! str_starts_with($statement, 'CREATE TABLE ') || preg_match('/^(CREATE TABLE \S+ \()(.*)(\))$/', $statement, $matches) !== 1) {
+            return $statement;
+        }
+        $definitions = [];
+        $depth = 0;
+        $current = '';
+        foreach (str_split($matches[2]) as $character) {
+            if ($character === '(') {
+                ++$depth;
+            } elseif ($character === ')') {
+                --$depth;
+            }
+            if ($character === ',' && $depth === 0) {
+                $definitions[] = trim($current);
+                $current = '';
+
+                continue;
+            }
+            $current .= $character;
+        }
+        $definitions[] = trim($current);
+        sort($definitions);
+
+        return $matches[1] . implode(', ', $definitions) . $matches[3];
     }
 
     /**

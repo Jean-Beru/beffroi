@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Consent;
 
+use function array_map;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Client\Client;
@@ -133,6 +134,49 @@ final class ConsentTest extends TestCase
 
         // Then
         static::assertEquals($first, $this->consent->revokedAt);
+    }
+
+    #[Test]
+    public function extendingItGivesANewConsentWithTheScopesOfBothEachOnce(): void
+    {
+        // Given
+        $later = Fixtures::now()->modify('+1 day');
+
+        // When
+        $extended = $this->consent->extendedWith([Scope::openid(), new Scope('email')], Uuid::v7(), $later);
+
+        // Then
+        static::assertSame(['openid', 'profile', 'email'], array_map(strval(...), $extended->scopes));
+        static::assertSame($this->consent->user, $extended->user);
+        static::assertSame($this->consent->client, $extended->client);
+        static::assertEquals($later, $extended->grantedAt);
+        static::assertTrue($extended->isActive());
+        static::assertFalse($extended->id->equals($this->consent->id));
+    }
+
+    #[Test]
+    public function extendingItRevokesItAtThatMoment(): void
+    {
+        // Given
+        $later = Fixtures::now()->modify('+1 day');
+
+        // When
+        $this->consent->extendedWith([new Scope('email')], Uuid::v7(), $later);
+
+        // Then
+        static::assertFalse($this->consent->isActive());
+        static::assertEquals($later, $this->consent->revokedAt);
+    }
+
+    #[Test]
+    public function extendingItWithNothingNewStillSupersedesIt(): void
+    {
+        // When
+        $extended = $this->consent->extendedWith([Scope::openid()], Uuid::v7(), Fixtures::now()->modify('+1 day'));
+
+        // Then
+        static::assertSame(['openid', 'profile'], array_map(strval(...), $extended->scopes));
+        static::assertFalse($this->consent->isActive());
     }
 
     #[Test]
