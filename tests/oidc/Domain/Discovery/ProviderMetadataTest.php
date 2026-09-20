@@ -8,6 +8,8 @@ use function array_keys;
 use function array_map;
 use function array_slice;
 use Heidi\Core\Domain\Tenant\Issuer;
+use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Domain\Discovery\ProviderMetadata;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -115,7 +117,7 @@ final class ProviderMetadataTest extends TestCase
     public function openidAndSubComeFirstAndOnce(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [new Scope('email'), new Scope('openid'), new Scope('email')], ['email', 'sub', 'email'], 60);
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [new Scope('email'), new Scope('openid'), new Scope('email')], ['email', 'sub', 'email'], self::grantTypes(), self::methods(), 60);
 
         // Then
         static::assertSame(['openid', 'email'], array_map(static fn (Scope $scope): string => $scope->value, $metadata->scopesSupported));
@@ -126,7 +128,7 @@ final class ProviderMetadataTest extends TestCase
     public function openidAndSubAreAnnouncedEvenWhenTheIntegrationListsNothing(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::grantTypes(), self::methods(), 60)->toArray();
 
         // Then
         static::assertSame(['openid'], $document['scopes_supported']);
@@ -152,7 +154,7 @@ final class ProviderMetadataTest extends TestCase
     public function theWellKnownLocationsOfAnIssuerWithAPathDiffer(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), [], [], 60);
+        $metadata = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), [], [], self::grantTypes(), self::methods(), 60);
 
         // Then
         static::assertSame('https://as.example:8443/tenants/acme/.well-known/openid-configuration', $metadata->openIdConfigurationUrl());
@@ -167,7 +169,7 @@ final class ProviderMetadataTest extends TestCase
     public function aLifetimeOfZeroRevalidatesEveryTime(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], 0);
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::grantTypes(), self::methods(), 0);
 
         // Then
         static::assertSame([
@@ -183,7 +185,57 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], -1);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::grantTypes(), self::methods(), -1);
+    }
+
+    /**
+     * RFC 8414 §2: the lists say what is wired, a grant or a method listed twice counts once, nothing wired is a fault.
+     */
+    #[Test]
+    public function theGrantTypesAndTheMethodsAreThoseGivenEachOnce(): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], [GrantType::AuthorizationCode, GrantType::AuthorizationCode], [TokenEndpointAuthMethod::None, TokenEndpointAuthMethod::None], 60)->toArray();
+
+        // Then
+        static::assertSame(['authorization_code'], $document['grant_types_supported']);
+        static::assertSame(['none'], $document['token_endpoint_auth_methods_supported']);
+        static::assertSame(['none'], $document['revocation_endpoint_auth_methods_supported']);
+    }
+
+    /**
+     * RFC 7662 §2.1: introspection takes the methods that prove a secret, among those the token endpoint takes.
+     */
+    #[Test]
+    public function introspectionTakesTheSecretMethodsAmongThoseGiven(): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], [GrantType::AuthorizationCode], [TokenEndpointAuthMethod::ClientSecretPost, TokenEndpointAuthMethod::None], 60)->toArray();
+
+        // Then
+        static::assertSame(['client_secret_post'], $document['introspection_endpoint_auth_methods_supported']);
+    }
+
+    #[Test]
+    public function noGrantTypeIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A provider serves at least one grant type (RFC 8414 section 2).');
+
+        // When
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], [], self::methods(), 60);
+    }
+
+    #[Test]
+    public function noAuthenticationMethodIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A token endpoint takes at least one client authentication method (RFC 8414 section 2).');
+
+        // When
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::grantTypes(), [], 60);
     }
 
     #[Test]
@@ -194,7 +246,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIsOrContains('A supported claim has a name.');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [''], 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [''], self::grantTypes(), self::methods(), 60);
     }
 
     /**
@@ -207,7 +259,7 @@ final class ProviderMetadataTest extends TestCase
     public function itPassesTheChecksOfSymfonyOidcDiscovery(string $issuer): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke'), [], [], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke'), [], [], self::grantTypes(), self::methods(), 60)->toArray();
 
         // Then
         static::assertSame($issuer, $document['issuer']);
@@ -244,8 +296,26 @@ final class ProviderMetadataTest extends TestCase
             self::endpoints(),
             [new Scope('openid'), new Scope('profile'), new Scope('email'), new Scope('offline_access')],
             ['name', 'email', 'email_verified'],
+            self::grantTypes(),
+            self::methods(),
             3600,
         );
+    }
+
+    /**
+     * @return list<GrantType>
+     */
+    private static function grantTypes(): array
+    {
+        return [GrantType::AuthorizationCode, GrantType::RefreshToken];
+    }
+
+    /**
+     * @return list<TokenEndpointAuthMethod>
+     */
+    private static function methods(): array
+    {
+        return [TokenEndpointAuthMethod::ClientSecretBasic, TokenEndpointAuthMethod::ClientSecretPost, TokenEndpointAuthMethod::None];
     }
 
     private static function endpoints(): ProviderEndpoints
