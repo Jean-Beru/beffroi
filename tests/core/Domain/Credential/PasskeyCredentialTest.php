@@ -75,6 +75,20 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
+     * WebAuthn Level 3 §6.3.2: the credential ID is what a party presents a passkey by.
+     */
+    #[Test]
+    public function itIsPresentedByItsCredentialId(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey(credentialId: "\x01\x02raw-id");
+
+        // When / Then
+        static::assertSame("\x01\x02raw-id", $passkey->externalId);
+        static::assertSame($passkey->externalId, $passkey->credentialId);
+    }
+
+    /**
      * The public key is the only key material: no property of the class, public or not, holds anything else.
      */
     #[Test]
