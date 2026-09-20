@@ -22,6 +22,7 @@ use Heidi\Core\Domain\Event\UserAuthenticated;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakeAttemptLimiter;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use const PASSWORD_BCRYPT;
@@ -382,6 +383,28 @@ final class PasswordAuthenticatorTest extends TestCase
 
         // Then
         static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
+    }
+
+    /**
+     * A refused attempt still pays a hash, so that its time does not tell a known user from an unknown one.
+     */
+    #[Test]
+    public function aRefusedAttemptCostsAHashLikeAWrongPassword(): void
+    {
+        // Given
+        $hasher = new FakePasswordHasher();
+        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), new FakeAttemptLimiter(0), $this->clock, $this->events);
+
+        // When
+        try {
+            $authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException) {
+        }
+
+        // Then
+        static::assertCount(1, $hasher->verifiedAgainst);
+        static::assertStringStartsWith('fake:', $hasher->verifiedAgainst[0]);
+        static::assertNotSame($hasher->hash('correct horse')->encoded, $hasher->verifiedAgainst[0]);
     }
 
     /**
