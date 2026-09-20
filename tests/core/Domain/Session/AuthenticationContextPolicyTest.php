@@ -158,6 +158,7 @@ final class AuthenticationContextPolicyTest extends TestCase
     public static function providePoliciesThatDifferFromTheDefault(): iterable
     {
         yield 'fewer classes' => [new AuthenticationContextPolicy([AuthenticationContextClass::singleFactor()])];
+        yield 'one class more' => [new AuthenticationContextPolicy([AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::phishingResistant(), AuthenticationContextClass::twoFactors(), AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('urn:okta:loa:1fa:any', AuthenticationPredicate::SingleFactor)])];
         yield 'another order' => [new AuthenticationContextPolicy([AuthenticationContextClass::singleFactor(), AuthenticationContextClass::twoFactors(), AuthenticationContextClass::phishingResistant(), AuthenticationContextClass::phishingResistantHardware()])];
         yield 'another predicate under a name' => [new AuthenticationContextPolicy([AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::phishingResistant(), new AuthenticationContextClass('2', AuthenticationPredicate::PhishingResistant), AuthenticationContextClass::singleFactor()])];
     }
