@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /*
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
- * the command line, so that every step is looked at (--check, --rotate).
+ * the command line, so that every step is looked at (--check, --rotate, --passkey).
  */
 
 use Castor\Attribute\AsOption;
@@ -27,7 +27,7 @@ const DEMO_URL = 'https://localhost:8002';
 
 const DEMO_CLIENT_ID = 'oidc-demo';
 
-#[AsTask(description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"')]
+#[AsTask(description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator')]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
     ?string $dir = null,
@@ -35,6 +35,8 @@ function demo(
     bool $check = false,
     #[AsOption(description: 'The second success criterion of spike 2 (issue #59): sign in, rotate the signing key of the OP, let the scheduled step activate it, sign in again, refresh, log out, retire the old key, then measure the refetch cooldown of oidc_login; the JWK Set max-age and the token lifetimes are shortened in apps/op/.env.local for the time of the run (about six minutes)')]
     bool $rotate = false,
+    #[AsOption(description: 'The third success criterion of spike 3 (issue #93): sign in with a password, open /profile, be sent back to the OP by /vault with acr_values=phr and prompt=login, enrol a passkey and sign the assertion with a software authenticator (tests/demo/passkey-browser.php), open /vault with an ID token carrying acr=phr, log out; the passkey is revoked afterwards')]
+    bool $passkey = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -109,6 +111,9 @@ function demo(
     if ($rotate) {
         demo_rotation_check($server, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
     }
+    if ($passkey) {
+        demo_passkey_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
 }
 
 /**
@@ -172,6 +177,130 @@ function demo_check(string $issuer, string $password, string $ca): void
         ->note(sprintf('The refresh of the access token (refresh_access_token) happens on the first request after it expired, ten minutes after the login (access_token_ttl of the application): sign in from a browser, open %s/profile again then and compare the "jti"; "castor demo --rotate" sees it happen with a shorter lifetime.', DEMO_URL));
     io()
         ->success('oidc-demo signed in, opened /profile and logged out against the OP, without a patch.');
+}
+
+/**
+ * The browser with a software authenticator of the passkey check: the enrolment and the assertion, driven
+ * over HTTP against the OP by the SoftwareAuthenticator of the functional tests, under the autoloader of
+ * the monorepo, which castor does not load.
+ */
+const DEMO_PASSKEY_BROWSER = 'tests/demo/passkey-browser.php';
+
+/**
+ * The class /vault of the demo requires (OpenID Connect EAP ACR Values 1.0), the one of the default policy
+ * of the tenant a passkey proves (decision 0010 of the design repository).
+ */
+const DEMO_PASSKEY_CLASS = 'phr';
+
+/**
+ * The third success criterion of spike 3 (issue #93): oidc-demo, on Symfony's oidc_login without a patch,
+ * requires a phishing-resistant login on /vault and gets one. From the command line, one request at a
+ * time as demo_check: a password sign-in through the demo and /profile open, whose ID token says acr "1";
+ * /vault, which access_control protects with IS_AUTHENTICATED_IN_CONTEXT:phr, sends the browser back to
+ * the authorization endpoint with acr_values=phr, prompt=login and the previous ID token as id_token_hint
+ * (the re-authentication entry point of oidc_login); the OP asks for a login, where the browser of
+ * DEMO_PASSKEY_BROWSER enrols a passkey on the account of its session and signs the assertion; the OP
+ * records the proof on the same session, resumes the interaction and sends the browser to the callback
+ * with a code; the demo verifies the new ID token (acr=phr, "hwk" in amr, the same sid, a later auth_time)
+ * and opens /vault, which prints what oidc_login recorded on the security token. Then the RP-Initiated
+ * Logout round trip, across the step-up: one session, one sid. The passkey is revoked at the end, so that
+ * the user is left as found.
+ */
+function demo_passkey_check(string $issuer, string $password, string $ca): void
+{
+    io()
+        ->section('Sign in with a password, /vault asks for a passkey, logout');
+    $cookies = [];
+    $verified = [];
+    $host = (string) parse_url($issuer, \PHP_URL_HOST);
+
+    $session = demo_sign_in($cookies, $issuer, $password, $ca);
+    $before = $session['tokens']['id_token']['claims'];
+    demo_expect(($before['acr'] ?? null) !== DEMO_PASSKEY_CLASS, sprintf('the ID token of a password login says acr=%s, not %s', json_encode($before['acr'] ?? null), DEMO_PASSKEY_CLASS));
+    $verified[] = ['Password login', sprintf('/profile open, acr=%s, amr=%s, auth_time %s, sid %s', $before['acr'] ?? '?', json_encode($before['amr'] ?? null), $before['auth_time'] ?? '?', $before['sid'] ?? '?')];
+
+    // /vault: the demo denies IS_AUTHENTICATED_IN_CONTEXT:phr and starts the re-authentication
+    [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/vault');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('/vault sends the browser back to the authorization endpoint (got %d %s)', $status, $location));
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
+    demo_expect(($authorization['acr_values'] ?? null) === DEMO_PASSKEY_CLASS && ($authorization['prompt'] ?? null) === 'login', sprintf('the authorization request carries acr_values=%s and prompt=login', DEMO_PASSKEY_CLASS));
+    demo_expect(($authorization['id_token_hint'] ?? null) === $session['tokens']['id_token']['raw'], 'the authorization request carries the previous ID token as id_token_hint');
+    demo_expect(($authorization['code_challenge_method'] ?? null) === 'S256' && isset($authorization['state'], $authorization['nonce']), 'it stays an ordinary authorization request: PKCE S256, state, nonce');
+    $verified[] = ['/vault', sprintf('302 to the OP with acr_values=%s, prompt=login, id_token_hint', DEMO_PASSKEY_CLASS)];
+
+    // the OP holds the session of the password login and asks for a login anyway (prompt=login)
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf('the OP asks for a login on its existing session (got %d %s)', $status, $location));
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $login);
+
+    // the browser with the software authenticator: a passkey enrolled, the assertion signed and posted
+    io()
+        ->text(' <comment>tests/demo/passkey-browser.php</comment>');
+    $browser = run(['php', DEMO_PASSKEY_BROWSER], context: context()->withQuiet()->withAllowFailure()->withEnvironment([
+        'XDEBUG_MODE' => 'off',
+    ])->withInput(json_encode([
+        'issuer' => $issuer,
+        'cafile' => $ca,
+        'cookies' => $cookies[$host] ?? [],
+        'interaction' => (string) ($login['interaction'] ?? ''),
+        'name' => 'castor demo --passkey ' . date('Y-m-d H:i:s'),
+    ], \JSON_THROW_ON_ERROR)));
+    // the steps of the browser, then the reason of a failure without the trace of the exception that ends it
+    foreach (explode("\n", rtrim($browser->getErrorOutput(), "\n")) as $line) {
+        if (str_starts_with($line, 'Stack trace:')) {
+            break;
+        }
+        if ($line !== '') {
+            io()->text(' ' . preg_replace('/^PHP Fatal error:\s+Uncaught \w+: (.*) in \S+:\d+$/', '$1', $line));
+        }
+    }
+    demo_expect($browser->isSuccessful(), 'the passkey is enrolled and the assertion accepted');
+    $passkey = (array) json_decode($browser->getOutput(), true, 4, \JSON_THROW_ON_ERROR);
+    $cookies[$host] = (array) ($passkey['cookies'] ?? []);
+    $verified[] = ['Passkey', sprintf('enrolled on the account page (credential %s), assertion signed (sign count %d) and accepted on the login page', $passkey['credential_id'] ?? '?', $passkey['sign_count'] ?? 0)];
+
+    // the login page resumes the interaction: the browser goes to the callback with a code
+    [$status, $location] = demo_request($cookies, $ca, 'GET', (string) ($passkey['location'] ?? ''));
+    demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'), sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location));
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+    demo_expect(isset($callback['code']) && ($callback['state'] ?? null) === $authorization['state'] && ($callback['iss'] ?? null) === $issuer, 'the callback carries a code, the state of the re-authentication and iss');
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && $location === DEMO_URL . '/vault', sprintf('the demo verifies the ID token and sends the browser back to /vault (got %d %s)', $status, $location));
+    $verified[] = ['Callback', 'code exchanged, ID token verified, back to /vault'];
+
+    // /vault opens: what oidc_login recorded from the new ID token
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/vault');
+    demo_expect($status === 200, sprintf('/vault opens (got %d)', $status));
+    $received = [];
+    foreach (['acr', 'amr', 'auth-time', 'sid'] as $name) {
+        $received[$name] = preg_match(sprintf('/<code data-%s>([^<]*)<\/code>/', $name), $page, $found) === 1 ? html_entity_decode($found[1]) : '';
+    }
+    $amr = (array) json_decode($received['amr'], true);
+    demo_expect($received['acr'] === DEMO_PASSKEY_CLASS, sprintf('the ID token says acr=%s (got %s)', DEMO_PASSKEY_CLASS, json_encode($received['acr'])));
+    demo_expect(in_array('hwk', $amr, true) && in_array('pwd', $amr, true), sprintf('amr lists the passkey and the password of the same session (got %s)', $received['amr']));
+    demo_expect($received['sid'] === ($before['sid'] ?? null), sprintf('the sid is the one of the password login: one session on the OP (got %s)', $received['sid']));
+    demo_expect((int) $received['auth-time'] >= (int) ($before['auth_time'] ?? 0), sprintf('auth_time is the passkey\'s (%s, was %s)', $received['auth-time'], $before['auth_time'] ?? '?'));
+    $verified[] = ['/vault', sprintf('open; oidc_login received acr=%s, amr=%s, auth_time %s, sid %s', $received['acr'], $received['amr'], $received['auth-time'], $received['sid'])];
+
+    // RP-Initiated Logout across the step-up: the hint is the new ID token, the one session ends
+    $kid = demo_logout($cookies, $issuer, $ca);
+    [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), '/profile asks for a new login');
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?'), 'the OP asks for a login again: its session ended');
+    $verified[] = ['RP-Initiated Logout', sprintf('id_token_hint of the step-up verified (kid %s), back to %s/, the OP asks for a login again', $kid, DEMO_URL)];
+
+    // the passkey of the run is revoked: heidi:user:show lists it by its name, heidi:user:revoke-credential takes its identifier
+    $shown = op_console(['heidi:user:show', DEV_USERNAME], context()->withQuiet())->getOutput();
+    $name = 'castor demo --passkey';
+    demo_expect(preg_match('/^\s*passkey\s+([0-9a-f-]{36})\s+' . preg_quote($name, '/') . '/m', $shown, $found) === 1, 'heidi:user:show lists the passkey of the run');
+    op_console(['heidi:user:revoke-credential', DEV_USERNAME, $found[1]], context()->withQuiet());
+    $verified[] = ['Cleanup', sprintf('passkey %s revoked (heidi:user:revoke-credential)', $found[1])];
+
+    io()
+        ->table(['Step', 'Verified'], $verified);
+    io()
+        ->success(sprintf('oidc-demo required acr_values=%s on /vault and got a passkey login against the OP, without a patch of oidc_login.', DEMO_PASSKEY_CLASS));
 }
 
 /**

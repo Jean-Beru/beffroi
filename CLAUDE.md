@@ -15,7 +15,7 @@ Inside each pure-PHP package: `Domain`, `Port`, `Application`, `Bridge`. Deptrac
 
 ## Commands
 
-Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available. Castor exposes `snake_case` functions as `kebab-case` tasks.
+Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `demo.php`). A new task goes to the file of its side.
 
 ```bash
 composer install                  # monorepo (packages, tests)
@@ -26,7 +26,7 @@ castor start --kms vault          # plus HashiCorp Vault (dev mode, docker/vault
 castor start --kms aws            # plus LocalStack 4.14.0 (KMS only, docker/localstack/init.sh at every start: the key of the tenant under alias/heidi-<slug>); the last community image, the 2026.x ones need an account
 castor conformance [--plan P] [--module X]  # run the certification plans (basic, config, rp-initiated-logout, rotate-keys) through the API of the suite, scripted browser, key rotation done by the task; result per module
 castor provision [--kms sodium|file|vault|aws]  # apps/op/.env.local (KMS DSN: a sodium key inline or in a file of the op container, a Vault token minted under the policy of the OP, or the LocalStack alias; client secrets, password), tenant, signing key (a published one is opened with the KMS first, heidi:keys:list --check), user "alice" with a profile
-castor demo [--check] [--rotate]  # point ../oidc-demo (Symfony oidc_login) at the OP and start it on https://localhost:8002; --check signs in, opens /profile, logs out; --rotate runs a whole key rotation against it (about six minutes, short windows written into apps/op/.env.local for the run) and measures the refetch cooldown of oidc_login
+castor demo [--check] [--rotate] [--passkey]  # point ../oidc-demo (Symfony oidc_login) at the OP and start it on https://localhost:8002; --check signs in, opens /profile, logs out; --rotate runs a whole key rotation against it (about six minutes, short windows written into apps/op/.env.local for the run) and measures the refetch cooldown of oidc_login; --passkey signs in with a password, is sent back by /vault with acr_values=phr, enrols a passkey and signs the assertion with the software authenticator of tests/demo/passkey-browser.php (run under the autoloader of the monorepo, castor loads none of it), opens /vault with acr=phr, logs out, revokes the passkey; needs the demo on the Symfony branch that adds IS_AUTHENTICATED_IN_CONTEXT (see ../docs/specs/symfony-oauth-oidc-status.md, RP-14) until it merges
 castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI) inside the op container
 castor stop / castor logs / castor console <cmd>
 castor phpunit            # tests with coverage
@@ -38,7 +38,7 @@ castor lint
 castor check-licenses
 castor prepare-pr         # ecs-fix, rector-fix, phpstan-baseline, deptrac, lint
 castor infect --diff      # mutation testing of the lines changed since origin/main (--base to change), what CI runs on every PR and push; --reuse-coverage skips the PHPUnit run when .ci-tools/coverage is fresh
-castor infect             # the whole source (core and oidc): hours, deliberate only; infection.json.dist sits at the root for the git diff, see castor.php
+castor infect             # the whole source (core and oidc): hours, deliberate only; infection.json.dist sits at the root for the git diff, see .castor/stack/qa.php
 ```
 
 Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `-i` on its own.
