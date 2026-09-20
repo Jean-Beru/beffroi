@@ -41,6 +41,8 @@ use function sprintf;
 use function strtr;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\BrowserKit\Cookie;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
@@ -56,6 +58,8 @@ use function sys_get_temp_dir;
  */
 abstract class BrowserTestCase extends DatabaseTestCase
 {
+    use ClockSensitiveTrait;
+
     /**
      * RFC 7636 §4.1: 43 to 128 unreserved characters.
      */
@@ -75,6 +79,18 @@ abstract class BrowserTestCase extends DatabaseTestCase
         parent::tearDown();
         new Filesystem()
             ->remove(self::keyStorage());
+    }
+
+    /**
+     * The rows keep seconds: what the kernel dates from now on is dated the second after what it dated
+     * so far, a login after the interaction it answers, a fresh login after the session it refreshes.
+     * The clock of the kernel is the global clock of the process (Symfony\Component\Clock\Clock), which
+     * the reboot the browser does between two requests keeps: the mock set here is what the next
+     * request reads, and the trait restores the real clock after the test.
+     */
+    protected static function aSecondLater(): void
+    {
+        self::mockTime(Clock::get()->now()->modify('+1 second'));
     }
 
     /**
