@@ -275,3 +275,10 @@ services:
     Heidi\Bundle\Tests\Functional\Translation\StrictTranslator:
         decorates: translator
         arguments: ['@.inner']
+
+    # The argon2id hashes of the suite at the smallest cost the algorithm accepts, ahead of the native hasher
+    # of the core, which keeps its production cost and the hashes of the other algorithms: 400 ms a hash
+    # otherwise, paid once per user, ten times per TOTP and once per client authentication after a reboot.
+    Heidi\Bundle\Tests\Functional\Security\CheapArgon2idHasher:
+        tags:
+            - { name: heidi.password_hasher, priority: 10 }
