@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -78,9 +79,9 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertSame(self::CHALLENGE, $found->codeChallenge?->value);
         static::assertTrue($found->codeChallenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
         static::assertEquals($claims, $found->claimsRequest);
-        static::assertEquals(self::now(), $found->authenticatedAt);
-        static::assertSame(['pwd'], $found->authenticationMethods);
-        static::assertSame('1', $found->authenticationContextClass);
+        static::assertEquals(self::now(), $found->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $found->authentication->methods);
+        static::assertSame('1', $found->authentication->contextClass);
         static::assertEquals(self::now()->modify('+1 minute'), $found->issuedAt);
         static::assertEquals(self::now()->modify('+2 minutes'), $found->expiresAt);
         static::assertNull($found->usedAt);
@@ -142,10 +143,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             'n-0S6_WzA2Mj',
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
             $claims,
-            $session->authenticatedAt(),
-            $session->methodReferences(),
-            $session->authenticationContextClass()
-                ->value,
+            AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             self::now()->modify('+1 minute'),
             self::now()->modify('+2 minutes'),
         );

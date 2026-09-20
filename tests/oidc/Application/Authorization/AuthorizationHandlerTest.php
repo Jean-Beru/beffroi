@@ -275,9 +275,9 @@ final class AuthorizationHandlerTest extends TestCase
         static::assertSame('n-0S6_WzA2Mj', $code->nonce);
         static::assertSame($request->codeChallenge, $code->codeChallenge);
         static::assertNull($code->claimsRequest);
-        static::assertEquals(Fixtures::now(), $code->authenticatedAt);
-        static::assertSame(['pwd'], $code->authenticationMethods);
-        static::assertSame('1', $code->authenticationContextClass);
+        static::assertEquals(Fixtures::now(), $code->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $code->authentication->methods);
+        static::assertSame('1', $code->authentication->contextClass);
         static::assertEquals($this->clock->now(), $code->issuedAt);
         static::assertEquals($this->clock->now()->modify('+60 seconds'), $code->expiresAt);
     }
@@ -463,7 +463,7 @@ final class AuthorizationHandlerTest extends TestCase
 
         // Then
         $granted = $this->granted($decision);
-        static::assertEquals($this->clock->now(), $granted->code->authenticatedAt);
+        static::assertEquals($this->clock->now(), $granted->code->authentication->authenticatedAt);
     }
 
     /**
@@ -1059,7 +1059,7 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phrh", "1"]}}}')), $session, $this->context);
 
         // Then
-        static::assertSame('1', $this->granted($decision)->code->authenticationContextClass);
+        static::assertSame('1', $this->granted($decision)->code->authentication->contextClass);
     }
 
     /**
@@ -1073,7 +1073,7 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phrh', '2']), $this->session(), $this->context);
 
         // Then
-        static::assertSame('1', $this->granted($decision)->code->authenticationContextClass);
+        static::assertSame('1', $this->granted($decision)->code->authentication->contextClass);
     }
 
     /**

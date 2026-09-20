@@ -33,9 +33,7 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <field name="authenticatedAt" type="datetime_immutable" column="authenticated_at"/>
-        <field name="authenticationMethods" type="simple_array" column="amr"/>
-        <field name="authenticationContextClass" type="string" column="acr" length="255"/>
+        <embedded name="authentication" class="Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="usedAt" type="datetime_immutable" column="used_at" nullable="true"/>

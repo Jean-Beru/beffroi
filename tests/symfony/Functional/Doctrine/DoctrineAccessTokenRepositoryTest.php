@@ -54,9 +54,9 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->session->id->equals($session->id));
         static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes);
         static::assertEquals($claims, $found->claimsRequest);
-        static::assertEquals(self::now(), $found->authenticatedAt);
-        static::assertSame(['pwd'], $found->authenticationMethods);
-        static::assertSame('1', $found->authenticationContextClass);
+        static::assertEquals(self::now(), $found->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $found->authentication->methods);
+        static::assertSame('1', $found->authentication->contextClass);
         static::assertEquals(self::now()->modify('+1 minute'), $found->issuedAt);
         static::assertEquals(self::now()->modify('+11 minutes'), $found->expiresAt);
     }

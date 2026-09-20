@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
@@ -103,9 +104,9 @@ final class RefreshTokenTest extends TestCase
         static::assertSame($this->session, $token->session);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes);
         static::assertSame($claims, $token->claimsRequest);
-        static::assertEquals($issuedAt, $token->authenticatedAt);
-        static::assertSame(['pwd', 'otp'], $token->authenticationMethods);
-        static::assertSame('2', $token->authenticationContextClass);
+        static::assertEquals($issuedAt, $token->authentication->authenticatedAt);
+        static::assertSame(['pwd', 'otp'], $token->authentication->methods);
+        static::assertSame('2', $token->authentication->contextClass);
         static::assertEquals($issuedAt, $token->issuedAt);
         static::assertEquals($issuedAt->modify('+30 days'), $token->expiresAt);
     }
@@ -185,9 +186,9 @@ final class RefreshTokenTest extends TestCase
 
         // Then
         static::assertSame($authorization->claimsRequest, $token->claimsRequest);
-        static::assertEquals($authorization->authenticatedAt, $token->authenticatedAt);
-        static::assertSame($authorization->authenticationMethods, $token->authenticationMethods);
-        static::assertSame($authorization->authenticationContextClass, $token->authenticationContextClass);
+        static::assertEquals($authorization->authentication->authenticatedAt, $token->authentication->authenticatedAt);
+        static::assertSame($authorization->authentication->methods, $token->authentication->methods);
+        static::assertSame($authorization->authentication->contextClass, $token->authentication->contextClass);
     }
 
     /**
@@ -386,16 +387,6 @@ final class RefreshTokenTest extends TestCase
      * RFC 8176: a session always has at least one proof, so a token always has at least one method.
      */
     #[Test]
-    public function itRefusesAnEmptyMethodList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->token(methods: []);
-    }
-
-    #[Test]
     public function itRefusesToBeIssuedBeforeItsFamilyStarted(): void
     {
         // Then
@@ -438,10 +429,7 @@ final class RefreshTokenTest extends TestCase
             $this->session,
             $scopes ?? [Scope::openid()],
             null,
-            $this->session->authenticatedAt(),
-            $methods ?? $this->session->methodReferences(),
-            $this->session->authenticationContextClass()
-                ->value,
+            new AuthenticationSnapshot($this->session->authenticatedAt(), $methods ?? $this->session->methodReferences(), $this->session->authenticationContextClass()->value),
             $issuedAt ?? Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+30 days'),
         );

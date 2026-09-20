@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
@@ -53,10 +54,7 @@ final class Tokens
             $nonce,
             $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
             $claims,
-            $session->authenticatedAt(),
-            $session->methodReferences(),
-            $session->authenticationContextClass()
-                ->value,
+            AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
             $issuedAt->modify('+60 seconds'),
         );
@@ -84,10 +82,7 @@ final class Tokens
             $session,
             array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
             $claims,
-            $session->authenticatedAt(),
-            $session->methodReferences(),
-            $session->authenticationContextClass()
-                ->value,
+            AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
             $issuedAt->modify('+10 minutes'),
         );
@@ -125,10 +120,7 @@ final class Tokens
             $session,
             array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
             $claims,
-            $session->authenticatedAt(),
-            $session->methodReferences(),
-            $session->authenticationContextClass()
-                ->value,
+            AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
             $issuedAt->modify('+30 days') < $family->expiresAt ? $issuedAt->modify('+30 days') : $family->expiresAt,
         );

@@ -94,9 +94,9 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
         static::assertTrue($code->grantId->equals($token->grantId));
         static::assertTrue($session->id->equals($token->sessionId));
-        static::assertEquals($session->authenticatedAt(), $token->authenticatedAt);
-        static::assertSame(['pwd'], $token->authenticationMethods);
-        static::assertSame('1', $token->authenticationContextClass);
+        static::assertEquals($session->authenticatedAt(), $token->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $token->authentication->methods);
+        static::assertSame('1', $token->authentication->contextClass);
         static::assertEquals(Fixtures::now(), $token->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
     }
@@ -123,9 +123,9 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
         static::assertTrue($record->grantId->equals($token->grantId));
         static::assertTrue($session->id->equals($token->sessionId));
-        static::assertEquals($session->authenticatedAt(), $token->authenticatedAt);
-        static::assertSame(['pwd'], $token->authenticationMethods);
-        static::assertSame('1', $token->authenticationContextClass);
+        static::assertEquals($session->authenticatedAt(), $token->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $token->authentication->methods);
+        static::assertSame('1', $token->authentication->contextClass);
         static::assertEquals(Fixtures::now(), $token->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
     }
@@ -367,22 +367,31 @@ final class AccessTokenVerifierTest extends TestCase
         yield 'exp not after iat' => [self::with([
             'iat' => 1789467000,
         ]), null, null];
-        yield 'no auth_time' => [self::without('auth_time'), null, null];
+        yield 'no auth_time' => [self::without('auth_time'), null, Throwable::class];
         yield 'no sid' => [self::without('sid'), null, null];
         yield 'sid not a UUID' => [self::with([
             'sid' => 'the-session',
         ]), null, null];
-        yield 'no acr' => [self::without('acr'), null, null];
+        yield 'no acr' => [self::without('acr'), null, Throwable::class];
         yield 'acr empty' => [self::with([
             'acr' => '',
-        ]), null, null];
-        yield 'no amr' => [self::without('amr'), null, null];
+        ]), null, Throwable::class];
+        yield 'no amr' => [self::without('amr'), null, Throwable::class];
         yield 'amr not a list' => [self::with([
             'amr' => 'pwd',
-        ]), null, null];
+        ]), null, Throwable::class];
         yield 'amr with an empty value' => [self::with([
             'amr' => [''],
-        ]), null, null];
+        ]), null, Throwable::class];
+        yield 'amr empty' => [self::with([
+            'amr' => [],
+        ]), null, Throwable::class];
+        yield 'amr with a value that is not a method reference' => [self::with([
+            'amr' => ['not a method'],
+        ]), null, Throwable::class];
+        yield 'acr with a space' => [self::with([
+            'acr' => 'level one',
+        ]), null, Throwable::class];
         yield 'no grant_id' => [self::without('grant_id'), null, null];
         yield 'grant_id not a string' => [self::with([
             'grant_id' => 1,

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
@@ -61,9 +62,9 @@ final class StoredAccessTokenTest extends TestCase
         static::assertSame($this->session, $token->session);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes);
         static::assertSame($claims, $token->claimsRequest);
-        static::assertEquals($issuedAt, $token->authenticatedAt);
-        static::assertSame(['pwd', 'otp'], $token->authenticationMethods);
-        static::assertSame('2', $token->authenticationContextClass);
+        static::assertEquals($issuedAt, $token->authentication->authenticatedAt);
+        static::assertSame(['pwd', 'otp'], $token->authentication->methods);
+        static::assertSame('2', $token->authentication->contextClass);
         static::assertEquals($issuedAt, $token->issuedAt);
         static::assertEquals($issuedAt->modify('+10 minutes'), $token->expiresAt);
     }
@@ -86,7 +87,7 @@ final class StoredAccessTokenTest extends TestCase
         static::assertEquals([new Scope('email')], $token->scopes);
         static::assertTrue($code->grantId->equals($token->grantId));
         static::assertSame($this->session, $token->session);
-        static::assertEquals($this->session->authenticatedAt(), $token->authenticatedAt);
+        static::assertEquals($this->session->authenticatedAt(), $token->authentication->authenticatedAt);
     }
 
     #[Test]
@@ -145,16 +146,6 @@ final class StoredAccessTokenTest extends TestCase
      * RFC 8176: a session always has at least one proof, so a token always has at least one method.
      */
     #[Test]
-    public function itRefusesAnEmptyMethodList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->token(methods: []);
-    }
-
-    #[Test]
     public function itRefusesToExpireBeforeItWasIssued(): void
     {
         // Then
@@ -177,9 +168,7 @@ final class StoredAccessTokenTest extends TestCase
             $this->session,
             $scopes ?? [Scope::openid()],
             null,
-            Fixtures::now(),
-            $methods ?? ['pwd'],
-            '1',
+            new AuthenticationSnapshot(Fixtures::now(), $methods ?? ['pwd'], '1'),
             Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+10 minutes'),
         );

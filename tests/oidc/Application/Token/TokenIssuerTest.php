@@ -191,8 +191,8 @@ final class TokenIssuerTest extends TestCase
         static::assertSame($this->client, $issued->token->client);
         static::assertSame($this->session, $issued->token->session);
         static::assertSame($token->scopes, $issued->token->scopes, 'the granted scopes, not the narrowed ones');
-        static::assertEquals($token->authenticatedAt, $issued->token->authenticatedAt);
-        static::assertSame($token->authenticationMethods, $issued->token->authenticationMethods);
+        static::assertEquals($token->authentication->authenticatedAt, $issued->token->authentication->authenticatedAt);
+        static::assertSame($token->authentication->methods, $issued->token->authentication->methods);
     }
 
     /**
