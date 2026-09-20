@@ -120,6 +120,23 @@ final class LoginCompletionTest extends TestCase
         static::assertEquals($this->clock->now(), $session->authenticatedAt());
     }
 
+    /**
+     * The first step may have proven more than one method (a PIN and a smart card, say): all of them are
+     * carried onto the session, not the first one.
+     */
+    #[Test]
+    public function everythingTheFirstStepProvedIsCarriedOntoTheSession(): void
+    {
+        // Given
+        $login = PendingLogin::provenAt($this->alice->id, [new AuthenticationMethod(AuthenticationMethod::PIN), new AuthenticationMethod(AuthenticationMethod::SMART_CARD)], $this->clock->now()->modify('-1 minute'));
+
+        // When
+        $session = $this->completion->complete($this->tenant, $login, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame(['pin', 'sc', 'otp', 'mfa'], $session->methodReferences());
+    }
+
     #[Test]
     public function aRightCodeSavesTheSession(): void
     {
