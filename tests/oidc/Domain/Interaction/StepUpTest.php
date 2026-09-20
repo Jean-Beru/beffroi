@@ -80,21 +80,26 @@ final class StepUpTest extends TestCase
     }
 
     /**
-     * A revoked credential authenticates nobody: it counts for nothing.
+     * A revoked credential authenticates nobody: it counts for nothing, and hides nothing enrolled after it.
      */
     #[Test]
     public function aRevokedCredentialCountsForNothing(): void
     {
         // Given
+        $revoked = Fixtures::passkey($this->alice, 'Lost key', 'lost');
+        $revoked->revoke(Fixtures::now());
         $passkey = Fixtures::passkey($this->alice);
-        $passkey->revoke(Fixtures::now());
 
-        // When / Then
-        static::assertNull(StepUp::towards($this->password, [AuthenticationContextClass::phishingResistant()], [$passkey]));
+        // When
+        $stepUp = StepUp::towards($this->password, [AuthenticationContextClass::phishingResistant()], [$revoked, $passkey]);
+
+        // Then
+        static::assertNotNull($stepUp);
+        static::assertSame([$passkey], $stepUp->credentials);
     }
 
     /**
-     * A credential of a kind that declares no method counts for nothing either.
+     * A credential of a kind that declares no method counts for nothing either, and hides nothing after it.
      */
     #[Test]
     public function aCredentialThatDeclaresNoMethodCountsForNothing(): void
@@ -111,9 +116,34 @@ final class StepUpTest extends TestCase
                 return 'recovery';
             }
         };
+        $passkey = Fixtures::passkey($this->alice);
 
-        // When / Then
-        static::assertNull(StepUp::towards($this->password, [AuthenticationContextClass::phishingResistant()], [$credential]));
+        // When
+        $stepUp = StepUp::towards($this->password, [AuthenticationContextClass::phishingResistant()], [$credential, $passkey]);
+
+        // Then
+        static::assertNotNull($stepUp);
+        static::assertSame([$passkey], $stepUp->credentials);
+    }
+
+    /**
+     * The classes of the step-up are those any credential reaches, each credential adding its own: a
+     * hardware key reaches "phrh", the TOTP enrolled after it reaches "2" only, both are kept.
+     */
+    #[Test]
+    public function theClassesAreGatheredFromEveryCredentialThatReachesOne(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey($this->alice);
+        $totp = Totps::credential($this->alice, new FakePasswordHasher());
+
+        // When
+        $stepUp = StepUp::towards($this->password, [AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::twoFactors()], [$passkey, $totp]);
+
+        // Then
+        static::assertNotNull($stepUp);
+        static::assertSame(['phrh', '2'], self::names($stepUp->classes));
+        static::assertSame([$passkey, $totp], $stepUp->credentials);
     }
 
     /**
