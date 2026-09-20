@@ -353,6 +353,18 @@
         <source>error.login_required</source>
         <target>Connectez-vous d’abord, depuis une application, puis revenez sur cette page.</target>
       </trans-unit>
+      <trans-unit id="884d5c03f9" resname="form_post.title">
+        <source>form_post.title</source>
+        <target>Retour vers l’application</target>
+      </trans-unit>
+      <trans-unit id="2965dcacbb" resname="form_post.explanation">
+        <source>form_post.explanation</source>
+        <target>Votre navigateur vous renvoie vers l’application. S’il ne se passe rien, utilisez le bouton ci-dessous.</target>
+      </trans-unit>
+      <trans-unit id="899a3c277e" resname="form_post.continue">
+        <source>form_post.continue</source>
+        <target>Continuer</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

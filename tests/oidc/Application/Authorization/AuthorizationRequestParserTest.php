@@ -15,11 +15,14 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\Display;
 use Heidi\Oidc\Domain\Authorization\Prompt;
+use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\OAuth2Exception;
+use Heidi\Oidc\Exception\UnsupportedResponseModeException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -50,7 +53,7 @@ final class AuthorizationRequestParserTest extends TestCase
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->clients->save($this->client);
         $this->clients->save(Clients::confidential(Fixtures::tenant('other', 'https://id.other.example'), new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'foreign'));
-        $this->parser = new AuthorizationRequestParser($this->clients);
+        $this->parser = new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost());
     }
 
     /**
@@ -120,6 +123,75 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertNull($request->idTokenHint);
         static::assertNull($request->claims);
         static::assertSame('query', $request->responseMode->value);
+    }
+
+    /**
+     * OAuth 2.0 Form Post Response Mode §2: a client that asks for the posted form gets it, and the
+     * request carries the mode from there on.
+     */
+    #[Test]
+    public function itReadsTheFormPostResponseMode(): void
+    {
+        // When
+        $request = $this->parse([
+            'response_mode' => 'form_post',
+        ]);
+
+        // Then
+        static::assertSame(ResponseMode::FormPost, $request->responseMode);
+    }
+
+    /**
+     * RFC 6749 §4.1.2.1: the redirect target says how the answer reaches the client, so a refusal of the
+     * second stage is posted like a success would have been (OIDC Core §3.1.2.6).
+     */
+    #[Test]
+    public function theRedirectTargetOfTheFirstStageCarriesTheRequestedMode(): void
+    {
+        // When
+        $target = $this->parser->redirectTarget($this->tenant, self::parameters([
+            'response_mode' => 'form_post',
+        ]));
+
+        // Then
+        static::assertSame(ResponseMode::FormPost, $target->responseMode);
+    }
+
+    /**
+     * Issue #98: what the parser accepts is what the integration wired, never what the enumeration of the
+     * module holds. A deployment that posts no response refuses the mode it cannot render.
+     */
+    #[Test]
+    public function aModeTheIntegrationDidNotWireIsRefused(): void
+    {
+        // Given
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::queryOnly());
+        $parameters = self::parameters([
+            'response_mode' => 'form_post',
+        ]);
+
+        // Then
+        $this->expectException(UnsupportedResponseModeException::class);
+        $this->expectExceptionMessageIs('unsupported_response_mode: The requested response mode is not supported.');
+
+        // When
+        $parser->parse($parser->redirectTarget($this->tenant, $parameters), $parameters);
+    }
+
+    /**
+     * A mode the provider cannot render cannot carry its own refusal: the answer goes back in the default
+     * mode, the one every client reads (Multiple Response Type Encoding Practices §2.1).
+     */
+    #[Test]
+    public function aModeTheIntegrationDidNotWireIsRefusedInTheDefaultMode(): void
+    {
+        // When
+        $target = $this->parser->redirectTarget($this->tenant, self::parameters([
+            'response_mode' => 'fragment',
+        ]));
+
+        // Then
+        static::assertSame(ResponseMode::Query, $target->responseMode);
     }
 
     /**
@@ -489,12 +561,15 @@ final class AuthorizationRequestParserTest extends TestCase
         yield 'response_type in capitals' => [[
             'response_type' => 'CODE',
         ], 'unsupported_response_type', 'Only the code response type is supported.'];
-        yield 'fragment response mode' => [[
+        yield 'fragment response mode (Multiple Response Type Encoding Practices §2.1)' => [[
             'response_mode' => 'fragment',
-        ], 'invalid_request', 'Only the query response mode is supported.'];
-        yield 'form_post response mode (deferred)' => [[
-            'response_mode' => 'form_post',
-        ], 'invalid_request', 'Only the query response mode is supported.'];
+        ], 'unsupported_response_mode', 'The requested response mode is not supported.'];
+        yield 'response mode of no specification' => [[
+            'response_mode' => 'web_message',
+        ], 'unsupported_response_mode', 'The requested response mode is not supported.'];
+        yield 'response mode in capitals' => [[
+            'response_mode' => 'FORM_POST',
+        ], 'unsupported_response_mode', 'The requested response mode is not supported.'];
         yield 'no scope (OIDC Core §3.1.2.1)' => [[
             'scope' => null,
         ], 'invalid_request', 'The scope parameter is missing.'];

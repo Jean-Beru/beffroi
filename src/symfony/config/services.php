@@ -23,6 +23,9 @@ use Heidi\Bundle\Http\PasskeysPage;
 use Heidi\Bundle\Http\PendingLoginStore;
 use Heidi\Bundle\Http\QrCode;
 use Heidi\Bundle\Http\RequestContextFactory;
+use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
+use Heidi\Bundle\Http\ResponseMode\FormPostResponseRenderer;
+use Heidi\Bundle\Http\ResponseMode\QueryResponseRenderer;
 use Heidi\Bundle\Http\TotpProvisioningSealer;
 use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
@@ -141,6 +144,7 @@ use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Heidi\Oidc\Port\ServedResponseModesInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -183,6 +187,16 @@ return static function (ContainerConfigurator $container): void {
             '$enabledLocales' => '%kernel.enabled_locales%',
             '$defaultLocale' => '%kernel.default_locale%',
         ]);
+    // how the answer of the authorization endpoint reaches the client (Multiple Response Type Encoding
+    // Practices §2.1): one class per mode, and what is tagged is what the parser accepts and what the
+    // discovery document announces, never an enumeration kept beside them
+    $services->set(QueryResponseRenderer::class)
+        ->tag('heidi.response_mode');
+    $services->set(FormPostResponseRenderer::class)
+        ->tag('heidi.response_mode');
+    $services->set(AuthorizationResponseRenderers::class)
+        ->args([tagged_iterator('heidi.response_mode')]);
+    $services->alias(ServedResponseModesInterface::class, AuthorizationResponseRenderers::class);
     $services->set(AuthorizationResponder::class);
     $services->set(PasskeyOptionsStore::class);
     $services->set(PasskeysPage::class);

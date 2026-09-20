@@ -27,7 +27,11 @@ The three clients of the suite receive access tokens in the shape `CONFORMANCE_A
 
 ## The certification plans
 
-Three plans and one module on its own, one configuration, one task. `castor conformance` runs them all; `--plan basic`, `--plan config`, `--plan rp-initiated-logout` or `--plan rotate-keys` (repeatable) runs one.
+Four plans and one module on its own, one configuration, one task. `castor conformance` runs them all; `--plan basic`, `--plan config`, `--plan form-post`, `--plan rp-initiated-logout` or `--plan rotate-keys` (repeatable) runs one.
+
+`--reset` empties the database of the OP before the plans run and provisions it again, then restarts the containers and waits for the discovery document: the plans were written against the OP `castor provision` leaves, a development user with a password and nothing else. A second factor or a passkey enrolled by hand, which a run of `castor demo --passkey` or an afternoon on the account pages leaves behind, stops the scripted browser of the suite on the page that asks for it, and every module of every plan then fails on the same line, `unexpected url for task: Verify complete`. The restart is not decoration: a worker of FrankenPHP holds the kernel and the opened signing key for every request it serves (architecture §3.3), and a worker that was up before the tables went keeps a key no row names any more. Nothing of the configuration is lost, the client secrets living in `apps/op/.env.local` and the clients in `apps/op/config/packages/heidi.yaml`.
+
+The alias of the configuration is exclusive: two `castor conformance` at once on the same suite interrupt each other's modules with `Stopping test due to alias conflict`, and a `--reset` under a run in progress takes the tables from under it. One run at a time.
 
 ### Basic OP
 
@@ -39,6 +43,14 @@ The clients are registered in `apps/op/config/packages/heidi.yaml` (development 
 
 `oidcc-config-certification-test-plan`, no variant, one module: `oidcc-discovery-endpoint-verification` reads the discovery document and checks it against OIDC Discovery §3. No browser, no client. It passed the day it was first run, on the document the Basic OP plan already read.
 
+### Form Post OP
+
+`oidcc-formpost-basic-certification-test-plan`, created with `server_metadata=discovery` and `client_registration=static_client`, the Basic OP plan run again with `response_mode=form_post`: the same modules, the same three clients, the same user, and an answer the OP gives as a page whose form the browser posts to the redirect URI instead of a redirection (OAuth 2.0 Form Post Response Mode §2). Nothing else moves: the profile is Basic, so its modules ask for `response_type=code` and no other, and an error of the authorization endpoint comes back posted like a success (OIDC Core §3.1.2.6).
+
+The scripted browser needs nothing added: the page it receives submits itself, HtmlUnit running its one script, and the `Verify complete` task of the `browser` section waits for the callback of the suite as it does after a redirection. The page carries a `Content-Security-Policy` of `default-src 'none'` naming that script by hash; HtmlUnit does not enforce CSP, so the policy is judged by the functional tests of the bundle, not by the suite.
+
+The suite creates 35 of the 38 modules the plan lists for these variants. One of them, `oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported`, the OP cannot answer yet and is listed as known in `CONFORMANCE_PLANS`: the module writes `response_mode=form_post` only inside the request object it sends, never in the query, and the OP refuses the object unread (`request_not_supported`, OIDC Core §6, which the module accepts as a rejection) so the refusal goes back in the default mode and the form post checks of the callback fail. The same module ends `SKIPPED` in the Basic OP plan, where `response_mode=default` makes those checks absent. It closes with JAR (RFC 9101), which spike 5 brings: issue heidi#142. A module listed as known is reported as `KNOWN` and accepted, and the run fails the day it passes, so that the line is deleted rather than carried.
+
 ### RP-Initiated Logout OP
 
 `oidcc-rp-initiated-logout-certification-test-plan`, created with `response_type=code` and `client_registration=static_client`; its eleven modules run with `client_secret_basic` on `client`. One checks the discovery document (`end_session_endpoint`), ten sign in through the authorization flow then call the end session endpoint: the nominal request (verified `id_token_hint`, registered `post_logout_redirect_uri`, `state`) and the same without `state` must land on `https://localhost:8443/test/a/heidi/post_logout_redirect`; a request with nowhere to go (`no-params`, `only-state`, `no-post-logout-redirect-uri`) must end the session and show it; a request that cannot be honoured (`post_logout_redirect_uri` not registered or with a query added, `id_token_hint` modified or issued to no client, `post_logout_redirect_uri` without `id_token_hint` or `client_id`) must show an error page and redirect nowhere (RP-Initiated Logout 1.0 §2, §3). The OP needed nothing for it: a verified hint ends the session and redirects at once, an unverified request goes through the confirmation page, every refusal is the `Request refused` page. Eight modules end in `REVIEW`, the screenshot of the page shown.
@@ -47,7 +59,7 @@ The clients are registered in `apps/op/config/packages/heidi.yaml` (development 
 
 `oidcc-server-rotate-keys` is the one module of `oidcc-dynamic-certification-test-plan` the OP answers (the rest of that plan wants dynamic client registration and request URIs), and the external judge of the key rotation of spike 2. The suite has no plan for a single module, so `castor conformance` creates it on its own through `/api/runner`, with the configuration and the variant `server_metadata=discovery`, the only one it takes. The module reads the JWK Set at its creation and then waits for the operator to rotate the keys before it is started; the task runs `heidi:keys:rotate --now` on the OP in the operator's place, then starts it. The module reads the JWK Set again and passes when a new key is there and one of the former keys still is: the new key signs at once, the one that signed retires over its window (architecture §3.3). A run therefore leaves one more key in the JWK Set until that window closes. The page of the module is its log; there is no plan page.
 
-The other plans of the suite are for what the OP does not have: `implicit`, `hybrid` and their `formpost` variants (decision 0006), `formpost-basic` (`response_mode=form_post`), `dynamic` (registration, `request_uri`), the back-channel and front-channel logout plans, `session-management` (`check_session_iframe`) and `3rdparty-init-login`.
+The other plans of the suite are for what the OP does not have: `implicit`, `hybrid` and their `formpost` variants (decision 0006), `dynamic` (registration, `request_uri`), the back-channel and front-channel logout plans, `session-management` (`check_session_iframe`) and `3rdparty-init-login`.
 
 ### Running them
 

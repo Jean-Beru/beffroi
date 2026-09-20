@@ -63,6 +63,23 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Discovery §3 "response_modes_supported", issue #98: the ways of answering wired into the
+     * authorization endpoint of the bundle, the default one and the posted form (Form Post Response Mode
+     * §2); the response types stay "code" alone, in every mode (decision 0006).
+     */
+    #[Test]
+    public function theMetadataAnnouncesTheResponseModesTheBundleWires(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $metadata = self::json($this->browser->getResponse());
+        static::assertSame(['query', 'form_post'], $metadata['response_modes_supported']);
+        static::assertSame(['code'], $metadata['response_types_supported']);
+    }
+
+    /**
      * OIDC Discovery §3 "acr_values_supported", decision 0010: the classes of the policy of the tenant the
      * logins of the firewall, a password and a passkey, can prove: the four of the default policy.
      */

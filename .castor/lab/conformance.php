@@ -13,6 +13,7 @@ use function Castor\context;
 use function Castor\http_request;
 use function Castor\io;
 use function Castor\load_dot_env;
+use function Castor\run;
 use Symfony\Component\Console\Input\InputOption;
 
 /**
@@ -21,7 +22,11 @@ use Symfony\Component\Console\Input\InputOption;
  * configuration serves them all: the file whose {PLACEHOLDERS} the task fills from apps/op/.env.local,
  * and the values that must be there for the plans to make sense. An entry with "module" is not a plan
  * of the suite but one module run on its own, the suite having no plan for a single module; "before_start"
- * names what the task does between its creation and its start, in place of a human.
+ * names what the task does between its creation and its start, in place of a human. "known" names the
+ * modules the OP is known not to answer yet, each with its reason and the issue that closes it: their
+ * result is reported as KNOWN and accepted, so that a gap we decided to leave open does not keep the CI
+ * red for weeks, and the run fails the day one of them passes, so that the line is deleted rather than
+ * carried. A module is listed there once the gap is written down, never to quiet a surprise.
  */
 const CONFORMANCE_PLANS = [
     'basic' => [
@@ -35,6 +40,16 @@ const CONFORMANCE_PLANS = [
         'name' => 'oidcc-config-certification-test-plan',
         'variant' => [],
     ],
+    'form-post' => [
+        'name' => 'oidcc-formpost-basic-certification-test-plan',
+        'variant' => [
+            'server_metadata' => 'discovery',
+            'client_registration' => 'static_client',
+        ],
+        'known' => [
+            'oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported' => 'the module writes response_mode only inside the request object, which the OP refuses unread (OIDC Core §6); heidi#142 closes it with JAR, spike 5',
+        ],
+    ],
     'rp-initiated-logout' => [
         'name' => 'oidcc-rp-initiated-logout-certification-test-plan',
         'variant' => [
@@ -44,9 +59,9 @@ const CONFORMANCE_PLANS = [
     ],
     // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
     // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
-    // new key with the old one still there. The other plans of the suite are for response types, response
-    // modes and features the OP does not have (implicit and hybrid, form_post, dynamic registration,
-    // back-channel and front-channel logout, session management, third-party initiated login).
+    // new key with the old one still there. The other plans of the suite are for response types and
+    // features the OP does not have (implicit and hybrid, dynamic registration, back-channel and
+    // front-channel logout, session management, third-party initiated login).
     'rotate-keys' => [
         'name' => 'oidcc-server-rotate-keys',
         'module' => true,
@@ -56,6 +71,12 @@ const CONFORMANCE_PLANS = [
         'before_start' => 'rotate',
     ],
 ];
+
+/**
+ * The results no run of a plan can avoid and that a submission may be in (tests/conformance/README.md):
+ * a module in one of them is never a gap of the OP, so it is never reported as known.
+ */
+const CONFORMANCE_UNCONDITIONALLY_ACCEPTED = ['PASSED', 'REVIEW', 'SKIPPED'];
 
 const CONFORMANCE_CONFIGURATION = 'tests/conformance/configuration.json';
 
@@ -79,12 +100,17 @@ const CONFORMANCE_MODULE_TIMEOUT = 300;
 const CONFORMANCE_SUITE_TIMEOUT = 180;
 
 /**
+ * How long the OP may take to serve its discovery document again after "--reset" restarted it.
+ */
+const CONFORMANCE_OP_TIMEOUT = 180;
+
+/**
  * @param array<string> $plan
  * @param array<string> $module
  */
-#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module')]
+#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module')]
 function conformance(
-    #[AsOption(description: 'Run only this plan: basic, config, rp-initiated-logout or rotate-keys (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
+    #[AsOption(description: 'Run only this plan: basic, config, form-post, rp-initiated-logout or rotate-keys (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $plan = [],
     #[AsOption(description: 'Run only the modules whose name contains this text (repeatable)', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $module = [],
@@ -92,6 +118,8 @@ function conformance(
     string $suite = 'https://localhost:8443',
     #[AsOption(description: 'Fail on WARNING as well as on FAILED, which is what the CI asks of the plans')]
     bool $strict = false,
+    #[AsOption(description: 'Empty the database of the OP and provision it again before the plans run, which is the state they were written against: a development user with a password and nothing else')]
+    bool $reset = false,
 ): void {
     $unknown = array_diff($plan, array_keys(CONFORMANCE_PLANS));
     if ($unknown !== []) {
@@ -108,6 +136,9 @@ function conformance(
         io()->error(sprintf('%s: run "castor provision" first.', implode(', ', $missing) . ' missing from ' . DEV_ENV_LOCAL));
         exit(1);
     }
+    if ($reset) {
+        conformance_reset($env['HEIDI_ISSUER']);
+    }
 
     $server = conformance_server($suite);
     io()
@@ -116,6 +147,7 @@ function conformance(
 
     $rows = [];
     $verdict = [];
+    $stale = [];
     $planUrls = [];
     foreach ($plans as $definition) {
         if ($definition['module'] ?? false) {
@@ -172,12 +204,20 @@ function conformance(
                 $planUrls[] = sprintf('%s: %s', $name, $run['url']);
             }
             $elapsed = microtime(true) - $started;
-            $rows[] = [$definition['name'], $name, $run['result'], sprintf('%ds', (int) $elapsed), $run['url']];
-            $verdict[$run['result']] = ($verdict[$run['result']] ?? 0) + 1;
+            $known = $definition['known'][$name] ?? null;
+            $result = $run['result'];
+            if ($known !== null && ! in_array($result, CONFORMANCE_UNCONDITIONALLY_ACCEPTED, true)) {
+                $result = 'KNOWN';
+            }
+            $rows[] = [$definition['name'], $name, $result, sprintf('%ds', (int) $elapsed), $run['url']];
+            $verdict[$result] = ($verdict[$result] ?? 0) + 1;
             io()
-                ->text(sprintf('  %s in %ds: %s', $run['result'], (int) $elapsed, $run['url']));
+                ->text(sprintf('  %s in %ds: %s', $result === 'KNOWN' ? sprintf('%s, known (%s)', $run['result'], $known) : $result, (int) $elapsed, $run['url']));
             foreach ($run['findings'] as $finding) {
                 io()->text('    ' . $finding);
+            }
+            if ($known !== null && $result !== 'KNOWN') {
+                $stale[] = sprintf('%s: %s (listed as known: %s)', $definition['name'], $name, $known);
             }
         }
     }
@@ -199,17 +239,28 @@ function conformance(
     io()
         ->listing($planUrls);
 
-    // WARNING and REVIEW are what a human reads before submitting; SKIPPED is the suite's own choice.
-    // Under --strict a WARNING is a failure: the CI keeps the plans at the state a submission needs, and
-    // REVIEW and SKIPPED stay accepted because no run of a plan can avoid them (tests/conformance/README.md).
-    $accepted = $strict ? ['PASSED', 'REVIEW', 'SKIPPED'] : ['PASSED', 'WARNING', 'REVIEW', 'SKIPPED'];
+    // A module listed as known that no longer fails is a line to delete, not a result to keep: the list
+    // says what the OP cannot do yet, and it is wrong the moment it can.
+    if ($stale !== []) {
+        io()->error(['These modules no longer fail and must leave the "known" list of CONFORMANCE_PLANS:', ...$stale]);
+        exit(1);
+    }
+
+    // WARNING and REVIEW are what a human reads before submitting; SKIPPED is the suite's own choice, and
+    // KNOWN a gap named in CONFORMANCE_PLANS with the issue that closes it. Under --strict a WARNING is a
+    // failure: the CI keeps the plans at the state a submission needs, and REVIEW and SKIPPED stay
+    // accepted because no run of a plan can avoid them (tests/conformance/README.md).
+    $accepted = $strict ? [...CONFORMANCE_UNCONDITIONALLY_ACCEPTED, 'KNOWN'] : [...CONFORMANCE_UNCONDITIONALLY_ACCEPTED, 'KNOWN', 'WARNING'];
     $failed = array_sum(array_filter($verdict, static fn (string $result): bool => ! in_array($result, $accepted, true), \ARRAY_FILTER_USE_KEY));
     if ($failed > 0) {
         io()->error(sprintf('%d module(s) did not pass.', $failed));
         exit(1);
     }
+    $known = $verdict['KNOWN'] ?? 0;
     io()
-        ->success('Every module passed.');
+        ->success($known === 0
+            ? 'Every module passed.'
+            : sprintf('Every module passed but %d left to a gap named in CONFORMANCE_PLANS.', $known));
 }
 
 /**
@@ -236,6 +287,61 @@ function conformance_server(string $suite): array
             }
             usleep(2_000_000);
         }
+    }
+}
+
+/**
+ * Puts the OP back in the state the plans were written against: the tables dropped, the migrations of the
+ * bundle replayed and "castor provision" run again, which leaves the development user with a password and
+ * nothing else. A second factor or a passkey enrolled by hand (a run of "castor demo --passkey", an
+ * afternoon on the account pages) stops the scripted browser of the suite on the page that asks for it,
+ * and every module of every plan fails on the same line, "unexpected url for task: Verify complete". The
+ * client secrets live in apps/op/.env.local and the clients in apps/op/config/packages/heidi.yaml, so
+ * nothing of the configuration is lost; the signing keys are generated again, their sealed files in the
+ * keys_data volume left behind as orphans.
+ *
+ * The containers are restarted at the end and the OP waited for: a worker of FrankenPHP holds the kernel
+ * of the application for every request it serves, the opened signing key with it (architecture §3.3), and
+ * a worker that was up before the tables went keeps a key no row names any more. It restarts on a source
+ * change, never on a write in the database, so the reset restarts it.
+ */
+function conformance_reset(string $issuer): void
+{
+    io()
+        ->section('Resetting the OP');
+    op_console(['doctrine:schema:drop', '--full-database', '--force', '--no-interaction']);
+    op_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
+    provision();
+    run(['docker', 'compose', ...compose_profiles(), 'restart', 'op', 'worker']);
+    conformance_wait_for_op($issuer);
+}
+
+/**
+ * The OP, once it serves its discovery document again: "docker compose restart" returns before the
+ * container is healthy, and a plan created in that window fails for nothing.
+ */
+function conformance_wait_for_op(string $issuer): void
+{
+    $deadline = microtime(true) + CONFORMANCE_OP_TIMEOUT;
+    // The development OP is served by the internal CA of Caddy, which nothing on the host trusts.
+    $url = $issuer . '/.well-known/openid-configuration';
+    io()
+        ->text(sprintf('Waiting for the OP on %s.', $url));
+    while (true) {
+        try {
+            if (http_request('GET', $url, [
+                'verify_peer' => false,
+                'verify_host' => false,
+            ])->getStatusCode() === 200) {
+                return;
+            }
+        } catch (Throwable) {
+        }
+        if (microtime(true) >= $deadline) {
+            io()->error(sprintf('The OP did not answer on %s within %d seconds after the reset.', $url, CONFORMANCE_OP_TIMEOUT));
+            exit(1);
+        }
+        usleep(2_000_000);
     }
 }
 

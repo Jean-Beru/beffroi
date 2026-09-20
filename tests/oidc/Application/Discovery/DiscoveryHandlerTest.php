@@ -14,6 +14,7 @@ use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\Logins;
+use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -24,7 +25,7 @@ final class DiscoveryHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), self::grants());
+        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), self::grants());
     }
 
     /**
@@ -135,7 +136,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), self::grants(), $lifetime);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), self::grants(), $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -166,7 +167,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), self::grants(), -1);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), self::grants(), -1);
     }
 
     /**
@@ -194,7 +195,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), [new FakeGrant(GrantType::AuthorizationCode)]);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), [new FakeGrant(GrantType::AuthorizationCode)]);
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -202,6 +203,37 @@ final class DiscoveryHandlerTest extends TestCase
         // Then
         static::assertSame(['authorization_code'], $document['grant_types_supported']);
         static::assertSame(['openid', 'profile', 'email', 'address', 'phone'], $document['scopes_supported']);
+    }
+
+    /**
+     * Issue #98: what the document announces is what the integration wired, here the two ways of
+     * answering the authorization endpoint the bundle serves (Form Post Response Mode §2).
+     */
+    #[Test]
+    public function theDocumentAnnouncesTheResponseModesTheIntegrationWired(): void
+    {
+        // When
+        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(['query', 'form_post'], $document['response_modes_supported']);
+    }
+
+    /**
+     * A deployment that wired no way of posting a response announces none: the document follows the
+     * endpoint, never an enumeration of the module.
+     */
+    #[Test]
+    public function aProviderThatPostsNoResponseAnnouncesTheDefaultModeAlone(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), self::grants());
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(['query'], $document['response_modes_supported']);
     }
 
     #[Test]
@@ -212,7 +244,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), []);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), []);
     }
 
     /**
