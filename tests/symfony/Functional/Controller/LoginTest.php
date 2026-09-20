@@ -23,7 +23,6 @@ use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use function sleep;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -559,7 +558,7 @@ final class LoginTest extends BrowserTestCase
             $this->submitLogin($interaction, 'alice', 'not the password');
         }
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
-        $this->aSecondLater();
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -686,7 +685,7 @@ final class LoginTest extends BrowserTestCase
         // Given
         self::userWithPassword('alice', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
-        $this->aSecondLater();
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -709,7 +708,7 @@ final class LoginTest extends BrowserTestCase
         self::userWithPassword('alice', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
         $first = $this->boundSession();
-        $this->aSecondLater();
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -732,7 +731,7 @@ final class LoginTest extends BrowserTestCase
         // Given
         self::userWithPassword('alice', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
-        $this->aSecondLater();
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -758,7 +757,7 @@ final class LoginTest extends BrowserTestCase
         // Given
         self::userWithPassword('alice', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
-        $this->aSecondLater();
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -787,7 +786,7 @@ final class LoginTest extends BrowserTestCase
         self::userWithPassword('bob', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
         $alice = $this->boundSession();
-        $this->aSecondLater();
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -813,7 +812,7 @@ final class LoginTest extends BrowserTestCase
         self::userWithPassword('bob', self::PASSWORD);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
         $alice = $this->boundSession();
-        $this->aSecondLater();
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -916,14 +915,6 @@ final class LoginTest extends BrowserTestCase
             '_password' => $password,
             '_csrf_token' => $token,
         ]);
-    }
-
-    /**
-     * The rows keep seconds: a request of the next second is what tells a login from a request.
-     */
-    private function aSecondLater(): void
-    {
-        sleep(1);
     }
 
     private function credentialOf(User $user): PasswordCredential

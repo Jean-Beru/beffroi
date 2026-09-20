@@ -28,7 +28,6 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Totps;
 use function intdiv;
 use PHPUnit\Framework\Attributes\Test;
-use function sleep;
 use function sprintf;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -486,8 +485,7 @@ final class LoginCodeTest extends PasskeyTestCase
      * OIDC Core §3.1.2.1 (prompt=login), architecture §3.2: a fresh login asked of a user who holds a
      * TOTP goes through the code again, and records both proofs on the session the browser has. The
      * first code spent its step (RFC 6238 §5.2); the second is the one of the next step, which the drift
-     * of one step accepts now rather than in thirty seconds. The rows keep seconds: the fresh login is
-     * dated the second after the first.
+     * of one step accepts now rather than in thirty seconds.
      */
     #[Test]
     public function aFreshLoginOfATotpUserGoesThroughTheCodeAgain(): void
@@ -498,7 +496,7 @@ final class LoginCodeTest extends PasskeyTestCase
         $this->submitLogin($first, 'alice', self::PASSWORD);
         $this->submitCode($first, $this->codeAt(new DateTimeImmutable()));
         $session = $this->boundSession();
-        sleep(1);
+        self::aSecondLater();
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);

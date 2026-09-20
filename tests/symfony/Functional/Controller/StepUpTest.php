@@ -8,7 +8,6 @@ use function base64_encode;
 use Heidi\Core\Domain\Event\UserAuthenticated;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use function sleep;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -224,7 +223,7 @@ final class StepUpTest extends PasskeyTestCase
         $interaction = $this->authorize([
             'claims' => '{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}',
         ]);
-        $this->aSecondLater();
+        self::aSecondLater();
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // When
@@ -255,7 +254,7 @@ final class StepUpTest extends PasskeyTestCase
             'acr_values' => 'phr',
         ]));
         $interaction = self::redirectedInteraction($this->browser->getResponse());
-        $this->aSecondLater();
+        self::aSecondLater();
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
         $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
@@ -331,13 +330,5 @@ final class StepUpTest extends PasskeyTestCase
         $form['_username'] = $username;
         $form['_password'] = $password;
         $this->browser->submit($form);
-    }
-
-    /**
-     * The clock of the kernel is the real one: a login has to be dated after the interaction it answers.
-     */
-    private function aSecondLater(): void
-    {
-        sleep(1);
     }
 }
