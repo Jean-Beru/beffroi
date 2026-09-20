@@ -113,14 +113,17 @@ jobs:
 
   key_file:
     name: "5️⃣ Key custody (key file)"
-    needs: [tests]
-    # The bundle suite once more, the kernel sealing its signing keys with the sodium key read from a file
-    # instead of the environment (issue #58, the self-hosted default without a KMS): the same tests, only
-    # the DSN changes. The file is written the way "castor provision --kms file" writes it: 32 bytes, mode
-    # 0600, in a directory 0700 of its own. One backend here, the fastest: the others (Vault Transit,
-    # AWS KMS on LocalStack) are the business of symfony/key-management and of its bridges, and their
-    # custody tests run on the development stack (VaultTransitCustodyTest, AwsKmsCustodyTest, skipped
-    # without their DSN).
+    needs: [quality]
+    # What seals and unseals, the kernel sealing with the sodium key read from a file instead of the
+    # environment (issue #58, the self-hosted default without a KMS): the custody of the signing keys
+    # (Functional/Key: the envelope names the key file of the tenant, the file is the process's alone,
+    # a sealed key is opened and signs) and of the shared secrets of the TOTP (Functional/Security), only
+    # the DSN changing. Nothing else of the bundle suite reads the DSN, so nothing else runs here again:
+    # the whole suite against this backend was five minutes behind "Tests" for the same proof. The file is
+    # written the way "castor provision --kms file" writes it: 32 bytes, mode 0600, in a directory 0700
+    # of its own. One backend here, the fastest: the others (Vault Transit, AWS KMS on LocalStack) are the
+    # business of symfony/key-management and of its bridges, and their custody tests run on the
+    # development stack (VaultTransitCustodyTest, AwsKmsCustodyTest, skipped without their DSN).
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
@@ -136,8 +139,8 @@ jobs:
           (umask 077 && head -c 32 /dev/urandom > "${RUNNER_TEMP}/kms/heidi-default.key")
           echo "HEIDI_TEST_KMS_DSN=sodium+dir://${RUNNER_TEMP}/kms?ext=.key" >> "$GITHUB_ENV"
           echo "HEIDI_TEST_KMS_KEY_ID=heidi-{tenant}" >> "$GITHUB_ENV"
-      - name: "Bundle suite against the key file"
-        run: castor phpunit -- --testsuite symfony --no-coverage
+      - name: "Key custody against the key file"
+        run: castor phpunit -- --no-coverage tests/symfony/Functional/Key tests/symfony/Functional/Security
 
   conformance:
     name: "4️⃣ OpenID Conformance (Basic, Config, RP-Initiated Logout OP)"
