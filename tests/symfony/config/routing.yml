@@ -8,3 +8,8 @@ host_route:
     controller: Heidi\Bundle\Tests\Functional\Controller\ProbeController
     defaults:
         plane: host
+# The endpoints of the FIDO2 server API, imported as an application imports them in development, under a
+# prefix of its own.
+heidi_fido_conformance:
+    resource: '@HeidiBundle/config/routes/fido-conformance.php'
+    prefix: /fido/conformance

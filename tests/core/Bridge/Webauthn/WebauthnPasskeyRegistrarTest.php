@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Bridge\Webauthn;
 
 use function array_map;
+use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
@@ -13,13 +14,15 @@ use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\PasskeyCeremonyFailedException;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Core\Tests\Fixture\MetadataBlobs;
 use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
 use function strlen;
-use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
+use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\PublicKeyCredentialParameters;
@@ -41,7 +44,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
-        $this->ceremonies = new WebauthnCeremonies(new MockClock());
+        $this->ceremonies = Fixtures::ceremonies();
         $this->registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
     }
 
@@ -168,6 +171,30 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         // Then
         static::assertSame('self', $record->attestationType);
         static::assertSame($authenticator->credentialId, $record->publicKeyCredentialId);
+    }
+
+    /**
+     * §5.4.7: the provider asks for no attestation, so the library consults no metadata (§7.1 step 22 is
+     * for an attestation asked for), and an authenticator the metadata say is compromised enrols all the
+     * same; the spike README: an attestation is never required. A policy that refuses is the hosted
+     * offer's, on the same metadata.
+     */
+    #[Test]
+    public function theMetadataAreNotConsultedWhenNoAttestationWasAskedFor(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed');
+        $store = new InMemoryMetadataBlobStore();
+        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(Uuid::fromBinary($authenticator->aaguid)->toRfc4122(), [AuthenticatorStatus::USER_VERIFICATION_BYPASS])]));
+        $ceremonies = Fixtures::ceremonies($store);
+        $registrar = new WebauthnPasskeyRegistrar($ceremonies);
+        $options = $registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+
+        // When
+        $record = $registrar->verifyAttestation($this->tenant, $options, $authenticator->create($ceremonies->optionsToJson($options)));
+
+        // Then
+        static::assertSame('self', $record->attestationType);
     }
 
     #[Test]
