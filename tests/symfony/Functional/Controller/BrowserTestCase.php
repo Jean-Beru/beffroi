@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use function base64_decode;
 use function base64_encode;
+use Closure;
 use DateTimeImmutable;
 use function explode;
 use function hash;
@@ -43,6 +44,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\BrowserKit\Cookie;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
@@ -69,9 +71,19 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     protected function setUp(): void
     {
-        $this->browser = self::browser();
+        $this->browser = self::browser($this->configureContainer());
         new Filesystem()
             ->remove(self::keyStorage());
+    }
+
+    /**
+     * What a test replaces in the container behind its browser, on every boot; nothing by default.
+     *
+     * @return (Closure(ContainerInterface): void)|null
+     */
+    protected function configureContainer(): ?Closure
+    {
+        return null;
     }
 
     protected function tearDown(): void

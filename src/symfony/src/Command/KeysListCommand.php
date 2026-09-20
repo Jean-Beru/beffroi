@@ -12,17 +12,16 @@ use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Exception\ExceptionTrail;
 use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use function implode;
-use function preg_replace;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
-use function trim;
 
 /**
  * The keys of the tenant with their state and every date of their life (architecture §3.3): the ones the
@@ -100,13 +99,7 @@ final readonly class KeysListCommand
         try {
             $this->sealer->unseal($tenant, $key->sealedPrivateJwk);
         } catch (Throwable $exception) {
-            $messages = [];
-            for ($cause = $exception; $cause !== null; $cause = $cause->getPrevious()) {
-                // a bridge may lay its message out on several lines; one line per key here
-                $messages[] = trim((string) preg_replace('/\s+/', ' ', $cause->getMessage()));
-            }
-
-            return implode(' ', $messages);
+            return ExceptionTrail::of($exception);
         }
 
         return null;

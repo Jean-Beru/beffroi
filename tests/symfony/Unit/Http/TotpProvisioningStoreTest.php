@@ -9,6 +9,8 @@ use Heidi\Bundle\Http\TotpProvisioningSealer;
 use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Core\Domain\Credential\TotpProvisioning;
 use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Exception\KmsUnavailableException;
+use Heidi\Core\Port\SecretSealerInterface;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
@@ -150,5 +152,50 @@ final class TotpProvisioningStoreTest extends TestCase
     {
         // When / Then
         static::assertNull($this->store->provisioning($this->session, $this->alice, $this->now));
+    }
+
+    /**
+     * Issue #128: a KMS that does not answer is no reason to forget; the outage goes on as it came.
+     */
+    #[Test]
+    public function anOutageOfTheKmsGoesOnAsItCame(): void
+    {
+        // Given
+        $this->store->store($this->session, $this->alice, $this->provisioning, $this->now);
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+
+        // When
+        $this->storeOnAKmsThatDoesNotAnswer()
+            ->provisioning($this->session, $this->alice, $this->now);
+    }
+
+    #[Test]
+    public function theProvisioningWaitsForTheKmsToBeBack(): void
+    {
+        // Given
+        $this->store->store($this->session, $this->alice, $this->provisioning, $this->now);
+        try {
+            $this->storeOnAKmsThatDoesNotAnswer()
+                ->provisioning($this->session, $this->alice, $this->now);
+        } catch (KmsUnavailableException) {
+        }
+
+        // When
+        $read = $this->store->provisioning($this->session, $this->alice, $this->now);
+
+        // Then
+        static::assertNotNull($read);
+        static::assertSame(Totps::SEED, $read->secret->bytes);
+    }
+
+    private function storeOnAKmsThatDoesNotAnswer(): TotpProvisioningStore
+    {
+        $sealer = static::createStub(SecretSealerInterface::class);
+        $sealer->method('unseal')
+            ->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
+
+        return new TotpProvisioningStore(new TotpProvisioningSealer($sealer));
     }
 }

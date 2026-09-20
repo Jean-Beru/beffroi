@@ -10,6 +10,7 @@ use Heidi\Core\Domain\Credential\TotpProvisioning;
 use Heidi\Core\Domain\Credential\TotpSecret;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Exception\InvalidArgumentException;
+use Heidi\Core\Exception\KmsUnavailableException;
 use Heidi\Core\Exception\RuntimeException;
 use Heidi\Core\Port\SecretSealerInterface;
 use function is_array;
@@ -31,7 +32,8 @@ final readonly class TotpProvisioningSealer
     }
 
     /**
-     * @throws RuntimeException when the KMS of the tenant refuses
+     * @throws KmsUnavailableException when the KMS of the tenant does not answer or refuses to seal
+     * @throws RuntimeException when the envelope cannot be made for another reason
      */
     public function seal(User $user, TotpProvisioning $provisioning): string
     {
@@ -43,7 +45,8 @@ final readonly class TotpProvisioningSealer
     }
 
     /**
-     * @throws RuntimeException when the envelope was not sealed for this tenant, or the KMS refuses
+     * @throws KmsUnavailableException when the KMS of the tenant does not answer or refuses to open
+     * @throws RuntimeException when the envelope was not sealed for this tenant
      * @throws InvalidArgumentException when what the envelope holds is not a provisioning
      */
     public function unseal(User $user, string $sealed): TotpProvisioning

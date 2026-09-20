@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Closure;
 use function copy;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,6 +27,7 @@ use function is_string;
 use function sprintf;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -43,12 +45,18 @@ abstract class DatabaseTestCase extends WebTestCase
     }
 
     /**
-     * A browser on a kernel of its own, the schema and the tenant prepared behind it.
+     * A browser on a kernel of its own, the schema and the tenant prepared behind it. What configures the
+     * container is applied again after every reboot the browser does between two requests, which is how a
+     * test replaces a service for the life of the browser.
+     *
+     * @param (Closure(ContainerInterface): void)|null $configureContainer
      */
-    protected static function browser(): KernelBrowser
+    protected static function browser(?Closure $configureContainer = null): KernelBrowser
     {
         self::ensureKernelShutdown();
-        $browser = self::createClient();
+        $browser = self::createClient($configureContainer === null ? [] : [
+            'configure_container' => $configureContainer,
+        ]);
         self::prepareDatabase();
 
         return $browser;

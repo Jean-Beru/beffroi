@@ -29,17 +29,28 @@ final class FakeAttemptLimiter implements CodeAttemptLimiterInterface, PasswordA
     ) {
     }
 
+    public function mayAttempt(User $user): bool
+    {
+        return $this->counted($user) < $this->allowed;
+    }
+
     public function attempt(User $user): bool
     {
-        $id = $user->id->toRfc4122();
-        $this->attempts[] = $id;
+        $this->attempts[] = $user->id->toRfc4122();
 
-        return count(array_filter($this->attempts, static fn (string $attempt): bool => $attempt === $id)) <= $this->allowed;
+        return $this->counted($user) <= $this->allowed;
     }
 
     public function reset(User $user): void
     {
         $id = $user->id->toRfc4122();
         $this->attempts = array_values(array_filter($this->attempts, static fn (string $attempt): bool => $attempt !== $id));
+    }
+
+    private function counted(User $user): int
+    {
+        $id = $user->id->toRfc4122();
+
+        return count(array_filter($this->attempts, static fn (string $attempt): bool => $attempt === $id));
     }
 }

@@ -179,11 +179,21 @@ services:
     test.heidi.keys:
         alias: Heidi\Core\Port\SigningKeyRepositoryInterface
         public: true
+    # The KMS the sealers share, for the tests that take it down between two requests (KmsOutage).
+    test.heidi.kms:
+        alias: heidi.kms
+        public: true
     test.heidi.key_sealer:
         alias: Heidi\Core\Port\KeySealerInterface
         public: true
     test.heidi.secret_sealer:
         alias: Heidi\Core\Port\SecretSealerInterface
+        public: true
+    test.heidi.code_attempts:
+        alias: Heidi\Core\Port\CodeAttemptLimiterInterface
+        public: true
+    test.heidi.kms_unavailable_listener:
+        alias: Heidi\Bundle\Key\KmsUnavailableListener
         public: true
     test.heidi.totp_enrolment:
         alias: Heidi\Core\Application\Totp\TotpEnrolment

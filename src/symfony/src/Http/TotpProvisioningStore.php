@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Credential\TotpProvisioning;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Exception\InvalidArgumentException;
+use Heidi\Core\Exception\KmsUnavailableException;
 use Heidi\Core\Exception\RuntimeException;
 use function is_array;
 use function is_int;
@@ -21,7 +22,8 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
  * tenant like the secret will be once stored (§3.3), because a session store is a disk and the secret,
  * the URI that carries it and the backup codes exist in clear in memory only. One at a time per browser,
  * a new one replacing the old; read again on a wrong code, so that the QR code need not be scanned twice;
- * forgotten once a code confirmed it or once it expired.
+ * forgotten once a code confirmed it or once it expired. A KMS that does not answer forgets nothing: the
+ * outage goes on as it came (KmsUnavailableException), the provisioning waits for the KMS to be back.
  */
 final readonly class TotpProvisioningStore
 {
@@ -48,7 +50,9 @@ final readonly class TotpProvisioningStore
 
     /**
      * The provisioning drawn for this user and still valid, or null; one drawn for someone else, one that
-     * expired and one the KMS does not open are forgotten and null.
+     * expired and one the KMS refuses as foreign or invalid are forgotten and null.
+     *
+     * @throws KmsUnavailableException when the KMS of the tenant does not answer; the provisioning is kept
      */
     public function provisioning(SessionInterface $session, User $user, DateTimeImmutable $now): ?TotpProvisioning
     {

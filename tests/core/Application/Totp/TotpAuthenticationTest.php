@@ -17,7 +17,9 @@ use Heidi\Core\Domain\Event\AuthenticationFailureReason;
 use Heidi\Core\Domain\Event\TotpUsed;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\RequestContext;
+use Heidi\Core\Exception\KmsUnavailableException;
 use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Port\SecretSealerInterface;
 use Heidi\Core\Tests\Fixture\FakeAttemptLimiter;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -36,6 +38,8 @@ final class TotpAuthenticationTest extends TestCase
 {
     private User $alice;
 
+    private InMemoryCredentialRepository $credentials;
+
     private FakePasswordHasher $hasher;
 
     private FakeAttemptLimiter $attempts;
@@ -51,7 +55,7 @@ final class TotpAuthenticationTest extends TestCase
     protected function setUp(): void
     {
         $this->alice = Fixtures::user();
-        $credentials = new InMemoryCredentialRepository();
+        $credentials = $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new FakePasswordHasher();
         $this->attempts = new FakeAttemptLimiter(5);
         $this->events = new RecordingEventDispatcher();
@@ -283,7 +287,8 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * Decision 0006: five attempts a minute, the sixth refused before anything is verified, a right code included.
+     * Decision 0006: five attempts a minute, the sixth refused before anything is verified, a right code
+     * included; the limit is read, not counted, on a refusal.
      */
     #[Test]
     public function theSixthAttemptIsRefusedWhateverTheCode(): void
@@ -299,7 +304,89 @@ final class TotpAuthenticationTest extends TestCase
         // Then
         static::assertSame(AuthenticationFailureReason::TooManyAttempts, $exception->reason);
         static::assertNull($this->totp->lastUsedAt);
-        static::assertCount(6, $this->attempts->attempts);
+        static::assertCount(5, $this->attempts->attempts);
+    }
+
+    /**
+     * Issue #128: the limit bounds the calls to the KMS as well; past it, the secret is not opened.
+     */
+    #[Test]
+    public function theSixthAttemptIsRefusedBeforeTheKmsIsAsked(): void
+    {
+        // Given
+        $sealer = $this->createMock(SecretSealerInterface::class);
+        $sealer->expects(static::never())->method('unseal');
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->attempts->attempt($this->alice);
+        }
+        $authentication = $this->authenticationWith($sealer);
+
+        // When
+        try {
+            $authentication->authenticate($this->alice, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::TooManyAttempts, $exception->reason);
+        }
+    }
+
+    /**
+     * Issue #128: a KMS that does not open the secret is the KMS's refusal, not the user's; it goes on as
+     * it came.
+     */
+    #[Test]
+    public function aCodeTheKmsCannotOpenIsTheFailureOfTheKms(): void
+    {
+        // Given
+        $authentication = $this->authenticationWith($this->sealerThatDoesNotAnswer());
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The sealed secret could not be opened.');
+
+        // When
+        $authentication->authenticate($this->alice, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));
+    }
+
+    /**
+     * Issue #128: nothing is counted against the user, nothing is announced, nothing is recorded; the
+     * same code is tried again once the KMS is back.
+     */
+    #[Test]
+    public function aCodeTheKmsCannotOpenCostsTheUserNothing(): void
+    {
+        // Given
+        $authentication = $this->authenticationWith($this->sealerThatDoesNotAnswer());
+
+        // When
+        try {
+            $authentication->authenticate($this->alice, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertSame([], $this->attempts->attempts);
+        static::assertSame([], $this->events->events);
+        static::assertNull($this->totp->lastUsedAt);
+    }
+
+    /**
+     * A backup code is compared to its hashes: the secret stays sealed, the KMS is not asked.
+     */
+    #[Test]
+    public function aBackupCodeDoesNotOpenTheSecret(): void
+    {
+        // Given
+        $sealer = $this->createMock(SecretSealerInterface::class);
+        $sealer->expects(static::never())->method('unseal');
+        $authentication = $this->authenticationWith($sealer);
+
+        // When
+        $method = $authentication->authenticate($this->alice, Totps::BACKUP_CODES[4], Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame('otp', $method->value);
     }
 
     #[Test]
@@ -383,6 +470,23 @@ final class TotpAuthenticationTest extends TestCase
         // Then
         static::assertNull($this->totp->lastUsedAt);
         static::assertSame(Totps::stepAt($this->clock->now()->modify('-1 hour')), $this->totp->lastAcceptedStep);
+    }
+
+    /**
+     * The authentication of setUp() on another sealer, everything else shared.
+     */
+    private function authenticationWith(SecretSealerInterface $sealer): TotpAuthentication
+    {
+        return new TotpAuthentication($this->credentials, new ActiveTotp($this->credentials), new TotpCodeMatcher(Totps::algorithm()), $sealer, $this->hasher, $this->attempts, $this->clock, $this->events);
+    }
+
+    private function sealerThatDoesNotAnswer(): SecretSealerInterface
+    {
+        $sealer = static::createStub(SecretSealerInterface::class);
+        $sealer->method('unseal')
+            ->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
+
+        return $sealer;
     }
 
     private function failToAuthenticate(string $code, ?User $user = null, ?RequestContext $context = null): AuthenticationFailedException
