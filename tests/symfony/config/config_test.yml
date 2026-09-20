@@ -176,6 +176,18 @@ services:
     test.heidi.key_sealer:
         alias: Heidi\Core\Port\KeySealerInterface
         public: true
+    test.heidi.secret_sealer:
+        alias: Heidi\Core\Port\SecretSealerInterface
+        public: true
+    test.heidi.totp_enrolment:
+        alias: Heidi\Core\Application\Totp\TotpEnrolment
+        public: true
+    test.heidi.totp_authentication:
+        alias: Heidi\Core\Application\Totp\TotpAuthentication
+        public: true
+    test.heidi.totp_algorithm:
+        alias: Heidi\Core\Port\TotpAlgorithmInterface
+        public: true
     test.heidi.key_pair_generator:
         alias: Heidi\Core\Port\KeyPairGeneratorInterface
         public: true

@@ -6,22 +6,32 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
+use Heidi\Core\Domain\Credential\TotpCredential;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Port\SecretSealerInterface;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Core\Tests\Fixture\Totps;
+use function is_string;
+use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
 use function random_bytes;
+use function strtoupper;
+use Symfony\Component\KeyManagement\Envelope;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * Architecture §3.4, §5.3: the credentials of a user, one table per kind, the password with a hash that
- * names its algorithm and keeps the parameters of an import (decision 0002), the passkeys with their record.
+ * names its algorithm and keeps the parameters of an import (decision 0002), the passkeys with their
+ * record, the TOTP with its secret sealed.
  */
 final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
 {
@@ -228,6 +238,76 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         // When / Then
         static::assertSame([], self::credentials()->findByUser($bob, PasswordCredential::class));
         static::assertSame([], self::credentials()->findByUser($bob));
+    }
+
+    #[Test]
+    public function aTotpComesBackWithItsSealedSecretItsStepItsBackupCodesAndItsDates(): void
+    {
+        // Given
+        $user = self::user();
+        $totp = self::totp($user);
+        $totp->recordUse(59_000_001, self::now()->modify('+1 minute'));
+        $totp->spendBackupCode(3, self::now()->modify('+2 minutes'));
+        $totp->revoke(self::now()->modify('+3 minutes'));
+        self::credentials()->save($totp);
+        self::reload();
+
+        // When
+        $found = self::credentials()->findByUser($user, TotpCredential::class)[0] ?? static::fail('The credential was not stored.');
+
+        // Then
+        static::assertTrue($found->id->equals($totp->id));
+        static::assertTrue($found->user->id->equals($user->id));
+        static::assertTrue($found->tenant->id->equals(self::tenant()->id));
+        static::assertSame(Totps::SEED, self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $found->sealedSecret));
+        static::assertSame(59_000_001, $found->lastAcceptedStep);
+        static::assertCount(10, $found->backupCodes);
+        static::assertTrue($found->backupCodes[3]->isSpent());
+        static::assertEquals(self::now()->modify('+2 minutes'), $found->backupCodes[3]->usedAt);
+        static::assertFalse($found->backupCodes[4]->isSpent());
+        static::assertTrue(new FakePasswordHasher()->verify($found->backupCodes[4]->hash, 'B5CDEFGHJ6'));
+        static::assertEquals(self::now(), $found->createdAt);
+        static::assertEquals(self::now()->modify('+2 minutes'), $found->lastUsedAt);
+        static::assertEquals(self::now()->modify('+3 minutes'), $found->revokedAt);
+    }
+
+    /**
+     * Architecture §3.3: the secret in the row is an envelope of the KMS and nothing else, neither the
+     * bytes nor their base32 (the sibling of the test that greps the key files for a private member).
+     */
+    #[Test]
+    public function theRowHoldsTheSecretAsAnEnvelopeAndNothingElse(): void
+    {
+        // Given
+        $totp = self::totp(self::user());
+        self::credentials()->save($totp);
+
+        // When
+        $row = self::entityManager()->getConnection()->fetchAssociative('SELECT * FROM heidi_totp_credential WHERE id = ?', [$totp->id->toBinary()]);
+
+        // Then
+        static::assertIsArray($row);
+        static::assertIsString($row['sealed_secret']);
+        static::assertNotSame('', Envelope::fromBytes(BytesType::decode($row['sealed_secret']) ?? '')->ciphertext);
+        foreach ($row as $column => $value) {
+            if (! is_string($value)) {
+                continue;
+            }
+            static::assertStringNotContainsString(Totps::SEED, $value, $column);
+            static::assertStringNotContainsString(Base32::encodeUpperUnpadded(Totps::SEED), $value, $column);
+            static::assertStringNotContainsString(Base32::encodeUpperUnpadded(Totps::SEED), strtoupper($value), $column);
+        }
+    }
+
+    /**
+     * A TOTP on the seed of RFC 6238, sealed by the sealer of the kernel, its backup codes hashed by the
+     * hasher of the test suite.
+     */
+    private static function totp(User $user): TotpCredential
+    {
+        $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), Totps::SEED);
+
+        return new TotpCredential(Uuid::v7(), $user, $sealed, Totps::credential($user, new FakePasswordHasher())->backupCodes, 59_000_000, self::now());
     }
 
     /**

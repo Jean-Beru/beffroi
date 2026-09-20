@@ -33,6 +33,7 @@ use Heidi\Bundle\Security\LoginFailureListener;
 use Heidi\Bundle\Security\LoginSuccessListener;
 use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\PassportProofs;
+use Heidi\Bundle\Security\RateLimitedCodeAttempts;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
@@ -43,19 +44,25 @@ use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Application\Passkey\PasskeyAuthentication;
 use Heidi\Core\Application\Passkey\PasskeyEnrolment;
+use Heidi\Core\Application\Totp\TotpAuthentication;
+use Heidi\Core\Application\Totp\TotpCodeMatcher;
+use Heidi\Core\Application\Totp\TotpEnrolment;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsSigner;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkKeyPairGenerator;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
 use Heidi\Core\Bridge\Null\NullGeoLocator;
 use Heidi\Core\Bridge\Null\NullUserAgentParser;
+use Heidi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Heidi\Core\Port\CodeAttemptLimiterInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\GeoLocatorInterface;
 use Heidi\Core\Port\JwsSignerInterface;
@@ -65,8 +72,10 @@ use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\PasskeyAuthenticatorInterface;
 use Heidi\Core\Port\PasskeyRegistrarInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
+use Heidi\Core\Port\SecretSealerInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\TotpAlgorithmInterface;
 use Heidi\Core\Port\UserAgentParserInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
@@ -168,6 +177,10 @@ return static function (ContainerConfigurator $container): void {
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010)
     $services->set(PassportProofs::class);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
+    // the attempts at a code, counted by the limiter the bundle declares in the framework (architecture §3.4)
+    $services->set(RateLimitedCodeAttempts::class)
+        ->args([service('limiter.' . RateLimitedCodeAttempts::LIMITER)]);
+    $services->alias(CodeAttemptLimiterInterface::class, RateLimitedCodeAttempts::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
     $services->set(TenantProvider::class)
@@ -200,6 +213,8 @@ return static function (ContainerConfigurator $container): void {
     // The core: keys
     $services->set(EnvelopeKeySealer::class);
     $services->alias(KeySealerInterface::class, EnvelopeKeySealer::class);
+    $services->set(EnvelopeSecretSealer::class);
+    $services->alias(SecretSealerInterface::class, EnvelopeSecretSealer::class);
     $services->set(FileSigningKeyRepository::class);
     $services->alias(SigningKeyRepositoryInterface::class, FileSigningKeyRepository::class);
     $services->set(SealedKeyProvider::class);
@@ -230,6 +245,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WebauthnPasskeyAuthenticator::class);
     $services->alias(PasskeyAuthenticatorInterface::class, WebauthnPasskeyAuthenticator::class);
 
+    // The core: RFC 6238 on otphp (architecture §3.4)
+    $services->set(OtphpTotpAlgorithm::class);
+    $services->alias(TotpAlgorithmInterface::class, OtphpTotpAlgorithm::class);
+    $services->set(TotpCodeMatcher::class);
+
     // The core: request context enrichment (architecture §3.5)
     $services->set(NullGeoLocator::class);
     $services->alias(GeoLocatorInterface::class, NullGeoLocator::class);
@@ -240,6 +260,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PasswordAuthenticator::class);
     $services->set(PasskeyEnrolment::class);
     $services->set(PasskeyAuthentication::class);
+    $services->set(TotpEnrolment::class);
+    $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
     $services->set(SessionOpener::class);
     $services->set(SessionTerminator::class);

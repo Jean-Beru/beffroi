@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Domain\EndSession;
 
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Authorization\IdTokenHint;
 use Heidi\Oidc\Domain\Client\Client;
@@ -13,7 +14,6 @@ use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\EndSession\EndSessionRequest;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

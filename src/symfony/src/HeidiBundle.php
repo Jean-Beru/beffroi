@@ -10,6 +10,7 @@ use function dirname;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
+use Heidi\Bundle\Doctrine\Type\BackupCodesType;
 use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
@@ -25,10 +26,12 @@ use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Security\CorePasswordHasher;
+use Heidi\Bundle\Security\RateLimitedCodeAttempts;
 use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationPredicate;
@@ -265,11 +268,14 @@ final class HeidiBundle extends AbstractBundle
         BytesType::NAME => BytesType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
+        BackupCodesType::NAME => BackupCodesType::class,
     ];
 
     /**
      * Doctrine gets the mappings, the types and the migrations of the bundle (architecture §5.3); the
-     * security component gets the hasher of its users (§5.4). The firewall is the application's to declare.
+     * security component gets the hasher of its users (§5.4); the rate limiter gets the limiter of the
+     * attempts at a code (§3.4), a rule of the core the application does not tune. The firewall is the
+     * application's to declare.
      */
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -304,6 +310,17 @@ final class HeidiBundle extends AbstractBundle
                 'password_hashers' => [
                     SecurityUser::class => [
                         'id' => CorePasswordHasher::class,
+                    ],
+                ],
+            ]);
+        }
+        if ($builder->hasExtension('rate_limiter')) {
+            $builder->prependExtensionConfig('rate_limiter', [
+                'limiters' => [
+                    RateLimitedCodeAttempts::LIMITER => [
+                        'policy' => 'sliding_window',
+                        'limit' => RateLimitedCodeAttempts::LIMIT,
+                        'interval' => RateLimitedCodeAttempts::INTERVAL,
                     ],
                 ],
             ]);
@@ -346,6 +363,9 @@ final class HeidiBundle extends AbstractBundle
         $services->set('heidi.kms.envelopes', EnvelopeEncrypter::class)
             ->args([service('heidi.kms')]);
         $services->get(EnvelopeKeySealer::class)
+            ->arg('$envelopes', service('heidi.kms.envelopes'))
+            ->arg('$kmsKeyId', self::string($keys, 'key_id'));
+        $services->get(EnvelopeSecretSealer::class)
             ->arg('$envelopes', service('heidi.kms.envelopes'))
             ->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileSigningKeyRepository::class)

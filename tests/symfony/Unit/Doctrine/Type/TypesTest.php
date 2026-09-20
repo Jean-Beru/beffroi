@@ -13,6 +13,7 @@ use Doctrine\DBAL\Types\Type;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
+use Heidi\Bundle\Doctrine\Type\BackupCodesType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
@@ -24,7 +25,10 @@ use Heidi\Bundle\Doctrine\Type\RedirectUriType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\HeidiBundle;
+use Heidi\Core\Domain\Credential\BackupCode;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
+use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Subject;
@@ -56,7 +60,7 @@ use function str_repeat;
 final class TypesTest extends TestCase
 {
     /**
-     * @return iterable<string, array{class-string<Type>, object|list<Scope>, string}>
+     * @return iterable<string, array{class-string<Type>, object|list<Scope>|list<BackupCode>, string}>
      */
     public static function provideValues(): iterable
     {
@@ -81,11 +85,16 @@ final class TypesTest extends TestCase
         yield 'claims request asking for nothing' => [ClaimsRequestType::class, new ClaimsRequest(), '{"userinfo":{},"id_token":{}}'];
         yield 'passkey user handle' => [PasskeyUserHandleType::class, new PasskeyUserHandle(str_repeat("\xff", 64)), str_repeat('_', 85) . 'w'];
         yield 'authentication context policy' => [AuthenticationContextPolicyType::class, new AuthenticationContextPolicy([new AuthenticationContextClass('urn:okta:loa:2fa:any', AuthenticationPredicate::TwoFactors), AuthenticationContextClass::singleFactor()]), '{"classes":[{"name":"urn:okta:loa:2fa:any","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}'];
+        yield 'backup codes' => [BackupCodesType::class, [new BackupCode(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$one')), new BackupCode(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'two', [
+            'salt' => 'c2FsdA',
+            'iterations' => 27500,
+        ]), new DateTimeImmutable('@1789000060'))], '[{"algorithm":"argon2id","encoded":"$argon2id$one","parameters":[],"used_at":null},{"algorithm":"pbkdf2-sha256","encoded":"two","parameters":{"salt":"c2FsdA","iterations":27500},"used_at":1789000060}]'];
+        yield 'no backup code' => [BackupCodesType::class, [], '[]'];
     }
 
     /**
      * @param class-string<Type> $type
-     * @param object|list<Scope> $value
+     * @param object|list<Scope>|list<BackupCode> $value
      */
     #[Test]
     #[DataProvider('provideValues')]
@@ -103,7 +112,7 @@ final class TypesTest extends TestCase
 
     /**
      * @param class-string<Type> $type
-     * @param object|list<Scope> $value
+     * @param object|list<Scope>|list<BackupCode> $value
      */
     #[Test]
     #[DataProvider('provideValues')]
@@ -121,7 +130,7 @@ final class TypesTest extends TestCase
 
     /**
      * @param class-string<Type> $type
-     * @param object|list<Scope> $value
+     * @param object|list<Scope>|list<BackupCode> $value
      */
     #[Test]
     #[DataProvider('provideValues')]
@@ -153,6 +162,8 @@ final class TypesTest extends TestCase
         yield 'an array for a policy' => [AuthenticationContextPolicyType::class, [
             '1' => 'single_factor',
         ]];
+        yield 'a string for backup codes' => [BackupCodesType::class, 'K7Q2M-X9PL4'];
+        yield 'a list of strings for backup codes' => [BackupCodesType::class, ['K7Q2M-X9PL4']];
     }
 
     /**
@@ -209,6 +220,15 @@ final class TypesTest extends TestCase
         yield 'a policy with a predicate the provider does not define' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":"1","predicate":"attested"}]}'];
         yield 'a policy with a numeric name' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":1,"predicate":"single_factor"}]}'];
         yield 'a policy naming level 0' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":"1","predicate":"single_factor"},{"name":"0","predicate":"single_factor"}]}'];
+        yield 'backup codes that are not JSON' => [BackupCodesType::class, '['];
+        yield 'backup codes that are not a list' => [BackupCodesType::class, '12'];
+        yield 'a backup code that is a string' => [BackupCodesType::class, '["K7Q2M-X9PL4"]'];
+        yield 'a backup code without an algorithm' => [BackupCodesType::class, '[{"encoded":"x","parameters":[],"used_at":null}]'];
+        yield 'a backup code with an unknown algorithm' => [BackupCodesType::class, '[{"algorithm":"md5","encoded":"x","parameters":[],"used_at":null}]'];
+        yield 'a backup code with an empty hash' => [BackupCodesType::class, '[{"algorithm":"argon2id","encoded":"","parameters":[],"used_at":null}]'];
+        yield 'a backup code with a string timestamp' => [BackupCodesType::class, '[{"algorithm":"argon2id","encoded":"x","parameters":[],"used_at":"2026-09-20"}]'];
+        yield 'a backup code with a nested parameter' => [BackupCodesType::class, '[{"algorithm":"argon2id","encoded":"x","parameters":{"salt":[1]},"used_at":null}]'];
+        yield 'backup codes that are not a string' => [BackupCodesType::class, 12];
     }
 
     /**
@@ -291,10 +311,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresFourteenTypes(): void
+    public function theBundleDeclaresFifteenTypes(): void
     {
         // When / Then
-        static::assertCount(14, HeidiBundle::DBAL_TYPES);
+        static::assertCount(15, HeidiBundle::DBAL_TYPES);
     }
 
     /**

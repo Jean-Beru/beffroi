@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Application\Key;
 
 use DateInterval;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
@@ -16,7 +17,6 @@ use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
