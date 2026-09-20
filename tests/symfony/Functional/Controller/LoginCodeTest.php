@@ -535,14 +535,15 @@ final class LoginCodeTest extends PasskeyTestCase
     }
 
     /**
-     * Decision 0010: the login page of a step-up says a password followed by a code would satisfy the
-     * two-factor class, which a password alone would not.
+     * The acceptance of issue #92 (decision 0010, architecture §4.3): the login page of a step-up to the
+     * two-factor class, for a password session of a user who holds a TOTP, names the code after the
+     * password, which a password alone would not satisfy, and no passkey the user does not hold.
      */
     #[Test]
-    public function theStepUpToTwoFactorsNamesTheCode(): void
+    public function theStepUpToTwoFactorsNamesTheCodeOfTheUserWhoHoldsATotp(): void
     {
         // Given
-        $this->signIn(self::userWithPassword('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
+        $this->signIn($this->userWithTotp('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
         $interaction = $this->authorize([
             'acr_values' => '2',
         ]);
@@ -552,9 +553,9 @@ final class LoginCodeTest extends PasskeyTestCase
 
         // Then
         static::assertSame('2', $crawler->filter('p[data-requirement]')->attr('data-acr'));
-        static::assertCount(1, $crawler->filter('p[data-step-up="code"]'));
+        static::assertCount(1, $crawler->filter('p[data-step-up="totp"]'));
         static::assertCount(0, $crawler->filter('p[data-step-up="password"]'));
-        static::assertCount(1, $crawler->filter('p[data-step-up="passkey"]'));
+        static::assertCount(0, $crawler->filter('p[data-step-up="passkey"]'));
     }
 
     /**

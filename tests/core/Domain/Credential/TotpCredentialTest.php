@@ -81,7 +81,35 @@ final class TotpCredentialTest extends TestCase
     {
         // When / Then
         static::assertSame(AuthenticationMethod::ONE_TIME_PASSWORD, TotpCredential::method()->value);
-        static::assertSame(['otp'], array_map(static fn (AuthenticationMethod $method): string => $method->value, TotpCredential::provableMethods()));
+        static::assertSame(['otp'], array_map(static fn (AuthenticationMethod $method): string => $method->value, TotpCredential::everyProvableMethod()));
+    }
+
+    /**
+     * Architecture §4.3: what an authentication with this credential may prove, "otp"; the password it
+     * follows is the password's to declare.
+     */
+    #[Test]
+    public function anAuthenticationWithItMayProveAOneTimePassword(): void
+    {
+        // Given
+        $totp = Totps::credential(Fixtures::user(), $this->hasher);
+
+        // When / Then
+        static::assertSame(['otp'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $totp->provableMethods()));
+    }
+
+    /**
+     * A revoked credential authenticates nobody: it may prove nothing, and a step-up does not count on it.
+     */
+    #[Test]
+    public function aRevokedOneMayProveNothing(): void
+    {
+        // Given
+        $totp = Totps::credential(Fixtures::user(), $this->hasher);
+        $totp->revoke(Fixtures::now());
+
+        // When / Then
+        static::assertSame([], $totp->provableMethods());
     }
 
     /**

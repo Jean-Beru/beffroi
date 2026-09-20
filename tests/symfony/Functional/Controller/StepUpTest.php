@@ -12,20 +12,22 @@ use function sleep;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The acceptance of issue #92 on the authorization endpoint (decision 0010, architecture §4.3): a
- * password session asked for a class only a passkey proves is sent to the login page for the missing
- * factor, the passkey proven on the same session satisfies the request and the ID token says so; a
- * class the tenant does not name is refused before any login; a login that satisfies nothing is the way
- * back to the client. The browser holds a session of the core signed in with a password.
+ * The acceptance of issue #92 on the authorization endpoint (decision 0010, architecture §4.3), decided
+ * per user since issue #110: a password session of a user who holds a passkey, asked for a class only a
+ * passkey proves, is sent to the login page for the missing factor, the passkey proven on the same
+ * session satisfies the request and the ID token says so; the same request from a user without a passkey
+ * is refused before any page when essential, answered with what the session has when voluntary; a class
+ * the tenant does not name is refused before any login; a login that satisfies nothing is the way back to
+ * the client. The browser holds a session of the core signed in with a password.
  */
 final class StepUpTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * Decision 0010: essential or voluntary, a requested class the provider can prove and the session
-     * does not satisfy is a step-up, told to the page with the classes and the way of signing in that
-     * would do; the password form stays, it is the way back.
+     * Decision 0010: essential or voluntary, a requested class the provider can prove, the session does
+     * not satisfy and a passkey of the user would is a step-up, told to the page with the classes and the
+     * kind of credential of the user that would do; the password form stays, it is the way back.
      *
      * @param array<string, string> $parameters
      */
@@ -34,7 +36,7 @@ final class StepUpTest extends PasskeyTestCase
     public function aPasswordSessionAskedForAPasskeyClassGetsTheLoginPageForTheMissingFactor(array $parameters): void
     {
         // Given
-        $this->signIn(self::userWithPassword('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
+        $this->enrol(self::userWithPassword('alice', self::PASSWORD), self::device(), signedInAt: self::currentSecond()->modify('-10 minutes'));
         $interaction = $this->authorize($parameters);
 
         // When
@@ -65,6 +67,103 @@ final class StepUpTest extends PasskeyTestCase
             'acr_values' => 'phr',
             'prompt' => 'login',
         ]];
+    }
+
+    /**
+     * Architecture §4.3: a user without a passkey can do nothing on the login page about an essential
+     * "phr": the request goes back to the client as unmet_authentication_requirements before any page,
+     * with the state and the issuer, as for a class the provider cannot prove.
+     *
+     * @param array<string, string> $parameters
+     */
+    #[Test]
+    #[DataProvider('provideEssentialRequestsForAPasskeyClass')]
+    public function aPasswordSessionWithoutAPasskeyAskedForAnEssentialPasskeyClassGoesBackToTheClientBeforeAnyPage(array $parameters): void
+    {
+        // Given
+        $this->signIn(self::userWithPassword('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
+
+        // When
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo', $parameters));
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        $query = self::redirectedQuery($response);
+        static::assertSame('unmet_authentication_requirements', $query['error']);
+        static::assertSame('state-of-the-client', $query['state']);
+        static::assertSame('https://op.test', $query['iss']);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string>}>
+     */
+    public static function provideEssentialRequestsForAPasskeyClass(): iterable
+    {
+        yield 'the claims parameter' => [[
+            'claims' => '{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}',
+        ]];
+        yield 'with prompt=login, before the page the prompt asks for' => [[
+            'claims' => '{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}',
+            'prompt' => 'login',
+        ]];
+    }
+
+    /**
+     * Architecture §4.3: a voluntary "phr" from a user without a passkey is answered at once with the
+     * class the session has, "1" for a password; no page.
+     */
+    #[Test]
+    public function aPasswordSessionWithoutAPasskeyAskedForAVoluntaryPasskeyClassGetsTheCodeAtOnceWithTheCurrentClass(): void
+    {
+        // Given
+        self::signingKey();
+        $this->signIn(self::userWithPassword('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo', [
+            'acr_values' => 'phr',
+        ]));
+        $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
+
+        // When
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => 'https://demo.test/login/check',
+            'code_verifier' => self::CODE_VERIFIER,
+        ], server: [
+            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+        ]);
+
+        // Then
+        $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']));
+        static::assertSame('1', $claims['acr']);
+        static::assertSame(['pwd'], $claims['amr']);
+    }
+
+    /**
+     * Architecture §4.3: with prompt=login, as the re-authentication of Symfony sends it, a voluntary
+     * "phr" from a user without a passkey leaves the login the prompt asks for, and the page asks for a
+     * new login, not for a factor the user does not have; the passkey form stays, a passkey enrolled
+     * meanwhile on the account page satisfies the request, which is what castor demo --passkey plays.
+     */
+    #[Test]
+    public function aPasswordSessionWithoutAPasskeyAskedForAVoluntaryPasskeyClassWithPromptLoginGetsAPlainReauthentication(): void
+    {
+        // Given
+        $this->signIn(self::userWithPassword('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
+        $interaction = $this->authorize([
+            'acr_values' => 'phr',
+            'prompt' => 'login',
+        ]);
+
+        // When
+        $crawler = $this->loginPage($interaction);
+
+        // Then
+        static::assertSame('reauthentication_requested', $crawler->filter('p[data-requirement]')->attr('data-requirement'));
+        static::assertCount(0, $crawler->filter('p[data-step-up]'));
+        static::assertCount(1, $crawler->filter('form input[name="_password"]'));
+        static::assertCount(1, $crawler->filter('form[data-passkey="login"]'));
     }
 
     /**
@@ -121,7 +220,7 @@ final class StepUpTest extends PasskeyTestCase
     public function anEssentialClassStillUnsatisfiedAfterTheLoginGoesBackToTheClient(): void
     {
         // Given
-        $this->signIn(self::userWithPassword('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
+        $this->enrol(self::userWithPassword('alice', self::PASSWORD), self::device(), signedInAt: self::currentSecond()->modify('-10 minutes'));
         $interaction = $this->authorize([
             'claims' => '{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}',
         ]);
@@ -151,7 +250,7 @@ final class StepUpTest extends PasskeyTestCase
     {
         // Given
         self::signingKey();
-        $this->signIn(self::userWithPassword('alice', self::PASSWORD), self::currentSecond()->modify('-10 minutes'));
+        $this->enrol(self::userWithPassword('alice', self::PASSWORD), self::device(), signedInAt: self::currentSecond()->modify('-10 minutes'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo', [
             'acr_values' => 'phr',
         ]));
@@ -186,7 +285,7 @@ final class StepUpTest extends PasskeyTestCase
     public function promptNoneWithAStepUpIsLoginRequired(): void
     {
         // Given
-        $this->signIn(self::user('alice'), self::currentSecond()->modify('-10 minutes'));
+        $this->enrol(self::user('alice'), self::device(), signedInAt: self::currentSecond()->modify('-10 minutes'));
 
         // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [

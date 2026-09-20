@@ -153,6 +153,55 @@ final class PasskeyCredentialTest extends TestCase
         static::assertSame(['hwk', 'user', 'mfa'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $methods));
     }
 
+    /**
+     * Architecture §4.3: before any ceremony, a passkey may prove the key as its backup eligibility says
+     * and the presence of the user, which WebAuthn Level 3 §7.2 (step 16) requires of every assertion;
+     * not "mfa", which the authenticator decides at each assertion.
+     */
+    #[Test]
+    #[DataProvider('provideBackupEligibility')]
+    public function anAuthenticationWithItMayProveTheKeyItsBackupEligibilitySaysAndThePresenceOfTheUser(bool $backupEligible, string $key): void
+    {
+        // Given
+        $passkey = Fixtures::passkey(backupEligible: $backupEligible, backedUp: $backupEligible);
+
+        // When / Then
+        static::assertSame([$key, 'user'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $passkey->provableMethods()));
+    }
+
+    /**
+     * @return iterable<string, array{bool, string}>
+     */
+    public static function provideBackupEligibility(): iterable
+    {
+        yield 'device-bound key' => [false, 'hwk'];
+        yield 'synced passkey' => [true, 'swk'];
+    }
+
+    /**
+     * A revoked passkey authenticates nobody: it may prove nothing, and a step-up does not count on it.
+     */
+    #[Test]
+    public function aRevokedOneMayProveNothing(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey();
+        $passkey->revoke(Fixtures::now());
+
+        // When / Then
+        static::assertSame([], $passkey->provableMethods());
+    }
+
+    /**
+     * Decision 0010, architecture §4.8: what the provider announces of passkeys is every flag at once.
+     */
+    #[Test]
+    public function everyMethodAnAssertionMayProveIsWhatTheProviderAnnounces(): void
+    {
+        // When / Then
+        static::assertSame(['hwk', 'swk', 'user', 'mfa'], array_map(static fn (AuthenticationMethod $method): string => $method->value, PasskeyCredential::everyProvableMethod()));
+    }
+
     #[Test]
     #[DataProvider('provideSignCounts')]
     public function itTellsASignCountRegressionTheWayWebauthnLibDoes(int $stored, int $received, bool $regresses): void

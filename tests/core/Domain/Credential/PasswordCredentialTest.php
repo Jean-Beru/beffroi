@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Domain\Credential;
 
+use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
+use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +41,19 @@ final class PasswordCredentialTest extends TestCase
         // When / Then
         static::assertSame('password', $credential->kind());
         static::assertNull($credential->label());
+    }
+
+    /**
+     * RFC 8176 §2: "pwd", what an authentication with a password may prove (architecture §4.3).
+     */
+    #[Test]
+    public function anAuthenticationWithItMayProveAPassword(): void
+    {
+        // Given
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+
+        // When / Then
+        static::assertSame(['pwd'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $credential->provableMethods()));
     }
 
     #[Test]
