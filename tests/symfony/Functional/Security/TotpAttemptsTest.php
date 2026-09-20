@@ -62,14 +62,15 @@ final class TotpAttemptsTest extends DatabaseTestCase
         $bob = self::user('bob', 'bob-subject');
         $provisioning = self::enrolment()->begin($bob);
         $this->secret = $provisioning->secret;
+        $aStepAgo = new DateTimeImmutable('-30 seconds');
 
         // When
-        $totp = self::enrolment()->complete($bob, '', $provisioning, $this->codeAt(new DateTimeImmutable('-30 seconds')), self::context());
+        $totp = self::enrolment()->complete($bob, '', $provisioning, $this->codeAt($aStepAgo), self::context());
 
         // Then
         static::assertStringNotContainsString($provisioning->secret->bytes, $totp->sealedSecret);
         static::assertSame($provisioning->secret->bytes, self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $totp->sealedSecret));
-        static::assertSame(intdiv(new DateTimeImmutable('-30 seconds')->getTimestamp(), TotpCredential::PERIOD), $totp->lastAcceptedStep);
+        static::assertSame(intdiv($aStepAgo->getTimestamp(), TotpCredential::PERIOD), $totp->lastAcceptedStep);
         static::assertSame(PasswordAlgorithm::Argon2id, $totp->backupCodes[0]->hash->algorithm);
         static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($totp->backupCodes[0]->hash, BackupCode::normalize($provisioning->backupCodes[0])));
         static::assertSame($totp, self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, TotpCredential::class)[0] ?? null);
