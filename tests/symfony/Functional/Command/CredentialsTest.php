@@ -27,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
 final class CredentialsTest extends ConsoleTestCase
 {
     #[Test]
-    public function theProfileListsTheCredentialsWithTheirKindNameAndDates(): void
+    public function theUserIsShownWithTheCredentialsTheirKindNameAndDates(): void
     {
         // Given
         $user = self::user('alice');
@@ -39,9 +39,8 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($passkey);
 
         // When
-        $tester = self::console('heidi:user:profile', [
+        $tester = self::console('heidi:user:show', [
             'username' => 'alice',
-            '--name' => 'Alice Liddell',
         ]);
 
         // Then
@@ -52,13 +51,13 @@ final class CredentialsTest extends ConsoleTestCase
     }
 
     #[Test]
-    public function theProfileOfAUserWithoutCredentialSaysSo(): void
+    public function aUserWithoutCredentialIsShownAsSuch(): void
     {
         // Given
         self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:profile', [
+        $tester = self::console('heidi:user:show', [
             'username' => 'alice',
         ]);
 

@@ -216,6 +216,9 @@ final class ProvisioningTest extends ConsoleTestCase
             'username' => 'alice',
             '--name' => 'Alice Liddell',
         ]];
+        yield 'heidi:user:show' => ['heidi:user:show', [
+            'username' => 'alice',
+        ]];
         yield 'heidi:user:set-password' => ['heidi:user:set-password', [
             'username' => 'alice',
             '--password-stdin' => true,
@@ -503,6 +506,75 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('Oxfordshire', $address->region);
         static::assertSame('OX1 1AA', $address->postalCode);
         static::assertSame('United Kingdom', $address->country);
+    }
+
+    /**
+     * A run that says nothing is the read the command is not: it writes nothing rather than clearing everything.
+     */
+    #[Test]
+    public function aDescriptionThatSaysNothingWritesNothing(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::console('heidi:user:profile', [
+            'username' => 'alice',
+            '--name' => 'Alice Liddell',
+        ]);
+
+        // When
+        $tester = self::console('heidi:user:profile', [
+            'username' => 'alice',
+            '--nickname' => '  ',
+        ]);
+
+        // Then
+        static::assertSame(Command::INVALID, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString('Nothing was said', $tester->getDisplay(true));
+        static::assertStringContainsString('heidi:user:show', $tester->getDisplay(true));
+        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        static::assertSame('Alice Liddell', $described->profile->name);
+    }
+
+    /**
+     * Architecture §5.5: the read, the identity and the claims that are set, nothing written.
+     */
+    #[Test]
+    public function aUserIsShownWithTheirIdentityAndTheClaimsThatAreSet(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::console('heidi:user:profile', [
+            'username' => 'alice',
+            '--name' => 'Alice Liddell',
+            '--phone-number' => '+44 1865 000000',
+        ]);
+
+        // When
+        $tester = self::console('heidi:user:show', [
+            'username' => ' alice ',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('alice', self::displayed($tester, 'Username'));
+        static::assertSame($user->subject->value, self::displayed($tester, 'Subject'));
+        static::assertSame('enabled', self::displayed($tester, 'Status'));
+        static::assertSame('Alice Liddell', self::displayed($tester, 'Name'));
+        static::assertSame('+44 1865 000000 (unverified)', self::displayed($tester, 'Phone number'));
+        static::assertStringNotContainsString('is described', $tester->getDisplay(true));
+    }
+
+    #[Test]
+    public function anUnknownUserIsNotShown(): void
+    {
+        // When
+        $tester = self::console('heidi:user:show', [
+            'username' => 'nobody',
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString('There is no user named "nobody"', $tester->getDisplay(true));
     }
 
     /**
