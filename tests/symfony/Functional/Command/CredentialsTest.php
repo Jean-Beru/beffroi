@@ -14,6 +14,8 @@ use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
 use Heidi\Core\Domain\Event\CredentialRevoked;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Heidi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_replace;
 use function random_bytes;
@@ -92,6 +94,33 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertTrue($events[0]->credential->id->equals($passkey->id));
         static::assertNull($events[0]->context->ipAddress);
         static::assertStringStartsWith('heidi-console/heidi:user:revoke-credential (', $events[0]->context->userAgent ?? '');
+    }
+
+    /**
+     * Issue #91: the TOTP is revoked from the console like a passkey, by the identifier heidi:user:show
+     * lists; the kind has no label, the identifier stands for it.
+     */
+    #[Test]
+    public function aTotpIsRevokedByItsIdentifier(): void
+    {
+        // Given
+        $user = self::user('alice');
+        $totp = Totps::credential($user, new FakePasswordHasher());
+        self::credentials()->save($totp);
+
+        // When
+        $tester = self::console('heidi:user:revoke-credential', [
+            'username' => 'alice',
+            'id' => $totp->id->toRfc4122(),
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString('The totp "' . $totp->id->toRfc4122() . '" of the user "alice" is revoked; it never authenticates again.', self::flattened($tester));
+        $revoked = self::credentials()->find($totp->id) ?? static::fail('The TOTP is gone.');
+        static::assertInstanceOf(RevocableCredentialInterface::class, $revoked);
+        static::assertTrue($revoked->isRevoked());
+        static::assertCount(1, self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events);
     }
 
     #[Test]

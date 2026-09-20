@@ -29,6 +29,10 @@
         <source>login.step_up.password</source>
         <target>Votre mot de passe la satisferait.</target>
       </trans-unit>
+      <trans-unit id="9702602430" resname="login.step_up.code">
+        <source>login.step_up.code</source>
+        <target>Votre mot de passe suivi du code de votre application d'authentification la satisferait.</target>
+      </trans-unit>
       <trans-unit id="55b0f4b87b" resname="login.failed">
         <source>login.failed</source>
         <target>La connexion a échoué. Vérifiez votre nom d’utilisateur et votre mot de passe, puis réessayez.</target>
@@ -236,6 +240,114 @@
       <trans-unit id="c5d11b8713" resname="passkeys.error.refused">
         <source>passkeys.error.refused</source>
         <target>Ce fournisseur a refusé la passkey. Réessayez avec une autre.</target>
+      </trans-unit>
+      <trans-unit id="5b10da251c" resname="code.title">
+        <source>code.title</source>
+        <target>Saisissez votre code</target>
+      </trans-unit>
+      <trans-unit id="7a2dedee21" resname="code.prompt">
+        <source>code.prompt</source>
+        <target>{client} vous demande de vous connecter. Saisissez le code affiché par votre application d'authentification, ou l'un de vos codes de secours.</target>
+      </trans-unit>
+      <trans-unit id="da69e8a447" resname="code.code">
+        <source>code.code</source>
+        <target>Code</target>
+      </trans-unit>
+      <trans-unit id="b65d28a647" resname="code.submit">
+        <source>code.submit</source>
+        <target>Continuer</target>
+      </trans-unit>
+      <trans-unit id="0e9092a36c" resname="code.failed">
+        <source>code.failed</source>
+        <target>Le code a été refusé. Réessayez avec le code que l'application affiche maintenant.</target>
+      </trans-unit>
+      <trans-unit id="68e780445d" resname="two_factor.title">
+        <source>two_factor.title</source>
+        <target>Authentification à deux facteurs</target>
+      </trans-unit>
+      <trans-unit id="2b37682e1b" resname="two_factor.signed_in_as">
+        <source>two_factor.signed_in_as</source>
+        <target>Connecté en tant que {username}.</target>
+      </trans-unit>
+      <trans-unit id="120102f7ce" resname="two_factor.none">
+        <source>two_factor.none</source>
+        <target>Votre compte n'a pas encore d'application d'authentification. Une fois configurée, un code de l'application vous sera demandé après votre mot de passe.</target>
+      </trans-unit>
+      <trans-unit id="126fd373df" resname="two_factor.set_up">
+        <source>two_factor.set_up</source>
+        <target>Configurer une application d'authentification</target>
+      </trans-unit>
+      <trans-unit id="f17b1d335e" resname="two_factor.active">
+        <source>two_factor.active</source>
+        <target>Une application d'authentification est configurée depuis le {date}.</target>
+      </trans-unit>
+      <trans-unit id="1642acc9b6" resname="two_factor.last_used_at">
+        <source>two_factor.last_used_at</source>
+        <target>Dernière utilisation</target>
+      </trans-unit>
+      <trans-unit id="71cfff5c92" resname="two_factor.never_used">
+        <source>two_factor.never_used</source>
+        <target>Jamais</target>
+      </trans-unit>
+      <trans-unit id="fe08ccc069" resname="two_factor.backup_codes">
+        <source>two_factor.backup_codes</source>
+        <target>Codes de secours</target>
+      </trans-unit>
+      <trans-unit id="fa94375559" resname="two_factor.backup_codes_left">
+        <source>two_factor.backup_codes_left</source>
+        <target>{count, plural, =0 {Aucun code de secours restant} one {# code de secours restant} other {# codes de secours restants}}</target>
+      </trans-unit>
+      <trans-unit id="42e65dc64c" resname="two_factor.revoke">
+        <source>two_factor.revoke</source>
+        <target>Retirer l'application d'authentification</target>
+      </trans-unit>
+      <trans-unit id="a29cc8ac2e" resname="two_factor.enrol.title">
+        <source>two_factor.enrol.title</source>
+        <target>Configurez votre application d'authentification</target>
+      </trans-unit>
+      <trans-unit id="e8b20ec1fd" resname="two_factor.enrol.scan">
+        <source>two_factor.enrol.scan</source>
+        <target>Scannez ce QR code avec votre application d'authentification.</target>
+      </trans-unit>
+      <trans-unit id="9a129eca30" resname="two_factor.enrol.manual">
+        <source>two_factor.enrol.manual</source>
+        <target>Ou saisissez cette clé à la main :</target>
+      </trans-unit>
+      <trans-unit id="3fb9679842" resname="two_factor.enrol.code">
+        <source>two_factor.enrol.code</source>
+        <target>Code affiché par l'application</target>
+      </trans-unit>
+      <trans-unit id="1aba2d16d3" resname="two_factor.enrol.submit">
+        <source>two_factor.enrol.submit</source>
+        <target>Confirmer</target>
+      </trans-unit>
+      <trans-unit id="6b810babaa" resname="two_factor.enrolled.title">
+        <source>two_factor.enrolled.title</source>
+        <target>Vos codes de secours</target>
+      </trans-unit>
+      <trans-unit id="94905118d7" resname="two_factor.enrolled.done">
+        <source>two_factor.enrolled.done</source>
+        <target>Votre application d'authentification est configurée. Désormais, un code de l'application vous sera demandé après votre mot de passe.</target>
+      </trans-unit>
+      <trans-unit id="87b3bb2962" resname="two_factor.enrolled.codes">
+        <source>two_factor.enrolled.codes</source>
+        <target>Conservez ces codes de secours en lieu sûr. Chacun vous connecte une fois, à la place d'un code de l'application, si vous la perdez. Ils ne sont affichés que maintenant.</target>
+      </trans-unit>
+      <trans-unit id="27ee01caa6" resname="two_factor.enrolled.back">
+        <source>two_factor.enrolled.back</source>
+        <target>Retour à votre compte</target>
+      </trans-unit>
+      <trans-unit id="732a6b396d" resname="two_factor.error.refused">
+        <source>two_factor.error.refused</source>
+        <target>Le code ne correspond pas. Saisissez le code que l'application affiche maintenant.</target>
+      </trans-unit>
+      <trans-unit id="56a44ece6f" resname="two_factor.error.no_provisioning">
+        <source>two_factor.error.no_provisioning</source>
+        <target>Aucune configuration n'était en cours, ou elle a pris trop de temps. Recommencez.</target>
+      </trans-unit>
+      <trans-unit id="71292a8b65" resname="two_factor.error.already_enrolled">
+        <source>two_factor.error.already_enrolled</source>
+        <target>Une application d'authentification est déjà configurée. Retirez-la avant d'en configurer une autre.</target>
       </trans-unit>
       <trans-unit id="f614d3c6a6" resname="error.login_required">
         <source>error.login_required</source>

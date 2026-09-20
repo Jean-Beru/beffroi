@@ -332,7 +332,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      *
      * @param callable(SessionInterface, BrowserSession): void $write
      */
-    private function httpSession(callable $write): void
+    protected function httpSession(callable $write): void
     {
         $httpSession = self::service('session.factory', SessionFactoryInterface::class)->createSession();
         $cookie = $this->sessionCookie($httpSession->getName());

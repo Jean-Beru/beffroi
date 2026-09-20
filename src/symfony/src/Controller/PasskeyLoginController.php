@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\InteractionPages;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * Where the login page posts a signed assertion (architecture §5.2, §5.4): the check path of the passkey
@@ -25,17 +23,12 @@ final readonly class PasskeyLoginController
 
     public function __construct(
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
     #[Route('/login/passkey', name: self::ROUTE, methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
-        $interaction = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
-
-        return $this->pages->redirect($this->router->generate('heidi_interaction_login', $interaction === '' ? [] : [
-            AuthorizationResponder::INTERACTION_PARAMETER => $interaction,
-        ]));
+        return $this->pages->redirectToPage('heidi_interaction_login', $request);
     }
 }

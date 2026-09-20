@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Totp;
 
 use function array_unique;
+use Heidi\Core\Application\Totp\ActiveTotp;
 use Heidi\Core\Application\Totp\TotpCodeMatcher;
 use Heidi\Core\Application\Totp\TotpEnrolment;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
@@ -51,7 +52,7 @@ final class TotpEnrolmentTest extends TestCase
         $this->hasher = new FakePasswordHasher();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
-        $this->enrolment = new TotpEnrolment($this->credentials, Totps::algorithm(), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->clock, $this->events);
+        $this->enrolment = new TotpEnrolment($this->credentials, new ActiveTotp($this->credentials), Totps::algorithm(), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->clock, $this->events);
     }
 
     #[Test]

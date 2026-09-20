@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Security;
 
-use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\InteractionPages;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface;
@@ -23,13 +21,12 @@ final readonly class InteractionLoginHandler implements AuthenticationSuccessHan
 {
     public function __construct(
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token): Response
     {
-        return $this->pages->redirect($this->loginPage($request));
+        return $this->pages->redirectToPage('heidi_interaction_login', $request);
     }
 
     /**
@@ -40,15 +37,6 @@ final readonly class InteractionLoginHandler implements AuthenticationSuccessHan
         $request->getSession()
             ->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
 
-        return $this->pages->redirect($this->loginPage($request));
-    }
-
-    private function loginPage(Request $request): string
-    {
-        $interaction = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
-
-        return $this->router->generate('heidi_interaction_login', $interaction === '' ? [] : [
-            AuthorizationResponder::INTERACTION_PARAMETER => $interaction,
-        ]);
+        return $this->pages->redirectToPage('heidi_interaction_login', $request);
     }
 }

@@ -1,0 +1,74 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Http;
+
+use function array_filter;
+use function count;
+use Heidi\Core\Application\Totp\ActiveTotp;
+use Heidi\Core\Domain\Credential\BackupCode;
+use Heidi\Core\Domain\Credential\TotpProvisioning;
+use Heidi\Core\Domain\Identity\User;
+use function implode;
+use ParagonIE\ConstantTime\Base32;
+use function str_split;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * The page of the second factor of a user (architecture §5.2), in its three states: what the account
+ * holds (an authenticator app or none), the enrolment in progress (the QR code, the key for a manual
+ * entry, the first code), and the backup codes of an enrolment just completed, shown once. Rendered by
+ * the controllers that show it and by the ones that come back to it with what went wrong.
+ */
+final readonly class TwoFactorPage
+{
+    public function __construct(
+        private ActiveTotp $activeTotp,
+        private QrCode $qrCode,
+        private InteractionPages $pages,
+    ) {
+    }
+
+    /**
+     * @param string|null $error a code the template translates
+     */
+    public function render(User $user, ?string $error = null, int $status = Response::HTTP_OK): Response
+    {
+        $totp = $this->activeTotp->of($user);
+
+        return $this->pages->render('account/two_factor.html.twig', [
+            'user' => $user,
+            'totp' => $totp,
+            'backup_codes_left' => $totp === null ? 0 : count(array_filter($totp->backupCodes, static fn (BackupCode $code): bool => ! $code->isSpent())),
+            'error' => $error,
+        ], $status);
+    }
+
+    /**
+     * The key is the secret in base32 (RFC 4648 §6), what the URI carries and what an app takes by hand,
+     * in groups of four for the eye.
+     *
+     * @param string|null $error a code the template translates
+     */
+    public function renderEnrolment(User $user, TotpProvisioning $provisioning, ?string $error = null, int $status = Response::HTTP_OK): Response
+    {
+        return $this->pages->render('account/two_factor_enrol.html.twig', [
+            'user' => $user,
+            'qr_code' => $this->qrCode->svg($provisioning->uri),
+            'key' => implode(' ', str_split(Base32::encodeUpperUnpadded($provisioning->secret->bytes), 4)),
+            'error' => $error,
+        ], $status);
+    }
+
+    /**
+     * @param list<string> $backupCodes in clear, this once
+     */
+    public function renderEnrolled(User $user, array $backupCodes): Response
+    {
+        return $this->pages->render('account/two_factor_enrolled.html.twig', [
+            'user' => $user,
+            'backup_codes' => $backupCodes,
+        ]);
+    }
+}

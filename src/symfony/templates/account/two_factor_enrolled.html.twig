@@ -1,0 +1,19 @@
+{# The backup codes of an authenticator app just set up (architecture §5.2), shown this once: the page
+   is the response to the code that confirmed the enrolment, and the codes are stored hashed, so that
+   nothing shows them again. Overridable by an application under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% block title %}{{ 'two_factor.enrolled.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p>{{ 'two_factor.signed_in_as'|trans({username: user.username}) }}</p>
+    <p data-two-factor="enrolled">{{ 'two_factor.enrolled.done'|trans }}</p>
+    <p>{{ 'two_factor.enrolled.codes'|trans }}</p>
+    <ul data-two-factor="backup-codes">
+        {% for code in backup_codes %}
+            <li><code>{{ code }}</code></li>
+        {% endfor %}
+    </ul>
+    <p><a href="{{ path('heidi_interaction_account_two_factor') }}">{{ 'two_factor.enrolled.back'|trans }}</a></p>
+{% endblock %}

@@ -19,7 +19,12 @@ use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Bundle\Http\PasskeysPage;
+use Heidi\Bundle\Http\PendingLoginStore;
+use Heidi\Bundle\Http\QrCode;
 use Heidi\Bundle\Http\RequestContextFactory;
+use Heidi\Bundle\Http\TotpProvisioningSealer;
+use Heidi\Bundle\Http\TotpProvisioningStore;
+use Heidi\Bundle\Http\TwoFactorPage;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Plane\Plane;
@@ -34,9 +39,12 @@ use Heidi\Bundle\Security\LoginSuccessListener;
 use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\PassportProofs;
 use Heidi\Bundle\Security\RateLimitedCodeAttempts;
+use Heidi\Bundle\Security\SecondFactorGate;
+use Heidi\Bundle\Security\TotpLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
+use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Application\Credential\CredentialRevocation;
@@ -44,6 +52,7 @@ use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Application\Passkey\PasskeyAuthentication;
 use Heidi\Core\Application\Passkey\PasskeyEnrolment;
+use Heidi\Core\Application\Totp\ActiveTotp;
 use Heidi\Core\Application\Totp\TotpAuthentication;
 use Heidi\Core\Application\Totp\TotpCodeMatcher;
 use Heidi\Core\Application\Totp\TotpEnrolment;
@@ -156,6 +165,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AuthorizationResponder::class);
     $services->set(PasskeyOptionsStore::class);
     $services->set(PasskeysPage::class);
+    // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
+    $services->set(PendingLoginStore::class);
+    $services->set(TotpProvisioningSealer::class);
+    $services->set(TotpProvisioningStore::class);
+    $services->set(QrCode::class);
+    $services->set(TwoFactorPage::class);
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
 
@@ -174,6 +189,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginSuccessListener::class);
     $services->set(LoginFailureListener::class);
     $services->set(PasskeyLoginAuthenticator::class);
+    // a password of a user who holds a second factor is held until the code, verified by the second authenticator of the firewall
+    $services->set(SecondFactorGate::class);
+    $services->set(TotpLoginAuthenticator::class);
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010)
     $services->set(PassportProofs::class);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
@@ -249,6 +267,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(OtphpTotpAlgorithm::class);
     $services->alias(TotpAlgorithmInterface::class, OtphpTotpAlgorithm::class);
     $services->set(TotpCodeMatcher::class);
+    $services->set(ActiveTotp::class);
 
     // The core: request context enrichment (architecture §3.5)
     $services->set(NullGeoLocator::class);
@@ -258,6 +277,7 @@ return static function (ContainerConfigurator $container): void {
 
     // The core: use cases
     $services->set(PasswordAuthenticator::class);
+    $services->set(SecondFactorRequirement::class);
     $services->set(PasskeyEnrolment::class);
     $services->set(PasskeyAuthentication::class);
     $services->set(TotpEnrolment::class);
