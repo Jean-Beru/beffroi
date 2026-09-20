@@ -18,6 +18,7 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Heidi\Bundle\Migrations\Version20260915171732;
 use Heidi\Bundle\Migrations\Version20260917180000;
 use Heidi\Bundle\Migrations\Version20260919150000;
+use Heidi\Bundle\Migrations\Version20260920120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -27,6 +28,7 @@ use function sort;
 use function str_contains;
 use function str_split;
 use function str_starts_with;
+use function substr;
 use function trim;
 
 /**
@@ -41,7 +43,7 @@ final class MigrationTest extends DatabaseTestCase
      *
      * @return list<class-string<AbstractMigration>>
      */
-    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class];
+    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class, Version20260920120000::class];
 
     #[Test]
     public function theMigrationsCreateWhatTheMappingsDescribeOnPostgreSql(): void
@@ -137,6 +139,29 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     /**
+     * The fourth migration adds the policy column to the tenant table and nothing else, with the default
+     * policy as its default, so that the tenant of a deployment of spike 2 keeps the vocabulary it had.
+     */
+    #[Test]
+    public function theFourthMigrationAddsThePolicyColumnOfTheTenantAlone(): void
+    {
+        // Given
+        $migration = new Version20260920120000(DriverManager::getConnection([
+            'driver' => 'pdo_pgsql',
+            'serverVersion' => '16',
+        ]), new NullLogger());
+
+        // When
+        $migration->up(new Schema());
+
+        // Then
+        $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
+        static::assertCount(1, $statements);
+        static::assertStringStartsWith('ALTER TABLE heidi_tenant ADD authentication_context_policy JSON DEFAULT \'{"classes":[{"name":"phrh"', $statements[0]);
+        static::assertStringEndsWith('NOT NULL', $statements[0]);
+    }
+
+    /**
      * @param class-string<AbstractMigration> $migration
      */
     #[Test]
@@ -166,7 +191,8 @@ final class MigrationTest extends DatabaseTestCase
     /**
      * A CREATE TABLE with its column definitions in name order: the schema tool writes the columns of an
      * embeddable after the identifier, a migration wrote them where the mapping had them, and PostgreSQL
-     * gives the order no meaning. The definitions themselves are compared byte for byte.
+     * gives the order no meaning. The definitions themselves are compared byte for byte; a comma inside a
+     * quoted default splits nothing.
      */
     private static function withColumnsSorted(string $statement): string
     {
@@ -175,14 +201,17 @@ final class MigrationTest extends DatabaseTestCase
         }
         $definitions = [];
         $depth = 0;
+        $quoted = false;
         $current = '';
         foreach (str_split($matches[2]) as $character) {
-            if ($character === '(') {
+            if ($character === "'") {
+                $quoted = ! $quoted;
+            } elseif (! $quoted && $character === '(') {
                 ++$depth;
-            } elseif ($character === ')') {
+            } elseif (! $quoted && $character === ')') {
                 --$depth;
             }
-            if ($character === ',' && $depth === 0) {
+            if ($character === ',' && $depth === 0 && ! $quoted) {
                 $definitions[] = trim($current);
                 $current = '';
 
@@ -197,7 +226,8 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     /**
-     * The statements of every migration, applied in order.
+     * The statements of every migration, applied in order; a column a later migration adds to a table is
+     * folded into the CREATE TABLE of that table, which is what the schema tool describes.
      *
      * @return list<string>
      */
@@ -207,7 +237,18 @@ final class MigrationTest extends DatabaseTestCase
         foreach (self::MIGRATIONS as $class) {
             $migration = new $class($connection, new NullLogger());
             $migration->up(new Schema());
-            $statements = [...$statements, ...array_values(array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql()))];
+            foreach ($migration->getSql() as $query) {
+                $statement = $query->getStatement();
+                if (preg_match('/^ALTER TABLE (\S+) ADD (?!CONSTRAINT )(.+)$/', $statement, $matches) === 1) {
+                    $statements = array_map(
+                        static fn (string $earlier): string => str_starts_with($earlier, 'CREATE TABLE ' . $matches[1] . ' (') ? substr($earlier, 0, -1) . ', ' . $matches[2] . ')' : $earlier,
+                        $statements,
+                    );
+
+                    continue;
+                }
+                $statements[] = $statement;
+            }
         }
 
         return $statements;

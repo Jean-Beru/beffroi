@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Domain\Tenant\Tenant;
+use function implode;
 use LogicException;
 use Symfony\Contracts\Service\ResetInterface;
 
@@ -45,6 +46,9 @@ final class TenantProvider implements ResetInterface
         }
         if ($tenant->name !== $configured->name) {
             throw TenantNotSynchronizedException::differs($configured->slug, 'name', $tenant->name, $configured->name);
+        }
+        if (! $tenant->authenticationContextPolicy->equals($configured->authenticationContextPolicy)) {
+            throw TenantNotSynchronizedException::differs($configured->slug, 'authentication_classes', implode(' ', $tenant->authenticationContextPolicy->names()), implode(' ', $configured->authenticationContextPolicy->names()));
         }
 
         return $this->tenant = $tenant;

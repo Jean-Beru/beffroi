@@ -6,7 +6,6 @@ namespace Heidi\Oidc\Tests\Application\Claims;
 
 use function array_keys;
 use function array_map;
-use function array_values;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Profile;
@@ -40,7 +39,7 @@ final class StandardClaimsProviderTest extends TestCase
     public function theProfileScopeGivesTheProfileClaims(): void
     {
         // When
-        $claims = $this->provider->claims(self::fullUser(), self::scopes('profile'), []);
+        $claims = $this->provider->claims(self::fullUser(), self::scopes(['profile']), []);
 
         // Then
         static::assertSame([
@@ -69,7 +68,7 @@ final class StandardClaimsProviderTest extends TestCase
     public function theEmailAddressAndPhoneScopesGiveTheirClaims(): void
     {
         // When
-        $claims = $this->provider->claims(self::fullUser(), self::scopes('email', 'address', 'phone'), []);
+        $claims = $this->provider->claims(self::fullUser(), self::scopes(['email', 'address', 'phone']), []);
 
         // Then
         static::assertSame([
@@ -95,7 +94,7 @@ final class StandardClaimsProviderTest extends TestCase
     public function theVerificationFlagsAreJsonBooleans(): void
     {
         // Given
-        $claims = $this->provider->claims(self::fullUser(), self::scopes('email', 'address', 'phone'), []);
+        $claims = $this->provider->claims(self::fullUser(), self::scopes(['email', 'address', 'phone']), []);
 
         // When
         $json = json_encode($claims, JSON_THROW_ON_ERROR);
@@ -112,7 +111,7 @@ final class StandardClaimsProviderTest extends TestCase
     public function absentAttributesGiveNoClaim(): void
     {
         // When
-        $claims = $this->provider->claims(Fixtures::user(), self::scopes('profile', 'email', 'address', 'phone'), []);
+        $claims = $this->provider->claims(Fixtures::user(), self::scopes(['profile', 'email', 'address', 'phone']), []);
 
         // Then
         static::assertSame([
@@ -133,7 +132,7 @@ final class StandardClaimsProviderTest extends TestCase
         $user->changeAddress(new Address(), Fixtures::now());
 
         // When
-        $claims = $this->provider->claims($user, self::scopes('email', 'address'), []);
+        $claims = $this->provider->claims($user, self::scopes(['email', 'address']), []);
 
         // Then
         static::assertSame([
@@ -199,7 +198,7 @@ final class StandardClaimsProviderTest extends TestCase
     public function otherScopesGiveNothing(array $scopes): void
     {
         // When
-        $claims = $this->provider->claims(self::fullUser(), self::scopes(...$scopes), []);
+        $claims = $this->provider->claims(self::fullUser(), self::scopes($scopes), []);
 
         // Then
         static::assertSame([], $claims);
@@ -223,7 +222,7 @@ final class StandardClaimsProviderTest extends TestCase
     public function claimsRequestedByNameAreServedWithoutTheirScope(): void
     {
         // When
-        $claims = $this->provider->claims(self::fullUser(), self::scopes('email'), [
+        $claims = $this->provider->claims(self::fullUser(), self::scopes(['email']), [
             'email_verified' => new ClaimRequest(true, false),
             'given_name' => new ClaimRequest(),
             'phone_number' => new ClaimRequest(false, null, ['+33600000000']),
@@ -238,11 +237,13 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
+     * @param list<string> $values
+     *
      * @return list<Scope>
      */
-    private static function scopes(string ...$values): array
+    private static function scopes(array $values): array
     {
-        return array_values(array_map(static fn (string $value): Scope => new Scope($value), $values));
+        return array_map(static fn (string $value): Scope => new Scope($value), $values);
     }
 
     private static function fullUser(): User

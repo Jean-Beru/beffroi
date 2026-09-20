@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Key;
 
 use function array_shift;
-use function array_values;
 use DateInterval;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
@@ -651,7 +650,7 @@ final class SigningKeyRotatorTest extends TestCase
      */
     private function rotator(array $issuedJws): SigningKeyRotator
     {
-        return new SigningKeyRotator($this->repository, new PrecomputedKeyPairGenerator(Keys::pair(), Keys::otherPair()), Keys::sealer(), $issuedJws, new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
+        return new SigningKeyRotator($this->repository, new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]), Keys::sealer(), $issuedJws, new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
     }
 }
 
@@ -661,13 +660,11 @@ final class SigningKeyRotatorTest extends TestCase
 final class PrecomputedKeyPairGenerator implements KeyPairGeneratorInterface
 {
     /**
-     * @var list<GeneratedKeyPair>
+     * @param list<GeneratedKeyPair> $pairs
      */
-    private array $pairs;
-
-    public function __construct(GeneratedKeyPair ...$pairs)
-    {
-        $this->pairs = array_values($pairs);
+    public function __construct(
+        private array $pairs,
+    ) {
     }
 
     public function generate(SignatureAlgorithm $algorithm): GeneratedKeyPair

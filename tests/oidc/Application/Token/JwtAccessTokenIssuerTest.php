@@ -149,7 +149,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
         // Then
         static::assertSame('2', $claims['acr']);
-        static::assertSame(['pwd', 'otp'], $claims['amr']);
+        static::assertSame(['pwd', 'otp', 'mfa'], $claims['amr']);
     }
 
     /**

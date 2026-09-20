@@ -63,6 +63,20 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Discovery §3 "acr_values_supported", decision 0010: the classes of the policy of the tenant the
+     * logins of the firewall, a password and a passkey, can prove: the four of the default policy.
+     */
+    #[Test]
+    public function theMetadataAnnouncesTheClassesThePasswordAndThePasskeyProve(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        static::assertSame(['phrh', 'phr', '2', '1'], self::json($this->browser->getResponse())['acr_values_supported']);
+    }
+
+    /**
      * The Host header of the request does not steer what is announced: the origin is the issuer's.
      */
     #[Test]

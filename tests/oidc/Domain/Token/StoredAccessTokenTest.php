@@ -63,7 +63,7 @@ final class StoredAccessTokenTest extends TestCase
         static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes);
         static::assertSame($claims, $token->claimsRequest);
         static::assertEquals($issuedAt, $token->authentication->authenticatedAt);
-        static::assertSame(['pwd', 'otp'], $token->authentication->methods);
+        static::assertSame(['pwd', 'otp', 'mfa'], $token->authentication->methods);
         static::assertSame('2', $token->authentication->contextClass);
         static::assertEquals($issuedAt, $token->issuedAt);
         static::assertEquals($issuedAt->modify('+10 minutes'), $token->expiresAt);

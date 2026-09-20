@@ -94,7 +94,7 @@ final class AuthenticationSnapshotTest extends TestCase
 
         // Then
         static::assertEquals($this->authenticatedAt, $snapshot->authenticatedAt);
-        static::assertSame(['pwd', 'hwk'], $snapshot->methods);
+        static::assertSame(['pwd', 'hwk', 'mfa'], $snapshot->methods);
         static::assertSame('phr', $snapshot->contextClass);
     }
 

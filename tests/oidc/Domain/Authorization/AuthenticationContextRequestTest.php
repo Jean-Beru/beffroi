@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Authorization;
 
+use function array_map;
+use Heidi\Core\Domain\Session\AuthenticationContextClass;
+use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -156,32 +159,55 @@ final class AuthenticationContextRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: a requested class the provider can assert, whatever the session, can be met.
+     * OIDC Core §5.5.1.1, decision 0010: the requested classes among those the provider can prove, in
+     * the client's order; what a step-up may ask for, nothing when the request cannot be met.
      *
      * @param list<string|int|float|bool> $values
+     * @param list<string> $among
      */
     #[Test]
-    #[DataProvider('provideRequestsAndWhetherTheProviderCanMeetThem')]
-    public function itCanBeMetWhenARequestedClassIsOneTheProviderAsserts(array $values, bool $canBeMet): void
+    #[DataProvider('provideRequestsAndTheirClassesAmongTheProvableOnes')]
+    public function theRequestedClassesAmongTheProvableOnesKeepTheClientsOrder(array $values, array $among): void
     {
         // Given
         $requested = new AuthenticationContextRequest($values, true);
 
-        // When / Then
-        static::assertSame($canBeMet, $requested->canBeMetWith(['1', '2']));
+        // When
+        $classes = $requested->among([AuthenticationContextClass::singleFactor(), AuthenticationContextClass::twoFactors()]);
+
+        // Then
+        static::assertSame($among, array_map(static fn (AuthenticationContextClass $class): string => $class->value, $classes));
     }
 
     /**
-     * @return iterable<string, array{list<string|int|float|bool>, bool}>
+     * @return iterable<string, array{list<string|int|float|bool>, list<string>}>
      */
-    public static function provideRequestsAndWhetherTheProviderCanMeetThem(): iterable
+    public static function provideRequestsAndTheirClassesAmongTheProvableOnes(): iterable
     {
-        yield 'a supported class' => [['1'], true];
-        yield 'a supported class after an unsupported one' => [['phrh', '2'], true];
-        yield 'an unsupported class' => [['phrh'], false];
-        yield 'a number that looks like a level' => [[1], false];
-        yield 'a boolean' => [[true], false];
-        yield 'nothing' => [[], false];
+        yield 'a provable class' => [['1'], ['1']];
+        yield 'a provable class after one that is not' => [['phrh', '2'], ['2']];
+        yield 'two provable classes, the client\'s order' => [['2', '1'], ['2', '1']];
+        yield 'a class that is not provable' => [['phrh'], []];
+        yield 'a number that looks like a level' => [[1], []];
+        yield 'a boolean' => [[true], []];
+        yield 'nothing' => [[], []];
+    }
+
+    /**
+     * Decision 0010: the requested values that name a class of the policy of the tenant, in the client's
+     * order; a name the tenant did not declare names none.
+     */
+    #[Test]
+    public function theClassesOfAPolicyAreTheRequestedNamesItDeclares(): void
+    {
+        // Given
+        $requested = new AuthenticationContextRequest(['urn:mace:incommon:iap:silver', '2', 1, 'phr']);
+
+        // When
+        $classes = $requested->classesOf(AuthenticationContextPolicy::default());
+
+        // Then
+        static::assertSame(['2', 'phr'], array_map(static fn (AuthenticationContextClass $class): string => $class->value, $classes));
     }
 
     /**

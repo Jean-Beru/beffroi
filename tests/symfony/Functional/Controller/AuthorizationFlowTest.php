@@ -386,15 +386,15 @@ final class AuthorizationFlowTest extends BrowserTestCase
 
     /**
      * OIDC Core §5.5.1.1 and OIDC Core Error Code unmet_authentication_requirements §1: an essential "acr"
-     * naming classes the provider cannot assert is refused to the client, with the state and the issuer,
-     * before any login page.
+     * naming classes the provider cannot assert, here a name the policy of the tenant does not declare
+     * (decision 0010), is refused to the client, with the state and the issuer, before any login page.
      */
     #[Test]
     public function anEssentialAcrTheProviderCannotAssertIsRefusedToTheClient(): void
     {
         // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
-            'claims' => '{"id_token": {"acr": {"essential": true, "values": ["phrh"]}}}',
+            'claims' => '{"id_token": {"acr": {"essential": true, "values": ["urn:mace:incommon:iap:silver"]}}}',
         ]));
 
         // Then

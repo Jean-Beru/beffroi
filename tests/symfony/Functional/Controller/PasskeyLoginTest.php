@@ -238,7 +238,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertCount(1, self::sessionsOf('alice'));
         $session = $this->boundSession();
         static::assertTrue($session->id->equals($first->id));
-        static::assertSame(['pwd', 'hwk', 'user'], $session->methodReferences());
+        static::assertSame(['pwd', 'hwk', 'user', 'mfa'], $session->methodReferences());
         static::assertGreaterThan($first->authenticatedAt(), $session->authenticatedAt());
         static::assertSame('phrh', $session->authenticationContextClass()->value);
         static::assertSame([], self::events(UserAuthenticated::class), 'No session was opened.');
