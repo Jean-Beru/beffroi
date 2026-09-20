@@ -38,8 +38,7 @@ final class TotpAttemptsTest extends DatabaseTestCase
 
     /**
      * A TOTP enrolled an hour ago on the secret of RFC 6238, sealed by the KMS of the kernel; the backup
-     * codes hashed by the hasher of the suite, because ten argon2id hashes are seconds the tests that do
-     * not verify one need not pay.
+     * codes hashed by the hasher of the suite, the tests that verify one enrolling through the kernel.
      */
     protected function setUp(): void
     {

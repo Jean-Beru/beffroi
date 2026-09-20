@@ -29,6 +29,7 @@ use Heidi\Core\Tests\Fixture\Totps;
 use function intdiv;
 use PHPUnit\Framework\Attributes\Test;
 use function sleep;
+use function sprintf;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -483,7 +484,10 @@ final class LoginCodeTest extends PasskeyTestCase
 
     /**
      * OIDC Core §3.1.2.1 (prompt=login), architecture §3.2: a fresh login asked of a user who holds a
-     * TOTP goes through the code again, and records both proofs on the session the browser has.
+     * TOTP goes through the code again, and records both proofs on the session the browser has. The
+     * first code spent its step (RFC 6238 §5.2); the second is the one of the next step, which the drift
+     * of one step accepts now rather than in thirty seconds. The rows keep seconds: the fresh login is
+     * dated the second after the first.
      */
     #[Test]
     public function aFreshLoginOfATotpUserGoesThroughTheCodeAgain(): void
@@ -494,7 +498,7 @@ final class LoginCodeTest extends PasskeyTestCase
         $this->submitLogin($first, 'alice', self::PASSWORD);
         $this->submitCode($first, $this->codeAt(new DateTimeImmutable()));
         $session = $this->boundSession();
-        sleep(TotpCredential::PERIOD + 1);
+        sleep(1);
         $interaction = $this->authorize([
             'prompt' => 'login',
         ]);
@@ -502,7 +506,7 @@ final class LoginCodeTest extends PasskeyTestCase
         static::assertSame('/login/code?interaction=' . $interaction, $this->browser->getResponse()->headers->get('Location'));
 
         // When
-        $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()));
+        $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()->modify(sprintf('+%d seconds', TotpCredential::PERIOD))));
 
         // Then
         static::assertCount(1, self::sessionsOf('alice'));
@@ -560,8 +564,8 @@ final class LoginCodeTest extends PasskeyTestCase
 
     /**
      * A user with a password and a TOTP enrolled an hour ago on the secret of RFC 6238; the backup codes
-     * are hashed by the hasher of the kernel only when a test spends one, ten argon2id hashes being
-     * seconds the others need not pay.
+     * are hashed by the hasher of the kernel only when a test spends one, the others being content with a
+     * hash that verifies nothing.
      */
     private function userWithTotp(string $username, string $password, bool $hashedBackupCodes = false): User
     {
