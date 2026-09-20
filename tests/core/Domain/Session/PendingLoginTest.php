@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace Heidi\Core\Tests\Domain\Session;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Security\PendingLogin;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\PendingLogin;
 use Heidi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §5.4: what the browser holds between the password and the code.
+ * Architecture §3.2: what an integration holds between the first factor and the code.
  */
 final class PendingLoginTest extends TestCase
 {

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Authentication;
 
+use function array_map;
 use DateInterval;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
+use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
@@ -20,11 +22,14 @@ use Heidi\Core\Domain\Event\AuthenticationFailureReason;
 use Heidi\Core\Domain\Event\PasswordRehashed;
 use Heidi\Core\Domain\Event\UserAuthenticated;
 use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Domain\Session\PendingLogin;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakeAttemptLimiter;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Core\Tests\Fixture\Totps;
 use const PASSWORD_BCRYPT;
 use function password_hash;
 use PHPUnit\Framework\Attributes\Test;
@@ -64,7 +69,7 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->attempts, $this->clock, $this->events);
+        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->attempts, new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
     }
 
     #[Test]
@@ -77,6 +82,7 @@ final class PasswordAuthenticatorTest extends TestCase
         $session = $this->authenticator->authenticate($this->tenant, ' alice ', 'correct horse', $context);
 
         // Then
+        static::assertInstanceOf(AuthenticationSession::class, $session);
         static::assertSame($this->alice, $session->user);
         static::assertSame(['pwd'], $session->methodReferences());
         static::assertSame('1', $session->authenticationContextClass()->value);
@@ -97,6 +103,7 @@ final class PasswordAuthenticatorTest extends TestCase
         $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
 
         // Then
+        static::assertInstanceOf(AuthenticationSession::class, $session);
         static::assertSame($session, $this->sessions->find($session->id));
     }
 
@@ -393,7 +400,7 @@ final class PasswordAuthenticatorTest extends TestCase
     {
         // Given
         $hasher = new FakePasswordHasher();
-        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), new FakeAttemptLimiter(0), $this->clock, $this->events);
+        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), new FakeAttemptLimiter(0), new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
 
         // When
         try {
@@ -467,6 +474,7 @@ final class PasswordAuthenticatorTest extends TestCase
         $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
 
         // Then
+        static::assertInstanceOf(AuthenticationSession::class, $session);
         static::assertSame($this->alice, $session->user);
         static::assertSame([], $this->attempts->attempts);
     }
@@ -485,6 +493,108 @@ final class PasswordAuthenticatorTest extends TestCase
 
         // Then
         static::assertSame([$this->alice->id->toRfc4122()], $this->attempts->attempts);
+    }
+
+    /**
+     * Architecture §3.2: a password alone signs nobody in who holds an active second factor; the login is
+     * held until the code, and LoginCompletion opens the session on both.
+     */
+    #[Test]
+    public function aRightPasswordOfAUserWhoHoldsASecondFactorHoldsTheLoginInsteadOfOpeningASession(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, new FakePasswordHasher()));
+
+        // When
+        $login = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertInstanceOf(PendingLogin::class, $login);
+        static::assertSame($this->alice->id, $login->userId);
+        static::assertSame(['pwd'], array_map(static fn ($method) => $method->value, $login->methods));
+        static::assertEquals($this->clock->now(), $login->provenAt);
+        static::assertEquals($this->clock->now()->modify('+5 minutes'), $login->expiresAt);
+    }
+
+    #[Test]
+    public function aHeldLoginOpensNoSession(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, new FakePasswordHasher()));
+
+        // When
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
+    }
+
+    /**
+     * Nothing happened to the user yet: the second step announces its outcome, accepted or refused.
+     */
+    #[Test]
+    public function aHeldLoginAnnouncesNothing(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, new FakePasswordHasher()));
+
+        // When
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * The password was the right one, whoever tried before did not have it: the count is emptied whether
+     * the login is held or not, as on the firewall of the bundle.
+     */
+    #[Test]
+    public function aHeldLoginEmptiesTheCountOfTheUser(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, new FakePasswordHasher()));
+        for ($attempt = 1; $attempt <= 4; ++$attempt) {
+            $this->failToAuthenticate('alice', 'wrong');
+        }
+
+        // When
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([], $this->attempts->attempts);
+    }
+
+    /**
+     * The password was used, and rehashed when needed, at the one step that has it in clear.
+     */
+    #[Test]
+    public function aHeldLoginDatesTheUseOfThePassword(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, new FakePasswordHasher()));
+
+        // When
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertEquals($this->clock->now(), $this->credentials->findByUser($this->alice, PasswordCredential::class)[0]->lastUsedAt);
+    }
+
+    #[Test]
+    public function aRevokedSecondFactorHoldsNothing(): void
+    {
+        // Given
+        $totp = Totps::credential($this->alice, new FakePasswordHasher());
+        $totp->revoke(Fixtures::now()->modify('+1 hour'));
+        $this->credentials->save($totp);
+
+        // When
+        $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertInstanceOf(AuthenticationSession::class, $session);
+        static::assertSame(['pwd'], $session->methodReferences());
     }
 
     private function failToAuthenticate(string $identifier, string $password): AuthenticationFailedException

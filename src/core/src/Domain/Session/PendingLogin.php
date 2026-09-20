@@ -2,19 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Heidi\Core\Domain\Session;
 
 use DateInterval;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A login the firewall verified a first factor of and holds until the second one (architecture §5.4):
- * who proved what, and until when a code completes it; past that, the password is typed again. It opens
- * no session and grants nothing: what the browser holds between the two steps is this, and no token of
- * the firewall.
+ * A login whose first factor was verified and which is held until the second one (architecture §3.2):
+ * who proved what, and until when a code completes it; past that, the first factor is proven again. It
+ * opens no session and grants nothing: what an integration keeps between the two steps is this, and no
+ * session of the core; LoginCompletion is what turns it into one.
  */
 final readonly class PendingLogin
 {
