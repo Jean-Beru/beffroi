@@ -15,6 +15,7 @@ use Heidi\Core\Domain\Credential\TotpCredential;
 use Heidi\Core\Domain\Credential\TotpSecret;
 use Heidi\Core\Domain\Event\AuthenticationFailureReason;
 use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Port\CodeAttemptLimiterInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\SecretSealerInterface;
@@ -115,6 +116,42 @@ final class TotpAttemptsTest extends DatabaseTestCase
         // Then
         static::assertSame('otp', $method->value);
         static::assertTrue($totp->backupCodes[7]->isSpent());
+    }
+
+    /**
+     * Issue #128: the limit read before the secret is opened counts nothing; the five attempts are still
+     * there to be counted.
+     */
+    #[Test]
+    public function readingTheLimitCountsNoAttempt(): void
+    {
+        // Given
+        $attempts = self::service('test.heidi.code_attempts', CodeAttemptLimiterInterface::class);
+        for ($read = 1; $read <= 6; ++$read) {
+            static::assertTrue($attempts->mayAttempt($this->alice));
+        }
+
+        // When
+        $counted = [];
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $counted[] = $attempts->attempt($this->alice);
+        }
+
+        // Then
+        static::assertSame([true, true, true, true, true], $counted);
+    }
+
+    #[Test]
+    public function theLimitReadIsTheLimitCounted(): void
+    {
+        // Given
+        $attempts = self::service('test.heidi.code_attempts', CodeAttemptLimiterInterface::class);
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $attempts->attempt($this->alice);
+        }
+
+        // When / Then
+        static::assertFalse($attempts->mayAttempt($this->alice));
     }
 
     #[Test]

@@ -34,7 +34,9 @@ use Symfony\Component\Security\Http\SecurityRequestAttributes;
  * of the bundle has nothing to add on this route. The passport carries what both steps proved
  * (TotpCredentials) for the one LoginSuccessListener; a success sends the browser back to the login
  * page of its interaction, which resumes it; a failure, back to the code page with one flat message,
- * the pending login kept for another try within its lifetime.
+ * the pending login kept for another try within its lifetime. A KMS that does not open the secret is no
+ * failure of the login: the exception of the core goes on as it came, to the KmsUnavailableListener, the
+ * pending login kept for the same code once the KMS is back.
  */
 final readonly class TotpLoginAuthenticator implements AuthenticatorInterface, InteractiveAuthenticatorInterface
 {

@@ -36,6 +36,17 @@ final readonly class RateLimitedAttempts implements CodeAttemptLimiterInterface,
     ) {
     }
 
+    /**
+     * The state of the window without a token taken from it, as the rate limiter reads it on zero tokens:
+     * what it says then is how many tokens are left, never a refusal.
+     */
+    public function mayAttempt(User $user): bool
+    {
+        return $this->limiters->create($user->id->toRfc4122())
+            ->consume(0)
+            ->getRemainingTokens() > 0;
+    }
+
     public function attempt(User $user): bool
     {
         return $this->limiters->create($user->id->toRfc4122())
