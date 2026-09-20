@@ -25,6 +25,8 @@ final class Keys
 
     private static ?GeneratedKeyPair $otherPair = null;
 
+    private static ?EnvelopeEncrypter $envelopes = null;
+
     private static ?EnvelopeKeySealer $sealer = null;
 
     public static function pair(): GeneratedKeyPair
@@ -37,10 +39,18 @@ final class Keys
         return self::$otherPair ??= new JwtFrameworkKeyPairGenerator(2048)->generate(SignatureAlgorithm::RS256);
     }
 
+    /**
+     * The one KMS of the suite, under which the signing keys and the secrets of the users are sealed alike.
+     */
+    public static function envelopes(): EnvelopeEncrypter
+    {
+        return self::$envelopes ??= new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
+            self::KMS_KEY_ID => sodium_crypto_aead_xchacha20poly1305_ietf_keygen(),
+        ])));
+    }
+
     public static function sealer(): EnvelopeKeySealer
     {
-        return self::$sealer ??= new EnvelopeKeySealer(new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
-            self::KMS_KEY_ID => sodium_crypto_aead_xchacha20poly1305_ietf_keygen(),
-        ]))), self::KMS_KEY_ID);
+        return self::$sealer ??= new EnvelopeKeySealer(self::envelopes(), self::KMS_KEY_ID);
     }
 }

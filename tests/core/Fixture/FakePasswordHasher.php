@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Heidi\Core\Tests\Fixture;
 
 use function hash;
 use function hash_equals;
