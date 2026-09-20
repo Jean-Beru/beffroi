@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Http;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Security\PendingLogin;
+use Heidi\Core\Domain\Session\PendingLogin;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**

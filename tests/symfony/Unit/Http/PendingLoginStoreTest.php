@@ -6,8 +6,8 @@ namespace Heidi\Bundle\Tests\Unit\Http;
 
 use DateTimeImmutable;
 use Heidi\Bundle\Http\PendingLoginStore;
-use Heidi\Bundle\Security\PendingLogin;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\PendingLogin;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Session\Session;

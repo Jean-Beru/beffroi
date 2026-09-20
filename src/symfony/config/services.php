@@ -45,6 +45,7 @@ use Heidi\Bundle\Security\TotpLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
+use Heidi\Core\Application\Authentication\LoginCompletion;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Application\Authentication\SessionOpener;
@@ -307,6 +308,7 @@ return static function (ContainerConfigurator $container): void {
 
     // The core: use cases
     $services->set(PasswordAuthenticator::class);
+    $services->set(LoginCompletion::class);
     $services->set(SecondFactorRequirement::class);
     $services->set(PasskeyEnrolment::class);
     $services->set(PasskeyAuthentication::class);

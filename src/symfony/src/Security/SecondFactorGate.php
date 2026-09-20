@@ -10,6 +10,7 @@ use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\PendingLoginStore;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\PendingLogin;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
