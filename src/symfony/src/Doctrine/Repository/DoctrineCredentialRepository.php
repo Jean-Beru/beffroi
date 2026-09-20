@@ -10,7 +10,7 @@ use function array_values;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Core\Domain\Credential\Credential;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
+use Heidi\Core\Domain\Credential\ExternallyIdentifiedCredentialInterface;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidArgumentException;
@@ -26,18 +26,11 @@ use function usort;
 /**
  * Credentials, one table per kind (architecture §3.4, §5.3): the kinds are the entities mapped under
  * Credential, read once from the metadata; a kind asked for is read from its table, every kind from all of
- * them and listed together, oldest first. The field a party presents a credential by is named per kind
- * here and nowhere else.
+ * them and listed together, oldest first. A kind presented by an identifier of its own maps it as
+ * "externalId", the property ExternallyIdentifiedCredentialInterface asks for; nothing here names a kind.
  */
 final class DoctrineCredentialRepository implements CredentialRepositoryInterface
 {
-    /**
-     * @var array<class-string<Credential>, string> the field of the identifier a party presents
-     */
-    private const array EXTERNAL_ID_FIELDS = [
-        PasskeyCredential::class => 'credentialId',
-    ];
-
     /**
      * @var list<class-string<Credential>>|null
      */
@@ -96,14 +89,16 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
      */
     public function findByExternalId(Tenant $tenant, string $kind, string $externalId): ?Credential
     {
-        $repository = $this->manager($kind)
-            ->getRepository($kind);
-        $field = self::EXTERNAL_ID_FIELDS[$kind] ?? throw new InvalidArgumentException(sprintf('A credential of kind "%s" is not presented by an identifier.', $kind));
+        if (! is_a($kind, ExternallyIdentifiedCredentialInterface::class, true)) {
+            throw new InvalidArgumentException(sprintf('A credential of kind "%s" is not presented by an identifier.', $kind));
+        }
 
-        return $repository->findOneBy([
-            'tenant' => $tenant,
-            $field => $externalId,
-        ]);
+        return $this->manager($kind)
+            ->getRepository($kind)
+            ->findOneBy([
+                'tenant' => $tenant,
+                'externalId' => $externalId,
+            ]);
     }
 
     public function save(Credential $credential): void
