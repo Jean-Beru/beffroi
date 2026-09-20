@@ -57,11 +57,14 @@ final readonly class Jwts
 
     /**
      * The signature against the JWK Set of the tenant, then "iss", "aud", "exp" and "iat" the way a
-     * relying party checks them (OIDC Core §3.1.3.7) at the time given.
+     * relying party checks them (OIDC Core §3.1.3.7) at the time given. A logout token has no "exp"
+     * (RFC 8417 §2), so what must be there is said by the caller.
+     *
+     * @param list<string> $mandatory the claims the token must carry
      *
      * @return array{header: array<string, mixed>, claims: array<string, mixed>}
      */
-    public function verify(string $compactJws, string $audience, DateTimeImmutable $at): array
+    public function verify(string $compactJws, string $audience, DateTimeImmutable $at, array $mandatory = ['iss', 'aud', 'exp', 'iat']): array
     {
         $jws = new CompactSerializer()
             ->unserialize($compactJws);
@@ -73,7 +76,7 @@ final readonly class Jwts
             new AudienceChecker($audience),
             new ExpirationTimeChecker($clock),
             new IssuedAtChecker($clock),
-        ])->check($claims, ['iss', 'aud', 'exp', 'iat']);
+        ])->check($claims, $mandatory);
 
         return [
             'header' => $jws->getSignature(0)

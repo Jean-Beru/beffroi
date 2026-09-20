@@ -113,8 +113,10 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
+use Heidi\Oidc\Application\EndSession\BackChannelLogout;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
+use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
@@ -142,6 +144,7 @@ use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
@@ -278,6 +281,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
     $services->set(DoctrineAuthorizationCodeRepository::class);
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
+    // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6)
+    $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
     $services->set(DoctrineAccessTokenRepository::class);
@@ -415,4 +420,6 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwksHandler::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
+    $services->set(LogoutTokenIssuer::class);
+    $services->set(BackChannelLogout::class);
 };

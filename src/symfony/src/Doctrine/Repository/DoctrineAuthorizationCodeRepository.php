@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Doctrine\Repository;
 
+use function array_values;
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
+use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Heidi\Oidc\Port\LoggedInClientsInterface;
 use function is_string;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
@@ -21,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  *
  * @extends DoctrineRepository<AuthorizationCode>
  */
-final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements AuthorizationCodeRepositoryInterface
+final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements AuthorizationCodeRepositoryInterface, LoggedInClientsInterface
 {
     public function __construct(ManagerRegistry $registry)
     {
@@ -46,6 +49,32 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
             ]);
 
         return $code !== null && ClientResolver::isResolved($code) ? $code : null;
+    }
+
+    /**
+     * The grants of the session that were exchanged for tokens, each client once, oldest grant first. A
+     * code still waiting at the token endpoint gave the client no session (Back-Channel Logout 1.0 §2.6),
+     * and a code of a client no longer registered names nobody to tell.
+     *
+     * @return list<Client>
+     */
+    public function ofSession(Uuid $session): array
+    {
+        $codes = $this->repository()
+            ->findBy([
+                'session' => $session,
+            ], [
+                'issuedAt' => 'ASC',
+                'codeHash' => 'ASC',
+            ]);
+        $clients = [];
+        foreach ($codes as $code) {
+            if ($code->isUsed() && ClientResolver::isResolved($code)) {
+                $clients[$code->clientId] = $code->client;
+            }
+        }
+
+        return array_values($clients);
     }
 
     /**

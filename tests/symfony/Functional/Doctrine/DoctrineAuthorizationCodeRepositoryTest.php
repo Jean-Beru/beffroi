@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
@@ -16,7 +17,9 @@ use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Heidi\Oidc\Port\LoggedInClientsInterface;
 use PHPUnit\Framework\Attributes\Test;
+use function sort;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -129,6 +132,77 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
 
         // When / Then
         static::assertNull(self::codes()->findByCodeHash(AuthorizationCode::hash($code)));
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.6: the clients that hold a token of the session, each once; a code still
+     * waiting at the token endpoint names nobody.
+     */
+    #[Test]
+    public function theClientsOfASessionAreThoseThatExchangedACodeInIt(): void
+    {
+        // Given
+        $session = self::session(self::user());
+        self::used($session, self::client(), 'first-of-the-demo');
+        self::used($session, self::client(), 'second-of-the-demo');
+        self::used($session, self::client('legacy-app'), 'of-the-legacy-app');
+        self::codes()->save(self::code(AuthorizationCode::generate(), self::client('native-app'), $session, null));
+        self::reload();
+
+        // When
+        $clients = array_map(static fn (Client $client): string => $client->clientId, self::loggedInClients()->ofSession($session->id));
+
+        // Then
+        sort($clients);
+        static::assertSame(['legacy-app', 'oidc-demo'], $clients);
+    }
+
+    /**
+     * Another browser of the same user keeps its clients: the question is about one session.
+     */
+    #[Test]
+    public function theClientsOfAnotherSessionAreNotListed(): void
+    {
+        // Given
+        $user = self::user();
+        $session = self::session($user);
+        self::used(self::session($user, self::now()->modify('+1 second')), self::client(), 'of-the-other-session');
+        self::reload();
+
+        // When / Then
+        static::assertSame([], self::loggedInClients()->ofSession($session->id));
+    }
+
+    /**
+     * A client removed from the configuration names nobody to tell of a logout, as it names nobody at the
+     * token endpoint.
+     */
+    #[Test]
+    public function aClientNoLongerRegisteredIsNotListed(): void
+    {
+        // Given
+        $session = self::session(self::user());
+        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://ghost.example/callback')]);
+        self::used($session, $ghost, 'of-the-ghost');
+        self::reload();
+
+        // When / Then
+        static::assertSame([], self::loggedInClients()->ofSession($session->id));
+    }
+
+    /**
+     * A code the client exchanged for tokens.
+     */
+    private static function used(AuthenticationSession $session, Client $client, string $code): void
+    {
+        $record = self::code($code, $client, $session, null);
+        $record->consume(self::now()->modify('+90 seconds'));
+        self::codes()->save($record);
+    }
+
+    private static function loggedInClients(): LoggedInClientsInterface
+    {
+        return self::service('test.heidi.logged_in_clients', LoggedInClientsInterface::class);
     }
 
     private static function code(string $code, Client $client, AuthenticationSession $session, ?ClaimsRequest $claims): AuthorizationCode

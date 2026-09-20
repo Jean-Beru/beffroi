@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Bridge\InMemory;
 
+use function array_keys;
 use function array_map;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -230,6 +231,29 @@ final class InMemoryRepositoriesTest extends TestCase
 
         // When / Then
         static::assertFalse($repository->consume($this->code('one'), Fixtures::now()));
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.6: the clients of a session come back as a list, whatever the number of
+     * grants each of them holds, because a caller iterates them and a gap would be a client kept twice.
+     */
+    #[Test]
+    public function theClientsOfASessionComeBackAsAListOfEachClientOnce(): void
+    {
+        // Given
+        $repository = new InMemoryAuthorizationCodeRepository();
+        foreach (['one', 'two'] as $value) {
+            $code = $this->code($value);
+            $code->consume(Fixtures::now());
+            $repository->save($code);
+        }
+
+        // When
+        $clients = $repository->ofSession($this->session->id);
+
+        // Then
+        static::assertSame([0], array_keys($clients));
+        static::assertSame($this->client, $clients[0]);
     }
 
     #[Test]

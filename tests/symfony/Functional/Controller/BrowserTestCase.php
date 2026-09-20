@@ -205,6 +205,23 @@ abstract class BrowserTestCase extends DatabaseTestCase
         return self::string($header['kid'] ?? null);
     }
 
+    /**
+     * The claims of a compact JWS, unverified: the test reads what the endpoint wrote.
+     *
+     * @return array<string, mixed>
+     */
+    protected static function claimsOf(string $compactJws): array
+    {
+        $claims = json_decode(self::base64UrlDecode(explode('.', $compactJws)[1]), true, 8, JSON_THROW_ON_ERROR);
+        static::assertIsArray($claims);
+        $members = [];
+        foreach ($claims as $name => $value) {
+            $members[(string) $name] = $value;
+        }
+
+        return $members;
+    }
+
     private static function base64UrlDecode(string $value): string
     {
         $decoded = base64_decode(strtr($value, '-_', '+/'), true);

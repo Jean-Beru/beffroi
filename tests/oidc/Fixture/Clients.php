@@ -8,6 +8,7 @@ use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
@@ -37,5 +38,21 @@ final class Clients
     public static function public(Tenant $tenant, string $clientId = 'spa'): Client
     {
         return new Client($tenant, $clientId, 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')]);
+    }
+
+    /**
+     * A client the provider tells when a session it signed in ends (Back-Channel Logout 1.0 §2.2).
+     */
+    public static function withBackChannelLogout(Tenant $tenant, string $clientId = 'spa', string $logoutUri = 'https://spa.example/backchannel-logout'): Client
+    {
+        return new Client(
+            $tenant,
+            $clientId,
+            'Single page application',
+            TokenEndpointAuthMethod::None,
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            backChannelLogoutUri: new ClientUri($logoutUri),
+        );
     }
 }

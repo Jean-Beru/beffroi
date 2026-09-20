@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
-use function base64_decode;
 use DateTimeImmutable;
-use function explode;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
@@ -16,9 +14,6 @@ use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
-use function json_decode;
-use const JSON_THROW_ON_ERROR;
-use function strtr;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -228,24 +223,5 @@ abstract class PasskeyTestCase extends BrowserTestCase
         }
 
         return $events;
-    }
-
-    /**
-     * The claims of a compact JWS, unverified: the test reads what the endpoint wrote.
-     *
-     * @return array<string, mixed>
-     */
-    protected static function claimsOf(string $compactJws): array
-    {
-        $payload = base64_decode(strtr(explode('.', $compactJws)[1], '-_', '+/'), true);
-        static::assertIsString($payload);
-        $claims = json_decode($payload, true, 8, JSON_THROW_ON_ERROR);
-        static::assertIsArray($claims);
-        $strings = [];
-        foreach ($claims as $name => $value) {
-            $strings[(string) $name] = $value;
-        }
-
-        return $strings;
     }
 }

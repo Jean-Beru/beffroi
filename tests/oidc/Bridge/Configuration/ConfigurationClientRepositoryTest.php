@@ -294,6 +294,48 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
+     * Back-Channel Logout 1.0 §2.2: a client says where to be told a session ended, and whether it reads
+     * the "sid" of the token.
+     */
+    #[Test]
+    public function aClientDeclaresWhereItIsToldASessionEnded(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'demo' => self::DEMO + [
+                'backchannel_logout_uri' => 'https://demo.localhost/backchannel-logout',
+                'backchannel_logout_session_required' => true,
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'demo');
+
+        // Then
+        static::assertSame('https://demo.localhost/backchannel-logout', (string) $client->backChannelLogoutUri);
+        static::assertTrue($client->backChannelLogoutSessionRequired);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.2: a client that declares nothing is told nothing.
+     */
+    #[Test]
+    public function aClientIsToldOfNoLogoutUntilItDeclaresAUri(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'demo' => self::DEMO,
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'demo');
+
+        // Then
+        static::assertNull($client->backChannelLogoutUri);
+        static::assertFalse($client->backChannelLogoutSessionRequired);
+    }
+
+    /**
      * A wrong definition fails when the repository is built, not when the client first shows up.
      *
      * @param array<string, mixed> $definition
@@ -396,6 +438,22 @@ final class ConfigurationClientRepositoryTest extends TestCase
         yield 'unknown signing algorithm' => [$base + [
             'id_token_signed_response_alg' => 'HS256',
         ], 'must be one of: RS256'];
+        yield 'back-channel logout URI over plain http' => [$base + [
+            'backchannel_logout_uri' => 'http://rp.example/backchannel-logout',
+        ], 'HTTPS'];
+        yield 'back-channel logout URI with a fragment' => [$base + [
+            'backchannel_logout_uri' => 'https://rp.example/backchannel-logout#x',
+        ], 'fragment'];
+        yield 'back-channel logout URI not a string' => [$base + [
+            'backchannel_logout_uri' => ['https://rp.example/backchannel-logout'],
+        ], 'backchannel_logout_uri option of the client "bad" must be a string'];
+        yield 'backchannel_logout_session_required as a string' => [$base + [
+            'backchannel_logout_uri' => 'https://rp.example/backchannel-logout',
+            'backchannel_logout_session_required' => 'true',
+        ], 'backchannel_logout_session_required option of the client "bad" must be a boolean'];
+        yield 'a "sid" required with nowhere to send it' => [$base + [
+            'backchannel_logout_session_required' => true,
+        ], 'registers no backchannel_logout_uri'];
     }
 
     /**
