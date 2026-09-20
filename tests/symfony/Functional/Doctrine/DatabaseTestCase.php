@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use function copy;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
@@ -21,6 +22,7 @@ use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
+use function is_string;
 use function sprintf;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -53,10 +55,39 @@ abstract class DatabaseTestCase extends WebTestCase
     }
 
     /**
-     * The schema is dropped and created in one transaction: SQLite syncs the file once instead of once per
-     * statement, which is the difference between 40 ms and 400 ms for every test of this suite.
+     * The database file of the first test of the process, once its schema is created and its tenant
+     * synchronised, kept beside it as the template every later test starts from: a copy of the file, a
+     * millisecond, where the schema dropped and created by every test was 160 ms of its time. The
+     * template is rebuilt by every process, never trusted from a previous run.
      */
+    private static ?string $template = null;
+
     private static function prepareDatabase(): void
+    {
+        $connection = self::entityManager()
+            ->getConnection();
+        $connection->close();
+        $database = static::getContainer()->getParameter('heidi_test.database');
+        if (! is_string($database)) {
+            static::fail('The database of the test kernel is not a file.');
+        }
+        if (self::$template === null) {
+            self::createDatabase();
+            $connection->close();
+            self::$template = $database . '.template';
+            copy($database, self::$template) || static::fail('The template of the database was not written.');
+        } else {
+            copy(self::$template, $database) || static::fail('The database was not restored from its template.');
+        }
+        self::entityManager()
+            ->clear();
+    }
+
+    /**
+     * The schema is dropped and created in one transaction: SQLite syncs the file once instead of once per
+     * statement, the difference between 40 ms and 400 ms.
+     */
+    private static function createDatabase(): void
     {
         $entityManager = self::entityManager();
         $schema = new SchemaTool($entityManager);
@@ -66,8 +97,6 @@ abstract class DatabaseTestCase extends WebTestCase
         });
         self::service('test.heidi.tenant_synchronizer', TenantSynchronizer::class)
             ->synchronize();
-        self::entityManager()
-            ->clear();
     }
 
     protected static function entityManager(): EntityManagerInterface

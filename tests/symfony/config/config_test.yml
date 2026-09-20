@@ -82,7 +82,7 @@ security:
 # all names, to show the two schemas side by side (decision 0002).
 doctrine:
     dbal:
-        url: 'sqlite:///%kernel.cache_dir%/heidi.sqlite'
+        url: 'sqlite:///%heidi_test.database%'
     orm:
         validate_xml_mapping: true
         mappings:
@@ -101,6 +101,8 @@ doctrine:
 # against a key file and against a LocalStack KMS (issue #58), to prove that the code between the
 # backends is the same. The sodium key is a fixture of this kernel and seals nothing outside of it.
 parameters:
+    # The file of the database above, which DatabaseTestCase copies from its template before every test.
+    heidi_test.database: '%kernel.cache_dir%/heidi.sqlite'
     env(HEIDI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(HEIDI_TEST_KMS_KEY_ID): signing
 
@@ -282,3 +284,9 @@ services:
     Heidi\Bundle\Tests\Functional\Security\CheapArgon2idHasher:
         tags:
             - { name: heidi.password_hasher, priority: 10 }
+
+    # The RSA keys of the suite at the 2048 bits RFC 7518 §3.3 requires rather than the 3072 the bundle
+    # generates: a key pair in 60 ms instead of 300, at every signingKey() and every rotation.
+    Heidi\Core\Bridge\JwtFramework\JwtFrameworkKeyPairGenerator:
+        arguments:
+            $rsaKeyBits: 2048
