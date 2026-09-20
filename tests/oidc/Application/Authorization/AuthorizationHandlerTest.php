@@ -7,6 +7,8 @@ namespace Heidi\Oidc\Tests\Application\Authorization;
 use function array_map;
 use DateInterval;
 use DateTimeImmutable;
+use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -18,6 +20,7 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Core\Tests\Fixture\Totps;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
@@ -85,6 +88,8 @@ final class AuthorizationHandlerTest extends TestCase
 
     private InMemoryAuthorizationCodeRepository $codes;
 
+    private InMemoryCredentialRepository $credentials;
+
     private RecordingEventDispatcher $events;
 
     private AuthorizationHandler $handler;
@@ -100,11 +105,13 @@ final class AuthorizationHandlerTest extends TestCase
         $this->interactions = new InMemoryInteractionRepository();
         $this->consents = new InMemoryConsentRepository();
         $this->codes = new InMemoryAuthorizationCodeRepository();
+        $this->credentials = new InMemoryCredentialRepository();
+        $this->credentials->save(Fixtures::password($this->alice));
         $this->events = new RecordingEventDispatcher();
         $jws = new FakeJwsVerifier();
         $jws->knows($this->tenant, self::ALICE_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo"}');
         $jws->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
-        $this->handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier($jws), Logins::passwordAndPasskey(), $this->clock, $this->events);
+        $this->handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier($jws), Logins::passwordAndPasskey(), $this->credentials, $this->clock, $this->events);
     }
 
     /**
@@ -1209,13 +1216,17 @@ final class AuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0010, the third success criterion of spike 3: a password session asked for "phr" is a
-     * step-up, the login page told what is missing, the interaction saved to be resumed.
+     * Decision 0010, the third success criterion of spike 3: a password session of a user who holds a
+     * passkey, asked for "phr", is a step-up, the login page told what is missing and which credential
+     * of the user would do, the interaction saved to be resumed.
      */
     #[Test]
     #[DataProvider('provideStepUpRequests')]
     public function aPasswordSessionAskedForAPasskeyClassIsSentToTheLoginForTheMissingFactor(AuthorizationRequest $request): void
     {
+        // Given
+        $passkey = $this->aliceHoldsAPasskey();
+
         // When
         $decision = $this->handler->begin($request, $this->session(), $this->context);
 
@@ -1224,6 +1235,7 @@ final class AuthorizationHandlerTest extends TestCase
         static::assertNotNull($login->stepUp);
         static::assertSame(['phr'], array_map(static fn (AuthenticationContextClass $class): string => $class->value, $login->stepUp->classes));
         static::assertSame(['pwd'], $login->stepUp->proofs->methodReferences());
+        static::assertSame([$passkey], $login->stepUp->credentials);
         static::assertSame(1, $this->interactions->saves);
         static::assertFalse($this->savedInteraction()->isCompleted());
     }
@@ -1242,13 +1254,16 @@ final class AuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0010: the step-up keeps the client's order among the classes it accepts; the login page
-     * reads which of its ways of signing in would satisfy one: a passkey satisfies "phr", a password
-     * adds nothing to a password session.
+     * Decision 0010: the step-up keeps the client's order among the classes a credential of the user
+     * reaches; the login page reads which of its ways of signing in would satisfy one: a passkey satisfies
+     * "phrh" and "2", a password adds nothing to a password session.
      */
     #[Test]
     public function theStepUpSaysWhichLoginWouldSatisfyTheClient(): void
     {
+        // Given
+        $this->aliceHoldsAPasskey();
+
         // When
         $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phrh', '2']), $this->session(), $this->context);
 
@@ -1285,6 +1300,9 @@ final class AuthorizationHandlerTest extends TestCase
     #[Test]
     public function promptNoneWithAStepUpIsLoginRequired(): void
     {
+        // Given
+        $this->aliceHoldsAPasskey();
+
         // Then
         $this->expectException(LoginRequiredException::class);
 
@@ -1317,6 +1335,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function thePasskeyProvenOnTheSessionDuringTheStepUpSatisfiesTheRequest(): void
     {
         // Given
+        $this->aliceHoldsAPasskey();
         $session = $this->session();
         $interaction = $this->loginRequired($this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $session, $this->context), LoginRequirement::StrongerFactorRequired)->interaction;
         $this->clock->sleep(30);
@@ -1343,6 +1362,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function anEssentialClassStillUnsatisfiedAfterTheLoginIsRefused(): void
     {
         // Given
+        $this->aliceHoldsAPasskey();
         $session = $this->session();
         $interaction = $this->loginRequired($this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $session, $this->context), LoginRequirement::StrongerFactorRequired)->interaction;
         $this->clock->sleep(30);
@@ -1368,6 +1388,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aVoluntaryClassStillUnsatisfiedAfterTheLoginIsAnsweredWithTheCurrentClass(): void
     {
         // Given
+        $this->aliceHoldsAPasskey();
         $session = $this->session();
         $interaction = $this->loginRequired($this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phr']), $session, $this->context), LoginRequirement::StrongerFactorRequired)->interaction;
         $this->clock->sleep(30);
@@ -1381,13 +1402,136 @@ final class AuthorizationHandlerTest extends TestCase
     }
 
     /**
+     * Architecture §4.3: the step-up is decided on what this user can still prove. An essential "acr" the
+     * session does not satisfy and no credential of the user could, a password-only user asked for "phr",
+     * is refused before any page, as for a class the provider cannot prove: the user could do nothing there.
+     */
+    #[Test]
+    public function anEssentialAcrNoCredentialOfTheUserCanProveFailsBeforeThePage(): void
+    {
+        // When
+        try {
+            $this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $this->session(), $this->context);
+            static::fail('The request should have been refused.');
+        } catch (UnmetAuthenticationRequirementsException $exception) {
+            // Then
+            static::assertSame('unmet_authentication_requirements', $exception->error);
+            static::assertTrue($exception->redirectable);
+            static::assertSame('The end user holds no credential able to satisfy any requested acr value.', $exception->errorDescription);
+            static::assertSame(1, $this->interactions->saves);
+            static::assertTrue($this->savedInteraction()->isCompleted());
+        }
+    }
+
+    /**
+     * Architecture §4.3: the same request with prompt=login is refused the same way, before the page
+     * the prompt would have asked for.
+     */
+    #[Test]
+    public function anEssentialAcrNoCredentialOfTheUserCanProveFailsBeforeThePagePromptLoginAsksFor(): void
+    {
+        // Then
+        $this->expectException(UnmetAuthenticationRequirementsException::class);
+
+        // When
+        $this->handler->begin(Requests::authorization($this->firstParty, prompts: [Prompt::Login], claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $this->session(), $this->context);
+    }
+
+    /**
+     * Architecture §4.3: a voluntary "acr" no credential of the user can prove is answered at once with
+     * the class the session has: no page the user could do nothing on.
+     */
+    #[Test]
+    public function aVoluntaryAcrNoCredentialOfTheUserCanProveIsAnsweredAtOnceWithTheCurrentClass(): void
+    {
+        // When
+        $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phr']), $this->session(), $this->context);
+
+        // Then
+        static::assertSame('1', $this->granted($decision)->code->authentication->contextClass);
+    }
+
+    /**
+     * Architecture §4.3: with prompt=login, as the re-authentication of Symfony sends it, a voluntary
+     * "acr" no credential of the user can prove leaves the login the prompt asks for, and nothing to step
+     * up to: the page asks for a new login, not for a factor the user does not have.
+     */
+    #[Test]
+    public function aVoluntaryAcrNoCredentialOfTheUserCanProveLeavesThePromptLoginAPlainReauthentication(): void
+    {
+        // When
+        $decision = $this->handler->begin(Requests::authorization($this->firstParty, prompts: [Prompt::Login], acrValues: ['phr']), $this->session(), $this->context);
+
+        // Then
+        $login = $this->loginRequired($decision, LoginRequirement::ReauthenticationRequested);
+        static::assertNull($login->stepUp);
+    }
+
+    /**
+     * Architecture §4.3: a revoked passkey authenticates nobody, the user is as if they had none.
+     */
+    #[Test]
+    public function aRevokedPasskeyOfTheUserCountsForNothing(): void
+    {
+        // Given
+        $this->aliceHoldsAPasskey()
+            ->revoke($this->clock->now());
+
+        // Then
+        $this->expectException(UnmetAuthenticationRequirementsException::class);
+
+        // When
+        $this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $this->session(), $this->context);
+    }
+
+    /**
+     * Architecture §4.3: the classes of the step-up are those a credential of the user reaches; a synced
+     * passkey reaches "phr", not "phrh", which the client put first.
+     */
+    #[Test]
+    public function theStepUpKeepsTheClassesACredentialOfTheUserReaches(): void
+    {
+        // Given
+        $this->aliceHoldsAPasskey(synced: true);
+
+        // When
+        $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phrh', 'phr']), $this->session(), $this->context);
+
+        // Then
+        $stepUp = $this->loginRequired($decision, LoginRequirement::StrongerFactorRequired)->stepUp;
+        static::assertNotNull($stepUp);
+        static::assertSame(['phr'], array_map(static fn (AuthenticationContextClass $class): string => $class->value, $stepUp->classes));
+    }
+
+    /**
+     * The acceptance of issue #92 once the TOTP exists: a password session of a user who enrolled a TOTP
+     * during it, asked for "2", is a step-up whose page names the code, not a passkey the user does not hold.
+     */
+    #[Test]
+    public function aPasswordSessionWithATotpAskedForTwoFactorsIsSentToTheLoginForTheCode(): void
+    {
+        // Given
+        $totp = Totps::credential($this->alice, new FakePasswordHasher());
+        $this->credentials->save($totp);
+
+        // When
+        $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['2']), $this->session(), $this->context);
+
+        // Then
+        $stepUp = $this->loginRequired($decision, LoginRequirement::StrongerFactorRequired)->stepUp;
+        static::assertNotNull($stepUp);
+        static::assertSame([$totp], $stepUp->credentials);
+        static::assertSame(['totp'], $stepUp->kinds());
+    }
+
+    /**
      * The lifetime of the interaction is the integration's to set; the default is that of architecture §4.3.
      */
     #[Test]
     public function theInteractionLifetimeIsConfigurable(): void
     {
         // Given
-        $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), Logins::passwordAndPasskey(), $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
+        $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), Logins::passwordAndPasskey(), $this->credentials, $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
 
         // When
         $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
@@ -1403,7 +1547,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function theCodeLifetimeIsConfigurable(): void
     {
         // Given
-        $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), Logins::passwordAndPasskey(), $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
+        $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), Logins::passwordAndPasskey(), $this->credentials, $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
 
         // When
         $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
@@ -1430,9 +1574,20 @@ final class AuthorizationHandlerTest extends TestCase
         return Fixtures::session($this->alice, $authenticatedAt);
     }
 
+    /**
+     * A passkey enrolled by Alice, bound to its authenticator unless synced.
+     */
+    private function aliceHoldsAPasskey(bool $synced = false): PasskeyCredential
+    {
+        $passkey = Fixtures::passkey($this->alice, backupEligible: $synced, backedUp: $synced);
+        $this->credentials->save($passkey);
+
+        return $passkey;
+    }
+
     private function handlerWith(Logins $logins): AuthorizationHandler
     {
-        return new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), $logins, $this->clock, $this->events);
+        return new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), $logins, $this->credentials, $this->clock, $this->events);
     }
 
     private function loginRequired(AuthorizationDecision $decision, LoginRequirement $requirement): LoginRequired

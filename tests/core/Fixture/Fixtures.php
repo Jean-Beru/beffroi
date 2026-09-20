@@ -11,6 +11,7 @@ use Heidi\Core\Bridge\Webauthn\StoredMetadata;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
+use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -54,6 +55,14 @@ final class Fixtures
         $authenticatedAt ??= self::now();
 
         return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, $proofs ?? AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
+    }
+
+    /**
+     * A password, hashed by the fake hasher.
+     */
+    public static function password(?User $user = null, ?DateTimeImmutable $createdAt = null): PasswordCredential
+    {
+        return new PasswordCredential(Uuid::v7(), $user ?? self::user(), new FakePasswordHasher()->hash('correct horse battery staple'), $createdAt ?? self::now());
     }
 
     /**

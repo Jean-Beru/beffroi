@@ -29,8 +29,8 @@
         <source>login.step_up.password</source>
         <target>Votre mot de passe la satisferait.</target>
       </trans-unit>
-      <trans-unit id="9702602430" resname="login.step_up.code">
-        <source>login.step_up.code</source>
+      <trans-unit id="9702602430" resname="login.step_up.totp">
+        <source>login.step_up.totp</source>
         <target>Votre mot de passe suivi du code de votre application d'authentification la satisferait.</target>
       </trans-unit>
       <trans-unit id="55b0f4b87b" resname="login.failed">

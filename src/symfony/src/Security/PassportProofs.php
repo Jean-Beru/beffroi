@@ -47,6 +47,6 @@ final readonly class PassportProofs implements ProvableMethodsInterface
 
     public function provableMethods(): array
     {
-        return array_merge([AuthenticationMethod::password()], PasskeyCredential::provableMethods(), TotpCredential::provableMethods());
+        return array_merge([AuthenticationMethod::password()], PasskeyCredential::everyProvableMethod(), TotpCredential::everyProvableMethod());
     }
 }

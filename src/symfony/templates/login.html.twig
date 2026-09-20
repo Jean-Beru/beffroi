@@ -3,9 +3,9 @@
    Below it, the passkey: hidden until the script of the bundle finds a browser that can hold one, then
    a button, and the autofill of the username field when the browser offers it (conditional UI); the
    signed assertion is posted as a form to the passkey authenticator of the same firewall. On a step-up
-   (decision 0010) the page names the classes the client accepts and says which way of signing in would
-   satisfy one (a passkey, the password, or the password followed by the code of an authenticator app);
-   both forms stay offered.
+   (decision 0010) the page names the classes the client accepts and says which of the credentials the
+   user holds would satisfy one, by kind (login.step_up.<kind>: a passkey, the password, a TOTP after the
+   password), nothing of a kind they do not hold; both forms stay offered.
    Overridable by an application under templates/bundles/HeidiBundle/. #}
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
@@ -20,14 +20,9 @@
     <p>{{ 'login.prompt'|trans({client: client.name}) }}</p>
     {% if step_up is not null %}
         <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|map(class => class.value)|join(' ') }}">{{ 'login.step_up'|trans({client: client.name}) }}</p>
-        {% if step_up.passkey %}
-            <p data-step-up="passkey">{{ 'login.step_up.passkey'|trans }}</p>
-        {% endif %}
-        {% if step_up.password %}
-            <p data-step-up="password">{{ 'login.step_up.password'|trans }}</p>
-        {% elseif step_up.code %}
-            <p data-step-up="code">{{ 'login.step_up.code'|trans }}</p>
-        {% endif %}
+        {% for kind in step_up.kinds %}
+            <p data-step-up="{{ kind }}">{{ ('login.step_up.' ~ kind)|trans }}</p>
+        {% endfor %}
     {% elseif requirement.value != 'no_session' %}
         <p data-requirement="{{ requirement.value }}">{{ 'login.reauthentication'|trans }}</p>
     {% endif %}
