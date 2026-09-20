@@ -290,7 +290,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(UserInfoHandler::class);
     $services->set(IntrospectionHandler::class);
     $services->set(RevocationHandler::class);
-    $services->set(DiscoveryHandler::class);
+    $services->set(DiscoveryHandler::class)
+        ->args([
+            '$grants' => tagged_iterator('heidi.oidc.grant'),
+        ]);
     $services->set(JwksHandler::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);

@@ -8,9 +8,11 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
+use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
+use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -21,7 +23,7 @@ final class DiscoveryHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider());
+        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), self::grants());
     }
 
     /**
@@ -132,7 +134,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), $lifetime);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), self::grants(), $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -163,7 +165,61 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), -1);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), self::grants(), -1);
+    }
+
+    /**
+     * OIDC Discovery §3, RFC 8414 §2: "grant_types_supported" is what the token endpoint serves, the grants
+     * tagged into it, and "token_endpoint_auth_methods_supported" what the client authenticator implements.
+     */
+    #[Test]
+    public function theDocumentAnnouncesTheGrantsWiredAndTheMethodsImplemented(): void
+    {
+        // When
+        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(['authorization_code', 'refresh_token'], $document['grant_types_supported']);
+        static::assertSame(['client_secret_basic', 'client_secret_post', 'none'], $document['token_endpoint_auth_methods_supported']);
+        static::assertSame(['client_secret_basic', 'client_secret_post', 'none'], $document['revocation_endpoint_auth_methods_supported']);
+        static::assertSame(['client_secret_basic', 'client_secret_post'], $document['introspection_endpoint_auth_methods_supported']);
+    }
+
+    /**
+     * A deployment that serves the authorization code grant only says so, and "offline_access" with it
+     * (OIDC Core §11: the scope asks for a refresh token).
+     */
+    #[Test]
+    public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), [new FakeGrant(GrantType::AuthorizationCode)]);
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(['authorization_code'], $document['grant_types_supported']);
+        static::assertSame(['openid', 'profile', 'email', 'address', 'phone'], $document['scopes_supported']);
+    }
+
+    #[Test]
+    public function aTokenEndpointWithoutAGrantIsRefusedAtConstruction(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
+
+        // When
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), []);
+    }
+
+    /**
+     * @return list<FakeGrant> the two grants of the token endpoint, as the bundle tags them
+     */
+    private static function grants(): array
+    {
+        return [new FakeGrant(GrantType::AuthorizationCode), new FakeGrant(GrantType::RefreshToken)];
     }
 
     /**

@@ -41,6 +41,16 @@ final class ScopeTest extends TestCase
         static::assertSame('openid', (string) Scope::openid());
     }
 
+    /**
+     * OIDC Core §11.
+     */
+    #[Test]
+    public function offlineAccessIsAScope(): void
+    {
+        // When / Then
+        static::assertSame('offline_access', (string) Scope::offlineAccess());
+    }
+
     #[Test]
     public function itEqualsAScopeOfTheSameValue(): void
     {

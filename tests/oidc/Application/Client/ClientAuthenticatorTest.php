@@ -73,6 +73,17 @@ final class ClientAuthenticatorTest extends TestCase
      * RFC 6749 §2.3.1: the identifier and the secret are form-urlencoded before being Basic-encoded, which
      * is what Symfony's ClientSecretBasic sends.
      */
+    /**
+     * RFC 6749 §2.3.1, OIDC Core §9: the three methods, in the order they are tried; what the discovery
+     * document announces (OIDC Discovery §3).
+     */
+    #[Test]
+    public function itNamesTheMethodsItImplementsInTheOrderItTriesThem(): void
+    {
+        // When / Then
+        static::assertSame([TokenEndpointAuthMethod::ClientSecretBasic, TokenEndpointAuthMethod::ClientSecretPost, TokenEndpointAuthMethod::None], ClientAuthenticator::methods());
+    }
+
     #[Test]
     public function itAuthenticatesWithClientSecretBasic(): void
     {
