@@ -13,6 +13,7 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\Token\TokenRequest;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
@@ -886,7 +887,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     {
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events);
 
-        return new AuthorizationCodeGrant($this->codes, $this->refreshTokens, $this->accessTokens, $issuer, $this->clock, $this->events, $familyLifetime ?? new DateInterval('P90D'), $refreshTokenWithoutOfflineAccess);
+        return new AuthorizationCodeGrant($this->codes, new RefreshTokenRevocation($this->refreshTokens), $this->accessTokens, $issuer, $this->clock, $this->events, $familyLifetime ?? new DateInterval('P90D'), $refreshTokenWithoutOfflineAccess);
     }
 
     /**

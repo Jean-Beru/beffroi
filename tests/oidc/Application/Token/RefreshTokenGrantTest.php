@@ -12,6 +12,7 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
+use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\Token\TokenRequest;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
@@ -75,7 +76,7 @@ final class RefreshTokenGrantTest extends TestCase
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events);
-        $this->grant = new RefreshTokenGrant($this->refreshTokens, $issuer, $this->clock, $this->events);
+        $this->grant = new RefreshTokenGrant($this->refreshTokens, new RefreshTokenRevocation($this->refreshTokens), $issuer, $this->clock, $this->events);
     }
 
     #[Test]

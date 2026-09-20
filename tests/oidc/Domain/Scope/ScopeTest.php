@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Scope;
 
+use function array_map;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -77,5 +78,63 @@ final class ScopeTest extends TestCase
         yield 'backslash' => ['open\\id'];
         yield 'control character' => ["open\tid"];
         yield 'beyond ASCII' => ['profilé'];
+    }
+
+    /**
+     * RFC 6749 §3.3: space-delimited, case-sensitive.
+     */
+    #[Test]
+    public function itParsesASpaceDelimitedListInOrder(): void
+    {
+        // When
+        $scopes = Scope::parseList('openid profile email');
+
+        // Then
+        static::assertSame(['openid', 'profile', 'email'], array_map(strval(...), $scopes));
+    }
+
+    #[Test]
+    public function aListIsASetTheFirstOccurrenceWins(): void
+    {
+        // When
+        $scopes = Scope::parseList('profile openid profile');
+
+        // Then
+        static::assertSame(['profile', 'openid'], array_map(strval(...), $scopes));
+    }
+
+    #[Test]
+    public function aListOfOneTokenIsThatToken(): void
+    {
+        // When
+        $scopes = Scope::parseList('openid');
+
+        // Then
+        static::assertCount(1, $scopes);
+        static::assertTrue($scopes[0]->equals(Scope::openid()));
+    }
+
+    #[Test]
+    #[DataProvider('provideInvalidLists')]
+    public function itRejectsAListWithATokenThatIsNotOne(string $list): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('RFC 6749 §3.3');
+
+        // When
+        Scope::parseList($list);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideInvalidLists(): iterable
+    {
+        yield 'empty' => [''];
+        yield 'two spaces make an empty token' => ['openid  profile'];
+        yield 'a leading space' => [' openid'];
+        yield 'a tab' => ["openid\tprofile"];
+        yield 'a token beyond ASCII' => ['openid profilé'];
     }
 }

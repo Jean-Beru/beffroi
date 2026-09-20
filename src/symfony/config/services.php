@@ -35,6 +35,7 @@ use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
+use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Application\Credential\CredentialRevocation;
 use Heidi\Core\Application\Identity\UserProvisioner;
@@ -89,6 +90,7 @@ use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
+use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
@@ -209,7 +211,7 @@ return static function (ContainerConfigurator $container): void {
             '$issuedJws' => tagged_iterator('heidi.issued_jws'),
         ]);
 
-    // The core: passwords; hashers are tagged by hand, the registry implements the port too
+    // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
     $services->set(NativePasswordHasher::class)
         ->tag('heidi.password_hasher');
     $services->set(PasswordHasherRegistry::class)
@@ -234,6 +236,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PasskeyEnrolment::class);
     $services->set(PasskeyAuthentication::class);
     $services->set(CredentialRevocation::class);
+    $services->set(SessionOpener::class);
     $services->set(SessionTerminator::class);
     $services->set(UserProvisioner::class);
 
@@ -271,6 +274,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AccessTokenJwsKind::class)
         ->tag('heidi.issued_jws');
     $services->set(TokenIssuer::class);
+    $services->set(RefreshTokenRevocation::class);
     $services->set(AuthorizationCodeGrant::class)
         ->tag('heidi.oidc.grant');
     $services->set(RefreshTokenGrant::class)
