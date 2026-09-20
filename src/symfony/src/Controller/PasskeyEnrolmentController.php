@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Bundle\Http\PasskeysPage;
@@ -13,7 +12,6 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Passkey\PasskeyEnrolment;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use Heidi\Core\Exception\InvalidArgumentException;
 use function is_string;
 use function mb_strlen;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,8 +19,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use function trim;
 
 /**
@@ -48,12 +44,10 @@ final readonly class PasskeyEnrolmentController
     public const string REFUSED = 'refused';
 
     public function __construct(
-        private TenantProvider $tenants,
-        private BrowserSession $browser,
+        private AccountAccess $account,
         private RequestContextFactory $contexts,
         private PasskeyEnrolment $enrolment,
         private PasskeyOptionsStore $options,
-        private CsrfTokenManagerInterface $csrf,
         private PasskeysPage $page,
         private InteractionPages $pages,
         private UrlGeneratorInterface $router,
@@ -63,13 +57,9 @@ final readonly class PasskeyEnrolmentController
     #[Route('/account/passkeys', name: self::ROUTE, methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
-        $session = $this->browser->authenticationSession($request, $this->tenants->provide());
-        if ($session === null) {
-            return $this->pages->error(Response::HTTP_UNAUTHORIZED, AccountPasskeysController::LOGIN_REQUIRED);
-        }
-        $token = $request->request->get('_token');
-        if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-            return $this->pages->error(Response::HTTP_FORBIDDEN, ConsentController::INVALID_CSRF_TOKEN);
+        $session = $this->account->granted($request, self::CSRF_TOKEN_ID);
+        if ($session instanceof Response) {
+            return $session;
         }
         $user = $session->user;
         $name = $request->request->get(self::NAME_PARAMETER);
@@ -84,7 +74,7 @@ final readonly class PasskeyEnrolmentController
         }
         try {
             $this->enrolment->complete($user, $name, $options, $attestation, $this->contexts->fromRequest($request));
-        } catch (CredentialEnrolmentFailedException|InvalidArgumentException) {
+        } catch (CredentialEnrolmentFailedException) {
             return $this->page->render($user, self::REFUSED, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

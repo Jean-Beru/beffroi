@@ -13,6 +13,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
+use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
@@ -38,12 +39,15 @@ use Heidi\Bundle\Security\IdentityUserProvider;
 use Heidi\Bundle\Security\InteractionLoginHandler;
 use Heidi\Bundle\Security\LoginFailureListener;
 use Heidi\Bundle\Security\LoginSuccessListener;
+use Heidi\Bundle\Security\PasskeyLogin;
 use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\PassportProofs;
 use Heidi\Bundle\Security\PasswordAttemptListener;
+use Heidi\Bundle\Security\PasswordLogin;
 use Heidi\Bundle\Security\RateLimitedAttempts;
 use Heidi\Bundle\Security\RefusalCost;
 use Heidi\Bundle\Security\SecondFactorGate;
+use Heidi\Bundle\Security\TotpLogin;
 use Heidi\Bundle\Security\TotpLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
@@ -172,6 +176,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RequestContextFactory::class);
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
+    // what every page of the account asks first: the session of this browser, and the form token when it posts
+    $services->set(AccountAccess::class);
     $services->set(InteractionLocale::class)
         ->args([
             '$enabledLocales' => '%kernel.enabled_locales%',
@@ -212,8 +218,16 @@ return static function (ContainerConfigurator $container): void {
     // a password of a user who holds a second factor is held until the code, verified by the second authenticator of the firewall
     $services->set(SecondFactorGate::class);
     $services->set(TotpLoginAuthenticator::class);
-    // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010)
-    $services->set(PassportProofs::class);
+    // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010):
+    // one class per login, and what is tagged is what the provider announces
+    $services->set(PasswordLogin::class)
+        ->tag('heidi.login');
+    $services->set(PasskeyLogin::class)
+        ->tag('heidi.login');
+    $services->set(TotpLogin::class)
+        ->tag('heidi.login');
+    $services->set(PassportProofs::class)
+        ->args([tagged_iterator('heidi.login')]);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
     // the attempts at a code and at a password, counted per user by the two limiters the bundle declares in the framework (architecture §3.4)
     $services->set('heidi.security.code_attempts', RateLimitedAttempts::class)

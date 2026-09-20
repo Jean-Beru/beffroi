@@ -18,7 +18,6 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use stdClass;
 use function strlen;
 use Symfony\Component\Clock\MockClock;
 
@@ -47,24 +46,6 @@ final class PasskeyEnrolmentTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
         $this->enrolment = new PasskeyEnrolment($this->credentials, $this->registrar, $this->clock, $this->events);
-    }
-
-    #[Test]
-    public function itEnrolsPasskeys(): void
-    {
-        // When / Then
-        static::assertSame(PasskeyCredential::class, $this->enrolment->kind());
-    }
-
-    #[Test]
-    public function aChallengeThatIsNotCreationOptionsIsRefused(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('The challenge of a passkey enrolment is its creation options.');
-
-        // When
-        $this->enrolment->complete($this->alice, 'Pixel', new stdClass(), '{}', Fixtures::context()); // @phpstan-ignore argument.type (the contract is broken on purpose)
     }
 
     #[Test]
@@ -123,6 +104,28 @@ final class PasskeyEnrolmentTest extends TestCase
         static::assertSame($passkey, $events[0]->credential);
         static::assertSame($context, $events[0]->context);
         static::assertSame($this->alice->tenant, $events[0]->tenant);
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.3: the model refuses a record whose backup flags contradict each other, and
+     * the enrolment refuses it as it refuses anything else, by the one exception its contract names.
+     */
+    #[Test]
+    public function aRecordTheModelRefusesFailsTheEnrolment(): void
+    {
+        // Given
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, backupEligible: false, backedUp: true));
+
+        // When
+        try {
+            $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
+            static::fail('The enrolment should have failed.');
+        } catch (CredentialEnrolmentFailedException $exception) {
+            // Then
+            static::assertInstanceOf(InvalidArgumentException::class, $exception->getPrevious());
+            static::assertSame([], $this->credentials->findByUser($this->alice));
+        }
     }
 
     #[Test]

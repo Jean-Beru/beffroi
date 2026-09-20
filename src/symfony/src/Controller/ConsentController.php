@@ -35,8 +35,6 @@ final readonly class ConsentController
 {
     public const string CSRF_TOKEN_ID = 'heidi_consent';
 
-    public const string INVALID_CSRF_TOKEN = 'invalid_csrf_token';
-
     public const string ANSWER_ALLOW = 'allow';
 
     public const string ANSWER_DENY = 'deny';
@@ -67,7 +65,7 @@ final readonly class ConsentController
         if ($request->isMethod('POST')) {
             $token = $parameters['_token'] ?? null;
             if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-                return $this->pages->error(Response::HTTP_FORBIDDEN, self::INVALID_CSRF_TOKEN);
+                return $this->pages->error(Response::HTTP_FORBIDDEN, InteractionPages::INVALID_CSRF_TOKEN);
             }
         }
         try {

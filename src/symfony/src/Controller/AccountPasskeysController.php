@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\PasskeysPage;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,12 +21,8 @@ final readonly class AccountPasskeysController
 {
     public const string ROUTE = 'heidi_interaction_account_passkeys';
 
-    public const string LOGIN_REQUIRED = 'login_required';
-
     public function __construct(
-        private TenantProvider $tenants,
-        private BrowserSession $browser,
-        private InteractionPages $pages,
+        private AccountAccess $account,
         private PasskeysPage $page,
     ) {
     }
@@ -36,9 +30,9 @@ final readonly class AccountPasskeysController
     #[Route('/account/passkeys', name: self::ROUTE, methods: ['GET'])]
     public function __invoke(Request $request): Response
     {
-        $session = $this->browser->authenticationSession($request, $this->tenants->provide());
-        if ($session === null) {
-            return $this->pages->error(Response::HTTP_UNAUTHORIZED, self::LOGIN_REQUIRED);
+        $session = $this->account->granted($request);
+        if ($session instanceof Response) {
+            return $session;
         }
 
         return $this->page->render($session->user);

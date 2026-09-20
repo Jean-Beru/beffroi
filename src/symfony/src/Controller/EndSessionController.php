@@ -35,8 +35,6 @@ final readonly class EndSessionController
 {
     public const string CSRF_TOKEN_ID = 'heidi_logout';
 
-    public const string INVALID_CSRF_TOKEN = 'invalid_csrf_token';
-
     public const string CONFIRM_PARAMETER = 'confirm';
 
     public const string CONFIRM_YES = 'yes';
@@ -78,7 +76,7 @@ final readonly class EndSessionController
         } else {
             $token = $parameters['_token'] ?? null;
             if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-                return $this->pages->error(Response::HTTP_FORBIDDEN, self::INVALID_CSRF_TOKEN);
+                return $this->pages->error(Response::HTTP_FORBIDDEN, InteractionPages::INVALID_CSRF_TOKEN);
             }
             if ($answer !== self::CONFIRM_YES) {
                 return $this->pages->render('logged_out.html.twig', [

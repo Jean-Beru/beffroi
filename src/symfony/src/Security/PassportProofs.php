@@ -4,49 +4,67 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Security;
 
-use function array_merge;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\TotpCredential;
+use function array_any;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use LogicException;
-use function sprintf;
-use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 
 /**
  * What the logins of the firewall prove, as the core names it (RFC 8176 §2), in one place: what a given
  * passport proved, for the session the listener opens, and everything a login here may prove, for the
- * discovery and the step-up (decision 0010). A fourth badge is a reader of proofs added here.
+ * discovery and the step-up (decision 0010). Neither is an enumeration: both are read from the logins
+ * that are tagged (ProvingLoginInterface), so that what the provider announces is what is wired, and a
+ * login added to the firewall is a class tagged and nothing edited.
  */
 final readonly class PassportProofs implements ProvableMethodsInterface
 {
     /**
-     * "pwd" for a password, what the flags of the assertion say for a passkey (PasskeyCredential::methods()),
-     * what the first step proved and then "otp" for a code (TotpCredentials). A firewall that
-     * authenticates another way is refused loudly rather than recorded wrongly.
+     * @param iterable<ProvingLoginInterface> $logins the logins of the firewall, at least one
+     */
+    public function __construct(
+        private iterable $logins,
+    ) {
+    }
+
+    /**
+     * The first login that recognises the passport answers; they are mutually exclusive, a passport
+     * carrying the badge of one login only. A firewall that authenticates another way is refused loudly
+     * rather than recorded wrongly.
      *
      * @return non-empty-list<AuthenticationMethod>
      */
     public function methods(Passport $passport): array
     {
-        if ($passport->hasBadge(PasswordCredentials::class)) {
-            return [AuthenticationMethod::password()];
-        }
-        $passkey = $passport->getBadge(PasskeyCredentials::class);
-        if ($passkey instanceof PasskeyCredentials) {
-            return $passkey->assertion->credential->methods($passkey->assertion->authenticatorData);
-        }
-        $code = $passport->getBadge(TotpCredentials::class);
-        if ($code instanceof TotpCredentials) {
-            return [...$code->login->methods, $code->method];
+        foreach ($this->logins as $login) {
+            $methods = $login->proofs($passport);
+            if ($methods !== null) {
+                return $methods;
+            }
         }
 
-        throw new LogicException(sprintf('The firewall authenticated a user of the bundle without a method the bundle knows: no "%s", "%s" nor "%s" badge on the passport.', PasswordCredentials::class, PasskeyCredentials::class, TotpCredentials::class));
+        throw new LogicException('The firewall authenticated a user of the bundle with a login none of the tagged ones recognises: the passport carries the badge of no login of the bundle.');
     }
 
+    /**
+     * Every method the wired logins prove, each once, in the order they are tagged.
+     *
+     * @return non-empty-list<AuthenticationMethod>
+     */
     public function provableMethods(): array
     {
-        return array_merge([AuthenticationMethod::password()], PasskeyCredential::everyProvableMethod(), TotpCredential::everyProvableMethod());
+        $methods = [];
+        foreach ($this->logins as $login) {
+            foreach ($login->everyProvableMethod() as $method) {
+                if (! array_any($methods, static fn (AuthenticationMethod $known): bool => $known->equals($method))) {
+                    $methods[] = $method;
+                }
+            }
+        }
+        if ($methods === []) {
+            throw new LogicException('The firewall of the interaction pages offers at least one login.');
+        }
+
+        return $methods;
     }
 }

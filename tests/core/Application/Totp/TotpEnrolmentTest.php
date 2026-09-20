@@ -14,7 +14,6 @@ use Heidi\Core\Domain\Credential\TotpCredential;
 use Heidi\Core\Domain\Event\CredentialEnrolled;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -24,7 +23,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
 use function rawurlencode;
-use stdClass;
 use Symfony\Component\Clock\MockClock;
 
 /**
@@ -53,13 +51,6 @@ final class TotpEnrolmentTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
         $this->enrolment = new TotpEnrolment($this->credentials, new ActiveTotp($this->credentials), Totps::algorithm(), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->clock, $this->events);
-    }
-
-    #[Test]
-    public function itEnrolsTotps(): void
-    {
-        // When / Then
-        static::assertSame(TotpCredential::class, $this->enrolment->kind());
     }
 
     /**
@@ -133,17 +124,6 @@ final class TotpEnrolmentTest extends TestCase
     }
 
     #[Test]
-    public function aChallengeThatIsNotAProvisioningIsRefused(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('The challenge of a TOTP enrolment is its provisioning.');
-
-        // When
-        $this->enrolment->complete($this->alice, '', new stdClass(), '000000', Fixtures::context()); // @phpstan-ignore argument.type (the contract is broken on purpose)
-    }
-
-    #[Test]
     public function aFirstCodeThatHoldsCreatesTheCredentialSealedAndHashed(): void
     {
         // Given
@@ -151,7 +131,7 @@ final class TotpEnrolmentTest extends TestCase
         $context = Fixtures::context($this->clock->now());
 
         // When
-        $totp = $this->enrolment->complete($this->alice, '', $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), $context);
+        $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), $context);
 
         // Then
         static::assertSame($this->alice, $totp->user);
@@ -174,7 +154,7 @@ final class TotpEnrolmentTest extends TestCase
         $provisioning = $this->enrolment->begin($this->alice);
 
         // When
-        $totp = $this->enrolment->complete($this->alice, '', $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
 
         // Then
         static::assertFalse($totp->acceptsStep(Totps::stepAt($this->clock->now())));
@@ -189,7 +169,7 @@ final class TotpEnrolmentTest extends TestCase
             ->modify('-30 seconds');
 
         // When
-        $totp = $this->enrolment->complete($this->alice, '', $provisioning, Totps::codeAt($early, $provisioning->secret), Fixtures::context($this->clock->now()));
+        $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($early, $provisioning->secret), Fixtures::context($this->clock->now()));
 
         // Then
         static::assertSame(Totps::stepAt($early), $totp->lastAcceptedStep);
@@ -203,7 +183,7 @@ final class TotpEnrolmentTest extends TestCase
         $context = Fixtures::context($this->clock->now());
 
         // When
-        $totp = $this->enrolment->complete($this->alice, '', $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), $context);
+        $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), $context);
 
         // Then
         static::assertCount(1, $this->events->events);
@@ -224,7 +204,7 @@ final class TotpEnrolmentTest extends TestCase
         $this->expectExceptionMessageIs('The code does not match the secret.');
 
         // When
-        $this->enrolment->complete($this->alice, '', $provisioning, Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret), Fixtures::context($this->clock->now()));
     }
 
     #[Test]
@@ -235,7 +215,7 @@ final class TotpEnrolmentTest extends TestCase
 
         // When
         try {
-            $this->enrolment->complete($this->alice, '', $provisioning, '000000', Fixtures::context($this->clock->now()));
+            $this->enrolment->complete($this->alice, $provisioning, '000000', Fixtures::context($this->clock->now()));
         } catch (CredentialEnrolmentFailedException) {
         }
 
@@ -260,7 +240,7 @@ final class TotpEnrolmentTest extends TestCase
         $this->expectExceptionMessageIs('The user has a TOTP already; it is revoked before another is enrolled.');
 
         // When
-        $this->enrolment->complete($this->alice, '', $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
     }
 
     #[Test]

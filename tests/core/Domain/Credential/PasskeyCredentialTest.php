@@ -192,16 +192,6 @@ final class PasskeyCredentialTest extends TestCase
         static::assertSame([], $passkey->provableMethods());
     }
 
-    /**
-     * Decision 0010, architecture §4.8: what the provider announces of passkeys is every flag at once.
-     */
-    #[Test]
-    public function everyMethodAnAssertionMayProveIsWhatTheProviderAnnounces(): void
-    {
-        // When / Then
-        static::assertSame(['hwk', 'swk', 'user', 'mfa'], array_map(static fn (AuthenticationMethod $method): string => $method->value, PasskeyCredential::everyProvableMethod()));
-    }
-
     #[Test]
     #[DataProvider('provideSignCounts')]
     public function itTellsASignCountRegressionTheWayWebauthnLibDoes(int $stored, int $received, bool $regresses): void
