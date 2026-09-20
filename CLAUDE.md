@@ -55,6 +55,18 @@ Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `
 - Every user-facing string is translated (XLIFF intl-icu, domain `heidi`, `en` and `fr`). The locale of an interaction comes from `ui_locales`, then `Accept-Language`, never from the URL.
 - Every session and event carries a `RequestContext` (IP, user agent, later GeoIP and device); enrichment is always asynchronous.
 
+## SOLID
+
+A rule of every PR, not a theme of a review. The review of 2026-09-20 (issue #97, PRs #102 to #106) fixed the forms below; each one names the class to imitate.
+
+- **One responsibility per class.** A block written a second time becomes a use case or a value object, never a third copy: opening a session is `SessionOpener` (the counterpart of `SessionTerminator`), revoking a set of refresh tokens is `RefreshTokenRevocation`, reading a scope list is `Scope::parseList()`, what a session had proven at a grant is `AuthenticationSnapshot`, a consent extends itself (`Consent::extendedWith()`). A use case orchestrates; a rule of an entity lives on the entity. A command that reads is not the command that writes (`heidi:user:show`, `heidi:user:profile`).
+- **Open by addition.** A new credential kind, grant, hasher, token format or authentication method is a class that implements the interface of its capability (`CredentialEnrolmentInterface`, `GrantInterface`, `AlgorithmPasswordHasherInterface`, `AccessTokenIssuerInterface` per format), tagged or listed in the wiring; never a `match` on kinds, an enum of kinds, a registry by class (`EXTERNAL_ID_FIELDS` was the last one) or a class name read. A kind names itself (`Credential::kind()`) and declares what it can do by an interface (`RevocableCredentialInterface`, `ExternallyIdentifiedCredentialInterface`). A closed set the protocol fixes (an algorithm, a PKCE method, a response mode) may be an enum; a set the wiring decides may not.
+- **One source of truth.** What the provider announces is derived from what is wired: the discovery document reads the tagged grants and `ClientAuthenticator::methods()`, never an enumeration kept in parallel. Two places that must agree are one place.
+- **Substitutable.** What an implementation throws is in the contract of its interface (`@throws`, and a precondition such as `supports()` is on the contract that has it, not on the port a use case sees). A subtype narrows a return type, never widens a precondition. Intersection types (`Credential&RevocableCredentialInterface`) over downcasts.
+- **Small interfaces, per capability.** A port has one to five methods, a caller sees what it calls and nothing else (`PasswordHasherInterface` for the use cases, `AlgorithmPasswordHasherInterface` for the registry; the `CanRevoke*` companions of the access token repository). When two callers use disjoint halves of a port, split it.
+- **Depend inwards.** `Domain` depends on PHP, PSR, the core and the bricks of `docs/09-briques.md` (webauthn-lib in the core's model is the one named exception); `Application` on `Domain` and `Port`; `Bridge` implements. Deptrac (`.ci-tools/deptrac.yaml`) enforces it; a new dependency is a layer added there with its reason, never a rule relaxed.
+- **What the current spike cannot absorb** goes to an issue tied to the spike that makes it necessary (decision 0005), with the pattern to reproduce named in it, as #98 to #101 were; it is not built ahead and not left unwritten.
+
 ## Tests
 
 Same form as the maintainer's other projects. Every test, unit or functional, present or to come, follows it.
