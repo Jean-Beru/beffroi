@@ -191,8 +191,8 @@ final class JwksHandlerTest extends TestCase
     private static function keysAsOidcJwksReadsThem(string $payload): array
     {
         $document = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
-        static::assertTrue(is_array($document));
-        static::assertTrue(is_array($document['keys'] ?? null));
+        static::assertIsArray($document);
+        static::assertIsArray($document['keys'] ?? null);
 
         $keys = [];
         foreach ($document['keys'] as $jwk) {

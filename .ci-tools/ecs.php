@@ -42,7 +42,6 @@ return ECSConfig::configure()
         SetList::PSR_12,
         SetList::CLEAN_CODE,
         SetList::SPACES,
-        SetList::SYMPLIFY,
         SetList::ARRAY,
         SetList::COMMON,
         SetList::COMMENTS,
