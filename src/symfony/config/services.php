@@ -38,7 +38,8 @@ use Heidi\Bundle\Security\LoginFailureListener;
 use Heidi\Bundle\Security\LoginSuccessListener;
 use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\PassportProofs;
-use Heidi\Bundle\Security\RateLimitedCodeAttempts;
+use Heidi\Bundle\Security\PasswordAttemptListener;
+use Heidi\Bundle\Security\RateLimitedAttempts;
 use Heidi\Bundle\Security\SecondFactorGate;
 use Heidi\Bundle\Security\TotpLoginAuthenticator;
 use Heidi\Bundle\Security\UserChecker;
@@ -84,6 +85,7 @@ use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\MetadataBlobStoreInterface;
 use Heidi\Core\Port\PasskeyAuthenticatorInterface;
 use Heidi\Core\Port\PasskeyRegistrarInterface;
+use Heidi\Core\Port\PasswordAttemptLimiterInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\SecretSealerInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
@@ -208,10 +210,14 @@ return static function (ContainerConfigurator $container): void {
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010)
     $services->set(PassportProofs::class);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
-    // the attempts at a code, counted by the limiter the bundle declares in the framework (architecture §3.4)
-    $services->set(RateLimitedCodeAttempts::class)
-        ->args([service('limiter.' . RateLimitedCodeAttempts::LIMITER)]);
-    $services->alias(CodeAttemptLimiterInterface::class, RateLimitedCodeAttempts::class);
+    // the attempts at a code and at a password, counted per user by the two limiters the bundle declares in the framework (architecture §3.4)
+    $services->set('heidi.security.code_attempts', RateLimitedAttempts::class)
+        ->args([service('limiter.' . RateLimitedAttempts::CODE_LIMITER)]);
+    $services->alias(CodeAttemptLimiterInterface::class, 'heidi.security.code_attempts');
+    $services->set('heidi.security.password_attempts', RateLimitedAttempts::class)
+        ->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
+    $services->alias(PasswordAttemptLimiterInterface::class, 'heidi.security.password_attempts');
+    $services->set(PasswordAttemptListener::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
     $services->set(TenantProvider::class)

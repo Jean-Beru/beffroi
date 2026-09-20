@@ -32,5 +32,6 @@ Choices that are not specification requirements:
 | Locale outside the URL | The RP does not know the user's language; an interaction URL must not vary with it |
 | No synchronous write outside protocol needs | An authentication request never waits for an enrichment, a log or a purge |
 | Two route planes | An attack on login must not stop `/token` and `/jwks` from answering |
+| Five attempts a minute on a user's password, and five on a user's code, counted per user before anything is verified, never per address | A password and a six-digit code are guessed online one attempt at a time; an identity provider serves whole organisations behind one address, so a limiter keyed by the address (Symfony's `login_throttling`) refuses them as a whole. A correct password empties the count; an unknown username names no user and is counted nowhere, the decoy hash making it cost a wrong password all the same; a refused attempt is told "failed" like any other |
 
 Report a vulnerability privately: see `SECURITY.md` in the repository.

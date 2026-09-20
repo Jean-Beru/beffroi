@@ -21,6 +21,7 @@ use Heidi\Core\Domain\Event\PasswordRehashed;
 use Heidi\Core\Domain\Event\UserAuthenticated;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\FakeAttemptLimiter;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use const PASSWORD_BCRYPT;
@@ -44,6 +45,8 @@ final class PasswordAuthenticatorTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private FakeAttemptLimiter $attempts;
+
     private MockClock $clock;
 
     private PasswordAuthenticator $authenticator;
@@ -58,8 +61,9 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, new NativePasswordHasher()->hash('correct horse'), Fixtures::now()));
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->events = new RecordingEventDispatcher();
+        $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->clock, $this->events);
+        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, new NativePasswordHasher(), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->attempts, $this->clock, $this->events);
     }
 
     #[Test]
@@ -326,5 +330,148 @@ final class PasswordAuthenticatorTest extends TestCase
         // Then
         static::assertCount(1, $this->events->of(PasswordRehashed::class));
         static::assertSame($this->credentials->findByUser($carol, PasswordCredential::class)[0], $this->events->of(PasswordRehashed::class)[0]->credential);
+    }
+
+    /**
+     * Decision 0006: five attempts a minute on a user, the sixth refused before anything is verified, the
+     * right password included.
+     */
+    #[Test]
+    public function theSixthAttemptIsRefusedWhateverThePassword(): void
+    {
+        // Given
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $this->failToAuthenticate('alice', 'wrong')->reason);
+        }
+
+        // When
+        $exception = $this->failToAuthenticate('alice', 'correct horse');
+
+        // Then
+        static::assertSame(AuthenticationFailureReason::TooManyAttempts, $exception->reason);
+    }
+
+    #[Test]
+    public function aRefusedAttemptIsRecordedWithTheUser(): void
+    {
+        // Given
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->failToAuthenticate('alice', 'wrong');
+        }
+
+        // When
+        $this->failToAuthenticate('alice', 'correct horse');
+
+        // Then
+        $failure = $this->events->of(AuthenticationFailed::class)[5];
+        static::assertSame(AuthenticationFailureReason::TooManyAttempts, $failure->reason);
+        static::assertSame($this->alice, $failure->user);
+        static::assertSame('alice', $failure->identifier);
+    }
+
+    #[Test]
+    public function aRefusedAttemptOpensNoSession(): void
+    {
+        // Given
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->failToAuthenticate('alice', 'wrong');
+        }
+
+        // When
+        $this->failToAuthenticate('alice', 'correct horse');
+
+        // Then
+        static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
+    }
+
+    /**
+     * The attempt is counted before the password is verified, on the user that was named.
+     */
+    #[Test]
+    public function anAttemptIsCountedBeforeThePasswordIsVerified(): void
+    {
+        // When
+        $this->failToAuthenticate('alice', 'wrong');
+
+        // Then
+        static::assertSame([$this->alice->id->toRfc4122()], $this->attempts->attempts);
+    }
+
+    /**
+     * A limit per user cannot count a user who does not exist; the decoy hash makes the attempt cost the
+     * same all the same.
+     */
+    #[Test]
+    public function anUnknownUserIsNotCounted(): void
+    {
+        // When
+        $this->failToAuthenticate('mallory', 'whatever');
+
+        // Then
+        static::assertSame([], $this->attempts->attempts);
+    }
+
+    #[Test]
+    public function aUserWithoutPasswordIsCounted(): void
+    {
+        // Given
+        $bob = Fixtures::user($this->tenant, 'bob', 'bob-subject');
+        $this->users->save($bob);
+
+        // When
+        $this->failToAuthenticate('bob', 'anything');
+
+        // Then
+        static::assertSame([$bob->id->toRfc4122()], $this->attempts->attempts);
+    }
+
+    /**
+     * A correct password empties the count: whoever tried before did not have it.
+     */
+    #[Test]
+    public function aSuccessfulLoginEmptiesTheCountOfTheUser(): void
+    {
+        // Given
+        for ($attempt = 1; $attempt <= 4; ++$attempt) {
+            $this->failToAuthenticate('alice', 'wrong');
+        }
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+        for ($attempt = 1; $attempt <= 4; ++$attempt) {
+            $this->failToAuthenticate('alice', 'wrong');
+        }
+
+        // When
+        $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame($this->alice, $session->user);
+        static::assertSame([], $this->attempts->attempts);
+    }
+
+    /**
+     * A disabled user with the right password is not a login: the count stays.
+     */
+    #[Test]
+    public function aDisabledUserWithTheRightPasswordKeepsTheCount(): void
+    {
+        // Given
+        $this->alice->disable(Fixtures::now());
+
+        // When
+        $this->failToAuthenticate('alice', 'correct horse');
+
+        // Then
+        static::assertSame([$this->alice->id->toRfc4122()], $this->attempts->attempts);
+    }
+
+    private function failToAuthenticate(string $identifier, string $password): AuthenticationFailedException
+    {
+        try {
+            $this->authenticator->authenticate($this->tenant, $identifier, $password, Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException $exception) {
+            return $exception;
+        }
+
+        static::fail('Authentication should have failed.');
     }
 }
