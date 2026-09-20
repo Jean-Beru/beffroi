@@ -20,7 +20,7 @@ use Symfony\Component\Uid\Uuid;
 use function trim;
 
 /**
- * Revokes a credential of a user by the identifier heidi:user:profile lists (architecture §5.5): it never
+ * Revokes a credential of a user by the identifier heidi:user:show lists (architecture §5.5): it never
  * authenticates again and its row stays. A kind that is not revocable, the password, is replaced instead.
  */
 #[AsCommand(
@@ -44,7 +44,7 @@ final readonly class UserRevokeCredentialCommand
         SymfonyStyle $io,
         #[Argument(description: 'The username of the user.')]
         string $username,
-        #[Argument(description: 'The identifier of the credential, as "heidi:user:profile" lists it.')]
+        #[Argument(description: 'The identifier of the credential, as "heidi:user:show" lists it.')]
         string $id,
     ): int {
         try {
