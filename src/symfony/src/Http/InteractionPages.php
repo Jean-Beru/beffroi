@@ -17,6 +17,17 @@ use Twig\Environment;
  */
 final readonly class InteractionPages
 {
+    /**
+     * The browser holds no session of the core and the page needs one; nothing is sent back to a client,
+     * a page of the account belongs to none.
+     */
+    public const string LOGIN_REQUIRED = 'login_required';
+
+    /**
+     * A form of an interaction or of the account came back without the token it was rendered with.
+     */
+    public const string INVALID_CSRF_TOKEN = 'invalid_csrf_token';
+
     public const array HEADERS = [
         'X-Frame-Options' => 'DENY',
         'Content-Security-Policy' => "frame-ancestors 'none'",

@@ -65,7 +65,7 @@ final class TotpAttemptsTest extends DatabaseTestCase
         $aStepAgo = new DateTimeImmutable('-30 seconds');
 
         // When
-        $totp = self::enrolment()->complete($bob, '', $provisioning, $this->codeAt($aStepAgo), self::context());
+        $totp = self::enrolment()->complete($bob, $provisioning, $this->codeAt($aStepAgo), self::context());
 
         // Then
         static::assertStringNotContainsString($provisioning->secret->bytes, $totp->sealedSecret);
@@ -108,7 +108,7 @@ final class TotpAttemptsTest extends DatabaseTestCase
         $bob = self::user('bob', 'bob-subject');
         $provisioning = self::enrolment()->begin($bob);
         $this->secret = $provisioning->secret;
-        $totp = self::enrolment()->complete($bob, '', $provisioning, $this->codeAt(new DateTimeImmutable()), self::context());
+        $totp = self::enrolment()->complete($bob, $provisioning, $this->codeAt(new DateTimeImmutable()), self::context());
 
         // When
         $method = self::authentication()->authenticate($bob, $provisioning->backupCodes[7], self::context());

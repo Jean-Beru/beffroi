@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
 use Heidi\Core\Application\Totp\TotpEnrolment;
 use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * The first step of the enrolment of an authenticator app (architecture §5.2): the provisioning drawn
@@ -36,27 +31,20 @@ final readonly class TotpEnrolmentBeginController
     public const string ALREADY_ENROLLED = 'already_enrolled';
 
     public function __construct(
-        private TenantProvider $tenants,
-        private BrowserSession $browser,
+        private AccountAccess $account,
         private RequestContextFactory $contexts,
         private TotpEnrolment $enrolment,
         private TotpProvisioningStore $provisionings,
-        private CsrfTokenManagerInterface $csrf,
         private TwoFactorPage $page,
-        private InteractionPages $pages,
     ) {
     }
 
     #[Route('/account/two-factor/begin', name: self::ROUTE, methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
-        $session = $this->browser->authenticationSession($request, $this->tenants->provide());
-        if ($session === null) {
-            return $this->pages->error(Response::HTTP_UNAUTHORIZED, AccountPasskeysController::LOGIN_REQUIRED);
-        }
-        $token = $request->request->get('_token');
-        if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-            return $this->pages->error(Response::HTTP_FORBIDDEN, ConsentController::INVALID_CSRF_TOKEN);
+        $session = $this->account->granted($request, self::CSRF_TOKEN_ID);
+        if ($session instanceof Response) {
+            return $session;
         }
         $user = $session->user;
         try {

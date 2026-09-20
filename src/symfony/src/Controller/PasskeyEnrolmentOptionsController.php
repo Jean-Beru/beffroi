@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\BrowserSession;
+use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Core\Application\Passkey\PasskeyEnrolment;
@@ -27,8 +26,7 @@ final readonly class PasskeyEnrolmentOptionsController
     public const string ROUTE = 'heidi_interaction_account_passkeys_options';
 
     public function __construct(
-        private TenantProvider $tenants,
-        private BrowserSession $browser,
+        private AccountAccess $account,
         private PasskeyEnrolment $enrolment,
         private WebauthnCeremonies $ceremonies,
         private PasskeyOptionsStore $options,
@@ -38,10 +36,10 @@ final readonly class PasskeyEnrolmentOptionsController
     #[Route('/account/passkeys/options', name: self::ROUTE, methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
-        $session = $this->browser->authenticationSession($request, $this->tenants->provide());
+        $session = $this->account->signedIn($request);
         if ($session === null) {
             return new JsonResponse([
-                'error' => AccountPasskeysController::LOGIN_REQUIRED,
+                'error' => InteractionPages::LOGIN_REQUIRED,
             ], Response::HTTP_UNAUTHORIZED, InteractionPages::HEADERS);
         }
         $options = $this->enrolment->begin($session->user);

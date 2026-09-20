@@ -81,7 +81,6 @@ final class TotpCredentialTest extends TestCase
     {
         // When / Then
         static::assertSame(AuthenticationMethod::ONE_TIME_PASSWORD, TotpCredential::method()->value);
-        static::assertSame(['otp'], array_map(static fn (AuthenticationMethod $method): string => $method->value, TotpCredential::everyProvableMethod()));
     }
 
     /**

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\TwoFactorPage;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,9 +23,7 @@ final readonly class AccountTwoFactorController
     public const string ROUTE = 'heidi_interaction_account_two_factor';
 
     public function __construct(
-        private TenantProvider $tenants,
-        private BrowserSession $browser,
-        private InteractionPages $pages,
+        private AccountAccess $account,
         private TwoFactorPage $page,
     ) {
     }
@@ -35,9 +31,9 @@ final readonly class AccountTwoFactorController
     #[Route('/account/two-factor', name: self::ROUTE, methods: ['GET'])]
     public function __invoke(Request $request): Response
     {
-        $session = $this->browser->authenticationSession($request, $this->tenants->provide());
-        if ($session === null) {
-            return $this->pages->error(Response::HTTP_UNAUTHORIZED, AccountPasskeysController::LOGIN_REQUIRED);
+        $session = $this->account->granted($request);
+        if ($session instanceof Response) {
+            return $session;
         }
 
         return $this->page->render($session->user);

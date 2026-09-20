@@ -49,6 +49,36 @@ final class AuthenticationContextRequestTest extends TestCase
     }
 
     /**
+     * OIDC Core §5.5.1.1: only an essential request that names a class binds the provider, and only such
+     * a request is refused when nothing can satisfy it.
+     */
+    /**
+     * @param list<string> $acrValues
+     */
+    #[Test]
+    #[DataProvider('provideAcrRequests')]
+    public function aRequestBindsTheProviderWhenItIsEssentialAndNamesAClass(?string $claims, array $acrValues, bool $demands): void
+    {
+        // When
+        $requested = AuthenticationContextRequest::of($this->request(claims: $claims, acrValues: $acrValues));
+
+        // Then
+        static::assertSame($demands, $requested->demandsAClass());
+    }
+
+    /**
+     * @return iterable<string, array{string|null, list<string>, bool}>
+     */
+    public static function provideAcrRequests(): iterable
+    {
+        yield 'nothing requested' => [null, [], false];
+        yield 'acr_values, voluntary by definition' => [null, ['phr'], false];
+        yield 'essential and naming a class' => ['{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}', [], true];
+        yield 'essential and naming none' => ['{"id_token": {"acr": {"essential": true}}}', [], false];
+        yield 'voluntary claim request naming a class' => ['{"id_token": {"acr": {"values": ["phr"]}}}', [], false];
+    }
+
+    /**
      * OIDC Core §3.1.2.1 "acr_values": a voluntary request, in the client's order of preference.
      */
     #[Test]
