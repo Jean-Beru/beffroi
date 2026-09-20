@@ -46,6 +46,7 @@ Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `
 ## Conventions
 
 - PHP 8.4, Symfony 8.2 (dev branches until release), `declare(strict_types=1)`, `final` by default, public readonly properties on value objects, no getters/setters on entities.
+- No variadic parameter (`Type ...$values`): a function that takes several values takes a typed list (`@param list<Type> $values`). Spreading a list into a call (`...$arguments`) is not concerned.
 - Test names cite the specification section they verify: `#[Test] public function itRejectsPlainPkceMethod(): void` with `RFC 7636 §4.3` in the docblock. The form of a test is fixed, see "Tests" below.
 - Every secret string comes from `random_bytes()`, every secret comparison goes through `hash_equals()`, no boolean coming from a third party is ever cast.
 - Security rules of decision 0006 are code, not configuration: no `insecure_*` option, no global compatibility switch.

@@ -8,6 +8,7 @@ use function array_column;
 use DateInterval;
 use function dirname;
 use Heidi\Bundle\Doctrine\Type\AddressType;
+use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
@@ -29,6 +30,8 @@ use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Domain\Session\AuthenticationContextClass;
+use Heidi\Core\Domain\Session\AuthenticationPredicate;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
@@ -72,6 +75,16 @@ final class HeidiBundle extends AbstractBundle
 
     public const array DEFAULT_ALLOWED_SCOPES = ['openid', 'profile', 'email'];
 
+    /**
+     * The default policy of decision 0010, restated for the same reason; a test checks it equals the core's.
+     */
+    public const array DEFAULT_AUTHENTICATION_CLASSES = [
+        AuthenticationContextClass::PHISHING_RESISTANT_HARDWARE => AuthenticationPredicate::PhishingResistantHardware->value,
+        AuthenticationContextClass::PHISHING_RESISTANT => AuthenticationPredicate::PhishingResistant->value,
+        AuthenticationContextClass::TWO_FACTORS => AuthenticationPredicate::TwoFactors->value,
+        AuthenticationContextClass::SINGLE_FACTOR => AuthenticationPredicate::SingleFactor->value,
+    ];
+
     protected string $extensionAlias = 'heidi';
 
     public function configure(DefinitionConfigurator $definition): void
@@ -95,6 +108,15 @@ final class HeidiBundle extends AbstractBundle
             ->scalarNode('name')
             ->info('Display name; the host of the issuer when absent.')
             ->defaultNull()
+            ->end()
+            ->arrayNode('authentication_classes')
+            ->info('The "acr" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider; the default policy ("phrh", "phr", "2", "1") when absent.')
+            ->useAttributeAsKey('name')
+            ->normalizeKeys(false)
+            ->defaultValue(self::DEFAULT_AUTHENTICATION_CLASSES)
+            ->enumPrototype()
+            ->values(array_column(AuthenticationPredicate::cases(), 'value'))
+            ->end()
             ->end()
             ->end()
             ->end()
@@ -242,6 +264,7 @@ final class HeidiBundle extends AbstractBundle
         CodeChallengeType::NAME => CodeChallengeType::class,
         BytesType::NAME => BytesType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
+        AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
     ];
 
     /**
@@ -313,7 +336,8 @@ final class HeidiBundle extends AbstractBundle
         $services->get(TenantFactory::class)
             ->arg('$issuer', self::string($tenant, 'issuer'))
             ->arg('$slug', self::string($tenant, 'slug'))
-            ->arg('$name', is_string($tenant['name'] ?? null) ? $tenant['name'] : null);
+            ->arg('$name', is_string($tenant['name'] ?? null) ? $tenant['name'] : null)
+            ->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'));
 
         // the DSN is an argument, not a parameter: it may carry key material
         $services->set('heidi.kms', EncrypterInterface::class)

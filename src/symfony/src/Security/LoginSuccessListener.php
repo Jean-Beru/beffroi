@@ -12,16 +12,12 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Domain\Event\PasskeyUsed;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
-use LogicException;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use function sprintf;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
@@ -42,6 +38,7 @@ final readonly class LoginSuccessListener
         private SessionTerminator $terminator,
         private RequestContextFactory $contexts,
         private EventDispatcherInterface $events,
+        private PassportProofs $proofs,
     ) {
     }
 
@@ -53,7 +50,7 @@ final readonly class LoginSuccessListener
             return;
         }
         $passport = $event->getPassport();
-        $methods = self::methods($passport);
+        $methods = $this->proofs->methods($passport);
         $request = $event->getRequest();
         $context = $this->contexts->fromRequest($request);
         $now = $context->receivedAt;
@@ -80,26 +77,6 @@ final readonly class LoginSuccessListener
                 static fn (DateTimeImmutable $provenAt): int => $provenAt->getTimestamp(),
                 $session->proofs->entries,
             ));
-    }
-
-    /**
-     * What the passport proved, as the core names it (RFC 8176 §2): "pwd" for a password, what the flags
-     * of the assertion say for a passkey (PasskeyCredential::methods()). A firewall that authenticates
-     * another way is refused loudly rather than recorded wrongly.
-     *
-     * @return non-empty-list<AuthenticationMethod>
-     */
-    private static function methods(Passport $passport): array
-    {
-        if ($passport->hasBadge(PasswordCredentials::class)) {
-            return [AuthenticationMethod::password()];
-        }
-        $passkey = $passport->getBadge(PasskeyCredentials::class);
-        if ($passkey instanceof PasskeyCredentials) {
-            return $passkey->assertion->credential->methods($passkey->assertion->authenticatorData);
-        }
-
-        throw new LogicException(sprintf('The firewall authenticated a user of the bundle without a method the bundle knows: no "%s" nor "%s" badge on the passport.', PasswordCredentials::class, PasskeyCredentials::class));
     }
 
     /**

@@ -11,6 +11,7 @@ use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\DBAL\Types\Type;
 use Heidi\Bundle\Doctrine\Type\AddressType;
+use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
@@ -27,7 +28,10 @@ use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Subject;
+use Heidi\Core\Domain\Session\AuthenticationContextClass;
+use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\AuthenticationPredicate;
 use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\Device;
 use Heidi\Core\Domain\Session\DeviceType as DeviceKind;
@@ -76,6 +80,7 @@ final class TypesTest extends TestCase
         ]), '{"userinfo":{"email":{"essential":true},"name":null},"id_token":{"acr":{"values":["silver","gold"]},"auth_time":{"essential":true,"value":1789000000}}}'];
         yield 'claims request asking for nothing' => [ClaimsRequestType::class, new ClaimsRequest(), '{"userinfo":{},"id_token":{}}'];
         yield 'passkey user handle' => [PasskeyUserHandleType::class, new PasskeyUserHandle(str_repeat("\xff", 64)), str_repeat('_', 85) . 'w'];
+        yield 'authentication context policy' => [AuthenticationContextPolicyType::class, new AuthenticationContextPolicy([new AuthenticationContextClass('urn:okta:loa:2fa:any', AuthenticationPredicate::TwoFactors), AuthenticationContextClass::singleFactor()]), '{"classes":[{"name":"urn:okta:loa:2fa:any","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}'];
     }
 
     /**
@@ -145,6 +150,9 @@ final class TypesTest extends TestCase
         ]];
         yield 'a string for a claims request' => [ClaimsRequestType::class, '{}'];
         yield 'a string for a user handle' => [PasskeyUserHandleType::class, str_repeat('h', 64)];
+        yield 'an array for a policy' => [AuthenticationContextPolicyType::class, [
+            '1' => 'single_factor',
+        ]];
     }
 
     /**
@@ -196,6 +204,11 @@ final class TypesTest extends TestCase
         yield 'a claims request that is not a string' => [ClaimsRequestType::class, 12];
         yield 'a user handle of 63 bytes' => [PasskeyUserHandleType::class, str_repeat('a', 84)];
         yield 'a user handle that is not base64url' => [PasskeyUserHandleType::class, str_repeat('*', 86)];
+        yield 'a policy without classes' => [AuthenticationContextPolicyType::class, '{"classes":[]}'];
+        yield 'a policy that is a list' => [AuthenticationContextPolicyType::class, '[1]'];
+        yield 'a policy with a predicate the provider does not define' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":"1","predicate":"attested"}]}'];
+        yield 'a policy with a numeric name' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":1,"predicate":"single_factor"}]}'];
+        yield 'a policy naming level 0' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":"1","predicate":"single_factor"},{"name":"0","predicate":"single_factor"}]}'];
     }
 
     /**
@@ -278,10 +291,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresThirteenTypes(): void
+    public function theBundleDeclaresFourteenTypes(): void
     {
         // When / Then
-        static::assertCount(13, HeidiBundle::DBAL_TYPES);
+        static::assertCount(14, HeidiBundle::DBAL_TYPES);
     }
 
     /**

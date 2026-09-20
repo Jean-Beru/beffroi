@@ -10,6 +10,8 @@ use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
+use Heidi\Core\Domain\Credential\PasskeyCredential;
+use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Domain\Interaction\LoginRequired;
 use Heidi\Oidc\Exception\InteractionCompletedException;
@@ -24,7 +26,9 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 /**
  * The login page of an interaction (architecture §4.3, §5.2), shown while a login is still required. The
  * POST is the check path of the form login of the firewall (§5.4), which sends the browser back here; a
- * refused login is one flat message whatever the reason (decision 0006).
+ * refused login is one flat message whatever the reason (decision 0006). On a step-up (decision 0010) the
+ * page says which of its two ways of signing in would satisfy the client; both stay offered, a login that
+ * satisfies nothing being the way back to the client with what the session has.
  */
 #[AsController]
 final readonly class LoginController
@@ -66,11 +70,17 @@ final readonly class LoginController
         }
 
         $lastUsername = $this->authentication->getLastUsername();
+        $stepUp = $decision->stepUp;
 
         return $this->pages->render('login.html.twig', [
             'interaction' => $interaction,
             'client' => $interaction->request->client,
             'requirement' => $decision->requirement,
+            'step_up' => $stepUp === null ? null : [
+                'classes' => $stepUp->classes,
+                'password' => $stepUp->wouldBeMetBy([AuthenticationMethod::password()]),
+                'passkey' => $stepUp->wouldBeMetBy(PasskeyCredential::provableMethods()),
+            ],
             'username' => $lastUsername === '' ? $interaction->request->loginHint : $lastUsername,
             'failed' => $this->authentication->getLastAuthenticationError() !== null,
         ]);

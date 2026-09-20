@@ -37,12 +37,15 @@ final class Fixtures
         return new RequestContext($receivedAt ?? self::now(), $ipAddress, $userAgent);
     }
 
-    public static function session(?User $user = null, ?DateTimeImmutable $authenticatedAt = null): AuthenticationSession
+    /**
+     * @param AuthenticationProofs|null $proofs a password proven at the authentication instant when null
+     */
+    public static function session(?User $user = null, ?DateTimeImmutable $authenticatedAt = null, ?AuthenticationProofs $proofs = null): AuthenticationSession
     {
         $user ??= self::user();
         $authenticatedAt ??= self::now();
 
-        return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
+        return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, $proofs ?? AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
     }
 
     /**

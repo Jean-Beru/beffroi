@@ -6,12 +6,15 @@ namespace Heidi\Bundle\Tests\Unit;
 
 use function array_map;
 use Heidi\Bundle\HeidiBundle;
+use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Config\Definition\ArrayNode;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -50,6 +53,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             'issuer' => 'https://op.test',
             'slug' => 'default',
             'name' => null,
+            'authentication_classes' => HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
         ], $config['tenant']);
         static::assertSame([
             'kms' => 'sodium://?keys[signing]=AAAA',
@@ -66,6 +70,47 @@ final class HeidiBundleConfigurationTest extends TestCase
             'refresh_token_absolute_ttl' => 7776000,
         ], $config['tokens']);
         static::assertSame([], $config['clients']);
+    }
+
+    /**
+     * Decision 0010: the default policy the tree carries is the one of the core, so that a tenant that
+     * configures nothing and a row written before the option existed speak the same vocabulary.
+     */
+    #[Test]
+    public function theDefaultAuthenticationClassesAreThoseOfTheCore(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test', 'default', null, new MockClock('2026-09-20T12:00:00+00:00'), HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES);
+
+        // When / Then
+        static::assertTrue(AuthenticationContextPolicy::default()->equals($factory->authenticationContextPolicy()));
+    }
+
+    /**
+     * Decision 0010: the classes are configured in order, each on a predicate of the provider, the
+     * numeric names kept as names.
+     */
+    #[Test]
+    public function theAuthenticationClassesAreReadInOrderOnThePredicatesOfTheProvider(): void
+    {
+        // When
+        $config = self::process([
+            'tenant' => self::MINIMAL['tenant'] + [
+                'authentication_classes' => [
+                    'urn:okta:loa:2fa:any' => 'two_factors',
+                    '2' => 'two_factors',
+                    '1' => 'single_factor',
+                ],
+            ],
+        ] + self::MINIMAL);
+
+        // Then
+        static::assertIsArray($config['tenant']);
+        static::assertSame([
+            'urn:okta:loa:2fa:any' => 'two_factors',
+            2 => 'two_factors',
+            1 => 'single_factor',
+        ], $config['tenant']['authentication_classes']);
     }
 
     /**
@@ -113,6 +158,14 @@ final class HeidiBundleConfigurationTest extends TestCase
             'tenant' => [],
             'keys' => self::MINIMAL['keys'],
         ], 'issuer'];
+        yield 'a predicate the provider does not define' => [[
+            'tenant' => self::MINIMAL['tenant'] + [
+                'authentication_classes' => [
+                    'gold' => 'attested_authenticator',
+                ],
+            ],
+            'keys' => self::MINIMAL['keys'],
+        ], 'authentication_classes'];
         yield 'no kms' => [[
             'tenant' => self::MINIMAL['tenant'],
             'keys' => [

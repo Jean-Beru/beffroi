@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Domain\Session;
 
+use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationFactor;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationProofs;
@@ -26,14 +27,45 @@ final class AuthenticationProofsTest extends TestCase
         $login = Fixtures::now();
 
         // When
-        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)
+        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::PIN), $login)
             ->with(AuthenticationMethod::password(), $login)
             ->with(AuthenticationMethod::password(), $login->modify('+2 hours'));
 
         // Then
-        static::assertSame(['otp', 'pwd'], $proofs->methodReferences());
+        static::assertSame(['pin', 'pwd'], $proofs->methodReferences());
         static::assertCount(2, $proofs->methods());
-        static::assertSame('otp', $proofs->methods()[0]->value);
+        static::assertSame('pin', $proofs->methods()[0]->value);
+    }
+
+    /**
+     * RFC 8176 §2: "mfa" says several factors were used, next to the methods; the proofs say it when two
+     * factors of different kinds were proven, once, even when an authenticator asserted it itself.
+     *
+     * @param non-empty-list<string> $methods
+     * @param non-empty-list<string> $references
+     */
+    #[Test]
+    #[DataProvider('provideMethodsAndTheirReferences')]
+    public function mfaIsListedWhenTwoFactorsWereProven(array $methods, array $references): void
+    {
+        // Given
+        $proofs = AuthenticationProofs::ofAll(array_map(static fn (string $method): AuthenticationMethod => new AuthenticationMethod($method), $methods), Fixtures::now());
+
+        // When / Then
+        static::assertSame($references, $proofs->methodReferences());
+    }
+
+    /**
+     * @return iterable<string, array{non-empty-list<string>, non-empty-list<string>}>
+     */
+    public static function provideMethodsAndTheirReferences(): iterable
+    {
+        yield 'a password alone' => [['pwd'], ['pwd']];
+        yield 'a password and a PIN, one kind' => [['pwd', 'pin'], ['pwd', 'pin']];
+        yield 'a password and a one-time password' => [['pwd', 'otp'], ['pwd', 'otp', 'mfa']];
+        yield 'a password and a hardware key with presence' => [['hwk', 'user', 'pwd'], ['hwk', 'user', 'pwd', 'mfa']];
+        yield 'a hardware key verified by a PIN, mfa asserted by the authenticator' => [['hwk', 'user', 'mfa'], ['hwk', 'user', 'mfa']];
+        yield 'a password and a verified key, mfa once' => [['pwd', 'hwk', 'user', 'mfa'], ['pwd', 'hwk', 'user', 'mfa']];
     }
 
     /**

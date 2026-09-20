@@ -17,6 +17,18 @@
         <source>login.reauthentication</source>
         <target>Please sign in again to continue.</target>
       </trans-unit>
+      <trans-unit id="d3cdf3d871" resname="login.step_up">
+        <source>login.step_up</source>
+        <target>{client} requires a stronger sign-in than the one you have.</target>
+      </trans-unit>
+      <trans-unit id="6282806c35" resname="login.step_up.passkey">
+        <source>login.step_up.passkey</source>
+        <target>A passkey would satisfy it.</target>
+      </trans-unit>
+      <trans-unit id="2063082125" resname="login.step_up.password">
+        <source>login.step_up.password</source>
+        <target>Your password would satisfy it.</target>
+      </trans-unit>
       <trans-unit id="55b0f4b87b" resname="login.failed">
         <source>login.failed</source>
         <target>Sign-in failed. Check your username and your password, then try again.</target>

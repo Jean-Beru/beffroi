@@ -13,6 +13,7 @@ use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
+use Heidi\Oidc\Tests\Fixture\Logins;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -23,7 +24,7 @@ final class DiscoveryHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), self::grants());
+        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), self::grants());
     }
 
     /**
@@ -134,7 +135,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), self::grants(), $lifetime);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), self::grants(), $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -165,7 +166,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), self::grants(), -1);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), self::grants(), -1);
     }
 
     /**
@@ -193,7 +194,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), [new FakeGrant(GrantType::AuthorizationCode)]);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), [new FakeGrant(GrantType::AuthorizationCode)]);
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -211,7 +212,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), []);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), []);
     }
 
     /**

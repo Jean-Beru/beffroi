@@ -44,7 +44,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertEquals($establishedAt, $found->establishedAt);
         static::assertEquals($proofs, $found->proofs);
-        static::assertSame(['pwd', 'otp'], $found->methodReferences());
+        static::assertSame(['pwd', 'otp', 'mfa'], $found->methodReferences());
         static::assertEquals($establishedAt, $found->authenticatedAt());
         static::assertEquals($establishedAt->modify('+12 hours'), $found->expiresAt);
         static::assertNull($found->endedAt);

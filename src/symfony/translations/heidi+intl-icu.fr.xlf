@@ -17,6 +17,18 @@
         <source>login.reauthentication</source>
         <target>Veuillez vous reconnecter pour continuer.</target>
       </trans-unit>
+      <trans-unit id="d3cdf3d871" resname="login.step_up">
+        <source>login.step_up</source>
+        <target>{client} exige une connexion plus forte que celle que vous avez.</target>
+      </trans-unit>
+      <trans-unit id="6282806c35" resname="login.step_up.passkey">
+        <source>login.step_up.passkey</source>
+        <target>Une passkey la satisferait.</target>
+      </trans-unit>
+      <trans-unit id="2063082125" resname="login.step_up.password">
+        <source>login.step_up.password</source>
+        <target>Votre mot de passe la satisferait.</target>
+      </trans-unit>
       <trans-unit id="55b0f4b87b" resname="login.failed">
         <source>login.failed</source>
         <target>La connexion a échoué. Vérifiez votre nom d’utilisateur et votre mot de passe, puis réessayez.</target>

@@ -2,7 +2,9 @@
    login of the firewall reads (architecture §5.4); a refused login shows one message, whatever the reason.
    Below it, the passkey: hidden until the script of the bundle finds a browser that can hold one, then
    a button, and the autofill of the username field when the browser offers it (conditional UI); the
-   signed assertion is posted as a form to the passkey authenticator of the same firewall.
+   signed assertion is posted as a form to the passkey authenticator of the same firewall. On a step-up
+   (decision 0010) the page names the classes the client accepts and says which way of signing in would
+   satisfy one; both stay offered.
    Overridable by an application under templates/bundles/HeidiBundle/. #}
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
@@ -15,7 +17,15 @@
 
 {% block content %}
     <p>{{ 'login.prompt'|trans({client: client.name}) }}</p>
-    {% if requirement.value != 'no_session' %}
+    {% if step_up is not null %}
+        <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|map(class => class.value)|join(' ') }}">{{ 'login.step_up'|trans({client: client.name}) }}</p>
+        {% if step_up.passkey %}
+            <p data-step-up="passkey">{{ 'login.step_up.passkey'|trans }}</p>
+        {% endif %}
+        {% if step_up.password %}
+            <p data-step-up="password">{{ 'login.step_up.password'|trans }}</p>
+        {% endif %}
+    {% elseif requirement.value != 'no_session' %}
         <p data-requirement="{{ requirement.value }}">{{ 'login.reauthentication'|trans }}</p>
     {% endif %}
     {% if failed %}

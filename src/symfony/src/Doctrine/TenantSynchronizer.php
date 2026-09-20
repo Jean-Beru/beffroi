@@ -11,8 +11,8 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use LogicException;
 
 /**
- * Writes the row of the configured tenant: created, renamed, or left alone. A changed issuer is refused,
- * every token issued so far names it.
+ * Writes the row of the configured tenant: created, renamed, its "acr" policy replaced, or left alone. A
+ * changed issuer is refused, every token issued so far names it.
  */
 final readonly class TenantSynchronizer
 {
@@ -41,8 +41,11 @@ final readonly class TenantSynchronizer
         }
         if ($tenant->name !== $configured->name) {
             $tenant->rename($configured->name);
-            $manager->flush();
         }
+        if (! $tenant->authenticationContextPolicy->equals($configured->authenticationContextPolicy)) {
+            $tenant->adoptAuthenticationContextPolicy($configured->authenticationContextPolicy);
+        }
+        $manager->flush();
 
         return $tenant;
     }

@@ -7,7 +7,10 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
+use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
+use Heidi\Core\Domain\Session\AuthenticationPredicate;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Domain\Tenant\Tenant;
 use PHPUnit\Framework\Attributes\Test;
@@ -199,8 +202,68 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertSame('https://op.test', (string) self::tenant()->issuer);
     }
 
-    private static function factory(string $issuer, string $slug, ?string $name): TenantFactory
+    /**
+     * Decision 0010: the "acr" policy is the tenant's, stored with it; the row must speak what the
+     * configuration says before requests are served.
+     */
+    #[Test]
+    public function aTenantWithAnotherPolicyRefusesToServeUntilSynchronised(): void
     {
-        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()));
+        // Given
+        $provider = new TenantProvider(self::factory('https://op.test', 'default', null, self::OKTA_CLASSES), self::registry());
+
+        // Then
+        $this->expectException(TenantNotSynchronizedException::class);
+        $this->expectExceptionMessageIsOrContains('stored with the authentication_classes "phrh phr 2 1" and configured with "urn:okta:loa:2fa:any urn:okta:loa:1fa:any"');
+
+        // When
+        $provider->provide();
+    }
+
+    #[Test]
+    public function synchronisingATenantWithAnotherPolicyWritesIt(): void
+    {
+        // Given
+        $factory = self::factory('https://op.test', 'default', null, self::OKTA_CLASSES);
+        $provider = new TenantProvider($factory, self::registry());
+
+        // When
+        $synchronized = new TenantSynchronizer($factory, self::registry())
+            ->synchronize();
+        self::reload();
+
+        // Then
+        static::assertSame(['urn:okta:loa:2fa:any', 'urn:okta:loa:1fa:any'], $synchronized->authenticationContextPolicy->names());
+        $stored = $provider->provide()
+            ->authenticationContextPolicy;
+        static::assertSame(['urn:okta:loa:2fa:any', 'urn:okta:loa:1fa:any'], $stored->names());
+        static::assertSame(AuthenticationPredicate::TwoFactors, $stored->classes[0]->predicate);
+    }
+
+    /**
+     * A tenant that configures nothing speaks the default policy of decision 0010, as the row of a
+     * deployment written before the column existed does.
+     */
+    #[Test]
+    public function aTenantThatConfiguresNothingSpeaksTheDefaultPolicy(): void
+    {
+        // When
+        $tenant = new TenantProvider(self::factory('https://op.test', 'default', null), self::registry())->provide();
+
+        // Then
+        static::assertTrue(AuthenticationContextPolicy::default()->equals($tenant->authenticationContextPolicy));
+    }
+
+    private const array OKTA_CLASSES = [
+        'urn:okta:loa:2fa:any' => 'two_factors',
+        'urn:okta:loa:1fa:any' => 'single_factor',
+    ];
+
+    /**
+     * @param array<array-key, string> $authenticationClasses
+     */
+    private static function factory(string $issuer, string $slug, ?string $name, array $authenticationClasses = HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES): TenantFactory
+    {
+        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses);
     }
 }

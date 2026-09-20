@@ -111,7 +111,7 @@ final class AuthenticationSessionTest extends TestCase
         $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
 
         // Then
-        static::assertSame(['pwd', 'otp'], $session->methodReferences());
+        static::assertSame(['pwd', 'otp', 'mfa'], $session->methodReferences());
     }
 
     #[Test]
@@ -184,7 +184,7 @@ final class AuthenticationSessionTest extends TestCase
         $session->recordProof(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), Fixtures::context(Fixtures::now()->modify('+2 hours'), '198.51.100.7'));
 
         // Then
-        static::assertSame(['pwd', 'hwk'], $session->methodReferences());
+        static::assertSame(['pwd', 'hwk', 'mfa'], $session->methodReferences());
         static::assertEquals(Fixtures::now(), $session->proofs->provenAt(AuthenticationMethod::password()));
     }
 
@@ -214,7 +214,7 @@ final class AuthenticationSessionTest extends TestCase
         $session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context(Fixtures::now()));
 
         // Then
-        static::assertSame(['pwd', 'otp'], $session->methodReferences());
+        static::assertSame(['pwd', 'otp', 'mfa'], $session->methodReferences());
     }
 
     #[Test]

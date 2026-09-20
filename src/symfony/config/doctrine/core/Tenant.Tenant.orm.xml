@@ -3,7 +3,7 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- One issuer (architecture §3.1). Every other table carries its identifier. -->
+    <!-- One issuer (architecture §3.1). Every other table carries its identifier. Its "acr" policy (decision 0010) is a JSON document whose default, in the database as in the core, is the default policy: a row written before the column existed speaks it. -->
     <entity name="Heidi\Core\Domain\Tenant\Tenant" table="heidi_tenant">
         <unique-constraints>
             <unique-constraint name="heidi_tenant_slug" columns="slug"/>
@@ -13,6 +13,11 @@
         <field name="slug" type="string" column="slug" length="63"/>
         <field name="issuer" type="heidi_issuer" column="issuer" length="255"/>
         <field name="name" type="string" column="name" length="255"/>
+        <field name="authenticationContextPolicy" type="heidi_authentication_context_policy" column="authentication_context_policy">
+            <options>
+                <option name="default">{"classes":[{"name":"phrh","predicate":"phishing_resistant_hardware"},{"name":"phr","predicate":"phishing_resistant"},{"name":"2","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}</option>
+            </options>
+        </field>
         <field name="createdAt" type="datetime_immutable" column="created_at"/>
     </entity>
 </doctrine-mapping>

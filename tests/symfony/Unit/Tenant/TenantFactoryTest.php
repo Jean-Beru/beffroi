@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Unit\Tenant;
 
 use Heidi\Bundle\Tenant\TenantFactory;
+use Heidi\Core\Domain\Session\AuthenticationPredicate;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
@@ -31,6 +32,47 @@ final class TenantFactoryTest extends TestCase
         static::assertSame('main', $tenant->slug);
         static::assertSame('Main tenant', $tenant->name);
         static::assertEquals(Fixtures::now(), $tenant->createdAt);
+    }
+
+    /**
+     * Decision 0010: the tenant carries the configured classes in their order; a name that is a number
+     * in the configuration is a name.
+     */
+    #[Test]
+    public function theTenantCarriesTheConfiguredAuthenticationClasses(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test', 'main', null, new MockClock(Fixtures::now()), [
+            'urn:okta:loa:2fa:any' => 'two_factors',
+            1 => 'single_factor',
+        ]);
+
+        // When
+        $tenant = $factory->create();
+
+        // Then
+        static::assertSame(['urn:okta:loa:2fa:any', '1'], $tenant->authenticationContextPolicy->names());
+        static::assertSame(AuthenticationPredicate::TwoFactors, $tenant->authenticationContextPolicy->classes[0]->predicate);
+    }
+
+    /**
+     * Decisions 0006 and 0010: what a policy may not say refuses the start, not a request.
+     */
+    #[Test]
+    public function aPolicyTheCoreRefusesIsRefused(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test', 'main', null, new MockClock(Fixtures::now()), [
+            'phr' => 'single_factor',
+            '1' => 'single_factor',
+        ]);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('"phr" is a registered name');
+
+        // When
+        $factory->create();
     }
 
     /**

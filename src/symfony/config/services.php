@@ -32,6 +32,7 @@ use Heidi\Bundle\Security\InteractionLoginHandler;
 use Heidi\Bundle\Security\LoginFailureListener;
 use Heidi\Bundle\Security\LoginSuccessListener;
 use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
+use Heidi\Bundle\Security\PassportProofs;
 use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
@@ -105,6 +106,7 @@ use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -163,6 +165,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginSuccessListener::class);
     $services->set(LoginFailureListener::class);
     $services->set(PasskeyLoginAuthenticator::class);
+    // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010)
+    $services->set(PassportProofs::class);
+    $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
     $services->set(TenantProvider::class)
