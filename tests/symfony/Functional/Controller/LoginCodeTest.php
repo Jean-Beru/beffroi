@@ -39,11 +39,18 @@ use Symfony\Component\Uid\Uuid;
  * asked for a code after a good password and not after a bad one, no session exists before the code, a
  * good code establishes the session with both factors and the ID token says so, a backup code works
  * once, the attempts are limited, and an authorization request received between the two steps gets no
- * code. The firewall is the one of tests/symfony/config/config_test.yml.
+ * code. With the acceptance of issue #133 on what the page says of a refusal: the message names the
+ * shape that was typed, the same for a code that never existed as for one that is spent, and never the
+ * reason. The firewall is the one of tests/symfony/config/config_test.yml.
  */
 final class LoginCodeTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
+
+    /**
+     * What the page says of a refused backup code, whatever became of the one that was typed (#133).
+     */
+    private const string BACKUP_CODE_REFUSED = 'This backup code is not valid, or it has already been used. Each backup code works only once.';
 
     private TotpSecret $secret;
 
@@ -390,6 +397,75 @@ final class LoginCodeTest extends PasskeyTestCase
     }
 
     /**
+     * Issue #133: six digits refused are the code of an app, and what the page says is the way out that
+     * shape has, the code the app shows now.
+     */
+    #[Test]
+    public function aRefusedAppCodeSaysToTryTheCodeTheAppShowsNow(): void
+    {
+        // Given
+        $this->userWithTotp('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // When
+        $this->submitCode($interaction, '000000');
+
+        // Then
+        $refusal = $this->refusalShown($interaction);
+        static::assertSame('code_refused', $refusal->attr('data-error'));
+        static::assertSame('The code was refused. Try again with the code the app shows now.', $refusal->text());
+    }
+
+    /**
+     * Issue #133, the defect the run by hand of 2026-09-20 found: a user who spent a backup code was
+     * told to try the code their app shows now, which is not what they typed and not what would work
+     * next. The page names the shape instead, and the single use of a backup code, which is a fact of
+     * the feature printed with the codes at enrolment and not a fact about this account.
+     */
+    #[Test]
+    public function aRefusedBackupCodeSaysEachBackupCodeServesOnce(): void
+    {
+        // Given
+        $this->userWithTotp('alice', self::PASSWORD, hashedBackupCodes: true);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+        $this->submitCode($interaction, Totps::BACKUP_CODES[3]);
+        $this->forgetTheBrowser();
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // When
+        $this->submitCode($interaction, Totps::BACKUP_CODES[3]);
+
+        // Then
+        $refusal = $this->refusalShown($interaction);
+        static::assertSame('backup_code_refused', $refusal->attr('data-error'));
+        static::assertSame(self::BACKUP_CODE_REFUSED, $refusal->text());
+    }
+
+    /**
+     * Issue #133 and decision 0006: the message names what was typed and never what the account holds;
+     * a backup code that was never one of the user's is refused exactly as a spent one is.
+     */
+    #[Test]
+    public function aBackupCodeThatNeverExistedIsRefusedLikeASpentOne(): void
+    {
+        // Given
+        $this->userWithTotp('alice', self::PASSWORD, hashedBackupCodes: true);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // When
+        $this->submitCode($interaction, 'ZZZZZ-ZZZZZ');
+
+        // Then
+        $refusal = $this->refusalShown($interaction);
+        static::assertSame('backup_code_refused', $refusal->attr('data-error'));
+        static::assertSame(self::BACKUP_CODE_REFUSED, $refusal->text());
+    }
+
+    /**
      * Decision 0006, architecture §5.4: five attempts a minute, the sixth refused whatever the code.
      */
     #[Test]
@@ -410,6 +486,31 @@ final class LoginCodeTest extends PasskeyTestCase
         static::assertSame('/login/code?interaction=' . $interaction, $this->browser->getResponse()->headers->get('Location'));
         static::assertFalse($this->isBoundToASession());
         static::assertSame(AuthenticationFailureReason::TooManyAttempts, self::events(AuthenticationFailed::class)[0]->reason ?? null);
+    }
+
+    /**
+     * Issue #133: past the limit, trying again is precisely what does not help, so the page says to wait
+     * rather than to type the code the app shows now. The limit is a fact of the request and not of the
+     * account: the page may name it without saying anything of the credential.
+     */
+    #[Test]
+    public function theCodeRefusedByTheLimitSaysToWait(): void
+    {
+        // Given
+        $this->userWithTotp('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->submitCode($interaction, '000000');
+        }
+
+        // When
+        $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()));
+
+        // Then
+        $refusal = $this->refusalShown($interaction);
+        static::assertSame('too_many_attempts', $refusal->attr('data-error'));
+        static::assertSame('Too many codes have been tried. Wait a moment, then try again.', $refusal->text());
     }
 
     /**
@@ -601,6 +702,18 @@ final class LoginCodeTest extends PasskeyTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 
         return $crawler;
+    }
+
+    /**
+     * The one message the code page shows of a refusal, read from the page the browser was sent back to.
+     */
+    private function refusalShown(string $interaction): Crawler
+    {
+        $refusals = $this->codePage($interaction)
+            ->filter('p[data-error]');
+        static::assertCount(1, $refusals);
+
+        return $refusals;
     }
 
     /**
