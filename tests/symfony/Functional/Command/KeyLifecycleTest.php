@@ -372,7 +372,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * A key sealed under a master key the KMS no longer has (a Vault in dev mode or a LocalStack restarted,
+     * A key sealed under a master key the KMS no longer has (a Vault in dev mode or a Floci restarted,
      * a DSN switched to another backend): the check says which key, why, and what to do; it deletes nothing.
      */
     #[Test]

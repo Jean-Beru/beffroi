@@ -121,7 +121,7 @@ jobs:
     # the DSN changing. Nothing else of the bundle suite reads the DSN, so nothing else runs here again:
     # the whole suite against this backend was five minutes behind "Tests" for the same proof. The file is
     # written the way "castor provision --kms file" writes it: 32 bytes, mode 0600, in a directory 0700
-    # of its own. One backend here, the fastest: the others (Vault Transit, AWS KMS on LocalStack) are the
+    # of its own. One backend here, the fastest: the others (Vault Transit, AWS KMS on Floci) are the
     # business of symfony/key-management and of its bridges, and their custody tests run on the
     # development stack (VaultTransitCustodyTest, AwsKmsCustodyTest, skipped without their DSN).
     runs-on: ubuntu-latest

@@ -53,13 +53,13 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
  */
 const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
 
-#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds LocalStack (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran')]
+#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds Floci (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran')]
 function start(
     bool $conformance = false,
     bool $build = false,
     #[AsOption(description: 'The access token shape of the clients of the conformance suite: jwt (default) or opaque; the plans must be green with either')]
     ?string $accessTokenFormat = null,
-    #[AsOption(description: 'The KMS that seals the signing keys: sodium (default) or file (in the process, nothing to start), vault (HashiCorp Vault Transit, dev mode, initialised at every start by docker/vault/init.sh) or aws (LocalStack with the KMS service, initialised at every start by docker/localstack/init.sh)')]
+    #[AsOption(description: 'The KMS that seals the signing keys: sodium (default) or file (in the process, nothing to start), vault (HashiCorp Vault Transit, dev mode, initialised at every start by docker/vault/init.sh) or aws (the KMS of Floci, an AWS emulator, initialised at every start by docker/floci/init.sh)')]
     string $kms = 'sodium',
 ): void {
     if ($accessTokenFormat !== null && ! in_array($accessTokenFormat, ['jwt', 'opaque'], true)) {
@@ -88,7 +88,7 @@ function start(
     run($command, context: context()->withEnvironment($environment));
     $started = match ($kms) {
         'vault' => ', Vault: http://localhost:8200 (dev mode, root token in compose.yaml); "castor provision --kms vault" seals the signing keys with it',
-        'aws' => ', LocalStack (AWS KMS): http://localhost:4566 (credentials test/test, region eu-west-3); "castor provision --kms aws" seals the signing keys with it',
+        'aws' => ', Floci (AWS KMS): http://localhost:4566 (credentials test/test, region eu-west-3); "castor provision --kms aws" seals the signing keys with it',
         default => '',
     };
     io()

@@ -71,7 +71,7 @@ const DEV_CLIENT_SECRETS = [
 
 #[AsTask(description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password')]
 function provision(
-    #[AsOption(description: 'The KMS to seal the signing keys with when apps/op/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS')]
+    #[AsOption(description: 'The KMS to seal the signing keys with when apps/op/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the Floci of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS')]
     ?string $kms = null,
 ): void {
     io()->title('Provisioning the development OP');
@@ -91,8 +91,8 @@ function provision(
     if (str_contains($keys, 'no published key')) {
         op_console(['heidi:keys:generate']);
     } else {
-        // A key is published: before trusting it, ask the KMS to open it. Vault in dev mode and LocalStack
-        // forget their master key when they restart, and the envelopes sealed under it are dead; the
+        // A key is published: before trusting it, ask the KMS to open it. Vault in dev mode and Floci in
+        // memory forget their master key when they restart, and the envelopes sealed under it are dead; the
         // command says which key and what to do, this task deletes nothing and stops here.
         $check = op_console(['heidi:keys:list', '--check'], context()->withAllowFailure());
         if (! $check->isSuccessful()) {
@@ -160,7 +160,7 @@ function provision(
  * Writes the development values apps/op/.env.local lacks and returns the environment of the application
  * once they are loaded: the DSN of the KMS and the key it seals under (a sodium key generated in place or
  * written in a file of the op container, a token minted on the Vault of the stack under the policy of the
- * OP and the Transit key of the tenant, the LocalStack of the stack and the alias of the tenant), one
+ * OP and the Transit key of the tenant, the Floci of the stack and the alias of the tenant), one
  * secret per client, the password of the development user. An existing value is kept, whoever wrote it:
  * the sealed signing keys depend on the KMS key, and a KMS is not switched by accident. The one exception
  * is a Vault token that no longer works (the dev server forgets everything when it restarts): a new one is
@@ -201,10 +201,10 @@ function provision_env_local(?string $kms): array
             'HEIDI_KMS_KEY_ID' => static fn (): string => 'heidi-{tenant}',
         ],
         // The scheme and the options of the bridge (symfony/aws-key-management, README): the credential
-        // pair in the user information, any host but "default" is a custom endpoint, plain HTTP for
-        // LocalStack; the alias of the tenant is what docker/localstack/init.sh creates.
+        // pair in the user information, any host but "default" is a custom endpoint, plain HTTP for the
+        // Floci of the stack; the alias of the tenant is what docker/floci/init.sh creates.
         'aws' => [
-            'HEIDI_KMS_DSN' => static fn (): string => 'aws-kms://test:test@localstack:4566?region=eu-west-3&scheme=http',
+            'HEIDI_KMS_DSN' => static fn (): string => 'aws-kms://test:test@floci:4566?region=eu-west-3&scheme=http',
             'HEIDI_KMS_KEY_ID' => static fn (): string => 'alias/heidi-{tenant}',
         ],
     };

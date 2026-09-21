@@ -81,7 +81,7 @@ final readonly class KeysListCommand
         if ($dead !== []) {
             $io->error([
                 sprintf('The KMS cannot open the key%s %s of "%s": nothing signs with %s.', count($dead) === 1 ? '' : 's', implode(', ', $dead), $tenant->slug, count($dead) === 1 ? 'it' : 'them'),
-                'If the KMS is not reachable, start it and run this command again. If the KMS lost the master key (Vault in dev mode and LocalStack forget everything when they restart), the envelopes sealed under it are dead: "heidi:keys:rotate --now" publishes a key sealed under the key it has now and signs with it at once, the dead key retires with its window, its public half still verifying what it signed. Nothing is deleted.',
+                'If the KMS is not reachable, start it and run this command again. If the KMS lost the master key (Vault in dev mode and an AWS KMS emulator in memory forget everything when they restart), the envelopes sealed under it are dead: "heidi:keys:rotate --now" publishes a key sealed under the key it has now and signs with it at once, the dead key retires with its window, its public half still verifying what it signed. Nothing is deleted.',
             ]);
 
             return Command::FAILURE;

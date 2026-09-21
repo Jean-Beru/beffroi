@@ -1,19 +1,21 @@
 #!/bin/sh
-# Prepares a LocalStack KMS for the OP (issue #58): the master key of the tenant under the alias the DSN
-# names, alias/heidi-<slug>. LocalStack runs it once ready (/etc/localstack/init/ready.d), at every start,
-# the community edition keeping nothing across a restart; the CI runs it with the AWS CLI against a service
-# container. Idempotent: a key whose alias resolves is left alone, a key is never deleted here.
+# Prepares the KMS of Floci for the OP (issue #58): the master key of the tenant under the alias the DSN
+# names, alias/heidi-<slug>. Floci runs it once its API is up (/etc/floci/init/ready.d), at every start;
+# nothing is kept across a restart in the storage mode of the stack (memory, the default). Idempotent: a key
+# whose alias resolves is left alone, a key is never deleted here. A hook that fails stops Floci
+# (fail-fast, its own rule, where LocalStack only logged), so the container is never up with no key.
 #
 # What a real account does with the key policy (Encrypt refused, GenerateDataKey and Decrypt under the alias
-# only, no export, no deletion without a waiting period) has no equivalent in LocalStack, which enforces no
-# IAM in this edition: it is documented, not replayed.
+# only, no export, no deletion without a waiting period) has no equivalent here: Floci stores grants and key
+# policies but evaluates neither on a cryptographic call. It is documented, not replayed.
 set -eu
 
 : "${HEIDI_TENANT_SLUG:=default}"
 : "${KMS_ENDPOINT_URL:=http://localhost:4566}"
 : "${KMS_REGION:=eu-west-3}"
-# The pair LocalStack accepts; a real account takes them from the DSN or from the provider chain of async-aws.
-# The region is the one of the DSN, whatever the image sets for itself: a key lives in one region.
+# The pair Floci accepts (any non-empty one does); a real account takes them from the DSN or from the
+# provider chain of async-aws. The region is the one of the DSN, whatever the image sets for itself: a key
+# lives in one region.
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
 export AWS_DEFAULT_REGION="${KMS_REGION}"
@@ -24,8 +26,16 @@ kms() {
     aws --endpoint-url "${KMS_ENDPOINT_URL}" kms "$@"
 }
 
+# The ready phase runs after the HTTP server answers, so this returns at once; the few tries are for a run
+# by hand against a container that is still starting, and stay well inside the timeout of a hook (30 s).
 echo "Waiting for KMS at ${KMS_ENDPOINT_URL} ..."
+attempt=0
 until kms list-aliases >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ "${attempt}" -ge 15 ]; then
+        echo "KMS unreachable at ${KMS_ENDPOINT_URL}" >&2
+        exit 1
+    fi
     sleep 1
 done
 

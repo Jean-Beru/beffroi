@@ -25,11 +25,11 @@ use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
 
 /**
- * Issue #58, against an AWS KMS (LocalStack in the CI and on the development stack, the same API): the
- * master key of the tenant is the one docker/localstack/init.sh creates under the alias the DSN names, and
+ * Issue #58, against an AWS KMS (Floci on the development stack, the same API): the master key of the
+ * tenant is the one docker/floci/init.sh creates under the alias the DSN names, and
  * the envelope holds the data key as that KMS wrapped it, bound to the tenant. Skipped unless the kernel
- * seals with AWS KMS (HEIDI_TEST_KMS_DSN), which the CI does in a job of its own against a LocalStack
- * service; every other test of the suite then runs against it too.
+ * seals with AWS KMS (HEIDI_TEST_KMS_DSN), which "castor provision --kms aws" writes for the development
+ * stack; every other test of the suite then runs against it too.
  */
 final class AwsKmsCustodyTest extends DatabaseTestCase
 {
@@ -109,7 +109,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     }
 
     /**
-     * The key docker/localstack/init.sh creates: symmetric, for encryption only, enabled, behind the alias
+     * The key docker/floci/init.sh creates: symmetric, for encryption only, enabled, behind the alias
      * the OP names, so that a new key behind the same alias changes nothing for it.
      */
     #[Test]
@@ -149,7 +149,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
 
     /**
      * DescribeKey, which async-aws/kms does not expose: the JSON protocol of KMS, the target in a header.
-     * The credential of the DSN names the region and the account, which is all LocalStack reads of it.
+     * The credential of the DSN names the region and the account, which is all the emulator reads of it.
      *
      * @return array<mixed>
      */
