@@ -13,6 +13,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRequestRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
@@ -21,6 +22,8 @@ use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
+use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
+use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
@@ -231,6 +234,47 @@ final class InMemoryRepositoriesTest extends TestCase
 
         // When / Then
         static::assertFalse($repository->consume($this->code('one'), Fixtures::now()));
+    }
+
+    #[Test]
+    public function itFindsAPushedRequestByTheHashOfItsReferenceNeverByItsValue(): void
+    {
+        // Given
+        $repository = new InMemoryPushedAuthorizationRequestRepository();
+        $requestUri = RequestUri::generate();
+        $repository->save($this->pushedRequest($requestUri));
+
+        // When / Then
+        static::assertNotNull($repository->findByRequestUriHash($requestUri->hash()));
+        static::assertNull($repository->findByRequestUriHash(RequestUri::generate()->hash()));
+        static::assertNull($repository->findByRequestUriHash($requestUri->value), 'the lookup is by hash, never by value');
+    }
+
+    /**
+     * RFC 9126 §4: the claim of a reference is told to one caller only, the others read a replay.
+     */
+    #[Test]
+    public function onlyTheFirstCallerConsumesAPushedRequest(): void
+    {
+        // Given
+        $repository = new InMemoryPushedAuthorizationRequestRepository();
+        $request = $this->pushedRequest(RequestUri::generate());
+        $repository->save($request);
+
+        // When / Then
+        static::assertTrue($repository->consume($request, Fixtures::now()));
+        static::assertFalse($repository->consume($request, Fixtures::now()->modify('+1 second')));
+        static::assertEquals(Fixtures::now(), $request->usedAt);
+    }
+
+    #[Test]
+    public function anUnknownPushedRequestIsNotConsumed(): void
+    {
+        // Given
+        $repository = new InMemoryPushedAuthorizationRequestRepository();
+
+        // When / Then
+        static::assertFalse($repository->consume($this->pushedRequest(RequestUri::generate()), Fixtures::now()));
     }
 
     /**
@@ -493,6 +537,13 @@ final class InMemoryRepositoriesTest extends TestCase
     private function consent(User $user, Client $client, string $grantedAt): Consent
     {
         return new Consent(Uuid::v7(), $user, $client, [Scope::openid()], Fixtures::now()->modify($grantedAt));
+    }
+
+    private function pushedRequest(RequestUri $requestUri): PushedAuthorizationRequest
+    {
+        return new PushedAuthorizationRequest($requestUri->hash(), $this->client, [
+            'scope' => 'openid',
+        ], Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     private function code(string $value): AuthorizationCode

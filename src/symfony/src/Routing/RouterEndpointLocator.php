@@ -79,6 +79,7 @@ final readonly class RouterEndpointLocator implements EndpointLocatorInterface, 
             $origin . $this->path('heidi_interaction_logout'),
             $origin . $this->path('heidi_protocol_introspection'),
             $origin . $this->path('heidi_protocol_revocation'),
+            $origin . $this->path('heidi_protocol_pushed_authorization_request'),
         );
     }
 

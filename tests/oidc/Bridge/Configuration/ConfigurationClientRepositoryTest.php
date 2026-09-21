@@ -475,6 +475,82 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
+     * RFC 9126 §6: a client declares that the only way it starts an authorization request is by pushing
+     * it, which is what FAPI 2.0 asks of one; a client that says nothing starts an ordinary one.
+     */
+    #[Test]
+    public function aClientIsDeclaredAsOneThatOnlyPushesItsRequests(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'fapi' => self::DEMO + [
+                'require_pushed_authorization_requests' => true,
+            ],
+            'demo' => self::DEMO,
+        ]);
+
+        // When
+        $fapi = self::find($repository, $this->tenant, 'fapi');
+
+        // Then
+        static::assertTrue($fapi->requiresPushedAuthorizationRequests);
+        static::assertFalse(self::find($repository, $this->tenant, 'demo')->requiresPushedAuthorizationRequests);
+    }
+
+    /**
+     * RFC 9126 §5, issue #98: the document says a request must be pushed when every client declared for
+     * the tenant says so, read where the clients are declared and nowhere else.
+     *
+     * @param array<string, array<string, mixed>> $clients
+     */
+    #[Test]
+    #[DataProvider('provideDeclarationsOfTheRequirement')]
+    public function theTenantRequiresAPushedRequestWhenEveryDeclaredClientDoes(array $clients, bool $required): void
+    {
+        // Given
+        $repository = $this->repository($clients);
+
+        // When / Then
+        static::assertSame($required, $repository->requiresPushedAuthorizationRequests($this->tenant));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, array<string, mixed>>, bool}>
+     */
+    public static function provideDeclarationsOfTheRequirement(): iterable
+    {
+        $pushing = self::DEMO + [
+            'require_pushed_authorization_requests' => true,
+        ];
+        yield 'every client pushes' => [[
+            'fapi' => $pushing,
+            'other' => $pushing,
+        ], true];
+        yield 'one client may still start an ordinary request' => [[
+            'fapi' => $pushing,
+            'demo' => self::DEMO,
+        ], false];
+        yield 'no client at all' => [[], false];
+    }
+
+    /**
+     * The clients of another tenant are not this tenant's, and neither is what they require.
+     */
+    #[Test]
+    public function anotherTenantRequiresNothingOfTheClientsDeclaredHere(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'fapi' => self::DEMO + [
+                'require_pushed_authorization_requests' => true,
+            ],
+        ]);
+
+        // When / Then
+        static::assertFalse($repository->requiresPushedAuthorizationRequests(Fixtures::tenant('other', 'https://id.other.example')));
+    }
+
+    /**
      * Back-Channel Logout 1.0 §2.2: a client says where to be told a session ended, and whether it reads
      * the "sid" of the token.
      */
@@ -664,6 +740,9 @@ final class ConfigurationClientRepositoryTest extends TestCase
         yield 'requires_pkce as a string' => [$base + [
             'requires_pkce' => 'false',
         ], 'requires_pkce option of the client "bad" must be a boolean'];
+        yield 'require_pushed_authorization_requests as a string' => [$base + [
+            'require_pushed_authorization_requests' => 'true',
+        ], 'require_pushed_authorization_requests option of the client "bad" must be a boolean'];
         yield 'public client without the PKCE requirement (RFC 9700 §2.1.1)' => [[
             'redirect_uris' => ['https://rp.example/cb'],
             'token_endpoint_auth_method' => 'none',

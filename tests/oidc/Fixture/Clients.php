@@ -40,6 +40,26 @@ final class Clients
         );
     }
 
+    /**
+     * A client whose only way of starting an authorization request is to push it (RFC 9126 §6), which is
+     * what FAPI 2.0 asks of one.
+     */
+    public static function pushingOnly(Tenant $tenant, PasswordHash $secretHash, string $clientId = 'fapi-demo'): Client
+    {
+        return new Client(
+            $tenant,
+            $clientId,
+            'FAPI demo',
+            Methods::clientSecretBasic(),
+            new HashedClientSecret($secretHash),
+            [new RedirectUri('https://fapi.localhost/login/check')],
+            [],
+            [GrantType::AuthorizationCode, GrantType::RefreshToken],
+            [new Scope('openid'), new Scope('profile'), new Scope('email')],
+            requiresPushedAuthorizationRequests: true,
+        );
+    }
+
     public static function public(Tenant $tenant, string $clientId = 'spa'): Client
     {
         return new Client($tenant, $clientId, 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')]);
