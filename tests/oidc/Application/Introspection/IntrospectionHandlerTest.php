@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Application\Introspection;
 
 use function base64_encode;
 use DateTimeImmutable;
+use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -86,11 +87,13 @@ final class IntrospectionHandlerTest extends TestCase
         $this->jwts = new Jwts($this->tenant);
         $this->grants = new InMemoryAuthorizationCodeRepository();
         $this->tokens = new InMemoryAccessTokenRepository();
+        $sessions = new InMemoryAuthenticationSessionRepository();
+        $sessions->save($this->session);
         $users = new InMemoryUserRepository();
         $users->save($user);
         $this->handler = new IntrospectionHandler(
             new ClientAuthenticator($clients, $hasher, $this->clock, new RecordingEventDispatcher()),
-            new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $this->grants, $users),
+            new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users),
             $this->jwts->signer,
         );
     }

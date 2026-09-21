@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
+use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
@@ -20,14 +24,16 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
+use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The checks the provider's own resources add to the verification (architecture §4.6): an opaque token
- * is the shape used, the JWT one goes through the same verifier and the same inspector.
+ * The checks the provider's own resources add to the verification (architecture §4.6): the session, the
+ * grant and the user, asked in one way of both shapes of token, an opaque one being the shape used
+ * wherever the shape is not what the test is about.
  */
 final class AccessTokenInspectorTest extends TestCase
 {
@@ -43,6 +49,10 @@ final class AccessTokenInspectorTest extends TestCase
 
     private InMemoryAccessTokenRepository $tokens;
 
+    private InMemoryAuthenticationSessionRepository $sessions;
+
+    private Jwts $jwts;
+
     private AccessTokenInspector $inspector;
 
     protected function setUp(): void
@@ -53,11 +63,14 @@ final class AccessTokenInspectorTest extends TestCase
         $this->session = Fixtures::session($this->user);
         $this->grants = new InMemoryAuthorizationCodeRepository();
         $this->tokens = new InMemoryAccessTokenRepository();
+        $this->sessions = new InMemoryAuthenticationSessionRepository();
+        $this->sessions->save($this->session);
+        $this->jwts = new Jwts($this->tenant);
         $users = new InMemoryUserRepository();
         $users->save($this->user);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $this->inspector = new AccessTokenInspector(new AccessTokenVerifier(new FakeJwsVerifier(), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $this->grants, $users);
+        $this->inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users);
     }
 
     #[Test]
@@ -130,7 +143,7 @@ final class AccessTokenInspectorTest extends TestCase
     public function itRefusesATokenOfAUserGone(): void
     {
         // Given
-        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new FakeJwsVerifier(), new InMemoryClientRepository(), $this->tokens, new PublicSubjectIdentifierResolver()), $this->grants, new InMemoryUserRepository());
+        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), new InMemoryClientRepository(), $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, new InMemoryUserRepository());
         $token = $this->tokenOf($this->code());
 
         // Then
@@ -155,6 +168,60 @@ final class AccessTokenInspectorTest extends TestCase
         $this->inspector->inspect($this->tenant, 'unknown', Fixtures::now());
     }
 
+    /**
+     * Architecture §4.9 and issue #150: what a logout ends, it ends for both shapes of token. An opaque
+     * one is refused by the record the provider keeps, an "at+jwt" by the "sid" it carries, and the
+     * question is asked in the same place for both.
+     */
+    #[Test]
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itRefusesATokenOfASessionThatEnded(string $shape): void
+    {
+        // Given
+        $token = $this->tokenOfShape($shape, $this->code());
+        $this->session->end(SessionEnd::User, Fixtures::now()->modify('+1 minute'));
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token descends from a session this provider ended.');
+
+        // When
+        $this->inspector->inspect($this->tenant, $token, Fixtures::now()->modify('+2 minutes'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAccessTokenShapes(): iterable
+    {
+        yield 'opaque' => ['opaque'];
+        yield 'at+jwt' => ['jwt'];
+    }
+
+    /**
+     * A session the provider no longer keeps is a session it cannot vouch for, as a grant it no longer
+     * keeps is.
+     */
+    #[Test]
+    public function itRefusesATokenWhoseSessionIsGone(): void
+    {
+        // Given
+        $token = $this->tokenOfShape('jwt', $this->code());
+        $sessions = new InMemoryAuthenticationSessionRepository();
+        $users = new InMemoryUserRepository();
+        $users->save($this->user);
+        $clients = new InMemoryClientRepository();
+        $clients->save($this->client);
+        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users);
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token descends from a session this provider ended.');
+
+        // When
+        $inspector->inspect($this->tenant, $token, Fixtures::now());
+    }
+
     private function code(): AuthorizationCode
     {
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now());
@@ -166,5 +233,20 @@ final class AccessTokenInspectorTest extends TestCase
     private function tokenOf(AuthorizationCode $code): string
     {
         return $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+    }
+
+    /**
+     * The same grant in either shape: the record the repository keeps, or the "at+jwt" the issuer mints
+     * and the bridge of the core verifies.
+     */
+    private function tokenOfShape(string $shape, AuthorizationCode $code): string
+    {
+        if ($shape === 'opaque') {
+            return $this->tokenOf($code);
+        }
+
+        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver())
+            ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now())
+            ->value;
     }
 }

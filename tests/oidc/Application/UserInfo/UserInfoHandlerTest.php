@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\UserInfo;
 
+use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
 use Heidi\Core\Domain\Identity\EmailAddress;
@@ -52,6 +53,8 @@ final class UserInfoHandlerTest extends TestCase
 
     private AuthenticationSession $session;
 
+    private InMemoryAuthenticationSessionRepository $sessions;
+
     private Jwts $jwts;
 
     private JwtAccessTokenIssuer $accessTokens;
@@ -71,6 +74,8 @@ final class UserInfoHandlerTest extends TestCase
         $this->user->changePhoneNumber('+33612345678', false, Fixtures::now());
         $this->client = Clients::public($this->tenant);
         $this->session = Fixtures::session($this->user);
+        $this->sessions = new InMemoryAuthenticationSessionRepository();
+        $this->sessions->save($this->session);
         $this->jwts = new Jwts($this->tenant);
         $this->accessTokens = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver());
         $this->grants = new InMemoryAuthorizationCodeRepository();
@@ -403,7 +408,7 @@ final class UserInfoHandlerTest extends TestCase
         $clients->save($this->client);
 
         return new UserInfoHandler(
-            new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->grants, $users),
+            new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users),
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
         );
