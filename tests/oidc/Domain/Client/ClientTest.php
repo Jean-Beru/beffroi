@@ -8,6 +8,7 @@ use function array_map;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
@@ -369,6 +370,51 @@ final class ClientTest extends TestCase
 
         // When
         new Client(Fixtures::tenant(), 'key-client', 'Key client', Methods::privateKeyJwt(), null, [new RedirectUri('https://key.example/callback')], jwks: ClientAssertions::publishedKeys(), jwksUri: new ClientUri('https://key.example/jwks'));
+    }
+
+    /**
+     * RFC 8705 §2.1: a method that recognises a client by what its certificate says about it needs the
+     * registration to say what that is, and a registration that says nothing cannot work.
+     */
+    #[Test]
+    public function aClientRecognisedByItsCertificateRegistersWhatNamesItInIt(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('registers one of the values of RFC 8705 section 2.1.2');
+
+        // When
+        new Client(Fixtures::tenant(), 'mtls-client', 'Mutual TLS client', Methods::tlsClientAuth(), null, [new RedirectUri('https://mtls.example/callback')]);
+    }
+
+    /**
+     * The other way round: a method that reads nothing of a certificate is registered with nothing about
+     * one, so that a registration never carries a rule nobody applies.
+     */
+    #[Test]
+    public function aClientAuthenticatedOtherwiseRegistersNothingOfACertificate(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('registers none of the values of RFC 8705 section 2.1.2');
+
+        // When
+        new Client(Fixtures::tenant(), 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], certificateIdentity: new SubjectDistinguishedName('cn=client'));
+    }
+
+    /**
+     * RFC 8705 §2.2: the self-signed method reads the keys of the client, as "private_key_jwt" does, and
+     * a registration that publishes none cannot work either.
+     */
+    #[Test]
+    public function aClientAuthenticatedByASelfSignedCertificatePublishesIt(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('publishes its keys in "jwks" or behind a "jwks_uri"');
+
+        // When
+        new Client(Fixtures::tenant(), 'self-signed-client', 'Self-signed client', Methods::selfSignedTlsClientAuth(), null, [new RedirectUri('https://self-signed.example/callback')]);
     }
 
     /**

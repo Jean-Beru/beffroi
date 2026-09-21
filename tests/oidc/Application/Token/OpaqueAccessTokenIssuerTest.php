@@ -10,7 +10,9 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Token\Confirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
@@ -56,6 +58,26 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
         static::assertSame($this->client, $record->client);
         static::assertTrue($authorization->grantId->equals($record->grantId));
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $record->expiresAt);
+    }
+
+    /**
+     * RFC 8705 §3: an opaque token is bound the way a self-contained one is, its record carrying what
+     * the token would have carried as a claim; the resource server reads it back by introspection
+     * (§3.2).
+     */
+    #[Test]
+    public function itBindsTheRecordToWhatTheClientProved(): void
+    {
+        // Given
+        $certificate = Certificates::client();
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()), Confirmation::ofCertificate($certificate));
+
+        // When
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // Then
+        $record = $this->tokens->find($token->value) ?? static::fail('The record was kept.');
+        static::assertEquals(Confirmation::ofCertificate($certificate), $record->confirmation);
     }
 
     #[Test]

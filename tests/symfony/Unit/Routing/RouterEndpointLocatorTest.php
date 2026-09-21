@@ -10,6 +10,7 @@ use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Generator\UrlGenerator;
@@ -113,6 +114,51 @@ final class RouterEndpointLocatorTest extends TestCase
 
         // When
         $locator->locate(self::tenant('http://localhost:8000'));
+    }
+
+    /**
+     * RFC 8705 §5: the endpoints located again on the host whose listener asks for a client certificate,
+     * same paths, other origin, so that the two sets cannot say different things.
+     */
+    #[Test]
+    public function theAliasesAreTheSameRoutesOnTheHostThatAsksForACertificate(): void
+    {
+        // Given
+        $locator = new RouterEndpointLocator(self::router('/tenant1'), 'https://mtls.op.example');
+
+        // When
+        $endpoints = $locator->locateMutualTls(self::tenant('https://op.example/tenant1'));
+
+        // Then
+        static::assertSame('https://mtls.op.example/tenant1/token', $endpoints?->token);
+        static::assertSame('https://mtls.op.example/tenant1/userinfo', $endpoints->userinfo);
+        static::assertSame('https://mtls.op.example/tenant1/introspect', $endpoints->introspection);
+        static::assertSame('https://mtls.op.example/tenant1/revoke', $endpoints->revocation);
+    }
+
+    /**
+     * A deployment that serves one host names no origin, and an environment variable nobody set is an
+     * empty one: both are "no such host", and the document announces no alias.
+     */
+    #[Test]
+    #[DataProvider('provideNoMutualTlsHost')]
+    public function aDeploymentWithoutSuchAHostLocatesNone(?string $origin): void
+    {
+        // Given
+        $locator = new RouterEndpointLocator(self::router(''), $origin);
+
+        // When / Then
+        static::assertNull($locator->locateMutualTls(self::tenant('https://op.example')));
+    }
+
+    /**
+     * @return iterable<string, array{string|null}>
+     */
+    public static function provideNoMutualTlsHost(): iterable
+    {
+        yield 'nothing configured' => [null];
+
+        yield 'an environment variable nobody set' => [''];
     }
 
     private static function router(string $prefix, ?RequestContext $context = null): UrlGenerator

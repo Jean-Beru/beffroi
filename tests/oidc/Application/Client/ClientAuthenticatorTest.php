@@ -88,7 +88,7 @@ final class ClientAuthenticatorTest extends TestCase
         ], $this->context);
 
         // Then
-        static::assertSame($this->basicClient, $client);
+        static::assertSame($this->basicClient, $client->client);
     }
 
     /**
@@ -128,7 +128,7 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('odd client', $secret), [], $this->context);
 
         // Then
-        static::assertSame('odd client', $client->clientId);
+        static::assertSame('odd client', $client->client->clientId);
     }
 
     /**
@@ -144,7 +144,7 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, $header, [], $this->context);
 
         // Then
-        static::assertSame($this->basicClient, $client);
+        static::assertSame($this->basicClient, $client->client);
     }
 
     /**
@@ -162,7 +162,7 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, 'Basic ' . base64_encode('colon-client:' . $secret), [], $this->context);
 
         // Then
-        static::assertSame('colon-client', $client->clientId);
+        static::assertSame('colon-client', $client->client->clientId);
     }
 
     /**
@@ -177,7 +177,7 @@ final class ClientAuthenticatorTest extends TestCase
         ], $this->context);
 
         // Then
-        static::assertSame($this->basicClient, $client);
+        static::assertSame($this->basicClient, $client->client);
     }
 
     /**
@@ -193,7 +193,7 @@ final class ClientAuthenticatorTest extends TestCase
         ], $this->context);
 
         // Then
-        static::assertSame($this->postClient, $client);
+        static::assertSame($this->postClient, $client->client);
         static::assertSame([self::hashOf($this->postClient)], $this->hasher->verifiedAgainst);
     }
 
@@ -209,7 +209,7 @@ final class ClientAuthenticatorTest extends TestCase
         ], $this->context);
 
         // Then
-        static::assertSame($this->publicClient, $client);
+        static::assertSame($this->publicClient, $client->client);
         static::assertSame([], $this->hasher->verifiedAgainst);
     }
 

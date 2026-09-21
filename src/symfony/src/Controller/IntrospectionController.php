@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Controller;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
+use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Heidi\Oidc\Domain\Token\JwtPayload;
@@ -29,6 +30,7 @@ final readonly class IntrospectionController
         private TenantProvider $tenants,
         private IntrospectionHandler $handler,
         private RequestContextFactory $contexts,
+        private PresentedClientCertificate $certificates,
     ) {
     }
 
@@ -42,6 +44,7 @@ final readonly class IntrospectionController
                 RequestParameters::ofForm($request),
                 $this->contexts->fromRequest($request),
                 in_array(IntrospectionResponse::JWT_CONTENT_TYPE, $request->getAcceptableContentTypes(), true),
+                $this->certificates->ofRequest($request),
             );
         } catch (OAuth2Exception $exception) {
             $error = TokenErrorResponse::fromException($exception);

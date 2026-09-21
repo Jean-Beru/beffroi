@@ -100,8 +100,11 @@ doctrine:
 
 # A full configuration (architecture §5.1): one tenant, a KMS, files for the sealed keys, a JWK Set cached
 # for two minutes rather than the default five so that the tests see the value travel, the default
-# lifetimes and four clients, the third one carrying the PKCE exception of decision 0008, the fourth one
-# registered for opaque access tokens; three of them are told by back channel when a session they signed in
+# lifetimes and six clients, the third one carrying the PKCE exception of decision 0008, the fourth one
+# registered for opaque access tokens, the last two recognised by the certificate they present (RFC 8705
+# §2.1), one under the subject of that certificate and one under a name of its subject alternative name
+# extension, the second one registered for opaque tokens so that both shapes are bound; three of them are
+# told by back channel when a session they signed in
 # ends (Back-Channel Logout 1.0 §2.2) and the native one is not; two of those three are also loaded in a
 # frame by the logout page (Front-Channel Logout 1.0 §3), one of them reading the session on its URI. The KMS is sodium unless the environment
 # names another one: the CI runs this suite again against a Vault service, with a token under the policy
@@ -124,6 +127,10 @@ heidi:
         jwks_max_age: 120
     webauthn:
         metadata_storage: '%kernel.cache_dir%/webauthn'
+    mutual_tls:
+        # The host whose listener asks for a client certificate (RFC 8705 §5): the same application, the
+        # aliases of the discovery document pointing at it.
+        origin: 'https://mtls.op.test'
     clients:
         oidc-demo:
             name: 'Demo application'
@@ -145,6 +152,20 @@ heidi:
             requires_pkce: false
             backchannel_logout_uri: 'https://legacy.test/backchannel-logout'
             frontchannel_logout_uri: 'https://legacy.test/frontchannel-logout?app=1'
+        mtls-app:
+            name: 'Application recognised by its certificate'
+            redirect_uris: ['https://mtls.test/callback']
+            token_endpoint_auth_method: tls_client_auth
+            # the subject of the certificate of Heidi\Oidc\Tests\Fixture\Certificates, as openssl prints it
+            tls_client_auth_subject_dn: 'C=FR,O=Heidi Test,CN=heidi mtls client'
+            requires_consent: false
+        mtls-opaque-app:
+            name: 'Application recognised by its certificate, with opaque tokens'
+            redirect_uris: ['https://mtls.test/opaque']
+            token_endpoint_auth_method: tls_client_auth
+            tls_client_auth_san_dns: 'client.example.com'
+            requires_consent: false
+            access_token_format: opaque
         opaque-app:
             name: 'Application with opaque tokens'
             secret: 'opaque-secret-of-at-least-32-characters-long'

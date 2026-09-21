@@ -34,6 +34,7 @@ use Heidi\Bundle\Http\ResponseMode\FormPostResponseRenderer;
 use Heidi\Bundle\Http\ResponseMode\QueryResponseRenderer;
 use Heidi\Bundle\Http\Tls\ClientCertificateResolverInterface;
 use Heidi\Bundle\Http\Tls\EdgeClientCertificateResolver;
+use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Bundle\Http\TotpProvisioningSealer;
 use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
@@ -136,6 +137,8 @@ use Heidi\Oidc\Application\Client\Method\ClientSecretJwt;
 use Heidi\Oidc\Application\Client\Method\ClientSecretPost;
 use Heidi\Oidc\Application\Client\Method\NoAuthentication;
 use Heidi\Oidc\Application\Client\Method\PrivateKeyJwt;
+use Heidi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
+use Heidi\Oidc\Application\Client\Method\TlsClientAuth;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\EndSession\BackChannelLogout;
@@ -163,10 +166,12 @@ use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionKeyVerifier;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
+use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Heidi\Oidc\Port\CertificateReaderInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientAssertionKeyVerifierInterface;
 use Heidi\Oidc\Port\ClientAssertionReaderInterface;
@@ -181,6 +186,7 @@ use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
+use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
@@ -251,11 +257,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TwoFactorPage::class);
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
+    $services->alias(MutualTlsEndpointLocatorInterface::class, RouterEndpointLocator::class);
     // the certificate a client presented at the handshake, read from what the edge proves and never from
     // a header (decision 0006, docs/mtls-at-the-edge.md); a deployment behind another proxy replaces this
     // implementation rather than teaching it a header to trust
     $services->set(EdgeClientCertificateResolver::class);
     $services->alias(ClientCertificateResolverInterface::class, EdgeClientCertificateResolver::class);
+    $services->set(PresentedClientCertificate::class);
 
     // The bundle: the console (architecture §5.5)
     $services->load('Heidi\\Bundle\\Command\\', '../src/Command/');
@@ -449,12 +457,21 @@ return static function (ContainerConfigurator $container): void {
         ->tag('heidi.client_authentication_method');
     $services->set(ClientSecretJwt::class)
         ->tag('heidi.client_authentication_method');
+    $services->set(TlsClientAuth::class)
+        ->tag('heidi.client_authentication_method');
+    $services->set(SelfSignedTlsClientAuth::class)
+        ->tag('heidi.client_authentication_method');
     $services->set(NoAuthentication::class)
         ->tag('heidi.client_authentication_method');
     $services->set(ClientAuthenticationMethods::class)
         ->args([tagged_iterator('heidi.client_authentication_method')]);
     $services->alias(ClientAuthenticationMethodsInterface::class, ClientAuthenticationMethods::class);
     $services->set(ClientAuthenticator::class);
+    // what reads an X.509 certificate and writes a distinguished name back (RFC 8705 §2.1.2): the same
+    // reader on both sides, so that a name registered for a client and a name read out of a certificate
+    // are written the same way and compare predictably
+    $services->set(PkiFrameworkCertificateReader::class);
+    $services->alias(CertificateReaderInterface::class, PkiFrameworkCertificateReader::class);
     // what reads a client assertion and what verifies it (RFC 7523 §2.2): against the keys the client
     // publishes, with the algorithms the provider is wired with, or against the secret it registered,
     // with HS256 and nothing else (RFC 8725 §3.1)

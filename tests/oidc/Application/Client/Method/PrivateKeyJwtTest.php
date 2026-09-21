@@ -13,6 +13,7 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Client\Client;
@@ -76,7 +77,7 @@ final class PrivateKeyJwtTest extends TestCase
         $client = $this->authenticate($this->assertion());
 
         // Then
-        static::assertSame($this->client, $client);
+        static::assertSame($this->client, $client->client);
     }
 
     #[Test]
@@ -105,7 +106,7 @@ final class PrivateKeyJwtTest extends TestCase
         $client = $this->authenticate($assertion);
 
         // Then
-        static::assertSame($this->client, $client);
+        static::assertSame($this->client, $client->client);
     }
 
     /**
@@ -253,7 +254,7 @@ final class PrivateKeyJwtTest extends TestCase
         ])), $this->context);
 
         // Then
-        static::assertSame($client, $authenticated);
+        static::assertSame($client, $authenticated->client);
         static::assertSame([self::JWKS_URI], array_map(static fn (ClientUri $uri): string => $uri->value, $fetcher->fetched));
     }
 
@@ -320,7 +321,7 @@ final class PrivateKeyJwtTest extends TestCase
         return new ClientAuthenticator($this->clients, Methods::all($this->hasher, $keys), new MockClock('2026-09-15T10:00:00+00:00'), $this->events);
     }
 
-    private function authenticate(string $assertion): Client
+    private function authenticate(string $assertion): AuthenticatedClient
     {
         return $this->authenticator()
             ->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);

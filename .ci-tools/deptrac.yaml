@@ -51,6 +51,10 @@ deptrac:
         # webauthn-lib and cose-lib, the WebAuthn brick (docs/09-briques.md): the core reads its records and authenticator data, parses nothing; its Bridge runs the ceremonies on it
         - { type: classLike, value: '^Webauthn\\' }
         - { type: classLike, value: '^Cose\\' }
+    - name: 'Pki'
+      collectors:
+        # spomky-labs/pki-framework, the X.509 brick (docs/09-briques.md): the Bridge of the protocol reads a client certificate with it, nothing else parses ASN.1
+        - { type: classLike, value: '^SpomkyLabs\\Pki\\' }
     - name: 'Otphp'
       collectors:
         # spomky-labs/otphp and its base32, the TOTP brick (docs/09-briques.md): the Bridge of the core computes the codes and the provisioning URI on it, the core reads the steps
@@ -127,6 +131,7 @@ deptrac:
       - 'CorePort'
       - 'Psr'
       - 'Jose'
+      - 'Pki'
       - 'Uid'
     Bundle:
       - 'CoreDomain'

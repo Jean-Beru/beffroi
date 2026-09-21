@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Http\Tls;
 
-use InvalidArgumentException;
+use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Heidi\Oidc\Exception\InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Request;
 
 /**

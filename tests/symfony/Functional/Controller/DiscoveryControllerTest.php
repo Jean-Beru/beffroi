@@ -84,6 +84,28 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
+     * RFC 8705 §3.3 and §5: the provider binds access tokens to certificates because the two mutual-TLS
+     * methods are wired, and it says where a client presenting one reaches the endpoints, on the host
+     * the deployment configured (docs/mtls-at-the-edge.md).
+     */
+    #[Test]
+    public function theMetadataAnnouncesWhereAClientPresentingACertificateGoes(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $metadata = self::json($this->browser->getResponse());
+        static::assertTrue($metadata['tls_client_certificate_bound_access_tokens']);
+        static::assertSame([
+            'token_endpoint' => 'https://mtls.op.test/token',
+            'userinfo_endpoint' => 'https://mtls.op.test/userinfo',
+            'introspection_endpoint' => 'https://mtls.op.test/introspect',
+            'revocation_endpoint' => 'https://mtls.op.test/revoke',
+        ], $metadata['mtls_endpoint_aliases']);
+    }
+
+    /**
      * OIDC Discovery §3 "response_modes_supported", issue #98: the ways of answering wired into the
      * authorization endpoint of the bundle, the default one and the posted form (Form Post Response Mode
      * §2); the response types stay "code" alone, in every mode (decision 0006).

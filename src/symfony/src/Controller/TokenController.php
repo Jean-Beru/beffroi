@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Controller;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
+use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Domain\Token\JwtPayload;
 use Heidi\Oidc\Domain\Token\TokenErrorResponse;
@@ -27,6 +28,7 @@ final readonly class TokenController
         private TenantProvider $tenants,
         private TokenHandler $handler,
         private RequestContextFactory $contexts,
+        private PresentedClientCertificate $certificates,
     ) {
     }
 
@@ -39,6 +41,7 @@ final readonly class TokenController
                 $request->headers->get('Authorization'),
                 RequestParameters::ofForm($request),
                 $this->contexts->fromRequest($request),
+                $this->certificates->ofRequest($request),
             );
         } catch (OAuth2Exception $exception) {
             $error = TokenErrorResponse::fromException($exception);

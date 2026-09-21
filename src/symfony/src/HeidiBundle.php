@@ -16,6 +16,7 @@ use Heidi\Bundle\Doctrine\Type\BackupCodesType;
 use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
+use Heidi\Bundle\Doctrine\Type\ConfirmationType;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
 use Heidi\Bundle\Doctrine\Type\GeoLocationType;
@@ -28,6 +29,7 @@ use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Plane\Plane;
+use Heidi\Bundle\Routing\RouterEndpointLocator;
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\RateLimitedAttempts;
 use Heidi\Bundle\Security\SecurityUser;
@@ -49,6 +51,7 @@ use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
+use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
 use Heidi\Oidc\Domain\Client\GrantType;
 use function is_array;
 use function is_float;
@@ -205,6 +208,16 @@ final class HeidiBundle extends AbstractBundle
             ->info('Directory of the FIDO metadata the ceremonies check an attestation against: the documents "heidi:webauthn:mds-refresh" verified and "heidi:webauthn:mds-import" stored, next to the keys; empty until one of them ran, which the enrolment of the provider does not need.')
             ->defaultValue('%kernel.project_dir%/var/webauthn')
             ->cannotBeEmpty()
+            ->end()
+            ->end()
+            ->end()
+            ->arrayNode('mutual_tls')
+            ->info('Where a client that presents a certificate reaches the endpoints (RFC 8705 §5). The certificate itself comes from the edge, which is infrastructure and not configuration (docs/mtls-at-the-edge.md); what a deployment says here is the host its listener asks for one on.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->scalarNode('origin')
+            ->info('Scheme and authority of that host, without a path ("https://mtls.op.example"). The endpoints are announced under it in "mtls_endpoint_aliases", with the paths they are served at. Absent, the document announces no alias and a client authenticating by mutual TLS reaches the ordinary endpoints, which is what a deployment serving one host does.')
+            ->defaultNull()
             ->end()
             ->end()
             ->end()
@@ -369,6 +382,26 @@ final class HeidiBundle extends AbstractBundle
             ->info('Where the JWK Set of the client is read back from (RFC 7591 §2); HTTPS, or plain HTTP on a loopback host, no redirect followed. Exclusive with jwks.')
             ->defaultNull()
             ->end()
+            ->scalarNode(CertificateIdentities::SUBJECT_DN)
+            ->info('The subject distinguished name of the certificate this client presents (RFC 8705 §2.1.2), in the string form of RFC 4514; it is written back at boot the way the provider writes the name it reads out of a certificate, so a name as "openssl x509 -noout -subject -nameopt RFC2253" prints it is registered as it is. One of the five keys below, and one only, for a client that authenticates with tls_client_auth.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_DNS)
+            ->info('The dNSName entry of the subject alternative name extension this client is recognised by (RFC 8705 §2.1.2), compared without regard to case (RFC 4343 §1).')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_URI)
+            ->info('The uniformResourceIdentifier entry this client is recognised by (RFC 8705 §2.1.2), compared as the text it is.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_IP)
+            ->info('The iPAddress entry this client is recognised by (RFC 8705 §2.1.2), in dotted decimal or colon-delimited hexadecimal; it is compared as the octets it stands for, not as the text.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_EMAIL)
+            ->info('The rfc822Name entry this client is recognised by (RFC 8705 §2.1.2), compared as it is written (RFC 5321 §2.4).')
+            ->defaultNull()
+            ->end()
             ->end()
             ->end()
             ->end()
@@ -390,6 +423,7 @@ final class HeidiBundle extends AbstractBundle
         ScopesType::NAME => ScopesType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
+        ConfirmationType::NAME => ConfirmationType::class,
         BytesType::NAME => BytesType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
@@ -492,6 +526,7 @@ final class HeidiBundle extends AbstractBundle
         $keys = self::section($config, 'keys');
         $webauthn = self::section($config, 'webauthn');
         $tokens = self::section($config, 'tokens');
+        $mutualTls = self::section($config, 'mutual_tls');
 
         $services = $container->services();
         $services->get(TenantFactory::class)
@@ -518,6 +553,8 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$directory', self::string($webauthn, 'metadata_storage'));
         $services->get(JwksHandler::class)
             ->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
+        $services->get(RouterEndpointLocator::class)
+            ->arg('$mutualTlsOrigin', is_string($mutualTls['origin'] ?? null) ? $mutualTls['origin'] : null);
         // derived at runtime, once the environment placeholders are numbers
         $services->get(SigningKeyRotator::class)
             ->arg('$stagingDelay', inline_service(DateInterval::class)

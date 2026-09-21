@@ -26,17 +26,21 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
+use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\Confirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
 use Heidi\Oidc\Exception\InsufficientScopeException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Exception\MissingBearerTokenException;
+use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -131,6 +135,91 @@ final class UserInfoHandlerTest extends TestCase
             'email' => 'alice@acme.example',
             'email_verified' => true,
         ], $response->claims);
+    }
+
+    /**
+     * RFC 8705 §3: a token bound to a certificate is honoured when the request presents that very
+     * certificate again, whichever shape the token has.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function aBoundTokenIsHonouredWhenItsCertificateIsPresentedAgain(string $shape): void
+    {
+        // Given
+        $certificate = Certificates::client();
+        $token = $this->boundToken($shape, $certificate);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(), $certificate);
+
+        // Then
+        static::assertSame('alice-subject', $response->subject);
+    }
+
+    /**
+     * RFC 8705 §3.2: another certificate is another holder, and the resource refuses with invalid_token.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function aBoundTokenPresentedWithAnotherCertificateIsRefused(string $shape): void
+    {
+        // Given
+        $token = $this->boundToken($shape, Certificates::client());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token is bound to a certificate this request did not present (RFC 8705 section 3).');
+
+        // When
+        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(), Certificates::other());
+    }
+
+    /**
+     * RFC 8705 §3: a bound token is not a bearer token, and whoever steals it holds bytes that open
+     * nothing.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function aBoundTokenPresentedWithoutACertificateIsRefused(string $shape): void
+    {
+        // Given
+        $token = $this->boundToken($shape, Certificates::client());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token is bound to a certificate this request did not present (RFC 8705 section 3).');
+
+        // When
+        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+    }
+
+    /**
+     * A token bound to nothing is a bearer token, honoured by whoever holds it, certificate or not
+     * (RFC 6750 §2).
+     */
+    #[Test]
+    public function aBearerTokenIsHonouredByWhoeverHoldsIt(): void
+    {
+        // Given
+        $token = $this->accessToken(['openid', 'email']);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(), Certificates::other());
+
+        // Then
+        static::assertSame('alice-subject', $response->subject);
+    }
+
+    /**
+     * The two shapes of access token of architecture §4.6.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function provideBoundTokens(): iterable
+    {
+        yield 'an at+jwt carrying its own "cnf"' => ['jwt'];
+
+        yield 'an opaque token whose record carries it' => ['opaque'];
     }
 
     /**
@@ -413,6 +502,19 @@ final class UserInfoHandlerTest extends TestCase
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
         );
+    }
+
+    /**
+     * A token of the shape named, bound to the certificate given (RFC 8705 §3).
+     */
+    private function boundToken(string $shape, ClientCertificate $certificate): string
+    {
+        $authorization = GrantedAuthorization::fromAuthorizationCode($this->code(['openid', 'email']), Confirmation::ofCertificate($certificate));
+        if ($shape === 'jwt') {
+            return $this->accessTokens->issue($authorization, Fixtures::now())->value;
+        }
+
+        return $this->storedTokens->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
     /**

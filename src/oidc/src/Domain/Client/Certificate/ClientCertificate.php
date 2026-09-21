@@ -2,25 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Tls;
+namespace Heidi\Oidc\Domain\Client\Certificate;
 
 use function base64_decode;
 use function hash;
+use function hash_equals;
 use Heidi\Oidc\Domain\Token\Base64Url;
-use InvalidArgumentException;
+use Heidi\Oidc\Exception\InvalidArgumentException;
 use function preg_match;
 use function preg_replace;
 use function sprintf;
 use function strlen;
 
 /**
- * The certificate a client presented at the TLS handshake, as it reached PHP: the leaf in its DER form
- * and nothing else. The chain is not part of it, because no edge this application knows hands one over
- * (docs/mtls-at-the-edge.md); whatever has to be validated against a certificate authority is validated
- * where the handshake happens, not here.
+ * The certificate a client presented at the TLS handshake, as it reached the provider: the leaf in its
+ * DER form and nothing else. The chain is not part of it, because no edge this application knows hands
+ * one over (docs/mtls-at-the-edge.md); whatever has to be validated against a certificate authority is
+ * validated where the handshake happens, not here (RFC 8705 §2.1).
  *
- * Nothing here reads what is inside the certificate. A rule about its subject, its issuer or its
- * extensions is client authentication (RFC 8705 §2) and belongs to whoever authenticates a client.
+ * Nothing here reads what is inside the certificate. What names the client in it is read by a
+ * CertificateReaderInterface, and the thumbprint below is the whole of what binding a token needs.
  */
 final readonly class ClientCertificate
 {
@@ -55,9 +56,24 @@ final readonly class ClientCertificate
         if ($body === '') {
             return null;
         }
-        $der = base64_decode($body, true);
-        if ($der === false || $der === '') {
+        $certificate = self::fromBase64($body);
+        if ($certificate === null) {
             throw new InvalidArgumentException('The edge handed over a PEM certificate envelope whose contents are not base64.');
+        }
+
+        return $certificate;
+    }
+
+    /**
+     * A certificate as a JWK Set carries one, base64 of the DER encoding and not base64url (RFC 7517
+     * §4.7). What a client publishes is read as it is given: a value that is not base64 is not a
+     * certificate, it names no client, and it is worth no exception.
+     */
+    public static function fromBase64(string $base64): ?self
+    {
+        $der = base64_decode($base64, true);
+        if ($der === false || $der === '') {
+            return null;
         }
 
         return new self($der);
@@ -70,5 +86,14 @@ final readonly class ClientCertificate
     public function x5tS256(): string
     {
         return Base64Url::encode(hash('sha256', $this->der, true));
+    }
+
+    /**
+     * Two certificates are the same certificate when their DER encodings are, compared through the
+     * thumbprint both sides of a binding already speak in.
+     */
+    public function isSameAs(self $other): bool
+    {
+        return hash_equals($this->x5tS256(), $other->x5tS256());
     }
 }
