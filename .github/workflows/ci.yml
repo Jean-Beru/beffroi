@@ -143,7 +143,7 @@ jobs:
         run: castor phpunit -- --no-coverage tests/symfony/Functional/Key tests/symfony/Functional/Security
 
   conformance:
-    name: "4️⃣ OpenID Conformance (Basic, Config, Form Post, RP-Initiated Logout OP)"
+    name: "4️⃣ OpenID Conformance (Basic, Config, Form Post, RP-Initiated, Front-Channel and Back-Channel Logout OP)"
     needs: [tests]
     # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image. On main
     # only (and by hand): the suite takes the better part of an hour, and a pull request has the bundle

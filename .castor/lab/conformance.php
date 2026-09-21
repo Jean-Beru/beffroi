@@ -28,6 +28,21 @@ use Symfony\Component\Console\Input\InputOption;
  * red for weeks, and the run fails the day one of them passes, so that the line is deleted rather than
  * carried. A module is listed there once the gap is written down, never to quiet a surprise.
  */
+/**
+ * A client per logout channel, in place of the "client" of the configuration: the suite certifies one
+ * channel at a time and a module fails on a request to the endpoint of the other one, so the client of a
+ * plan registers the URI of its channel and of no other (apps/op/config/packages/heidi.yaml).
+ */
+const CONFORMANCE_FRONT_CHANNEL_CLIENT = [
+    'client_id' => 'conformance-front-channel-logout',
+    'client_secret' => '{CONFORMANCE_FRONT_CHANNEL_LOGOUT_SECRET}',
+];
+
+const CONFORMANCE_BACK_CHANNEL_CLIENT = [
+    'client_id' => 'conformance-back-channel-logout',
+    'client_secret' => '{CONFORMANCE_BACK_CHANNEL_LOGOUT_SECRET}',
+];
+
 const CONFORMANCE_PLANS = [
     'basic' => [
         'name' => 'oidcc-basic-certification-test-plan',
@@ -57,11 +72,41 @@ const CONFORMANCE_PLANS = [
             'client_registration' => 'static_client',
         ],
     ],
+    // Each logout channel is certified with a client of its own, and neither with the client the other
+    // plans use: a client that registers a logout URI is told at every logout of its sessions, and a
+    // module of another plan fails on a request it did not expect ("Got an HTTP request to
+    // 'frontchannel_logout' that wasn't expected"). That is the metadata working as written, per client,
+    // and it is why certifying the three logout profiles takes three clients.
+    'front-channel-logout' => [
+        'name' => 'oidcc-frontchannel-rp-initiated-logout-certification-test-plan',
+        'variant' => [
+            'response_type' => 'code',
+            'client_registration' => 'static_client',
+        ],
+        'client' => CONFORMANCE_FRONT_CHANNEL_CLIENT,
+    ],
+    // Of this plan, the verification of the discovery document only, until the module that waits for the
+    // token can pass: the provider posts it itself, and the URI the suite gives its clients names
+    // localhost, which inside the worker is the worker ("Failed to connect to localhost port 8443"). The
+    // suite solves the same problem for itself with the conformance-redirector sidecar; the one that
+    // gives the worker that address, with the certificate of the suite trusted there, comes with
+    // heidi#141, which deletes this line. Until then the module is asked for by name ("--module
+    // oidcc-backchannel-rp-initiated-logout"), where it fails after the five minutes it waits for a
+    // token that cannot arrive; that is a run by hand, not every push to main.
+    'back-channel-logout' => [
+        'name' => 'oidcc-backchannel-rp-initiated-logout-certification-test-plan',
+        'variant' => [
+            'response_type' => 'code',
+            'client_registration' => 'static_client',
+        ],
+        'client' => CONFORMANCE_BACK_CHANNEL_CLIENT,
+        'modules' => ['oidcc-backchannel-logout-discovery-endpoint-verification'],
+    ],
     // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
     // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
     // new key with the old one still there. The other plans of the suite are for response types and
-    // features the OP does not have (implicit and hybrid, dynamic registration, back-channel and
-    // front-channel logout, session management, third-party initiated login).
+    // features the OP does not have (implicit and hybrid, dynamic registration, session management,
+    // third-party initiated login).
     'rotate-keys' => [
         'name' => 'oidcc-server-rotate-keys',
         'module' => true,
@@ -86,6 +131,8 @@ const CONFORMANCE_REQUIRED_VALUES = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
     'CONFORMANCE_POST_SECRET',
+    'CONFORMANCE_FRONT_CHANNEL_LOGOUT_SECRET',
+    'CONFORMANCE_BACK_CHANNEL_LOGOUT_SECRET',
 ];
 
 /**
@@ -110,7 +157,7 @@ const CONFORMANCE_OP_TIMEOUT = 180;
  */
 #[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module')]
 function conformance(
-    #[AsOption(description: 'Run only this plan: basic, config, form-post, rp-initiated-logout or rotate-keys (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
+    #[AsOption(description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout or rotate-keys (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $plan = [],
     #[AsOption(description: 'Run only the modules whose name contains this text (repeatable)', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $module = [],
@@ -143,8 +190,6 @@ function conformance(
     $server = conformance_server($suite);
     io()
         ->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['HEIDI_ISSUER']));
-    $configuration = conformance_configuration($env);
-
     $rows = [];
     $verdict = [];
     $stale = [];
@@ -162,6 +207,7 @@ function conformance(
                 ],
             ];
         } else {
+            $configuration = conformance_configuration($env, $definition['client'] ?? []);
             $created = conformance_request($suite, 'POST', '/api/plan', [
                 'query' => [
                     'planName' => $definition['name'],
@@ -176,10 +222,14 @@ function conformance(
             $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
             $planUrls[] = sprintf('%s: %s', $definition['name'], $planUrl);
         }
+        // What a plan runs by default, which naming a module with --module lifts: the restriction is
+        // there to keep a run lean, never to stop an operator from asking for a module by its name.
+        $only = $module === [] ? ($definition['modules'] ?? []) : [];
         $modules = array_values(array_filter(
             $created['modules'],
-            static fn (array $moduleDefinition): bool => $module === []
-                || array_any($module, static fn (string $needle): bool => str_contains((string) $moduleDefinition['testModule'], $needle)),
+            static fn (array $moduleDefinition): bool => ($only === [] || in_array((string) $moduleDefinition['testModule'], $only, true))
+                && ($module === []
+                    || array_any($module, static fn (string $needle): bool => str_contains((string) $moduleDefinition['testModule'], $needle))),
         ));
         io()
             ->section($planId === null
@@ -347,15 +397,23 @@ function conformance_wait_for_op(string $issuer): void
 
 /**
  * The plan configuration with its placeholders filled: {NAME} is the value of NAME in the environment of
- * the application, {HEIDI_DEV_USERNAME} the development user. The file itself carries no secret.
+ * the application, {HEIDI_DEV_USERNAME} the development user. The file itself carries no secret. A plan
+ * that names a client of its own has the "client" of the file replaced before the placeholders are
+ * filled, so that its secret comes from the environment like every other.
  *
  * @param array<string, string> $env
+ * @param array<string, string> $client the client of the plan, the one of the file when empty
  */
-function conformance_configuration(array $env): string
+function conformance_configuration(array $env, array $client = []): string
 {
     $template = file_get_contents(getcwd() . '/' . CONFORMANCE_CONFIGURATION);
     if ($template === false) {
         throw new RuntimeException(sprintf('Cannot read %s.', CONFORMANCE_CONFIGURATION));
+    }
+    if ($client !== []) {
+        $decoded = json_decode($template, true, 32, \JSON_THROW_ON_ERROR);
+        $decoded['client'] = $client;
+        $template = json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT);
     }
     $values = [
         '{HEIDI_DEV_USERNAME}' => DEV_USERNAME,
