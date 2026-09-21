@@ -34,6 +34,16 @@ final class PushedAuthorizationResponseTest extends TestCase
     }
 
     /**
+     * RFC 9126 §2.2: one second is a lifetime, and the smallest the endpoint ever answers.
+     */
+    #[Test]
+    public function theSmallestLifetimeItAnswersIsOneSecond(): void
+    {
+        // When / Then
+        static::assertSame(1, new PushedAuthorizationResponse(RequestUri::generate(), 1)->expiresIn);
+    }
+
+    /**
      * RFC 9126 §2.2: "a positive integer".
      */
     #[Test]
