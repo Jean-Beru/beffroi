@@ -62,6 +62,8 @@ const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
     'CONFORMANCE_POST_SECRET',
+    'CONFORMANCE_FRONT_CHANNEL_LOGOUT_SECRET',
+    'CONFORMANCE_BACK_CHANNEL_LOGOUT_SECRET',
     'OIDC_DEMO_SECRET',
 ];
 
@@ -149,7 +151,7 @@ function provision(
             ], DEV_CLIENT_SECRETS),
         );
     io()
-        ->note(sprintf('These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the three others.', DEV_ENV_LOCAL));
+        ->note(sprintf('These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others.', DEV_ENV_LOCAL));
 }
 
 /**

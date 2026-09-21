@@ -102,7 +102,8 @@ doctrine:
 # for two minutes rather than the default five so that the tests see the value travel, the default
 # lifetimes and four clients, the third one carrying the PKCE exception of decision 0008, the fourth one
 # registered for opaque access tokens; three of them are told by back channel when a session they signed in
-# ends (Back-Channel Logout 1.0 §2.2) and the native one is not. The KMS is sodium unless the environment
+# ends (Back-Channel Logout 1.0 §2.2) and the native one is not; two of those three are also loaded in a
+# frame by the logout page (Front-Channel Logout 1.0 §3), one of them reading the session on its URI. The KMS is sodium unless the environment
 # names another one: the CI runs this suite again against a Vault service, with a token under the policy
 # of the OP (issue #57), against a key file and against a LocalStack KMS (issue #58), to prove that the
 # code between the backends is the same. The sodium key is a fixture of this kernel and seals nothing
@@ -143,6 +144,7 @@ heidi:
             token_endpoint_auth_method: client_secret_post
             requires_pkce: false
             backchannel_logout_uri: 'https://legacy.test/backchannel-logout'
+            frontchannel_logout_uri: 'https://legacy.test/frontchannel-logout?app=1'
         opaque-app:
             name: 'Application with opaque tokens'
             secret: 'opaque-secret-of-at-least-32-characters-long'
@@ -151,6 +153,8 @@ heidi:
             requires_consent: false
             access_token_format: opaque
             backchannel_logout_uri: 'https://opaque.test/backchannel-logout'
+            frontchannel_logout_uri: 'https://opaque.test/frontchannel-logout'
+            frontchannel_logout_session_required: true
 
 services:
     # The 404s the plane tests expect are not worth a line on stderr.

@@ -80,6 +80,30 @@ final class ClientUriTest extends TestCase
     }
 
     /**
+     * RFC 3986 §2.1: every value is percent-encoded, and the registered query is kept before them
+     * (RFC 6749 §4.1.2 for a response, Front-Channel Logout 1.0 §2 for a logout).
+     */
+    #[Test]
+    #[DataProvider('provideUrisAndParameters')]
+    public function itAppendsPercentEncodedParametersAfterTheRegisteredQuery(string $value, string $expected): void
+    {
+        // When / Then
+        static::assertSame($expected, new ClientUri($value)->withParameters([
+            'iss' => 'https://id.acme.example',
+            'sid' => 'a&b',
+        ]));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideUrisAndParameters(): iterable
+    {
+        yield 'no query registered' => ['https://rp.example/logout', 'https://rp.example/logout?iss=https%3A%2F%2Fid.acme.example&sid=a%26b'];
+        yield 'a query registered' => ['https://rp.example/logout?app=1', 'https://rp.example/logout?app=1&iss=https%3A%2F%2Fid.acme.example&sid=a%26b'];
+    }
+
+    /**
      * RFC 6454 §3.2: the scheme, the host and the port, which a Content-Security-Policy source
      * expression names; never the path nor the query (Form Post Response Mode §2).
      */

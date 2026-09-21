@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Controller;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
@@ -28,7 +29,9 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 /**
  * The end session endpoint (RP-Initiated Logout §2), GET or POST. An error is a page, never a
  * redirection (§4). The confirmation page re-submits the same parameters with the answer and the CSRF
- * token; a "no" ends nothing and sends the user nowhere.
+ * token; a "no" ends nothing and sends the user nowhere. A session that ended and whose clients
+ * registered a front-channel logout URI leaves through the page that loads them (Front-Channel Logout
+ * 1.0 §3), which is what then sends the browser back to the client that asked.
  */
 #[AsController]
 final readonly class EndSessionController
@@ -53,6 +56,7 @@ final readonly class EndSessionController
         private InteractionPages $pages,
         private CsrfTokenManagerInterface $csrf,
         private InteractionLocale $locale,
+        private FrontChannelLogoutRenderer $frontChannel,
     ) {
     }
 
@@ -100,6 +104,12 @@ final readonly class EndSessionController
         }
         if ($decision->endedSession !== null) {
             $this->browser->unbind($request->getSession());
+            // Front-Channel Logout 1.0 §3: the frames of the clients of the session, before the browser
+            // is sent back to the one that asked; a session no client of that kind signed in has none
+            $page = $this->frontChannel->render($decision->endedSession, $decision->redirect?->toUri());
+            if ($page !== null) {
+                return $page;
+            }
         }
         if ($decision->redirect !== null) {
             return $this->pages->redirect($decision->redirect->toUri());

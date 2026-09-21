@@ -13,6 +13,8 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
+use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
+use Heidi\Bundle\EndSession\LogoutChannels;
 use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
@@ -32,6 +34,7 @@ use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Key\KmsUnavailableListener;
+use Heidi\Bundle\MessageHandler\QueueLogoutTokenHandler;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
 use Heidi\Bundle\Plane\Plane;
@@ -118,6 +121,7 @@ use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\EndSession\BackChannelLogout;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
+use Heidi\Oidc\Application\EndSession\FrontChannelLogout;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
@@ -149,6 +153,7 @@ use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -224,6 +229,8 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle: the handlers of its own messages and what time does on its own (architecture §5.6)
     $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
+    $services->get(QueueLogoutTokenHandler::class)
+        ->tag('heidi.logout_channel');
     $services->set(HeidiSchedule::class);
     // what carries a logout token to a client, and what says the provider gave up on one (§4.9)
     $services->set(LogoutTokenSender::class);
@@ -427,4 +434,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);
     $services->set(BackChannelLogout::class);
+    $services->set(FrontChannelLogout::class);
+    // The two ways of telling a client that a session ended (architecture §4.9): one class per channel,
+    // and what is tagged is what the discovery document announces, never an enumeration kept beside it
+    $services->set(FrontChannelLogoutRenderer::class)
+        ->tag('heidi.logout_channel');
+    $services->set(LogoutChannels::class)
+        ->args([tagged_iterator('heidi.logout_channel')]);
+    $services->alias(ServedLogoutChannelsInterface::class, LogoutChannels::class);
 };
