@@ -84,7 +84,10 @@ services:
       dockerfile: apps/op/Dockerfile
       target: frankenphp_dev
     restart: unless-stopped
-    command: ["php", "bin/console", "messenger:consume", "scheduler_heidi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
+    # The address of the host is read from /etc/hosts (extra_hosts below) and handed to the HTTP
+    # client of the application, which curl would otherwise resolve to this container
+    # (config/packages/framework.yaml).
+    command: ["sh", "-c", "export HEIDI_DEMO_HOST_IP=$$(getent ahostsv4 demo.localhost | head -1 | cut -d' ' -f1); exec php bin/console messenger:consume scheduler_heidi async_notifications async_priority_high async_priority_medium async_priority_low --time-limit=3600 --memory-limit=256M"]
     # The image checks Caddy; a worker is healthy while the consumer is its first process.
     healthcheck:
       test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]
@@ -95,6 +98,12 @@ services:
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
+    # The worker is what carries a logout token to a client (Back-Channel Logout 1.0 §2.5), so it is
+    # the one process of the stack that calls out to an application of the host. "localhost" is the
+    # container itself from in here, so the second instance of oidc-demo is registered under a name
+    # of its own, which resolves to the host ("castor demo --logout-others").
+    extra_hosts:
+      - "demo.localhost:host-gateway"
     volumes:
       - ./apps/op:/app
       - ./src:/src

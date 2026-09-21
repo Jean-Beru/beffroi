@@ -65,6 +65,7 @@ const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_FRONT_CHANNEL_LOGOUT_SECRET',
     'CONFORMANCE_BACK_CHANNEL_LOGOUT_SECRET',
     'OIDC_DEMO_SECRET',
+    'OIDC_DEMO_SECOND_SECRET',
 ];
 
 #[AsTask(description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password')]

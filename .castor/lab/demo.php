@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 /*
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
- * the command line, so that every step is looked at (--check, --rotate, --passkey).
+ * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
+ * --logout-others).
  */
 
 use Castor\Attribute\AsOption;
@@ -15,6 +16,7 @@ use function Castor\http_request;
 use function Castor\io;
 use function Castor\load_dot_env;
 use function Castor\run;
+use Symfony\Component\Process\Process;
 
 /**
  * oidc-demo, the reference client of the core (Symfony's oidc_login): where it is checked out, next to this
@@ -27,7 +29,18 @@ const DEMO_URL = 'https://localhost:8002';
 
 const DEMO_CLIENT_ID = 'oidc-demo';
 
-#[AsTask(description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator')]
+/**
+ * The second instance of oidc-demo, the one --logout-others logs out by back-channel from the first: the
+ * same checkout, another client, another port, and a host of its own, because a cookie is not told apart
+ * by port and the two instances would otherwise share a session. Plain HTTP on a loopback name: the worker
+ * that carries it a logout token trusts no certificate of the Symfony CLI, and a client registers a
+ * loopback URI or an HTTPS one (decision 0006).
+ */
+const DEMO_SECOND_URL = 'http://demo.localhost:8003';
+
+const DEMO_SECOND_CLIENT_ID = 'oidc-demo-second';
+
+#[AsTask(description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first')]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
     ?string $dir = null,
@@ -37,6 +50,10 @@ function demo(
     bool $rotate = false,
     #[AsOption(description: 'The third success criterion of spike 3 (issue #93): sign in with a password, open /profile, be sent back to the OP by /vault with acr_values=phr and prompt=login, enrol a passkey and sign the assertion with a software authenticator (tests/demo/passkey-browser.php), open /vault with an ID token carrying acr=phr, log out; the passkey is revoked afterwards')]
     bool $passkey = false,
+    #[AsOption(description: 'The third success criterion of spike 4 (issue #137): the demo configured with response_mode=form_post, the authorization response posted back to its callback by the page of the OP, and what a SameSite cookie makes of that cross-site POST')]
+    bool $formPost = false,
+    #[AsOption(description: 'The second success criterion of spike 4 (issue #137): a second instance of the demo on another client of the same OP, signed in on the same session, logged out by back-channel when the first instance logs out; the delay is measured and printed')]
+    bool $logoutOthers = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -113,6 +130,16 @@ function demo(
     }
     if ($passkey) {
         demo_passkey_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($formPost) {
+        demo_form_post_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($logoutOthers) {
+        if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
+            io()->error('OIDC_DEMO_SECOND_SECRET is empty: run "castor provision" first.');
+            exit(1);
+        }
+        demo_logout_others_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECOND_SECRET'], $ca);
     }
 }
 
@@ -301,6 +328,292 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         ->table(['Step', 'Verified'], $verified);
     io()
         ->success(sprintf('oidc-demo required acr_values=%s on /vault and got a passkey login against the OP, without a patch of oidc_login.', DEMO_PASSKEY_CLASS));
+}
+
+/**
+ * The variable of the demo that says which response mode the provider is asked for
+ * (config/packages/security.yaml of oidc-demo, "authorization_params"), written into its .env.local
+ * for the time of a run and left on "query", which is the default of the code flow.
+ */
+const DEMO_RESPONSE_MODE_ENV = 'OIDC_RESPONSE_MODE';
+
+/**
+ * The cookie the session of the demo is carried by: the name PHP gives it, the demo configuring none.
+ */
+const DEMO_SESSION_COOKIE = 'PHPSESSID';
+
+/**
+ * The third success criterion of spike 4 (issue #137): oidc-demo receives a "form_post" response and
+ * finds its session again, "state" and PKCE verifier included. The demo is configured with
+ * response_mode=form_post for the run, and the round trip is played one request at a time as
+ * demo_check does, up to the page the OP answers the authorization request with: a form that posts the
+ * response to the callback of the demo, which is the one thing about this mode that is not a redirect
+ * like any other, a cross-site POST.
+ *
+ * The unknown of the spike is in the session cookie of the demo. A browser sends a "SameSite=Lax"
+ * cookie, the default, on a top-level navigation and never on a cross-site POST, so the very same POST
+ * is played twice, with the cookies the demo set and without them: that is what the callback looks like
+ * under each value of the attribute. The value the demo actually sets is read from its Set-Cookie and
+ * printed; the rule itself is applied here, because it is a browser that enforces it and this is not
+ * one.
+ */
+function demo_form_post_check(string $dir, string $issuer, string $password, string $ca): void
+{
+    io()
+        ->section('response_mode=form_post');
+    demo_write_env_local($dir . '/.env.local', [
+        DEMO_RESPONSE_MODE_ENV => 'form_post',
+    ]);
+
+    try {
+        $cookies = [];
+        $verified = [];
+
+        // /profile: the demo starts the flow, asking for the mode it is configured with
+        $setCookies = [];
+        [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile', setCookies: $setCookies);
+        demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('/profile sends the browser to the authorization endpoint (got %d %s)', $status, $location));
+        parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
+        demo_expect(($authorization['response_mode'] ?? null) === 'form_post', 'the authorization request asks for response_mode=form_post');
+        $sameSite = demo_same_site_of($setCookies, DEMO_SESSION_COOKIE);
+        demo_expect($sameSite !== null, 'the demo opened a session to hold the "state" and the PKCE verifier of the attempt');
+        $verified[] = ['Authorization request', 'response_type=code, PKCE S256, response_mode=form_post'];
+
+        // the login of the OP, unchanged: the mode says how the response comes back, not how it is obtained
+        [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+        demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf('the OP asks for a login (got %d %s)', $status, $location));
+        [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+        demo_expect($status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1, 'the login page carries the form');
+        [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
+            '_username' => DEV_USERNAME,
+            '_password' => $password,
+            '_csrf_token' => $csrf[1],
+        ]);
+        demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
+
+        // and here the mode shows: a page, not a redirection
+        [$status, $location, $page, $headers] = demo_request($cookies, $ca, 'GET', $location);
+        demo_expect($status === 200 && $location === '', sprintf('the OP answers the authorization request with a page of its own, not with a redirection (got %d %s)', $status, $location));
+        demo_expect(str_contains($headers['cache-control'][0] ?? '', 'no-store'), 'the page is never cached (Form Post Response Mode §2)');
+        demo_expect(preg_match('/form[^>]+method="post"[^>]+action="([^"]+)"/i', $page, $form) === 1, 'the page carries a form that posts');
+        $formAction = html_entity_decode($form[1]);
+        demo_expect($formAction === DEMO_URL . '/oidc/callback', sprintf('the form posts to the callback of the demo (got %s)', $formAction));
+        $response = demo_form_fields($page);
+        demo_expect(isset($response['code'], $response['state']) && ($response['iss'] ?? null) === $issuer, 'the form carries code, state and iss (RFC 9207), as a query string would');
+        $verified[] = ['Authorization response', sprintf('a form of %d fields posted to %s, no-store', count($response), $formAction)];
+
+        // the cross-site POST, first as a browser makes it of a cookie it does not send
+        $withoutCookies = [];
+        [$status, $location] = demo_request($withoutCookies, $ca, 'POST', $formAction, $response);
+        demo_expect($status === 302 && $location === DEMO_URL . '/login', sprintf('without the session cookie, the demo refuses the callback and sends the browser to its failure path (got %d %s)', $status, $location));
+        [$status, , $page] = demo_request($withoutCookies, $ca, 'GET', DEMO_URL . '/login');
+        demo_expect(preg_match('/<code>([^<]+)<\/code>/', $page, $detail) === 1, 'the login page of the demo says why');
+        $refusal = html_entity_decode($detail[1]);
+        demo_expect(str_contains($refusal, 'state'), sprintf('the login fails on the "state", which the session it did not receive was holding: "%s"', $refusal));
+        $verified[] = ['Cookie withheld', sprintf('"%s", which is what SameSite=Lax makes of the POST', $refusal)];
+
+        // then as a browser makes it of a cookie it does send
+        [$status, $location] = demo_request($cookies, $ca, 'POST', $formAction, $response);
+        demo_expect($status === 302 && $location === DEMO_URL . '/profile', sprintf('with the session cookie, the demo signs the user in (got %d %s)', $status, $location));
+        [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
+        demo_expect($status === 200, sprintf('/profile opens (got %d)', $status));
+        $tokens = demo_tokens_of($page);
+        demo_expect(isset($tokens['id_token'], $tokens['access_token']), '/profile shows an ID token and an access token');
+        $verified[] = ['Cookie sent', sprintf('the code was exchanged, sub %s, acr=%s', $tokens['id_token']['claims']['sub'] ?? '?', $tokens['id_token']['claims']['acr'] ?? '?')];
+
+        demo_logout($cookies, $issuer, $ca);
+        $verified[] = ['Session cookie of the demo', sprintf('SameSite=%s (framework.session.cookie_samesite)', $sameSite)];
+
+        io()
+            ->table(['Step', 'Verified'], $verified);
+        io()
+            ->success(sprintf('oidc-demo received a form_post response and found its session again, "state" and PKCE verifier included, on a "SameSite=%s" cookie; the same POST without the cookie fails on the "state".', $sameSite));
+    } finally {
+        demo_write_env_local($dir . '/.env.local', [
+            DEMO_RESPONSE_MODE_ENV => 'query',
+        ]);
+    }
+}
+
+/**
+ * The value of the "SameSite" attribute of the given cookie among the Set-Cookie headers of a response,
+ * lowercased, or null when that cookie is not among them. PHP sends no attribute for "lax", which is
+ * what a browser assumes anyway (RFC 6265bis §5.4.7).
+ *
+ * @param list<string> $setCookies
+ */
+function demo_same_site_of(array $setCookies, string $name): ?string
+{
+    foreach ($setCookies as $cookie) {
+        if (! str_starts_with($cookie, $name . '=')) {
+            continue;
+        }
+
+        return preg_match('/;\s*samesite=([a-z]+)/i', $cookie, $matches) === 1 ? strtolower($matches[1]) : 'lax';
+    }
+
+    return null;
+}
+
+/**
+ * The fields of the self-submitting form of a "form_post" response, by name (Form Post Response Mode §2:
+ * one hidden input per parameter of the authorization response).
+ *
+ * @return array<string, string>
+ */
+function demo_form_fields(string $page): array
+{
+    preg_match_all('/<input[^>]+type="hidden"[^>]*>/i', $page, $inputs);
+    $fields = [];
+    foreach ($inputs[0] as $input) {
+        if (preg_match('/name="([^"]+)"/', $input, $name) === 1 && preg_match('/value="([^"]*)"/', $input, $value) === 1) {
+            $fields[html_entity_decode($name[1])] = html_entity_decode($value[1]);
+        }
+    }
+
+    return $fields;
+}
+
+/**
+ * The second success criterion of spike 4 (issue #137): two instances of oidc-demo signed in on one
+ * session of the OP, and the second logged out by back-channel when the first logs out, without its user
+ * going through it. The first instance is the one already running; the second is the same checkout,
+ * started on another port as another client (demo_second_instance), which is what gives it a session and
+ * a back-channel logout endpoint of its own.
+ *
+ * What is measured is the whole delay the issue asks for: from the logout request of the first instance
+ * to the moment the second one refuses to serve its page again. It covers the end of the session, the
+ * event, the queue, the worker and the POST to the client (issue #136).
+ */
+function demo_logout_others_check(string $dir, string $issuer, string $password, string $secret, string $ca): void
+{
+    io()
+        ->section('Two instances on one OP, the second logged out by back-channel');
+    $second = demo_second_instance($dir, $issuer, $secret, $ca);
+
+    try {
+        $cookies = [];
+        $verified = [];
+
+        $first = demo_sign_in($cookies, $issuer, $password, $ca);
+        $sid = $first['tokens']['id_token']['claims']['sid'] ?? null;
+        demo_expect(is_string($sid) && $sid !== '', 'the first instance is signed in, and its ID token names the session of the OP');
+        $verified[] = [DEMO_CLIENT_ID, sprintf('signed in, sid %s', $sid)];
+
+        $secondTokens = demo_second_sign_in($cookies, $issuer, $ca);
+        demo_expect(($secondTokens['id_token']['claims']['sid'] ?? null) === $sid, 'the second instance signed in on the same session of the OP: the same "sid"');
+        demo_expect(in_array(DEMO_SECOND_CLIENT_ID, (array) ($secondTokens['id_token']['claims']['aud'] ?? []), true), 'its ID token is the one of the second client');
+        $verified[] = [DEMO_SECOND_CLIENT_ID, 'signed in on the same session, without a login page'];
+
+        // the first instance logs out: its own session, then the one of the OP, and nothing of the second
+        $startedAt = hrtime(true);
+        demo_logout($cookies, $issuer, $ca);
+        $verified[] = ['RP-Initiated Logout', sprintf('from %s, which the second instance is told nothing of', DEMO_URL)];
+
+        $elapsed = demo_wait_for_logout($cookies, $ca, $startedAt);
+        $verified[] = ['Back-channel logout', sprintf('%s asks for a login again %.1f s later', DEMO_SECOND_URL, $elapsed)];
+
+        io()
+            ->table(['Step', 'Verified'], $verified);
+        io()
+            ->success(sprintf('The second instance was logged out %.1f s after the first one logged out, by a logout token the OP posted to it: the whole delay, from the logout request to the page it refuses to serve again.', $elapsed));
+    } finally {
+        $second->stop();
+    }
+}
+
+/**
+ * The second instance of the demo: the same checkout, the built-in server of PHP because the server of
+ * the Symfony CLI is one per directory and the first instance already holds this one, and the client of
+ * its own that the OP registers with a back-channel logout URI. Everything that tells the two instances
+ * apart is passed as an environment variable, which the dotenv of the demo does not override; it listens
+ * on every address, because the worker of the stack reaches it from its container.
+ */
+function demo_second_instance(string $dir, string $issuer, string $secret, string $ca): Process
+{
+    $port = (string) parse_url(DEMO_SECOND_URL, \PHP_URL_PORT);
+    // variables_order: the built-in server of PHP does not put the environment of the process into
+    // $_ENV unless it is asked to, and the dotenv of the demo only steps aside for what is there
+    $server = new Process(['php', '-d', 'variables_order=EGPCS', '-d', 'openssl.cafile=' . $ca, '-d', 'curl.cainfo=' . $ca, '-S', '0.0.0.0:' . $port, '-t', 'public', 'public/index.php'], $dir, [
+        'APP_ENV' => 'dev',
+        'OIDC_PROVIDER_URI' => $issuer,
+        'OIDC_CLIENT_ID' => DEMO_SECOND_CLIENT_ID,
+        'OIDC_CLIENT_SECRET' => $secret,
+        'OIDC_RESPONSE_MODE' => 'query',
+    ]);
+    $server->setTimeout(null);
+    $server->start();
+
+    $cookies = [];
+    for ($attempt = 0; $attempt < 50; ++$attempt) {
+        try {
+            [$status] = demo_request($cookies, $ca, 'GET', DEMO_SECOND_URL . '/');
+            if ($status === 200) {
+                demo_expect(true, sprintf('the second instance answers on %s as client "%s"', DEMO_SECOND_URL, DEMO_SECOND_CLIENT_ID));
+
+                return $server;
+            }
+        } catch (Throwable) {
+        }
+        usleep(200_000);
+    }
+
+    io()
+        ->error(sprintf("The second instance of oidc-demo did not start on %s:\n%s", DEMO_SECOND_URL, $server->getErrorOutput()));
+    $server->stop();
+    exit(1);
+}
+
+/**
+ * A sign-in of the second instance on the session the first one opened: the OP answers the authorization
+ * request from the session it holds, without a page of its own, which is what makes the two logins one
+ * session. The tokens of its /profile are returned.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ * @return array<string, array{raw: string, header: array<string, mixed>, claims: array<string, mixed>}>
+ */
+function demo_second_sign_in(array &$cookies, string $issuer, string $ca): array
+{
+    [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_SECOND_URL . '/profile');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('the second instance sends the browser to the authorization endpoint (got %d %s)', $status, $location));
+
+    for ($hop = 0; $hop < 5 && str_starts_with($location, $issuer); ++$hop) {
+        [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+        demo_expect($status === 302, sprintf('the OP answers from the session it holds, without asking anything (got %d)', $status));
+    }
+    demo_expect(str_starts_with($location, DEMO_SECOND_URL . '/oidc/callback?'), sprintf('the OP sends the browser to the callback of the second instance (got %s)', $location));
+
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && $location === DEMO_SECOND_URL . '/profile', sprintf('the second instance signs the user in (got %d %s)', $status, $location));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_SECOND_URL . '/profile');
+    demo_expect($status === 200, sprintf('/profile of the second instance opens (got %d)', $status));
+    $tokens = demo_tokens_of($page);
+    demo_expect(isset($tokens['id_token']), '/profile of the second instance shows an ID token');
+
+    return $tokens;
+}
+
+/**
+ * Waits for the second instance to ask for a login again, which is the logout token having arrived, and
+ * returns the seconds elapsed since the given instant. The page is asked for ten times a second: the
+ * delay printed is that of the whole path, granular to the poll.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_wait_for_logout(array &$cookies, string $ca, float|int $startedAt, float $timeout = 60.0): float
+{
+    while (($elapsed = (hrtime(true) - $startedAt) / 1e9) < $timeout) {
+        [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_SECOND_URL . '/profile');
+        if ($status === 302 && str_starts_with($location, 'https://')) {
+            return (hrtime(true) - $startedAt) / 1e9;
+        }
+        usleep(100_000);
+    }
+
+    io()
+        ->error(sprintf('The second instance was still signed in %.0f s after the logout. What the worker did with the logout token:', $timeout));
+    run(['docker', 'compose', 'logs', 'worker', '--tail', '20'], context: context()->withAllowFailure());
+    exit(1);
 }
 
 /**
@@ -751,9 +1064,11 @@ function demo_logout(array &$cookies, string $issuer, string $ca): string
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  * @param array<string, string> $form
- * @return array{int, string, string} status, Location, body
+ * @param list<string> $setCookies filled with the Set-Cookie headers of the response, for a check that
+ *                                 looks at the attributes of a cookie and not only at its value
+ * @return array{int, string, string, array<string, list<string>>} status, Location, body, headers
  */
-function demo_request(array &$cookies, string $ca, string $method, string $url, array $form = []): array
+function demo_request(array &$cookies, string $ca, string $method, string $url, array $form = [], array &$setCookies = []): array
 {
     $host = (string) parse_url($url, \PHP_URL_HOST);
     $options = [
@@ -773,7 +1088,8 @@ function demo_request(array &$cookies, string $ca, string $method, string $url, 
     }
     $response = http_request($method, $url, $options);
     $headers = $response->getHeaders(false);
-    foreach ($headers['set-cookie'] ?? [] as $cookie) {
+    $setCookies = $headers['set-cookie'] ?? [];
+    foreach ($setCookies as $cookie) {
         [$pair] = explode(';', $cookie, 2);
         [$name, $value] = explode('=', $pair, 2) + [
             1 => '',
@@ -788,7 +1104,7 @@ function demo_request(array &$cookies, string $ca, string $method, string $url, 
         $location = sprintf('%s://%s%s%s', (string) parse_url($url, \PHP_URL_SCHEME), $host, $port === null ? '' : ':' . $port, $location);
     }
 
-    return [$response->getStatusCode(), $location, $response->getContent(false)];
+    return [$response->getStatusCode(), $location, $response->getContent(false), $headers];
 }
 
 function demo_expect(bool $condition, string $what): void
