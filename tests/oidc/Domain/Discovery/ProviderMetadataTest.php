@@ -13,8 +13,10 @@ use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Domain\Discovery\ProviderMetadata;
+use Heidi\Oidc\Domain\EndSession\LogoutChannel;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\LogoutChannels;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -28,7 +30,9 @@ final class ProviderMetadataTest extends TestCase
      * ("code_challenge_methods_supported", the revocation and introspection endpoints with their
      * authentication methods, RFC 7009 §2.1 and RFC 7662 §2.1, and the algorithms of a signed introspection
      * response, RFC 9701 §6), "authorization_response_iss_parameter_supported" (RFC 9207 §3) and
-     * "end_session_endpoint" (RP-Initiated Logout §2.1). Only what the provider does: "code", "query",
+     * "end_session_endpoint" (RP-Initiated Logout §2.1) and the four members of the two logout
+     * specifications (Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3). Only what the provider
+     * does: "code", "query",
      * "S256", "public", "RS256", the three client authentication methods of RFC 6749 §2.3 at the token and
      * revocation endpoints, the two that prove a secret at introspection, the "acr" values given, no
      * request object.
@@ -66,6 +70,10 @@ final class ProviderMetadataTest extends TestCase
             'introspection_signing_alg_values_supported' => ['RS256'],
             'authorization_response_iss_parameter_supported' => true,
             'end_session_endpoint' => 'https://id.acme.example/logout',
+            'backchannel_logout_supported' => true,
+            'backchannel_logout_session_supported' => true,
+            'frontchannel_logout_supported' => true,
+            'frontchannel_logout_session_supported' => true,
         ], $document);
     }
 
@@ -118,7 +126,7 @@ final class ProviderMetadataTest extends TestCase
     public function openidAndSubComeFirstAndOnce(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [new Scope('email'), new Scope('openid'), new Scope('email')], ['email', 'sub', 'email'], self::responseModes(), self::grantTypes(), self::methods(), ['1'], 60);
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [new Scope('email'), new Scope('openid'), new Scope('email')], ['email', 'sub', 'email'], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::channels(), 60);
 
         // Then
         static::assertSame(['openid', 'email'], array_map(static fn (Scope $scope): string => $scope->value, $metadata->scopesSupported));
@@ -129,7 +137,7 @@ final class ProviderMetadataTest extends TestCase
     public function openidAndSubAreAnnouncedEvenWhenTheIntegrationListsNothing(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::channels(), 60)->toArray();
 
         // Then
         static::assertSame(['openid'], $document['scopes_supported']);
@@ -155,7 +163,7 @@ final class ProviderMetadataTest extends TestCase
     public function theWellKnownLocationsOfAnIssuerWithAPathDiffer(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], 60);
+        $metadata = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::channels(), 60);
 
         // Then
         static::assertSame('https://as.example:8443/tenants/acme/.well-known/openid-configuration', $metadata->openIdConfigurationUrl());
@@ -170,7 +178,7 @@ final class ProviderMetadataTest extends TestCase
     public function aLifetimeOfZeroRevalidatesEveryTime(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], 0);
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::channels(), 0);
 
         // Then
         static::assertSame([
@@ -186,7 +194,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], -1);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::channels(), -1);
     }
 
     /**
@@ -196,7 +204,7 @@ final class ProviderMetadataTest extends TestCase
     public function theGrantTypesAndTheMethodsAreThoseGivenEachOnce(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode, GrantType::AuthorizationCode], [TokenEndpointAuthMethod::None, TokenEndpointAuthMethod::None], ['1', '1'], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode, GrantType::AuthorizationCode], [TokenEndpointAuthMethod::None, TokenEndpointAuthMethod::None], ['1', '1'], self::channels(), 60)->toArray();
 
         // Then
         static::assertSame(['authorization_code'], $document['grant_types_supported']);
@@ -212,7 +220,7 @@ final class ProviderMetadataTest extends TestCase
     public function theResponseModesAreThoseGivenEachOnce(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], [ResponseMode::FormPost, ResponseMode::Query, ResponseMode::FormPost], self::grantTypes(), self::methods(), ['1'], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], [ResponseMode::FormPost, ResponseMode::Query, ResponseMode::FormPost], self::grantTypes(), self::methods(), ['1'], self::channels(), 60)->toArray();
 
         // Then
         static::assertSame(['form_post', 'query'], $document['response_modes_supported']);
@@ -230,7 +238,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('A provider asserts at least one authentication context class (OIDC Discovery section 3).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), [], 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), [], self::channels(), 60);
     }
 
     /**
@@ -240,7 +248,7 @@ final class ProviderMetadataTest extends TestCase
     public function introspectionTakesTheSecretMethodsAmongThoseGiven(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode], [TokenEndpointAuthMethod::ClientSecretPost, TokenEndpointAuthMethod::None], ['1'], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode], [TokenEndpointAuthMethod::ClientSecretPost, TokenEndpointAuthMethod::None], ['1'], self::channels(), 60)->toArray();
 
         // Then
         static::assertSame(['client_secret_post'], $document['introspection_endpoint_auth_methods_supported']);
@@ -254,7 +262,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('An authorization endpoint answers in at least one response mode (RFC 8414 section 2).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], [], self::grantTypes(), self::methods(), ['1'], 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], [], self::grantTypes(), self::methods(), ['1'], self::channels(), 60);
     }
 
     #[Test]
@@ -265,7 +273,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('A provider serves at least one grant type (RFC 8414 section 2).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [], self::methods(), ['1'], 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [], self::methods(), ['1'], self::channels(), 60);
     }
 
     #[Test]
@@ -276,7 +284,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('A token endpoint takes at least one client authentication method (RFC 8414 section 2).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), [], ['1'], 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), [], ['1'], self::channels(), 60);
     }
 
     #[Test]
@@ -287,7 +295,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIsOrContains('A supported claim has a name.');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [''], self::responseModes(), self::grantTypes(), self::methods(), ['1'], 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [''], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::channels(), 60);
     }
 
     /**
@@ -300,7 +308,7 @@ final class ProviderMetadataTest extends TestCase
     public function itPassesTheChecksOfSymfonyOidcDiscovery(string $issuer): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke'), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], 60)->toArray();
+        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke'), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::channels(), 60)->toArray();
 
         // Then
         static::assertSame($issuer, $document['issuer']);
@@ -330,6 +338,48 @@ final class ProviderMetadataTest extends TestCase
         static::assertSame(['issuer', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri'], array_slice($members, 0, 5));
     }
 
+    /**
+     * A channel two things serve is announced once, and the list stays a list.
+     */
+    #[Test]
+    public function aChannelWiredTwiceIsAnnouncedOnce(): void
+    {
+        // When
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], [LogoutChannel::BackChannel, LogoutChannel::BackChannel, LogoutChannel::FrontChannel], 60);
+
+        // Then
+        static::assertSame([LogoutChannel::BackChannel, LogoutChannel::FrontChannel], $metadata->logoutChannelsSupported);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3: the document announces a channel only
+     * where something serves it, and a channel that is served always carries the session.
+     */
+    #[Test]
+    #[DataProvider('provideServedChannels')]
+    public function theLogoutChannelsAnnouncedAreTheOnesServed(LogoutChannels $served, bool $backChannel, bool $frontChannel): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], $served->channels, 60)->toArray();
+
+        // Then
+        static::assertSame($backChannel, $document['backchannel_logout_supported']);
+        static::assertSame($backChannel, $document['backchannel_logout_session_supported']);
+        static::assertSame($frontChannel, $document['frontchannel_logout_supported']);
+        static::assertSame($frontChannel, $document['frontchannel_logout_session_supported']);
+    }
+
+    /**
+     * @return iterable<string, array{LogoutChannels, bool, bool}>
+     */
+    public static function provideServedChannels(): iterable
+    {
+        yield 'both wired' => [new LogoutChannels([LogoutChannel::BackChannel, LogoutChannel::FrontChannel]), true, true];
+        yield 'the back channel alone' => [new LogoutChannels([LogoutChannel::BackChannel]), true, false];
+        yield 'the front channel alone' => [new LogoutChannels([LogoutChannel::FrontChannel]), false, true];
+        yield 'a deployment that tells nobody' => [new LogoutChannels([]), false, false];
+    }
+
     private static function metadata(): ProviderMetadata
     {
         return new ProviderMetadata(
@@ -341,8 +391,17 @@ final class ProviderMetadataTest extends TestCase
             self::grantTypes(),
             self::methods(),
             ['phrh', 'phr', '2', '1'],
+            self::channels(),
             3600,
         );
+    }
+
+    /**
+     * @return list<LogoutChannel>
+     */
+    private static function channels(): array
+    {
+        return [LogoutChannel::BackChannel, LogoutChannel::FrontChannel];
     }
 
     /**

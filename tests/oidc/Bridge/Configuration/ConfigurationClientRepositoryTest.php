@@ -336,6 +336,48 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
+     * Front-Channel Logout 1.0 §2 and §3: a client says where the logout page loads it, and whether it
+     * reads the "iss" and the "sid" on that URI.
+     */
+    #[Test]
+    public function aClientDeclaresWhereTheLogoutPageLoadsIt(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'demo' => self::DEMO + [
+                'frontchannel_logout_uri' => 'https://demo.localhost/frontchannel-logout',
+                'frontchannel_logout_session_required' => true,
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'demo');
+
+        // Then
+        static::assertSame('https://demo.localhost/frontchannel-logout', (string) $client->frontChannelLogoutUri);
+        static::assertTrue($client->frontChannelLogoutSessionRequired);
+    }
+
+    /**
+     * Front-Channel Logout 1.0 §3: a client that declares nothing is not loaded.
+     */
+    #[Test]
+    public function aClientIsLoadedByNoLogoutPageUntilItDeclaresAUri(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'demo' => self::DEMO,
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'demo');
+
+        // Then
+        static::assertNull($client->frontChannelLogoutUri);
+        static::assertFalse($client->frontChannelLogoutSessionRequired);
+    }
+
+    /**
      * A wrong definition fails when the repository is built, not when the client first shows up.
      *
      * @param array<string, mixed> $definition
@@ -454,6 +496,22 @@ final class ConfigurationClientRepositoryTest extends TestCase
         yield 'a "sid" required with nowhere to send it' => [$base + [
             'backchannel_logout_session_required' => true,
         ], 'registers no backchannel_logout_uri'];
+        yield 'front-channel logout URI over plain http' => [$base + [
+            'frontchannel_logout_uri' => 'http://rp.example/frontchannel-logout',
+        ], 'HTTPS'];
+        yield 'front-channel logout URI with a fragment' => [$base + [
+            'frontchannel_logout_uri' => 'https://rp.example/frontchannel-logout#x',
+        ], 'fragment'];
+        yield 'front-channel logout URI not a string' => [$base + [
+            'frontchannel_logout_uri' => ['https://rp.example/frontchannel-logout'],
+        ], 'frontchannel_logout_uri option of the client "bad" must be a string'];
+        yield 'frontchannel_logout_session_required as a string' => [$base + [
+            'frontchannel_logout_uri' => 'https://rp.example/frontchannel-logout',
+            'frontchannel_logout_session_required' => 'true',
+        ], 'frontchannel_logout_session_required option of the client "bad" must be a boolean'];
+        yield 'an "iss" and a "sid" required on no URI' => [$base + [
+            'frontchannel_logout_session_required' => true,
+        ], 'registers no frontchannel_logout_uri'];
     }
 
     /**

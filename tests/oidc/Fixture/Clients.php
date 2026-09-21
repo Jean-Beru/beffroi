@@ -41,6 +41,24 @@ final class Clients
     }
 
     /**
+     * A client the logout page loads in a frame when a session it signed in ends (Front-Channel Logout
+     * 1.0 §3), which reads "iss" and "sid" only when it said so.
+     */
+    public static function withFrontChannelLogout(Tenant $tenant, string $clientId = 'spa', string $logoutUri = 'https://spa.example/frontchannel-logout', bool $sessionRequired = false): Client
+    {
+        return new Client(
+            $tenant,
+            $clientId,
+            'Single page application',
+            TokenEndpointAuthMethod::None,
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            frontChannelLogoutUri: new ClientUri($logoutUri),
+            frontChannelLogoutSessionRequired: $sessionRequired,
+        );
+    }
+
+    /**
      * A client the provider tells when a session it signed in ends (Back-Channel Logout 1.0 §2.2).
      */
     public static function withBackChannelLogout(Tenant $tenant, string $clientId = 'spa', string $logoutUri = 'https://spa.example/backchannel-logout'): Client

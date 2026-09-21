@@ -365,6 +365,22 @@
         <source>form_post.continue</source>
         <target>Continuer</target>
       </trans-unit>
+      <trans-unit id="2237eea428" resname="front_channel_logout.title">
+        <source>front_channel_logout.title</source>
+        <target>Déconnexion de vos applications</target>
+      </trans-unit>
+      <trans-unit id="155202e7b3" resname="front_channel_logout.asked">
+        <source>front_channel_logout.asked</source>
+        <target>Nous avons demandé aux applications où vous vous êtes connecté avec ce compte de vous déconnecter. Celles que votre navigateur nous laisse joindre ont été prévenues ; il peut en bloquer certaines, et celles-là vous déconnecteront à votre prochaine visite.</target>
+      </trans-unit>
+      <trans-unit id="1e7bfc09fa" resname="front_channel_logout.continue">
+        <source>front_channel_logout.continue</source>
+        <target>Continuer</target>
+      </trans-unit>
+      <trans-unit id="66ec4c8293" resname="front_channel_logout.frame">
+        <source>front_channel_logout.frame</source>
+        <target>Déconnexion d'une application</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -14,6 +14,7 @@ use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\Logins;
+use Heidi\Oidc\Tests\Fixture\ServedChannels;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -25,7 +26,7 @@ final class DiscoveryHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), self::grants());
+        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), self::grants());
     }
 
     /**
@@ -136,7 +137,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), self::grants(), $lifetime);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), self::grants(), $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -167,7 +168,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), self::grants(), -1);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), self::grants(), -1);
     }
 
     /**
@@ -195,7 +196,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), [new FakeGrant(GrantType::AuthorizationCode)]);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), [new FakeGrant(GrantType::AuthorizationCode)]);
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -227,13 +228,64 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatPostsNoResponseAnnouncesTheDefaultModeAlone(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), ServedChannels::both(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
 
         // Then
         static::assertSame(['query'], $document['response_modes_supported']);
+    }
+
+    /**
+     * Issue #98 again, on the two ways of telling a client that a session ended (Back-Channel Logout 1.0
+     * §3, Front-Channel Logout 1.0 §3): the bundle wires both, so the document announces both.
+     */
+    #[Test]
+    public function theDocumentAnnouncesTheLogoutChannelsTheIntegrationWired(): void
+    {
+        // When
+        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertTrue($document['backchannel_logout_supported']);
+        static::assertTrue($document['frontchannel_logout_supported']);
+    }
+
+    /**
+     * A deployment that wires no logout page announces no front channel, and still announces the one it
+     * serves.
+     */
+    #[Test]
+    public function aProviderThatLoadsNoLogoutPageAnnouncesTheBackChannelAlone(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::backChannelOnly(), self::grants());
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertTrue($document['backchannel_logout_supported']);
+        static::assertFalse($document['frontchannel_logout_supported']);
+    }
+
+    /**
+     * A deployment that tells no client anything announces neither, rather than promising a channel
+     * nothing serves.
+     */
+    #[Test]
+    public function aProviderThatTellsNobodyAnnouncesNoChannel(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::none(), self::grants());
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertFalse($document['backchannel_logout_supported']);
+        static::assertFalse($document['frontchannel_logout_supported']);
     }
 
     #[Test]
@@ -244,7 +296,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), []);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), []);
     }
 
     /**

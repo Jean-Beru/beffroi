@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\MessageHandler;
 
+use Heidi\Bundle\EndSession\LogoutChannelInterface;
 use Heidi\Bundle\Message\SendLogoutToken;
+use Heidi\Oidc\Domain\EndSession\LogoutChannel;
 use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -15,11 +17,20 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * alone, and a retry never replays what else listens to the end of a session.
  */
 #[AsMessageHandler(bus: 'event.bus')]
-final readonly class QueueLogoutTokenHandler
+final readonly class QueueLogoutTokenHandler implements LogoutChannelInterface
 {
     public function __construct(
         private MessageBusInterface $commandBus,
     ) {
+    }
+
+    /**
+     * What puts a logout token on its way is what makes the provider a back-channel one, so it is what
+     * the discovery document reads (issue #98).
+     */
+    public function channel(): LogoutChannel
+    {
+        return LogoutChannel::BackChannel;
     }
 
     public function __invoke(LogoutTokenIssued $event): void

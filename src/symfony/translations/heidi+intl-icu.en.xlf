@@ -365,6 +365,22 @@
         <source>form_post.continue</source>
         <target>Continue</target>
       </trans-unit>
+      <trans-unit id="2237eea428" resname="front_channel_logout.title">
+        <source>front_channel_logout.title</source>
+        <target>Signing you out of your applications</target>
+      </trans-unit>
+      <trans-unit id="155202e7b3" resname="front_channel_logout.asked">
+        <source>front_channel_logout.asked</source>
+        <target>We have asked the applications you signed into with this account to sign you out. Those your browser lets us reach have been told; your browser may block some of them, and those applications sign you out when you next use them.</target>
+      </trans-unit>
+      <trans-unit id="1e7bfc09fa" resname="front_channel_logout.continue">
+        <source>front_channel_logout.continue</source>
+        <target>Continue</target>
+      </trans-unit>
+      <trans-unit id="66ec4c8293" resname="front_channel_logout.frame">
+        <source>front_channel_logout.frame</source>
+        <target>Signing out of an application</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
