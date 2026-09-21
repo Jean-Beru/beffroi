@@ -850,6 +850,7 @@ final class LoginTest extends BrowserTestCase
     public static function provideProtocolRequests(): iterable
     {
         yield 'discovery' => ['GET', '/.well-known/openid-configuration'];
+        yield 'authorization server metadata' => ['GET', '/.well-known/oauth-authorization-server'];
         yield 'jwks' => ['GET', '/jwks'];
         yield 'token' => ['POST', '/token'];
         yield 'userinfo' => ['GET', '/userinfo'];
