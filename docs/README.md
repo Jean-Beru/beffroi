@@ -7,6 +7,7 @@ An identity provider for the Symfony ecosystem. OAuth 2.0 and OpenID Connect fir
 | [Getting started](getting-started.md) | Clone, install, run the stack, run the quality tools |
 | [Architecture](architecture.md) | Packages, layers, model, ports, endpoints, standing rules |
 | [Security defaults](security-defaults.md) | What the OP refuses to do, and why |
+| [The client certificate at the edge](mtls-at-the-edge.md) | How a client certificate reaches PHP, and why it is never read from a header |
 | [Conformance suite](conformance-suite.md) | Running the OpenID Foundation suite locally against the OP |
 | [Roadmap](roadmap.md) | The three spikes and their dates |
 

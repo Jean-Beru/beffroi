@@ -29,6 +29,8 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
 use Heidi\Bundle\Http\ResponseMode\FormPostResponseRenderer;
 use Heidi\Bundle\Http\ResponseMode\QueryResponseRenderer;
+use Heidi\Bundle\Http\Tls\ClientCertificateResolverInterface;
+use Heidi\Bundle\Http\Tls\EdgeClientCertificateResolver;
 use Heidi\Bundle\Http\TotpProvisioningSealer;
 use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
@@ -225,6 +227,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TwoFactorPage::class);
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
+    // the certificate a client presented at the handshake, read from what the edge proves and never from
+    // a header (decision 0006, docs/mtls-at-the-edge.md); a deployment behind another proxy replaces this
+    // implementation rather than teaching it a header to trust
+    $services->set(EdgeClientCertificateResolver::class);
+    $services->alias(ClientCertificateResolverInterface::class, EdgeClientCertificateResolver::class);
 
     // The bundle: the console (architecture §5.5)
     $services->load('Heidi\\Bundle\\Command\\', '../src/Command/');
