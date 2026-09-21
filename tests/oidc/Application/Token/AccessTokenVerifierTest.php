@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Application\Token;
 
 use function array_map;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
@@ -74,11 +75,11 @@ final class AccessTokenVerifierTest extends TestCase
         $session = Fixtures::session(Fixtures::user($this->tenant));
         $jwts = new Jwts($this->tenant);
         $code = Tokens::code('the-code', $this->client, $session, Fixtures::now(), ['openid', 'email'], claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'));
-        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver())
+        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
             ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now());
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $verifier = new AccessTokenVerifier(new JwtFrameworkJwsVerifier($jwts->keys), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+        $verifier = new AccessTokenVerifier(new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
 
         // When
         $token = $verifier->verify($this->tenant, $minted->value, Fixtures::now()->modify('+9 minutes'));

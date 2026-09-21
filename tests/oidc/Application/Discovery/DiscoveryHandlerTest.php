@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Discovery;
 
+use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Core\Tests\Fixture\FakeSignatureAlgorithm;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
@@ -26,7 +29,39 @@ final class DiscoveryHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), self::grants());
+        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), Algorithms::all(), self::grants());
+    }
+
+    /**
+     * OIDC Discovery §3 and RFC 8414 §2: what the document announces as signing algorithms is what the
+     * wiring gave the provider, in that order, never an enumeration kept beside it (issue #98).
+     */
+    #[Test]
+    public function theSigningAlgorithmsAnnouncedAreThoseWired(): void
+    {
+        // When
+        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA'], $document['id_token_signing_alg_values_supported']);
+        static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA'], $document['introspection_signing_alg_values_supported']);
+    }
+
+    /**
+     * Open by addition: an algorithm no line of the module knows about is announced because it is wired,
+     * and for no other reason.
+     */
+    #[Test]
+    public function anAlgorithmTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), new JoseSignatureAlgorithms([new FakeSignatureAlgorithm()]), self::grants());
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(['ES256UNWIRED'], $document['id_token_signing_alg_values_supported']);
     }
 
     /**
@@ -137,7 +172,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), self::grants(), $lifetime);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), Algorithms::all(), self::grants(), $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -168,7 +203,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), self::grants(), -1);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), Algorithms::all(), self::grants(), -1);
     }
 
     /**
@@ -196,7 +231,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), [new FakeGrant(GrantType::AuthorizationCode)]);
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), Algorithms::all(), [new FakeGrant(GrantType::AuthorizationCode)]);
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -228,7 +263,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatPostsNoResponseAnnouncesTheDefaultModeAlone(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), ServedChannels::both(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), ServedChannels::both(), Algorithms::all(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -260,7 +295,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatLoadsNoLogoutPageAnnouncesTheBackChannelAlone(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::backChannelOnly(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::backChannelOnly(), Algorithms::all(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -278,7 +313,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatTellsNobodyAnnouncesNoChannel(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::none(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::none(), Algorithms::all(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -296,7 +331,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), []);
+        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), ServedChannels::both(), Algorithms::all(), []);
     }
 
     /**

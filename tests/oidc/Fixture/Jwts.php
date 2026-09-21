@@ -8,11 +8,15 @@ use function base64_decode;
 use DateTimeImmutable;
 use function explode;
 use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsSigner;
+use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Domain\Key\GeneratedKeyPair;
+use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use function is_array;
@@ -21,9 +25,7 @@ use Jose\Component\Checker\ClaimCheckerManager;
 use Jose\Component\Checker\ExpirationTimeChecker;
 use Jose\Component\Checker\IssuedAtChecker;
 use Jose\Component\Checker\IssuerChecker;
-use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWKSet;
-use Jose\Component\Signature\Algorithm\RS256;
 use Jose\Component\Signature\JWSVerifier;
 use Jose\Component\Signature\Serializer\CompactSerializer;
 use function json_decode;
@@ -33,8 +35,9 @@ use function strtr;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * A tenant with one real active RSA key, signing through the bridge of the core, and the verification a
- * relying party performs with web-token/jwt-library against the published JWK Set.
+ * A tenant with one real active RS256 key, signing through the bridge of the core, and the verification a
+ * relying party performs with web-token/jwt-library against the published JWK Set. activate() gives the
+ * tenant a key of another algorithm, for a client that registered that one.
  */
 final readonly class Jwts
 {
@@ -42,17 +45,34 @@ final readonly class Jwts
 
     public SealedKeyProvider $keys;
 
-    public JwtFrameworkJwsSigner $signer;
+    public JwtLibraryJwsSigner $signer;
+
+    public JoseSignatureAlgorithms $algorithms;
+
+    private InMemorySigningKeyRepository $repository;
 
     public function __construct(
         public Tenant $tenant,
     ) {
-        $repository = new InMemorySigningKeyRepository();
-        $this->key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now());
-        $this->key->activate(Fixtures::now());
-        $repository->save($this->key);
-        $this->keys = new SealedKeyProvider($repository, Keys::sealer());
-        $this->signer = new JwtFrameworkJwsSigner($this->keys);
+        $this->algorithms = Algorithms::all();
+        $this->repository = new InMemorySigningKeyRepository();
+        $this->key = $this->activate(Algorithms::rs256(), Keys::pair());
+        $this->keys = new SealedKeyProvider($this->repository, Keys::sealer());
+        $this->signer = new JwtLibraryJwsSigner($this->keys, $this->algorithms);
+    }
+
+    /**
+     * An active key of that algorithm for the tenant, published in its JWK Set beside the others.
+     */
+    public function activate(SignatureAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair = null): SigningKey
+    {
+        $pair ??= new JwtLibraryKeyPairGenerator($this->algorithms)
+            ->generate($algorithm);
+        $key = new SigningKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $key->activate(Fixtures::now());
+        $this->repository->save($key);
+
+        return $key;
     }
 
     /**
@@ -68,7 +88,7 @@ final readonly class Jwts
     {
         $jws = new CompactSerializer()
             ->unserialize($compactJws);
-        Assert::assertTrue(new JWSVerifier(new AlgorithmManager([new RS256()]))->verifyWithKeySet($jws, JWKSet::createFromKeyData($this->keys->publicKeys($this->tenant)->toJwks()), 0), 'the signature verifies against the published JWKS');
+        Assert::assertTrue(new JWSVerifier($this->algorithms->manager())->verifyWithKeySet($jws, JWKSet::createFromKeyData($this->keys->publicKeys($this->tenant)->toJwks()), 0), 'the signature verifies against the published JWKS');
         $claims = self::decode((string) $jws->getPayload());
         $clock = new MockClock($at);
         new ClaimCheckerManager([

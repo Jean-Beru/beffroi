@@ -75,9 +75,15 @@ use Heidi\Core\Application\Totp\ActiveTotp;
 use Heidi\Core\Application\Totp\TotpAuthentication;
 use Heidi\Core\Application\Totp\TotpCodeMatcher;
 use Heidi\Core\Application\Totp\TotpEnrolment;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsSigner;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkKeyPairGenerator;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\Es256;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\Ps256;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
+use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
@@ -105,6 +111,7 @@ use Heidi\Core\Port\PasskeyRegistrarInterface;
 use Heidi\Core\Port\PasswordAttemptLimiterInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\SecretSealerInterface;
+use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use Heidi\Core\Port\TotpAlgorithmInterface;
@@ -311,12 +318,31 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(SigningKeyRepositoryInterface::class, FileSigningKeyRepository::class);
     $services->set(SealedKeyProvider::class);
     $services->alias(SigningKeyProviderInterface::class, SealedKeyProvider::class);
-    $services->set(JwtFrameworkKeyPairGenerator::class);
-    $services->alias(KeyPairGeneratorInterface::class, JwtFrameworkKeyPairGenerator::class);
-    $services->set(JwtFrameworkJwsSigner::class);
-    $services->alias(JwsSignerInterface::class, JwtFrameworkJwsSigner::class);
-    $services->set(JwtFrameworkJwsVerifier::class);
-    $services->alias(JwsVerifierInterface::class, JwtFrameworkJwsVerifier::class);
+    // The algorithms the provider signs with: one class per algorithm, tagged; the first tagged one is
+    // the default, the one an access token, a signed introspection response and a client that registered
+    // none are signed with. A new algorithm is a class and a line here, and the discovery document, the
+    // key commands and the signer follow on their own. RS256 is mandatory (OIDC Core §15.1) and FAPI 2.0
+    // §5.2.2 refuses it: a deployment that follows that profile drops this line and keeps the others.
+    $services->set(RsaKeyBits::class);
+    $services->set(Rs256::class)
+        ->args([service(RsaKeyBits::class)])
+        ->tag('heidi.signature_algorithm');
+    $services->set(Ps256::class)
+        ->args([service(RsaKeyBits::class)])
+        ->tag('heidi.signature_algorithm');
+    $services->set(Es256::class)
+        ->tag('heidi.signature_algorithm');
+    $services->set(EdDsa::class)
+        ->tag('heidi.signature_algorithm');
+    $services->set(JoseSignatureAlgorithms::class)
+        ->args([tagged_iterator('heidi.signature_algorithm')]);
+    $services->alias(SignatureAlgorithmsInterface::class, JoseSignatureAlgorithms::class);
+    $services->set(JwtLibraryKeyPairGenerator::class);
+    $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
+    $services->set(JwtLibraryJwsSigner::class);
+    $services->alias(JwsSignerInterface::class, JwtLibraryJwsSigner::class);
+    $services->set(JwtLibraryJwsVerifier::class);
+    $services->alias(JwsVerifierInterface::class, JwtLibraryJwsVerifier::class);
     // the modules tag the kinds of JWS they issue, the rotation dates a retirement from them (architecture §3.3)
     $services->set(SigningKeyRotator::class)
         ->args([

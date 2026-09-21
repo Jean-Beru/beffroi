@@ -6,10 +6,14 @@ namespace Heidi\Oidc\Tests\Application\EndSession;
 
 use function array_keys;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientUri;
+use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use PHPUnit\Framework\Attributes\Test;
@@ -36,7 +40,7 @@ final class LogoutTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::withBackChannelLogout($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver());
+        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all());
     }
 
     /**
@@ -57,6 +61,29 @@ final class LogoutTokenIssuerTest extends TestCase
             'typ' => 'logout+jwt',
             'alg' => 'RS256',
             'kid' => $this->jwts->key->kid,
+        ], $header);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.6: the logout token is signed in the algorithm the client registered for
+     * its ID tokens, since that is the one it knows how to verify.
+     */
+    #[Test]
+    public function theTokenIsSignedWithTheAlgorithmTheClientRegistered(): void
+    {
+        // Given
+        $es256Key = $this->jwts->activate(Algorithms::es256());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'), idTokenSignedResponseAlg: Algorithms::es256());
+
+        // When
+        $token = $this->issuer->issue($client, $this->session, Fixtures::now());
+
+        // Then
+        ['header' => $header] = $this->jwts->verify($token, 'spa', Fixtures::now(), self::MANDATORY);
+        static::assertSame([
+            'typ' => 'logout+jwt',
+            'alg' => 'ES256',
+            'kid' => $es256Key->kid,
         ], $header);
     }
 

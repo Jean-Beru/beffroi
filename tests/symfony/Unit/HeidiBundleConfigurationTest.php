@@ -8,6 +8,7 @@ use function array_map;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -127,7 +128,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         $fromModule = ClientDefinition::fromArray('oidc-demo', [
             'redirect_uris' => ['https://demo.test/login/check'],
             'token_endpoint_auth_method' => 'none',
-        ]);
+        ], Algorithms::all());
 
         // When
         $config = self::process(self::MINIMAL + [
@@ -143,7 +144,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         static::assertIsArray($config['clients']);
         static::assertSame(['oidc-demo'], array_keys($config['clients']));
         static::assertIsArray($config['clients']['oidc-demo']);
-        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']));
+        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']), Algorithms::all());
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
         static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, array_map(static fn ($scope) => (string) $scope, $fromTree->allowedScopes));
@@ -230,13 +231,6 @@ final class HeidiBundleConfigurationTest extends TestCase
                 ],
             ],
         ], 'implicit'];
-        yield 'an unknown signature algorithm' => [self::MINIMAL + [
-            'clients' => [
-                'app' => [
-                    'id_token_signed_response_alg' => 'HS256',
-                ],
-            ],
-        ], 'HS256'];
         yield 'a consent flag that is not a boolean' => [self::MINIMAL + [
             'clients' => [
                 'app' => [

@@ -12,12 +12,12 @@ use function explode;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Port\JwsSignerInterface;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionProperty;
@@ -49,7 +49,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
             ->remove($this->directory);
         $this->provider = self::service('test.heidi.key_provider', SigningKeyProviderInterface::class);
         self::service('test.heidi.key_rotator', SigningKeyRotator::class)
-            ->rotate(self::tenant(), SignatureAlgorithm::RS256, self::context());
+            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     protected function tearDown(): void
@@ -67,11 +67,11 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     public function aRotationDoneByAnotherProcessIsSeenWithoutARestart(): void
     {
         // Given
-        $opened = $this->provider->activeKey(self::tenant(), SignatureAlgorithm::RS256);
+        $opened = $this->provider->activeKey(self::tenant(), Algorithms::rs256());
         $rotated = $this->rotateFromAnotherProcess();
 
         // When
-        $active = $this->provider->activeKey(self::tenant(), SignatureAlgorithm::RS256);
+        $active = $this->provider->activeKey(self::tenant(), Algorithms::rs256());
 
         // Then
         static::assertNotSame($opened->key->kid, $rotated->kid);
@@ -86,11 +86,11 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     {
         // Given
         $signer = self::service('test.heidi.jws_signer', JwsSignerInterface::class);
-        $signer->sign(self::tenant(), SignatureAlgorithm::RS256, 'before');
+        $signer->sign(self::tenant(), Algorithms::rs256(), 'before');
         $rotated = $this->rotateFromAnotherProcess();
 
         // When
-        $jws = $signer->sign(self::tenant(), SignatureAlgorithm::RS256, 'after');
+        $jws = $signer->sign(self::tenant(), Algorithms::rs256(), 'after');
 
         // Then
         static::assertStringContainsString($rotated->kid, self::header($jws));
@@ -104,7 +104,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     public function theWorkerPublishesBothKeysAtOnce(): void
     {
         // Given
-        $previous = $this->provider->activeKey(self::tenant(), SignatureAlgorithm::RS256)->key;
+        $previous = $this->provider->activeKey(self::tenant(), Algorithms::rs256())->key;
         $rotated = $this->rotateFromAnotherProcess();
 
         // When
@@ -122,11 +122,11 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     public function theWorkerForgetsThePreviousKeyOnceTheRotationIsSeen(): void
     {
         // Given
-        $this->provider->activeKey(self::tenant(), SignatureAlgorithm::RS256);
+        $this->provider->activeKey(self::tenant(), Algorithms::rs256());
         $rotated = $this->rotateFromAnotherProcess();
 
         // When
-        $this->provider->activeKey(self::tenant(), SignatureAlgorithm::RS256);
+        $this->provider->activeKey(self::tenant(), Algorithms::rs256());
 
         // Then
         $opened = new ReflectionProperty($this->provider, 'opened')
@@ -142,7 +142,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     private function rotateFromAnotherProcess(): SigningKey
     {
         $rotator = new SigningKeyRotator(
-            new FileSigningKeyRepository($this->directory),
+            new FileSigningKeyRepository($this->directory, Algorithms::all()),
             self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class),
             self::service('test.heidi.key_sealer', KeySealerInterface::class),
             [],
@@ -151,7 +151,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
             new RecordingEventDispatcher(),
         );
 
-        return $rotator->rotate(self::tenant(), SignatureAlgorithm::RS256, self::context());
+        return $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**

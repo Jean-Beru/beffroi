@@ -11,11 +11,12 @@ use function file_put_contents;
 use function fileperms;
 use function glob;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\RuntimeException;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use function json_encode;
@@ -41,7 +42,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     protected function setUp(): void
     {
         $this->directory = sys_get_temp_dir() . '/heidi-keys-' . uniqid('', true);
-        $this->repository = new FileSigningKeyRepository($this->directory);
+        $this->repository = new FileSigningKeyRepository($this->directory, Algorithms::all());
     }
 
     protected function tearDown(): void
@@ -68,7 +69,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $key = new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
+        $key = new SigningKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
         $this->repository->save($key);
 
         // When
@@ -78,7 +79,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
         static::assertNotSame($key, $found);
         static::assertSame($key->kid, $found->kid);
         static::assertSame($tenant, $found->tenant);
-        static::assertSame('RS256', $found->algorithm->value);
+        static::assertSame('RS256', $found->algorithm->name());
         static::assertSame($key->publicJwk, $found->publicJwk);
         static::assertSame($key->sealedPrivateJwk, $found->sealedPrivateJwk);
         static::assertSame(Keys::pair()->privateJwk, Keys::sealer()->unseal($tenant, $found->sealedPrivateJwk));
@@ -161,7 +162,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
         $this->saveThreeKeys($tenant);
 
         // When
-        $active = $this->repository->findActive($tenant, SignatureAlgorithm::RS256);
+        $active = $this->repository->findActive($tenant, Algorithms::rs256());
 
         // Then
         static::assertSame('mmm-newest', $active?->kid);
@@ -189,7 +190,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
 
         // When / Then
         static::assertNull($this->repository->find($tenant, 'unknown'));
-        static::assertNull($this->repository->findActive($tenant, SignatureAlgorithm::RS256));
+        static::assertNull($this->repository->findActive($tenant, Algorithms::rs256()));
         static::assertSame([], $this->repository->findPublished($tenant));
     }
 
@@ -213,7 +214,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
 
         // When / Then
         static::assertNull($this->repository->find($acme, Keys::pair()->kid));
-        static::assertNull($this->repository->findActive($acme, SignatureAlgorithm::RS256));
+        static::assertNull($this->repository->findActive($acme, Algorithms::rs256()));
         static::assertSame([], $this->repository->findPublished($acme));
         static::assertNotNull($this->repository->find($other, Keys::pair()->kid));
     }
@@ -234,6 +235,26 @@ final class FileSigningKeyRepositoryTest extends TestCase
 
         // When
         $this->repository->find($tenant, Keys::pair()->kid);
+    }
+
+    /**
+     * A key file whose algorithm the provider is no longer wired with is a storage fault, not a missing
+     * key: the provider cannot sign with it and cannot say what its "alg" means (issue #156).
+     */
+    #[Test]
+    public function aKeyOfAnAlgorithmTheProviderIsNotWiredWithIsRefused(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(self::key($tenant, Keys::pair()->kid));
+        $unwired = new FileSigningKeyRepository($this->directory, new JoseSignatureAlgorithms([Algorithms::es256()]));
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIsOrContains('is signed with an algorithm this provider is not wired with');
+
+        // When
+        $unwired->find($tenant, Keys::pair()->kid);
     }
 
     #[Test]
@@ -260,7 +281,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     public function aKeyWhoseKidCannotNameAFileIsNotSaved(): void
     {
         // Given
-        $key = new SigningKey('../escape', Fixtures::tenant(), SignatureAlgorithm::RS256, [
+        $key = new SigningKey('../escape', Fixtures::tenant(), Algorithms::rs256(), [
             'kid' => '../escape',
         ] + Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
 
@@ -360,7 +381,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $this->repository->save(new SigningKey(Keys::pair()->kid, $tenant, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
+        $this->repository->save(new SigningKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
 
         // When
         $files = glob($this->directory . '/*/*.json');
@@ -447,7 +468,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
 
     private static function key(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): SigningKey
     {
-        return new SigningKey($kid, $tenant, SignatureAlgorithm::RS256, [
+        return new SigningKey($kid, $tenant, Algorithms::rs256(), [
             'kid' => $kid,
         ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now(), $createdAt ?? Fixtures::now());
     }

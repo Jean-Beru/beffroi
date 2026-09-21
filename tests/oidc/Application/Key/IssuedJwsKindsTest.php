@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Application\Key;
 
 use DateInterval;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
@@ -44,7 +45,7 @@ final class IssuedJwsKindsTest extends TestCase
     public function theIdTokenLivesAsLongAsItsIssuerSays(): void
     {
         // Given
-        $kind = new IdTokenJwsKind(new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), new DateInterval('PT1H')));
+        $kind = new IdTokenJwsKind(new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H')));
 
         // When / Then
         static::assertEquals(new DateInterval('PT1H'), $kind->longestLifetime($this->tenant));
@@ -55,7 +56,7 @@ final class IssuedJwsKindsTest extends TestCase
     {
         // Given
         $this->clients->save(Clients::public($this->tenant));
-        $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new DateInterval('PT20M')), $this->clients);
+        $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT20M')), $this->clients);
 
         // When / Then
         static::assertEquals(new DateInterval('PT20M'), $kind->longestLifetime($this->tenant));
@@ -69,7 +70,7 @@ final class IssuedJwsKindsTest extends TestCase
     {
         // Given
         $this->clients->save(Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), accessTokenFormat: AccessTokenFormat::Opaque));
-        $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver()), $this->clients);
+        $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all()), $this->clients);
 
         // When / Then
         static::assertNull($kind->longestLifetime($this->tenant));

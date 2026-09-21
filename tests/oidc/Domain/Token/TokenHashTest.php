@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Domain\Token;
 
 use function hash;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Domain\Token\TokenHash;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -22,7 +22,7 @@ final class TokenHashTest extends TestCase
     public function itMatchesTheExampleOfTheSpecification(): void
     {
         // When / Then
-        static::assertSame('77QmUPtjPfzWtF2AnpK9RQ', TokenHash::of('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', SignatureAlgorithm::RS256));
+        static::assertSame('77QmUPtjPfzWtF2AnpK9RQ', TokenHash::of('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Algorithms::rs256()));
     }
 
     /**
@@ -33,7 +33,7 @@ final class TokenHashTest extends TestCase
     public function itKeepsTheLeftHalfOfTheDigestOnly(): void
     {
         // When
-        $hash = TokenHash::of('token', SignatureAlgorithm::RS256);
+        $hash = TokenHash::of('token', Algorithms::rs256());
 
         // Then
         static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{22}$/', $hash));
@@ -45,6 +45,6 @@ final class TokenHashTest extends TestCase
     public function twoTokensHashDifferently(): void
     {
         // When / Then
-        static::assertNotSame(TokenHash::of('token', SignatureAlgorithm::RS256), TokenHash::of('token2', SignatureAlgorithm::RS256));
+        static::assertNotSame(TokenHash::of('token', Algorithms::rs256()), TokenHash::of('token2', Algorithms::rs256()));
     }
 }
