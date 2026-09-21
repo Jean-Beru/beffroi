@@ -257,9 +257,17 @@
         <source>code.submit</source>
         <target>Continue</target>
       </trans-unit>
-      <trans-unit id="0e9092a36c" resname="code.failed">
-        <source>code.failed</source>
+      <trans-unit id="c609c5cc7e" resname="code.failed.code_refused">
+        <source>code.failed.code_refused</source>
         <target>The code was refused. Try again with the code the app shows now.</target>
+      </trans-unit>
+      <trans-unit id="504d18ce7a" resname="code.failed.backup_code_refused">
+        <source>code.failed.backup_code_refused</source>
+        <target>This backup code is not valid, or it has already been used. Each backup code works only once.</target>
+      </trans-unit>
+      <trans-unit id="af360d0c03" resname="code.failed.too_many_attempts">
+        <source>code.failed.too_many_attempts</source>
+        <target>Too many codes have been tried. Wait a moment, then try again.</target>
       </trans-unit>
       <trans-unit id="68e780445d" resname="two_factor.title">
         <source>two_factor.title</source>

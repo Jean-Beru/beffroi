@@ -257,9 +257,17 @@
         <source>code.submit</source>
         <target>Continuer</target>
       </trans-unit>
-      <trans-unit id="0e9092a36c" resname="code.failed">
-        <source>code.failed</source>
+      <trans-unit id="c609c5cc7e" resname="code.failed.code_refused">
+        <source>code.failed.code_refused</source>
         <target>Le code a été refusé. Réessayez avec le code que l'application affiche maintenant.</target>
+      </trans-unit>
+      <trans-unit id="504d18ce7a" resname="code.failed.backup_code_refused">
+        <source>code.failed.backup_code_refused</source>
+        <target>Ce code de secours n'est pas valable, ou il a déjà servi. Chaque code ne sert qu'une fois.</target>
+      </trans-unit>
+      <trans-unit id="af360d0c03" resname="code.failed.too_many_attempts">
+        <source>code.failed.too_many_attempts</source>
+        <target>Trop de codes ont été essayés. Patientez un instant, puis réessayez.</target>
       </trans-unit>
       <trans-unit id="68e780445d" resname="two_factor.title">
         <source>two_factor.title</source>
