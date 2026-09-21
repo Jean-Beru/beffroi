@@ -11,6 +11,7 @@ use function file_put_contents;
 use function fileperms;
 use function glob;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -234,6 +235,26 @@ final class FileSigningKeyRepositoryTest extends TestCase
 
         // When
         $this->repository->find($tenant, Keys::pair()->kid);
+    }
+
+    /**
+     * A key file whose algorithm the provider is no longer wired with is a storage fault, not a missing
+     * key: the provider cannot sign with it and cannot say what its "alg" means (issue #156).
+     */
+    #[Test]
+    public function aKeyOfAnAlgorithmTheProviderIsNotWiredWithIsRefused(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(self::key($tenant, Keys::pair()->kid));
+        $unwired = new FileSigningKeyRepository($this->directory, new JoseSignatureAlgorithms([Algorithms::es256()]));
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIsOrContains('is signed with an algorithm this provider is not wired with');
+
+        // When
+        $unwired->find($tenant, Keys::pair()->kid);
     }
 
     #[Test]

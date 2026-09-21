@@ -343,6 +343,20 @@ final class ProviderMetadataTest extends TestCase
     /**
      * A channel two things serve is announced once, and the list stays a list.
      */
+    /**
+     * RFC 8414 §2: an algorithm the wiring gives twice is announced once, as every other list of the
+     * document.
+     */
+    #[Test]
+    public function anAlgorithmWiredTwiceIsAnnouncedOnce(): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], [Algorithms::rs256(), Algorithms::es256(), Algorithms::rs256()], self::channels(), 60)->toArray();
+
+        // Then
+        static::assertSame(['RS256', 'ES256'], $document['id_token_signing_alg_values_supported']);
+    }
+
     #[Test]
     public function aChannelWiredTwiceIsAnnouncedOnce(): void
     {
