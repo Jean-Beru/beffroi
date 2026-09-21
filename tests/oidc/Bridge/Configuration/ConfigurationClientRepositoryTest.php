@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Bridge\Configuration;
 
+use function array_column;
 use function array_map;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
@@ -16,11 +17,14 @@ use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
+use Heidi\Oidc\Domain\Client\HashedClientSecret;
+use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -59,11 +63,121 @@ final class ConfigurationClientRepositoryTest extends TestCase
         'token_endpoint_auth_method' => 'none',
     ];
 
+    /**
+     * A client that authenticates with a key of its own (OIDC Core §9), publishing its JWK Set inline.
+     *
+     * @var array<string, mixed>
+     */
+    private const array KEY_CLIENT = [
+        'redirect_uris' => ['https://key.example/callback'],
+        'token_endpoint_auth_method' => 'private_key_jwt',
+        'jwks' => [
+            'keys' => [[
+                'kty' => 'EC',
+                'crv' => 'P-256',
+                'kid' => 'one',
+                'x' => 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+                'y' => 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
+            ]],
+        ],
+    ];
+
     private Tenant $tenant;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
+    }
+
+    /**
+     * RFC 7591 §2: a client that authenticates with a key of its own publishes its JWK Set inline.
+     */
+    #[Test]
+    public function aClientMayPublishItsKeysInline(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'key-client' => self::KEY_CLIENT,
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'key-client');
+
+        // Then
+        static::assertSame('private_key_jwt', $client->authenticationMethod->name());
+        static::assertInstanceOf(ClientJwks::class, $client->jwks);
+        static::assertSame(['one'], array_column($client->jwks->keys, 'kid'));
+        static::assertNull($client->jwksUri);
+    }
+
+    /**
+     * RFC 7591 §2: or behind a "jwks_uri", read as every other URI a client registers.
+     */
+    #[Test]
+    public function aClientMayPublishItsKeysBehindAJwksUri(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'key-client' => [
+                'redirect_uris' => ['https://key.example/callback'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
+                'jwks_uri' => 'https://key.example/jwks',
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'key-client');
+
+        // Then
+        static::assertSame('https://key.example/jwks', $client->jwksUri?->value);
+        static::assertNull($client->jwks);
+    }
+
+    /**
+     * OIDC Core §9: "client_secret_jwt" computes a MAC with the registered secret, so the secret is kept
+     * and not hashed; that is the method's own cost and the reason FAPI 2.0 §5.2.2 takes none.
+     */
+    #[Test]
+    public function aClientThatSignsWithItsSecretKeepsTheSecretAndNotAHash(): void
+    {
+        // Given
+        $hasher = new FakePasswordHasher();
+        $repository = $this->repository([
+            'mac-client' => [
+                'secret' => Clients::SECRET,
+                'redirect_uris' => ['https://mac.example/callback'],
+                'token_endpoint_auth_method' => 'client_secret_jwt',
+            ],
+        ], $hasher);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'mac-client');
+
+        // Then
+        static::assertInstanceOf(SharedClientSecret::class, $client->secret);
+        static::assertSame(Clients::SECRET, $client->secret->value);
+        static::assertSame(0, $hasher->hashed);
+    }
+
+    /**
+     * A client that names no method takes the first wired one (issue #98).
+     */
+    #[Test]
+    public function aClientThatNamesNoMethodTakesTheFirstWiredOne(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'demo' => [
+                'secret' => Clients::SECRET,
+                'redirect_uris' => ['https://demo.localhost/login/check'],
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'demo');
+
+        // Then
+        static::assertSame('client_secret_basic', $client->authenticationMethod->name());
     }
 
     /**
@@ -85,7 +199,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame('oidc-demo', $demo->clientId);
         static::assertSame('oidc-demo', $demo->name);
         static::assertTrue($demo->belongsTo($this->tenant));
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $demo->tokenEndpointAuthMethod);
+        static::assertSame('client_secret_basic', $demo->authenticationMethod->name());
         static::assertFalse($demo->requiresConsent);
         static::assertTrue($demo->requiresPkce);
         static::assertTrue($demo->hasRedirectUri('https://demo.localhost/login/check'));
@@ -110,10 +224,10 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $demo = self::find($repository, $this->tenant, 'oidc-demo');
 
         // Then
-        static::assertNotNull($demo->secretHash);
-        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secretHash->algorithm);
-        static::assertTrue($hasher->verify($demo->secretHash, Clients::SECRET));
-        static::assertFalse($hasher->verify($demo->secretHash, 'not ' . Clients::SECRET));
+        static::assertInstanceOf(HashedClientSecret::class, $demo->secret);
+        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secret->hash->algorithm);
+        static::assertTrue($hasher->verify($demo->secret->hash, Clients::SECRET));
+        static::assertFalse($hasher->verify($demo->secret->hash, 'not ' . Clients::SECRET));
     }
 
     /**
@@ -132,7 +246,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
 
         // Then
         static::assertSame('Conformance suite, second client', $suite->name);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretPost, $suite->tokenEndpointAuthMethod);
+        static::assertSame('client_secret_post', $suite->authenticationMethod->name());
         static::assertTrue($suite->requiresConsent);
         static::assertTrue($suite->hasRedirectUri('https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'));
         static::assertFalse($suite->hasPostLogoutRedirectUri('https://localhost:8443/'));
@@ -216,7 +330,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         self::find($repository, $this->tenant, 'spa');
 
         // Then
-        static::assertSame($first->secretHash, $second->secretHash);
+        static::assertSame($first->secret, $second->secret);
         static::assertSame(1, $hasher->hashed);
     }
 
@@ -271,7 +385,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
 
         // Then
         static::assertTrue($client->isPublic());
-        static::assertNull($client->secretHash);
+        static::assertNull($client->secret);
     }
 
     /**
@@ -394,7 +508,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         // When
         new ConfigurationClientRepository('acme', [
             'bad' => $definition,
-        ], new FakePasswordHasher(), Algorithms::all());
+        ], new FakePasswordHasher(), Algorithms::all(), Methods::all());
     }
 
     /**
@@ -425,12 +539,46 @@ final class ConfigurationClientRepositoryTest extends TestCase
         yield 'public with a secret' => [$base + [
             'token_endpoint_auth_method' => 'none',
         ], 'cannot hold a secret'];
-        yield 'unknown authentication method' => [$base + [
-            'token_endpoint_auth_method' => 'private_key_jwt',
-        ], 'must be one of: client_secret_basic, client_secret_post, none'];
+        yield 'an authentication method nothing is wired with' => [$base + [
+            'token_endpoint_auth_method' => 'tls_client_auth',
+        ], 'must be one of: client_secret_basic, client_secret_post, private_key_jwt, client_secret_jwt, none'];
         yield 'authentication method not a string' => [$base + [
             'token_endpoint_auth_method' => true,
-        ], 'must be one of'];
+        ], 'token_endpoint_auth_method option of the client "bad" must be a string'];
+        yield 'private_key_jwt without keys (RFC 7591 §2)' => [[
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'private_key_jwt',
+        ], 'publishes its keys in "jwks" or behind a "jwks_uri"'];
+        yield 'jwks and jwks_uri together (RFC 7591 §2)' => [[
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'private_key_jwt',
+            'jwks' => [
+                'keys' => [[
+                    'kty' => 'EC',
+                    'crv' => 'P-256',
+                    'x' => 'x',
+                    'y' => 'y',
+                ]],
+            ],
+            'jwks_uri' => 'https://rp.example/jwks',
+        ], 'either inline in "jwks" or behind a "jwks_uri", never both'];
+        yield 'jwks not a JWK Set' => [[
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'private_key_jwt',
+            'jwks' => [
+                'keys' => 'no',
+            ],
+        ], 'object with a "keys" member'];
+        yield 'a symmetric key in jwks (RFC 8725 §3.5)' => [[
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'private_key_jwt',
+            'jwks' => [
+                'keys' => [[
+                    'kty' => 'oct',
+                    'k' => 'AAAA',
+                ]],
+            ],
+        ], 'symmetric key in a JWK Set is refused'];
         yield 'requires_consent as a string' => [$base + [
             'requires_consent' => 'false',
         ], 'must be a boolean'];
@@ -522,24 +670,24 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionHasNoSecret(): void
     {
         // When / Then
-        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all())->hasSecret());
-        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all())->hasSecret());
+        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all())->hasSecret());
+        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all(), Methods::all())->hasSecret());
     }
 
     /**
-     * Hashing the secret of a public definition is a programming error: the repository asks first.
+     * Keeping the secret of a public definition is a programming error: the repository asks first.
      */
     #[Test]
-    public function aPublicDefinitionRefusesToHashASecret(): void
+    public function aPublicDefinitionRefusesToKeepASecret(): void
     {
         // Given
-        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all());
+        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all());
 
         // Then
         $this->expectException(LogicException::class);
 
         // When
-        $definition->hashSecret(new FakePasswordHasher());
+        $definition->keepSecret(new FakePasswordHasher());
     }
 
     /**
@@ -603,7 +751,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     private function repository(array $clients, ?PasswordHasherInterface $hasher = null): ConfigurationClientRepository
     {
-        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all());
+        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all(), Methods::all());
     }
 
     private static function find(ConfigurationClientRepository $repository, Tenant $tenant, string $clientId): Client

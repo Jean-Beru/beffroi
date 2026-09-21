@@ -11,6 +11,7 @@ use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -128,7 +129,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         $fromModule = ClientDefinition::fromArray('oidc-demo', [
             'redirect_uris' => ['https://demo.test/login/check'],
             'token_endpoint_auth_method' => 'none',
-        ], Algorithms::all());
+        ], Algorithms::all(), Methods::all());
 
         // When
         $config = self::process(self::MINIMAL + [
@@ -144,7 +145,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         static::assertIsArray($config['clients']);
         static::assertSame(['oidc-demo'], array_keys($config['clients']));
         static::assertIsArray($config['clients']['oidc-demo']);
-        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']), Algorithms::all());
+        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']), Algorithms::all(), Methods::all());
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
         static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, array_map(static fn ($scope) => (string) $scope, $fromTree->allowedScopes));
@@ -217,13 +218,6 @@ final class HeidiBundleConfigurationTest extends TestCase
                 ],
             ],
         ], 'insecure_redirect_uris'];
-        yield 'an unknown authentication method' => [self::MINIMAL + [
-            'clients' => [
-                'app' => [
-                    'token_endpoint_auth_method' => 'private_key_jwt',
-                ],
-            ],
-        ], 'token_endpoint_auth_method'];
         yield 'an unknown grant type' => [self::MINIMAL + [
             'clients' => [
                 'app' => [

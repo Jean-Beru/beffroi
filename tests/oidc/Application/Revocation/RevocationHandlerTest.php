@@ -23,7 +23,6 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Event\TokenRevoked;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
@@ -32,7 +31,9 @@ use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\UnsupportedTokenTypeException;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Jwts;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -74,7 +75,7 @@ final class RevocationHandlerTest extends TestCase
         $this->session = Fixtures::session(Fixtures::user($this->tenant), $this->clock->now()->modify('-1 hour'));
         $hasher = new FakePasswordHasher();
         $this->client = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET));
-        $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), TokenEndpointAuthMethod::ClientSecretPost, 'other');
+        $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'other');
         $this->public = Clients::public($this->tenant);
         $clients = new InMemoryClientRepository();
         foreach ([$this->client, $this->other, $this->public] as $client) {
@@ -348,7 +349,8 @@ final class RevocationHandlerTest extends TestCase
     private function handler(InMemoryClientRepository $clients, FakePasswordHasher $hasher, AccessTokenRepositoryInterface $accessTokens): RevocationHandler
     {
         return new RevocationHandler(
-            new ClientAuthenticator($clients, $hasher, $this->clock, new RecordingEventDispatcher()),
+            new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher()),
+            new Endpoints(),
             new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $accessTokens, new PublicSubjectIdentifierResolver()),
             $accessTokens,
             $this->refreshTokens,

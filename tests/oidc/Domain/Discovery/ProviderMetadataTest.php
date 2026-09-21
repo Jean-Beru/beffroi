@@ -11,14 +11,15 @@ use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
+use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Domain\Discovery\ProviderMetadata;
 use Heidi\Oidc\Domain\EndSession\LogoutChannel;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\LogoutChannels;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -35,9 +36,9 @@ final class ProviderMetadataTest extends TestCase
      * "end_session_endpoint" (RP-Initiated Logout §2.1) and the four members of the two logout
      * specifications (Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3). Only what the provider
      * does: "code", "query",
-     * "S256", "public", "RS256", the three client authentication methods of RFC 6749 §2.3 at the token and
-     * revocation endpoints, the two that prove a secret at introspection, the "acr" values given, no
-     * request object.
+     * "S256", "public", "RS256", the client authentication methods it is wired with at the token and
+     * revocation endpoints, those of them that authenticate the caller at introspection, what an
+     * assertion of those methods may be signed with, the "acr" values given, no request object.
      */
     #[Test]
     public function itDescribesWhatTheProviderDoesAndNothingElse(): void
@@ -59,16 +60,19 @@ final class ProviderMetadataTest extends TestCase
             'acr_values_supported' => ['phrh', 'phr', '2', '1'],
             'subject_types_supported' => ['public'],
             'id_token_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
-            'token_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'none'],
+            'token_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'none'],
+            'token_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
             'claims_supported' => ['sub', 'name', 'email', 'email_verified'],
             'claims_parameter_supported' => true,
             'request_parameter_supported' => false,
             'request_uri_parameter_supported' => false,
             'code_challenge_methods_supported' => ['S256'],
             'revocation_endpoint' => 'https://id.acme.example/revoke',
-            'revocation_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'none'],
+            'revocation_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'none'],
+            'revocation_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
             'introspection_endpoint' => 'https://id.acme.example/introspect',
-            'introspection_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post'],
+            'introspection_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt'],
+            'introspection_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
             'introspection_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
             'authorization_response_iss_parameter_supported' => true,
             'end_session_endpoint' => 'https://id.acme.example/logout',
@@ -206,7 +210,7 @@ final class ProviderMetadataTest extends TestCase
     public function theGrantTypesAndTheMethodsAreThoseGivenEachOnce(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode, GrantType::AuthorizationCode], [TokenEndpointAuthMethod::None, TokenEndpointAuthMethod::None], ['1', '1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode, GrantType::AuthorizationCode], [Methods::none(), Methods::none()], ['1', '1'], self::algorithms(), self::channels(), 60)->toArray();
 
         // Then
         static::assertSame(['authorization_code'], $document['grant_types_supported']);
@@ -244,13 +248,14 @@ final class ProviderMetadataTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.1: introspection takes the methods that prove a secret, among those the token endpoint takes.
+     * RFC 7662 §2.1: introspection takes the methods that authenticate the caller, among those the
+     * provider takes; a public client has none.
      */
     #[Test]
-    public function introspectionTakesTheSecretMethodsAmongThoseGiven(): void
+    public function introspectionTakesTheAuthenticatingMethodsAmongThoseGiven(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode], [TokenEndpointAuthMethod::ClientSecretPost, TokenEndpointAuthMethod::None], ['1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), [], [], self::responseModes(), [GrantType::AuthorizationCode], [Methods::clientSecretPost(), Methods::none()], ['1'], self::algorithms(), self::channels(), 60)->toArray();
 
         // Then
         static::assertSame(['client_secret_post'], $document['introspection_endpoint_auth_methods_supported']);
@@ -446,11 +451,11 @@ final class ProviderMetadataTest extends TestCase
     }
 
     /**
-     * @return list<TokenEndpointAuthMethod>
+     * @return list<ClientAuthenticationMethodInterface>
      */
     private static function methods(): array
     {
-        return [TokenEndpointAuthMethod::ClientSecretBasic, TokenEndpointAuthMethod::ClientSecretPost, TokenEndpointAuthMethod::None];
+        return [Methods::clientSecretBasic(), Methods::clientSecretPost(), Methods::privateKeyJwt(), Methods::clientSecretJwt(), Methods::none()];
     }
 
     private static function endpoints(): ProviderEndpoints

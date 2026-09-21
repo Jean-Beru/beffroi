@@ -13,9 +13,9 @@ use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -73,7 +73,7 @@ final class LogoutTokenIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'), idTokenSignedResponseAlg: Algorithms::es256());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'), idTokenSignedResponseAlg: Algorithms::es256());
 
         // When
         $token = $this->issuer->issue($client, $this->session, Fixtures::now());

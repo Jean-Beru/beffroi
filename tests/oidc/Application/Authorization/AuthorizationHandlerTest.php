@@ -32,7 +32,6 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Event\AuthorizationCodeIssued;
 use Heidi\Oidc\Domain\Event\ConsentGranted;
@@ -54,6 +53,7 @@ use Heidi\Oidc\Exception\UnmetAuthenticationRequirementsException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Heidi\Oidc\Tests\Fixture\Logins;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -98,7 +98,7 @@ final class AuthorizationHandlerTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
-        $this->firstParty = new Client($this->tenant, 'portal', 'Portal', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://portal.acme.example/callback')], allowedScopes: [Scope::openid(), new Scope('profile')], requiresConsent: false);
+        $this->firstParty = new Client($this->tenant, 'portal', 'Portal', Methods::none(), null, [new RedirectUri('https://portal.acme.example/callback')], allowedScopes: [Scope::openid(), new Scope('profile')], requiresConsent: false);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->context = Fixtures::context($this->clock->now());
         $this->interactions = new InMemoryInteractionRepository();
@@ -1250,7 +1250,7 @@ final class AuthorizationHandlerTest extends TestCase
     public static function provideStepUpRequests(): iterable
     {
         $tenant = Fixtures::tenant();
-        $client = new Client($tenant, 'portal', 'Portal', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://portal.acme.example/callback')], allowedScopes: [Scope::openid(), new Scope('profile')], requiresConsent: false);
+        $client = new Client($tenant, 'portal', 'Portal', Methods::none(), null, [new RedirectUri('https://portal.acme.example/callback')], allowedScopes: [Scope::openid(), new Scope('profile')], requiresConsent: false);
         yield 'essential, the claims parameter' => [Requests::authorization($client, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}'))];
         yield 'voluntary, acr_values' => [Requests::authorization($client, acrValues: ['phr'])];
         yield 'after a class the tenant does not name' => [Requests::authorization($client, acrValues: ['urn:mace:incommon:iap:silver', 'phr'])];

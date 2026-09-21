@@ -78,6 +78,8 @@ final class JwksHandlerTest extends TestCase
     /**
      * RFC 7517 §5 and RFC 7515 §4.1.4: a tenant that signs with two algorithms publishes one key per
      * algorithm, each naming itself, so that a relying party picks by "kid" and knows what to verify with.
+     * The two keys of the fixture are created at the same instant, and the set orders same-instant keys by
+     * "kid", which is a thumbprint: which of them comes first is not a behaviour, so it is not asserted.
      */
     #[Test]
     public function theSetCarriesOneKeyPerAlgorithmTheTenantSignsWith(): void
@@ -89,7 +91,7 @@ final class JwksHandlerTest extends TestCase
         $keys = self::keysAsOidcJwksReadsThem(new JwksHandler($this->jwts->keys)->handle($this->jwts->tenant)->toJson());
 
         // Then
-        static::assertSame([
+        static::assertEqualsCanonicalizing([
             [$this->jwts->key->kid, 'RS256', 'RSA'],
             [$es256->kid, 'ES256', 'EC'],
         ], array_map(static fn (array $jwk): array => [$jwk['kid'], $jwk['alg'], $jwk['kty']], $keys));

@@ -10,7 +10,6 @@ use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
@@ -19,6 +18,7 @@ use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
@@ -152,7 +152,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
         $grant = Uuid::v7();
         $orphan = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('ghost-code', $ghost, $session, self::now(), grantId: $grant)), self::now(), self::now()->modify('+10 minutes'));
         $kept = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', self::client(), $session, self::now()->modify('+1 minute'), grantId: $grant)), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));

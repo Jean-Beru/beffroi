@@ -28,12 +28,13 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Jwts;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWKSet;
@@ -80,7 +81,7 @@ final class IntrospectionHandlerTest extends TestCase
         $this->session = Fixtures::session($user, $this->clock->now()->modify('-1 hour'));
         $hasher = new FakePasswordHasher();
         $this->client = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), accessTokenFormat: AccessTokenFormat::Opaque);
-        $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), TokenEndpointAuthMethod::ClientSecretPost, 'other');
+        $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'other');
         $clients = new InMemoryClientRepository();
         foreach ([$this->client, $this->other, Clients::public($this->tenant)] as $client) {
             $clients->save($client);
@@ -93,7 +94,8 @@ final class IntrospectionHandlerTest extends TestCase
         $users = new InMemoryUserRepository();
         $users->save($user);
         $this->handler = new IntrospectionHandler(
-            new ClientAuthenticator($clients, $hasher, $this->clock, new RecordingEventDispatcher()),
+            new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher()),
+            new Endpoints(),
             new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users),
             $this->jwts->signer,
             Algorithms::all(),

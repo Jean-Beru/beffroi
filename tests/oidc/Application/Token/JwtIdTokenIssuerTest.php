@@ -24,13 +24,13 @@ use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\AccessToken;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use Jose\Component\Checker\InvalidClaimException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -357,7 +357,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::es256());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::es256());
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
 
         // When
@@ -380,7 +380,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $this->jwts->activate(Algorithms::edDsa());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::edDsa());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::edDsa());
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
 
         // When
