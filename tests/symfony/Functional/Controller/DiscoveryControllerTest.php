@@ -35,6 +35,27 @@ final class DiscoveryControllerTest extends BrowserTestCase
         static::assertSame('https://op.test/revoke', $metadata['revocation_endpoint']);
     }
 
+    /**
+     * RFC 8414 §3: the second well-known location, where a resource server looks for the metadata of its
+     * authorization server; the issuer of this kernel is an origin, so the path is appended to it.
+     */
+    #[Test]
+    public function theSameMetadataIsServedAtTheAuthorizationServerLocation(): void
+    {
+        // Given
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+        $openIdConfiguration = self::json($this->browser->getResponse());
+
+        // When
+        $this->browser->request('GET', '/.well-known/oauth-authorization-server');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertSame('application/json', $response->headers->get('Content-Type'));
+        static::assertSame($openIdConfiguration, self::json($response));
+    }
+
     #[Test]
     public function theMetadataIsPubliclyCacheableForOneHour(): void
     {

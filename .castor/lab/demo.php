@@ -54,6 +54,8 @@ function demo(
     bool $formPost = false,
     #[AsOption(description: 'The second success criterion of spike 4 (issue #137): a second instance of the demo on another client of the same OP, signed in on the same session, logged out by back-channel when the first instance logs out; the delay is measured and printed')]
     bool $logoutOthers = false,
+    #[AsOption(description: 'The last acceptance step of issue #61 (issue #64): the demo as a resource server behind the introspection endpoint, with an opaque access token and with an "at+jwt", the introspection response read as JSON and required signed (RFC 9701), and what revoking the token does to each')]
+    bool $resourceServer = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -133,6 +135,13 @@ function demo(
     }
     if ($formPost) {
         demo_form_post_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($resourceServer) {
+        if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
+            io()->error('OIDC_DEMO_OPAQUE_SECRET is empty: run "castor provision" first.');
+            exit(1);
+        }
+        demo_resource_server_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_OPAQUE_SECRET'], $env['OIDC_DEMO_SECRET'], $ca);
     }
     if ($logoutOthers) {
         if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
@@ -617,6 +626,232 @@ function demo_wait_for_logout(array &$cookies, string $ca, float|int $startedAt,
 }
 
 /**
+ * The client the OP issues opaque access tokens to (apps/op/config/packages/heidi.yaml): the same
+ * demonstration, registered a second time, so that the two shapes of access token are played one after
+ * the other without the OP being reconfigured between them.
+ */
+const DEMO_OPAQUE_CLIENT_ID = 'oidc-demo-opaque';
+
+/**
+ * Where the resource server of the demonstration introspects the tokens it is presented with
+ * (config/packages/framework.yaml of oidc-demo), written into its .env.local from the discovery
+ * document of the OP.
+ */
+const DEMO_INTROSPECTION_ENV = 'OIDC_INTROSPECTION_URI';
+
+/**
+ * RFC 8414 §3: where a resource server looks for the metadata of its authorization server, which is where
+ * Symfony's "oauth2" token handler reads the keys a signed introspection response is verified against. The
+ * issuer of the development OP is an origin, so the path is simply appended to it (§3 inserts it before
+ * the path of an issuer that carries one, where OIDC Discovery §4.1 appends it).
+ */
+const DEMO_AUTHORIZATION_SERVER_METADATA_PATH = '/.well-known/oauth-authorization-server';
+
+/**
+ * The last acceptance step of issue #61, the one that lives in another repository (issue #64):
+ * `oidc-demo` is also a resource server, and the access token it holds for its user is checked in the
+ * three ways Symfony's `access_token` authenticator offers, each behind a firewall of its own
+ * (`/api/me`, `/api/me/signed`, `/api/me/offline`).
+ *
+ * The walk is played twice, once per registration, because what the client registered is what the
+ * shape of its access token is (architecture §4.6):
+ *
+ * - as `oidc-demo-opaque`, whose token says nothing to whoever reads it: the resource server asks the
+ *   OP what it is (RFC 7662), first reading the JSON answer, then requiring the signed one (RFC 9701),
+ *   whose keys it finds through the RFC 8414 metadata of the OP, the one thing the OP did not serve
+ *   yet. The token is then revoked, and the next call is refused: the OP is asked at every request, so
+ *   it answers with what it knows now.
+ * - as `oidc-demo`, whose token is an `at+jwt` the resource server verifies itself against the JWK Set
+ *   of the OP, without asking it anything. That one cannot be revoked at all, and the OP says so
+ *   (`unsupported_token_type`, RFC 7009 §2.2.1); what ends it is the end of the session, after which
+ *   the OP refuses it at UserInfo while the resource server goes on accepting it until it expires.
+ *   That is the trade between the two shapes, seen rather than described.
+ */
+function demo_resource_server_check(string $dir, string $issuer, string $password, string $opaqueSecret, string $demoSecret, string $ca): void
+{
+    io()
+        ->section('A resource server behind the introspection endpoint');
+    $verified = [];
+
+    // RFC 8414 §3 and OIDC Discovery §4.1: one document, two well-known locations, and the token
+    // handler of Symfony reads the keys of a signed introspection response at the first one
+    $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
+    $authorizationServer = demo_metadata($issuer . DEMO_AUTHORIZATION_SERVER_METADATA_PATH, $ca);
+    demo_expect($authorizationServer === $metadata, 'the OP serves the same document at /.well-known/oauth-authorization-server (RFC 8414 §3) as at /.well-known/openid-configuration');
+    $introspection = (string) ($metadata['introspection_endpoint'] ?? '');
+    demo_expect($introspection !== '' && is_string($metadata['jwks_uri'] ?? null), 'the document names the introspection endpoint and the JWK Set the signed answer is verified against');
+    $verified[] = ['Authorization server metadata', sprintf('%s, jwks_uri %s', DEMO_AUTHORIZATION_SERVER_METADATA_PATH, $metadata['jwks_uri'])];
+
+    try {
+        // an opaque access token: nothing to read, everything to ask
+        demo_write_env_local($dir . '/.env.local', [
+            'OIDC_CLIENT_ID' => DEMO_OPAQUE_CLIENT_ID,
+            'OIDC_CLIENT_SECRET' => $opaqueSecret,
+            DEMO_INTROSPECTION_ENV => $introspection,
+        ]);
+        $cookies = [];
+        $tokens = demo_resource_server_sign_in($cookies, $issuer, $password, $ca, DEMO_OPAQUE_CLIENT_ID);
+        $accessToken = $tokens['access_token'];
+        demo_expect(substr_count($accessToken, '.') !== 2, sprintf('the access token of %s is opaque, not a JWS: "%s"', DEMO_OPAQUE_CLIENT_ID, $accessToken));
+        $subject = (string) (demo_jwt($tokens['id_token'])['claims']['sub'] ?? '?');
+        $verified[] = ['Opaque access token', sprintf('%d characters, no structure to read, sub %s on the ID token', strlen($accessToken), $subject)];
+
+        [$status, $body] = demo_api(DEMO_URL . '/api/me', $accessToken);
+        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf('the resource server introspects the token and answers the sub of its badge (got %d %s)', $status, json_encode($body)));
+        $verified[] = ['/api/me', sprintf('200, sub %s, scope %s, %s', $body['sub'], json_encode($body['scope'] ?? null), $body['user_class'] ?? '?')];
+
+        [$status, $body] = demo_api(DEMO_URL . '/api/me/signed', $accessToken);
+        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf('the same answer required signed (RFC 9701), verified against the keys of the OP found through its RFC 8414 metadata (got %d %s)', $status, json_encode($body)));
+        $verified[] = ['/api/me/signed', sprintf('200, the JWT answer verified, typ "%s"', 'token-introspection+jwt')];
+
+        [$status, $body] = demo_revoke($issuer, $ca, DEMO_OPAQUE_CLIENT_ID, $opaqueSecret, $accessToken);
+        demo_expect($status === 200, sprintf('the client revokes its own access token at /revoke (RFC 7009, got %d %s)', $status, json_encode($body)));
+        [$status, $body] = demo_api(DEMO_URL . '/api/me', $accessToken);
+        demo_expect($status === 401, sprintf('the very next call is refused: the OP is asked at every request (got %d %s)', $status, json_encode($body)));
+        $verified[] = ['Revoked, then /api/me', '401, without the resource server knowing anything of the revocation'];
+        demo_logout($cookies, $issuer, $ca);
+
+        // an at+jwt: everything to read, nothing asked
+        demo_write_env_local($dir . '/.env.local', [
+            'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
+            'OIDC_CLIENT_SECRET' => $demoSecret,
+        ]);
+        $cookies = [];
+        $tokens = demo_resource_server_sign_in($cookies, $issuer, $password, $ca, DEMO_CLIENT_ID);
+        $accessToken = $tokens['access_token'];
+        $header = demo_jwt($accessToken)['header'];
+        demo_expect(($header['typ'] ?? null) === 'at+jwt', sprintf('the access token of %s is an at+jwt (RFC 9068 §2.1, got "%s")', DEMO_CLIENT_ID, $header['typ'] ?? ''));
+        $subject = (string) (demo_jwt($tokens['id_token'])['claims']['sub'] ?? '?');
+
+        [$status, $body] = demo_api(DEMO_URL . '/api/me/offline', $accessToken);
+        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf('the resource server verifies the token itself, against the JWK Set of the OP, and answers the sub of its badge (got %d %s)', $status, json_encode($body)));
+        $verified[] = ['/api/me/offline', sprintf('200, sub %s, kid %s, nothing asked of the OP', $body['sub'], $header['kid'] ?? '?')];
+
+        [$status, $body] = demo_revoke($issuer, $ca, DEMO_CLIENT_ID, $demoSecret, $accessToken);
+        demo_expect($status === 400 && ($body['error'] ?? null) === 'unsupported_token_type', sprintf('that one cannot be revoked at all, and the OP says so rather than answering 200 (RFC 7009 §2.2.1, got %d %s)', $status, json_encode($body)));
+        $verified[] = ['/revoke of an at+jwt', sprintf('400 %s, "%s"', $body['error'], $body['error_description'] ?? '')];
+
+        // and the end of the session does not end it either, which is measured rather than assumed:
+        // the opaque token above stopped working at once, this one goes on until it expires
+        demo_logout($cookies, $issuer, $ca);
+        [$status, $body] = demo_api(DEMO_URL . '/api/me/offline', $accessToken);
+        demo_expect($status === 200, sprintf('the offline resource server accepts it still: nothing told it, and nothing could (got %d %s)', $status, json_encode($body)));
+        $userinfo = demo_userinfo($issuer, $ca, $accessToken);
+        $verified[] = ['Session ended, then /api/me/offline', sprintf('200 until the token expires; UserInfo of the OP answers %d to the same token', $userinfo)];
+
+        io()
+            ->table(['Step', 'Verified'], $verified);
+        io()
+            ->success('oidc-demo checked its access token in the three ways Symfony offers, on the two shapes the OP issues, without a patch.');
+        io()
+            ->note(sprintf('An "at+jwt" is accepted by a resource server that verifies it offline until it expires (ten minutes here, HEIDI_ACCESS_TOKEN_TTL), whatever the OP knows of it: a deployment that needs a withdrawal to be felt at once registers its client for opaque tokens, and its resource server introspects them (architecture §4.6). UserInfo of the OP answered %d to that token once the session had ended, where the opaque one was refused at once: what a session ending revokes is what the OP stores.', $userinfo));
+    } finally {
+        demo_write_env_local($dir . '/.env.local', [
+            'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
+            'OIDC_CLIENT_SECRET' => $demoSecret,
+        ]);
+    }
+}
+
+/**
+ * A sign-in through the demo for the resource server check: the walk of demo_sign_in, but the tokens are
+ * read raw from the page, because an opaque access token has nothing demo_tokens_of() could tell it by.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ * @return array{id_token: string, access_token: string}
+ */
+function demo_resource_server_sign_in(array &$cookies, string $issuer, string $password, string $ca, string $clientId): array
+{
+    $location = demo_authenticate($cookies, $issuer, $password, $ca, $clientId);
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 302 && $location === DEMO_URL . '/profile', sprintf('the demo signs the user in (got %d %s)', $status, $location));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
+    demo_expect($status === 200, sprintf('/profile opens (got %d)', $status));
+    $tokens = demo_raw_tokens_of($page);
+    demo_expect($tokens['id_token'] !== '' && $tokens['access_token'] !== '', '/profile shows an ID token and an access token');
+
+    return $tokens;
+}
+
+/**
+ * The two tokens the profile page prints in full, in the order it prints them: the ID token, then the
+ * access token, whatever they are made of. demo_tokens_of() tells them apart by what they carry, which
+ * an opaque access token carries nothing of.
+ *
+ * @return array{id_token: string, access_token: string}
+ */
+function demo_raw_tokens_of(string $page): array
+{
+    preg_match_all('/<pre class="jwt">([^<]*)<\/pre>/', $page, $matches);
+    $raw = $matches[1] + [
+        0 => '',
+        1 => '',
+    ];
+
+    return [
+        'id_token' => trim(html_entity_decode($raw[0])),
+        'access_token' => trim(html_entity_decode($raw[1])),
+    ];
+}
+
+/**
+ * A document of the OP read as JSON, the CA of Caddy trusted as everywhere else in this file.
+ *
+ * @return array<string, mixed>
+ */
+function demo_metadata(string $url, string $ca): array
+{
+    $response = http_request('GET', $url, [
+        'cafile' => $ca,
+        'max_redirects' => 0,
+    ]);
+    demo_expect($response->getStatusCode() === 200, sprintf('%s answers 200 (got %d)', $url, $response->getStatusCode()));
+
+    return (array) json_decode($response->getContent(false), true);
+}
+
+/**
+ * A call of the resource server of the demo with a bearer token (RFC 6750 §2.1): its status and the JSON
+ * it answered with. The demo serves a certificate of the Symfony CLI, verified against nothing, as
+ * demo_request() does for it.
+ *
+ * @return array{int, array<string, mixed>}
+ */
+function demo_api(string $url, string $accessToken): array
+{
+    $response = http_request('GET', $url, [
+        'max_redirects' => 0,
+        'verify_peer' => false,
+        'verify_host' => false,
+        'auth_bearer' => $accessToken,
+    ]);
+
+    return [$response->getStatusCode(), (array) json_decode($response->getContent(false), true)];
+}
+
+/**
+ * RFC 7009 §2.1: an access token revoked at the endpoint of the OP by the client it was issued to, which
+ * authenticates the way it registered (client_secret_basic for the clients of the demonstration). Its
+ * status and what it answered, because a refusal names itself (§2.2.1).
+ *
+ * @return array{int, array<string, mixed>}
+ */
+function demo_revoke(string $issuer, string $ca, string $clientId, string $secret, string $accessToken): array
+{
+    $response = http_request('POST', $issuer . '/revoke', [
+        'cafile' => $ca,
+        'max_redirects' => 0,
+        'auth_basic' => $clientId . ':' . $secret,
+        'body' => [
+            'token' => $accessToken,
+            'token_type_hint' => 'access_token',
+        ],
+    ]);
+
+    return [$response->getStatusCode(), (array) json_decode($response->getContent(false), true)];
+}
+
+/**
  * The JWK Set max-age and the JWS lifetimes of the rotation run, seconds: written into apps/op/.env.local
  * for the time of the run (HEIDI_JWKS_MAX_AGE, HEIDI_ACCESS_TOKEN_TTL, HEIDI_ID_TOKEN_TTL, which
  * config/packages/heidi.yaml reads at runtime), so that the staging delay (max-age plus the 60 s cooldown,
@@ -969,13 +1204,13 @@ function demo_userinfo(string $issuer, string $ca, string $accessToken): int
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
-function demo_authenticate(array &$cookies, string $issuer, string $password, string $ca): string
+function demo_authenticate(array &$cookies, string $issuer, string $password, string $ca, string $clientId = DEMO_CLIENT_ID): string
 {
     // /profile: the demo starts the flow
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
     demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('/profile sends the browser to the authorization endpoint (got %d %s)', $status, $location));
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
-    demo_expect(($authorization['response_type'] ?? null) === 'code' && ($authorization['code_challenge_method'] ?? null) === 'S256' && ($authorization['client_id'] ?? null) === DEMO_CLIENT_ID, 'the authorization request is response_type=code with PKCE S256');
+    demo_expect(($authorization['response_type'] ?? null) === 'code' && ($authorization['code_challenge_method'] ?? null) === 'S256' && ($authorization['client_id'] ?? null) === $clientId, sprintf('the authorization request is response_type=code with PKCE S256, client_id=%s', $clientId));
 
     // the OP parks the request and asks for a login
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
