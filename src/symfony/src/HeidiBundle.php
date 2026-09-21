@@ -44,6 +44,7 @@ use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientKeySetProvider;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
+use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
@@ -78,6 +79,12 @@ final class HeidiBundle extends AbstractBundle
      * RFC 6749 §4.1.2, the recommendation made a bound.
      */
     public const int MAX_AUTHORIZATION_CODE_TTL = 600;
+
+    /**
+     * RFC 9126 §2.2: "typically be relatively short (e.g., between 5 and 600 seconds)", the upper end
+     * made a bound; a reference the provider holds is a request nobody has consented to yet.
+     */
+    public const int MAX_REQUEST_URI_TTL = 600;
 
     /**
      * Seconds one attempt at delivering a logout token is given (Back-Channel Logout 1.0 §2.5).
@@ -240,6 +247,12 @@ final class HeidiBundle extends AbstractBundle
             ->defaultValue(600)
             ->min(1)
             ->end()
+            ->integerNode('request_uri_ttl')
+            ->info('Seconds a request_uri answered by the pushed authorization request endpoint lives (RFC 9126 §2.2); sixty is the example of the specification, and the browser is sent the moment the client holds the reference.')
+            ->defaultValue(60)
+            ->min(1)
+            ->max(self::MAX_REQUEST_URI_TTL)
+            ->end()
             ->integerNode('refresh_token_ttl')
             ->info('Sliding lifetime of a refresh token, renewed at each rotation.')
             ->defaultValue(2592000)
@@ -348,6 +361,10 @@ final class HeidiBundle extends AbstractBundle
             ->booleanNode('requires_pkce')
             ->info('PKCE S256 is the rule; a confidential client that cannot send a code_challenge is the named exception of decision 0008, refused for a public client. A challenge the client sends is verified all the same.')
             ->defaultTrue()
+            ->end()
+            ->booleanNode('require_pushed_authorization_requests')
+            ->info('The only way this client starts an authorization request is by pushing it (RFC 9126 §6), which is what FAPI 2.0 asks of one; an ordinary request from it is refused on a page before its redirect URI is even read. Per client, nothing global: the document announces the requirement when every registered client carries it.')
+            ->defaultFalse()
             ->end()
             ->scalarNode('id_token_signed_response_alg')
             ->info('The JWS algorithm the ID tokens and the logout tokens of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, the provider signs them with its default. A name nothing signs under fails at boot.')
@@ -563,6 +580,8 @@ final class HeidiBundle extends AbstractBundle
 
         $services->get(AuthorizationHandler::class)
             ->arg('$codeLifetime', self::seconds($tokens, 'authorization_code_ttl'));
+        $services->get(PushedAuthorizationHandler::class)
+            ->arg('$lifetime', self::seconds($tokens, 'request_uri_ttl'));
         $services->get(JwtAccessTokenIssuer::class)
             ->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
         $services->get(OpaqueAccessTokenIssuer::class)

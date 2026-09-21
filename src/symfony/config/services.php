@@ -12,6 +12,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRequestRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
@@ -149,6 +150,8 @@ use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
+use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
+use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenIssuer;
@@ -188,6 +191,8 @@ use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
+use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
+use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
@@ -341,6 +346,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
     // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6)
     $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
+    $services->set(DoctrinePushedAuthorizationRequestRepository::class);
+    $services->alias(PushedAuthorizationRequestRepositoryInterface::class, DoctrinePushedAuthorizationRequestRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
     $services->set(DoctrineAccessTokenRepository::class);
@@ -443,6 +450,9 @@ return static function (ContainerConfigurator $container): void {
     // The module: clients
     $services->set(ConfigurationClientRepository::class);
     $services->alias(ClientRepositoryInterface::class, ConfigurationClientRepository::class);
+    // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
+    // require, read where they are declared and nowhere else (issue #98)
+    $services->alias(PushedAuthorizationRequirementInterface::class, ConfigurationClientRepository::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).
@@ -510,8 +520,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(StandardClaimsProvider::class);
     $services->alias(ClaimsProviderInterface::class, StandardClaimsProvider::class);
 
-    // The module: authorization endpoint
+    // The module: authorization endpoint, and the pushed request the browser may come back with
     $services->set(AuthorizationRequestParser::class);
+    $services->set(PushedAuthorizationRequestResolver::class);
+    $services->set(PushedAuthorizationHandler::class);
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);
 

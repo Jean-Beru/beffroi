@@ -13,6 +13,7 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
+use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,8 +22,9 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * The authorization endpoint (RFC 6749 §3.1, OIDC Core §3.1.2), GET or POST. An error of the first stage
- * is a page, one of the second goes back to the client (RFC 9700 §4.1). The locale of the interaction is
- * chosen here, once (architecture §5.7).
+ * is a page, one of the second goes back to the client (RFC 9700 §4.1). A request the client pushed
+ * (RFC 9126 §2) arrives here as a reference, and what it names is read in place of the query before
+ * anything else. The locale of the interaction is chosen here, once (architecture §5.7).
  */
 #[AsController]
 final readonly class AuthorizationController
@@ -30,6 +32,7 @@ final readonly class AuthorizationController
     public function __construct(
         private TenantProvider $tenants,
         private AuthorizationRequestParser $parser,
+        private PushedAuthorizationRequestResolver $pushedRequests,
         private AuthorizationHandler $handler,
         private BrowserSession $browser,
         private RequestContextFactory $contexts,
@@ -45,7 +48,11 @@ final readonly class AuthorizationController
         $tenant = $this->tenants->provide();
         $parameters = RequestParameters::ofBrowserRequest($request);
         try {
-            $target = $this->parser->redirectTarget($tenant, $parameters);
+            // RFC 9126 §4: a request that was pushed is read from the record and not from the query,
+            // which carries nothing but the client and the reference to it
+            $pushed = $this->pushedRequests->resolve($tenant, $parameters, $this->contexts->fromRequest($request));
+            $parameters = $pushed ?? $parameters;
+            $target = $this->parser->redirectTarget($tenant, $parameters, $pushed !== null);
         } catch (OAuth2Exception $exception) {
             return $this->pages->error($exception->statusCode, $exception->error, $exception->errorDescription);
         }

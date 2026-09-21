@@ -45,6 +45,23 @@ final class ClientTest extends TestCase
         static::assertSame('client_secret_basic', $client->authenticationMethod->name());
     }
 
+    /**
+     * RFC 9126 §6: "If omitted, the default value is false". A client starts an ordinary authorization
+     * request unless its registration says it only pushes them.
+     */
+    #[Test]
+    public function aClientStartsAnOrdinaryAuthorizationRequestUnlessItSaysOtherwise(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $hash = new FakePasswordHasher()
+            ->hash(Clients::SECRET);
+
+        // When / Then
+        static::assertFalse(Clients::confidential($tenant, $hash)->requiresPushedAuthorizationRequests);
+        static::assertTrue(Clients::pushingOnly($tenant, $hash)->requiresPushedAuthorizationRequests);
+    }
+
     #[Test]
     public function aClientBelongsToItsTenantOnly(): void
     {

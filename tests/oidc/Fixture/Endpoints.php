@@ -39,6 +39,6 @@ final readonly class Endpoints implements EndpointLocatorInterface, MutualTlsEnd
 
     private static function under(string $origin): ProviderEndpoints
     {
-        return new ProviderEndpoints($origin . '/authorize', $origin . '/token', $origin . '/userinfo', $origin . '/jwks', $origin . '/logout', $origin . '/introspect', $origin . '/revoke');
+        return new ProviderEndpoints($origin . '/authorize', $origin . '/token', $origin . '/userinfo', $origin . '/jwks', $origin . '/logout', $origin . '/introspect', $origin . '/revoke', $origin . '/par');
     }
 }

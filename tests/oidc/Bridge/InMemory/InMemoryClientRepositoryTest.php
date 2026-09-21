@@ -83,6 +83,44 @@ final class InMemoryClientRepositoryTest extends TestCase
         static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Opaque));
     }
 
+    /**
+     * RFC 9126 §5: a tenant requires a pushed request when every client registered there does.
+     */
+    #[Test]
+    public function theTenantRequiresAPushedRequestWhenEveryClientOfItsDoes(): void
+    {
+        // Given
+        $repository = new InMemoryClientRepository();
+        $repository->save(Clients::pushingOnly($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET)));
+
+        // When / Then
+        static::assertTrue($repository->requiresPushedAuthorizationRequests($this->tenant));
+    }
+
+    /**
+     * One client that may still start an ordinary request is what makes the answer false, the
+     * requirement being carried by the clients and by nothing global.
+     */
+    #[Test]
+    public function oneClientThatDoesNotRequireItMakesTheTenantRequireNothing(): void
+    {
+        // Given
+        $this->repository->save(Clients::pushingOnly($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET)));
+
+        // When / Then
+        static::assertFalse($this->repository->requiresPushedAuthorizationRequests($this->tenant));
+    }
+
+    /**
+     * A tenant no client is registered for requires nothing of anybody.
+     */
+    #[Test]
+    public function aTenantWithoutClientsRequiresNothing(): void
+    {
+        // When / Then
+        static::assertFalse(new InMemoryClientRepository()->requiresPushedAuthorizationRequests($this->tenant));
+    }
+
     #[Test]
     public function theClientsOfAnotherTenantDoNotCount(): void
     {

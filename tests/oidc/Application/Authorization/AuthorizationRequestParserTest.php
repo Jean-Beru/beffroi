@@ -817,6 +817,69 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
+     * RFC 9126 §6: a client that requires its requests to be pushed cannot start one any other way. The
+     * refusal comes before the redirect URI is even read, so that nothing of the request goes back to
+     * the browser that carried it.
+     */
+    #[Test]
+    public function itRefusesAnOrdinaryRequestFromAClientThatMustPushIt(): void
+    {
+        // Given
+        $this->pushingClient();
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The client only starts an authorization request by pushing it (RFC 9126 section 6).');
+
+        // When
+        $this->parser->redirectTarget($this->tenant, self::parameters([
+            'client_id' => 'fapi-demo',
+            'redirect_uri' => 'https://fapi.localhost/login/check',
+        ]));
+    }
+
+    /**
+     * RFC 9126 §6: the very same request, having been pushed, is read like any other.
+     */
+    #[Test]
+    public function itReadsTheRequestOfThatClientOnceItHasBeenPushed(): void
+    {
+        // Given
+        $this->pushingClient();
+
+        // When
+        $target = $this->parser->redirectTarget($this->tenant, self::parameters([
+            'client_id' => 'fapi-demo',
+            'redirect_uri' => 'https://fapi.localhost/login/check',
+        ]), true);
+
+        // Then
+        static::assertSame('fapi-demo', $target->client->clientId);
+    }
+
+    /**
+     * A refusal for a redirect URI that is not registered still comes first for every other client: the
+     * requirement of RFC 9126 §6 is carried by the client and by nothing global.
+     */
+    #[Test]
+    public function aClientThatDoesNotRequireItStartsAnOrdinaryRequest(): void
+    {
+        // When
+        $target = $this->parser->redirectTarget($this->tenant, self::parameters([]));
+
+        // Then
+        static::assertSame('oidc-demo', $target->client->clientId);
+    }
+
+    /**
+     * A client whose only way of starting an authorization request is to push it (RFC 9126 §6).
+     */
+    private function pushingClient(): void
+    {
+        $this->clients->save(Clients::pushingOnly($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET)));
+    }
+
+    /**
      * A confidential client registered without the PKCE requirement (decision 0008), on the same redirect URI.
      */
     private function legacyClient(): void

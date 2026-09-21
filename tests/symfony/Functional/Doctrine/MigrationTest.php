@@ -21,6 +21,7 @@ use Heidi\Bundle\Migrations\Version20260919150000;
 use Heidi\Bundle\Migrations\Version20260920120000;
 use Heidi\Bundle\Migrations\Version20260920180000;
 use Heidi\Bundle\Migrations\Version20260922120000;
+use Heidi\Bundle\Migrations\Version20260922180000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -45,7 +46,7 @@ final class MigrationTest extends DatabaseTestCase
      *
      * @return list<class-string<AbstractMigration>>
      */
-    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class, Version20260920120000::class, Version20260920180000::class, Version20260922120000::class];
+    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class, Version20260920120000::class, Version20260920180000::class, Version20260922120000::class, Version20260922180000::class];
 
     #[Test]
     public function theMigrationsCreateWhatTheMappingsDescribeOnPostgreSql(): void
@@ -77,7 +78,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheFourteenTablesOfTheBundle(): void
+    public function theMigrationsCreateTheFifteenTablesOfTheBundle(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -89,7 +90,7 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(14, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(15, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**
@@ -183,6 +184,30 @@ final class MigrationTest extends DatabaseTestCase
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         foreach ($statements as $statement) {
             static::assertStringContainsString('heidi_totp_credential', $statement);
+        }
+        static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+    }
+
+    /**
+     * The seventh migration adds the one table of the pushed authorization requests and nothing else, so
+     * that a deployment of the first days of spike 5 upgrades by one table.
+     */
+    #[Test]
+    public function theSeventhMigrationAddsThePushedAuthorizationRequestTableAlone(): void
+    {
+        // Given
+        $migration = new Version20260922180000(DriverManager::getConnection([
+            'driver' => 'pdo_pgsql',
+            'serverVersion' => '16',
+        ]), new NullLogger());
+
+        // When
+        $migration->up(new Schema());
+
+        // Then
+        $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
+        foreach ($statements as $statement) {
+            static::assertStringContainsString('heidi_pushed_authorization_request', $statement);
         }
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }

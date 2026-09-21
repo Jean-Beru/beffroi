@@ -72,6 +72,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             'authorization_code_ttl' => 60,
             'access_token_ttl' => 600,
             'id_token_ttl' => 600,
+            'request_uri_ttl' => 60,
             'refresh_token_ttl' => 2592000,
             'refresh_token_absolute_ttl' => 7776000,
         ], $config['tokens']);
