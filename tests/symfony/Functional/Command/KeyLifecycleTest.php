@@ -15,11 +15,11 @@ use Heidi\Core\Domain\Event\SigningKeyRotated;
 use Heidi\Core\Domain\Event\SigningKeyStaged;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\RetirementReason;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
@@ -55,6 +55,45 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('active', self::displayed($tester, 'Status'));
         static::assertStringContainsString('nothing to wait for', self::flattened($tester));
         static::assertSame(KeyStatus::Active, self::key(self::displayed($tester, 'Key identifier'))->status);
+    }
+
+    /**
+     * A tenant signs with one key per algorithm; the operator names the algorithm, and the key that was
+     * active for another one is left alone (architecture §3.3).
+     */
+    #[Test]
+    public function anOperatorNamesTheAlgorithmTheKeySignsWith(): void
+    {
+        // Given
+        $rs256 = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+
+        // When
+        $tester = self::console('heidi:keys:rotate', [
+            '--algorithm' => 'ES256',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('ES256', self::displayed($tester, 'Algorithm'));
+        static::assertSame('active', self::displayed($tester, 'Status'));
+        static::assertSame(KeyStatus::Active, self::key($rs256)->status);
+    }
+
+    /**
+     * Decision 0006: an algorithm the provider is not wired with is refused, and the message says which
+     * ones it signs with.
+     */
+    #[Test]
+    public function anAlgorithmTheProviderDoesNotSignWithIsRefused(): void
+    {
+        // When
+        $tester = self::console('heidi:keys:rotate', [
+            '--algorithm' => 'HS256',
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString('does not sign with "HS256"', self::flattened($tester));
     }
 
     /**
@@ -580,11 +619,11 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     private static function stagedKeySealedUnderAnotherMasterKey(): SigningKey
     {
-        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(SignatureAlgorithm::RS256);
+        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
         $sealer = new EnvelopeKeySealer(new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
             'signing' => random_bytes(32),
         ]))), 'signing');
-        $key = new SigningKey($pair->kid, self::tenant(), SignatureAlgorithm::RS256, $pair->publicJwk, $sealer->seal(self::tenant(), $pair->privateJwk), self::currentSecond(), self::currentSecond()->modify(self::STAGING_DELAY));
+        $key = new SigningKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealer->seal(self::tenant(), $pair->privateJwk), self::currentSecond(), self::currentSecond()->modify(self::STAGING_DELAY));
         self::keys()
             ->save($key);
 
@@ -597,9 +636,9 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     private static function stagedKeyDated(DateTimeImmutable $createdAt, DateTimeImmutable $activationDueAt): SigningKey
     {
-        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(SignatureAlgorithm::RS256);
+        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
         $sealed = self::service('test.heidi.key_sealer', KeySealerInterface::class)->seal(self::tenant(), $pair->privateJwk);
-        $key = new SigningKey($pair->kid, self::tenant(), SignatureAlgorithm::RS256, $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
+        $key = new SigningKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
         self::keys()
             ->save($key);
 

@@ -12,12 +12,12 @@ use Heidi\Core\Domain\Event\SigningKeyRotated;
 use Heidi\Core\Domain\Event\SigningKeyStaged;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -242,7 +242,7 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertStringNotContainsString('is now retiring', $tester->getDisplay());
         $key = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)->find(self::tenant(), $kid) ?? static::fail('The key is not stored.');
         static::assertTrue($key->isActive());
-        static::assertSame($kid, self::service('test.heidi.key_provider', SigningKeyProviderInterface::class)->activeKey(self::tenant(), SignatureAlgorithm::RS256)->key->kid);
+        static::assertSame($kid, self::service('test.heidi.key_provider', SigningKeyProviderInterface::class)->activeKey(self::tenant(), Algorithms::rs256())->key->kid);
     }
 
     /**

@@ -12,9 +12,9 @@ use function base64_encode;
 use function getenv;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use function is_string;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -63,7 +63,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
         $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
 
         // When
-        $rotated = $rotator->rotate(self::tenant(), SignatureAlgorithm::RS256, self::context());
+        $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
         $envelope = self::envelopeOf($rotated);
@@ -90,7 +90,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     {
         // Given
         $rotated = self::service('test.heidi.key_rotator', SigningKeyRotator::class)
-            ->rotate(self::tenant(), SignatureAlgorithm::RS256, self::context());
+            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
         $envelope = self::envelopeOf($rotated);
 
         // Then

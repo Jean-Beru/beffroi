@@ -9,6 +9,7 @@ use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\PasswordHasherInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
@@ -393,7 +394,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         // When
         new ConfigurationClientRepository('acme', [
             'bad' => $definition,
-        ], new FakePasswordHasher());
+        ], new FakePasswordHasher(), Algorithms::all());
     }
 
     /**
@@ -479,7 +480,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         ], 'has a name'];
         yield 'unknown signing algorithm' => [$base + [
             'id_token_signed_response_alg' => 'HS256',
-        ], 'must be one of: RS256'];
+        ], 'must be one of: RS256, PS256, ES256, EdDSA'];
         yield 'back-channel logout URI over plain http' => [$base + [
             'backchannel_logout_uri' => 'http://rp.example/backchannel-logout',
         ], 'HTTPS'];
@@ -521,8 +522,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionHasNoSecret(): void
     {
         // When / Then
-        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA)->hasSecret());
-        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO)->hasSecret());
+        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all())->hasSecret());
+        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all())->hasSecret());
     }
 
     /**
@@ -532,7 +533,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionRefusesToHashASecret(): void
     {
         // Given
-        $definition = ClientDefinition::fromArray('spa', self::SPA);
+        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all());
 
         // Then
         $this->expectException(LogicException::class);
@@ -602,7 +603,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     private function repository(array $clients, ?PasswordHasherInterface $hasher = null): ConfigurationClientRepository
     {
-        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher());
+        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all());
     }
 
     private static function find(ConfigurationClientRepository $repository, Tenant $tenant, string $clientId): Client

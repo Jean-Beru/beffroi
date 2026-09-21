@@ -8,6 +8,7 @@ use function array_shift;
 use DateInterval;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Domain\Event\SigningKeyRetired;
 use Heidi\Core\Domain\Event\SigningKeyRotated;
@@ -15,7 +16,7 @@ use Heidi\Core\Domain\Event\SigningKeyStaged;
 use Heidi\Core\Domain\Key\GeneratedKeyPair;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\RetirementReason;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -24,6 +25,7 @@ use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Exception\RetirementNotDueException;
 use Heidi\Core\Port\IssuedJwsKindInterface;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FixedLifetimeJwsKind;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
@@ -76,13 +78,13 @@ final class SigningKeyRotatorTest extends TestCase
     public function theFirstRotationActivatesAKeyAtOnceAndRetiresNothing(): void
     {
         // When
-        $first = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $first = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertSame(Keys::pair()->kid, $first->kid);
         static::assertTrue($first->isActive());
         static::assertEquals($this->clock->now(), $first->activatedAt);
-        static::assertSame($first, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+        static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
         static::assertNull($this->events->of(SigningKeyRotated::class)[0]->retiring);
     }
 
@@ -96,13 +98,13 @@ final class SigningKeyRotatorTest extends TestCase
         $first = $this->firstRotation();
 
         // When
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertSame(KeyStatus::Staged, $staged->status);
         static::assertEquals($this->clock->now(), $staged->createdAt);
         static::assertSame([$first, $staged], $this->repository->findPublished($this->tenant));
-        static::assertSame($first, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+        static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
     /**
@@ -112,7 +114,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function stagingDatesTheActivationAfterTheStagingDelay(): void
     {
         // When
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertEquals($this->clock->now()->add(new DateInterval(self::STAGING_DELAY)), $staged->activationDueAt);
@@ -125,7 +127,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function aRotationDatesTheActivationAtOnce(): void
     {
         // When
-        $key = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $key = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertEquals($this->clock->now(), $key->activationDueAt);
@@ -135,7 +137,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function stagingSealsThePrivateKeyForTheTenant(): void
     {
         // When
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertSame(Keys::pair()->privateJwk, Keys::sealer()->unseal($this->tenant, $staged->sealedPrivateJwk));
@@ -145,7 +147,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function stagingAnnouncesTheKey(): void
     {
         // When
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         [$event] = $this->events->of(SigningKeyStaged::class);
@@ -160,7 +162,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $this->firstRotation();
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+6 minutes');
 
         // When
@@ -170,8 +172,8 @@ final class SigningKeyRotatorTest extends TestCase
         static::assertSame($staged, $activated);
         static::assertTrue($activated->isActive());
         static::assertEquals($this->clock->now(), $activated->activatedAt);
-        static::assertSame($activated, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
-        static::assertSame(Keys::otherPair()->privateJwk, new SealedKeyProvider($this->repository, Keys::sealer())->activeKey($this->tenant, SignatureAlgorithm::RS256)->privateJwk);
+        static::assertSame($activated, $this->repository->findActive($this->tenant, Algorithms::rs256()));
+        static::assertSame(Keys::otherPair()->privateJwk, new SealedKeyProvider($this->repository, Keys::sealer())->activeKey($this->tenant, Algorithms::rs256())->privateJwk);
     }
 
     /**
@@ -182,7 +184,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+6 minutes');
 
         // When
@@ -193,7 +195,7 @@ final class SigningKeyRotatorTest extends TestCase
         static::assertTrue($staged->isActive());
         static::assertEquals($this->clock->now(), $staged->activatedAt);
         static::assertSame(KeyStatus::Retiring, $first->status);
-        static::assertSame($staged, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+        static::assertSame($staged, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
     #[Test]
@@ -201,7 +203,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+5 minutes 59 seconds');
         $savesBefore = $this->repository->saves;
 
@@ -212,7 +214,7 @@ final class SigningKeyRotatorTest extends TestCase
         static::assertSame([], $activated);
         static::assertSame(KeyStatus::Staged, $staged->status);
         static::assertSame($savesBefore, $this->repository->saves);
-        static::assertSame($first, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+        static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
     /**
@@ -222,9 +224,9 @@ final class SigningKeyRotatorTest extends TestCase
     public function activateDueActivatesEveryDueKeyTheLastOneSigning(): void
     {
         // Given
-        $first = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $first = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+1 second');
-        $second = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+6 minutes');
 
         // When
@@ -233,7 +235,7 @@ final class SigningKeyRotatorTest extends TestCase
         // Then
         static::assertSame([$first, $second], $activated);
         static::assertSame(KeyStatus::Retiring, $first->status);
-        static::assertSame($second, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+        static::assertSame($second, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
     #[Test]
@@ -241,7 +243,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+1 hour');
 
         // When
@@ -279,7 +281,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+6 minutes');
 
         // When
@@ -297,10 +299,10 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $rotator = $this->rotator([new FixedLifetimeJwsKind(new DateInterval('PT10M')), new FixedLifetimeJwsKind(null)]);
-        $first = $rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $first = $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // When
-        $rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertEquals($this->clock->now()->modify('+10 minutes'), $first->retirementDueAt);
@@ -311,10 +313,10 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $rotator = $this->rotator([]);
-        $first = $rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $first = $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // When
-        $rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertEquals($this->clock->now(), $first->retirementDueAt);
@@ -351,11 +353,11 @@ final class SigningKeyRotatorTest extends TestCase
         $this->firstRotation();
 
         // When
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertSame(Keys::otherPair()->kid, $second->kid);
-        static::assertSame($second, $this->repository->findActive($this->tenant, SignatureAlgorithm::RS256));
+        static::assertSame($second, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
     #[Test]
@@ -365,7 +367,7 @@ final class SigningKeyRotatorTest extends TestCase
         $first = $this->firstRotation();
 
         // When
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertSame(KeyStatus::Retiring, $first->status);
@@ -382,7 +384,7 @@ final class SigningKeyRotatorTest extends TestCase
         $savesBefore = $this->repository->saves;
 
         // When
-        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertSame($savesBefore + 3, $this->repository->saves);
@@ -395,7 +397,7 @@ final class SigningKeyRotatorTest extends TestCase
         $first = $this->firstRotation();
 
         // When
-        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         $event = $this->events->of(SigningKeyRotated::class)[1];
@@ -410,11 +412,11 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $this->firstRotation();
-        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $provider = new SealedKeyProvider($this->repository, Keys::sealer());
 
         // When
-        $active = $provider->activeKey($this->tenant, SignatureAlgorithm::RS256);
+        $active = $provider->activeKey($this->tenant, Algorithms::rs256());
 
         // Then
         static::assertSame(Keys::otherPair()->privateJwk, $active->privateJwk);
@@ -430,7 +432,7 @@ final class SigningKeyRotatorTest extends TestCase
         $first = $this->firstRotation();
 
         // When
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context, compromised: true);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context, compromised: true);
 
         // Then
         static::assertSame(KeyStatus::Retired, $first->status);
@@ -447,7 +449,7 @@ final class SigningKeyRotatorTest extends TestCase
         $first = $this->firstRotation();
 
         // When
-        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context, compromised: true);
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context, compromised: true);
 
         // Then
         [$event] = $this->events->of(SigningKeyRetired::class);
@@ -461,7 +463,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function aRotationForACompromiseWithoutAnActiveKeyActivatesAKey(): void
     {
         // When
-        $key = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context, compromised: true);
+        $key = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context, compromised: true);
 
         // Then
         static::assertTrue($key->isActive());
@@ -476,7 +478,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+1 hour');
         $savesBefore = $this->repository->saves;
 
@@ -496,7 +498,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+59 minutes 59 seconds');
         $savesBefore = $this->repository->saves;
 
@@ -515,7 +517,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+1 day');
 
         // When
@@ -534,7 +536,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+1 day');
 
         // When
@@ -551,7 +553,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+1 minute');
 
         // Then
@@ -567,7 +569,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // When
         try {
@@ -586,7 +588,7 @@ final class SigningKeyRotatorTest extends TestCase
     {
         // Given
         $first = $this->firstRotation();
-        $second = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+1 minute');
 
         // When
@@ -617,7 +619,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function aStagedKeyCannotBeRetired(): void
     {
         // Given
-        $staged = $this->rotator->stage($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         $this->expectException(LogicException::class);
@@ -639,10 +641,41 @@ final class SigningKeyRotatorTest extends TestCase
 
     private function firstRotation(): SigningKey
     {
-        $key = $this->rotator->rotate($this->tenant, SignatureAlgorithm::RS256, $this->context);
+        $key = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+30 days');
 
         return $key;
+    }
+
+    /**
+     * Every state of the lifecycle is the same whatever the algorithm: a tenant that signs EdDSA rotates
+     * its Ed25519 keys the way it rotates its RSA ones, and the keys of one algorithm ignore the other.
+     */
+    #[Test]
+    public function aKeyOfAnotherAlgorithmRotatesTheSameWay(): void
+    {
+        // Given
+        $rotator = new SigningKeyRotator($this->repository, new JwtLibraryKeyPairGenerator(Algorithms::all()), Keys::sealer(), $this->issuedJws(), new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
+        $rs256 = $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $first = $rotator->rotate($this->tenant, Algorithms::edDsa(), $this->context);
+
+        // When
+        $second = $rotator->rotate($this->tenant, Algorithms::edDsa(), $this->context);
+
+        // Then
+        static::assertSame($second, $this->repository->findActive($this->tenant, Algorithms::edDsa()));
+        static::assertSame(KeyStatus::Retiring, $first->status);
+        static::assertEquals($this->clock->now()->add(new DateInterval(self::LONGEST_LIFETIME)), $first->retirementDueAt);
+        static::assertSame($rs256, $this->repository->findActive($this->tenant, Algorithms::rs256()));
+        static::assertSame('Ed25519', $second->publicJwk['crv']);
+    }
+
+    /**
+     * @return list<FixedLifetimeJwsKind>
+     */
+    private function issuedJws(): array
+    {
+        return [new FixedLifetimeJwsKind(new DateInterval(self::LONGEST_LIFETIME))];
     }
 
     /**
@@ -667,7 +700,7 @@ final class PrecomputedKeyPairGenerator implements KeyPairGeneratorInterface
     ) {
     }
 
-    public function generate(SignatureAlgorithm $algorithm): GeneratedKeyPair
+    public function generate(SignatureAlgorithmInterface $algorithm): GeneratedKeyPair
     {
         return array_shift($this->pairs) ?? throw new LogicException('No more precomputed key pairs.');
     }

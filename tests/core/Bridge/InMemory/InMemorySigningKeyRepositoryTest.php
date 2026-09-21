@@ -6,9 +6,9 @@ namespace Heidi\Core\Tests\Bridge\InMemory;
 
 use DateTimeImmutable;
 use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use PHPUnit\Framework\Attributes\Test;
@@ -37,7 +37,7 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
     public function aTenantWithoutKeysHasNoActiveKey(): void
     {
         // When / Then
-        static::assertNull($this->repository->findActive($this->acme, SignatureAlgorithm::RS256));
+        static::assertNull($this->repository->findActive($this->acme, Algorithms::rs256()));
     }
 
     #[Test]
@@ -67,7 +67,7 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
         $this->repository->save($acmeKey);
 
         // When / Then
-        static::assertSame($acmeKey, $this->repository->findActive($this->acme, SignatureAlgorithm::RS256));
+        static::assertSame($acmeKey, $this->repository->findActive($this->acme, Algorithms::rs256()));
         static::assertSame([$acmeKey], $this->repository->findPublished($this->acme));
     }
 
@@ -87,7 +87,7 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
         $this->repository->save($key);
 
         // When / Then
-        static::assertNull($this->repository->findActive($this->acme, SignatureAlgorithm::RS256));
+        static::assertNull($this->repository->findActive($this->acme, Algorithms::rs256()));
         static::assertSame([$key], $this->repository->findPublished($this->acme));
     }
 
@@ -95,11 +95,11 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
     public function aStagedKeyIsPublishedButNotActive(): void
     {
         // Given
-        $key = new SigningKey(Keys::pair()->kid, $this->acme, SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $key = new SigningKey(Keys::pair()->kid, $this->acme, Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
         $this->repository->save($key);
 
         // When / Then
-        static::assertNull($this->repository->findActive($this->acme, SignatureAlgorithm::RS256));
+        static::assertNull($this->repository->findActive($this->acme, Algorithms::rs256()));
         static::assertSame([$key], $this->repository->findPublished($this->acme));
     }
 
@@ -125,7 +125,7 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
     {
         // Given
         $newest = self::activeKey($this->acme, Keys::pair()->kid, Fixtures::now());
-        $oldest = new SigningKey(Keys::otherPair()->kid, $this->acme, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $oldest = new SigningKey(Keys::otherPair()->kid, $this->acme, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
         $this->repository->save($newest);
         $this->repository->save($oldest);
 
@@ -135,7 +135,7 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
 
     private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): SigningKey
     {
-        $key = new SigningKey($kid, $tenant, SignatureAlgorithm::RS256, [
+        $key = new SigningKey($kid, $tenant, Algorithms::rs256(), [
             'kid' => $kid,
         ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now(), $createdAt ?? Fixtures::now());
         $key->activate($createdAt ?? Fixtures::now());

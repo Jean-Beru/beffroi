@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Application\EndSession;
 
 use function array_keys;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
@@ -36,7 +37,7 @@ final class LogoutTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::withBackChannelLogout($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver());
+        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all());
     }
 
     /**

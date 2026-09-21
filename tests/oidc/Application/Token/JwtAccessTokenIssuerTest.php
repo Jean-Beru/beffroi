@@ -9,6 +9,7 @@ use DateInterval;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -40,7 +41,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver());
+        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all());
     }
 
     /**
@@ -177,7 +178,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
-        $issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new DateInterval('PT1M'));
+        $issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M'));
 
         // When
         $token = $issuer->issue($authorization, Fixtures::now());
@@ -195,7 +196,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new DateInterval('PT1M'))
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M'))
             ->issue($authorization, Fixtures::now());
 
         // Then

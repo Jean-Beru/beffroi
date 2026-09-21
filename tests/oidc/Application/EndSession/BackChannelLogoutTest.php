@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Application\EndSession;
 use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\SessionEnd;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
@@ -42,7 +43,7 @@ final class BackChannelLogoutTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->logout = new BackChannelLogout(
             $this->grants,
-            new LogoutTokenIssuer(new Jwts($this->session->tenant)->signer, new PublicSubjectIdentifierResolver()),
+            new LogoutTokenIssuer(new Jwts($this->session->tenant)->signer, new PublicSubjectIdentifierResolver(), Algorithms::all()),
             $this->events,
             new MockClock(Fixtures::now()),
         );

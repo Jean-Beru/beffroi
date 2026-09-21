@@ -6,11 +6,12 @@ namespace Heidi\Oidc\Tests\Application\Token;
 
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
@@ -70,7 +71,7 @@ final class AccessTokenInspectorTest extends TestCase
         $users->save($this->user);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $this->inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users);
+        $this->inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users);
     }
 
     #[Test]
@@ -143,7 +144,7 @@ final class AccessTokenInspectorTest extends TestCase
     public function itRefusesATokenOfAUserGone(): void
     {
         // Given
-        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), new InMemoryClientRepository(), $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, new InMemoryUserRepository());
+        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), new InMemoryClientRepository(), $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, new InMemoryUserRepository());
         $token = $this->tokenOf($this->code());
 
         // Then
@@ -212,7 +213,7 @@ final class AccessTokenInspectorTest extends TestCase
         $users->save($this->user);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users);
+        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users);
 
         // Then
         $this->expectException(InvalidTokenException::class);
@@ -245,7 +246,7 @@ final class AccessTokenInspectorTest extends TestCase
             return $this->tokenOf($code);
         }
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver())
+        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
             ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now())
             ->value;
     }

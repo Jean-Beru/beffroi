@@ -34,7 +34,6 @@ use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationPredicate;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
@@ -265,9 +264,9 @@ final class HeidiBundle extends AbstractBundle
             ->info('PKCE S256 is the rule; a confidential client that cannot send a code_challenge is the named exception of decision 0008, refused for a public client. A challenge the client sends is verified all the same.')
             ->defaultTrue()
             ->end()
-            ->enumNode('id_token_signed_response_alg')
-            ->values(array_column(SignatureAlgorithm::cases(), 'value'))
-            ->defaultValue(SignatureAlgorithm::RS256->value)
+            ->scalarNode('id_token_signed_response_alg')
+            ->info('The JWS algorithm the ID tokens and the logout tokens of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, the provider signs them with its default. A name nothing signs under fails at boot.')
+            ->defaultNull()
             ->end()
             ->enumNode('access_token_format')
             ->info('The shape of the access tokens: "jwt" (RFC 9068, verified offline against the JWK Set) or "opaque" (a reference the resource server introspects, RFC 7662, revocable at once). Per client, nothing global.')

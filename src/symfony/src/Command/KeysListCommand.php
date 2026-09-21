@@ -117,7 +117,7 @@ final readonly class KeysListCommand
                 'Key identifier' => $key->kid,
             ],
             [
-                'Algorithm' => $key->algorithm->value,
+                'Algorithm' => $key->algorithm->name(),
             ],
             [
                 'Status' => $key->status->value,

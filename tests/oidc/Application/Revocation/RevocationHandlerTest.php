@@ -6,10 +6,11 @@ namespace Heidi\Oidc\Tests\Application\Revocation;
 
 use function base64_encode;
 use DateTimeImmutable;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -348,7 +349,7 @@ final class RevocationHandlerTest extends TestCase
     {
         return new RevocationHandler(
             new ClientAuthenticator($clients, $hasher, $this->clock, new RecordingEventDispatcher()),
-            new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $accessTokens, new PublicSubjectIdentifierResolver()),
+            new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $accessTokens, new PublicSubjectIdentifierResolver()),
             $accessTokens,
             $this->refreshTokens,
             $this->events,
@@ -362,7 +363,7 @@ final class RevocationHandlerTest extends TestCase
 
     private function jwt(Client $client, DateTimeImmutable $issuedAt): string
     {
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver())
+        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
             ->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, $issuedAt)), $issuedAt)
             ->value;
     }

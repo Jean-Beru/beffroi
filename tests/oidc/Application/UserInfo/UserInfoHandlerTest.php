@@ -6,12 +6,13 @@ namespace Heidi\Oidc\Tests\Application\UserInfo;
 
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
@@ -77,7 +78,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->sessions->save($this->session);
         $this->jwts = new Jwts($this->tenant);
-        $this->accessTokens = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver());
+        $this->accessTokens = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all());
         $this->grants = new InMemoryAuthorizationCodeRepository();
         $this->storedTokens = new InMemoryAccessTokenRepository();
         $users = new InMemoryUserRepository();
@@ -257,7 +258,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $authorization = $this->authorization(['openid', 'email']);
-        $idToken = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider())
+        $idToken = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all())
             ->issue($authorization, $this->accessTokens->issue($authorization, Fixtures::now()), Fixtures::now());
 
         // Then
@@ -408,7 +409,7 @@ final class UserInfoHandlerTest extends TestCase
         $clients->save($this->client);
 
         return new UserInfoHandler(
-            new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users),
+            new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users),
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
         );

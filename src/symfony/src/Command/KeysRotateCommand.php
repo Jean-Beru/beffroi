@@ -9,9 +9,10 @@ use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Exception\UnsupportedAlgorithmException;
+use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -37,13 +38,14 @@ final readonly class KeysRotateCommand
         private SigningKeyRepositoryInterface $keys,
         private SigningKeyRotator $rotator,
         private RequestContextFactory $contexts,
+        private SignatureAlgorithmsInterface $algorithms,
     ) {
     }
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Option(description: 'The JWS algorithm the key signs with.')]
-        SignatureAlgorithm $algorithm = SignatureAlgorithm::RS256,
+        #[Option(description: 'The JWS algorithm the key signs with, among those the provider is wired with; its default when none is named.')]
+        ?string $algorithm = null,
         #[Option(description: 'Activate the key at once, without the staging delay: a relying party whose JWK Set copy is younger than 60 s refuses the new tokens until it is that old (oidc_login refetches once then); for an operator who knows every relying party is cold.')]
         bool $now = false,
         #[Option(description: 'The active key is compromised: the new key signs at once and the compromised one leaves the JWK Set with no window.')]
@@ -57,24 +59,32 @@ final readonly class KeysRotateCommand
             return Command::FAILURE;
         }
 
-        $previous = $this->keys->findActive($tenant, $algorithm);
+        try {
+            $signsWith = $algorithm === null ? $this->algorithms->defaultAlgorithm() : $this->algorithms->named($algorithm);
+        } catch (UnsupportedAlgorithmException $exception) {
+            $io->error($exception->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        $previous = $this->keys->findActive($tenant, $signsWith);
         $context = $this->contexts->fromConsole(self::NAME);
         if ($previous === null) {
-            $key = $this->rotator->rotate($tenant, $algorithm, $context, $compromised);
+            $key = $this->rotator->rotate($tenant, $signsWith, $context, $compromised);
             self::describe($io, $tenant, $key);
-            $io->note(sprintf('The tenant had no active %s key: nothing to wait for, the key is active at once.', $algorithm->value));
+            $io->note(sprintf('The tenant had no active %s key: nothing to wait for, the key is active at once.', $signsWith->name()));
         } elseif ($compromised) {
-            $key = $this->rotator->rotate($tenant, $algorithm, $context, compromised: true);
+            $key = $this->rotator->rotate($tenant, $signsWith, $context, compromised: true);
             self::describe($io, $tenant, $key);
             $io->warning(sprintf('The key "%s" was active and is retired at once: every token it signed is refused from now on.', $previous->kid));
         } elseif ($now) {
-            $key = $this->rotator->rotate($tenant, $algorithm, $context);
+            $key = $this->rotator->rotate($tenant, $signsWith, $context);
             self::describe($io, $tenant, $key);
             // Read again: the repository may hand a fresh object on every read, and the rotation just dated this one.
             $retiring = $this->keys->find($tenant, $previous->kid) ?? $previous;
             $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while the tokens it signed are alive.', $retiring->kid, $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
         } else {
-            $key = $this->rotator->stage($tenant, $algorithm, $context);
+            $key = $this->rotator->stage($tenant, $signsWith, $context);
             self::describe($io, $tenant, $key);
             $io->note(sprintf('The key "%s" signs until then; the scheduled step activates the new key at %s, "heidi:keys:activate %s" does it earlier.', $previous->kid, $key->activationDueAt->format(DateTimeInterface::RFC3339), $key->kid));
             $io->success(sprintf('The key "%s" is published for "%s" and signs from %s.', $key->kid, $tenant->slug, $key->activationDueAt->format(DateTimeInterface::RFC3339)));
@@ -93,7 +103,7 @@ final readonly class KeysRotateCommand
                 'Key identifier' => $key->kid,
             ],
             [
-                'Algorithm' => $key->algorithm->value,
+                'Algorithm' => $key->algorithm->name(),
             ],
             [
                 'Status' => $key->status->value,

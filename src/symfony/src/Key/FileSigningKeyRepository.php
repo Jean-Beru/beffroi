@@ -14,11 +14,13 @@ use function file_get_contents;
 use function file_put_contents;
 use function glob;
 use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\RuntimeException;
+use Heidi\Core\Exception\UnsupportedAlgorithmException;
+use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use function is_array;
 use function is_dir;
@@ -52,6 +54,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
 
     public function __construct(
         private string $directory,
+        private SignatureAlgorithmsInterface $algorithms,
     ) {
     }
 
@@ -69,10 +72,10 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         return $this->read($tenant, $path, $json);
     }
 
-    public function findActive(Tenant $tenant, SignatureAlgorithm $algorithm): ?SigningKey
+    public function findActive(Tenant $tenant, SignatureAlgorithmInterface $algorithm): ?SigningKey
     {
         foreach ($this->findAll($tenant) as $key) {
-            if ($key->algorithm === $algorithm && $key->isActive()) {
+            if ($key->algorithm->name() === $algorithm->name() && $key->isActive()) {
                 return $key;
             }
         }
@@ -106,7 +109,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         $json = json_encode([
             'kid' => $key->kid,
             'tenant_id' => $key->tenant->id->toRfc4122(),
-            'algorithm' => $key->algorithm->value,
+            'algorithm' => $key->algorithm->name(),
             'public_jwk' => $key->publicJwk,
             'sealed_private_jwk' => base64_encode($key->sealedPrivateJwk),
             'status' => $key->status->value,
@@ -162,7 +165,14 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         }
         $kid = $document['kid'] ?? null;
         $tenantId = $document['tenant_id'] ?? null;
-        $algorithm = is_string($document['algorithm'] ?? null) ? SignatureAlgorithm::tryFrom($document['algorithm']) : null;
+        $algorithm = null;
+        if (is_string($document['algorithm'] ?? null)) {
+            try {
+                $algorithm = $this->algorithms->named($document['algorithm']);
+            } catch (UnsupportedAlgorithmException $exception) {
+                throw new RuntimeException(sprintf('The signing key file "%s" is signed with an algorithm this provider is not wired with.', $path), 0, $exception);
+            }
+        }
         $status = is_string($document['status'] ?? null) ? KeyStatus::tryFrom($document['status']) : null;
         $sealed = is_string($document['sealed_private_jwk'] ?? null) ? base64_decode($document['sealed_private_jwk'], true) : false;
         $publicJwk = $document['public_jwk'] ?? null;

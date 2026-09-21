@@ -17,7 +17,6 @@ use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\SessionEnd;
@@ -25,6 +24,7 @@ use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
@@ -171,7 +171,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected static function signingKey(): SigningKey
     {
         return self::rotator()
-            ->rotate(self::tenant(), SignatureAlgorithm::RS256, self::context());
+            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**
@@ -180,7 +180,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected static function stagedKey(): SigningKey
     {
         return self::rotator()
-            ->stage(self::tenant(), SignatureAlgorithm::RS256, self::context());
+            ->stage(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**

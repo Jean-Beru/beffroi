@@ -10,7 +10,7 @@ The OP does not offer the option to do it wrong. The rules of RFC 9700, OAuth 2.
 - No outbound request ever follows a redirect.
 - No boolean coming from a third party is ever cast: `filter_var()` or a strict comparison, never `(bool)`.
 - Refresh tokens rotate on every use; reuse revokes the family; logout revokes the session's tokens.
-- No HMAC algorithm for ID tokens.
+- No HMAC algorithm for ID tokens, and no `none` (RFC 8725 §3.1): the provider signs with RS256, PS256, ES256 or EdDSA over Ed25519, one key per algorithm, and a client registers one of the names the discovery document announces or takes the default.
 - Errors before the client and redirect URI are validated are shown to the user, never redirected.
 - Interaction pages send `X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'`, `Referrer-Policy: no-referrer`; token, UserInfo, introspection and revocation responses send `Cache-Control: no-store`.
 - Bearer tokens are read from the `Authorization` header or the form body, never from the query string.

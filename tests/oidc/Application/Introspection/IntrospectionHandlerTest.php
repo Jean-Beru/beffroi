@@ -8,10 +8,11 @@ use function base64_encode;
 use DateTimeImmutable;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -93,8 +94,9 @@ final class IntrospectionHandlerTest extends TestCase
         $users->save($user);
         $this->handler = new IntrospectionHandler(
             new ClientAuthenticator($clients, $hasher, $this->clock, new RecordingEventDispatcher()),
-            new AccessTokenInspector(new AccessTokenVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users),
+            new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users),
             $this->jwts->signer,
+            Algorithms::all(),
         );
     }
 
@@ -147,7 +149,7 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $code = $this->code($this->other, ['openid']);
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver())
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
             ->issue(GrantedAuthorization::fromAuthorizationCode($code), $this->clock->now())
             ->value;
 

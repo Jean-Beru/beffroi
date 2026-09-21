@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Fixture;
 
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkKeyPairGenerator;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Domain\Key\GeneratedKeyPair;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use function sodium_crypto_aead_xchacha20poly1305_ietf_keygen;
 use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 use Symfony\Component\KeyManagement\KeyLoader\InMemoryKeyLoader;
@@ -31,12 +30,12 @@ final class Keys
 
     public static function pair(): GeneratedKeyPair
     {
-        return self::$pair ??= new JwtFrameworkKeyPairGenerator(2048)->generate(SignatureAlgorithm::RS256);
+        return self::$pair ??= new JwtLibraryKeyPairGenerator(Algorithms::all())->generate(Algorithms::rs256());
     }
 
     public static function otherPair(): GeneratedKeyPair
     {
-        return self::$otherPair ??= new JwtFrameworkKeyPairGenerator(2048)->generate(SignatureAlgorithm::RS256);
+        return self::$otherPair ??= new JwtLibraryKeyPairGenerator(Algorithms::all())->generate(Algorithms::rs256());
     }
 
     /**

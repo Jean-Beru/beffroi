@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Application\Discovery;
 
 use function array_column;
+use function array_map;
 use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
@@ -46,12 +47,12 @@ final class JwksHandlerTest extends TestCase
         $this->jwts = new Jwts(Fixtures::tenant());
         $repository = new InMemorySigningKeyRepository();
         $repository->save($this->jwts->key);
-        $this->retiring = new SigningKey(Keys::otherPair()->kid, $this->jwts->tenant, SignatureAlgorithm::RS256, Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $this->retiring = new SigningKey(Keys::otherPair()->kid, $this->jwts->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
         $this->retiring->activate(Fixtures::now()->modify('-1 day'));
         $this->retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $repository->save($this->retiring);
         $repository->save(self::retiredKey($this->jwts->tenant));
-        $globex = new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $globex = new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
         $globex->activate(Fixtures::now());
         $repository->save($globex);
         $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
@@ -74,6 +75,26 @@ final class JwksHandlerTest extends TestCase
         static::assertSame([$this->retiring->publicJwk, $this->jwts->key->publicJwk], $keys);
     }
 
+    /**
+     * RFC 7517 §5 and RFC 7515 §4.1.4: a tenant that signs with two algorithms publishes one key per
+     * algorithm, each naming itself, so that a relying party picks by "kid" and knows what to verify with.
+     */
+    #[Test]
+    public function theSetCarriesOneKeyPerAlgorithmTheTenantSignsWith(): void
+    {
+        // Given
+        $es256 = $this->jwts->activate(Algorithms::es256());
+
+        // When
+        $keys = self::keysAsOidcJwksReadsThem(new JwksHandler($this->jwts->keys)->handle($this->jwts->tenant)->toJson());
+
+        // Then
+        static::assertSame([
+            [$this->jwts->key->kid, 'RS256', 'RSA'],
+            [$es256->kid, 'ES256', 'EC'],
+        ], array_map(static fn (array $jwk): array => [$jwk['kid'], $jwk['alg'], $jwk['kty']], $keys));
+    }
+
     #[Test]
     public function theSetIsCachedForFiveMinutesByDefault(): void
     {
@@ -93,7 +114,7 @@ final class JwksHandlerTest extends TestCase
     public function aTokenOfTheTenantVerifiesAgainstTheServedKeys(): void
     {
         // Given
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver())
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
             ->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', Clients::public($this->jwts->tenant), Fixtures::session(Fixtures::user($this->jwts->tenant)), Fixtures::now())), Fixtures::now());
         $keys = JWKSet::createFromKeyData([
             'keys' => self::keysAsOidcJwksReadsThem($this->handler->handle($this->jwts->tenant)->toJson()),
@@ -172,7 +193,7 @@ final class JwksHandlerTest extends TestCase
 
     private static function retiredKey(Tenant $tenant): SigningKey
     {
-        $retired = new SigningKey(Keys::otherPair()->kid . '-old', $tenant, SignatureAlgorithm::RS256, [
+        $retired = new SigningKey(Keys::otherPair()->kid . '-old', $tenant, Algorithms::rs256(), [
             ...Keys::otherPair()->publicJwk,
             'kid' => Keys::otherPair()->kid . '-old',
         ], 'sealed', Fixtures::now()->modify('-2 days'), Fixtures::now()->modify('-2 days'));

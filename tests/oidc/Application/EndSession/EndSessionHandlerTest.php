@@ -6,7 +6,7 @@ namespace Heidi\Oidc\Tests\Application\EndSession;
 
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
@@ -14,6 +14,7 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -576,7 +577,7 @@ final class EndSessionHandlerTest extends TestCase
     {
         // Given
         $jwts = new Jwts($this->tenant);
-        $issuer = new JwtIdTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider());
+        $issuer = new JwtIdTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
         $accessToken = new AccessToken('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $refreshToken = $this->refreshToken('current', $this->session);
         $authorization = $refreshed
@@ -586,7 +587,7 @@ final class EndSessionHandlerTest extends TestCase
         $this->clock->sleep($secondsLater);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $parser = new EndSessionRequestParser($clients, new IdTokenHintVerifier(new JwtFrameworkJwsVerifier($jwts->keys)));
+        $parser = new EndSessionRequestParser($clients, new IdTokenHintVerifier(new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all())));
         $query = http_build_query([
             'id_token_hint' => $idToken,
             'post_logout_redirect_uri' => 'https://demo.localhost/',

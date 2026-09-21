@@ -8,13 +8,14 @@ use function array_keys;
 use function base64_encode;
 use DateInterval;
 use function hash;
-use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
@@ -22,6 +23,8 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\AccessToken;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
@@ -57,7 +60,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider());
+        $this->issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
         $this->accessToken = new AccessToken(self::ACCESS_TOKEN, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
@@ -218,7 +221,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 return [];
             }
         };
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider);
+        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
 
         // When
         $issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $claims)), $this->accessToken, Fixtures::now());
@@ -265,7 +268,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 return ['name'];
             }
         };
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider);
+        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: ClaimsRequest::fromJson('{"id_token":{"name":null}}')));
 
         // When
@@ -285,7 +288,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theLifetimeIsConfigurable(): void
     {
         // Given
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), new DateInterval('PT1H'));
+        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
         $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
         // When
@@ -299,7 +302,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function aTokenIsRefusedOncePastItsLifetime(): void
     {
         // Given
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), new DateInterval('PT1H'));
+        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
         $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
         // Then
@@ -318,7 +321,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
-        $verifier = new IdTokenHintVerifier(new JwtFrameworkJwsVerifier($this->jwts->keys));
+        $verifier = new IdTokenHintVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()));
 
         // When
         $subject = $verifier->verify($this->client, $idToken);
@@ -343,6 +346,54 @@ final class JwtIdTokenIssuerTest extends TestCase
 
         // When
         $this->jwts->verify($idToken, 'other', Fixtures::now());
+    }
+
+    /**
+     * OIDC Registration §2: a tenant that holds one key per algorithm signs the ID token of a client with
+     * the algorithm that client registered, and the JWK Set carries the key of each.
+     */
+    #[Test]
+    public function aClientGetsItsIdTokenSignedWithTheAlgorithmItRegistered(): void
+    {
+        // Given
+        $es256Key = $this->jwts->activate(Algorithms::es256());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::es256());
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+
+        // When
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+
+        // Then
+        ['header' => $header] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
+        static::assertSame([
+            'alg' => 'ES256',
+            'kid' => $es256Key->kid,
+        ], $header);
+    }
+
+    /**
+     * OIDC Core §3.1.3.6: the "at_hash" halves the digest the "alg" names, so two algorithms of the same
+     * digest agree on it and the ID token of a client is readable whichever key signed it.
+     */
+    #[Test]
+    public function theAccessTokenHashFollowsTheAlgorithmThatSigns(): void
+    {
+        // Given
+        $this->jwts->activate(Algorithms::edDsa());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::edDsa());
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+
+        // When
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+
+        // Then
+        ['claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
+        static::assertSame(self::leftHalf(hash('sha512', self::ACCESS_TOKEN, true)), $claims['at_hash']);
+    }
+
+    private static function leftHalf(string $digest): string
+    {
+        return rtrim(strtr(base64_encode(substr($digest, 0, 32)), '+/', '-_'), '=');
     }
 
     private function authorizationFromCode(): GrantedAuthorization
