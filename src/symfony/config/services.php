@@ -18,6 +18,7 @@ use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Bundle\Http\PasskeysPage;
 use Heidi\Bundle\Http\PendingLoginStore;
@@ -32,6 +33,7 @@ use Heidi\Bundle\Http\TwoFactorPage;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Key\KmsUnavailableListener;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
+use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Plane\PlaneRequestListener;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
@@ -223,6 +225,9 @@ return static function (ContainerConfigurator $container): void {
     // The bundle: the handlers of its own messages and what time does on its own (architecture §5.6)
     $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
     $services->set(HeidiSchedule::class);
+    // what carries a logout token to a client, and what says the provider gave up on one (§4.9)
+    $services->set(LogoutTokenSender::class);
+    $services->set(LogoutTokenGivenUpListener::class);
 
     // The bundle: security (architecture §5.4); the application names these in its firewall
     $services->set(IdentityUserProvider::class);

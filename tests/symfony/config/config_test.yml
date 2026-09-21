@@ -33,8 +33,13 @@ framework:
                 default_middleware: allow_no_handlers
         transports:
             sync: 'sync://'
+            # What the provider tells a third party, which the protocol must not wait for: a relying
+            # party that hangs would hold the logout response (architecture §4.9, §5.6). Queued here as
+            # it is queued in production, and the tests of the delivery play the worker on the queue.
+            notifications: 'in-memory://'
         routing:
             Heidi\Core\Domain\Event\DomainEventInterface: sync
+            Heidi\Bundle\Message\Notification: notifications
             Heidi\Bundle\Message\Command: sync
             Heidi\Bundle\Message\Event: sync
             Heidi\Bundle\Message\Query: sync
@@ -272,6 +277,13 @@ services:
         public: true
     test.heidi.logged_in_clients:
         alias: Heidi\Oidc\Port\LoggedInClientsInterface
+        public: true
+    # the delivery of a logout token: the queue it waits in, and the handler called as the worker calls it
+    test.heidi.notification_queue:
+        alias: messenger.transport.notifications
+        public: true
+    test.heidi.logout_token_delivery:
+        alias: Heidi\Bundle\MessageHandler\SendLogoutTokenHandler
         public: true
     test.heidi.refresh_tokens:
         alias: Heidi\Oidc\Port\RefreshTokenRepositoryInterface

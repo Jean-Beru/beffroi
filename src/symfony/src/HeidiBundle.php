@@ -22,6 +22,7 @@ use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
+use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Plane\Plane;
@@ -48,6 +49,7 @@ use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use function is_array;
+use function is_float;
 use function is_int;
 use function is_string;
 use function sprintf;
@@ -71,6 +73,11 @@ final class HeidiBundle extends AbstractBundle
      * RFC 6749 §4.1.2, the recommendation made a bound.
      */
     public const int MAX_AUTHORIZATION_CODE_TTL = 600;
+
+    /**
+     * Seconds one attempt at delivering a logout token is given (Back-Channel Logout 1.0 §2.5).
+     */
+    public const float DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT = 5.0;
 
     /**
      * Restated from the module: the configuration tree cannot tell an absent list from an empty one.
@@ -199,6 +206,17 @@ final class HeidiBundle extends AbstractBundle
             ->validate()
             ->ifTrue(static fn (array $tokens): bool => is_int($tokens['refresh_token_ttl']) && is_int($tokens['refresh_token_absolute_ttl']) && $tokens['refresh_token_ttl'] > $tokens['refresh_token_absolute_ttl'])
             ->thenInvalid('The sliding lifetime of a refresh token (refresh_token_ttl) cannot exceed the absolute lifetime of its family (refresh_token_absolute_ttl).')
+            ->end()
+            ->end()
+            ->arrayNode('back_channel_logout')
+            ->info('How a logout token reaches a client that registered a backchannel_logout_uri (Back-Channel Logout 1.0 §2.5). How many times a send is tried again is the retry policy of the transport the message is routed to, in the application.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->floatNode('timeout')
+            ->info('Seconds one attempt is given, connection included. A relying party that hangs must not hold a worker; five seconds is long for a request that reads nothing back, and a client that needs longer is a client that is down, which the retries cover.')
+            ->defaultValue(self::DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT)
+            ->min(0.1)
+            ->end()
             ->end()
             ->end()
             ->arrayNode('clients')
@@ -416,6 +434,9 @@ final class HeidiBundle extends AbstractBundle
         $services->get(AuthorizationCodeGrant::class)
             ->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
 
+        $services->get(LogoutTokenSender::class)
+            ->arg('$timeout', self::float(self::section($config, 'back_channel_logout'), 'timeout'));
+
         $services->get(ConfigurationClientRepository::class)
             ->arg('$tenantSlug', self::string($tenant, 'slug'))
             ->arg('$definitions', is_array($config['clients'] ?? null) ? $config['clients'] : []);
@@ -459,6 +480,21 @@ final class HeidiBundle extends AbstractBundle
         }
 
         return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $section
+     *
+     * @return float|string a number, or the environment placeholder the container resolves into one
+     */
+    private static function float(array $section, string $key): float|string
+    {
+        $value = $section[$key] ?? null;
+        if (! is_float($value) && ! is_int($value) && ! is_string($value)) {
+            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a number.', $key));
+        }
+
+        return is_int($value) ? (float) $value : $value;
     }
 
     /**

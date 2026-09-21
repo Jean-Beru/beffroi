@@ -72,8 +72,11 @@ services:
         condition: service_healthy
     tty: true
 
-  # The worker of architecture §5.6, one in development: the three transports of the buses and the schedule
-  # of the bundle ("scheduler_heidi": the timed steps of the key lifecycle, §3.3). One process consumes the
+  # The worker of architecture §5.6, one in development: the transports of the buses, the lane of what the
+  # provider tells a third party (§4.9, the logout tokens) and the schedule of the bundle
+  # ("scheduler_heidi": the timed steps of the key lifecycle, §3.3). That lane is named first after the
+  # schedule because a relying party learns of a logout while the certification suite waits for it, and
+  # messenger:consume takes the transports in the order it is given them. One process consumes the
   # schedule; the buses could have more. Same image, no HTTP, restarted every hour by Messenger itself.
   worker:
     build:
@@ -81,7 +84,7 @@ services:
       dockerfile: apps/op/Dockerfile
       target: frankenphp_dev
     restart: unless-stopped
-    command: ["php", "bin/console", "messenger:consume", "scheduler_heidi", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
+    command: ["php", "bin/console", "messenger:consume", "scheduler_heidi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
     # The image checks Caddy; a worker is healthy while the consumer is its first process.
     healthcheck:
       test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]

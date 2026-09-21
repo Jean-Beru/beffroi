@@ -39,6 +39,7 @@ use function password_hash;
 use const PHP_URL_QUERY;
 use function rtrim;
 use function sprintf;
+use function str_starts_with;
 use function strtr;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\BrowserKit\Cookie;
@@ -203,6 +204,47 @@ abstract class BrowserTestCase extends DatabaseTestCase
         static::assertIsArray($header);
 
         return self::string($header['kid'] ?? null);
+    }
+
+    /**
+     * The whole code flow of one client on the session the browser holds: the authorization request, the
+     * consent when the client requires one, then the code exchanged for tokens. A client holds a token of
+     * the session from there on (Back-Channel Logout 1.0 §2.6).
+     */
+    protected function signInClient(string $clientId, string $redirectUri, ?string $secret): void
+    {
+        $this->browser->request('GET', '/authorize', self::authorizationParameters($clientId, [
+            'redirect_uri' => $redirectUri,
+        ]));
+        $location = self::string($this->browser->getResponse()->headers->get('Location'));
+        if (str_starts_with($location, '/consent?')) {
+            $interaction = self::redirectedInteraction($this->browser->getResponse());
+            $this->browser->submit($this->browser->request('GET', '/consent', [
+                'interaction' => $interaction,
+            ])->selectButton('Allow')
+                ->form());
+        }
+        $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail(sprintf('The client "%s" got no code.', $clientId));
+        $parameters = [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => $redirectUri,
+            'code_verifier' => self::CODE_VERIFIER,
+        ];
+        // the three authentication methods of the test kernel: a public client names itself and nothing else
+        $server = [];
+        if ($secret === null) {
+            $parameters['client_id'] = $clientId;
+        } elseif ($clientId === 'legacy-app') {
+            $parameters['client_id'] = $clientId;
+            $parameters['client_secret'] = $secret;
+        } else {
+            $server = [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode($clientId . ':' . $secret),
+            ];
+        }
+        $this->browser->request('POST', '/token', $parameters, server: $server);
+        static::assertIsString(self::json($this->browser->getResponse())['access_token'] ?? null, self::string($this->browser->getResponse()->getContent()));
     }
 
     /**

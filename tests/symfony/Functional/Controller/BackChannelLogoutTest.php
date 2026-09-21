@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use function array_map;
-use function base64_encode;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Oidc\Domain\EndSession\LogoutToken;
 use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
-use function sprintf;
-use function str_starts_with;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -138,47 +135,6 @@ final class BackChannelLogoutTest extends BrowserTestCase
         $this->signInClient('legacy-app', 'https://legacy.test/callback', 'legacy-secret-of-at-least-32-characters-long');
 
         return $user;
-    }
-
-    /**
-     * The whole code flow of one client on the session the browser holds: the authorization request, the
-     * consent when the client requires one, then the code exchanged for tokens. A client holds a token of
-     * the session from there on (§2.6).
-     */
-    private function signInClient(string $clientId, string $redirectUri, ?string $secret): void
-    {
-        $this->browser->request('GET', '/authorize', self::authorizationParameters($clientId, [
-            'redirect_uri' => $redirectUri,
-        ]));
-        $location = self::string($this->browser->getResponse()->headers->get('Location'));
-        if (str_starts_with($location, '/consent?')) {
-            $interaction = self::redirectedInteraction($this->browser->getResponse());
-            $this->browser->submit($this->browser->request('GET', '/consent', [
-                'interaction' => $interaction,
-            ])->selectButton('Allow')
-                ->form());
-        }
-        $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail(sprintf('The client "%s" got no code.', $clientId));
-        $parameters = [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => $redirectUri,
-            'code_verifier' => self::CODE_VERIFIER,
-        ];
-        // the three authentication methods of the test kernel: a public client names itself and nothing else
-        $server = [];
-        if ($secret === null) {
-            $parameters['client_id'] = $clientId;
-        } elseif ($clientId === 'legacy-app') {
-            $parameters['client_id'] = $clientId;
-            $parameters['client_secret'] = $secret;
-        } else {
-            $server = [
-                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode($clientId . ':' . $secret),
-            ];
-        }
-        $this->browser->request('POST', '/token', $parameters, server: $server);
-        static::assertIsString(self::json($this->browser->getResponse())['access_token'] ?? null, self::string($this->browser->getResponse()->getContent()));
     }
 
     private function logOut(): void
