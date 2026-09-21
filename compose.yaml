@@ -84,14 +84,18 @@ services:
       dockerfile: apps/op/Dockerfile
       target: frankenphp_dev
     restart: unless-stopped
-    # The address of the host is read from /etc/hosts (extra_hosts below) and handed to the HTTP
-    # client of the application, which curl would otherwise resolve to this container
-    # (config/packages/framework.yaml).
-    command: ["sh", "-c", "export HEIDI_DEMO_HOST_IP=$$(getent ahostsv4 demo.localhost | head -1 | cut -d' ' -f1); exec php bin/console messenger:consume scheduler_heidi async_notifications async_priority_high async_priority_medium async_priority_low --time-limit=3600 --memory-limit=256M"]
-    # The image checks Caddy; a worker is healthy while the consumer is its first process.
+    # What this container needs from the machine around it before it consumes anything: the address of the
+    # host, and the certificate of the conformance suite when the suite is up. Chained behind the
+    # entrypoint of the image, which every container of it goes through.
+    entrypoint: ["docker-entrypoint", "/bin/sh", "/entrypoint/entrypoint.sh"]
+    command: ["scheduler_heidi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
+    # The image checks Caddy; a worker is healthy while the consumer is its first process. The entrypoint
+    # runs before that process replaces it, and waits for the certificate of the conformance suite when
+    # the suite is starting beside it: the window is wide enough for that wait, or "up --wait" would call
+    # a worker that is still getting ready unhealthy.
     healthcheck:
       test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]
-      start_period: 30s
+      start_period: 90s
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-heidi}:${POSTGRES_PASSWORD:-heidi}@database:5432/${POSTGRES_DB:-heidi}?serverVersion=16&charset=utf8
       MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-heidi}:${RABBITMQ_PASSWORD:-heidi}@rabbitmq:5672/%2f/messages
@@ -105,6 +109,7 @@ services:
     extra_hosts:
       - "demo.localhost:host-gateway"
     volumes:
+      - ./docker/worker/entrypoint.sh:/entrypoint/entrypoint.sh:ro
       - ./apps/op:/app
       - ./src:/src
       - /app/var/
@@ -277,6 +282,20 @@ services:
     command: TCP-LISTEN:8443,fork,reuseaddr,bind=127.0.0.1 TCP:conformance-nginx:8443
     depends_on:
       - conformance-server
+      - conformance-nginx
+
+  # The logout token of the back-channel plan is posted by the worker to the URI the suite gives its
+  # clients, which names localhost:8443; inside the worker that is the worker. This sidecar shares its
+  # network namespace and forwards that loopback port to nginx, as conformance-redirector does for the
+  # scripted browser of the suite. What answers there is the self-signed certificate of nginx, which the
+  # entrypoint of the worker fetches and trusts (docker/worker/entrypoint.sh).
+  conformance-worker-redirector:
+    image: alpine/socat:${CONFORMANCE_SOCAT_VERSION:-1.8.0.3}
+    profiles: [conformance]
+    network_mode: "service:worker"
+    command: TCP-LISTEN:8443,fork,reuseaddr,bind=127.0.0.1 TCP:conformance-nginx:8443
+    depends_on:
+      - worker
       - conformance-nginx
 
 volumes:
