@@ -185,6 +185,51 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
+     * Architecture §4.9 and issue #150: what a logout ends, it ends for an "at+jwt" too, and the
+     * endpoint that tells a resource server so is this one. The opaque token of the same session is
+     * inactive for the same reason, its record naming the session as the "sid" of a JWT does.
+     */
+    #[Test]
+    public function aTokenOfASessionThatEndedIsInactive(): void
+    {
+        // Given
+        self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $accessToken = $this->jwtAccessToken();
+        $this->endSession($session);
+
+        // When
+        $this->browser->request('POST', '/introspect', [
+            'token' => $accessToken,
+        ], server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'));
+
+        // Then
+        static::assertSame([
+            'active' => false,
+        ], self::json($this->browser->getResponse()));
+    }
+
+    /**
+     * The access token of the demo client, which registers no format and therefore receives an "at+jwt"
+     * (architecture §4.6), from the code flow of the browser already signed in.
+     */
+    private function jwtAccessToken(): string
+    {
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
+        $code = self::redirectedQuery($this->browser->getResponse())['code'];
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => 'https://demo.test/login/check',
+            'code_verifier' => self::CODE_VERIFIER,
+        ], server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'));
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+
+        return self::string(self::json($response)['access_token']);
+    }
+
+    /**
      * The access token of the opaque client, from the code flow of alice.
      */
     private function opaqueAccessToken(): string

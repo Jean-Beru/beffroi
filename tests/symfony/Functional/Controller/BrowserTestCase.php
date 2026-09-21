@@ -20,6 +20,8 @@ use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Domain\Session\SessionEnd;
+use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
@@ -373,6 +375,19 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected static function keyStorage(): string
     {
         return sys_get_temp_dir() . '/heidi-bundle-tests/cache/test/keys';
+    }
+
+    /**
+     * The session ended on the rows, the way a logout, an administrator or another tab ends it: read
+     * again through the repository, because the browser reboots the kernel between two requests and the
+     * object the test holds is not the one the next request reads.
+     */
+    protected function endSession(AuthenticationSession $session, SessionEnd $by = SessionEnd::User): void
+    {
+        $sessions = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class);
+        $stored = $sessions->find($session->id) ?? static::fail('The session is gone.');
+        $stored->end($by, self::currentSecond());
+        $sessions->save($stored);
     }
 
     /**

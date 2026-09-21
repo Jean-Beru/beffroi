@@ -664,8 +664,9 @@ const DEMO_AUTHORIZATION_SERVER_METADATA_PATH = '/.well-known/oauth-authorizatio
  * - as `oidc-demo`, whose token is an `at+jwt` the resource server verifies itself against the JWK Set
  *   of the OP, without asking it anything. That one cannot be revoked at all, and the OP says so
  *   (`unsupported_token_type`, RFC 7009 §2.2.1); what ends it is the end of the session, after which
- *   the OP refuses it at UserInfo while the resource server goes on accepting it until it expires.
- *   That is the trade between the two shapes, seen rather than described.
+ *   the OP refuses it at UserInfo (issue #150) while the resource server, which asks the OP nothing,
+ *   goes on accepting it until it expires. That is the trade between the two shapes, seen rather than
+ *   described.
  */
 function demo_resource_server_check(string $dir, string $issuer, string $password, string $opaqueSecret, string $demoSecret, string $ca): void
 {
@@ -731,20 +732,19 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
         demo_expect($status === 400 && ($body['error'] ?? null) === 'unsupported_token_type', sprintf('that one cannot be revoked at all, and the OP says so rather than answering 200 (RFC 7009 §2.2.1, got %d %s)', $status, json_encode($body)));
         $verified[] = ['/revoke of an at+jwt', sprintf('400 %s, "%s"', $body['error'], $body['error_description'] ?? '')];
 
-        // and the end of the session does not end it either, which is measured rather than assumed:
-        // the opaque token above stopped working at once, this one goes on until it expires
+        // what ends it is the end of the session, which the OP knows and the resource server does not
         demo_logout($cookies, $issuer, $ca);
+        demo_expect(demo_userinfo($issuer, $ca, $accessToken) === 401, 'the session ended, and the OP refuses the same token at UserInfo (issue #150)');
         [$status, $body] = demo_api(DEMO_URL . '/api/me/offline', $accessToken);
         demo_expect($status === 200, sprintf('the offline resource server accepts it still: nothing told it, and nothing could (got %d %s)', $status, json_encode($body)));
-        $userinfo = demo_userinfo($issuer, $ca, $accessToken);
-        $verified[] = ['Session ended, then /api/me/offline', sprintf('200 until the token expires; UserInfo of the OP answers %d to the same token', $userinfo)];
+        $verified[] = ['Session ended, then /api/me/offline', '200 until the token expires, while UserInfo of the OP answers 401'];
 
         io()
             ->table(['Step', 'Verified'], $verified);
         io()
             ->success('oidc-demo checked its access token in the three ways Symfony offers, on the two shapes the OP issues, without a patch.');
         io()
-            ->note(sprintf('An "at+jwt" is accepted by a resource server that verifies it offline until it expires (ten minutes here, HEIDI_ACCESS_TOKEN_TTL), whatever the OP knows of it: a deployment that needs a withdrawal to be felt at once registers its client for opaque tokens, and its resource server introspects them (architecture §4.6). UserInfo of the OP answered %d to that token once the session had ended, where the opaque one was refused at once: what a session ending revokes is what the OP stores.', $userinfo));
+            ->note('An "at+jwt" is accepted by a resource server that verifies it offline until it expires (ten minutes here, HEIDI_ACCESS_TOKEN_TTL), whatever the OP knows of it: a deployment that needs a withdrawal to be felt at once registers its client for opaque tokens, and its resource server introspects them (architecture §4.6). The OP itself is not in that case: it knows where its sessions live, and refuses at UserInfo and at the introspection endpoint the token of a session that ended, whatever its shape (issue #150).');
     } finally {
         demo_write_env_local($dir . '/.env.local', [
             'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,

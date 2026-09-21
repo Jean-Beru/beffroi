@@ -6,8 +6,6 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use DateTimeImmutable;
 use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -558,10 +556,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
         $form = $this->consentPage($interaction)
             ->selectButton('Allow')
             ->form();
-        $sessions = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class);
-        $stored = $sessions->find($session->id) ?? static::fail('The session is gone.');
-        $stored->end(SessionEnd::User, new DateTimeImmutable());
-        $sessions->save($stored);
+        $this->endSession($session);
 
         // When
         $this->browser->submit($form);

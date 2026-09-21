@@ -142,9 +142,43 @@ final class UserInfoControllerTest extends BrowserTestCase
     /**
      * The "at+jwt" oidc-demo gets from the code flow of alice, signed by the key active at that moment.
      */
+    /**
+     * Architecture §4.9 and issue #150: what a logout ends, it ends for an "at+jwt" too. A resource
+     * server that verifies it offline cannot know, which is the trade of that shape; UserInfo is the
+     * provider's own resource and knows where its sessions live.
+     */
+    #[Test]
+    public function anAtJwtOfASessionThatEndedIsRefused(): void
+    {
+        // Given
+        self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $accessToken = $this->codeFlowOfTheDemoClient();
+        $this->endSession($session);
+
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+        static::assertStringContainsString('invalid_token', self::string($response->headers->get('WWW-Authenticate')));
+    }
+
     private function accessTokenOfTheDemoClient(): string
     {
         $this->signIn(self::user('alice'));
+
+        return $this->codeFlowOfTheDemoClient();
+    }
+
+    /**
+     * The same code flow without the sign-in, for the tests that need the session it opened.
+     */
+    private function codeFlowOfTheDemoClient(): string
+    {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
         $this->browser->request('POST', '/token', [

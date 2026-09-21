@@ -6,7 +6,6 @@ namespace Heidi\Oidc\Tests\Application\Token;
 
 use function array_map;
 use Heidi\Core\Bridge\JwtFramework\JwtFrameworkJwsVerifier;
-use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -202,27 +201,6 @@ final class AccessTokenVerifierTest extends TestCase
         } catch (InvalidTokenException $exception) {
             // Then
             static::assertSame('The access token expired.', $exception->errorDescription);
-        }
-    }
-
-    /**
-     * Architecture §4.9: a token of a session that ended is revoked, whatever the store still holds.
-     */
-    #[Test]
-    public function itRefusesAnOpaqueTokenOfAnEndedSession(): void
-    {
-        // Given
-        $session = Fixtures::session(Fixtures::user($this->tenant));
-        $this->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', $this->client, $session, Fixtures::now()));
-        $session->end(SessionEnd::User, Fixtures::now()->modify('+1 minute'));
-
-        // When
-        try {
-            $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now()->modify('+2 minutes'));
-            static::fail('The token should have been refused.');
-        } catch (InvalidTokenException $exception) {
-            // Then
-            static::assertSame('The access token was revoked.', $exception->errorDescription);
         }
     }
 
