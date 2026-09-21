@@ -104,10 +104,10 @@ doctrine:
 # registered for opaque access tokens; three of them are told by back channel when a session they signed in
 # ends (Back-Channel Logout 1.0 §2.2) and the native one is not; two of those three are also loaded in a
 # frame by the logout page (Front-Channel Logout 1.0 §3), one of them reading the session on its URI. The KMS is sodium unless the environment
-# names another one: the CI runs this suite again against a Vault service, with a token under the policy
-# of the OP (issue #57), against a key file and against the KMS of Floci (issue #58), to prove that the
-# code between the backends is the same. The sodium key is a fixture of this kernel and seals nothing
-# outside of it.
+# names another one: the CI runs what seals and unseals again against a key file (job "Key custody",
+# issue #58), and Vault Transit and the AWS KMS of Floci are exercised by their own custody tests on the
+# development stack, to prove that the code between the backends is the same. The sodium key is a fixture
+# of this kernel and seals nothing outside of it.
 parameters:
     # The file of the database above, which DatabaseTestCase copies from its template before every test.
     heidi_test.database: '%kernel.cache_dir%/heidi.sqlite'

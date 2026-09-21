@@ -27,7 +27,8 @@ kms() {
 }
 
 # The ready phase runs after the HTTP server answers, so this returns at once; the few tries are for a run
-# by hand against a container that is still starting, and stay well inside the timeout of a hook (30 s).
+# by hand against a container that is still starting. A hook of Floci is given 30 s and a hook that fails
+# stops the container, so the loop is bounded rather than infinite.
 echo "Waiting for KMS at ${KMS_ENDPOINT_URL} ..."
 attempt=0
 until kms list-aliases >/dev/null 2>&1; do

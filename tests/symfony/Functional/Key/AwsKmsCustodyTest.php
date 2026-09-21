@@ -28,8 +28,9 @@ use Symfony\Component\KeyManagement\Envelope;
  * Issue #58, against an AWS KMS (Floci on the development stack, the same API): the master key of the
  * tenant is the one docker/floci/init.sh creates under the alias the DSN names, and
  * the envelope holds the data key as that KMS wrapped it, bound to the tenant. Skipped unless the kernel
- * seals with AWS KMS (HEIDI_TEST_KMS_DSN), which "castor provision --kms aws" writes for the development
- * stack; every other test of the suite then runs against it too.
+ * seals with AWS KMS: HEIDI_TEST_KMS_DSN is set by whoever runs the suite, pointing at the stack that
+ * "castor provision --kms aws" provisioned (the task itself writes HEIDI_KMS_DSN, for the application);
+ * every other test of the suite then runs against it too.
  */
 final class AwsKmsCustodyTest extends DatabaseTestCase
 {
