@@ -20,6 +20,7 @@ use Heidi\Bundle\Migrations\Version20260917180000;
 use Heidi\Bundle\Migrations\Version20260919150000;
 use Heidi\Bundle\Migrations\Version20260920120000;
 use Heidi\Bundle\Migrations\Version20260920180000;
+use Heidi\Bundle\Migrations\Version20260922120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -44,7 +45,7 @@ final class MigrationTest extends DatabaseTestCase
      *
      * @return list<class-string<AbstractMigration>>
      */
-    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class, Version20260920120000::class, Version20260920180000::class];
+    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class, Version20260920120000::class, Version20260920180000::class, Version20260922120000::class];
 
     #[Test]
     public function theMigrationsCreateWhatTheMappingsDescribeOnPostgreSql(): void

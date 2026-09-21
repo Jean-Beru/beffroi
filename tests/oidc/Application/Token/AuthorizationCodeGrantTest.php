@@ -13,6 +13,7 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenIssuer;
@@ -109,7 +110,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $code = $this->code('the-code', $this->client, ['openid', 'profile']);
 
         // When
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertTrue($code->isUsed());
@@ -127,7 +128,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $code = $this->code('the-code', $this->client, ['openid', 'profile']);
 
         // When
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertSame($this->client, $issued->authorization->client);
@@ -148,7 +149,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->client, ['openid', 'profile']);
 
         // When
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertSame('id:oidc-demo:alice-subject:n-0S6_WzA2Mj:' . $this->clock->now()->getTimestamp(), $issued->idToken);
@@ -166,7 +167,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $code = $this->code('the-code', $this->client, ['openid', 'profile']);
 
         // When
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         $refreshToken = $issued->refreshToken ?? static::fail('A confidential client registered for refresh_token gets a refresh token.');
@@ -188,7 +189,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->client, ['openid', 'profile']);
 
         // When
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertSame([
@@ -209,7 +210,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->client, ['openid', 'profile']);
 
         // When
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertCount(1, $this->events->events);
@@ -229,7 +230,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->offlineClient, ['openid']);
 
         // When
-        $issued = $this->grant->grant($this->offlineClient, $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->offlineClient), $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
 
         // Then
         static::assertNull($issued->refreshToken);
@@ -246,7 +247,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->offlineClient, ['openid', 'offline_access']);
 
         // When
-        $issued = $this->grant->grant($this->offlineClient, $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->offlineClient), $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
 
         // Then
         static::assertNotNull($issued->refreshToken);
@@ -263,7 +264,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->publicClient, ['openid']);
 
         // When
-        $issued = $this->grant->grant($this->publicClient, $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->publicClient), $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
 
         // Then
         static::assertNull($issued->refreshToken);
@@ -280,7 +281,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->client, ['openid']);
 
         // When
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertNotNull($issued->refreshToken);
@@ -297,7 +298,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->client, ['openid']);
 
         // When
-        $issued = $strict->grant($this->client, $this->request(), $this->context);
+        $issued = $strict->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertNull($issued->refreshToken);
@@ -314,7 +315,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $codeOnly, ['openid', 'offline_access']);
 
         // When
-        $issued = $this->grant->grant($codeOnly, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($codeOnly), $this->request(), $this->context);
 
         // Then
         static::assertNull($issued->refreshToken);
@@ -338,7 +339,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs('invalid_request: The ' . $missing . ' parameter is missing.');
 
         // When
-        $this->grant->grant($this->client, new TokenRequest($parameters), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), new TokenRequest($parameters), $this->context);
     }
 
     /**
@@ -386,7 +387,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIsOrContains('code_verifier');
 
         // When
-        $this->grant->grant($this->client, $this->request(verifier: $verifier), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(verifier: $verifier), $this->context);
     }
 
     #[Test]
@@ -428,7 +429,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request('another-code'), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request('another-code'), $this->context);
     }
 
     #[Test]
@@ -453,14 +454,14 @@ final class AuthorizationCodeGrantTest extends TestCase
     {
         // Given
         $this->code('the-code', $this->client);
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         $this->expectException(InvalidGrantException::class);
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
     }
 
     /**
@@ -495,7 +496,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     {
         // Given
         $code = $this->code('the-code', $this->client);
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
         $this->accessTokens->keep(Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $code->grantId));
         $other = Tokens::storedAccessToken('of-another-grant', $this->client, $this->session, $this->clock->now());
         $this->accessTokens->keep($other);
@@ -516,7 +517,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     {
         // Given
         $code = $this->code('the-code', $this->client);
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
         $this->clock->sleep(5);
 
         // When
@@ -627,7 +628,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
     }
 
     #[Test]
@@ -654,7 +655,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->clock->sleep(59);
 
         // When
-        $issued = $this->grant->grant($this->client, $this->request(), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         static::assertNotNull($issued->idToken);
@@ -675,7 +676,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
     }
 
     /**
@@ -693,7 +694,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request(redirectUri: 'https://demo.localhost/login/check/'), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(redirectUri: 'https://demo.localhost/login/check/'), $this->context);
     }
 
     /**
@@ -713,7 +714,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, new TokenRequest($parameters), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), new TokenRequest($parameters), $this->context);
     }
 
     /**
@@ -748,7 +749,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         unset($parameters['code_verifier']);
 
         // When
-        $issued = $this->grant->grant($client, new TokenRequest($parameters), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($client), new TokenRequest($parameters), $this->context);
 
         // Then
         static::assertSame('at:legacy:alice-subject:' . $this->clock->now()->getTimestamp(), $issued->accessToken->value);
@@ -771,7 +772,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($client), $this->request(), $this->context);
     }
 
     /**
@@ -788,7 +789,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'), $this->context);
     }
 
     /**
@@ -808,7 +809,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
     }
 
     #[Test]
@@ -824,7 +825,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant($this->client, $this->request(), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
     }
 
     /**
@@ -876,7 +877,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $grant = $this->grant(new DateInterval('P7D'));
 
         // When
-        $issued = $grant->grant($this->client, $this->request(), $this->context);
+        $issued = $grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
         $refreshToken = $issued->refreshToken ?? static::fail('A refresh token was issued.');
@@ -923,7 +924,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     private function failToGrant(Client $client, TokenRequest $request): void
     {
         try {
-            $this->grant->grant($client, $request, $this->context);
+            $this->grant->grant(new AuthenticatedClient($client), $request, $this->context);
             static::fail('The grant should have failed.');
         } catch (InvalidGrantException|InvalidRequestException) {
         }
@@ -935,7 +936,7 @@ final class AuthorizationCodeGrantTest extends TestCase
      */
     private function firstExchangeThenARotation(): RefreshToken
     {
-        $first = $this->grant->grant($this->client, $this->request(), $this->context);
+        $first = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
         $refreshToken = ($first->refreshToken ?? static::fail('A refresh token was issued.'))->token;
         $refreshToken->rotate($this->clock->now());
         $refreshToken->revoke($this->clock->now());

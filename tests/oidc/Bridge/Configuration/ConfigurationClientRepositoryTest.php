@@ -15,7 +15,9 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
+use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\GrantType;
@@ -131,6 +133,70 @@ final class ConfigurationClientRepositoryTest extends TestCase
         // Then
         static::assertSame('https://key.example/jwks', $client->jwksUri?->value);
         static::assertNull($client->jwks);
+    }
+
+    /**
+     * RFC 8705 §2.1.2: a client recognised by its certificate registers one of the five values, each one
+     * under the metadata name of the specification.
+     */
+    #[Test]
+    #[DataProvider('provideCertificateRegistrations')]
+    public function aClientRegistersWhatNamesItInItsCertificate(string $name, string $value): void
+    {
+        // Given
+        $repository = $this->repository([
+            'mtls-client' => [
+                'redirect_uris' => ['https://mtls.example/callback'],
+                'token_endpoint_auth_method' => 'tls_client_auth',
+                $name => $value,
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'mtls-client');
+
+        // Then
+        static::assertSame($name, $client->certificateIdentity?->name());
+    }
+
+    /**
+     * RFC 8705 §2.1.2 asks for a predictable treatment of distinguished names: what a deployment
+     * registers is written back by the reader that will read the name of the certificate, once, at boot.
+     */
+    #[Test]
+    public function aRegisteredDistinguishedNameIsWrittenTheWayTheOneOfACertificateIs(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'mtls-client' => [
+                'redirect_uris' => ['https://mtls.example/callback'],
+                'token_endpoint_auth_method' => 'tls_client_auth',
+                'tls_client_auth_subject_dn' => 'C=FR,O=Heidi Test,CN=heidi mtls client',
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'mtls-client');
+
+        // Then
+        static::assertInstanceOf(SubjectDistinguishedName::class, $client->certificateIdentity);
+        static::assertSame('c=FR,o=Heidi Test,cn=heidi mtls client', $client->certificateIdentity->distinguishedName);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideCertificateRegistrations(): iterable
+    {
+        yield 'tls_client_auth_subject_dn' => ['tls_client_auth_subject_dn', 'cn=heidi mtls client'];
+
+        yield 'tls_client_auth_san_dns' => ['tls_client_auth_san_dns', 'client.example.com'];
+
+        yield 'tls_client_auth_san_uri' => ['tls_client_auth_san_uri', 'https://client.example.com/callback'];
+
+        yield 'tls_client_auth_san_ip' => ['tls_client_auth_san_ip', '198.51.100.7'];
+
+        yield 'tls_client_auth_san_email' => ['tls_client_auth_san_email', 'ops@client.example.com'];
     }
 
     /**
@@ -508,7 +574,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         // When
         new ConfigurationClientRepository('acme', [
             'bad' => $definition,
-        ], new FakePasswordHasher(), Algorithms::all(), Methods::all());
+        ], new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
     }
 
     /**
@@ -540,8 +606,21 @@ final class ConfigurationClientRepositoryTest extends TestCase
             'token_endpoint_auth_method' => 'none',
         ], 'cannot hold a secret'];
         yield 'an authentication method nothing is wired with' => [$base + [
+            'token_endpoint_auth_method' => 'smoke_signal',
+        ], 'must be one of: client_secret_basic, client_secret_post, private_key_jwt, client_secret_jwt, tls_client_auth, self_signed_tls_client_auth, none'];
+        yield 'two of the values of RFC 8705 §2.1.2' => [$base + [
             'token_endpoint_auth_method' => 'tls_client_auth',
-        ], 'must be one of: client_secret_basic, client_secret_post, private_key_jwt, client_secret_jwt, none'];
+            'tls_client_auth_subject_dn' => 'cn=client',
+            'tls_client_auth_san_dns' => 'client.example.com',
+        ], 'registers exactly one of the values of RFC 8705 section 2.1.2'];
+        yield 'a subject distinguished name that is not one' => [$base + [
+            'token_endpoint_auth_method' => 'tls_client_auth',
+            'tls_client_auth_subject_dn' => 'heidi mtls client',
+        ], 'must be a distinguished name of RFC 4514'];
+        yield 'a certificate name that is not a string' => [$base + [
+            'token_endpoint_auth_method' => 'tls_client_auth',
+            'tls_client_auth_san_dns' => 42,
+        ], 'tls_client_auth_san_dns option of the client "bad" must be a string'];
         yield 'authentication method not a string' => [$base + [
             'token_endpoint_auth_method' => true,
         ], 'token_endpoint_auth_method option of the client "bad" must be a string'];
@@ -670,8 +749,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionHasNoSecret(): void
     {
         // When / Then
-        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all())->hasSecret());
-        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all(), Methods::all())->hasSecret());
+        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader())->hasSecret());
+        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader())->hasSecret());
     }
 
     /**
@@ -681,7 +760,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionRefusesToKeepASecret(): void
     {
         // Given
-        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all());
+        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
 
         // Then
         $this->expectException(LogicException::class);
@@ -751,7 +830,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     private function repository(array $clients, ?PasswordHasherInterface $hasher = null): ConfigurationClientRepository
     {
-        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all(), Methods::all());
+        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
     }
 
     private static function find(ConfigurationClientRepository $repository, Tenant $tenant, string $clientId): Client

@@ -17,11 +17,14 @@ use Heidi\Oidc\Application\Client\Method\ClientSecretJwt;
 use Heidi\Oidc\Application\Client\Method\ClientSecretPost;
 use Heidi\Oidc\Application\Client\Method\NoAuthentication;
 use Heidi\Oidc\Application\Client\Method\PrivateKeyJwt;
+use Heidi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
+use Heidi\Oidc\Application\Client\Method\TlsClientAuth;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientAssertionReplayGuard;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientJwksCache;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionKeyVerifier;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
+use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Jose\Component\Core\AlgorithmManager;
@@ -75,6 +78,16 @@ final class Methods
         );
     }
 
+    public static function tlsClientAuth(): TlsClientAuth
+    {
+        return new TlsClientAuth(new PkiFrameworkCertificateReader());
+    }
+
+    public static function selfSignedTlsClientAuth(?ClientKeySetProvider $keys = null): SelfSignedTlsClientAuth
+    {
+        return new SelfSignedTlsClientAuth($keys ?? self::keySetProvider());
+    }
+
     public static function keySetProvider(?ClientJwksFetcherInterface $fetcher = null, ?ClockInterface $clock = null, ?DateInterval $cooldown = null): ClientKeySetProvider
     {
         return new ClientKeySetProvider(
@@ -91,7 +104,7 @@ final class Methods
     }
 
     /**
-     * The five methods in the order the bundle wires them, sharing one decoy as the container shares it.
+     * The seven methods in the order the bundle wires them, sharing one decoy as the container shares it.
      */
     public static function all(?PasswordHasherInterface $hasher = null, ?ClientKeySetProvider $keys = null, ?ClientAssertionValidator $claims = null): ClientAuthenticationMethods
     {
@@ -104,6 +117,8 @@ final class Methods
             self::clientSecretPost($hasher, $decoy),
             self::privateKeyJwt($keys, $claims),
             self::clientSecretJwt($claims),
+            self::tlsClientAuth(),
+            self::selfSignedTlsClientAuth($keys),
             self::none(),
         ]);
     }

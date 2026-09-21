@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\Tls;
+namespace Heidi\Oidc\Tests\Domain\Client\Certificate;
 
-use Heidi\Bundle\Http\Tls\ClientCertificate;
-use InvalidArgumentException;
+use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Heidi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

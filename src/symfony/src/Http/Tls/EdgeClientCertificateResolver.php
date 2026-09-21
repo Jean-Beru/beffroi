@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Http\Tls;
 
+use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 

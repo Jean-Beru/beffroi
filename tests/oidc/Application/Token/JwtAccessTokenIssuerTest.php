@@ -16,7 +16,9 @@ use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\Confirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
@@ -242,6 +244,44 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertSame(['iss', 'exp', 'aud', 'sub', 'client_id', 'iat', 'jti', 'auth_time', 'acr', 'amr', 'scope', 'userinfo_claims', 'sid', 'grant_id'], array_keys($claims));
         static::assertSame(['email', 'name'], $claims['userinfo_claims']);
         static::assertStringContainsString('"userinfo_claims":["email","name"]', Jwts::rawPayload($token->value));
+    }
+
+    /**
+     * RFC 8705 §3.1: a token issued on a request that proved a certificate carries the thumbprint of
+     * that certificate in its "cnf" (RFC 7800 §3.1), which is what a resource server verifying the token
+     * offline asks its caller to present again.
+     */
+    #[Test]
+    public function itBindsTheTokenToWhatTheClientProved(): void
+    {
+        // Given
+        $certificate = Certificates::client();
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()), Confirmation::ofCertificate($certificate));
+
+        // When
+        $claims = $this->jwts->verify($this->issuer->issue($authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];
+
+        // Then
+        static::assertSame([
+            'x5t#S256' => $certificate->x5tS256(),
+        ], $claims['cnf']);
+    }
+
+    /**
+     * A client that proved nothing but who it is gets a bearer token, and a token that says so by
+     * carrying no confirmation at all (RFC 6750 §2).
+     */
+    #[Test]
+    public function aTokenOfAClientThatProvedNoKeyCarriesNoConfirmation(): void
+    {
+        // Given
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+
+        // When
+        $claims = $this->jwts->verify($this->issuer->issue($authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];
+
+        // Then
+        static::assertArrayNotHasKey('cnf', $claims);
     }
 
     /**

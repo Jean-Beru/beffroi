@@ -29,6 +29,11 @@
             </options>
         </field>
         <embedded name="authentication" class="Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
+        <field name="confirmation" type="heidi_confirmation" column="cnf" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <entity-listeners>

@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Controller;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
+use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Domain\Token\JwtPayload;
 use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
@@ -29,6 +30,7 @@ final readonly class UserInfoController
         private TenantProvider $tenants,
         private UserInfoHandler $handler,
         private RequestContextFactory $contexts,
+        private PresentedClientCertificate $certificates,
     ) {
     }
 
@@ -41,6 +43,7 @@ final readonly class UserInfoController
                 $request->headers->get('Authorization'),
                 $request->isMethod('POST') ? RequestParameters::ofForm($request) : [],
                 $this->contexts->fromRequest($request),
+                $this->certificates->ofRequest($request),
             );
         } catch (OAuth2Exception|MissingBearerTokenException $exception) {
             $error = UserInfoErrorResponse::fromException($exception);

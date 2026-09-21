@@ -30,6 +30,11 @@ final readonly class FakeClientAuthenticationMethod implements AssertionMethodIn
         return $this->name;
     }
 
+    public function mechanism(): string
+    {
+        return 'the ' . $this->parameter . ' parameter';
+    }
+
     public function authenticatesClient(): bool
     {
         return true;

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Application\Discovery;
 
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
-use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakeSignatureAlgorithm;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -13,9 +12,8 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Port\EndpointLocatorInterface;
+use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\FakeClientAuthenticationMethod;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\Logins;
@@ -32,7 +30,7 @@ final class DiscoveryHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants());
+        $this->handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants());
     }
 
     /**
@@ -58,7 +56,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function anAlgorithmTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), new JoseSignatureAlgorithms([new FakeSignatureAlgorithm()]), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), new JoseSignatureAlgorithms([new FakeSignatureAlgorithm()]), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -75,7 +73,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aMethodTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), new ClientAuthenticationMethods([new FakeClientAuthenticationMethod()]), ServedChannels::both(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), new ClientAuthenticationMethods([new FakeClientAuthenticationMethod()]), ServedChannels::both(), Algorithms::all(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -193,7 +191,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants(), $lifetime);
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants(), $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -224,7 +222,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants(), -1);
+        new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants(), -1);
     }
 
     /**
@@ -239,9 +237,76 @@ final class DiscoveryHandlerTest extends TestCase
 
         // Then
         static::assertSame(['authorization_code', 'refresh_token'], $document['grant_types_supported']);
-        static::assertSame(['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'none'], $document['token_endpoint_auth_methods_supported']);
-        static::assertSame(['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'none'], $document['revocation_endpoint_auth_methods_supported']);
-        static::assertSame(['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt'], $document['introspection_endpoint_auth_methods_supported']);
+        static::assertSame(['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'tls_client_auth', 'self_signed_tls_client_auth', 'none'], $document['token_endpoint_auth_methods_supported']);
+        static::assertSame(['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'tls_client_auth', 'self_signed_tls_client_auth', 'none'], $document['revocation_endpoint_auth_methods_supported']);
+        static::assertSame(['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'tls_client_auth', 'self_signed_tls_client_auth'], $document['introspection_endpoint_auth_methods_supported']);
+    }
+
+    /**
+     * RFC 8705 §5: the aliases are the endpoints of the tenant, located a second time by the integration
+     * on the host whose listener asks for a client certificate. What is announced there is derived from
+     * the endpoints and not kept beside them: the paths are the same and only the origin differs.
+     */
+    #[Test]
+    public function theAliasesAreTheEndpointsOnTheHostThatAsksForACertificate(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), self::locator('https://mtls.as.example'), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants());
+
+        // When
+        $document = $handler->handle(Fixtures::tenant('acme', 'https://as.example/acme'))->toArray();
+
+        // Then
+        static::assertSame([
+            'token_endpoint' => 'https://mtls.as.example/token',
+            'userinfo_endpoint' => 'https://mtls.as.example/userinfo',
+            'introspection_endpoint' => 'https://mtls.as.example/introspect',
+            'revocation_endpoint' => 'https://mtls.as.example/revoke',
+        ], $document['mtls_endpoint_aliases']);
+    }
+
+    /**
+     * RFC 8705 §5: a deployment that serves no such host announces no alias at all, rather than aliases
+     * naming the ordinary endpoints.
+     */
+    #[Test]
+    public function aDeploymentWithoutSuchAHostAnnouncesNoAlias(): void
+    {
+        // When
+        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertArrayNotHasKey('mtls_endpoint_aliases', $document);
+    }
+
+    /**
+     * RFC 8705 §3.3: whether the provider binds an access token to a certificate is whether a method
+     * that proves one is wired, and nothing else (issue #98).
+     */
+    #[Test]
+    public function itBindsTokensToCertificatesBecauseASuchMethodIsWired(): void
+    {
+        // When
+        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertTrue($document['tls_client_certificate_bound_access_tokens']);
+    }
+
+    /**
+     * A provider wired with no mutual-TLS method says so, rather than leaving the member out.
+     */
+    #[Test]
+    public function aProviderWiredWithoutMutualTlsSaysItBindsNothing(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), new ClientAuthenticationMethods([Methods::clientSecretBasic()]), ServedChannels::both(), Algorithms::all(), self::grants());
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertFalse($document['tls_client_certificate_bound_access_tokens']);
     }
 
     /**
@@ -252,7 +317,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), [new FakeGrant(GrantType::AuthorizationCode)]);
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), [new FakeGrant(GrantType::AuthorizationCode)]);
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -284,7 +349,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatPostsNoResponseAnnouncesTheDefaultModeAlone(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), Methods::all(), ServedChannels::both(), Algorithms::all(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -316,7 +381,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatLoadsNoLogoutPageAnnouncesTheBackChannelAlone(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::backChannelOnly(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::backChannelOnly(), Algorithms::all(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -334,7 +399,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatTellsNobodyAnnouncesNoChannel(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::none(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::none(), Algorithms::all(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -352,7 +417,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
 
         // When
-        new DiscoveryHandler(self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), []);
+        new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), ServedChannels::both(), Algorithms::all(), []);
     }
 
     /**
@@ -364,17 +429,11 @@ final class DiscoveryHandlerTest extends TestCase
     }
 
     /**
-     * The endpoints under the issuer of the tenant, at the default paths of architecture §5.2.
+     * The endpoints under the issuer of the tenant, at the default paths of architecture §5.2, and no
+     * host asking for a client certificate unless a test wires one.
      */
-    private static function locator(): EndpointLocatorInterface
+    private static function locator(?string $mutualTlsOrigin = null): Endpoints
     {
-        return new class() implements EndpointLocatorInterface {
-            public function locate(Tenant $tenant): ProviderEndpoints
-            {
-                $issuer = $tenant->issuer->value;
-
-                return new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke');
-            }
-        };
+        return new Endpoints($mutualTlsOrigin);
     }
 }

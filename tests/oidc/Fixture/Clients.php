@@ -7,6 +7,8 @@ namespace Heidi\Oidc\Tests\Fixture;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
+use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
+use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
@@ -74,6 +76,46 @@ final class Clients
             Methods::clientSecretJwt(),
             new SharedClientSecret($secret),
             [new RedirectUri('https://mac.example/callback')],
+        );
+    }
+
+    /**
+     * A client recognised by what its certificate says about it (RFC 8705 §2.1): it registers one of the
+     * five values of §2.1.2, here the subject distinguished name unless the test names another.
+     */
+    public static function withCertificateIdentity(Tenant $tenant, ?CertificateIdentityInterface $identity = null, string $clientId = 'mtls-client', AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt): Client
+    {
+        return new Client(
+            $tenant,
+            $clientId,
+            'Client with a certificate',
+            Methods::tlsClientAuth(),
+            null,
+            [new RedirectUri('https://mtls.example/callback')],
+            [],
+            [GrantType::AuthorizationCode, GrantType::RefreshToken],
+            null,
+            accessTokenFormat: $accessTokenFormat,
+            certificateIdentity: $identity ?? new SubjectDistinguishedName(Certificates::SUBJECT_DN),
+        );
+    }
+
+    /**
+     * A client that publishes the certificate it signs itself (RFC 8705 §2.2), in its JWK Set.
+     */
+    public static function withPublishedCertificate(Tenant $tenant, ?ClientJwks $jwks = null, string $clientId = 'self-signed-client'): Client
+    {
+        return new Client(
+            $tenant,
+            $clientId,
+            'Client with a self-signed certificate',
+            Methods::selfSignedTlsClientAuth(),
+            null,
+            [new RedirectUri('https://self-signed.example/callback')],
+            [],
+            [GrantType::AuthorizationCode, GrantType::RefreshToken],
+            null,
+            jwks: $jwks ?? Certificates::publishedIn(Certificates::selfSigned()),
         );
     }
 

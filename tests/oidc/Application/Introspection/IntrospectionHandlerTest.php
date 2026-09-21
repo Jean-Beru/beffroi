@@ -28,9 +28,11 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Token\Confirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
+use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Jwts;
@@ -140,6 +142,28 @@ final class IntrospectionHandlerTest extends TestCase
             'grant_id' => $code->grantId->toRfc4122(),
         ], $response->members);
         static::assertNull($response->jwt);
+    }
+
+    /**
+     * RFC 8705 §3.2: the answer tells the resource server what the token is bound to, so that it can ask
+     * its own caller to present that certificate again.
+     */
+    #[Test]
+    public function itTellsWhatABoundTokenIsBoundTo(): void
+    {
+        // Given
+        $certificate = Certificates::client();
+        $token = $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($this->code($this->client, ['openid']), Confirmation::ofCertificate($certificate)), $this->clock->now(), $this->clock->now()->modify('+10 minutes'));
+
+        // When
+        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
+            'token' => $token,
+        ], $this->context, false);
+
+        // Then
+        static::assertSame([
+            'x5t#S256' => $certificate->x5tS256(),
+        ], $response->members['cnf']);
     }
 
     /**
