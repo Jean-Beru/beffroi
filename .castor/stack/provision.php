@@ -242,8 +242,37 @@ function provision_env_local(?string $kms): array
     file_put_contents($path, $existing . "###> castor provision ###\n" . implode("\n", $lines) . "\n###< castor provision ###\n");
     io()
         ->text(sprintf('Wrote %d development value(s) into %s.', count($lines), DEV_ENV_LOCAL));
+    provision_restart_consumers();
 
     return $env;
+}
+
+/**
+ * Restarts the consumers of a running stack, so that they hold the values just written.
+ *
+ * A container reads the dotenv of the application once, when it starts. The op container is restarted by
+ * whoever needs it to, and the console commands read the file each time; a worker, which runs for an
+ * hour, would go on signing a logout token for a client whose secret it does not have, which is what the
+ * back-channel logout plan and "castor demo --logout-others" both need. The sidecar that shares its
+ * network namespace goes with it: a worker that restarts leaves it forwarding nothing (compose.yaml).
+ */
+function provision_restart_consumers(): void
+{
+    $running = run(
+        ['docker', 'compose', ...compose_profiles(), 'ps', '--status', 'running', '--services'],
+        context: context()
+            ->withAllowFailure()
+            ->withQuiet(),
+    );
+    if (! $running->isSuccessful()) {
+        return;
+    }
+    $services = array_values(array_intersect(['worker', 'conformance-worker-redirector'], explode("\n", trim($running->getOutput()))));
+    if ($services === []) {
+        return;
+    }
+
+    run(['docker', 'compose', ...compose_profiles(), 'restart', ...$services]);
 }
 
 /**

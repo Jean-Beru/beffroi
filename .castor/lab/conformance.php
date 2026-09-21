@@ -85,14 +85,12 @@ const CONFORMANCE_PLANS = [
         ],
         'client' => CONFORMANCE_FRONT_CHANNEL_CLIENT,
     ],
-    // Of this plan, the verification of the discovery document only, until the module that waits for the
-    // token can pass: the provider posts it itself, and the URI the suite gives its clients names
-    // localhost, which inside the worker is the worker ("Failed to connect to localhost port 8443"). The
-    // suite solves the same problem for itself with the conformance-redirector sidecar; the one that
-    // gives the worker that address, with the certificate of the suite trusted there, comes with
-    // heidi#141, which deletes this line. Until then the module is asked for by name ("--module
-    // oidcc-backchannel-rp-initiated-logout"), where it fails after the five minutes it waits for a
-    // token that cannot arrive; that is a run by hand, not every push to main.
+    // The one plan whose modules the OP answers from outside the browser: the worker posts the logout
+    // token to the URI the suite gives its clients, which names localhost:8443 and is the suite itself
+    // from the host. Inside the worker that address is the worker, so the conformance-worker-redirector
+    // sidecar of compose.yaml brings the port there, and the entrypoint of the worker trusts the
+    // certificate nginx answers with (docker/worker/entrypoint.sh). The module waits for the token while
+    // it runs, which makes the latency of the worker a matter of conformance and not of operations.
     'back-channel-logout' => [
         'name' => 'oidcc-backchannel-rp-initiated-logout-certification-test-plan',
         'variant' => [
@@ -100,7 +98,6 @@ const CONFORMANCE_PLANS = [
             'client_registration' => 'static_client',
         ],
         'client' => CONFORMANCE_BACK_CHANNEL_CLIENT,
-        'modules' => ['oidcc-backchannel-logout-discovery-endpoint-verification'],
     ],
     // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
     // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
@@ -140,6 +137,11 @@ const CONFORMANCE_REQUIRED_VALUES = [
  * seconds before reusing a code, and a module the scripted browser cannot finish waits for a human.
  */
 const CONFORMANCE_MODULE_TIMEOUT = 300;
+
+/**
+ * How long a module is given to leave CONFIGURED before the start is asked for a second time, seconds.
+ */
+const CONFORMANCE_START_CONFIRMATION = 15;
 
 /**
  * How long the suite may take to serve its API after its container reports healthy.
@@ -363,6 +365,11 @@ function conformance_reset(string $issuer): void
     op_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
     provision();
     run(['docker', 'compose', ...compose_profiles(), 'restart', 'op', 'worker']);
+    // The sidecar that brings the port of the suite into the worker shares its network namespace, which a
+    // restart of the worker leaves behind: it keeps running and forwards nothing at all. It goes back up
+    // after the worker, or the back-channel plan would wait for a token that cannot arrive; a run against
+    // a suite of its own has no sidecar to bring back.
+    run(['docker', 'compose', ...compose_profiles(), 'restart', 'conformance-worker-redirector'], context: context()->withAllowFailure());
     conformance_wait_for_op($issuer);
 }
 
@@ -473,12 +480,7 @@ function conformance_run_module(string $suite, ?string $planId, array $definitio
         if ($beforeStart === 'rotate') {
             conformance_rotate_signing_key();
         }
-        conformance_request($suite, 'POST', sprintf('/api/runner/%s', $id), [
-            'headers' => [
-                'Content-Type' => 'application/json',
-            ],
-        ]);
-        $state = conformance_wait_state($suite, $id, ['WAITING', 'FINISHED'], $deadline);
+        $state = conformance_start_module($suite, $id, $deadline);
     }
     $announced = [];
     while ($state === 'WAITING') {
@@ -515,6 +517,34 @@ function conformance_run_module(string $suite, ?string $planId, array $definitio
         'url' => $url,
         'findings' => $findings,
     ];
+}
+
+/**
+ * Starts a module and returns the state it reached.
+ *
+ * The suite answers this call with the module as it renders it, and sometimes fails to render it: the
+ * scripted browser of the previous module is still landing when the next one is asked for, and the state
+ * the answer is built from is not finished being written ("Could not write JSON: null", a 500 while the
+ * module starts all the same and runs seconds later). The start is therefore judged on the state of the
+ * module and never on what that call answered. A module still CONFIGURED once the confirmation window
+ * has passed is one that really did not start, and it is asked once more.
+ */
+function conformance_start_module(string $suite, string $id, float $deadline): string
+{
+    $start = static fn (): array => conformance_request($suite, 'POST', sprintf('/api/runner/%s', $id), [
+        'headers' => [
+            'Content-Type' => 'application/json',
+        ],
+    ], null);
+
+    $start();
+    if (conformance_wait_state($suite, $id, ['RUNNING', 'WAITING', 'FINISHED'], min($deadline, microtime(true) + CONFORMANCE_START_CONFIRMATION)) === 'TIMEOUT') {
+        io()
+            ->text('  the suite did not report the module started; asking it again');
+        $start();
+    }
+
+    return conformance_wait_state($suite, $id, ['WAITING', 'FINISHED'], $deadline);
 }
 
 /**
@@ -571,10 +601,13 @@ function conformance_wait_state(string $suite, string $id, array $states, float 
  * certificate for localhost and needs no token; a hosted suite has a public certificate and a token
  * (CONFORMANCE_TOKEN). Nothing here follows a redirect.
  *
+ * $expected is the status the call must answer, or null when the answer is not what the call is judged
+ * on.
+ *
  * @param array<string, mixed> $options
  * @return array<mixed>
  */
-function conformance_request(string $suite, string $method, string $path, array $options = [], int $expected = 200): array
+function conformance_request(string $suite, string $method, string $path, array $options = [], ?int $expected = 200): array
 {
     $local = in_array(parse_url($suite, \PHP_URL_HOST), ['localhost', '127.0.0.1', '::1'], true);
     $token = getenv('CONFORMANCE_TOKEN') ?: null;
@@ -588,7 +621,7 @@ function conformance_request(string $suite, string $method, string $path, array 
     $response = http_request($method, $suite . $path, $options);
     $status = $response->getStatusCode();
     $content = $response->getContent(false);
-    if ($status !== $expected) {
+    if ($expected !== null && $status !== $expected) {
         throw new RuntimeException(sprintf('%s %s answered %d: %s', $method, $path, $status, mb_substr($content, 0, 500)));
     }
     if ($content === '') {
