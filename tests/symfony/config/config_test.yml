@@ -322,6 +322,6 @@ services:
 
     # The RSA keys of the suite at the 2048 bits RFC 7518 §3.3 requires rather than the 3072 the bundle
     # generates: a key pair in 60 ms instead of 300, at every signingKey() and every rotation.
-    Heidi\Core\Bridge\JwtFramework\JwtFrameworkKeyPairGenerator:
+    Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits:
         arguments:
-            $rsaKeyBits: 2048
+            $value: 2048

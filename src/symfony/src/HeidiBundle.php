@@ -7,6 +7,8 @@ namespace Heidi\Bundle;
 use function array_column;
 use DateInterval;
 use function dirname;
+use Heidi\Bundle\Client\ClientJwksCache;
+use Heidi\Bundle\Client\ClientJwksFetcher;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
@@ -34,10 +36,11 @@ use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationPredicate;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Client\ClientAssertionValidator;
+use Heidi\Oidc\Application\Client\ClientKeySetProvider;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -47,7 +50,6 @@ use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use function is_array;
 use function is_float;
 use function is_int;
@@ -78,6 +80,39 @@ final class HeidiBundle extends AbstractBundle
      * Seconds one attempt at delivering a logout token is given (Back-Channel Logout 1.0 §2.5).
      */
     public const float DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT = 5.0;
+
+    /**
+     * RFC 7523 §3: how far ahead of the request the "exp" of a client assertion may be. Five minutes is
+     * what the field sends; an assertion is minted for one request, not kept.
+     */
+    public const int DEFAULT_ASSERTION_MAX_LIFETIME = 300;
+
+    /**
+     * What is allowed of the clock of a client, both ways.
+     */
+    public const int DEFAULT_ASSERTION_LEEWAY = 30;
+
+    /**
+     * Seconds one read of a "jwks_uri" is given, connection included: an endpoint authenticating a client
+     * is waiting on it.
+     */
+    public const float DEFAULT_JWKS_TIMEOUT = 3.0;
+
+    /**
+     * Bytes a "jwks_uri" may answer; a JWK Set of a client holds a handful of public keys.
+     */
+    public const int DEFAULT_JWKS_MAX_SIZE = 65536;
+
+    /**
+     * How long the keys read back from a "jwks_uri" are kept.
+     */
+    public const int DEFAULT_JWKS_TTL = 86400;
+
+    /**
+     * How often an unknown "kid" may cost a read of a "jwks_uri", the symmetric of the cooldown of
+     * Symfony's own client (spike 2).
+     */
+    public const int DEFAULT_JWKS_REFETCH_COOLDOWN = 300;
 
     /**
      * Restated from the module: the configuration tree cannot tell an absent list from an empty one.
@@ -219,8 +254,44 @@ final class HeidiBundle extends AbstractBundle
             ->end()
             ->end()
             ->end()
+            ->arrayNode('client_authentication')
+            ->info('How a client proves who it is at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9). Which methods the provider takes is the wiring, not this: a method is a tagged service, and what is tagged is what is announced.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->integerNode('assertion_max_lifetime')
+            ->info('Seconds ahead of the request the "exp" of a client assertion may be (RFC 7523 §3). An assertion is minted for one request; a long one is a bearer token nobody watches.')
+            ->defaultValue(self::DEFAULT_ASSERTION_MAX_LIFETIME)
+            ->min(1)
+            ->end()
+            ->integerNode('assertion_leeway')
+            ->info('Seconds allowed of the clock of a client, both ways.')
+            ->defaultValue(self::DEFAULT_ASSERTION_LEEWAY)
+            ->min(0)
+            ->end()
+            ->floatNode('jwks_timeout')
+            ->info('Seconds one read of a jwks_uri is given, connection included. A client that hangs must not hold a worker: an endpoint authenticating it is waiting.')
+            ->defaultValue(self::DEFAULT_JWKS_TIMEOUT)
+            ->min(0.1)
+            ->end()
+            ->integerNode('jwks_max_size')
+            ->info('Bytes a jwks_uri may answer before the read stops; a JWK Set of a client holds a handful of public keys.')
+            ->defaultValue(self::DEFAULT_JWKS_MAX_SIZE)
+            ->min(1)
+            ->end()
+            ->integerNode('jwks_ttl')
+            ->info('Seconds the keys read back from a jwks_uri are kept in the pool the workers share.')
+            ->defaultValue(self::DEFAULT_JWKS_TTL)
+            ->min(1)
+            ->end()
+            ->integerNode('jwks_refetch_cooldown')
+            ->info('Seconds between two reads of the same jwks_uri when an assertion names a "kid" the kept set does not hold. A client that rotates a key is followed within one request; a client that signs with a key it never published cannot make the provider call it on every request.')
+            ->defaultValue(self::DEFAULT_JWKS_REFETCH_COOLDOWN)
+            ->min(0)
+            ->end()
+            ->end()
+            ->end()
             ->arrayNode('clients')
-            ->info('The clients of the tenant, keyed by client identifier. A secret is hashed when the client is loaded and never kept in clear.')
+            ->info('The clients of the tenant, keyed by client identifier. A secret is hashed when the client is loaded and never kept in clear, unless the method it registered has to compute a MAC with it (client_secret_jwt).')
             ->useAttributeAsKey('client_id')
             ->normalizeKeys(false)
             ->arrayPrototype()
@@ -253,9 +324,9 @@ final class HeidiBundle extends AbstractBundle
             ->scalarPrototype()
             ->end()
             ->end()
-            ->enumNode('token_endpoint_auth_method')
-            ->values(array_column(TokenEndpointAuthMethod::cases(), 'value'))
-            ->defaultValue(TokenEndpointAuthMethod::ClientSecretBasic->value)
+            ->scalarNode('token_endpoint_auth_method')
+            ->info('How this client authenticates at the endpoints that authenticate a client (OIDC Core §9), among the methods the provider is wired with; left out, it takes the first wired one. A name nothing authenticates with fails at boot.')
+            ->defaultNull()
             ->end()
             ->booleanNode('requires_consent')
             ->info('Consent is the rule; a first-party application is the named exception.')
@@ -265,9 +336,9 @@ final class HeidiBundle extends AbstractBundle
             ->info('PKCE S256 is the rule; a confidential client that cannot send a code_challenge is the named exception of decision 0008, refused for a public client. A challenge the client sends is verified all the same.')
             ->defaultTrue()
             ->end()
-            ->enumNode('id_token_signed_response_alg')
-            ->values(array_column(SignatureAlgorithm::cases(), 'value'))
-            ->defaultValue(SignatureAlgorithm::RS256->value)
+            ->scalarNode('id_token_signed_response_alg')
+            ->info('The JWS algorithm the ID tokens and the logout tokens of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, the provider signs them with its default. A name nothing signs under fails at boot.')
+            ->defaultNull()
             ->end()
             ->enumNode('access_token_format')
             ->info('The shape of the access tokens: "jwt" (RFC 9068, verified offline against the JWK Set) or "opaque" (a reference the resource server introspects, RFC 7662, revocable at once). Per client, nothing global.')
@@ -289,6 +360,14 @@ final class HeidiBundle extends AbstractBundle
             ->booleanNode('frontchannel_logout_session_required')
             ->info('The client reads "iss" and "sid" on its logout URI to know which session ended (Front-Channel Logout 1.0 §2); it needs a frontchannel_logout_uri. The two parameters are added for this client only, §2 making them conditional.')
             ->defaultFalse()
+            ->end()
+            ->variableNode('jwks')
+            ->info('The JWK Set of the client, inline (RFC 7591 §2): public keys only, and exclusive with jwks_uri. A client that authenticates with private_key_jwt publishes one of the two.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('jwks_uri')
+            ->info('Where the JWK Set of the client is read back from (RFC 7591 §2); HTTPS, or plain HTTP on a loopback host, no redirect followed. Exclusive with jwks.')
+            ->defaultNull()
             ->end()
             ->end()
             ->end()
@@ -373,6 +452,22 @@ final class HeidiBundle extends AbstractBundle
                 'limiters' => $limiters,
             ]);
         }
+        if ($builder->hasExtension('framework')) {
+            // the keys of the clients and the assertions already seen live in pools of their own, so that
+            // a deployment can point them at a shared store without touching the rest of its cache
+            $builder->prependExtensionConfig('framework', [
+                'cache' => [
+                    'pools' => [
+                        'heidi.client_keys' => [
+                            'adapter' => 'cache.app',
+                        ],
+                        'heidi.client_assertions' => [
+                            'adapter' => 'cache.app',
+                        ],
+                    ],
+                ],
+            ]);
+        }
         if ($builder->hasExtension('doctrine_migrations')) {
             $builder->prependExtensionConfig('doctrine_migrations', [
                 'migrations_paths' => [
@@ -444,6 +539,18 @@ final class HeidiBundle extends AbstractBundle
 
         $services->get(LogoutTokenSender::class)
             ->arg('$timeout', self::float(self::section($config, 'back_channel_logout'), 'timeout'));
+
+        $clientAuthentication = self::section($config, 'client_authentication');
+        $services->get(ClientAssertionValidator::class)
+            ->arg('$maximumLifetime', self::seconds($clientAuthentication, 'assertion_max_lifetime'))
+            ->arg('$leeway', self::seconds($clientAuthentication, 'assertion_leeway'));
+        $services->get(ClientKeySetProvider::class)
+            ->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
+        $services->get(ClientJwksFetcher::class)
+            ->arg('$timeout', self::float($clientAuthentication, 'jwks_timeout'))
+            ->arg('$maximumSize', self::integer($clientAuthentication, 'jwks_max_size'));
+        $services->get(ClientJwksCache::class)
+            ->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
 
         $services->get(ConfigurationClientRepository::class)
             ->arg('$tenantSlug', self::string($tenant, 'slug'))

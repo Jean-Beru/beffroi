@@ -13,12 +13,12 @@ use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Port\PasswordHasherInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
+use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
@@ -90,7 +90,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // Then
         static::assertSame('Demo application', $demo->name);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $demo->tokenEndpointAuthMethod);
+        static::assertSame('client_secret_basic', $demo->authenticationMethod->name());
         static::assertFalse($demo->requiresConsent);
         static::assertTrue($demo->requiresPkce);
     }
@@ -109,7 +109,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // Then
         static::assertFalse($legacy->requiresPkce);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretPost, $legacy->tokenEndpointAuthMethod);
+        static::assertSame('client_secret_post', $legacy->authenticationMethod->name());
     }
 
     /**
@@ -126,9 +126,9 @@ final class BundleBootTest extends DatabaseTestCase
         $demo = $clients->findByClientId(self::tenant(), 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
 
         // Then
-        static::assertNotNull($demo->secretHash);
-        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secretHash->algorithm);
-        static::assertTrue($hasher->verify($demo->secretHash, 'demo-secret-of-at-least-32-characters-long'));
+        static::assertInstanceOf(HashedClientSecret::class, $demo->secret);
+        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secret->hash->algorithm);
+        static::assertTrue($hasher->verify($demo->secret->hash, 'demo-secret-of-at-least-32-characters-long'));
     }
 
     #[Test]
@@ -142,7 +142,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // Then
         static::assertSame('native-app', $native->name);
-        static::assertSame(TokenEndpointAuthMethod::None, $native->tokenEndpointAuthMethod);
+        static::assertSame('none', $native->authenticationMethod->name());
         static::assertTrue($native->requiresConsent);
     }
 
@@ -224,7 +224,7 @@ final class BundleBootTest extends DatabaseTestCase
         $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
 
         // When
-        $key = $rotator->rotate(self::tenant(), SignatureAlgorithm::RS256, new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+        $key = $rotator->rotate(self::tenant(), Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
 
         // Then
         static::assertFileExists(self::keyStorage() . '/default/' . $key->kid . '.json');
@@ -239,7 +239,7 @@ final class BundleBootTest extends DatabaseTestCase
     {
         // Given
         $tenant = self::tenant();
-        $key = self::service('test.heidi.key_rotator', SigningKeyRotator::class)->rotate($tenant, SignatureAlgorithm::RS256, new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+        $key = self::service('test.heidi.key_rotator', SigningKeyRotator::class)->rotate($tenant, Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
 
         // When
         $published = json_decode(self::service('test.heidi.jwks', JwksHandler::class)->handle($tenant)->toJson(), true, 8, JSON_THROW_ON_ERROR);
@@ -276,7 +276,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // When
         try {
-            $authenticator->authenticate(self::tenant(), null, [
+            $authenticator->authenticate(self::tenant(), 'https://op.test/token', null, [
                 'client_id' => 'oidc-demo',
                 'client_secret' => 'wrong-secret-of-at-least-32-characters-long',
             ], new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));

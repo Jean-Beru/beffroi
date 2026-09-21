@@ -58,6 +58,27 @@ const DEV_USER_PROFILE = [
     '--country', 'United Kingdom',
 ];
 
+/**
+ * Where the client certificate of the development stack lives, on the machine and not in a container:
+ * the host is where "castor mtls" and anyone with a curl presents it from. Under var/, which the
+ * repository ignores; a certificate of a development stack is not a secret worth a vault, and it is not
+ * committed either.
+ */
+const DEV_MTLS_DIRECTORY = 'var/mtls';
+
+const DEV_MTLS_CLIENT_NAME = 'heidi-dev-mtls-client';
+
+/**
+ * The host of the listener that asks for a client certificate; MTLS_SERVER_NAME in compose.yaml is the
+ * same value, and the ordinary host of the OP is not this one (docs/mtls-at-the-edge.md).
+ */
+const DEV_MTLS_SERVER_NAME = 'mtls.op.localhost';
+
+/**
+ * Long enough not to be reissued in the middle of a spike, short enough to say it is a development one.
+ */
+const DEV_MTLS_CLIENT_DAYS = 90;
+
 const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -128,6 +149,10 @@ function provision(
         context()
             ->withInput($env['HEIDI_DEV_USER_PASSWORD'] . "\n"),
     );
+
+    io()
+        ->section('Client certificate');
+    provision_mtls_client();
 
     io()
         ->success('The OP is provisioned.');
@@ -384,4 +409,103 @@ function vault_cli(array $args, array $environment = []): Process
             ->withAllowFailure()
             ->withQuiet(),
     );
+}
+
+/**
+ * The certificate a test client presents to the listener that asks for one (issue #157,
+ * docs/mtls-at-the-edge.md): one self-signed certificate on a P-256 key, with its private key, written
+ * on the machine under var/mtls/. Self-signed because that is what the listener of the development stack
+ * asks for and accepts: it asks without requiring and validates no chain, and RFC 8705 §2.2
+ * ("self_signed_tls_client_auth") binds a token to exactly such a certificate. A deployment doing
+ * "tls_client_auth" (§2.1) trusts a certificate authority at the edge instead, which is configuration of
+ * the edge and not of this task.
+ *
+ * Replayed on every run and idempotent: an existing certificate that is still valid is kept, so that a
+ * client registered under its thumbprint survives a second "castor provision".
+ */
+function provision_mtls_client(): void
+{
+    $directory = getcwd() . '/' . DEV_MTLS_DIRECTORY;
+    $certificateFile = $directory . '/client.crt';
+    $keyFile = $directory . '/client.key';
+    $certificate = provision_mtls_valid_certificate($certificateFile, $keyFile);
+    if ($certificate === null) {
+        if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
+            io()->error(sprintf('Cannot create %s.', $directory));
+            exit(1);
+        }
+        $certificate = provision_mtls_issue($certificateFile, $keyFile);
+        io()
+            ->text(sprintf('Issued %s, self-signed, valid %d days.', DEV_MTLS_DIRECTORY . '/client.crt', DEV_MTLS_CLIENT_DAYS));
+    } else {
+        io()
+            ->text(sprintf('%s is there and still valid; it is kept.', DEV_MTLS_DIRECTORY . '/client.crt'));
+    }
+    io()
+        ->text(sprintf('Thumbprint (RFC 8705 §3.1, "x5t#S256"): <info>%s</info>. "castor mtls" presents it to https://%s.', mtls_thumbprint($certificate), DEV_MTLS_SERVER_NAME));
+}
+
+/**
+ * The certificate already there, when it is there with its key and has not expired; null when anything
+ * of that is missing, in which case a new one is issued over it.
+ */
+function provision_mtls_valid_certificate(string $certificateFile, string $keyFile): ?string
+{
+    if (! is_file($certificateFile) || ! is_file($keyFile)) {
+        return null;
+    }
+    $certificate = (string) file_get_contents($certificateFile);
+    $parsed = openssl_x509_parse($certificate);
+    if ($parsed === false || ! is_int($parsed['validTo_time_t'] ?? null) || $parsed['validTo_time_t'] < time()) {
+        return null;
+    }
+
+    return $certificate;
+}
+
+/**
+ * @return string the certificate, PEM
+ */
+function provision_mtls_issue(string $certificateFile, string $keyFile): string
+{
+    $key = openssl_pkey_new([
+        'private_key_type' => \OPENSSL_KEYTYPE_EC,
+        'curve_name' => 'prime256v1',
+    ]);
+    $request = $key === false ? false : openssl_csr_new([
+        'commonName' => DEV_MTLS_CLIENT_NAME,
+    ], $key, [
+        'digest_alg' => 'sha256',
+    ]);
+    $signed = $request === false ? false : openssl_csr_sign($request, null, $key, DEV_MTLS_CLIENT_DAYS, [
+        'digest_alg' => 'sha256',
+    ], random_int(1, \PHP_INT_MAX));
+    if ($key === false || $signed === false || ! openssl_x509_export($signed, $certificate) || ! openssl_pkey_export($key, $privateKey)) {
+        io()->error(sprintf('Cannot issue a client certificate: %s', openssl_error_string() ?: 'no reason given by OpenSSL'));
+        exit(1);
+    }
+    // The private key of a client, even a development one, is readable by its owner and by nobody else.
+    file_put_contents($keyFile, $privateKey);
+    chmod($keyFile, 0o600);
+    file_put_contents($certificateFile, $certificate);
+
+    return $certificate;
+}
+
+/**
+ * RFC 8705 §3.1: the SHA-256 thumbprint of the DER encoding of a certificate, base64url without padding,
+ * computed here from its PEM the way Heidi\Bundle\Http\Tls\ClientCertificate computes it from what the
+ * edge hands over. Two computations of the same thing, on two sides of the stack, is what "castor mtls"
+ * compares.
+ */
+function mtls_thumbprint(string $pem): string
+{
+    $body = (string) preg_replace('/\s+/', '', (string) preg_replace('/-----[^-]+-----/', '', $pem));
+    $der = base64_decode($body, true);
+    if ($der === false || $der === '') {
+        io()->error('The client certificate of the development stack is not a PEM certificate.');
+        exit(1);
+    }
+
+    return rtrim(strtr(base64_encode(hash('sha256', $der, true)), '+/', '-_'), '=');
 }

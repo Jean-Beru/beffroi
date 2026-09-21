@@ -14,10 +14,10 @@ use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use Symfony\Component\Uid\Uuid;
@@ -125,7 +125,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     public function aCodeOfAnUnregisteredClientIsNotFound(): void
     {
         // Given
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
         $code = AuthorizationCode::generate();
         self::codes()->save(self::code($code, $ghost, self::session(self::user()), null));
         self::reload();
@@ -182,7 +182,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
         self::used($session, $ghost, 'of-the-ghost');
         self::reload();
 

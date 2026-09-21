@@ -11,6 +11,7 @@ castor start                       # https://op.localhost, PostgreSQL, RabbitMQ
 castor provision                   # the tenant, a signing key, the user "alice" with a profile; see below
 castor demo --check                # oidc-demo (Symfony oidc_login) against the OP; see below
 castor demo --rotate               # a whole key rotation against oidc-demo, about six minutes; see below
+castor mtls                        # the client certificate from the edge to PHP; see mtls-at-the-edge.md
 ```
 
 Symfony 8.2 is not released yet: `minimum-stability: dev` pulls the `8.2.x-dev` branches, including `symfony/key-management`.
@@ -68,6 +69,7 @@ The firewall of the demo: `client_authentication: { client_secret_post: ... }` (
 | `vault` | http://localhost:8200 | `castor start --kms vault`; HashiCorp Vault in dev mode, root token `dev-root-token`, initialised at every start by `docker/vault/init.sh` (Transit key `heidi-default`, policy `heidi-op`); see above |
 | `floci` | http://localhost:4566 | `castor start --kms aws`; Floci 2.1.0 (AWS emulator, its KMS alone is used), credentials `test` / `test`, region `eu-west-3`, initialised at every start by `docker/floci/init.sh` (key `alias/heidi-default`); see above |
 | conformance suite | https://localhost:8443 | `castor start --conformance`, then `castor conformance` runs the plan; see [Conformance suite](conformance-suite.md) |
+| `op`, second host | https://mtls.op.localhost | The same application on the same listener, behind a TLS listener that asks for a client certificate and accepts a connection without one; everything mutual TLS is built on it. `castor mtls` measures it, see [The client certificate at the edge](mtls-at-the-edge.md) |
 
 To make your browser trust `https://op.localhost`, export Caddy's root certificate and install it on your machine:
 

@@ -23,8 +23,8 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Event\AuthorizationCodeReplayed;
 use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -34,6 +34,7 @@ use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -79,7 +80,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->alice = Fixtures::user($this->tenant);
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->publicClient = Clients::public($this->tenant);
-        $this->offlineClient = new Client($this->tenant, 'mobile', 'Mobile application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://mobile.example/callback')], grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
+        $this->offlineClient = new Client($this->tenant, 'mobile', 'Mobile application', Methods::none(), null, [new RedirectUri('https://mobile.example/callback')], grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
         $this->context = Fixtures::context($this->clock->now());
@@ -309,7 +310,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     public function aClientNotRegisteredForTheGrantGetsNoRefreshTokenEvenWithOfflineAccess(): void
     {
         // Given
-        $codeOnly = new Client($this->tenant, 'code-only', 'Code only', TokenEndpointAuthMethod::ClientSecretBasic, new FakePasswordHasher()->hash(Clients::SECRET), [new RedirectUri('https://demo.localhost/login/check')], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
+        $codeOnly = new Client($this->tenant, 'code-only', 'Code only', Methods::clientSecretBasic(), new HashedClientSecret(new FakePasswordHasher()->hash(Clients::SECRET)), [new RedirectUri('https://demo.localhost/login/check')], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
         $this->code('the-code', $codeOnly, ['openid', 'offline_access']);
 
         // When

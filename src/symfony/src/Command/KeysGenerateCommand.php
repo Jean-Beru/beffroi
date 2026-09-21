@@ -8,7 +8,8 @@ use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
+use Heidi\Core\Exception\UnsupportedAlgorithmException;
+use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Port\SigningKeyRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -34,13 +35,14 @@ final readonly class KeysGenerateCommand
         private SigningKeyRepositoryInterface $keys,
         private SigningKeyRotator $rotator,
         private RequestContextFactory $contexts,
+        private SignatureAlgorithmsInterface $algorithms,
     ) {
     }
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Option(description: 'The JWS algorithm the key signs with.')]
-        SignatureAlgorithm $algorithm = SignatureAlgorithm::RS256,
+        #[Option(description: 'The JWS algorithm the key signs with, among those the provider is wired with; its default when none is named.')]
+        ?string $algorithm = null,
     ): int {
         try {
             $tenant = $this->tenants->provide();
@@ -50,15 +52,23 @@ final readonly class KeysGenerateCommand
             return Command::FAILURE;
         }
 
-        $previous = $this->keys->findActive($tenant, $algorithm);
-        $key = $this->rotator->rotate($tenant, $algorithm, $this->contexts->fromConsole(self::NAME));
+        try {
+            $signsWith = $algorithm === null ? $this->algorithms->defaultAlgorithm() : $this->algorithms->named($algorithm);
+        } catch (UnsupportedAlgorithmException $exception) {
+            $io->error($exception->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        $previous = $this->keys->findActive($tenant, $signsWith);
+        $key = $this->rotator->rotate($tenant, $signsWith, $this->contexts->fromConsole(self::NAME));
 
         $io->definitionList(
             [
                 'Key identifier' => $key->kid,
             ],
             [
-                'Algorithm' => $key->algorithm->value,
+                'Algorithm' => $key->algorithm->name(),
             ],
             [
                 'Status' => $key->status->value,

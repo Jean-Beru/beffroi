@@ -67,7 +67,7 @@ final readonly class KeysActivateCommand
                 'Key identifier' => $key->kid,
             ],
             [
-                'Algorithm' => $key->algorithm->value,
+                'Algorithm' => $key->algorithm->name(),
             ],
             [
                 'Status' => $key->status->value,

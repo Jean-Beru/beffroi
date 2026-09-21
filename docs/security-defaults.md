@@ -10,10 +10,11 @@ The OP does not offer the option to do it wrong. The rules of RFC 9700, OAuth 2.
 - No outbound request ever follows a redirect.
 - No boolean coming from a third party is ever cast: `filter_var()` or a strict comparison, never `(bool)`.
 - Refresh tokens rotate on every use; reuse revokes the family; logout revokes the session's tokens.
-- No HMAC algorithm for ID tokens.
+- No HMAC algorithm for ID tokens, and no `none` (RFC 8725 §3.1): the provider signs with RS256, PS256, ES256 or EdDSA over Ed25519, one key per algorithm, and a client registers one of the names the discovery document announces or takes the default.
 - Errors before the client and redirect URI are validated are shown to the user, never redirected.
 - Interaction pages send `X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'`, `Referrer-Policy: no-referrer`; token, UserInfo, introspection and revocation responses send `Cache-Control: no-store`.
 - Bearer tokens are read from the `Authorization` header or the form body, never from the query string.
+- A client certificate is read from the variable the TLS listener fills from the handshake it carried out, never from a header; a request carrying one in `Ssl-Client-Cert`, `X-Ssl-Client-Cert`, `X-Client-Cert` or `X-Forwarded-Client-Cert` is refused rather than served without it, because nothing in front of the application sets one ([The client certificate at the edge](mtls-at-the-edge.md)).
 
 When a rule is a choice rather than a requirement of the specification, it is documented with its reason. When it blocks a legitimate case, a named and bounded exception is added, never a global switch. There is no `insecure_*` option and no "compatibility mode".
 
@@ -32,6 +33,7 @@ Choices that are not specification requirements:
 | Locale outside the URL | The RP does not know the user's language; an interaction URL must not vary with it |
 | No synchronous write outside protocol needs | An authentication request never waits for an enrichment, a log or a purge |
 | Two route planes | An attack on login must not stop `/token` and `/jwks` from answering |
+| A certificate in a header is refused, not ignored | Ignoring it would let a deployment put behind a proxy that forwards one run for months before anyone noticed which of the two the provider believed; the configuration that makes a header trustworthy is part of what is delivered, and there is none |
 | Five attempts a minute on a user's password, and five on a user's code, counted per user before anything is verified, never per address | A password and a six-digit code are guessed online one attempt at a time; an identity provider serves whole organisations behind one address, so a limiter keyed by the address (Symfony's `login_throttling`) refuses them as a whole. A correct password empties the count; an unknown username names no user and is counted nowhere, the decoy hash making it cost a wrong password all the same; a refused attempt is told "failed" like any other |
 
 Report a vulnerability privately: see `SECURITY.md` in the repository.

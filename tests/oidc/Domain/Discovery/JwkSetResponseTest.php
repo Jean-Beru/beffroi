@@ -6,8 +6,8 @@ namespace Heidi\Oidc\Tests\Domain\Discovery;
 
 use function array_keys;
 use Heidi\Core\Domain\Key\PublicKeySet;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use Heidi\Oidc\Domain\Discovery\JwkSetResponse;
@@ -110,7 +110,7 @@ final class JwkSetResponseTest extends TestCase
 
     private static function key(): SigningKey
     {
-        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
         $key->activate(Fixtures::now());
 
         return $key;

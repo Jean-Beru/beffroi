@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Application\Introspection;
 
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\JwsSignerInterface;
+use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\TokenRequest;
@@ -17,6 +17,7 @@ use Heidi\Oidc\Domain\Token\JwtPayload;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Exception\OAuth2Exception;
+use Heidi\Oidc\Port\EndpointLocatorInterface;
 
 /**
  * The introspection endpoint (RFC 7662 §2, architecture §4.12). The caller is a confidential client (§2.1);
@@ -27,9 +28,10 @@ final readonly class IntrospectionHandler
 {
     public function __construct(
         private ClientAuthenticator $clients,
+        private EndpointLocatorInterface $endpoints,
         private AccessTokenInspector $tokens,
         private JwsSignerInterface $signer,
-        private SignatureAlgorithm $algorithm = SignatureAlgorithm::RS256,
+        private SignatureAlgorithmsInterface $algorithms,
     ) {
     }
 
@@ -41,7 +43,7 @@ final readonly class IntrospectionHandler
      */
     public function handle(Tenant $tenant, ?string $authorizationHeader, array $parameters, RequestContext $context, bool $signed): IntrospectionResponse
     {
-        $caller = $this->clients->authenticate($tenant, $authorizationHeader, $parameters, $context);
+        $caller = $this->clients->authenticate($tenant, $this->endpoints->locate($tenant)->introspection, $authorizationHeader, $parameters, $context);
         if ($caller->isPublic()) {
             throw new InvalidClientException('The introspection endpoint requires client authentication (RFC 7662 section 2.1); a public client has none.');
         }
@@ -76,7 +78,7 @@ final readonly class IntrospectionHandler
             'token_introspection' => $response->members,
         ]);
 
-        return $response->signed($this->signer->sign($tenant, $this->algorithm, $payload, [
+        return $response->signed($this->signer->sign($tenant, $this->algorithms->defaultAlgorithm(), $payload, [
             'typ' => IntrospectionResponse::JWT_TYPE,
         ]));
     }

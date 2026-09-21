@@ -7,10 +7,10 @@ namespace Heidi\Core\Tests\Domain\Key;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\PublicKeySet;
-use Heidi\Core\Domain\Key\SignatureAlgorithm;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\LogicException;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -44,7 +44,7 @@ final class SigningKeyTest extends TestCase
     public function aNewKeySaysWhenItsActivationIsDue(): void
     {
         // When
-        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
+        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
 
         // Then
         static::assertEquals(Fixtures::now()->modify('+6 minutes'), $key->activationDueAt);
@@ -58,7 +58,7 @@ final class SigningKeyTest extends TestCase
         $this->expectExceptionMessageIs('The activation of a key is due when it is created at the earliest.');
 
         // When
-        new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('-1 second'));
+        new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('-1 second'));
     }
 
     #[Test]
@@ -279,7 +279,7 @@ final class SigningKeyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new SigningKey($kid, Fixtures::tenant(), SignatureAlgorithm::RS256, $publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        new SigningKey($kid, Fixtures::tenant(), Algorithms::rs256(), $publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
     }
 
     /**
@@ -321,7 +321,7 @@ final class SigningKeyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, '', Fixtures::now(), Fixtures::now());
+        new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, '', Fixtures::now(), Fixtures::now());
     }
 
     /**
@@ -395,12 +395,12 @@ final class SigningKeyTest extends TestCase
      */
     private static function key(?string $kid = null, ?array $publicJwk = null): SigningKey
     {
-        return new SigningKey($kid ?? Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, $publicJwk ?? Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        return new SigningKey($kid ?? Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), $publicJwk ?? Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
     }
 
     private static function stagedKey(DateTimeImmutable $activationDueAt): SigningKey
     {
-        return new SigningKey(Keys::pair()->kid, Fixtures::tenant(), SignatureAlgorithm::RS256, Keys::pair()->publicJwk, 'sealed', Fixtures::now(), $activationDueAt);
+        return new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), $activationDueAt);
     }
 
     private static function activeKey(): SigningKey
