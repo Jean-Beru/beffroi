@@ -18,7 +18,7 @@ use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
+use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
@@ -90,7 +90,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // Then
         static::assertSame('Demo application', $demo->name);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $demo->tokenEndpointAuthMethod);
+        static::assertSame('client_secret_basic', $demo->authenticationMethod->name());
         static::assertFalse($demo->requiresConsent);
         static::assertTrue($demo->requiresPkce);
     }
@@ -109,7 +109,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // Then
         static::assertFalse($legacy->requiresPkce);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretPost, $legacy->tokenEndpointAuthMethod);
+        static::assertSame('client_secret_post', $legacy->authenticationMethod->name());
     }
 
     /**
@@ -126,9 +126,9 @@ final class BundleBootTest extends DatabaseTestCase
         $demo = $clients->findByClientId(self::tenant(), 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
 
         // Then
-        static::assertNotNull($demo->secretHash);
-        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secretHash->algorithm);
-        static::assertTrue($hasher->verify($demo->secretHash, 'demo-secret-of-at-least-32-characters-long'));
+        static::assertInstanceOf(HashedClientSecret::class, $demo->secret);
+        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secret->hash->algorithm);
+        static::assertTrue($hasher->verify($demo->secret->hash, 'demo-secret-of-at-least-32-characters-long'));
     }
 
     #[Test]
@@ -142,7 +142,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // Then
         static::assertSame('native-app', $native->name);
-        static::assertSame(TokenEndpointAuthMethod::None, $native->tokenEndpointAuthMethod);
+        static::assertSame('none', $native->authenticationMethod->name());
         static::assertTrue($native->requiresConsent);
     }
 
@@ -276,7 +276,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // When
         try {
-            $authenticator->authenticate(self::tenant(), null, [
+            $authenticator->authenticate(self::tenant(), 'https://op.test/token', null, [
                 'client_id' => 'oidc-demo',
                 'client_secret' => 'wrong-secret-of-at-least-32-characters-long',
             ], new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));

@@ -9,12 +9,18 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
+use Heidi\Oidc\Domain\Client\ClientJwks;
+use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
+use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -33,8 +39,9 @@ final class ClientTest extends TestCase
 
         // Then
         static::assertFalse($client->isPublic());
-        static::assertSame($hash, $client->secretHash);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $client->tokenEndpointAuthMethod);
+        static::assertInstanceOf(HashedClientSecret::class, $client->secret);
+        static::assertSame($hash, $client->secret->hash);
+        static::assertSame('client_secret_basic', $client->authenticationMethod->name());
     }
 
     #[Test]
@@ -121,7 +128,7 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessageIs('The client "spa" is public and must use PKCE (RFC 9700 section 2.1.1): requires_pkce cannot be false.');
 
         // When
-        new Client(Fixtures::tenant(), 'spa', 'Single page application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://spa.example/callback')], requiresPkce: false);
+        new Client(Fixtures::tenant(), 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], requiresPkce: false);
     }
 
     /**
@@ -135,7 +142,7 @@ final class ClientTest extends TestCase
 
         // Then
         static::assertTrue($client->isPublic());
-        static::assertNull($client->secretHash);
+        static::assertNull($client->secret);
         static::assertSame([GrantType::AuthorizationCode], $client->grantTypes);
         static::assertEquals([Scope::openid()], $client->allowedScopes);
     }
@@ -223,7 +230,7 @@ final class ClientTest extends TestCase
             Fixtures::tenant(),
             'twice',
             'Twice',
-            TokenEndpointAuthMethod::None,
+            Methods::none(),
             null,
             [new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb2')],
             [new RedirectUri('https://rp.example/'), new RedirectUri('https://rp.example/')],
@@ -263,70 +270,134 @@ final class ClientTest extends TestCase
         $uris = [new RedirectUri('https://rp.example/cb')];
 
         yield 'empty client id' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, '', 'Name', TokenEndpointAuthMethod::None, null, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, '', 'Name', Methods::none(), null, $uris),
             'visible ASCII',
         ];
         yield 'client id with a trailing space' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo ', 'Name', TokenEndpointAuthMethod::None, null, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo ', 'Name', Methods::none(), null, $uris),
             'visible ASCII',
         ];
         yield 'client id with a control character' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, "de\tmo", 'Name', TokenEndpointAuthMethod::None, null, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, "de\tmo", 'Name', Methods::none(), null, $uris),
             'visible ASCII',
         ];
         yield 'client id beyond ASCII (RFC 6749 appendix A.1)' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'démo', 'Name', TokenEndpointAuthMethod::None, null, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'démo', 'Name', Methods::none(), null, $uris),
             'visible ASCII',
         ];
         yield 'empty name' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', '', TokenEndpointAuthMethod::None, null, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', '', Methods::none(), null, $uris),
             'has a name',
         ];
         yield 'client_secret_basic without a secret' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', TokenEndpointAuthMethod::ClientSecretBasic, null, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::clientSecretBasic(), null, $uris),
             'needs a secret',
         ];
         yield 'client_secret_post without a secret' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', TokenEndpointAuthMethod::ClientSecretPost, null, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::clientSecretPost(), null, $uris),
             'needs a secret',
         ];
         yield 'none with a secret (RFC 6749 §2.1)' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', TokenEndpointAuthMethod::None, $hash, $uris),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::none(), new HashedClientSecret($hash), $uris),
             'cannot hold a secret',
         ];
         yield 'no redirect URI (RFC 6749 §3.1.2.2)' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', TokenEndpointAuthMethod::None, null, []),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::none(), null, []),
             'at least one redirect URI',
         ];
         yield 'no grant type' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', TokenEndpointAuthMethod::None, null, $uris, [], []),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::none(), null, $uris, [], []),
             'at least one grant type',
         ];
         yield 'refresh_token alone' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', TokenEndpointAuthMethod::None, null, $uris, [], [GrantType::RefreshToken]),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::none(), null, $uris, [], [GrantType::RefreshToken]),
             'requires authorization_code',
         ];
         yield 'no scope' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', TokenEndpointAuthMethod::None, null, $uris, [], [GrantType::AuthorizationCode], []),
+            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::none(), null, $uris, [], [GrantType::AuthorizationCode], []),
             'at least one scope',
         ];
     }
 
+    /**
+     * RFC 6749 §2.1: "none" is the method of a public client and the only one that authenticates nothing.
+     */
     #[Test]
     #[DataProvider('provideAuthenticationMethods')]
-    public function theAuthenticationMethodsSayWhetherTheyUseASecret(TokenEndpointAuthMethod $method, bool $usesSecret): void
+    public function aMethodSaysWhetherItAuthenticatesTheClient(ClientAuthenticationMethodInterface $method, bool $authenticates): void
     {
         // When / Then
-        static::assertSame($usesSecret, $method->usesSecret());
+        static::assertSame($authenticates, $method->authenticatesClient());
     }
 
     /**
-     * @return iterable<string, array{TokenEndpointAuthMethod, bool}>
+     * @return iterable<string, array{ClientAuthenticationMethodInterface, bool}>
      */
     public static function provideAuthenticationMethods(): iterable
     {
-        yield 'client_secret_basic' => [TokenEndpointAuthMethod::ClientSecretBasic, true];
-        yield 'client_secret_post' => [TokenEndpointAuthMethod::ClientSecretPost, true];
-        yield 'none' => [TokenEndpointAuthMethod::None, false];
+        yield 'client_secret_basic' => [Methods::clientSecretBasic(), true];
+        yield 'client_secret_post' => [Methods::clientSecretPost(), true];
+        yield 'private_key_jwt' => [Methods::privateKeyJwt(), true];
+        yield 'client_secret_jwt' => [Methods::clientSecretJwt(), true];
+        yield 'none' => [Methods::none(), false];
+    }
+
+    /**
+     * OIDC Core §9: a method that verifies a signature of the client needs the keys of the client, and a
+     * registration that publishes none cannot work.
+     */
+    #[Test]
+    public function aClientThatSignsItsAssertionsPublishesItsKeys(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('publishes its keys in "jwks" or behind a "jwks_uri"');
+
+        // When
+        new Client(Fixtures::tenant(), 'key-client', 'Key client', Methods::privateKeyJwt(), null, [new RedirectUri('https://key.example/callback')]);
+    }
+
+    /**
+     * RFC 7591 §2: "jwks" and "jwks_uri" are exclusive.
+     */
+    #[Test]
+    public function aClientPublishesItsKeysOneWayOrTheOther(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('either inline in "jwks" or behind a "jwks_uri", never both');
+
+        // When
+        new Client(Fixtures::tenant(), 'key-client', 'Key client', Methods::privateKeyJwt(), null, [new RedirectUri('https://key.example/callback')], jwks: ClientAssertions::publishedKeys(), jwksUri: new ClientUri('https://key.example/jwks'));
+    }
+
+    /**
+     * OIDC Core §9: "client_secret_basic" is shown the secret and keeps a hash of it;
+     * "client_secret_jwt" computes a MAC with it and keeps the secret. A secret kept for one is not a
+     * secret the other verifies against.
+     */
+    #[Test]
+    public function aSecretIsKeptInTheShapeTheRegisteredMethodVerifiesAgainst(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('is not kept in a shape client_secret_basic verifies against');
+
+        // When
+        new Client(Fixtures::tenant(), 'demo', 'Name', Methods::clientSecretBasic(), new SharedClientSecret(Clients::SECRET), [new RedirectUri('https://rp.example/cb')]);
+    }
+
+    /**
+     * A client that publishes keys without registering a method that uses them is not refused: RFC 7591
+     * §2 lets a client publish keys for more than one purpose.
+     */
+    #[Test]
+    public function aClientMayPublishKeysWithoutAuthenticatingWithThem(): void
+    {
+        // When
+        $client = new Client(Fixtures::tenant(), 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], jwks: ClientAssertions::publishedKeys());
+
+        // Then
+        static::assertInstanceOf(ClientJwks::class, $client->jwks);
     }
 }

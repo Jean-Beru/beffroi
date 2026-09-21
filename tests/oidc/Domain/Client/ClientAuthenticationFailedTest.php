@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Domain\Client;
 
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use PHPUnit\Framework\Attributes\Test;
@@ -24,7 +23,7 @@ final class ClientAuthenticationFailedTest extends TestCase
         $context = Fixtures::context();
 
         // When
-        $event = new ClientAuthenticationFailed(Fixtures::now(), $tenant, $context, ClientAuthenticationFailureReason::InvalidSecret, 'oidc-demo', TokenEndpointAuthMethod::ClientSecretBasic);
+        $event = new ClientAuthenticationFailed(Fixtures::now(), $tenant, $context, ClientAuthenticationFailureReason::InvalidSecret, 'oidc-demo', 'client_secret_basic');
 
         // Then
         static::assertEquals(Fixtures::now(), $event->occurredAt);
@@ -32,6 +31,6 @@ final class ClientAuthenticationFailedTest extends TestCase
         static::assertSame($context, $event->context);
         static::assertSame('invalid_secret', $event->reason->value);
         static::assertSame('oidc-demo', $event->clientId);
-        static::assertSame(TokenEndpointAuthMethod::ClientSecretBasic, $event->method);
+        static::assertSame('client_secret_basic', $event->method);
     }
 }

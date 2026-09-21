@@ -9,12 +9,12 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationErrorResponse;
 use Heidi\Oidc\Domain\Authorization\RedirectTarget;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\TokenEndpointAuthMethod;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -66,7 +66,7 @@ final class AuthorizationErrorResponseTest extends TestCase
     public function itCarriesTheStateAsTheClientSentIt(): void
     {
         // Given
-        $client = new Client(Fixtures::tenant(), 'app', 'Application', TokenEndpointAuthMethod::None, null, [new RedirectUri('https://rp.example/cb?app=1')]);
+        $client = new Client(Fixtures::tenant(), 'app', 'Application', Methods::none(), null, [new RedirectUri('https://rp.example/cb?app=1')]);
         $target = new RedirectTarget($client, new RedirectUri('https://rp.example/cb?app=1'), 'a state with spaces & ampersand');
 
         // When

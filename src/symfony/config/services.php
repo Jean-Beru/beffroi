@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Heidi\Bundle\Client\ClientAssertionReplayGuard;
+use Heidi\Bundle\Client\ClientJwksCache;
+use Heidi\Bundle\Client\ClientJwksFetcher;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
@@ -124,7 +127,15 @@ use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Client\ClientAssertionValidator;
+use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
+use Heidi\Oidc\Application\Client\ClientKeySetProvider;
+use Heidi\Oidc\Application\Client\Method\ClientSecretBasic;
+use Heidi\Oidc\Application\Client\Method\ClientSecretJwt;
+use Heidi\Oidc\Application\Client\Method\ClientSecretPost;
+use Heidi\Oidc\Application\Client\Method\NoAuthentication;
+use Heidi\Oidc\Application\Client\Method\PrivateKeyJwt;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\EndSession\BackChannelLogout;
@@ -149,11 +160,21 @@ use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionKeyVerifier;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionReader;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
+use Heidi\Oidc\Port\ClientAssertionKeyVerifierInterface;
+use Heidi\Oidc\Port\ClientAssertionReaderInterface;
+use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Heidi\Oidc\Port\ClientAssertionSecretVerifierInterface;
+use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
+use Heidi\Oidc\Port\ClientJwksCacheInterface;
+use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
@@ -165,8 +186,11 @@ use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
+use Jose\Component\Core\AlgorithmManager;
+use Jose\Component\Signature\Algorithm\HS256;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 use Webauthn\MetadataService\CertificateChain\CertificateChainValidator;
@@ -411,7 +435,57 @@ return static function (ContainerConfigurator $container): void {
     // The module: clients
     $services->set(ConfigurationClientRepository::class);
     $services->alias(ClientRepositoryInterface::class, ConfigurationClientRepository::class);
+    // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
+    // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
+    // take and what the discovery document announces, never an enumeration kept beside them (issue #98).
+    // The first tagged one is what a client that names none registers. FAPI 2.0 §5.2.2 takes
+    // private_key_jwt and mTLS alone: a deployment that follows the profile drops the three lines that
+    // prove a shared secret, and the provider stops taking them and stops announcing them.
+    $services->set(ClientSecretBasic::class)
+        ->tag('heidi.client_authentication_method');
+    $services->set(ClientSecretPost::class)
+        ->tag('heidi.client_authentication_method');
+    $services->set(PrivateKeyJwt::class)
+        ->tag('heidi.client_authentication_method');
+    $services->set(ClientSecretJwt::class)
+        ->tag('heidi.client_authentication_method');
+    $services->set(NoAuthentication::class)
+        ->tag('heidi.client_authentication_method');
+    $services->set(ClientAuthenticationMethods::class)
+        ->args([tagged_iterator('heidi.client_authentication_method')]);
+    $services->alias(ClientAuthenticationMethodsInterface::class, ClientAuthenticationMethods::class);
     $services->set(ClientAuthenticator::class);
+    // what reads a client assertion and what verifies it (RFC 7523 §2.2): against the keys the client
+    // publishes, with the algorithms the provider is wired with, or against the secret it registered,
+    // with HS256 and nothing else (RFC 8725 §3.1)
+    $services->set(JwtLibraryClientAssertionReader::class);
+    $services->alias(ClientAssertionReaderInterface::class, JwtLibraryClientAssertionReader::class);
+    $services->set('heidi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)
+        ->factory([service(JoseSignatureAlgorithms::class), 'manager']);
+    $services->set(JwtLibraryClientAssertionKeyVerifier::class)
+        ->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
+    $services->alias(ClientAssertionKeyVerifierInterface::class, JwtLibraryClientAssertionKeyVerifier::class);
+    $services->set('heidi.oidc.client_assertion.mac_algorithms', AlgorithmManager::class)
+        ->args([[inline_service(HS256::class)]]);
+    $services->set(JwtLibraryClientAssertionSecretVerifier::class)
+        ->args([service('heidi.oidc.client_assertion.mac_algorithms')]);
+    $services->alias(ClientAssertionSecretVerifierInterface::class, JwtLibraryClientAssertionSecretVerifier::class);
+    $services->set(ClientAssertionValidator::class);
+    $services->set(ClientKeySetProvider::class);
+    // the keys of a client read back over HTTPS, kept in a pool the workers share, and the "jti" of the
+    // assertions already seen kept until they expire
+    $services->set(ClientJwksFetcher::class);
+    $services->alias(ClientJwksFetcherInterface::class, ClientJwksFetcher::class);
+    $services->set(ClientJwksCache::class)
+        ->args([
+            '$cache' => service('heidi.client_keys'),
+        ]);
+    $services->alias(ClientJwksCacheInterface::class, ClientJwksCache::class);
+    $services->set(ClientAssertionReplayGuard::class)
+        ->args([
+            '$cache' => service('heidi.client_assertions'),
+        ]);
+    $services->alias(ClientAssertionReplayGuardInterface::class, ClientAssertionReplayGuard::class);
 
     // The module: subject and claims
     $services->set(PublicSubjectIdentifierResolver::class);
