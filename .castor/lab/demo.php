@@ -103,6 +103,10 @@ function demo(
         description: 'The two criteria of spike 5 judged at the client (issue #167): oidc-demo signs in as before on a provider serving PAR, request objects, JARM, DPoP and mTLS, then its resource server is handed a token bound by DPoP, on both shapes of access token, and refuses the same token to whoever holds it without the key',
     )]
     bool $dpop = false,
+    #[AsOption(
+        description: 'The ladder of demonstration clients (issue #201): the five rungs played one after the other, from a client that puts the whole authorization request in the URL of the browser to one that pushes it signed, reads a signed response, holds a bound token and opens an encrypted ID token',
+    )]
+    bool $ladder = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -199,6 +203,9 @@ function demo(
         }
         demo_dpop_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $env['OIDC_DEMO_OPAQUE_SECRET'], $ca);
     }
+    if ($ladder) {
+        demo_ladder_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
     if ($logoutOthers) {
         if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
             io()->error('OIDC_DEMO_SECOND_SECRET is empty: run "castor provision" first.');
@@ -235,7 +242,7 @@ function demo_ladder_values(array $env): array
         foreach (is_array($set) && is_array($set['keys'] ?? null) ? $set['keys'] : [] as $key) {
             $use = is_array($key) ? (string) ($key['use'] ?? '') : '';
             if (isset($variables[$use])) {
-                $values[$variables[$use]] = base64_encode((string) json_encode($key, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES));
+                $values[$variables[$use]] = base64_encode(json_encode($key, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES));
             }
         }
     }
@@ -1100,6 +1107,274 @@ function demo_revoke(string $issuer, string $ca, string $clientId, string $secre
     ]);
 
     return [$response->getStatusCode(), (array) json_decode($response->getContent(false), true)];
+}
+
+/**
+ * The rungs of the ladder, as the demonstration serves them under /c/<rung>/ (issue #201), and what tells
+ * one from the next: the client it registered as, and the way the authorization response comes back.
+ */
+const DEMO_LADDER_RUNGS = [
+    'basic' => [
+        'client' => DEMO_CLIENT_ID,
+        'response' => 'query',
+        'adds' => 'client_secret_basic, everything in the query, an at+jwt verified offline',
+    ],
+    'opaque' => [
+        'client' => DEMO_OPAQUE_CLIENT_ID,
+        'response' => 'query',
+        'adds' => 'an opaque access token, which says nothing to whoever reads it',
+    ],
+    'form-post' => [
+        'client' => 'demo-form-post',
+        'response' => 'form_post',
+        'adds' => 'client_secret_post, and the response posted back instead of travelling in the URL',
+    ],
+    'key' => [
+        'client' => 'demo-key',
+        'response' => 'query',
+        'adds' => 'private_key_jwt: the client proves a key and holds no secret at all',
+        // The provider refuses the assertion of this rung, and says why: "oidc_login" names the token
+        // endpoint as its audience (OIDC Core §9), where this provider takes the issuer and nothing else
+        // (RFC 7523 §3, FAPI 2.0 §5.2.2). The walk asserts the refusal rather than quieting it, and the
+        // day the decision of the issue lands, this line is deleted and the rung is green or red for
+        // real.
+        'known' => 'https://github.com/Spomky-Labs/heidi/issues/204',
+    ],
+    'fapi' => [
+        'client' => 'demo-fapi',
+        'response' => 'jwt',
+        'adds' => 'the request pushed and signed, the response signed, the token bound, the documents encrypted',
+    ],
+];
+
+/**
+ * The ladder of demonstration clients (issue #201), played rung by rung, one request at a time.
+ *
+ * Every rung signs the same user in and serves the same page; what changes is what the client registered
+ * and what travelled, which is what this walk looks at: the authorization request of the last rung
+ * carries nothing but a client and a URI, its response is one signed parameter, its ID token is a JWE,
+ * and its access token names the key it is bound to, where the first rung has all of it in the open.
+ */
+function demo_ladder_check(string $issuer, string $password, string $ca): void
+{
+    io()->section('The ladder of demonstration clients');
+    $verified = [];
+
+    foreach (DEMO_LADDER_RUNGS as $slug => $rung) {
+        $cookies = [];
+        $profile = DEMO_URL . '/c/' . $slug . '/profile';
+
+        // the rung starts its flow, and what it puts in the URL of the browser is the first thing that
+        // tells it from the others
+        [$status, $location] = demo_request($cookies, $ca, 'GET', $profile);
+        demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf(
+            '%s: the page of the rung sends the browser to the authorization endpoint (got %d %s)',
+            $slug,
+            $status,
+            $location,
+        ));
+        parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
+        demo_expect(($authorization['client_id'] ?? null) === $rung['client'], sprintf(
+            '%s: the request is made as %s (got "%s")',
+            $slug,
+            $rung['client'],
+            $authorization['client_id'] ?? '',
+        ));
+        if ($rung['response'] === 'jwt') {
+            demo_expect(
+                isset($authorization['request_uri']) && array_keys($authorization) === ['client_id', 'request_uri'],
+                sprintf(
+                    '%s: the browser carries the client and a request URI, and nothing else (RFC 9126 §4, got %s)',
+                    $slug,
+                    implode(', ', array_keys($authorization)),
+                ),
+            );
+            $carried = 'client_id and request_uri';
+        } else {
+            demo_expect(
+                ($authorization['response_type'] ?? null) === 'code' && ($authorization['code_challenge_method'] ?? null) === 'S256',
+                sprintf('%s: the request is response_type=code with PKCE S256', $slug),
+            );
+            $carried = sprintf('%d parameters in the query', count($authorization));
+        }
+        demo_expect(
+            ($authorization['response_mode'] ?? null) === ($rung['response'] === 'query' ? null : ($rung['response'] === 'form_post' ? 'form_post' : null)),
+            sprintf('%s: the response mode asked for in the URL is the one of this rung', $slug),
+        );
+
+        // the login of the OP, the same for every rung: what a rung changes is never how a user proves
+        // who they are
+        $location = demo_ladder_login($cookies, $issuer, $password, $ca, $location);
+
+        // and here the response comes back, each rung its own way
+        if ($rung['response'] === 'form_post') {
+            [$status, , $page, $headers] = demo_request($cookies, $ca, 'GET', $location);
+            demo_expect($status === 200 && preg_match('/form[^>]+method="post"[^>]+action="([^"]+)"/i', $page, $form) === 1, sprintf(
+                '%s: the OP answers with a page that posts the response back (got %d)',
+                $slug,
+                $status,
+            ));
+            $action = html_entity_decode($form[1]);
+            demo_expect($action === DEMO_URL . '/c/' . $slug . '/callback', sprintf('%s: the form posts to the callback of the rung (got %s)', $slug, $action));
+            $response = demo_form_fields($page);
+            $returned = sprintf('a form of %d fields, no-store', count($response));
+            [$status, $location] = demo_request($cookies, $ca, 'POST', $action, $response);
+        } else {
+            [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+            demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/c/' . $slug . '/callback'), sprintf(
+                '%s: the OP sends the browser to the callback of the rung (got %d %s)',
+                $slug,
+                $status,
+                $location,
+            ));
+            parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+            if ($rung['response'] === 'jwt') {
+                demo_expect(array_keys($callback) === ['response'], sprintf(
+                    '%s: the response is one signed parameter and nothing else (JARM §4.1, got %s)',
+                    $slug,
+                    implode(', ', array_keys($callback)),
+                ));
+                $returned = sprintf('one "response" of %d characters, a JWS the client verifies', strlen((string) $callback['response']));
+            } else {
+                demo_expect(isset($callback['code'], $callback['state']) && ($callback['iss'] ?? null) === $issuer, sprintf(
+                    '%s: the callback carries code, state and iss (RFC 9207)',
+                    $slug,
+                ));
+                $returned = 'code, state and iss in the query';
+            }
+            [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+        }
+
+        if (isset($rung['known'])) {
+            $verified[] = [$slug, $carried, $returned, demo_ladder_known($cookies, $ca, $slug, $status, $location, $rung['known'])];
+
+            continue;
+        }
+
+        demo_expect($status === 302 && $location === $profile, sprintf('%s: the rung signs the user in (got %d %s)', $slug, $status, $location));
+        [$status, , $page] = demo_request($cookies, $ca, 'GET', $profile);
+        demo_expect($status === 200, sprintf('%s: the page of the rung opens (got %d)', $slug, $status));
+
+        $verified[] = [$slug, $carried, $returned, demo_ladder_tokens($slug, demo_ladder_jwts($page), $page)];
+    }
+
+    io()->table(['Rung', 'To the provider', 'Back from it', 'What the rung holds'], $verified);
+    foreach (DEMO_LADDER_RUNGS as $slug => $rung) {
+        if (isset($rung['known'])) {
+            io()->note(sprintf('The rung "%s" is refused on purpose and the run says so: %s', $slug, $rung['known']));
+        }
+    }
+    io()->success('The rungs of the ladder signed the same user in, from a client that puts everything in the URL of a browser to one that puts nothing there.');
+}
+
+/**
+ * A rung the provider refuses for a reason that is written down: the demonstration lands on the page
+ * that says why, and the walk reads that reason rather than asserting a success it will not get. The
+ * refusal is what this rung shows until the issue it names is decided.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_ladder_known(array &$cookies, string $ca, string $slug, int $status, string $location, string $issue): string
+{
+    demo_expect($status === 302 && $location === DEMO_URL . '/c/' . $slug . '/login', sprintf(
+        '%s: the demonstration refuses the login and says so on the page of the rung (got %d %s)',
+        $slug,
+        $status,
+        $location,
+    ));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200 && preg_match('/<code>([^<]+)<\/code>/', $page, $reason) === 1, sprintf('%s: the page of the rung carries the reason', $slug));
+    $refusal = html_entity_decode($reason[1]);
+    demo_expect(
+        str_contains($refusal, 'token endpoint request failed'),
+        sprintf('%s: the refusal comes from the token endpoint, as the issue says (got "%s")', $slug, $refusal),
+    );
+
+    return sprintf('refused, see %s', basename($issue));
+}
+
+/**
+ * The login of the OP for a rung of the ladder: the request is parked, the page carries the form, the
+ * form is posted, and what comes back is where the interaction resumes. The same three requests for every
+ * rung, whatever it registered.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_ladder_login(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
+{
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $authorization);
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf(
+        'the OP parks the request and asks for a login (got %d %s)',
+        $status,
+        $location,
+    ));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1,
+        'the login page carries the form',
+    );
+    [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
+        '_username' => DEV_USERNAME,
+        '_password' => $password,
+        '_csrf_token' => $csrf[1],
+    ]);
+    demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
+
+    return $location;
+}
+
+/**
+ * What the page of a rung prints, read by the name each block carries and not by its place: the last rung
+ * prints what it pushed before what it received, and a walk counting blocks would read a request object
+ * for an ID token.
+ *
+ * @return array<string, string>
+ */
+function demo_ladder_jwts(string $page): array
+{
+    preg_match_all('/<pre class="jwt" data-jwt="([a-z_]+)">([^<]*)<\/pre>/', $page, $matches, \PREG_SET_ORDER);
+    $jwts = [];
+    foreach ($matches as $match) {
+        $jwts[$match[1]] = trim(html_entity_decode($match[2]));
+    }
+
+    return $jwts;
+}
+
+/**
+ * What the page of a rung shows of the tokens it holds, which is what the rung was registered for: an
+ * access token with nothing to read on the opaque rung, one bound to a key on the last one, and an ID
+ * token that arrived encrypted there and in clear everywhere else.
+ *
+ * @param array<string, string> $tokens
+ */
+function demo_ladder_tokens(string $slug, array $tokens, string $page): string
+{
+    $idToken = $tokens['id_token'] ?? '';
+    $accessToken = $tokens['access_token'] ?? '';
+    if ($slug === 'opaque') {
+        demo_expect(substr_count($accessToken, '.') !== 2, 'opaque: the access token of the rung has no structure to read');
+
+        return sprintf('an opaque access token of %d characters', strlen($accessToken));
+    }
+    if ($slug === 'fapi') {
+        demo_expect(substr_count($idToken, '.') === 4, sprintf(
+            'fapi: the ID token arrived encrypted, a JWE of five parts (got %d)',
+            substr_count($idToken, '.') + 1,
+        ));
+        demo_expect(
+            substr_count($tokens['request_object'] ?? '', '.') === 2,
+            'fapi: the page shows the request object the rung pushed, which the browser never carried',
+        );
+        $jkt = demo_jwt($accessToken)['claims']['cnf']['jkt'] ?? null;
+        demo_expect(is_string($jkt), 'fapi: the access token names the key it is bound to (RFC 9449 §6)');
+
+        return sprintf('an ID token still encrypted, an at+jwt bound to %s', substr((string) $jkt, 0, 12));
+    }
+    $claims = demo_jwt($accessToken)['claims'];
+    demo_expect(($claims['cnf'] ?? null) === null, sprintf('%s: the access token is a bearer token, bound to nothing', $slug));
+
+    return sprintf('an at+jwt with no cnf, scope "%s"', $claims['scope'] ?? '?');
 }
 
 /**
