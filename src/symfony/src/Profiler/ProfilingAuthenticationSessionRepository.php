@@ -51,7 +51,7 @@ final readonly class ProfilingAuthenticationSessionRepository implements Authent
 
     private static function observe(AuthenticationSession $session): Observation
     {
-        return new Observation('Session', [
+        return new Observation('Session', 'Session', [
             'sid' => $session->id->toRfc4122(),
             'auth_time' => $session->authenticatedAt()->format(DATE_ATOM),
             'amr' => implode(' ', $session->methodReferences()),

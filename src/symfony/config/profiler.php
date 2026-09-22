@@ -8,24 +8,31 @@ use Heidi\Bundle\Profiler\KmsBackend;
 use Heidi\Bundle\Profiler\OpCollector;
 use Heidi\Bundle\Profiler\OpEndpointListener;
 use Heidi\Bundle\Profiler\OpProfile;
+use Heidi\Bundle\Profiler\OpResponseListener;
+use Heidi\Bundle\Profiler\PanelValues;
 use Heidi\Bundle\Profiler\ProfilingAccessTokenIssuer;
 use Heidi\Bundle\Profiler\ProfilingAuthenticationSessionRepository;
 use Heidi\Bundle\Profiler\ProfilingAuthorizationRequestReader;
 use Heidi\Bundle\Profiler\ProfilingAuthorizationResponder;
 use Heidi\Bundle\Profiler\ProfilingClientRepository;
+use Heidi\Bundle\Profiler\ProfilingCompactJwtReader;
 use Heidi\Bundle\Profiler\ProfilingConsentRepository;
 use Heidi\Bundle\Profiler\ProfilingDecryptionKeyProvider;
 use Heidi\Bundle\Profiler\ProfilingEventDispatcher;
 use Heidi\Bundle\Profiler\ProfilingIdTokenIssuer;
+use Heidi\Bundle\Profiler\ProfilingInteractionRepository;
 use Heidi\Bundle\Profiler\ProfilingSigningKeyProvider;
+use Heidi\Bundle\Profiler\ProviderCapabilitiesListener;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\DecryptionKeyProviderInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
+use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
@@ -49,7 +56,12 @@ return static function (ContainerConfigurator $container): void {
         'template' => '@Heidi/profiler/panel.html.twig',
         'priority' => 300,
     ]);
+    $services->set(PanelValues::class);
     $services->set(OpEndpointListener::class);
+    // what the endpoint answered, member by member, no credential among them
+    $services->set(OpResponseListener::class);
+    // what this provider serves, read from the handler that answers the discovery endpoint
+    $services->set(ProviderCapabilitiesListener::class);
 
     // what the request brought, and what the endpoint made of it
     $services
@@ -59,6 +71,15 @@ return static function (ContainerConfigurator $container): void {
     $services
         ->set(ProfilingAuthorizationResponder::class)
         ->decorate(AuthorizationResponderInterface::class)
+        ->args([service('.inner')]);
+    // every JWT a third party sent: the request object, the client assertion, the proof of possession
+    $services
+        ->set(ProfilingCompactJwtReader::class)
+        ->decorate(CompactJwtReaderInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingInteractionRepository::class)
+        ->decorate(InteractionRepositoryInterface::class)
         ->args([service('.inner')]);
     $services
         ->set(ProfilingClientRepository::class)

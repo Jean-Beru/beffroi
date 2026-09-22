@@ -39,7 +39,7 @@ final readonly class ProfilingAccessTokenIssuer implements AccessTokenIssuerInte
     {
         $token = $this->issuer->issue($authorization, $now);
         $confirmation = $authorization->confirmation;
-        $this->profile->record(new Observation('Access token', [
+        $this->profile->record(new Observation('Tokens', 'Access token', [
             'grant' => $authorization->grantType->value,
             'form' => $authorization->client->accessTokenFormat->value,
             'jti' => $this->jtiOf($token),

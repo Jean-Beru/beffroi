@@ -48,7 +48,7 @@ final readonly class OpEndpointListener
             return;
         }
         $this->profile->touch();
-        $this->profile->record(new Observation('Endpoint', [
+        $this->profile->record(new Observation('Request', 'Endpoint', [
             'route' => $route,
             'method' => $request->getMethod(),
             'path' => $request->getPathInfo(),

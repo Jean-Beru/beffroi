@@ -7,6 +7,8 @@ namespace Heidi\Bundle\Profiler;
 use DateTimeImmutable;
 use Heidi\Oidc\Domain\Token\AccessToken;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Exception\InvalidJwtException;
+use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use function array_keys;
 use function implode;
@@ -25,6 +27,8 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
     public function __construct(
         private IdTokenIssuerInterface $issuer,
         private OpProfile $profile,
+        private CompactJwtReaderInterface $jwts,
+        private PanelValues $values,
     ) {
     }
 
@@ -32,7 +36,7 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
     {
         $idToken = $this->issuer->issue($authorization, $accessToken, $now);
         $requested = $authorization->claimsRequest->idToken ?? [];
-        $this->profile->record(new Observation('ID token', [
+        $this->profile->record(new Observation('Tokens', 'ID token', [
             'aud' => $authorization->client->clientId,
             'shape' => RegisteredShape::of($authorization->client->idToken),
             'nonce' => $authorization->nonce === null ? 'none' : 'carried back',
@@ -40,8 +44,23 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
             'amr' => implode(' ', $authorization->authentication->methods),
             'auth_time' => $authorization->authentication->authenticatedAt->format(DATE_ATOM),
             'claims the client asked for by name' => $requested === [] ? 'none' : implode(', ', array_keys($requested)),
+            'claims it carries' => $this->claimsOf($idToken),
         ]));
 
         return $idToken;
+    }
+
+    /**
+     * What the document the client will read says of itself. A token encrypted to the client is one
+     * string here and stays one: what hides it is what the client registered, and the panel does not
+     * undo it to look inside.
+     */
+    private function claimsOf(string $idToken): string
+    {
+        try {
+            return $this->values->all($this->jwts->read($idToken)->claims);
+        } catch (InvalidJwtException) {
+            return 'encrypted for the client, and not opened here';
+        }
     }
 }

@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Profiler;
 
-use function array_column;
+use function array_keys;
 use function array_map;
 use Heidi\Bundle\Profiler\OpCollector;
 use Heidi\Bundle\Profiler\OpProfile;
 use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
 use function implode;
+use const PHP_URL_QUERY;
+use function parse_str;
+use function parse_url;
+use function strlen;
+use function substr;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Profiler\Profile;
@@ -29,7 +34,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     #[Test]
-    public function theRequestThatReachedAnEndpointIsCollected(): void
+    public function theObservationsOfTheRequestAreGroupedUnderTheTabsTheyNamed(): void
     {
         // Given
         $this->browser->enableProfiler();
@@ -38,7 +43,7 @@ final class ProfilerPanelTest extends BrowserTestCase
         $this->browser->request('GET', '/authorize', self::authorizationParameters());
 
         // Then
-        static::assertSame(['Endpoint', 'Authorization request', 'Client', 'Decision'], array_column($this->observations(), 'heading'));
+        static::assertSame(['Request', 'Client', 'Interaction', 'Decision', 'Response', 'Provider'], array_keys($this->collector()->getTabs()));
     }
 
     /**
@@ -189,6 +194,27 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
+     * The debug toolbar is rendered on its own, by a template of its own: a block of the panel that
+     * needed anything of the panel's own context would fail there and nowhere else.
+     */
+    #[Test]
+    public function theToolbarCarriesTheEntryOfTheProvider(): void
+    {
+        // Given
+        $this->browser->enableProfiler();
+        $this->browser->request('GET', '/authorize', self::authorizationParameters());
+        $profile = $this->browser->getProfile();
+        static::assertInstanceOf(Profile::class, $profile);
+
+        // When
+        $crawler = $this->browser->request('GET', '/_wdt/' . $profile->getToken());
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertStringContainsString('Authorization request', $crawler->filter('body')->text());
+    }
+
+    /**
      * A kernel that is not in debug wires neither the panel nor anything that feeds it.
      */
     #[Test]
@@ -205,7 +231,132 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * @return list<array{heading: string, entries: array<string, string>}>
+     * Issue #98 : ce que le fournisseur annonce est ce qui est branché. Le panneau lit le document de
+     * découverte lui-même, donc il ne peut pas annoncer autre chose que l'endpoint de découverte.
+     */
+    #[Test]
+    public function theProviderTabCarriesTheDiscoveryDocument(): void
+    {
+        // Given
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('GET', '/authorize', self::authorizationParameters());
+
+        // Then
+        $served = $this->observation('What this provider serves');
+        static::assertSame('https://op.test', $served['issuer']);
+        static::assertSame('authorization_code refresh_token', $served['grant_types_supported']);
+        static::assertSame('S256', $served['code_challenge_methods_supported']);
+    }
+
+    /**
+     * Architecture §4.3 : une page du plan d'interaction ne porte que l'identifiant de l'interaction,
+     * et tout ce que le client a demandé vit dans le dossier derrière lui.
+     */
+    #[Test]
+    public function theInteractionOfAPageOfTheInteractionPlaneIsDetailed(): void
+    {
+        // Given
+        $interaction = $this->beginAuthorization();
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('GET', '/login', [
+            'interaction' => $interaction,
+        ]);
+
+        // Then
+        $detailed = $this->observation('Interaction');
+        static::assertSame($interaction, $detailed['interaction']);
+        static::assertSame('waiting for the user to authenticate', $detailed['where it is']);
+        static::assertSame('native-app', $detailed['client_id']);
+        static::assertSame('openid profile', $detailed['scopes requested']);
+        static::assertSame('S256', $detailed['PKCE']);
+        static::assertSame('none yet', $detailed['session attached']);
+    }
+
+    /**
+     * RFC 6749 §5.1 : ce que le point de jeton a répondu, membre par membre, sans aucune valeur de jeton.
+     */
+    #[Test]
+    public function theAnswerOfTheTokenEndpointIsShownWithoutItsTokens(): void
+    {
+        // Given
+        $code = $this->codeAllowedByAlice();
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => 'http://127.0.0.1/callback',
+            'client_id' => 'native-app',
+            'code_verifier' => self::CODE_VERIFIER,
+        ]);
+
+        // Then
+        $body = $this->observation('Answer')['body'];
+        static::assertStringContainsString('access_token=(present, withheld)', $body);
+        static::assertStringContainsString('id_token=(present, withheld)', $body);
+        static::assertStringContainsString('token_type="Bearer"', $body);
+        static::assertStringContainsString('scope="openid profile"', $body);
+    }
+
+    /**
+     * OIDC Core §2 : les claims que le client va lire, les claims de protocole en clair et ceux qui
+     * portent l'utilisateur seulement nommés (décision 0011).
+     */
+    #[Test]
+    public function theClaimsOfTheIdTokenAreShownAndThePersonalOnesOnlyNamed(): void
+    {
+        // Given
+        $code = $this->codeAllowedByAlice();
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => 'http://127.0.0.1/callback',
+            'client_id' => 'native-app',
+            'code_verifier' => self::CODE_VERIFIER,
+        ]);
+
+        // Then
+        $claims = $this->observation('ID token')['claims it carries'];
+        static::assertStringContainsString('iss="https://op.test"', $claims);
+        static::assertStringContainsString('aud="native-app"', $claims);
+        static::assertStringContainsString('acr="1"', $claims);
+        static::assertStringContainsString('amr=["pwd"]', $claims);
+    }
+
+    private function codeAllowedByAlice(): string
+    {
+        self::signingKey();
+        $interaction = $this->beginAuthorization();
+        $this->signIn(self::user('alice'));
+        $consent = $this->browser->request('GET', '/consent', [
+            'interaction' => $interaction,
+        ]);
+        $this->browser->submit($consent->selectButton('Allow')->form());
+        $query = [];
+        parse_str(self::string(parse_url(self::string($this->browser->getResponse()->headers->get('Location')), PHP_URL_QUERY)), $query);
+
+        return self::string($query['code'] ?? null);
+    }
+
+    private function beginAuthorization(): string
+    {
+        $this->browser->request('GET', '/authorize', self::authorizationParameters());
+        $location = self::string($this->browser->getResponse()->headers->get('Location'));
+        static::assertMatchesRegularExpression('#^/login\?interaction=#', $location);
+
+        return substr($location, strlen('/login?interaction='));
+    }
+
+    /**
+     * @return list<array{tab: string, heading: string, entries: array<string, string>}>
      */
     private function observations(): array
     {

@@ -26,7 +26,7 @@ final readonly class ProfilingEventDispatcher implements EventDispatcherInterfac
 
     public function dispatch(object $event): object
     {
-        $this->profile->record(new Observation('Event', [
+        $this->profile->record(new Observation('Events', 'Event', [
             'name' => self::nameOf($event),
             'at' => $event instanceof DomainEventInterface ? $event->occurredAt->format(DATE_ATOM) : 'during this request',
         ]));
