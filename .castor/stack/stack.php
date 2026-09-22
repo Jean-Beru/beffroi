@@ -53,6 +53,12 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
  */
 const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
 
+/**
+ * The sidecar that carries the loopback port 8443 of the suite into the network namespace of the worker,
+ * so that the worker reaches the back-channel logout URI the suite gives its clients (compose.yaml).
+ */
+const WORKER_REDIRECTOR_SERVICE = 'conformance-worker-redirector';
+
 #[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds LocalStack (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran')]
 function start(
     bool $conformance = false,
@@ -120,6 +126,43 @@ function compose_profiles(): array
     }
 
     return $options;
+}
+
+/**
+ * The services of the stack that are running, as compose names them.
+ *
+ * @return array<string>
+ */
+function compose_running_services(): array
+{
+    $running = run(
+        ['docker', 'compose', ...compose_profiles(), 'ps', '--status', 'running', '--services'],
+        context: context()
+            ->withAllowFailure()
+            ->withQuiet(),
+    );
+
+    return $running->isSuccessful() ? explode("\n", trim($running->getOutput())) : [];
+}
+
+/**
+ * Brings the sidecar that carries the port of the suite into the worker back up, and does nothing when the
+ * stack runs without it (a run against a suite of its own has no sidecar to bring back).
+ *
+ * It is created again, never restarted, and always after the worker it follows: it holds the identifier of
+ * the container whose network namespace it joined, resolved once when Docker created it. A worker that
+ * restarts leaves that namespace behind, and a worker that is recreated takes the identifier with it, so
+ * restarting the sidecar forwards nothing at best and fails outright at worst ("joining network namespace
+ * of container: No such container"). Nothing says so either way, and the only thing that notices is the
+ * back-channel logout plan, five minutes later, on a logout token that never left.
+ */
+function compose_recreate_worker_redirector(): void
+{
+    if (! in_array(WORKER_REDIRECTOR_SERVICE, compose_running_services(), true)) {
+        return;
+    }
+
+    run(['docker', 'compose', ...compose_profiles(), 'up', '-d', '--force-recreate', '--no-deps', WORKER_REDIRECTOR_SERVICE]);
 }
 
 #[AsTask(description: 'Stop the development stack')]
