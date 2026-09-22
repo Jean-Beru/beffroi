@@ -1197,8 +1197,11 @@ function demo_ladder_check(string $issuer, string $password, string $ca): void
             );
             $carried = sprintf('%d parameters in the query', count($authorization));
         }
+        // the mode is asked for in the URL only where the client asks for one: the last rung asks for
+        // it in the request object it pushed, which the browser never carried
+        $mode = $rung['response'] === 'form_post' ? 'form_post' : null;
         demo_expect(
-            ($authorization['response_mode'] ?? null) === ($rung['response'] === 'query' ? null : ($rung['response'] === 'form_post' ? 'form_post' : null)),
+            ($authorization['response_mode'] ?? null) === $mode,
             sprintf('%s: the response mode asked for in the URL is the one of this rung', $slug),
         );
 
