@@ -85,11 +85,35 @@ final class PushedAuthorizationTest extends BrowserTestCase
      * RFC 9126 §4: "the client MUST only use a request_uri value once", and the provider holds it to it.
      */
     #[Test]
-    public function aReferenceUsedASecondTimeIsRefused(): void
+    public function aReferenceIsReadAgainWhileNobodyHasAnsweredTheRequest(): void
     {
         // Given
         $requestUri = $this->pushedRequestUri();
         $this->authorize($requestUri);
+
+        // When
+        $this->authorize($requestUri);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertStringStartsWith('/login?interaction=', self::string($response->headers->get('Location')));
+    }
+
+    /**
+     * RFC 9126 §4: the reference is spent by the code it buys, and grants nothing afterwards.
+     */
+    #[Test]
+    public function aReferenceIsRefusedOnceTheRequestItCarriedWasGranted(): void
+    {
+        // Given
+        $requestUri = $this->pushedRequestUri();
+        $this->authorize($requestUri);
+        $this->signIn(self::user('alice'));
+        $this->browser->request('GET', '/login', [
+            'interaction' => self::redirectedInteraction($this->browser->getResponse()),
+        ]);
+        static::assertStringStartsWith(self::REDIRECT_URI . '?code=', self::string($this->browser->getResponse()->headers->get('Location')));
 
         // When
         $this->authorize($requestUri);

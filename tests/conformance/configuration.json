@@ -944,7 +944,7 @@
         "fapi2-security-profile-final-par-attempt-reuse-request_uri": {
             "browser": [
                 {
-                    "comment": "The first visit with the request URI: the ordinary sign-in and consent, which completes the authorization.",
+                    "comment": "RFC 9126 §4: a request_uri is read once. The first visit signs in and completes on the callback; the second presents the same reference, which the OP no longer holds, and it answers with its error page rather than sending anything to a redirect URI it has not read. There is no task waiting on the callback here: the error page is served at the authorization endpoint, whose query carries the redirect URI, so the pattern that recognises the callback recognises that URL too and would wait on it for nothing.",
                     "match": "{HEIDI_ISSUER}/authorize*",
                     "tasks": [
                         {
@@ -952,6 +952,14 @@
                             "optional": true,
                             "match": "{HEIDI_ISSUER}/login*",
                             "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Sign in|Connexion",
+                                    "update-image-placeholder-optional"
+                                ],
                                 [
                                     "text",
                                     "id",
@@ -984,25 +992,8 @@
                             ]
                         },
                         {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                [
-                                    "wait",
-                                    "id",
-                                    "submission_complete",
-                                    10
-                                ]
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "comment": "The second visit with the same request URI: a request URI is used once (RFC 9126 §2.2), the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
                             "task": "Expect the error page",
+                            "optional": true,
                             "match": "{HEIDI_ISSUER}/authorize*",
                             "commands": [
                                 [
@@ -1011,7 +1002,7 @@
                                     "//*",
                                     10,
                                     "Request refused|Requête refusée",
-                                    "update-image-placeholder"
+                                    "update-image-placeholder-optional"
                                 ]
                             ]
                         }
@@ -1312,6 +1303,92 @@
                                     "click",
                                     "css",
                                     "button[name=answer][value=deny]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "*/test/a/heidi/callback*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-ensure-reused-request-uri-prior-to-auth-completion-succeeds": {
+            "browser": [
+                {
+                    "comment": "FAPI 2.0 Security Profile §5.3.1: the reference is spent when the request is granted, not when it is read. The first visit must go no further than the page the provider shows, so this block only looks at it; the second visit, on the same reference, signs in and completes.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Look at the login page without using it",
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Sign in|Connexion",
+                                    "update-image-placeholder-optional"
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "comment": "The second visit, on the reference the first one left unspent.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Sign in|Connexion",
+                                    "update-image-placeholder-optional"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{HEIDI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{HEIDI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Allow",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=allow]"
                                 ]
                             ]
                         },

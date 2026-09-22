@@ -112,7 +112,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         ]);
 
         // When
-        $parameters = $this->resolver->resolve(
+        $record = $this->resolver->resolve(
             $this->tenant,
             [
                 'client_id' => 'oidc-demo',
@@ -125,25 +125,47 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         );
 
         // Then
+        static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
         static::assertSame(
             [
                 'scope' => 'openid profile',
                 'state' => 'pushed-state',
                 'client_id' => 'oidc-demo',
             ],
-            $parameters,
+            PushedAuthorizationRequestResolver::parametersOf($record),
         );
     }
 
     /**
-     * RFC 9126 §4: "the client MUST only use a request_uri value once", and the provider holds it to it.
+     * FAPI 2.0 Security Profile §5.3.1: the reference is spent when the request it carries is granted,
+     * which the authorization endpoint does, and reading it again before that is a user who came back to
+     * a page nobody has answered yet.
      */
     #[Test]
-    public function aReferenceIsUsedOnce(): void
+    public function aReferenceIsReadAgainUntilItIsSpent(): void
     {
         // Given
         $requestUri = $this->push();
         $this->resolver->resolve($this->tenant, self::query($requestUri), $this->context);
+
+        // When
+        $record = $this->resolver->resolve($this->tenant, self::query($requestUri), $this->context);
+
+        // Then
+        static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
+    }
+
+    /**
+     * RFC 9126 §4: once spent, it grants nothing.
+     */
+    #[Test]
+    public function aReferenceThatWasSpentIsRefused(): void
+    {
+        // Given
+        $requestUri = $this->push();
+        $record = $this->resolver->resolve($this->tenant, self::query($requestUri), $this->context);
+        static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
+        $this->requests->consume($record, $this->clock->now());
 
         // Then
         $this->expectException(InvalidRequestUriException::class);
@@ -289,7 +311,11 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
             $this->clock->modify('+61 seconds');
         }
         if ($case === 'used') {
-            $this->resolver->resolve($this->tenant, self::query($requestUri), $this->context);
+            // spent by the authorization endpoint that granted the request it carried, which is the one
+            // thing that spends a reference (FAPI 2.0 Security Profile §5.3.1)
+            $record = $this->requests->findByRequestUriHash(RequestUri::hashOf($requestUri->value));
+            static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
+            $this->requests->consume($record, $this->clock->now());
         }
 
         return $requestUri;

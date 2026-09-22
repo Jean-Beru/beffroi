@@ -48,7 +48,7 @@ final readonly class AuthorizationController
         $tenant = $this->tenants->provide();
         try {
             $received = $this->requests->read($tenant, $request);
-            $target = $this->parser->redirectTarget($tenant, $received->parameters, $received->pushed);
+            $target = $this->parser->redirectTarget($tenant, $received->parameters, $received->pushed, $received->carriedByObject);
         } catch (OAuth2Exception $exception) {
             return $this->pages->error($exception->statusCode, $exception->error, $exception->errorDescription);
         }
@@ -61,6 +61,7 @@ final readonly class AuthorizationController
                 $this->browser->authenticationSession($request, $tenant),
                 $this->contexts->fromRequest($request),
                 $locale,
+                $received->requestUriHash,
             );
         } catch (OAuth2Exception $exception) {
             return $this->responder->failure($request, $target, $exception);

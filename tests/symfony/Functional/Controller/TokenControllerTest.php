@@ -95,11 +95,12 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §6 and architecture §4.5: a confidential client gets a refresh token, rotated at each use,
-     * through the same endpoint.
+     * RFC 6749 §6 and architecture §4.5: a confidential client gets a refresh token through the same
+     * endpoint, and keeps it. Its authentication is what tells that token from a copy of itself, so
+     * replacing it would add nothing (FAPI 2.0 Security Profile §5.3.2.1-9).
      */
     #[Test]
-    public function aRefreshTokenIsRotated(): void
+    public function theRefreshTokenOfAConfidentialClientStands(): void
     {
         // Given
         $refreshToken = $this->refreshTokenOfTheDemoClient();
@@ -113,15 +114,18 @@ final class TokenControllerTest extends BrowserTestCase
         $renewed = self::json($response);
         static::assertIsString($renewed['access_token']);
         static::assertIsString($renewed['id_token']);
-        static::assertNotSame($refreshToken, $renewed['refresh_token']);
+        static::assertArrayNotHasKey('refresh_token', $renewed);
         static::assertSame('openid profile', $renewed['scope']);
     }
 
     /**
-     * RFC 9700 §4.13.2: the rotated token is refused.
+     * RFC 9700 §4.13.2: rotation is one of three ways of telling a refresh token from a copy of itself,
+     * and a confidential client is told by its authentication; its token refreshes again and again.
+     * What rotation protects, and what a rotated token presented again costs, is the public client's,
+     * and it is verified where the rule lives (RefreshTokenGrantTest).
      */
     #[Test]
-    public function aRotatedRefreshTokenIsRefused(): void
+    public function theRefreshTokenOfAConfidentialClientRefreshesAgain(): void
     {
         // Given
         $refreshToken = $this->refreshTokenOfTheDemoClient();
@@ -131,8 +135,9 @@ final class TokenControllerTest extends BrowserTestCase
         $this->refresh($refreshToken);
 
         // Then
-        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('invalid_grant', self::json($this->browser->getResponse())['error']);
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertIsString(self::json($response)['access_token']);
     }
 
     /**
@@ -157,7 +162,6 @@ final class TokenControllerTest extends BrowserTestCase
         static::assertNotSame($previous->kid, $active->kid);
         static::assertSame($active->kid, self::kidOf(self::string($renewed['access_token'])));
         static::assertSame($active->kid, self::kidOf(self::string($renewed['id_token'])));
-        static::assertIsString($renewed['refresh_token']);
     }
 
     private function postWithAWrongSecret(): void

@@ -109,12 +109,17 @@ const DEV_MTLS_CLIENT_DAYS = 90;
 const DEV_CONFORMANCE_DIRECTORY = 'var/conformance';
 
 /**
- * The four clients the FAPI 2 plans run with, two per run: a handful of modules need a second client to
+ * The eight clients the FAPI 2 plans run with, two per run: a handful of modules need a second client to
  * present an authorization code or a request URI that was issued to another one. Each one holds one
  * P-256 key, published to the provider in the environment variable named here
- * (apps/op/config/packages/heidi.yaml reads it) and held whole by the suite; the two that carry a
+ * (apps/op/config/packages/heidi.yaml reads it) and held whole by the suite; the ones that carry a
  * certificate authenticate with "self_signed_tls_client_auth" (RFC 8705 §2.2), the certificate being
  * issued on that very key, so the handshake and the signature of a request object are the same key.
+ *
+ * The Security Profile and Message Signing runs do not share their clients. Message Signing holds a
+ * client to signing every authorization request it starts (OIDC Registration,
+ * require_signed_request_object), which is a registration and not a mode: the same client cannot both
+ * require an object and start the unsigned requests the Security Profile plan sends.
  */
 const DEV_FAPI_CLIENTS = [
     'conformance-fapi-private-key-jwt' => [
@@ -131,6 +136,22 @@ const DEV_FAPI_CLIENTS = [
     ],
     'conformance-fapi-mtls-second' => [
         'env' => 'CONFORMANCE_FAPI_MTLS_SECOND_JWKS',
+        'certificate' => true,
+    ],
+    'conformance-fapi-signing-private-key-jwt' => [
+        'env' => 'CONFORMANCE_FAPI_SIGNING_PRIVATE_KEY_JWT_JWKS',
+        'certificate' => false,
+    ],
+    'conformance-fapi-signing-private-key-jwt-second' => [
+        'env' => 'CONFORMANCE_FAPI_SIGNING_PRIVATE_KEY_JWT_SECOND_JWKS',
+        'certificate' => false,
+    ],
+    'conformance-fapi-signing-mtls' => [
+        'env' => 'CONFORMANCE_FAPI_SIGNING_MTLS_JWKS',
+        'certificate' => true,
+    ],
+    'conformance-fapi-signing-mtls-second' => [
+        'env' => 'CONFORMANCE_FAPI_SIGNING_MTLS_SECOND_JWKS',
         'certificate' => true,
     ],
 ];
@@ -241,7 +262,7 @@ function provision(
         ], DEV_CLIENT_SECRETS),
     );
     io()->note(sprintf(
-        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the four clients of the FAPI 2 plans are in %s, whole, and their public half in the same file.',
+        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the eight clients of the FAPI 2 plans are in %s, whole, and their public half in the same file.',
         DEV_ENV_LOCAL,
         DEV_CONFORMANCE_DIRECTORY,
     ));

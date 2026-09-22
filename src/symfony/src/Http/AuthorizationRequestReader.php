@@ -32,9 +32,16 @@ final readonly class AuthorizationRequestReader implements AuthorizationRequestR
     {
         $parameters = RequestParameters::ofBrowserRequest($request);
         $pushed = $this->pushedRequests->resolve($tenant, $parameters, $this->contexts->fromRequest($request));
-        $parameters = $pushed ?? $parameters;
+        $parameters = $pushed === null ? $parameters : PushedAuthorizationRequestResolver::parametersOf($pushed);
         $object = $this->requestObjects->resolve($tenant, $parameters);
 
-        return new ReceivedAuthorizationRequest($object ?? $parameters, $pushed !== null, $object !== null);
+        // A request object the client signed was read at the endpoint it pushed to, and the record is
+        // what answers for it here (RFC 9126 §4): what carried the request is the record's to say.
+        return new ReceivedAuthorizationRequest(
+            $object ?? $parameters,
+            $pushed !== null,
+            $object !== null || ($pushed->carriedBySignedObject ?? false),
+            $pushed?->requestUriHash,
+        );
     }
 }
