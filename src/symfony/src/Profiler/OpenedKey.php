@@ -12,7 +12,7 @@ use Heidi\Core\Domain\Key\UnsealedKey;
  */
 final readonly class OpenedKey
 {
-    public static function observe(UnsealedKey $unsealed, string $purpose, KmsBackend $kms): Observation
+    public static function observe(UnsealedKey $unsealed, string $purpose, KmsClient $kms): Observation
     {
         return new Observation('Keys', 'Key', [
             'kid' => $unsealed->key->kid,

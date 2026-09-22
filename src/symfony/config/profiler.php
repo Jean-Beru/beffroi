@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Profiler\KmsBackend;
+use Heidi\Bundle\Profiler\KmsClient;
 use Heidi\Bundle\Profiler\OpCollector;
 use Heidi\Bundle\Profiler\OpEndpointListener;
 use Heidi\Bundle\Profiler\OpProfile;
@@ -120,5 +120,5 @@ return static function (ContainerConfigurator $container): void {
 
     // the KMS is named by the scheme of its DSN, which the extension hands over; the rest of a DSN may
     // carry a credential and never reaches the panel
-    $services->set(KmsBackend::class);
+    $services->set(KmsClient::class);
 };

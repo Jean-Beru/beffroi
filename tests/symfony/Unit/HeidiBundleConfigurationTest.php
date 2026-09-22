@@ -37,7 +37,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             'issuer' => 'https://op.test',
         ],
         'keys' => [
-            'kms' => 'sodium://?keys[signing]=AAAA',
+            'kms' => 'op',
             'key_id' => 'signing',
         ],
     ];
@@ -63,7 +63,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         );
         static::assertSame(
             [
-                'kms' => 'sodium://?keys[signing]=AAAA',
+                'kms' => 'op',
                 'key_id' => 'signing',
                 'storage' => '%kernel.project_dir%/var/keys',
                 'jwks_max_age' => JwksHandler::DEFAULT_MAX_AGE,
@@ -237,7 +237,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             [
                 'tenant' => self::MINIMAL['tenant'],
                 'keys' => [
-                    'kms' => 'sodium://?keys[signing]=AAAA',
+                    'kms' => 'op',
                 ],
             ],
             'key_id',

@@ -17,7 +17,7 @@ final readonly class ProfilingDecryptionKeyProvider implements DecryptionKeyProv
     public function __construct(
         private DecryptionKeyProviderInterface $keys,
         private OpProfile $profile,
-        private KmsBackend $kms,
+        private KmsClient $kms,
     ) {
     }
 

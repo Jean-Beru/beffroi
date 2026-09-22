@@ -66,7 +66,7 @@ final class HeidiBundleExtensionTest extends TestCase
                 'name' => 'Tenant A',
             ],
             'keys' => [
-                'kms' => 'sodium://?keys[k]=AAAA',
+                'kms' => 'op',
                 'key_id' => 'k',
                 'storage' => '/var/lib/heidi/keys',
             ],
@@ -77,7 +77,7 @@ final class HeidiBundleExtensionTest extends TestCase
         static::assertSame('https://op.test/tenant-a', $factory->getArgument('$issuer'));
         static::assertSame('tenant-a', $factory->getArgument('$slug'));
         static::assertSame('Tenant A', $factory->getArgument('$name'));
-        static::assertSame('sodium://?keys[k]=AAAA', $container->getDefinition('heidi.kms')->getArgument(0));
+        static::assertSame('key_management.op', (string) $container->getAlias('heidi.kms'));
         static::assertSame('k', $container->getDefinition(EnvelopeKeySealer::class)->getArgument('$kmsKeyId'));
         static::assertSame('/var/lib/heidi/keys', $container->getDefinition(FileTenantKeyRepository::class)->getArgument('$directory'));
     }
@@ -92,7 +92,7 @@ final class HeidiBundleExtensionTest extends TestCase
         // When
         $container = self::load([
             'keys' => [
-                'kms' => 'sodium://?keys[k]=AAAA',
+                'kms' => 'op',
                 'key_id' => 'k',
                 'jwks_max_age' => 120,
             ],
@@ -114,7 +114,7 @@ final class HeidiBundleExtensionTest extends TestCase
         // When
         $container = self::load([
             'keys' => [
-                'kms' => 'sodium://?keys[k]=AAAA',
+                'kms' => 'op',
                 'key_id' => 'k',
                 'jwks_max_age' => 120,
                 'staging_delay' => 30,
@@ -240,7 +240,7 @@ final class HeidiBundleExtensionTest extends TestCase
                         'issuer' => 'https://op.test',
                     ],
                     'keys' => [
-                        'kms' => 'sodium://?keys[signing]=AAAA',
+                        'kms' => 'op',
                         'key_id' => 'signing',
                     ],
                 ],

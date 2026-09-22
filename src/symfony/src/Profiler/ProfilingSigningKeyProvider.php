@@ -19,7 +19,7 @@ final readonly class ProfilingSigningKeyProvider implements SigningKeyProviderIn
     public function __construct(
         private SigningKeyProviderInterface $keys,
         private OpProfile $profile,
-        private KmsBackend $kms,
+        private KmsClient $kms,
     ) {
     }
 
