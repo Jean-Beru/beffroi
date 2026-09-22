@@ -7,11 +7,11 @@ namespace Heidi\Core\Tests\Bridge\JwtLibrary;
 use function array_keys;
 use function base64_decode;
 use function explode;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
+use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
 use Heidi\Core\Exception\KeyNotFoundException;
@@ -36,17 +36,17 @@ final class JwtLibraryTest extends TestCase
 {
     private Tenant $tenant;
 
-    private InMemorySigningKeyRepository $repository;
+    private InMemoryTenantKeyRepository $repository;
 
     private SealedKeyProvider $provider;
 
-    private SigningKey $active;
+    private TenantKey $active;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $this->repository = new InMemorySigningKeyRepository();
-        $this->active = new SigningKey(Keys::pair()->kid, $this->tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now());
+        $this->repository = new InMemoryTenantKeyRepository();
+        $this->active = new TenantKey(Keys::pair()->kid, $this->tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now());
         $this->active->activate(Fixtures::now());
         $this->repository->save($this->active);
         $this->provider = new SealedKeyProvider($this->repository, Keys::sealer());
@@ -165,7 +165,7 @@ final class JwtLibraryTest extends TestCase
     public function signingWithoutAnActiveKeyFails(): void
     {
         // Given
-        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider(new InMemorySigningKeyRepository(), Keys::sealer()), Algorithms::all());
+        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::sealer()), Algorithms::all());
 
         // Then
         $this->expectException(KeyNotFoundException::class);
@@ -213,8 +213,8 @@ final class JwtLibraryTest extends TestCase
     public function aStagedKeyDoesNotSign(): void
     {
         // Given
-        $repository = new InMemorySigningKeyRepository();
-        $repository->save(new SigningKey(Keys::pair()->kid, $this->tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
+        $repository = new InMemoryTenantKeyRepository();
+        $repository->save(new TenantKey(Keys::pair()->kid, $this->tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
         $signer = new JwtLibraryJwsSigner(new SealedKeyProvider($repository, Keys::sealer()), Algorithms::all());
 
         // Then
@@ -374,7 +374,7 @@ final class JwtLibraryTest extends TestCase
         // Given
         $this->provider->activeKey($this->tenant, Algorithms::rs256());
         $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-        $next = new SigningKey(Keys::otherPair()->kid, $this->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now(), Fixtures::now());
+        $next = new TenantKey(Keys::otherPair()->kid, $this->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now(), Fixtures::now());
         $next->activate(Fixtures::now());
         $this->repository->save($next);
 
@@ -393,11 +393,11 @@ final class JwtLibraryTest extends TestCase
     public function theProviderPublishesStagedActiveAndRetiringKeys(): void
     {
         // Given
-        $retiring = new SigningKey(Keys::otherPair()->kid, $this->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $retiring = new TenantKey(Keys::otherPair()->kid, $this->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
         $retiring->activate(Fixtures::now()->modify('-1 day'));
         $retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $this->repository->save($retiring);
-        $staged = new SigningKey('staged-kid', $this->tenant, Algorithms::rs256(), [
+        $staged = new TenantKey('staged-kid', $this->tenant, Algorithms::rs256(), [
             ...Keys::otherPair()->publicJwk,
             'kid' => 'staged-kid',
         ], 'sealed', Fixtures::now()->modify('+1 minute'), Fixtures::now()->modify('+7 minutes'));

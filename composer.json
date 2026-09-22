@@ -28,6 +28,7 @@
         "psr/clock": "^1.0",
         "psr/event-dispatcher": "^1.0",
         "psr/log": "^3.0",
+        "spomky-labs/aes-key-wrap": "^7.0",
         "spomky-labs/otphp": "^11.5",
         "spomky-labs/pki-framework": "^1.2.1",
         "symfony/clock": "8.2.*",

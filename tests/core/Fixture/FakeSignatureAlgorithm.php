@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Fixture;
 
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
+use Heidi\Core\Domain\Key\KeyUse;
 use Jose\Component\Core\JWK;
 use Jose\Component\KeyManagement\JWKFactory;
 use Jose\Component\Signature\Algorithm\SignatureAlgorithm as JoseAlgorithm;
@@ -33,6 +34,11 @@ final readonly class FakeSignatureAlgorithm implements JoseSignatureAlgorithmInt
         return 'EC';
     }
 
+    public function keyUse(): KeyUse
+    {
+        return KeyUse::Signature;
+    }
+
     public function digestAlgorithm(): string
     {
         return 'sha256';
@@ -47,7 +53,8 @@ final readonly class FakeSignatureAlgorithm implements JoseSignatureAlgorithmInt
     {
         return JWKFactory::createECKey('P-256', [
             'alg' => $this->name,
-            'use' => 'sig',
+            'use' => $this->keyUse()
+                ->value,
         ]);
     }
 }

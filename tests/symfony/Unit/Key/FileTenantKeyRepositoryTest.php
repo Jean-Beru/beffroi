@@ -10,10 +10,10 @@ use function file_get_contents;
 use function file_put_contents;
 use function fileperms;
 use function glob;
-use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\RuntimeException;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -33,16 +33,16 @@ use function uniqid;
 /**
  * Architecture §3.3: the sealed keys as files, one per key, under the tenant's slug.
  */
-final class FileSigningKeyRepositoryTest extends TestCase
+final class FileTenantKeyRepositoryTest extends TestCase
 {
     private string $directory;
 
-    private FileSigningKeyRepository $repository;
+    private FileTenantKeyRepository $repository;
 
     protected function setUp(): void
     {
         $this->directory = sys_get_temp_dir() . '/heidi-keys-' . uniqid('', true);
-        $this->repository = new FileSigningKeyRepository($this->directory, Algorithms::all());
+        $this->repository = new FileTenantKeyRepository($this->directory, Algorithms::all());
     }
 
     protected function tearDown(): void
@@ -69,7 +69,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $key = new SigningKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
+        $key = new TenantKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
         $this->repository->save($key);
 
         // When
@@ -151,7 +151,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     }
 
     /**
-     * SigningKeyRepositoryInterface::findPublished(): staged, active and retiring keys, in creation order;
+     * TenantKeyRepositoryInterface::findPublished(): staged, active and retiring keys, in creation order;
      * findActive(): never a staged key.
      */
     #[Test]
@@ -179,7 +179,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
         $published = $this->repository->findPublished($tenant);
 
         // Then
-        static::assertSame(['zzz-oldest', 'mmm-newest', 'bbb-staged'], array_map(static fn (SigningKey $key): string => $key->kid, $published));
+        static::assertSame(['zzz-oldest', 'mmm-newest', 'bbb-staged'], array_map(static fn (TenantKey $key): string => $key->kid, $published));
     }
 
     #[Test]
@@ -247,11 +247,11 @@ final class FileSigningKeyRepositoryTest extends TestCase
         // Given
         $tenant = Fixtures::tenant();
         $this->repository->save(self::key($tenant, Keys::pair()->kid));
-        $unwired = new FileSigningKeyRepository($this->directory, new JoseSignatureAlgorithms([Algorithms::es256()]));
+        $unwired = new FileTenantKeyRepository($this->directory, new JoseSignatureAlgorithms([Algorithms::es256()]));
 
         // Then
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageIsOrContains('is signed with an algorithm this provider is not wired with');
+        $this->expectExceptionMessageIsOrContains('names an algorithm this provider is not wired with');
 
         // When
         $unwired->find($tenant, Keys::pair()->kid);
@@ -281,7 +281,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     public function aKeyWhoseKidCannotNameAFileIsNotSaved(): void
     {
         // Given
-        $key = new SigningKey('../escape', Fixtures::tenant(), Algorithms::rs256(), [
+        $key = new TenantKey('../escape', Fixtures::tenant(), Algorithms::rs256(), [
             'kid' => '../escape',
         ] + Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
 
@@ -294,7 +294,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
 
     #[Test]
     #[DataProvider('provideCorruptedDocuments')]
-    public function aFileThatIsNotASigningKeyDocumentIsAFault(string $content): void
+    public function aFileThatIsNotATenantKeyDocumentIsAFault(string $content): void
     {
         // Given
         mkdir($this->directory . '/acme', 0o700, true);
@@ -381,7 +381,7 @@ final class FileSigningKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $this->repository->save(new SigningKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
+        $this->repository->save(new TenantKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
 
         // When
         $files = glob($this->directory . '/*/*.json');
@@ -466,14 +466,14 @@ final class FileSigningKeyRepositoryTest extends TestCase
         ];
     }
 
-    private static function key(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): SigningKey
+    private static function key(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): TenantKey
     {
-        return new SigningKey($kid, $tenant, Algorithms::rs256(), [
+        return new TenantKey($kid, $tenant, Algorithms::rs256(), [
             'kid' => $kid,
         ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now(), $createdAt ?? Fixtures::now());
     }
 
-    private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): SigningKey
+    private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): TenantKey
     {
         $key = self::key($tenant, $kid, $createdAt);
         $key->activate(Fixtures::now());

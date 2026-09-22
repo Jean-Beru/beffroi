@@ -6,9 +6,9 @@ namespace Heidi\Oidc\Tests\Application\Discovery;
 
 use function array_column;
 use function array_map;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
+use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -38,21 +38,21 @@ final class JwksHandlerTest extends TestCase
 {
     private Jwts $jwts;
 
-    private SigningKey $retiring;
+    private TenantKey $retiring;
 
     private JwksHandler $handler;
 
     protected function setUp(): void
     {
         $this->jwts = new Jwts(Fixtures::tenant());
-        $repository = new InMemorySigningKeyRepository();
+        $repository = new InMemoryTenantKeyRepository();
         $repository->save($this->jwts->key);
-        $this->retiring = new SigningKey(Keys::otherPair()->kid, $this->jwts->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $this->retiring = new TenantKey(Keys::otherPair()->kid, $this->jwts->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
         $this->retiring->activate(Fixtures::now()->modify('-1 day'));
         $this->retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $repository->save($this->retiring);
         $repository->save(self::retiredKey($this->jwts->tenant));
-        $globex = new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $globex = new TenantKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
         $globex->activate(Fixtures::now());
         $repository->save($globex);
         $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
@@ -137,7 +137,7 @@ final class JwksHandlerTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $repository = new InMemorySigningKeyRepository();
+        $repository = new InMemoryTenantKeyRepository();
         $repository->save(self::retiredKey($tenant));
         $handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
 
@@ -193,9 +193,9 @@ final class JwksHandlerTest extends TestCase
         new JwksHandler($this->jwts->keys, -1);
     }
 
-    private static function retiredKey(Tenant $tenant): SigningKey
+    private static function retiredKey(Tenant $tenant): TenantKey
     {
-        $retired = new SigningKey(Keys::otherPair()->kid . '-old', $tenant, Algorithms::rs256(), [
+        $retired = new TenantKey(Keys::otherPair()->kid . '-old', $tenant, Algorithms::rs256(), [
             ...Keys::otherPair()->publicJwk,
             'kid' => Keys::otherPair()->kid . '-old',
         ], 'sealed', Fixtures::now()->modify('-2 days'), Fixtures::now()->modify('-2 days'));

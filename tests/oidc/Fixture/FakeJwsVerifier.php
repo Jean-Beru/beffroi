@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Key\VerifiedJws;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
@@ -39,7 +39,7 @@ final class FakeJwsVerifier implements JwsVerifierInterface
         if ($issuer === null || $payload === null || ! $issuer->equals($tenant)) {
             throw new InvalidJwsException(sprintf('The token "%s" does not verify.', $compactJws));
         }
-        $key = new SigningKey('fake-kid', $tenant, Algorithms::rs256(), [
+        $key = new TenantKey('fake-kid', $tenant, Algorithms::rs256(), [
             'kid' => 'fake-kid',
             'kty' => 'RSA',
             'alg' => 'RS256',

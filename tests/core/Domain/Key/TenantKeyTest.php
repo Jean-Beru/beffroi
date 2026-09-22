@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Domain\Key;
 
+use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Key\KeyStatus;
+use Heidi\Core\Domain\Key\KeyUse;
 use Heidi\Core\Domain\Key\PublicKeySet;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -17,7 +19,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-final class SigningKeyTest extends TestCase
+final class TenantKeyTest extends TestCase
 {
     /**
      * OIDC Core §10.1.1: the key is published before it signs, so that a relying party caching the JWK Set
@@ -44,7 +46,7 @@ final class SigningKeyTest extends TestCase
     public function aNewKeySaysWhenItsActivationIsDue(): void
     {
         // When
-        $key = new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
+        $key = new TenantKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
 
         // Then
         static::assertEquals(Fixtures::now()->modify('+6 minutes'), $key->activationDueAt);
@@ -58,7 +60,7 @@ final class SigningKeyTest extends TestCase
         $this->expectExceptionMessageIs('The activation of a key is due when it is created at the earliest.');
 
         // When
-        new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('-1 second'));
+        new TenantKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('-1 second'));
     }
 
     #[Test]
@@ -226,7 +228,7 @@ final class SigningKeyTest extends TestCase
 
     #[Test]
     #[DataProvider('provideKeysThatCannotStartRetiring')]
-    public function onlyAnActiveKeyStartsRetiring(SigningKey $key): void
+    public function onlyAnActiveKeyStartsRetiring(TenantKey $key): void
     {
         // Then
         $this->expectException(LogicException::class);
@@ -236,7 +238,7 @@ final class SigningKeyTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{SigningKey}>
+     * @return iterable<string, array{TenantKey}>
      */
     public static function provideKeysThatCannotStartRetiring(): iterable
     {
@@ -249,7 +251,7 @@ final class SigningKeyTest extends TestCase
 
     #[Test]
     #[DataProvider('provideKeysThatCannotRetire')]
-    public function onlyARetiringKeyRetires(SigningKey $key): void
+    public function onlyARetiringKeyRetires(TenantKey $key): void
     {
         // Then
         $this->expectException(LogicException::class);
@@ -259,7 +261,7 @@ final class SigningKeyTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{SigningKey}>
+     * @return iterable<string, array{TenantKey}>
      */
     public static function provideKeysThatCannotRetire(): iterable
     {
@@ -279,7 +281,7 @@ final class SigningKeyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new SigningKey($kid, Fixtures::tenant(), Algorithms::rs256(), $publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        new TenantKey($kid, Fixtures::tenant(), Algorithms::rs256(), $publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
     }
 
     /**
@@ -314,6 +316,75 @@ final class SigningKeyTest extends TestCase
         ], ''];
     }
 
+    /**
+     * RFC 7517 §4.2: the "use" of the JWK is the use of the algorithm the key was generated for, asserted
+     * and not assumed. A key of an encryption algorithm publishes "enc".
+     */
+    #[Test]
+    public function anEncryptionKeyIsPublishedForEncryption(): void
+    {
+        // When
+        $key = self::encryptionKey();
+
+        // Then
+        static::assertSame('enc', $key->publicJwk['use']);
+        static::assertSame(KeyUse::Encryption, $key->algorithm->keyUse());
+    }
+
+    /**
+     * The other way round of "wrong use": a JWK that says it signs cannot describe a key generated to be
+     * encrypted to.
+     */
+    #[Test]
+    public function aJwkThatSignsDoesNotDescribeAnEncryptionKey(): void
+    {
+        // Given
+        $jwk = [
+            ...Keys::encryptionPair()->publicJwk,
+            'use' => 'sig',
+        ];
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The public JWK must carry "use" = "enc".');
+
+        // When
+        new TenantKey(Keys::encryptionPair()->kid, Fixtures::tenant(), Algorithms::ecdhEsA256Kw(), $jwk, 'sealed', Fixtures::now(), Fixtures::now());
+    }
+
+    /**
+     * RFC 7517 §5 and §4.2: the set carries both uses, and a consumer asks for the one it needs.
+     */
+    #[Test]
+    public function thePublicKeySetCarriesBothUsesAndNarrowsToOne(): void
+    {
+        // Given
+        $signing = self::key();
+        $encryption = self::encryptionKey();
+
+        // When
+        $set = new PublicKeySet([$signing, $encryption]);
+
+        // Then
+        static::assertSame([$signing->kid, $encryption->kid], array_map(static fn (TenantKey $key): string => $key->kid, $set->keys));
+        static::assertSame([$signing->kid], array_map(static fn (TenantKey $key): string => $key->kid, $set->forUse(KeyUse::Signature)->keys));
+        static::assertSame([$encryption->kid], array_map(static fn (TenantKey $key): string => $key->kid, $set->forUse(KeyUse::Encryption)->keys));
+    }
+
+    /**
+     * A key of one use is not found among the keys of the other, which is what keeps a signature from
+     * being verified against a key published to be encrypted to.
+     */
+    #[Test]
+    public function aKeyIsNotFoundAmongTheKeysOfTheOtherUse(): void
+    {
+        // Given
+        $set = new PublicKeySet([self::key(), self::encryptionKey()]);
+
+        // When / Then
+        static::assertNull($set->forUse(KeyUse::Signature)->find(Keys::encryptionPair()->kid));
+    }
+
     #[Test]
     public function itCarriesItsSealedPrivateMaterial(): void
     {
@@ -321,7 +392,7 @@ final class SigningKeyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, '', Fixtures::now(), Fixtures::now());
+        new TenantKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, '', Fixtures::now(), Fixtures::now());
     }
 
     /**
@@ -390,20 +461,25 @@ final class SigningKeyTest extends TestCase
         static::assertTrue(new PublicKeySet([])->isEmpty());
     }
 
+    private static function encryptionKey(): TenantKey
+    {
+        return new TenantKey(Keys::encryptionPair()->kid, Fixtures::tenant(), Algorithms::ecdhEsA256Kw(), Keys::encryptionPair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+    }
+
     /**
      * @param array<string, string>|null $publicJwk
      */
-    private static function key(?string $kid = null, ?array $publicJwk = null): SigningKey
+    private static function key(?string $kid = null, ?array $publicJwk = null): TenantKey
     {
-        return new SigningKey($kid ?? Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), $publicJwk ?? Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        return new TenantKey($kid ?? Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), $publicJwk ?? Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
     }
 
-    private static function stagedKey(DateTimeImmutable $activationDueAt): SigningKey
+    private static function stagedKey(DateTimeImmutable $activationDueAt): TenantKey
     {
-        return new SigningKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), $activationDueAt);
+        return new TenantKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), $activationDueAt);
     }
 
-    private static function activeKey(): SigningKey
+    private static function activeKey(): TenantKey
     {
         $key = self::key();
         $key->activate(Fixtures::now());
@@ -411,7 +487,7 @@ final class SigningKeyTest extends TestCase
         return $key;
     }
 
-    private static function retiredKey(): SigningKey
+    private static function retiredKey(): TenantKey
     {
         $key = self::key(Keys::otherPair()->kid, Keys::otherPair()->publicJwk);
         $key->activate(Fixtures::now());

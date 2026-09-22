@@ -198,7 +198,7 @@ final class KmsOutageTest extends PasskeyTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
         static::assertSame((string) KmsUnavailableListener::RETRY_AFTER, $response->headers->get('Retry-After'));
-        static::assertSame('The sealed signing key could not be opened. ' . KmsOutage::WORDS_OF_THE_KMS, self::events(KmsUnavailable::class)[0]->reason ?? null);
+        static::assertSame('The sealed key could not be opened. ' . KmsOutage::WORDS_OF_THE_KMS, self::events(KmsUnavailable::class)[0]->reason ?? null);
     }
 
     /**

@@ -9,7 +9,7 @@ use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Message\AdvanceKeyLifecycle;
 use Heidi\Bundle\Scheduler\HeidiSchedule;
-use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Key\TenantKeyRotator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -21,7 +21,7 @@ final readonly class AdvanceKeyLifecycleHandler
 {
     public function __construct(
         private TenantProvider $tenants,
-        private SigningKeyRotator $rotator,
+        private TenantKeyRotator $rotator,
         private RequestContextFactory $contexts,
     ) {
     }

@@ -9,8 +9,8 @@ use DateTimeInterface;
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Application\Key\TenantKeyRotator;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\KeyNotFoundException;
 use Heidi\Core\Exception\LogicException;
@@ -28,7 +28,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'heidi:keys:retire',
-    description: 'Take a retiring signing key out of the JWK Set: one key by its identifier, before its retirement date with --force; or every key past its date with --due.',
+    description: 'Take a retiring key out of the JWK Set: one key by its identifier, before its retirement date with --force; or every key past its date with --due.',
 )]
 final readonly class KeysRetireCommand
 {
@@ -36,7 +36,7 @@ final readonly class KeysRetireCommand
 
     public function __construct(
         private TenantProvider $tenants,
-        private SigningKeyRotator $rotator,
+        private TenantKeyRotator $rotator,
         private RequestContextFactory $contexts,
     ) {
     }
@@ -45,7 +45,7 @@ final readonly class KeysRetireCommand
         SymfonyStyle $io,
         #[Argument(description: 'The identifier ("kid") of the retiring key, as heidi:keys:list shows it.')]
         ?string $kid = null,
-        #[Option(description: 'Retire the key although a JWS it signed may still be alive: after a compromise, or when every token is known to have expired.')]
+        #[Option(description: 'Retire the key although what is bound to it may still arrive: after a compromise, or when everything it is bound to is known to have expired.')]
         bool $force = false,
         #[Option(description: 'Retire every key past its retirement date, and no other: what the scheduled step does.')]
         bool $due = false,
@@ -72,7 +72,7 @@ final readonly class KeysRetireCommand
 
                 return Command::SUCCESS;
             }
-            $io->listing(array_map(static fn (SigningKey $key): string => sprintf('%s, due since %s', $key->kid, $key->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'), $retired));
+            $io->listing(array_map(static fn (TenantKey $key): string => sprintf('%s, due since %s', $key->kid, $key->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'), $retired));
             $io->success(sprintf('%d key(s) of "%s" left the JWK Set.', count($retired), $tenant->slug));
 
             return Command::SUCCESS;
@@ -81,7 +81,7 @@ final readonly class KeysRetireCommand
         try {
             $key = $this->rotator->retire($tenant, $kid, $context, $force);
         } catch (RetirementNotDueException $exception) {
-            $io->error([$exception->getMessage(), 'Wait for the date, or pass --force if no token it signed can be presented any more.']);
+            $io->error([$exception->getMessage(), 'Wait for the date, or pass --force if nothing bound to it can arrive any more.']);
 
             return Command::FAILURE;
         } catch (KeyNotFoundException|LogicException $exception) {
@@ -93,7 +93,7 @@ final readonly class KeysRetireCommand
         return self::retired($io, $tenant, $key, $force);
     }
 
-    private static function retired(SymfonyStyle $io, Tenant $tenant, SigningKey $key, bool $force): int
+    private static function retired(SymfonyStyle $io, Tenant $tenant, TenantKey $key, bool $force): int
     {
         $io->definitionList(
             [
@@ -107,7 +107,7 @@ final readonly class KeysRetireCommand
             ],
         );
         if ($force) {
-            $io->warning(sprintf('The key "%s" left the JWK Set before its retirement date: a token it signed is refused from now on.', $key->kid));
+            $io->warning(sprintf('The key "%s" left the JWK Set before its retirement date: what is bound to it is refused from now on.', $key->kid));
         }
         $io->success(sprintf('The key "%s" of "%s" left the JWK Set.', $key->kid, $tenant->slug));
 

@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 use function base64_encode;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
@@ -303,7 +303,7 @@ final class EndSessionControllerTest extends BrowserTestCase
      */
     private function idTokenOf(User $user): string
     {
-        if (self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)->findActive(self::tenant(), Algorithms::rs256()) === null) {
+        if (self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->findActive(self::tenant(), Algorithms::rs256()) === null) {
             self::signingKey();
         }
         $this->signIn($user);

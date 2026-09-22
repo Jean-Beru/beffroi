@@ -9,8 +9,8 @@ use function fileperms;
 use function filesize;
 use function getenv;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Application\Key\TenantKeyRotator;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use function is_string;
 use PHPUnit\Framework\Attributes\Test;
@@ -52,13 +52,13 @@ final class KeyFileCustodyTest extends DatabaseTestCase
     public function aSealedKeyIsWrappedByTheKeyFileOfTheTenant(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+        $rotator = self::service('test.heidi.key_rotator', TenantKeyRotator::class);
 
         // When
         $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
-        $stored = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)
+        $stored = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)
             ->find(self::tenant(), $rotated->kid) ?? static::fail('The key is stored.');
         static::assertSame(self::KEY_ID, Envelope::fromBytes($stored->sealedPrivateJwk)->keyId);
     }

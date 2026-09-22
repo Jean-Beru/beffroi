@@ -92,7 +92,7 @@ const DEV_CLIENT_SECRETS = [
 
 #[AsTask(description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password')]
 function provision(
-    #[AsOption(description: 'The KMS to seal the signing keys with when apps/op/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS')]
+    #[AsOption(description: 'The KMS to seal the keys of the tenant with when apps/op/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS')]
     ?string $kms = null,
 ): void {
     io()->title('Provisioning the development OP');
@@ -106,7 +106,7 @@ function provision(
     op_console(['heidi:tenant:synchronize']);
 
     io()
-        ->section('Signing key');
+        ->section('Keys');
     // The console wraps its blocks: flatten before searching the sentence.
     $keys = (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
     if (str_contains($keys, 'no published key')) {
@@ -122,6 +122,16 @@ function provision(
         }
         io()
             ->note('A signing key is published already and opens with the KMS; "castor console heidi:keys:rotate" rotates it without an outage.');
+    }
+    // The other half of the JWK Set: the key a client encrypts a request object to, same custody, same
+    // four states, published with "use": "enc". The document announces the algorithms the bundle wires,
+    // so the tenant holds a key for them (issue #164).
+    $keys = (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
+    if (preg_match('/Use enc/', $keys) !== 1) {
+        op_console(['heidi:keys:generate', '--algorithm=ECDH-ES+A256KW']);
+    } else {
+        io()
+            ->note('An encryption key is published already; "castor console heidi:keys:rotate --algorithm=ECDH-ES+A256KW" rotates it without an outage.');
     }
 
     io()

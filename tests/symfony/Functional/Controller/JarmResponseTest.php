@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use function array_keys;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Jose\Component\Core\JWKSet;
 use Jose\Component\Signature\JWSVerifier;
@@ -207,7 +207,7 @@ final class JarmResponseTest extends BrowserTestCase
      * The key the answers of "jarm-app" are signed with: it registered ES256, so the tenant needs an
      * active key of that algorithm (JARM §3). Called again, it is a rotation.
      */
-    private static function signedResponseKey(): SigningKey
+    private static function signedResponseKey(): TenantKey
     {
         return self::rotator()
             ->rotate(self::tenant(), Algorithms::es256(), self::context());

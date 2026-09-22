@@ -12,12 +12,12 @@ use function explode;
 use function hash;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
@@ -168,7 +168,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      * A key the tenant signs with, so that the token endpoint can answer. Called again, it is a rotation:
      * the key that signed starts retiring, this one signs (architecture §3.3).
      */
-    protected static function signingKey(): SigningKey
+    protected static function signingKey(): TenantKey
     {
         return self::rotator()
             ->rotate(self::tenant(), Algorithms::rs256(), self::context());
@@ -177,7 +177,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     /**
      * A key published before it signs: the first half of a rotation.
      */
-    protected static function stagedKey(): SigningKey
+    protected static function stagedKey(): TenantKey
     {
         return self::rotator()
             ->stage(self::tenant(), Algorithms::rs256(), self::context());
@@ -186,15 +186,15 @@ abstract class BrowserTestCase extends DatabaseTestCase
     /**
      * Out of the JWK Set before its retirement date: what an operator does after a compromise.
      */
-    protected static function retireKey(SigningKey $key): void
+    protected static function retireKey(TenantKey $key): void
     {
         self::rotator()
             ->retire(self::tenant(), $key->kid, self::context(), force: true);
     }
 
-    protected static function rotator(): SigningKeyRotator
+    protected static function rotator(): TenantKeyRotator
     {
-        return self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+        return self::service('test.heidi.key_rotator', TenantKeyRotator::class);
     }
 
     /**

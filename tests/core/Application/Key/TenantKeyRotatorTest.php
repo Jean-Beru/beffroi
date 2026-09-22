@@ -5,24 +5,24 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Key;
 
 use DateInterval;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
+use Heidi\Core\Application\Key\TenantKeyRotator;
+use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Event\SigningKeyRetired;
-use Heidi\Core\Domain\Event\SigningKeyRotated;
-use Heidi\Core\Domain\Event\SigningKeyStaged;
+use Heidi\Core\Domain\Event\TenantKeyRetired;
+use Heidi\Core\Domain\Event\TenantKeyRotated;
+use Heidi\Core\Domain\Event\TenantKeyStaged;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\RetirementReason;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\KeyNotFoundException;
 use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Exception\RetirementNotDueException;
-use Heidi\Core\Port\IssuedJwsKindInterface;
+use Heidi\Core\Port\KeyBoundArtifactInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\FixedLifetimeJwsKind;
+use Heidi\Core\Tests\Fixture\FixedLifetimeArtifact;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use Heidi\Core\Tests\Fixture\PrecomputedKeyPairGenerator;
@@ -37,7 +37,7 @@ use Symfony\Component\Clock\MockClock;
  * signs, the previous one stays published while a JWS it signed can be alive, then leaves the JWK Set
  * when its retirement date has passed; a compromised key leaves at once.
  */
-final class SigningKeyRotatorTest extends TestCase
+final class TenantKeyRotatorTest extends TestCase
 {
     /**
      * The kinds of JWS the tenant issues under test: ten minutes and one hour, so that the longest wins.
@@ -51,7 +51,7 @@ final class SigningKeyRotatorTest extends TestCase
 
     private Tenant $tenant;
 
-    private InMemorySigningKeyRepository $repository;
+    private InMemoryTenantKeyRepository $repository;
 
     private RecordingEventDispatcher $events;
 
@@ -59,16 +59,16 @@ final class SigningKeyRotatorTest extends TestCase
 
     private RequestContext $context;
 
-    private SigningKeyRotator $rotator;
+    private TenantKeyRotator $rotator;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $this->repository = new InMemorySigningKeyRepository();
+        $this->repository = new InMemoryTenantKeyRepository();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T14:00:00+00:00');
         $this->context = RequestContext::unknown($this->clock->now());
-        $this->rotator = $this->rotator([new FixedLifetimeJwsKind(new DateInterval('PT10M')), new FixedLifetimeJwsKind(new DateInterval(self::LONGEST_LIFETIME))]);
+        $this->rotator = $this->rotator([new FixedLifetimeArtifact(new DateInterval('PT10M')), new FixedLifetimeArtifact(new DateInterval(self::LONGEST_LIFETIME))]);
     }
 
     #[Test]
@@ -82,7 +82,7 @@ final class SigningKeyRotatorTest extends TestCase
         static::assertTrue($first->isActive());
         static::assertEquals($this->clock->now(), $first->activatedAt);
         static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
-        static::assertNull($this->events->of(SigningKeyRotated::class)[0]->retiring);
+        static::assertNull($this->events->of(TenantKeyRotated::class)[0]->retiring);
     }
 
     /**
@@ -147,11 +147,11 @@ final class SigningKeyRotatorTest extends TestCase
         $staged = $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
-        [$event] = $this->events->of(SigningKeyStaged::class);
+        [$event] = $this->events->of(TenantKeyStaged::class);
         static::assertSame($staged, $event->staged);
         static::assertSame($this->tenant, $event->tenant);
         static::assertSame($this->context, $event->context);
-        static::assertSame([], $this->events->of(SigningKeyRotated::class));
+        static::assertSame([], $this->events->of(TenantKeyRotated::class));
     }
 
     #[Test]
@@ -247,7 +247,7 @@ final class SigningKeyRotatorTest extends TestCase
         $this->rotator->activateDue($this->tenant, $this->context);
 
         // Then
-        $event = $this->events->of(SigningKeyRotated::class)[1];
+        $event = $this->events->of(TenantKeyRotated::class)[1];
         static::assertSame($staged, $event->activated);
         static::assertSame($first, $event->retiring);
         static::assertSame($this->context, $event->context);
@@ -266,7 +266,7 @@ final class SigningKeyRotatorTest extends TestCase
         // Then
         static::assertSame([], $activated);
         static::assertSame($savesBefore, $this->repository->saves);
-        static::assertCount(1, $this->events->of(SigningKeyRotated::class));
+        static::assertCount(1, $this->events->of(TenantKeyRotated::class));
     }
 
     /**
@@ -295,7 +295,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function theRetirementDateIgnoresAKindOfJwsTheTenantDoesNotIssue(): void
     {
         // Given
-        $rotator = $this->rotator([new FixedLifetimeJwsKind(new DateInterval('PT10M')), new FixedLifetimeJwsKind(null)]);
+        $rotator = $this->rotator([new FixedLifetimeArtifact(new DateInterval('PT10M')), new FixedLifetimeArtifact(null)]);
         $first = $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // When
@@ -397,11 +397,11 @@ final class SigningKeyRotatorTest extends TestCase
         $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
-        $event = $this->events->of(SigningKeyRotated::class)[1];
+        $event = $this->events->of(TenantKeyRotated::class)[1];
         static::assertSame($first, $event->retiring);
         static::assertSame($this->tenant, $event->tenant);
         static::assertSame($this->context, $event->context);
-        static::assertSame([], $this->events->of(SigningKeyRetired::class));
+        static::assertSame([], $this->events->of(TenantKeyRetired::class));
     }
 
     #[Test]
@@ -449,11 +449,11 @@ final class SigningKeyRotatorTest extends TestCase
         $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context, compromised: true);
 
         // Then
-        [$event] = $this->events->of(SigningKeyRetired::class);
+        [$event] = $this->events->of(TenantKeyRetired::class);
         static::assertSame($first, $event->retired);
         static::assertSame(RetirementReason::Compromised, $event->reason);
         static::assertSame($this->context, $event->context);
-        static::assertSame($first, $this->events->of(SigningKeyRotated::class)[1]->retiring);
+        static::assertSame($first, $this->events->of(TenantKeyRotated::class)[1]->retiring);
     }
 
     #[Test]
@@ -464,7 +464,7 @@ final class SigningKeyRotatorTest extends TestCase
 
         // Then
         static::assertTrue($key->isActive());
-        static::assertSame([], $this->events->of(SigningKeyRetired::class));
+        static::assertSame([], $this->events->of(TenantKeyRetired::class));
     }
 
     /**
@@ -521,7 +521,7 @@ final class SigningKeyRotatorTest extends TestCase
         $this->rotator->retireDue($this->tenant, $this->context);
 
         // Then
-        [$event] = $this->events->of(SigningKeyRetired::class);
+        [$event] = $this->events->of(TenantKeyRetired::class);
         static::assertSame($first, $event->retired);
         static::assertSame(RetirementReason::Due, $event->reason);
         static::assertSame($this->tenant, $event->tenant);
@@ -541,7 +541,7 @@ final class SigningKeyRotatorTest extends TestCase
 
         // Then
         static::assertSame(KeyStatus::Retired, $first->status);
-        static::assertSame(RetirementReason::Due, $this->events->of(SigningKeyRetired::class)[0]->reason);
+        static::assertSame(RetirementReason::Due, $this->events->of(TenantKeyRetired::class)[0]->reason);
         static::assertSame([$second], $this->repository->findPublished($this->tenant));
     }
 
@@ -555,7 +555,7 @@ final class SigningKeyRotatorTest extends TestCase
 
         // Then
         $this->expectException(RetirementNotDueException::class);
-        $this->expectExceptionMessageIs(sprintf('The key "%s" is not due for retirement before 2026-10-15T15:00:00+00:00: a JWS it signed may be alive.', $first->kid));
+        $this->expectExceptionMessageIs(sprintf('The key "%s" is not due for retirement before 2026-10-15T15:00:00+00:00: what it is bound to may still be alive.', $first->kid));
 
         // When
         $this->rotator->retire($this->tenant, $first->kid, $this->context);
@@ -577,7 +577,7 @@ final class SigningKeyRotatorTest extends TestCase
         // Then
         static::assertSame(KeyStatus::Retiring, $first->status);
         static::assertSame([$first, $second], $this->repository->findPublished($this->tenant));
-        static::assertSame([], $this->events->of(SigningKeyRetired::class));
+        static::assertSame([], $this->events->of(TenantKeyRetired::class));
     }
 
     #[Test]
@@ -594,7 +594,7 @@ final class SigningKeyRotatorTest extends TestCase
         // Then
         static::assertSame(KeyStatus::Retired, $first->status);
         static::assertEquals($this->clock->now(), $first->retiredAt);
-        static::assertSame(RetirementReason::Forced, $this->events->of(SigningKeyRetired::class)[0]->reason);
+        static::assertSame(RetirementReason::Forced, $this->events->of(TenantKeyRetired::class)[0]->reason);
         static::assertSame([$second], $this->repository->findPublished($this->tenant));
     }
 
@@ -636,7 +636,7 @@ final class SigningKeyRotatorTest extends TestCase
         $this->rotator->retire($this->tenant, 'nope', $this->context);
     }
 
-    private function firstRotation(): SigningKey
+    private function firstRotation(): TenantKey
     {
         $key = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $this->clock->modify('+30 days');
@@ -652,7 +652,7 @@ final class SigningKeyRotatorTest extends TestCase
     public function aKeyOfAnotherAlgorithmRotatesTheSameWay(): void
     {
         // Given
-        $rotator = new SigningKeyRotator($this->repository, new JwtLibraryKeyPairGenerator(Algorithms::all()), Keys::sealer(), $this->issuedJws(), new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
+        $rotator = new TenantKeyRotator($this->repository, new JwtLibraryKeyPairGenerator(Algorithms::everyUse()), Keys::sealer(), $this->issuedJws(), new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
         $rs256 = $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $first = $rotator->rotate($this->tenant, Algorithms::edDsa(), $this->context);
 
@@ -668,18 +668,18 @@ final class SigningKeyRotatorTest extends TestCase
     }
 
     /**
-     * @return list<FixedLifetimeJwsKind>
+     * @return list<FixedLifetimeArtifact>
      */
     private function issuedJws(): array
     {
-        return [new FixedLifetimeJwsKind(new DateInterval(self::LONGEST_LIFETIME))];
+        return [new FixedLifetimeArtifact(new DateInterval(self::LONGEST_LIFETIME))];
     }
 
     /**
-     * @param list<IssuedJwsKindInterface> $issuedJws
+     * @param list<KeyBoundArtifactInterface> $issuedJws
      */
-    private function rotator(array $issuedJws): SigningKeyRotator
+    private function rotator(array $issuedJws): TenantKeyRotator
     {
-        return new SigningKeyRotator($this->repository, new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]), Keys::sealer(), $issuedJws, new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
+        return new TenantKeyRotator($this->repository, new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]), Keys::sealer(), $issuedJws, new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
     }
 }

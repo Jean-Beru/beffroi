@@ -29,7 +29,7 @@ use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\Dpop\CachedDpopNonce;
 use Heidi\Bundle\Http\LogoutTokenSender;
-use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
@@ -38,7 +38,7 @@ use Heidi\Bundle\Security\RateLimitedAttempts;
 use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
-use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
@@ -224,7 +224,7 @@ final class HeidiBundle extends AbstractBundle
             ->end()
             ->end()
             ->arrayNode('keys')
-            ->info('Where the signing keys live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).')
+            ->info('Where the keys of the tenants live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).')
             ->isRequired()
             ->children()
             ->scalarNode('kms')
@@ -233,12 +233,12 @@ final class HeidiBundle extends AbstractBundle
             ->cannotBeEmpty()
             ->end()
             ->scalarNode('key_id')
-            ->info('The key of that KMS the signing keys are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); "{tenant}" stands for the slug of the tenant, one master key each.')
+            ->info('The key of that KMS the keys of the tenants are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); "{tenant}" stands for the slug of the tenant, one master key each.')
             ->isRequired()
             ->cannotBeEmpty()
             ->end()
             ->scalarNode('storage')
-            ->info('Directory of the sealed signing keys, one file per key and per tenant.')
+            ->info('Directory of the sealed keys, one file per key and per tenant.')
             ->defaultValue('%kernel.project_dir%/var/keys')
             ->cannotBeEmpty()
             ->end()
@@ -685,7 +685,7 @@ final class HeidiBundle extends AbstractBundle
         $services->get(EnvelopeSecretSealer::class)
             ->arg('$envelopes', service('heidi.kms.envelopes'))
             ->arg('$kmsKeyId', self::string($keys, 'key_id'));
-        $services->get(FileSigningKeyRepository::class)
+        $services->get(FileTenantKeyRepository::class)
             ->arg('$directory', self::string($keys, 'storage'));
         $services->get(FileMetadataBlobStore::class)
             ->arg('$directory', self::string($webauthn, 'metadata_storage'));
@@ -694,7 +694,7 @@ final class HeidiBundle extends AbstractBundle
         $services->get(RouterEndpointLocator::class)
             ->arg('$mutualTlsOrigin', is_string($mutualTls['origin'] ?? null) ? $mutualTls['origin'] : null);
         // derived at runtime, once the environment placeholders are numbers
-        $services->get(SigningKeyRotator::class)
+        $services->get(TenantKeyRotator::class)
             ->arg('$stagingDelay', inline_service(DateInterval::class)
                 ->factory(StagingDelay::interval(...))
                 ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]));

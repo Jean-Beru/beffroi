@@ -8,10 +8,10 @@ use DateTimeInterface;
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Exception\KeyNotFoundException;
 use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -24,7 +24,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'heidi:keys:activate',
-    description: 'Make a staged signing key the active one before its staging delay elapsed; the key that signed starts retiring.',
+    description: 'Make a staged key the active one of its algorithm before its staging delay elapsed; the key it takes over from starts retiring.',
 )]
 final readonly class KeysActivateCommand
 {
@@ -32,8 +32,8 @@ final readonly class KeysActivateCommand
 
     public function __construct(
         private TenantProvider $tenants,
-        private SigningKeyRepositoryInterface $keys,
-        private SigningKeyRotator $rotator,
+        private TenantKeyRepositoryInterface $keys,
+        private TenantKeyRotator $rotator,
         private RequestContextFactory $contexts,
     ) {
     }
@@ -70,6 +70,10 @@ final readonly class KeysActivateCommand
                 'Algorithm' => $key->algorithm->name(),
             ],
             [
+                'Use' => $key->algorithm->keyUse()
+                    ->value,
+            ],
+            [
                 'Status' => $key->status->value,
             ],
             [
@@ -79,9 +83,9 @@ final readonly class KeysActivateCommand
         if ($previous !== null) {
             // Read again: the repository may hand a fresh object on every read, and the rotation just dated this one.
             $retiring = $this->keys->find($tenant, $previous->kid) ?? $previous;
-            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while the tokens it signed are alive.', $retiring->kid, $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
+            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while what is bound to it may still arrive.', $retiring->kid, $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
         }
-        $io->success(sprintf('The key "%s" signs the tokens of "%s" from now on.', $key->kid, $tenant->slug));
+        $io->success(sprintf('The key "%s" is the active %s key of "%s" from now on.', $key->kid, $key->algorithm->name(), $tenant->slug));
 
         return Command::SUCCESS;
     }
