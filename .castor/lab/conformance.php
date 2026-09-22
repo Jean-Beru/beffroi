@@ -362,11 +362,8 @@ function conformance_reset(string $issuer): void
     op_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
     provision();
     run(['docker', 'compose', ...compose_profiles(), 'restart', 'op', 'worker']);
-    // The sidecar that brings the port of the suite into the worker shares its network namespace, which a
-    // restart of the worker leaves behind: it keeps running and forwards nothing at all. It goes back up
-    // after the worker, or the back-channel plan would wait for a token that cannot arrive; a run against
-    // a suite of its own has no sidecar to bring back.
-    run(['docker', 'compose', ...compose_profiles(), 'restart', 'conformance-worker-redirector'], context: context()->withAllowFailure());
+    // Last, and after the worker, or the back-channel plan would wait for a token that cannot arrive.
+    compose_recreate_worker_redirector();
     conformance_wait_for_op($issuer);
 }
 

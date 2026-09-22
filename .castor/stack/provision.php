@@ -280,25 +280,15 @@ function provision_env_local(?string $kms): array
  * whoever needs it to, and the console commands read the file each time; a worker, which runs for an
  * hour, would go on signing a logout token for a client whose secret it does not have, which is what the
  * back-channel logout plan and "castor demo --logout-others" both need. The sidecar that shares its
- * network namespace goes with it: a worker that restarts leaves it forwarding nothing (compose.yaml).
+ * network namespace goes with it, created again and after it (compose_recreate_worker_redirector).
  */
 function provision_restart_consumers(): void
 {
-    $running = run(
-        ['docker', 'compose', ...compose_profiles(), 'ps', '--status', 'running', '--services'],
-        context: context()
-            ->withAllowFailure()
-            ->withQuiet(),
-    );
-    if (! $running->isSuccessful()) {
-        return;
-    }
-    $services = array_values(array_intersect(['worker', 'conformance-worker-redirector'], explode("\n", trim($running->getOutput()))));
-    if ($services === []) {
-        return;
+    if (in_array('worker', compose_running_services(), true)) {
+        run(['docker', 'compose', ...compose_profiles(), 'restart', 'worker']);
     }
 
-    run(['docker', 'compose', ...compose_profiles(), 'restart', ...$services]);
+    compose_recreate_worker_redirector();
 }
 
 /**
