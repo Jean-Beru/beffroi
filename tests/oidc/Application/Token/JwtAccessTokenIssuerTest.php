@@ -16,7 +16,7 @@ use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\Confirmation;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -256,7 +256,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $certificate = Certificates::client();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()), Confirmation::ofCertificate($certificate));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()), CertificateConfirmation::ofCertificate($certificate));
 
         // When
         $claims = $this->jwts->verify($this->issuer->issue($authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];

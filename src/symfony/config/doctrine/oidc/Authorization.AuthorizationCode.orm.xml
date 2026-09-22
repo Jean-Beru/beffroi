@@ -28,6 +28,7 @@
         <field name="scopes" type="heidi_scopes" column="scopes"/>
         <field name="nonce" type="text" column="nonce" nullable="true"/>
         <field name="codeChallenge" type="heidi_code_challenge" column="code_challenge" length="133" nullable="true"/>
+        <field name="dpopKey" type="heidi_key_confirmation" column="dpop_jkt" length="43" nullable="true"/>
         <field name="claimsRequest" type="heidi_claims_request" column="claims" nullable="true">
             <options>
                 <option name="jsonb">true</option>

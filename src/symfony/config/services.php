@@ -18,6 +18,8 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
+use Heidi\Bundle\Dpop\CachedDpopNonce;
+use Heidi\Bundle\Dpop\CachedDpopProofReplayGuard;
 use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Heidi\Bundle\EndSession\LogoutChannels;
 use Heidi\Bundle\Http\AccountAccess;
@@ -145,6 +147,8 @@ use Heidi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
 use Heidi\Oidc\Application\Client\Method\TlsClientAuth;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
+use Heidi\Oidc\Application\Dpop\DpopProofValidator;
+use Heidi\Oidc\Application\Dpop\DpopProofVerifier;
 use Heidi\Oidc\Application\EndSession\BackChannelLogout;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
@@ -172,6 +176,8 @@ use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
+use Heidi\Oidc\Bridge\Null\NoDpopNonce;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
@@ -187,12 +193,14 @@ use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Port\JwtKeyVerifierInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
+use Heidi\Oidc\Port\ProofKeyVerifierInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
@@ -519,6 +527,26 @@ return static function (ContainerConfigurator $container): void {
             '$cache' => service('heidi.client_assertions'),
         ]);
     $services->alias(ClientAssertionReplayGuardInterface::class, ClientAssertionReplayGuard::class);
+
+    // The module: the proof of possession a request carries (RFC 9449), read with the reader every JWT
+    // a client signs is read with and verified against the key of its own header, with the algorithms
+    // the provider is wired with; the proofs already seen and the nonces it hands out live in a pool
+    // the workers share, as the assertions already seen do
+    $services->set(JwtLibraryProofKeyVerifier::class)
+        ->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
+    $services->alias(ProofKeyVerifierInterface::class, JwtLibraryProofKeyVerifier::class);
+    $services->set(CachedDpopProofReplayGuard::class)
+        ->args([
+            '$cache' => service('heidi.dpop'),
+        ]);
+    $services->alias(DpopProofReplayGuardInterface::class, CachedDpopProofReplayGuard::class);
+    $services->set(NoDpopNonce::class);
+    $services->set(CachedDpopNonce::class)
+        ->args([
+            '$cache' => service('heidi.dpop'),
+        ]);
+    $services->set(DpopProofValidator::class);
+    $services->set(DpopProofVerifier::class);
 
     // The module: subject and claims
     $services->set(PublicSubjectIdentifierResolver::class);

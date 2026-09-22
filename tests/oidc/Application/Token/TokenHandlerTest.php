@@ -21,21 +21,28 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokensIssued;
+use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
+use Heidi\Oidc\Exception\InvalidDpopProofException;
+use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\UnauthorizedClientException;
 use Heidi\Oidc\Exception\UnsupportedGrantTypeException;
+use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Tests\Fixture\Proofs;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -92,7 +99,7 @@ final class TokenHandlerTest extends TestCase
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, $this->events);
         $this->codeGrant = new AuthorizationCodeGrant($this->codes, new RefreshTokenRevocation($this->refreshTokens), new InMemoryAccessTokenRepository(), $issuer, $this->clock, $this->events);
         $refreshGrant = new RefreshTokenGrant($this->refreshTokens, new RefreshTokenRevocation($this->refreshTokens), $issuer, $this->clock, $this->events);
-        $this->handler = new TokenHandler($this->authenticator(), new Endpoints(), [$this->codeGrant, $refreshGrant]);
+        $this->handler = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), [$this->codeGrant, $refreshGrant]);
     }
 
     /**
@@ -274,7 +281,7 @@ final class TokenHandlerTest extends TestCase
     public function itRefusesAGrantTypeTheHandlerWasNotGiven(): void
     {
         // Given
-        $codeOnly = new TokenHandler($this->authenticator(), new Endpoints(), [$this->codeGrant]);
+        $codeOnly = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), [$this->codeGrant]);
 
         // Then
         $this->expectException(UnsupportedGrantTypeException::class);
@@ -330,7 +337,88 @@ final class TokenHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new TokenHandler($this->authenticator(), new Endpoints(), [$this->codeGrant, $this->codeGrant]);
+        new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), [$this->codeGrant, $this->codeGrant]);
+    }
+
+    /**
+     * RFC 9449 §5: a request that proves a key gets tokens bound to it, and says so in "token_type", so
+     * that a client knows to present them under the DPoP scheme (§7.1).
+     */
+    #[Test]
+    public function aRequestThatProvesAKeyBindsTheTokensToIt(): void
+    {
+        // Given
+        $this->codes->save(Tokens::code('the-code', $this->publicClient, $this->session, $this->clock->now(), ['openid'], dpopKey: Proofs::thumbprintOf(Proofs::key())));
+
+        // When
+        $response = $this->handler->handle($this->tenant, null, $this->publicExchange(), $this->context, null, $this->proof());
+
+        // Then
+        static::assertSame('DPoP', $response->parameters()['token_type']);
+        static::assertEquals(Proofs::thumbprintOf(Proofs::key()), $this->issuedAuthorization()->confirmation);
+    }
+
+    /**
+     * RFC 9449 §5: a client that sends no proof keeps getting bearer tokens, which is what every client
+     * that does not bind its tokens does.
+     */
+    #[Test]
+    public function aRequestThatProvesNothingGetsABearerToken(): void
+    {
+        // Given
+        $this->codes->save(Tokens::code('the-code', $this->publicClient, $this->session, $this->clock->now(), ['openid']));
+
+        // When
+        $response = $this->handler->handle($this->tenant, null, $this->publicExchange(), $this->context);
+
+        // Then
+        static::assertSame('Bearer', $response->parameters()['token_type']);
+        static::assertNull($this->issuedAuthorization()->confirmation);
+    }
+
+    /**
+     * RFC 9449 §10.1: the code was reserved for a key at the authorization request, and a token request
+     * that proves another key does not collect it. A code taken on its way back through the browser is
+     * worth nothing to whoever does not hold the key.
+     */
+    #[Test]
+    public function aCodeReservedForAKeyIsNotExchangedByAnother(): void
+    {
+        // Given
+        $this->codes->save(Tokens::code('the-code', $this->publicClient, $this->session, $this->clock->now(), ['openid'], dpopKey: Proofs::thumbprintOf(Proofs::otherKey())));
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs('invalid_grant: The authorization code is invalid.');
+
+        // When
+        $this->handler->handle($this->tenant, null, $this->publicExchange(), $this->context, null, $this->proof());
+    }
+
+    /**
+     * A token is bound to one thing. A request proving a certificate and a key at once leaves the
+     * provider to choose what the client meant, and is refused instead.
+     */
+    #[Test]
+    public function aRequestThatProvesACertificateAndAKeyIsRefused(): void
+    {
+        // Given
+        $client = Clients::withCertificateIdentity($this->tenant, new SubjectDistinguishedName('c=FR,o=Heidi Test,cn=heidi mtls client'));
+        $this->clients->save($client);
+        $this->codes->save(Tokens::code('the-code', $client, $this->session, $this->clock->now(), ['openid']));
+
+        // Then
+        $this->expectException(InvalidDpopProofException::class);
+        $this->expectExceptionMessageIs('invalid_dpop_proof: The tokens of a request are bound to one thing, and this request proves a certificate and a key (RFC 9449 section 5).');
+
+        // When
+        $this->handler->handle($this->tenant, null, [
+            'grant_type' => 'authorization_code',
+            'code' => 'the-code',
+            'redirect_uri' => 'https://mtls.example/callback',
+            'client_id' => 'mtls-client',
+            'code_verifier' => Tokens::CODE_VERIFIER,
+        ], $this->context, Certificates::client(), $this->proof());
     }
 
     private function authenticator(): ClientAuthenticator
@@ -362,6 +450,35 @@ final class TokenHandlerTest extends TestCase
             'refresh_token' => 'the-token',
             'client_id' => 'public-client',
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function publicExchange(): array
+    {
+        return [
+            'grant_type' => 'authorization_code',
+            'code' => 'the-code',
+            'redirect_uri' => 'https://spa.example/callback',
+            'client_id' => 'public-client',
+            'code_verifier' => Tokens::CODE_VERIFIER,
+        ];
+    }
+
+    /**
+     * A proof for the token endpoint of the tenant, made now.
+     */
+    private function proof(?JWK $key = null): string
+    {
+        return Proofs::proof('POST', Endpoints::of($this->tenant)->token, $this->clock->now(), null, [], [], $key);
+    }
+
+    private function issuedAuthorization(): GrantedAuthorization
+    {
+        $issued = $this->events->of(TokensIssued::class);
+
+        return $issued === [] ? static::fail('No token was issued.') : $issued[0]->authorization;
     }
 
     private static function basic(string $clientId, string $secret): string

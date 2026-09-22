@@ -30,6 +30,7 @@ use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Tests\Fixture\Proofs;
 use Heidi\Oidc\Tests\Fixture\RequestObjects;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -354,6 +355,60 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
+     * RFC 9449 §10.1: a request pushed with a proof reserves its code for the key of the proof, without
+     * the client having to name it a second time.
+     */
+    #[Test]
+    public function aRequestPushedWithAProofReservesItsCodeForThatKey(): void
+    {
+        // When
+        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo', Clients::SECRET), self::parameters([]), $this->context, null, $this->proof());
+
+        // Then
+        static::assertSame(Proofs::thumbprintOf(Proofs::key())->thumbprint, $this->storedRequest($response)->parameters['dpop_jkt']);
+    }
+
+    /**
+     * A request that names one key and is pushed with a proof of another names two keys, and choosing
+     * one of them would be the provider deciding what the client meant.
+     */
+    #[Test]
+    public function aRequestNamingAKeyAndProvingAnotherIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The dpop_jkt of the pushed request names another key than the proof that carried it (RFC 9449 section 10.1).');
+
+        // When
+        $this->handler->handle($this->tenant, self::basic('oidc-demo', Clients::SECRET), self::parameters([
+            'dpop_jkt' => Proofs::thumbprintOf(Proofs::otherKey())->thumbprint,
+        ]), $this->context, null, $this->proof());
+    }
+
+    /**
+     * A client that names the key itself is taken at its word, and the code is reserved all the same.
+     */
+    #[Test]
+    public function aRequestMayNameTheKeyItself(): void
+    {
+        // When
+        $response = $this->push([
+            'dpop_jkt' => Proofs::thumbprintOf(Proofs::key())->thumbprint,
+        ]);
+
+        // Then
+        static::assertSame(Proofs::thumbprintOf(Proofs::key())->thumbprint, $this->storedRequest($response)->parameters['dpop_jkt']);
+    }
+
+    /**
+     * A proof for the pushed endpoint of the tenant, made now.
+     */
+    private function proof(): string
+    {
+        return Proofs::proof('POST', Endpoints::of($this->tenant)->pushedAuthorizationRequest, $this->context->receivedAt);
+    }
+
+    /**
      * The record the endpoint kept for the reference it answered with.
      */
     private function storedRequest(PushedAuthorizationResponse $response): PushedAuthorizationRequest
@@ -365,6 +420,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     {
         return new PushedAuthorizationHandler(
             new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher()),
+            Proofs::verifier(),
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
             RequestObjects::resolver($this->clients, $this->clock),

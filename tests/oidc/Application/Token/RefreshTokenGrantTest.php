@@ -25,6 +25,7 @@ use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\IssuedRefreshToken;
+use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
@@ -44,6 +45,11 @@ use Symfony\Component\Clock\MockClock;
 final class RefreshTokenGrantTest extends TestCase
 {
     private const string INVALID_GRANT = 'invalid_grant: The refresh token is invalid.';
+
+    /**
+     * RFC 7638 §3.1: the base64url of a SHA-256, the shape of a key thumbprint.
+     */
+    private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
 
     private Tenant $tenant;
 
@@ -622,6 +628,50 @@ final class RefreshTokenGrantTest extends TestCase
         $this->refreshTokens->save($token);
 
         return $token;
+    }
+
+    /**
+     * RFC 9449 §5: a refresh token bound to a key is refreshed by a request that proves that key. Such a
+     * token was issued to a public client, which has no credentials: the binding is the whole of what
+     * tells its holder from whoever took a copy.
+     */
+    #[Test]
+    public function aBoundTokenIsRefreshedByARequestThatProvesItsKey(): void
+    {
+        // Given
+        $key = new KeyConfirmation(self::THUMBPRINT);
+        $this->refreshTokens->save(Tokens::refreshToken('the-token', $this->client, $this->session, $this->clock->now(), confirmation: $key));
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client, $key), $this->request(), $this->context);
+
+        // Then
+        static::assertEquals($key, $issued->authorization->confirmation);
+    }
+
+    #[Test]
+    #[DataProvider('provideOtherProofs')]
+    public function aBoundTokenIsNotRefreshedByARequestThatProvesAnythingElse(?string $thumbprint): void
+    {
+        // Given
+        $this->refreshTokens->save(Tokens::refreshToken('the-token', $this->client, $this->session, $this->clock->now(), confirmation: new KeyConfirmation(self::THUMBPRINT)));
+        $proven = $thumbprint === null ? null : new KeyConfirmation($thumbprint);
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client, $proven), $this->request(), $this->context);
+    }
+
+    /**
+     * @return iterable<string, array{string|null}>
+     */
+    public static function provideOtherProofs(): iterable
+    {
+        yield 'another key' => ['5bPRpDFfR6QNNOFrxJLPHlbCcFEHFwWVtOJQCg8h2hM'];
+        yield 'no proof at all' => [null];
     }
 
     private function request(string $refreshToken = 'the-token', ?string $scope = null): TokenRequest

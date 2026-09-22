@@ -24,7 +24,7 @@ use Heidi\Oidc\Domain\Client\Certificate\UriName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
-use Heidi\Oidc\Domain\Token\Confirmation;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\Certificates;
@@ -137,7 +137,7 @@ final class TlsClientAuthTest extends TestCase
         $authenticated = $this->authenticate($certificate);
 
         // Then
-        static::assertEquals(Confirmation::ofCertificate($certificate), $authenticated->confirmation);
+        static::assertEquals(CertificateConfirmation::ofCertificate($certificate), $authenticated->confirmation);
     }
 
     /**

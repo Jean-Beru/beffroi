@@ -29,17 +29,22 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\Confirmation;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
 use Heidi\Oidc\Exception\InsufficientScopeException;
+use Heidi\Oidc\Exception\InvalidDpopProofException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Exception\MissingBearerTokenException;
+use Heidi\Oidc\Exception\TokenBindingNotProvenException;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Jwts;
+use Heidi\Oidc\Tests\Fixture\Proofs;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -101,7 +106,7 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->accessToken(['openid', 'email', 'phone']);
 
         // When
-        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
 
         // Then
         static::assertSame('alice-subject', $response->subject);
@@ -126,7 +131,7 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->storedTokens->issue($this->authorization(['openid', 'email'], '{"userinfo":{"nickname":null}}'), Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
 
         // When
-        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
 
         // Then
         static::assertSame([
@@ -150,7 +155,7 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->boundToken($shape, $certificate);
 
         // When
-        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(), $certificate);
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context(), $certificate);
 
         // Then
         static::assertSame('alice-subject', $response->subject);
@@ -167,11 +172,11 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->boundToken($shape, Certificates::client());
 
         // Then
-        $this->expectException(InvalidTokenException::class);
-        $this->expectExceptionMessageIs('invalid_token: The access token is bound to a certificate this request did not present (RFC 8705 section 3).');
+        $this->expectException(TokenBindingNotProvenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token is bound to something this request did not present again (RFC 8705 section 3, RFC 9449 section 7.1).');
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(), Certificates::other());
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context(), Certificates::other());
     }
 
     /**
@@ -186,11 +191,11 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->boundToken($shape, Certificates::client());
 
         // Then
-        $this->expectException(InvalidTokenException::class);
-        $this->expectExceptionMessageIs('invalid_token: The access token is bound to a certificate this request did not present (RFC 8705 section 3).');
+        $this->expectException(TokenBindingNotProvenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token is bound to something this request did not present again (RFC 8705 section 3, RFC 9449 section 7.1).');
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -204,7 +209,7 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->accessToken(['openid', 'email']);
 
         // When
-        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(), Certificates::other());
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context(), Certificates::other());
 
         // Then
         static::assertSame('alice-subject', $response->subject);
@@ -232,7 +237,7 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->accessToken(['openid', 'email', 'phone']);
 
         // When
-        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
 
         // Then
         static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false}', $response->toJson());
@@ -251,7 +256,7 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->accessToken(['openid'], '{"userinfo":{"nickname":null,"email":{"essential":true},"unknown":null},"id_token":{"name":null}}');
 
         // When
-        $response = $this->handler->handle($this->tenant, null, [
+        $response = $this->handler->handle($this->tenant, 'GET', null, [
             'access_token' => $token,
         ], Fixtures::context());
 
@@ -275,7 +280,7 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
 
         // When
-        $response = $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
 
         // Then
         static::assertSame([
@@ -292,11 +297,11 @@ final class UserInfoHandlerTest extends TestCase
     {
         // When
         try {
-            $this->handler->handle($this->tenant, null, [], Fixtures::context());
+            $this->handler->handle($this->tenant, 'GET', null, [], Fixtures::context());
             static::fail('The request should have been refused.');
         } catch (MissingBearerTokenException $exception) {
             // Then
-            static::assertSame('Bearer', UserInfoErrorResponse::fromException($exception)->challenge());
+            static::assertSame('Bearer, DPoP', UserInfoErrorResponse::fromException($exception)->challenge());
         }
     }
 
@@ -313,7 +318,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectException(InvalidRequestException::class);
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $token, [
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [
             'access_token' => $token,
         ], Fixtures::context());
     }
@@ -330,7 +335,7 @@ final class UserInfoHandlerTest extends TestCase
 
         // When
         try {
-            $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context(Fixtures::now()->modify('+10 minutes')));
+            $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context(Fixtures::now()->modify('+10 minutes')));
             static::fail('The token should have been refused.');
         } catch (InvalidTokenException $exception) {
             // Then
@@ -355,7 +360,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('not an access token');
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $idToken, [], Fixtures::context());
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $idToken, [], Fixtures::context());
     }
 
     /**
@@ -371,7 +376,7 @@ final class UserInfoHandlerTest extends TestCase
 
         // When
         try {
-            $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+            $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
             static::fail('The token should have been refused.');
         } catch (InsufficientScopeException $exception) {
             // Then
@@ -398,7 +403,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -419,7 +424,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -437,7 +442,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -456,7 +461,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectExceptionMessageIs('invalid_token: The access token names a user this provider no longer serves.');
 
         // When
-        $this->handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -473,7 +478,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectException(InvalidTokenException::class);
 
         // When
-        $handler->handle($this->tenant, 'Bearer ' . $token, [], Fixtures::context());
+        $handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**
@@ -489,7 +494,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectException(InvalidTokenException::class);
 
         // When
-        $this->handler->handle(Fixtures::tenant('other', 'https://id.other.example'), 'Bearer ' . $token, [], Fixtures::context());
+        $this->handler->handle(Fixtures::tenant('other', 'https://id.other.example'), 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     private function handler(InMemoryUserRepository $users): UserInfoHandler
@@ -499,9 +504,109 @@ final class UserInfoHandlerTest extends TestCase
 
         return new UserInfoHandler(
             new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users),
+            Proofs::verifier(),
+            new Endpoints(),
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
         );
+    }
+
+    /**
+     * RFC 9449 §7.1: a token bound to a key is honoured when the request carries a proof of that key,
+     * made for this request and naming this very token, whichever shape the token has.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function aKeyBoundTokenIsHonouredWhenTheKeyIsProvedAgain(string $shape): void
+    {
+        // Given
+        $token = $this->keyBoundToken($shape);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'GET', 'DPoP ' . $token, [], Fixtures::context(), null, $this->proof($token));
+
+        // Then
+        static::assertSame('alice-subject', $response->subject);
+    }
+
+    /**
+     * A token issued against one key and presented with a proof of another opens nothing.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function aKeyBoundTokenPresentedWithAnotherKeyIsRefused(string $shape): void
+    {
+        // Given
+        $token = $this->keyBoundToken($shape);
+
+        // Then
+        $this->expectException(TokenBindingNotProvenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token is bound to something this request did not present again (RFC 8705 section 3, RFC 9449 section 7.1).');
+
+        // When
+        $this->handler->handle($this->tenant, 'GET', 'DPoP ' . $token, [], Fixtures::context(), null, $this->proof($token, Proofs::otherKey()));
+    }
+
+    /**
+     * RFC 9449 §7.1: a token bound to a key is presented under the DPoP scheme, and refused as soon as
+     * it is presented as a bearer token, with the challenge naming the scheme that would have worked.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function aKeyBoundTokenPresentedAsABearerTokenIsRefused(string $shape): void
+    {
+        // Given
+        $token = $this->keyBoundToken($shape);
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+            static::fail('A token bound to a key is not a bearer token.');
+        } catch (TokenBindingNotProvenException $exception) {
+            // Then
+            static::assertSame('invalid_token: The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1).', $exception->getMessage());
+            static::assertSame('DPoP', $exception->challengeScheme());
+            static::assertSame('DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1)."', UserInfoErrorResponse::fromException($exception)->challenge());
+        }
+    }
+
+    /**
+     * RFC 9449 §7.1: the proof names the token it accompanies, so that one taken from another request
+     * of the same client does not open this one.
+     */
+    #[Test]
+    public function aProofMadeForAnotherTokenIsRefused(): void
+    {
+        // Given
+        $token = $this->keyBoundToken('jwt');
+
+        // Then
+        $this->expectException(InvalidDpopProofException::class);
+        $this->expectExceptionMessageIs('invalid_dpop_proof: The ath of the DPoP proof is not the access token this request presents (RFC 9449 section 7.1).');
+
+        // When
+        $this->handler->handle($this->tenant, 'GET', 'DPoP ' . $token, [], Fixtures::context(), null, $this->proof('another-access-token'));
+    }
+
+    /**
+     * A token of the shape named, bound to the key of the proofs fixture (RFC 9449 §6.1).
+     */
+    private function keyBoundToken(string $shape): string
+    {
+        $authorization = GrantedAuthorization::fromAuthorizationCode($this->code(['openid', 'email']), Proofs::thumbprintOf(Proofs::key()));
+        if ($shape === 'jwt') {
+            return $this->accessTokens->issue($authorization, Fixtures::now())->value;
+        }
+
+        return $this->storedTokens->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+    }
+
+    /**
+     * A proof for a GET of the UserInfo endpoint of the tenant, naming the token it accompanies.
+     */
+    private function proof(string $accessToken, ?JWK $key = null): string
+    {
+        return Proofs::proof('GET', Endpoints::of($this->tenant)->userinfo, Fixtures::now(), $accessToken, [], [], $key);
     }
 
     /**
@@ -509,7 +614,7 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function boundToken(string $shape, ClientCertificate $certificate): string
     {
-        $authorization = GrantedAuthorization::fromAuthorizationCode($this->code(['openid', 'email']), Confirmation::ofCertificate($certificate));
+        $authorization = GrantedAuthorization::fromAuthorizationCode($this->code(['openid', 'email']), CertificateConfirmation::ofCertificate($certificate));
         if ($shape === 'jwt') {
             return $this->accessTokens->issue($authorization, Fixtures::now())->value;
         }

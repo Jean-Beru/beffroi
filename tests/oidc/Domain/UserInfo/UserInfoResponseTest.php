@@ -153,9 +153,9 @@ final class UserInfoResponseTest extends TestCase
         static::assertNull($response->error);
         static::assertNull($response->errorDescription);
         static::assertNull($response->scope);
-        static::assertSame('Bearer', $response->challenge());
+        static::assertSame('Bearer, DPoP', $response->challenge());
         static::assertSame([
-            'WWW-Authenticate' => 'Bearer',
+            'WWW-Authenticate' => 'Bearer, DPoP',
             'Cache-Control' => 'no-store',
             'Pragma' => 'no-cache',
         ], $response->headers());

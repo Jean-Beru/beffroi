@@ -28,7 +28,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Token\Confirmation;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
@@ -153,7 +153,7 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $certificate = Certificates::client();
-        $token = $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($this->code($this->client, ['openid']), Confirmation::ofCertificate($certificate)), $this->clock->now(), $this->clock->now()->modify('+10 minutes'));
+        $token = $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($this->code($this->client, ['openid']), CertificateConfirmation::ofCertificate($certificate)), $this->clock->now(), $this->clock->now()->modify('+10 minutes'));
 
         // When
         $response = $this->handler->handle($this->tenant, self::basic('oidc-demo'), [

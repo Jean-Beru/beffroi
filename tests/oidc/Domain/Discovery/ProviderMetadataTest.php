@@ -87,6 +87,7 @@ final class ProviderMetadataTest extends TestCase
             'frontchannel_logout_supported' => true,
             'frontchannel_logout_session_supported' => true,
             'tls_client_certificate_bound_access_tokens' => false,
+            'dpop_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
         ], $document);
     }
 
