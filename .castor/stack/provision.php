@@ -99,6 +99,51 @@ const DEV_MTLS_SERVER_NAME = 'mtls.op.localhost';
  */
 const DEV_MTLS_CLIENT_DAYS = 90;
 
+/**
+ * Where the key material of the four clients of the FAPI 2 plans lives, on the machine and not in a
+ * container (tests/conformance/README.md): one JWK Set per client, private half included, plus the
+ * certificate and its key for the two that authenticate with one. Under var/, which the repository
+ * ignores, beside the client certificate above: what a development stack generates is not committed, and
+ * the provider is given the public half through apps/op/.env.local.
+ */
+const DEV_CONFORMANCE_DIRECTORY = 'var/conformance';
+
+/**
+ * The four clients the FAPI 2 plans run with, two per run: a handful of modules need a second client to
+ * present an authorization code or a request URI that was issued to another one. Each one holds one
+ * P-256 key, published to the provider in the environment variable named here
+ * (apps/op/config/packages/heidi.yaml reads it) and held whole by the suite; the two that carry a
+ * certificate authenticate with "self_signed_tls_client_auth" (RFC 8705 §2.2), the certificate being
+ * issued on that very key, so the handshake and the signature of a request object are the same key.
+ */
+const DEV_FAPI_CLIENTS = [
+    'conformance-fapi-private-key-jwt' => [
+        'env' => 'CONFORMANCE_FAPI_PRIVATE_KEY_JWT_JWKS',
+        'certificate' => false,
+    ],
+    'conformance-fapi-private-key-jwt-second' => [
+        'env' => 'CONFORMANCE_FAPI_PRIVATE_KEY_JWT_SECOND_JWKS',
+        'certificate' => false,
+    ],
+    'conformance-fapi-mtls' => [
+        'env' => 'CONFORMANCE_FAPI_MTLS_JWKS',
+        'certificate' => true,
+    ],
+    'conformance-fapi-mtls-second' => [
+        'env' => 'CONFORMANCE_FAPI_MTLS_SECOND_JWKS',
+        'certificate' => true,
+    ],
+];
+
+/**
+ * The keys the tenant holds beside the one the provider signs with by default: ES256, because the four
+ * clients of the FAPI 2 plans register it for everything the provider signs for them and the profile
+ * refuses RS256, and the key a client encrypts a request object to, same custody, same four states,
+ * published with "use": "enc" (issue #164). A key that is published already is kept and rotated by hand;
+ * nothing here generates a second one.
+ */
+const DEV_KEY_ALGORITHMS = ['ES256', 'ECDH-ES+A256KW'];
+
 const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -128,8 +173,7 @@ function provision(
     op_console(['heidi:tenant:synchronize']);
 
     io()->section('Keys');
-    // The console wraps its blocks: flatten before searching the sentence.
-    $keys = (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
+    $keys = provision_published_keys();
     if (str_contains($keys, 'no published key')) {
         op_console(['heidi:keys:generate']);
     } else {
@@ -146,14 +190,8 @@ function provision(
         }
         io()->note('A signing key is published already and opens with the KMS; "castor console heidi:keys:rotate" rotates it without an outage.');
     }
-    // The other half of the JWK Set: the key a client encrypts a request object to, same custody, same
-    // four states, published with "use": "enc". The document announces the algorithms the bundle wires,
-    // so the tenant holds a key for them (issue #164).
-    $keys = (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
-    if (preg_match('/Use enc/', $keys) !== 1) {
-        op_console(['heidi:keys:generate', '--algorithm=ECDH-ES+A256KW']);
-    } else {
-        io()->note('An encryption key is published already; "castor console heidi:keys:rotate --algorithm=ECDH-ES+A256KW" rotates it without an outage.');
+    foreach (DEV_KEY_ALGORITHMS as $algorithm) {
+        provision_key($algorithm);
     }
 
     io()->section(sprintf('User "%s"', DEV_USERNAME));
@@ -202,7 +240,37 @@ function provision(
             $name => $env[$name],
         ], DEV_CLIENT_SECRETS),
     );
-    io()->note(sprintf('These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others.', DEV_ENV_LOCAL));
+    io()->note(sprintf(
+        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the four clients of the FAPI 2 plans are in %s, whole, and their public half in the same file.',
+        DEV_ENV_LOCAL,
+        DEV_CONFORMANCE_DIRECTORY,
+    ));
+}
+
+/**
+ * Generates the key of one algorithm when the tenant publishes none for it. The command is the one an
+ * operator runs, and what it writes is what the section shows.
+ */
+function provision_key(string $algorithm): void
+{
+    if (preg_match(sprintf('/Algorithm %s /', preg_quote($algorithm, '/')), provision_published_keys()) === 1) {
+        io()->note(sprintf(
+            'A %1$s key is published already; "castor console heidi:keys:rotate --algorithm=%1$s" rotates it without an outage.',
+            $algorithm,
+        ));
+
+        return;
+    }
+    op_console(['heidi:keys:generate', '--algorithm=' . $algorithm]);
+}
+
+/**
+ * What the tenant publishes, on one line: the console wraps its blocks, and this is searched for a
+ * sentence and for an algorithm.
+ */
+function provision_published_keys(): string
+{
+    return (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
 }
 
 /**
@@ -280,10 +348,7 @@ function provision_env_local(?string $kms): array
             DEV_ENV_LOCAL,
         ));
         $env['HEIDI_KMS_DSN'] = $values['HEIDI_KMS_DSN']();
-        file_put_contents(
-            $path,
-            (string) preg_replace('/^HEIDI_KMS_DSN=.*$/m', sprintf('HEIDI_KMS_DSN="%s"', $env['HEIDI_KMS_DSN']), (string) file_get_contents($path)),
-        );
+        provision_env_local_set($path, 'HEIDI_KMS_DSN', $env['HEIDI_KMS_DSN']);
     }
 
     $lines = [];
@@ -294,15 +359,22 @@ function provision_env_local(?string $kms): array
         $env[$name] = $value();
         $lines[] = sprintf('%s="%s"', $name, $env[$name]);
     }
-    if ($lines === []) {
+    if ($lines !== []) {
+        $existing = file_exists($path) ? rtrim((string) file_get_contents($path), "\n") . "\n\n" : '';
+        file_put_contents($path, $existing . "###> castor provision ###\n" . implode("\n", $lines) . "\n###< castor provision ###\n");
+        io()->text(sprintf('Wrote %d development value(s) into %s.', count($lines), DEV_ENV_LOCAL));
+    }
+    // The keys of the FAPI clients are not a value generated once into the file: the file holds the
+    // public half of what var/conformance/ holds whole, so the key material is the source and the
+    // variable follows it. A key generated again there is published again here, and a variable edited
+    // by hand is put back to what the suite will actually sign with.
+    $published = provision_fapi_clients($path);
+
+    if ($lines === [] && $published === []) {
         io()->note(sprintf('%s carries every development value already.', DEV_ENV_LOCAL));
 
         return $env;
     }
-
-    $existing = file_exists($path) ? rtrim((string) file_get_contents($path), "\n") . "\n\n" : '';
-    file_put_contents($path, $existing . "###> castor provision ###\n" . implode("\n", $lines) . "\n###< castor provision ###\n");
-    io()->text(sprintf('Wrote %d development value(s) into %s.', count($lines), DEV_ENV_LOCAL));
     provision_restart_consumers();
 
     return $env;
@@ -511,21 +583,46 @@ function provision_mtls_valid_certificate(string $certificateFile, string $keyFi
  */
 function provision_mtls_issue(string $certificateFile, string $keyFile): string
 {
+    return provision_self_signed_certificate(DEV_MTLS_CLIENT_NAME, provision_p256_key(), $certificateFile, $keyFile);
+}
+
+/**
+ * One P-256 key, the curve the development stack signs and authenticates with: ES256 is what FAPI 2
+ * allows beside PS256, and a key of that curve serves a client assertion, a request object and the
+ * handshake of a certificate issued on it.
+ */
+function provision_p256_key(): OpenSSLAsymmetricKey
+{
     $key = openssl_pkey_new([
         'private_key_type' => \OPENSSL_KEYTYPE_EC,
         'curve_name' => 'prime256v1',
     ]);
-    $request = $key === false
-        ? false
-        : openssl_csr_new(
-            [
-                'commonName' => DEV_MTLS_CLIENT_NAME,
-            ],
-            $key,
-            [
-                'digest_alg' => 'sha256',
-            ],
-        );
+    if ($key === false) {
+        io()->error(sprintf('Cannot generate a P-256 key: %s', openssl_error_string() ?: 'no reason given by OpenSSL'));
+        exit(1);
+    }
+
+    return $key;
+}
+
+/**
+ * A certificate a client signed itself on the key given, written beside its private key: what the
+ * listener of the development stack asks for and accepts, and what RFC 8705 §2.2 authenticates a client
+ * against.
+ *
+ * @return string the certificate, PEM
+ */
+function provision_self_signed_certificate(string $commonName, OpenSSLAsymmetricKey $key, string $certificateFile, string $keyFile): string
+{
+    $request = openssl_csr_new(
+        [
+            'commonName' => $commonName,
+        ],
+        $key,
+        [
+            'digest_alg' => 'sha256',
+        ],
+    );
     $signed = $request === false
         ? false
         : openssl_csr_sign(
@@ -538,7 +635,7 @@ function provision_mtls_issue(string $certificateFile, string $keyFile): string
             ],
             random_int(1, \PHP_INT_MAX),
         );
-    if ($key === false || $signed === false || ! openssl_x509_export($signed, $certificate) || ! openssl_pkey_export($key, $privateKey)) {
+    if ($signed === false || ! openssl_x509_export($signed, $certificate) || ! openssl_pkey_export($key, $privateKey)) {
         io()->error(sprintf('Cannot issue a client certificate: %s', openssl_error_string() ?: 'no reason given by OpenSSL'));
         exit(1);
     }
@@ -548,6 +645,195 @@ function provision_mtls_issue(string $certificateFile, string $keyFile): string
     file_put_contents($certificateFile, $certificate);
 
     return $certificate;
+}
+
+/**
+ * The key material of the four clients of the FAPI 2 plans, in var/conformance/ and published to the
+ * provider as the public half of each set (apps/op/config/packages/heidi.yaml reads the variables of
+ * DEV_FAPI_CLIENTS). Replayed on every run and idempotent: a set that is there, with its certificate
+ * still valid when it carries one, is kept, so that a client the provider knows by its key survives a
+ * second "castor provision".
+ *
+ * @param string $path apps/op/.env.local
+ *
+ * @return list<string> the clients whose variable this run wrote or put back
+ */
+function provision_fapi_clients(string $path): array
+{
+    $directory = getcwd() . '/' . DEV_CONFORMANCE_DIRECTORY;
+    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
+        io()->error(sprintf('Cannot create %s.', $directory));
+        exit(1);
+    }
+    $published = [];
+    foreach (DEV_FAPI_CLIENTS as $clientId => $definition) {
+        $key = provision_fapi_key($directory, $clientId, $definition['certificate']);
+        $public = $key;
+        unset($public['d']);
+        $set = json_encode(
+            [
+                'keys' => [$public],
+            ],
+            \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES,
+        );
+        if (provision_env_local_set($path, $definition['env'], base64_encode($set))) {
+            $published[] = $clientId;
+        }
+    }
+    if ($published !== []) {
+        io()->text(sprintf('Published the public JWK Set of %s into %s.', implode(', ', $published), DEV_ENV_LOCAL));
+    }
+
+    return $published;
+}
+
+/**
+ * The key of one client of the FAPI 2 plans, private half included, read back from
+ * var/conformance/<client>.jwks.json or generated there. A client that authenticates with a certificate
+ * carries it in the "x5c" of that key (RFC 7517 §4.7) and has its PEM beside, which is what the suite
+ * presents at the handshake: one key for the handshake and for what the client signs.
+ *
+ * @return array<string, mixed>
+ */
+function provision_fapi_key(string $directory, string $clientId, bool $certificate): array
+{
+    $file = sprintf('%s/%s.jwks.json', $directory, $clientId);
+    $certificateFile = sprintf('%s/%s.crt', $directory, $clientId);
+    $keyFile = sprintf('%s/%s.key', $directory, $clientId);
+    $kept = provision_fapi_valid_key($file, $certificate ? $certificateFile : null, $certificate ? $keyFile : null);
+    if ($kept !== null) {
+        return $kept;
+    }
+
+    $key = provision_p256_key();
+    $jwk = provision_fapi_jwk($key);
+    if ($certificate) {
+        $jwk['x5c'] = [provision_certificate_base64(provision_self_signed_certificate($clientId, $key, $certificateFile, $keyFile))];
+    }
+    $written = json_encode(
+        [
+            'keys' => [$jwk],
+        ],
+        \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT,
+    );
+    file_put_contents($file, $written . "\n");
+    chmod($file, 0o600);
+    io()->text(sprintf(
+        'Generated the key of %s, kid %s%s.',
+        $clientId,
+        $jwk['kid'],
+        $certificate ? sprintf(', certificate valid %d days', DEV_MTLS_CLIENT_DAYS) : '',
+    ));
+
+    return $jwk;
+}
+
+/**
+ * The key already there, when the file holds one private JWK and the certificate that goes with it, when
+ * there is one, is there and has not expired; null when anything of that is missing, in which case a new
+ * key is generated over it.
+ *
+ * @return array<string, mixed>|null
+ */
+function provision_fapi_valid_key(string $file, ?string $certificateFile, ?string $keyFile): ?array
+{
+    if (! is_file($file)) {
+        return null;
+    }
+    $set = json_decode((string) file_get_contents($file), true);
+    $jwk = is_array($set) && is_array($set['keys'][0] ?? null) ? $set['keys'][0] : null;
+    if ($jwk === null || ! is_string($jwk['d'] ?? null) || ! is_string($jwk['kid'] ?? null)) {
+        return null;
+    }
+    if ($certificateFile === null || $keyFile === null) {
+        return $jwk;
+    }
+    if (! is_array($jwk['x5c'] ?? null) || ! is_file($keyFile) || provision_mtls_valid_certificate($certificateFile, $keyFile) === null) {
+        return null;
+    }
+
+    return $jwk;
+}
+
+/**
+ * The JWK of a P-256 key, RFC 7518 §6.2: the two coordinates and the private one, each the big-endian
+ * integer of the field padded to its length, and the identifier of RFC 7638, the thumbprint of the four
+ * members of the public key in lexicographic order.
+ *
+ * @return array<string, mixed>
+ */
+function provision_fapi_jwk(OpenSSLAsymmetricKey $key): array
+{
+    $details = openssl_pkey_get_details($key);
+    $coordinates = is_array($details) && is_array($details['ec'] ?? null) ? $details['ec'] : null;
+    if ($coordinates === null) {
+        io()->error('The generated key is not an elliptic curve key.');
+        exit(1);
+    }
+    $coordinate = static fn (string $name): string => provision_base64url(str_pad((string) $coordinates[$name], 32, "\0", \STR_PAD_LEFT));
+    $jwk = [
+        'kty' => 'EC',
+        'crv' => 'P-256',
+        'x' => $coordinate('x'),
+        'y' => $coordinate('y'),
+        'd' => $coordinate('d'),
+        'use' => 'sig',
+        'alg' => 'ES256',
+    ];
+    $jwk['kid'] = provision_base64url(hash(
+        'sha256',
+        json_encode(
+            [
+                'crv' => $jwk['crv'],
+                'kty' => $jwk['kty'],
+                'x' => $jwk['x'],
+                'y' => $jwk['y'],
+            ],
+            \JSON_THROW_ON_ERROR,
+        ),
+        true,
+    ));
+
+    return $jwk;
+}
+
+/**
+ * The DER of a certificate in base64, which is what an "x5c" entry is (RFC 7517 §4.7): the body of the
+ * PEM on one line, padding included, and not the base64url of a thumbprint.
+ */
+function provision_certificate_base64(string $pem): string
+{
+    return (string) preg_replace('/\s+/', '', (string) preg_replace('/-----[^-]+-----/', '', $pem));
+}
+
+function provision_base64url(string $bytes): string
+{
+    return rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+}
+
+/**
+ * Writes one variable into apps/op/.env.local, replacing the line that names it when there is one: the
+ * values of the block above are generated once and kept, this one follows a file and is put back to what
+ * that file says.
+ *
+ * @return bool whether the file changed
+ */
+function provision_env_local_set(string $path, string $name, string $value): bool
+{
+    $line = sprintf('%s="%s"', $name, $value);
+    $contents = file_exists($path) ? (string) file_get_contents($path) : '';
+    $pattern = sprintf('/^%s=.*$/m', preg_quote($name, '/'));
+    if (preg_match($pattern, $contents, $matches) === 1) {
+        if ($matches[0] === $line) {
+            return false;
+        }
+        file_put_contents($path, preg_replace_callback($pattern, static fn (): string => $line, $contents, 1));
+
+        return true;
+    }
+    file_put_contents($path, ($contents === '' ? '' : rtrim($contents, "\n") . "\n") . $line . "\n");
+
+    return true;
 }
 
 /**

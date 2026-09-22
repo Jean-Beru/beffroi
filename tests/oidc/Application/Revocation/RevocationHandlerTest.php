@@ -113,9 +113,10 @@ final class RevocationHandlerTest extends TestCase
         static::assertNull($this->accessTokens->find($token));
         $events = $this->events->of(TokenRevoked::class);
         static::assertCount(1, $events);
-        static::assertSame($record, $events[0]->token);
-        static::assertSame($this->client, $events[0]->revokedBy);
-        static::assertSame([], $events[0]->accessTokens);
+        static::assertSame(TokenRevoked::ACCESS_TOKEN, $events[0]->tokenType);
+        static::assertSame($record->tokenHash, $events[0]->tokenHash);
+        static::assertSame($this->client->clientId, $events[0]->revokedBy);
+        static::assertSame([], $events[0]->revokedAccessTokenHashes);
         static::assertEquals($this->clock->now(), $events[0]->occurredAt);
         static::assertSame($this->context, $events[0]->context);
     }
@@ -157,8 +158,9 @@ final class RevocationHandlerTest extends TestCase
         static::assertSame([$ofAnotherGrant], $this->accessTokens->all());
         $events = $this->events->of(TokenRevoked::class);
         static::assertCount(1, $events);
-        static::assertSame($current, $events[0]->token);
-        static::assertSame([$ofTheGrant], $events[0]->accessTokens);
+        static::assertSame(TokenRevoked::REFRESH_TOKEN, $events[0]->tokenType);
+        static::assertSame($current->tokenHash, $events[0]->tokenHash);
+        static::assertSame([$ofTheGrant->tokenHash], $events[0]->revokedAccessTokenHashes);
     }
 
     /**

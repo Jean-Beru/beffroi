@@ -85,7 +85,7 @@ final class ClientSecretJwtTest extends TestCase
     {
         // Given
         $assertion = ClientAssertions::signedWithSecret(
-            ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt),
+            ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
             'not ' . Clients::SECRET,
         );
 
@@ -144,7 +144,7 @@ final class ClientSecretJwtTest extends TestCase
     private function assertion(array $overrides = []): string
     {
         return ClientAssertions::signedWithSecret(
-            ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt, $overrides),
+            ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt, $overrides),
             Clients::SECRET,
         );
     }
