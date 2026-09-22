@@ -24,6 +24,7 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
+use Heidi\Oidc\Application\Key\LogoutTokenJwsKind;
 use Heidi\Oidc\Application\Key\PushedRequestJweKind;
 use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
@@ -35,10 +36,12 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRequestRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
+use Heidi\Oidc\Tests\Fixture\FakeLogoutTokenDelivery;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Proofs;
 use Heidi\Oidc\Tests\Fixture\RequestObjects;
+use Heidi\Oidc\Tests\Fixture\ServedChannels;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -165,6 +168,79 @@ final class KeyBoundArtifactsTest extends TestCase
 
         // Then
         static::assertEquals($clock->now()->add(new DateInterval('PT5M')), $first->retirementDueAt);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.5 and issue #155: a logout token carries no "exp", RFC 8417 §2.2 not
+     * recommending one, so what it declares is how long its delivery may still be tried.
+     */
+    #[Test]
+    public function theLogoutTokenLivesAsLongAsItsDeliveryMayBeTried(): void
+    {
+        // Given
+        $kind = new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::backChannelOnly());
+
+        // When / Then
+        static::assertEquals(new DateInterval('PT4M'), $kind->longestLifetime($this->tenant));
+    }
+
+    /**
+     * Front-Channel Logout 1.0 §3: a deployment that loads a logout URI in a frame posts no token, and
+     * signs none.
+     */
+    #[Test]
+    public function theLogoutTokenIsNotIssuedWhenNothingPostsOne(): void
+    {
+        // Given
+        $kind = new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::frontChannelOnly());
+
+        // When / Then
+        static::assertNull($kind->longestLifetime($this->tenant));
+    }
+
+    /**
+     * The acceptance of issue #155: an operator who lowers both token lifetimes under the patience of the
+     * sender does not shrink the window under it, and a logout token delivered on a late retry still
+     * names a key the JWK Set publishes.
+     */
+    #[Test]
+    public function theRetirementWindowOfATenantThatPostsLogoutTokensCoversTheirDelivery(): void
+    {
+        // Given
+        $this->clients->save(Clients::public($this->tenant));
+        $clock = new MockClock(Fixtures::now());
+        $rotator = new TenantKeyRotator(
+            new InMemoryTenantKeyRepository(),
+            new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]),
+            Keys::sealer(),
+            [
+                new IdTokenJwsKind(
+                    new JwtIdTokenIssuer(
+                        $this->jwts->documents,
+                        new PublicSubjectIdentifierResolver(),
+                        new StandardClaimsProvider(),
+                        Algorithms::all(),
+                        new DateInterval('PT1M'),
+                    ),
+                ),
+                new AccessTokenJwsKind(
+                    new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M')),
+                    $this->clients,
+                ),
+                new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::backChannelOnly()),
+            ],
+            new DateInterval('PT6M'),
+            $clock,
+            new RecordingEventDispatcher(),
+        );
+        $context = RequestContext::unknown($clock->now());
+        $first = $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
+
+        // When
+        $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
+
+        // Then
+        static::assertEquals($clock->now()->add(new DateInterval('PT4M')), $first->retirementDueAt);
     }
 
     /**

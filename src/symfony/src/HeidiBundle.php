@@ -31,6 +31,7 @@ use Heidi\Bundle\Dpop\CachedDpopNonce;
 use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
+use Heidi\Bundle\Messenger\NotificationRetryPolicy;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
 use Heidi\Bundle\Security\CorePasswordHasher;
@@ -97,6 +98,20 @@ final class HeidiBundle extends AbstractBundle
      * Seconds one attempt at delivering a logout token is given (Back-Channel Logout 1.0 §2.5).
      */
     public const float DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT = 5.0;
+
+    /**
+     * How many times a send that did not reach its client comes back, and the schedule of those returns:
+     * two seconds, then three times as long each time, one minute at most, which is 2, 6, 18, 54, 60 and
+     * 60. A little over three minutes of patience for a relying party that is restarting, and beyond it
+     * the client is not restarting but down, which the provider says rather than trying for ever.
+     */
+    public const int DEFAULT_BACK_CHANNEL_LOGOUT_RETRIES = 6;
+
+    public const int DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_DELAY = 2;
+
+    public const int DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER = 3;
+
+    public const int DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY = 60;
 
     /**
      * RFC 7523 §3: how far ahead of the request the "exp" of a client assertion may be. Five minutes is
@@ -327,13 +342,33 @@ final class HeidiBundle extends AbstractBundle
             ->end()
             ->end()
             ->arrayNode('back_channel_logout')
-            ->info('How a logout token reaches a client that registered a backchannel_logout_uri (Back-Channel Logout 1.0 §2.5). How many times a send is tried again is the retry policy of the transport the message is routed to, in the application.')
+            ->info('How a logout token reaches a client that registered a backchannel_logout_uri (Back-Channel Logout 1.0 §2.5), and for how long. These values are what the transport of the notifications does with a send that failed, the application giving that transport the policy of the bundle, and what a signing key is held back for while a logout token it signed may still be on its way (issue #155).')
             ->addDefaultsIfNotSet()
             ->children()
             ->floatNode('timeout')
             ->info('Seconds one attempt is given, connection included. A relying party that hangs must not hold a worker; five seconds is long for a request that reads nothing back, and a client that needs longer is a client that is down, which the retries cover.')
             ->defaultValue(self::DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT)
             ->min(0.1)
+            ->end()
+            ->integerNode('retries')
+            ->info('How many times a send that did not reach its client comes back. A relying party that is restarting answers for a minute and then works; beyond the schedule below, it is down, and the provider says so rather than trying for ever.')
+            ->defaultValue(self::DEFAULT_BACK_CHANNEL_LOGOUT_RETRIES)
+            ->min(0)
+            ->end()
+            ->integerNode('retry_delay')
+            ->info('Seconds before the first retry.')
+            ->defaultValue(self::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_DELAY)
+            ->min(1)
+            ->end()
+            ->integerNode('retry_multiplier')
+            ->info('What each wait is multiplied by to give the next one.')
+            ->defaultValue(self::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER)
+            ->min(1)
+            ->end()
+            ->integerNode('retry_max_delay')
+            ->info('Seconds a wait never exceeds, whatever the multiplier makes of it.')
+            ->defaultValue(self::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY)
+            ->min(1)
             ->end()
             ->end()
             ->end()
@@ -736,7 +771,12 @@ final class HeidiBundle extends AbstractBundle
         $services->get(TokenIssuer::class)->arg('$refreshTokenLifetime', self::seconds($tokens, 'refresh_token_ttl'));
         $services->get(AuthorizationCodeGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
 
-        $services->get(LogoutTokenSender::class)->arg('$timeout', self::float(self::section($config, 'back_channel_logout'), 'timeout'));
+        $backChannelLogout = self::section($config, 'back_channel_logout');
+        $services->get(LogoutTokenSender::class)->arg('$timeout', self::float($backChannelLogout, 'timeout'));
+        $services->get(NotificationRetryPolicy::class)->arg('$retries', self::integer($backChannelLogout, 'retries'))->arg('$delay', self::integer(
+            $backChannelLogout,
+            'retry_delay',
+        ))->arg('$multiplier', self::integer($backChannelLogout, 'retry_multiplier'))->arg('$maxDelay', self::integer($backChannelLogout, 'retry_max_delay'));
 
         $clientAuthentication = self::section($config, 'client_authentication');
         $services->get(ClientAssertionValidator::class)->arg('$maximumLifetime', self::seconds(

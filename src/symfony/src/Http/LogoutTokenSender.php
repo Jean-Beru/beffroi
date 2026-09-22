@@ -15,7 +15,8 @@ use Throwable;
  * "application/x-www-form-urlencoded" whose only parameter is "logout_token", no cookie, no
  * authentication, nothing read back but the status code. No redirect is followed (decision 0006): a
  * back-channel logout URI names where the token goes, and the provider does not let a third party move
- * it. The timeout is the sender's own, because a relying party that hangs must not hold a worker.
+ * it. The timeout is the sender's own, because a relying party that hangs must not hold a worker; it is
+ * read from here by what says how long a logout token stays on its way (LogoutTokenDeliveryBudget).
  */
 final readonly class LogoutTokenSender
 {
@@ -26,7 +27,7 @@ final readonly class LogoutTokenSender
 
     public function __construct(
         private HttpClientInterface $http,
-        private float $timeout,
+        public float $timeout,
     ) {
     }
 

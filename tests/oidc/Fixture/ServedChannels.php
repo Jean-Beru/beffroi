@@ -31,6 +31,14 @@ final readonly class ServedChannels implements ServedLogoutChannelsInterface
         return new self([LogoutChannel::BackChannel]);
     }
 
+    /**
+     * A deployment that loads a logout URI in a frame and posts nothing (Front-Channel Logout 1.0 §3).
+     */
+    public static function frontChannelOnly(): self
+    {
+        return new self([LogoutChannel::FrontChannel]);
+    }
+
     public static function none(): self
     {
         return new self([]);

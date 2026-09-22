@@ -22,6 +22,7 @@ use Heidi\Bundle\Dpop\CachedDpopNonce;
 use Heidi\Bundle\Dpop\CachedDpopProofReplayGuard;
 use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Heidi\Bundle\EndSession\LogoutChannels;
+use Heidi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
@@ -49,6 +50,7 @@ use Heidi\Bundle\Key\KmsUnavailableListener;
 use Heidi\Bundle\MessageHandler\QueueLogoutTokenHandler;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
+use Heidi\Bundle\Messenger\NotificationRetryPolicy;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Plane\PlaneRequestListener;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
@@ -176,6 +178,7 @@ use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
+use Heidi\Oidc\Application\Key\LogoutTokenJwsKind;
 use Heidi\Oidc\Application\Key\PushedRequestJweKind;
 use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
@@ -230,6 +233,7 @@ use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\RequestObjectFetcherInterface;
+use Heidi\Oidc\Port\LogoutTokenDeliveryInterface;
 use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
@@ -320,6 +324,9 @@ return static function (ContainerConfigurator $container): void {
     // what carries a logout token to a client, and what says the provider gave up on one (§4.9)
     $services->set(LogoutTokenSender::class);
     $services->set(LogoutTokenGivenUpListener::class);
+    // how long a notification the provider carries to a third party is tried again: the policy the
+    // application gives to the transport of that lane, and the one thing that says so
+    $services->set(NotificationRetryPolicy::class);
 
     // The bundle: security (architecture §5.4); the application names these in its firewall
     $services->set(IdentityUserProvider::class);
@@ -641,4 +648,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(FrontChannelLogoutRenderer::class)->tag('heidi.logout_channel');
     $services->set(LogoutChannels::class)->args([tagged_iterator('heidi.logout_channel')]);
     $services->alias(ServedLogoutChannelsInterface::class, LogoutChannels::class);
+    // how long a logout token stays on its way, from the retries of its lane and the timeout of one send
+    $services->set(LogoutTokenDeliveryBudget::class);
+    $services->alias(LogoutTokenDeliveryInterface::class, LogoutTokenDeliveryBudget::class);
+    $services->set(LogoutTokenJwsKind::class)->tag('heidi.key_bound_artifact');
 };
