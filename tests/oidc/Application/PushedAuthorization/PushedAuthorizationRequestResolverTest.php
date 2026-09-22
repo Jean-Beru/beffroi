@@ -163,8 +163,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     {
         // Given
         $requestUri = $this->push();
-        $record = $this->resolver->resolve($this->tenant, self::query($requestUri), $this->context);
-        static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
+        $record = $this->resolver->resolve($this->tenant, self::query($requestUri), $this->context) ?? static::fail('The reference was not read back.');
         $this->requests->consume($record, $this->clock->now());
 
         // Then
@@ -313,8 +312,8 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         if ($case === 'used') {
             // spent by the authorization endpoint that granted the request it carried, which is the one
             // thing that spends a reference (FAPI 2.0 Security Profile §5.3.1)
-            $record = $this->requests->findByRequestUriHash(RequestUri::hashOf($requestUri->value));
-            static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
+            $record =
+                $this->requests->findByRequestUriHash(RequestUri::hashOf($requestUri->value)) ?? static::fail('The record of the reference was not stored.');
             $this->requests->consume($record, $this->clock->now());
         }
 
