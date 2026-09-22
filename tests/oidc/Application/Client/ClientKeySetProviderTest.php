@@ -53,8 +53,7 @@ final class ClientKeySetProviderTest extends TestCase
         $client = Clients::withKeys($this->tenant);
 
         // When
-        $keys = $this->provider($fetcher)
-            ->keysOf($client, ClientAssertions::KEY_ID);
+        $keys = $this->provider($fetcher)->keysOf($client, ClientAssertions::KEY_ID);
 
         // Then
         static::assertSame($client->jwks, $keys);
@@ -158,8 +157,7 @@ final class ClientKeySetProviderTest extends TestCase
         $this->expectExceptionMessageIs('https://key.example/jwks answered 500.');
 
         // When
-        $this->provider($fetcher)
-            ->keysOf($this->remoteClient(), ClientAssertions::KEY_ID);
+        $this->provider($fetcher)->keysOf($this->remoteClient(), ClientAssertions::KEY_ID);
     }
 
     private function provider(FakeClientJwksFetcher $fetcher): ClientKeySetProvider

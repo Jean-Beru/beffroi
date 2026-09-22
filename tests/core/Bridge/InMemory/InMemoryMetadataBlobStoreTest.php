@@ -28,10 +28,13 @@ final class InMemoryMetadataBlobStoreTest extends TestCase
         $documents = $store->readAll();
 
         // Then
-        static::assertSame([
-            'mds-a' => '{"no": 1}',
-            'statement-b' => '{"no": 2}',
-        ], $documents);
+        static::assertSame(
+            [
+                'mds-a' => '{"no": 1}',
+                'statement-b' => '{"no": 2}',
+            ],
+            $documents,
+        );
     }
 
     /**

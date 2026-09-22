@@ -84,7 +84,10 @@ final class ClientSecretJwtTest extends TestCase
     public function itRefusesAMacMadeWithAnotherSecret(): void
     {
         // Given
-        $assertion = ClientAssertions::signedWithSecret(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt), 'not ' . Clients::SECRET);
+        $assertion = ClientAssertions::signedWithSecret(
+            ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt),
+            'not ' . Clients::SECRET,
+        );
 
         // When
         $exception = $this->failToAuthenticate($assertion);
@@ -122,7 +125,10 @@ final class ClientSecretJwtTest extends TestCase
     {
         // Given
         $keyClient = Clients::withKeys($this->tenant);
-        $assertion = ClientAssertions::signedWithSecret(ClientAssertions::claims($keyClient->clientId, self::ENDPOINT, $this->context->receivedAt), Clients::SECRET);
+        $assertion = ClientAssertions::signedWithSecret(
+            ClientAssertions::claims($keyClient->clientId, self::ENDPOINT, $this->context->receivedAt),
+            Clients::SECRET,
+        );
 
         // When
         $exception = $this->failToAuthenticate($assertion);
@@ -137,7 +143,10 @@ final class ClientSecretJwtTest extends TestCase
      */
     private function assertion(array $overrides = []): string
     {
-        return ClientAssertions::signedWithSecret(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt, $overrides), Clients::SECRET);
+        return ClientAssertions::signedWithSecret(
+            ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt, $overrides),
+            Clients::SECRET,
+        );
     }
 
     private function authenticator(): ClientAuthenticator
@@ -147,8 +156,7 @@ final class ClientSecretJwtTest extends TestCase
 
     private function authenticate(string $assertion): AuthenticatedClient
     {
-        return $this->authenticator()
-            ->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
+        return $this->authenticator()->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
     }
 
     private function failToAuthenticate(string $assertion, ?ClientAuthenticator $authenticator = null): OAuth2Exception

@@ -91,9 +91,16 @@ final readonly class Jwts
      */
     public function activate(KeyAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair = null): TenantKey
     {
-        $pair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())
-            ->generate($algorithm);
-        $key = new TenantKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $pair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate($algorithm);
+        $key = new TenantKey(
+            $pair->kid,
+            $this->tenant,
+            $algorithm,
+            $pair->publicJwk,
+            Keys::sealer()->seal($this->tenant, $pair->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $key->activate(Fixtures::now());
         $this->repository->save($key);
 
@@ -111,9 +118,15 @@ final readonly class Jwts
      */
     public function verify(string $compactJws, string $audience, DateTimeImmutable $at, array $mandatory = ['iss', 'aud', 'exp', 'iat']): array
     {
-        $jws = new CompactSerializer()
-            ->unserialize($compactJws);
-        Assert::assertTrue(new JWSVerifier($this->algorithms->manager())->verifyWithKeySet($jws, JWKSet::createFromKeyData($this->keys->publicKeys($this->tenant)->toJwks()), 0), 'the signature verifies against the published JWKS');
+        $jws = new CompactSerializer()->unserialize($compactJws);
+        Assert::assertTrue(
+            new JWSVerifier($this->algorithms->manager())->verifyWithKeySet(
+                $jws,
+                JWKSet::createFromKeyData($this->keys->publicKeys($this->tenant)->toJwks()),
+                0,
+            ),
+            'the signature verifies against the published JWKS',
+        );
         $claims = self::decode((string) $jws->getPayload());
         $clock = new MockClock($at);
         new ClaimCheckerManager([
@@ -124,8 +137,7 @@ final readonly class Jwts
         ])->check($claims, $mandatory);
 
         return [
-            'header' => $jws->getSignature(0)
-                ->getProtectedHeader(),
+            'header' => $jws->getSignature(0)->getProtectedHeader(),
             'claims' => $claims,
         ];
     }

@@ -102,7 +102,10 @@ final class PasskeyCredentialTest extends TestCase
 
         // Then
         static::assertContains('publicKey', $names);
-        static::assertSame([], array_filter($names, static fn (string $name): bool => str_contains(strtolower($name), 'private') || str_contains(strtolower($name), 'secret')));
+        static::assertSame(
+            [],
+            array_filter($names, static fn (string $name): bool => str_contains(strtolower($name), 'private') || str_contains(strtolower($name), 'secret')),
+        );
         static::assertSame([], array_filter($properties, static fn (ReflectionProperty $property): bool => $property->isPrivate() || $property->isProtected()));
     }
 
@@ -197,7 +200,20 @@ final class PasskeyCredentialTest extends TestCase
     public function itTellsASignCountRegressionTheWayWebauthnLibDoes(int $stored, int $received, bool $regresses): void
     {
         // Given
-        $passkey = new PasskeyCredential(Uuid::v7(), Fixtures::user(), 'key', 'credential-id', 'cose', $stored, [], false, false, Uuid::v4(), PasskeyUserHandle::generate(), Fixtures::now());
+        $passkey = new PasskeyCredential(
+            Uuid::v7(),
+            Fixtures::user(),
+            'key',
+            'credential-id',
+            'cose',
+            $stored,
+            [],
+            false,
+            false,
+            Uuid::v4(),
+            PasskeyUserHandle::generate(),
+            Fixtures::now(),
+        );
 
         // When / Then
         static::assertSame($regresses, $passkey->signCountRegresses(Fixtures::authenticatorData(signCount: $received)));
@@ -311,10 +327,24 @@ final class PasskeyCredentialTest extends TestCase
         $user = Fixtures::user();
         $handle = PasskeyUserHandle::generate();
         $aaguid = Uuid::v4();
-        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, [
-            1 => 'internal',
-            2 => 'hybrid',
-        ], 'none', EmptyTrustPath::create(), $aaguid, 'cose', $handle->value, 3, null, true, true, true);
+        $record = CredentialRecord::create(
+            'credential-id',
+            PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY,
+            [
+                1 => 'internal',
+                2 => 'hybrid',
+            ],
+            'none',
+            EmptyTrustPath::create(),
+            $aaguid,
+            'cose',
+            $handle->value,
+            3,
+            null,
+            true,
+            true,
+            true,
+        );
 
         // When
         $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $user, 'Pixel', $record, Fixtures::now());
@@ -335,7 +365,20 @@ final class PasskeyCredentialTest extends TestCase
     public function aRecordWithoutBothBackupFlagsIsRefused(?bool $backupEligible, ?bool $backupStatus): void
     {
         // Given
-        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, [], 'none', EmptyTrustPath::create(), Uuid::v4(), 'cose', str_repeat('h', 64), 0, null, $backupEligible, $backupStatus);
+        $record = CredentialRecord::create(
+            'credential-id',
+            PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY,
+            [],
+            'none',
+            EmptyTrustPath::create(),
+            Uuid::v4(),
+            'cose',
+            str_repeat('h', 64),
+            0,
+            null,
+            $backupEligible,
+            $backupStatus,
+        );
 
         // Then
         $this->expectException(InvalidArgumentException::class);

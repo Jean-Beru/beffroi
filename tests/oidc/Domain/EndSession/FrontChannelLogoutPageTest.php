@@ -34,7 +34,10 @@ final class FrontChannelLogoutPageTest extends TestCase
     public function itCarriesOneFrameForEachClient(): void
     {
         // When
-        $page = new FrontChannelLogoutPage([$this->frame('first', 'https://first.example/logout'), $this->frame('second', 'https://second.example/logout')], null);
+        $page = new FrontChannelLogoutPage([
+            $this->frame('first', 'https://first.example/logout'),
+            $this->frame('second', 'https://second.example/logout'),
+        ], null);
 
         // Then
         static::assertSame(['https://first.example/logout', 'https://second.example/logout'], $page->frames);
@@ -61,11 +64,16 @@ final class FrontChannelLogoutPageTest extends TestCase
     public function thePolicyNamesTheFramesAndTheOneScript(): void
     {
         // Given
-        $page = new FrontChannelLogoutPage([$this->frame('first', 'https://first.example/logout'), $this->frame('second', 'https://second.example/logout')], 'https://demo.example/');
+        $page = new FrontChannelLogoutPage([
+            $this->frame('first', 'https://first.example/logout'),
+            $this->frame('second', 'https://second.example/logout'),
+        ], 'https://demo.example/');
 
         // When / Then
         static::assertSame(
-            "default-src 'none'; frame-src https://first.example https://second.example; script-src '" . $page->scriptHash() . "'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'",
+            "default-src 'none'; frame-src https://first.example https://second.example; script-src '"
+            . $page->scriptHash()
+            . "'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'",
             $page->contentSecurityPolicy(),
         );
     }

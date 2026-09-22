@@ -111,7 +111,12 @@ final class EndSessionRequestTest extends TestCase
     public static function provideInconsistentRequests(): iterable
     {
         yield 'client of another tenant' => [
-            static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, Clients::public(Fixtures::tenant('other', 'https://id.other.example')), null, null),
+            static fn (self $test): EndSessionRequest => new EndSessionRequest(
+                $test->tenant,
+                Clients::public(Fixtures::tenant('other', 'https://id.other.example')),
+                null,
+                null,
+            ),
         ];
         yield 'hint without a client' => [
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, null, $test->hint, null),
@@ -123,7 +128,12 @@ final class EndSessionRequestTest extends TestCase
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, null, null, new RedirectUri('https://demo.localhost/')),
         ];
         yield 'redirect not registered' => [
-            static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, new RedirectUri('https://demo.localhost/other')),
+            static fn (self $test): EndSessionRequest => new EndSessionRequest(
+                $test->tenant,
+                $test->client,
+                $test->hint,
+                new RedirectUri('https://demo.localhost/other'),
+            ),
         ];
         yield 'redirect registered for the authorization response only' => [
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, $test->client->redirectUris[0]),

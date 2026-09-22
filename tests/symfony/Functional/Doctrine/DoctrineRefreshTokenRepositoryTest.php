@@ -233,11 +233,23 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
 
     private static function family(): RefreshTokenFamily
     {
-        return new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash(AuthorizationCode::generate()), Uuid::v7(), self::now(), self::now()->modify('+90 days'));
+        return new RefreshTokenFamily(
+            Uuid::v7(),
+            AuthorizationCode::hash(AuthorizationCode::generate()),
+            Uuid::v7(),
+            self::now(),
+            self::now()->modify('+90 days'),
+        );
     }
 
-    private static function token(string $token, Client $client, AuthenticationSession $session, RefreshTokenFamily $family, ?ClaimsRequest $claims, DateTimeImmutable $issuedAt): RefreshToken
-    {
+    private static function token(
+        string $token,
+        Client $client,
+        AuthenticationSession $session,
+        RefreshTokenFamily $family,
+        ?ClaimsRequest $claims,
+        DateTimeImmutable $issuedAt,
+    ): RefreshToken {
         return new RefreshToken(
             RefreshToken::hash($token),
             $family,

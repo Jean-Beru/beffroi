@@ -82,7 +82,14 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
 
     private static function message(): SendLogoutToken
     {
-        return new SendLogoutToken(Fixtures::tenant(), 'oidc-demo', 'https://demo.test/backchannel-logout', 'a.logout.token', Uuid::fromString(self::SESSION), Fixtures::context());
+        return new SendLogoutToken(
+            Fixtures::tenant(),
+            'oidc-demo',
+            'https://demo.test/backchannel-logout',
+            'a.logout.token',
+            Uuid::fromString(self::SESSION),
+            Fixtures::context(),
+        );
     }
 
     private static function failure(object $message, bool $willRetry): WorkerMessageFailedEvent

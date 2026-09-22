@@ -46,13 +46,17 @@ final readonly class FrontChannelLogoutRenderer implements LogoutChannelInterfac
             return null;
         }
 
-        return $this->pages->render(self::TEMPLATE, [
-            'frames' => $page->frames,
-            'continue_to' => $page->continueTo,
-            'wait' => FrontChannelLogoutPage::WAIT,
-            'script' => FrontChannelLogoutPage::SCRIPT,
-        ], headers: [
-            'Content-Security-Policy' => $page->contentSecurityPolicy(),
-        ]);
+        return $this->pages->render(
+            self::TEMPLATE,
+            [
+                'frames' => $page->frames,
+                'continue_to' => $page->continueTo,
+                'wait' => FrontChannelLogoutPage::WAIT,
+                'script' => FrontChannelLogoutPage::SCRIPT,
+            ],
+            headers: [
+                'Content-Security-Policy' => $page->contentSecurityPolicy(),
+            ],
+        );
     }
 }

@@ -88,8 +88,11 @@ final class Methods
         return new SelfSignedTlsClientAuth($keys ?? self::keySetProvider());
     }
 
-    public static function keySetProvider(?ClientJwksFetcherInterface $fetcher = null, ?ClockInterface $clock = null, ?DateInterval $cooldown = null): ClientKeySetProvider
-    {
+    public static function keySetProvider(
+        ?ClientJwksFetcherInterface $fetcher = null,
+        ?ClockInterface $clock = null,
+        ?DateInterval $cooldown = null,
+    ): ClientKeySetProvider {
         return new ClientKeySetProvider(
             $fetcher ?? new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]),
             new InMemoryClientJwksCache(),
@@ -106,8 +109,11 @@ final class Methods
     /**
      * The seven methods in the order the bundle wires them, sharing one decoy as the container shares it.
      */
-    public static function all(?PasswordHasherInterface $hasher = null, ?ClientKeySetProvider $keys = null, ?ClientAssertionValidator $claims = null): ClientAuthenticationMethods
-    {
+    public static function all(
+        ?PasswordHasherInterface $hasher = null,
+        ?ClientKeySetProvider $keys = null,
+        ?ClientAssertionValidator $claims = null,
+    ): ClientAuthenticationMethods {
         $hasher ??= new FakePasswordHasher();
         $decoy = new DecoyHash($hasher);
         $claims ??= self::assertionValidator();

@@ -23,10 +23,18 @@ final class PosedTablesTest extends DatabaseTestCase
         // Given
         $entityManager = self::entityManager();
         $user = self::user();
-        $identity = new LinkedIdentity(Uuid::v7(), $user, 'google', '1234567890', [
-            'email' => 'alice@example.com',
-            'email_verified' => true,
-        ], self::now(), self::now());
+        $identity = new LinkedIdentity(
+            Uuid::v7(),
+            $user,
+            'google',
+            '1234567890',
+            [
+                'email' => 'alice@example.com',
+                'email_verified' => true,
+            ],
+            self::now(),
+            self::now(),
+        );
         $entityManager->persist($identity);
         $entityManager->flush();
         self::reload();
@@ -39,10 +47,13 @@ final class PosedTablesTest extends DatabaseTestCase
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('google', $found->provider);
         static::assertSame('1234567890', $found->subject);
-        static::assertSame([
-            'email' => 'alice@example.com',
-            'email_verified' => true,
-        ], $found->claims);
+        static::assertSame(
+            [
+                'email' => 'alice@example.com',
+                'email_verified' => true,
+            ],
+            $found->claims,
+        );
         static::assertEquals(self::now(), $found->linkedAt);
         static::assertEquals(self::now(), $found->lastSeenAt);
     }

@@ -35,8 +35,7 @@ final class ClientAssertions
     public static function privateKey(): JWK
     {
         return self::$privateKey ??= new JWK([
-            ...Algorithms::es256()->generateKey()
-                ->all(),
+            ...Algorithms::es256()->generateKey()->all(),
             'kid' => self::KEY_ID,
         ]);
     }
@@ -130,7 +129,6 @@ final class ClientAssertions
             ->addSignature($key, $header)
             ->build();
 
-        return new CompactSerializer()
-            ->serialize($jws, 0);
+        return new CompactSerializer()->serialize($jws, 0);
     }
 }

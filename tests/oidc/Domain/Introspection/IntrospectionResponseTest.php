@@ -31,9 +31,12 @@ final class IntrospectionResponseTest extends TestCase
 
         // Then
         static::assertFalse($response->isActive());
-        static::assertSame([
-            'active' => false,
-        ], $response->members);
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            $response->members,
+        );
         static::assertSame('{"active":false}', $response->body());
         static::assertSame('application/json', $response->contentType());
         static::assertNull($response->jwt);
@@ -50,30 +53,46 @@ final class IntrospectionResponseTest extends TestCase
         // Given
         $session = Uuid::v7();
         $grant = Uuid::v7();
-        $token = new VerifiedAccessToken(Clients::public(Fixtures::tenant()), new Subject('alice-subject'), $session, $grant, [Scope::openid(), new Scope('email')], ['name'], new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2'), new DateTimeImmutable('@1789466400'), new DateTimeImmutable('@1789467000'));
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant()),
+            new Subject('alice-subject'),
+            $session,
+            $grant,
+            [Scope::openid(), new Scope('email')],
+            ['name'],
+            new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2'),
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
 
         // When
         $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
 
         // Then
         static::assertTrue($response->isActive());
-        static::assertSame([
-            'active' => true,
-            'scope' => 'openid email',
-            'client_id' => 'spa',
-            'token_type' => 'Bearer',
-            'exp' => 1789467000,
-            'iat' => 1789466400,
-            'sub' => 'alice-subject',
-            'aud' => 'spa',
-            'iss' => 'https://id.acme.example',
-            'auth_time' => 1789466000,
-            'acr' => '2',
-            'amr' => ['pwd', 'otp'],
-            'sid' => $session->toRfc4122(),
-            'grant_id' => $grant->toRfc4122(),
-        ], $response->members);
-        static::assertStringStartsWith('{"active":true,"scope":"openid email","client_id":"spa","token_type":"Bearer","exp":1789467000,"iat":1789466400,', $response->body());
+        static::assertSame(
+            [
+                'active' => true,
+                'scope' => 'openid email',
+                'client_id' => 'spa',
+                'token_type' => 'Bearer',
+                'exp' => 1789467000,
+                'iat' => 1789466400,
+                'sub' => 'alice-subject',
+                'aud' => 'spa',
+                'iss' => 'https://id.acme.example',
+                'auth_time' => 1789466000,
+                'acr' => '2',
+                'amr' => ['pwd', 'otp'],
+                'sid' => $session->toRfc4122(),
+                'grant_id' => $grant->toRfc4122(),
+            ],
+            $response->members,
+        );
+        static::assertStringStartsWith(
+            '{"active":true,"scope":"openid email","client_id":"spa","token_type":"Bearer","exp":1789467000,"iat":1789466400,',
+            $response->body(),
+        );
     }
 
     /**

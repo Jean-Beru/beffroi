@@ -88,7 +88,12 @@ final class EndSessionHandlerTest extends TestCase
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->accessTokens = new InMemoryAccessTokenRepository();
         $this->events = new RecordingEventDispatcher();
-        $this->handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), new RefreshTokenRevocation($this->refreshTokens), $this->accessTokens, $this->clock);
+        $this->handler = new EndSessionHandler(
+            new SessionTerminator($this->sessions, $this->clock, $this->events),
+            new RefreshTokenRevocation($this->refreshTokens),
+            $this->accessTokens,
+            $this->clock,
+        );
     }
 
     /**
@@ -212,7 +217,12 @@ final class EndSessionHandlerTest extends TestCase
     public function aStoreThatCannotRevokeIsNotAskedTo(): void
     {
         // Given
-        $handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), new RefreshTokenRevocation($this->refreshTokens), static::createStub(AccessTokenRepositoryInterface::class), $this->clock);
+        $handler = new EndSessionHandler(
+            new SessionTerminator($this->sessions, $this->clock, $this->events),
+            new RefreshTokenRevocation($this->refreshTokens),
+            static::createStub(AccessTokenRepositoryInterface::class),
+            $this->clock,
+        );
 
         // When
         $handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
@@ -484,16 +494,22 @@ final class EndSessionHandlerTest extends TestCase
             static fn (self $test): ?AuthenticationSession => null,
             false,
         ];
-        yield 'session ended' => [static function (self $test): AuthenticationSession {
-            $test->session->end(SessionEnd::User, $test->clock->now()->modify('-1 minute'));
+        yield 'session ended' => [
+            static function (self $test): AuthenticationSession {
+                $test->session->end(SessionEnd::User, $test->clock->now()->modify('-1 minute'));
 
-            return $test->session;
-        }, true];
-        yield 'session expired' => [static function (self $test): AuthenticationSession {
-            $test->clock->sleep(13 * 3600);
+                return $test->session;
+            },
+            true,
+        ];
+        yield 'session expired' => [
+            static function (self $test): AuthenticationSession {
+                $test->clock->sleep(13 * 3600);
 
-            return $test->session;
-        }, true];
+                return $test->session;
+            },
+            true,
+        ];
     }
 
     /**
@@ -588,10 +604,15 @@ final class EndSessionHandlerTest extends TestCase
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
         $parser = new EndSessionRequestParser($clients, new IdTokenHintVerifier(new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all())));
-        $query = http_build_query([
-            'id_token_hint' => $idToken,
-            'post_logout_redirect_uri' => 'https://demo.localhost/',
-        ], '', '&', PHP_QUERY_RFC3986);
+        $query = http_build_query(
+            [
+                'id_token_hint' => $idToken,
+                'post_logout_redirect_uri' => 'https://demo.localhost/',
+            ],
+            '',
+            '&',
+            PHP_QUERY_RFC3986,
+        );
 
         // When
         $decision = $this->handler->begin($parser->parse($this->tenant, self::parameters($query)), $this->session, $this->context);
@@ -644,8 +665,12 @@ final class EndSessionHandlerTest extends TestCase
     /**
      * A refresh token of the session, issued at the fixture's "now" plus an offset, saved.
      */
-    private function refreshToken(string $value, AuthenticationSession $session, ?RefreshTokenFamily $family = null, string $issuedOffset = '+0 seconds'): RefreshToken
-    {
+    private function refreshToken(
+        string $value,
+        AuthenticationSession $session,
+        ?RefreshTokenFamily $family = null,
+        string $issuedOffset = '+0 seconds',
+    ): RefreshToken {
         $token = Tokens::refreshToken($value, $this->client, $session, Fixtures::now()->modify($issuedOffset), $family);
         $this->refreshTokens->save($token);
 

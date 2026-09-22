@@ -32,7 +32,13 @@ final class IssuedTokensTest extends TestCase
     {
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
-        $this->authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+        $this->authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'profile'],
+        ));
         $this->accessToken = new AccessToken('at.value', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
@@ -50,14 +56,17 @@ final class IssuedTokensTest extends TestCase
         $response = $issued->toResponse();
 
         // Then
-        static::assertSame([
-            'access_token' => 'at.value',
-            'token_type' => 'Bearer',
-            'expires_in' => 600,
-            'refresh_token' => 'rt.value',
-            'id_token' => 'id.value',
-            'scope' => 'openid profile',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'access_token' => 'at.value',
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'refresh_token' => 'rt.value',
+                'id_token' => 'id.value',
+                'scope' => 'openid profile',
+            ],
+            $response->parameters(),
+        );
         static::assertSame($this->authorization->scopes, $response->scopes);
     }
 
@@ -71,12 +80,15 @@ final class IssuedTokensTest extends TestCase
         $response = $issued->toResponse();
 
         // Then
-        static::assertSame([
-            'access_token' => 'at.value',
-            'token_type' => 'Bearer',
-            'expires_in' => 600,
-            'scope' => 'openid profile',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'access_token' => 'at.value',
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'scope' => 'openid profile',
+            ],
+            $response->parameters(),
+        );
     }
 
     #[Test]
@@ -123,7 +135,10 @@ final class IssuedTokensTest extends TestCase
     public function theScopesOfTheResponseAreThoseOfTheAuthorization(): void
     {
         // Given
-        $narrowed = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']), [new Scope('profile')]);
+        $narrowed = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
+            [new Scope('profile')],
+        );
         $issued = new IssuedTokens($narrowed, $this->accessToken, null, null);
 
         // When

@@ -28,11 +28,14 @@ final class FormPostResponseTest extends TestCase
 
         // Then
         static::assertSame('https://rp.example/cb', $response->redirectUri->value);
-        static::assertSame([
-            'code' => 'SplxlOBeZQQYbYS6WxSbIA',
-            'state' => 'af0ifjsldkj',
-            'iss' => 'https://id.acme.example',
-        ], $response->parameters);
+        static::assertSame(
+            [
+                'code' => 'SplxlOBeZQQYbYS6WxSbIA',
+                'state' => 'af0ifjsldkj',
+                'iss' => 'https://id.acme.example',
+            ],
+            $response->parameters,
+        );
     }
 
     /**
@@ -61,7 +64,10 @@ final class FormPostResponseTest extends TestCase
         $policy = self::response()->contentSecurityPolicy();
 
         // Then
-        static::assertSame("default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action https://rp.example; base-uri 'none'; frame-ancestors 'none'", $policy);
+        static::assertSame(
+            "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action https://rp.example; base-uri 'none'; frame-ancestors 'none'",
+            $policy,
+        );
     }
 
     /**

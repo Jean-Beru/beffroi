@@ -462,9 +462,10 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'legacy' => self::DEMO + [
-                'requires_pkce' => false,
-            ],
+            'legacy' => self::DEMO
+                + [
+                    'requires_pkce' => false,
+                ],
         ]);
 
         // When
@@ -483,9 +484,10 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'fapi' => self::DEMO + [
-                'require_pushed_authorization_requests' => true,
-            ],
+            'fapi' => self::DEMO
+                + [
+                    'require_pushed_authorization_requests' => true,
+                ],
             'demo' => self::DEMO,
         ]);
 
@@ -519,17 +521,24 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     public static function provideDeclarationsOfTheRequirement(): iterable
     {
-        $pushing = self::DEMO + [
+        $pushing = self::DEMO
+        + [
             'require_pushed_authorization_requests' => true,
         ];
-        yield 'every client pushes' => [[
-            'fapi' => $pushing,
-            'other' => $pushing,
-        ], true];
-        yield 'one client may still start an ordinary request' => [[
-            'fapi' => $pushing,
-            'demo' => self::DEMO,
-        ], false];
+        yield 'every client pushes' => [
+            [
+                'fapi' => $pushing,
+                'other' => $pushing,
+            ],
+            true,
+        ];
+        yield 'one client may still start an ordinary request' => [
+            [
+                'fapi' => $pushing,
+                'demo' => self::DEMO,
+            ],
+            false,
+        ];
         yield 'no client at all' => [[], false];
     }
 
@@ -541,9 +550,10 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'fapi' => self::DEMO + [
-                'require_pushed_authorization_requests' => true,
-            ],
+            'fapi' => self::DEMO
+                + [
+                    'require_pushed_authorization_requests' => true,
+                ],
         ]);
 
         // When / Then
@@ -559,10 +569,11 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'demo' => self::DEMO + [
-                'backchannel_logout_uri' => 'https://demo.localhost/backchannel-logout',
-                'backchannel_logout_session_required' => true,
-            ],
+            'demo' => self::DEMO
+                + [
+                    'backchannel_logout_uri' => 'https://demo.localhost/backchannel-logout',
+                    'backchannel_logout_session_required' => true,
+                ],
         ]);
 
         // When
@@ -601,10 +612,11 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'demo' => self::DEMO + [
-                'frontchannel_logout_uri' => 'https://demo.localhost/frontchannel-logout',
-                'frontchannel_logout_session_required' => true,
-            ],
+            'demo' => self::DEMO
+                + [
+                    'frontchannel_logout_uri' => 'https://demo.localhost/frontchannel-logout',
+                    'frontchannel_logout_session_required' => true,
+                ],
         ]);
 
         // When
@@ -648,9 +660,18 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $this->expectExceptionMessageIsOrContains($reason);
 
         // When
-        new ConfigurationClientRepository('acme', [
-            'bad' => $definition,
-        ], new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
+        new ConfigurationClientRepository(
+            'acme',
+            [
+                'bad' => $definition,
+            ],
+            new FakePasswordHasher(),
+            Algorithms::all(),
+            Methods::all(),
+            new PkiFrameworkCertificateReader(),
+            Algorithms::keyEncryption(),
+            Algorithms::contentEncryption(),
+        );
     }
 
     /**
@@ -662,14 +683,15 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'key-client' => self::KEY_CLIENT + [
-                'id_token_signed_response_alg' => 'ES256',
-                'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
-                'id_token_encrypted_response_enc' => 'A256GCM',
-                'userinfo_signed_response_alg' => 'ES256',
-                'authorization_encrypted_response_alg' => 'ECDH-ES+A256KW',
-                'authorization_encrypted_response_enc' => 'A256GCM',
-            ],
+            'key-client' => self::KEY_CLIENT
+                + [
+                    'id_token_signed_response_alg' => 'ES256',
+                    'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                    'id_token_encrypted_response_enc' => 'A256GCM',
+                    'userinfo_signed_response_alg' => 'ES256',
+                    'authorization_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                    'authorization_encrypted_response_enc' => 'A256GCM',
+                ],
         ]);
 
         // When
@@ -716,212 +738,410 @@ final class ConfigurationClientRepositoryTest extends TestCase
             'redirect_uris' => ['https://rp.example/cb'],
         ];
 
-        yield 'unknown key' => [$base + [
-            'insecure_allow_plain_pkce' => true,
-        ], 'unknown keys: insecure_allow_plain_pkce'];
-        yield 'an encryption algorithm without a content encryption' => [self::KEY_CLIENT + [
-            'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
-        ], 'registers id_token_encrypted_response_alg without id_token_encrypted_response_enc'];
-        yield 'a content encryption without an encryption algorithm' => [self::KEY_CLIENT + [
-            'userinfo_encrypted_response_enc' => 'A256GCM',
-        ], 'registers userinfo_encrypted_response_enc without userinfo_encrypted_response_alg'];
-        yield 'an encryption algorithm the provider is not wired with' => [self::KEY_CLIENT + [
-            'authorization_encrypted_response_alg' => 'RSA1_5',
-            'authorization_encrypted_response_enc' => 'A256GCM',
-        ], 'The authorization_encrypted_response_alg option of the client "bad" must be one of: ECDH-ES+A256KW, RSA-OAEP-256.'];
-        yield 'a content encryption the provider is not wired with' => [self::KEY_CLIENT + [
-            'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
-            'id_token_encrypted_response_enc' => 'A128CBC-HS256',
-        ], 'The id_token_encrypted_response_enc option of the client "bad" must be one of: A256GCM.'];
-        yield 'an encrypted response and no key published at all' => [$base + [
-            'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
-            'id_token_encrypted_response_enc' => 'A256GCM',
-        ], 'registers an encrypted response, which is addressed to a key of the client, and therefore publishes its keys'];
-        yield 'an encrypted response and no key it can be addressed to' => [self::KEY_CLIENT + [
-            'id_token_encrypted_response_alg' => 'RSA-OAEP-256',
-            'id_token_encrypted_response_enc' => 'A256GCM',
-        ], 'publishes no key it can be addressed to'];
-        yield 'an encrypted response and only a signing key' => [[
-            'redirect_uris' => ['https://key.example/callback'],
-            'token_endpoint_auth_method' => 'private_key_jwt',
-            'jwks' => [
-                'keys' => [[
-                    'kty' => 'EC',
-                    'crv' => 'P-256',
-                    'kid' => 'one',
-                    'use' => 'sig',
-                    'x' => 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
-                    'y' => 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
-                ]],
+        yield 'unknown key' => [
+            $base
+                + [
+                    'insecure_allow_plain_pkce' => true,
+                ],
+            'unknown keys: insecure_allow_plain_pkce',
+        ];
+        yield 'an encryption algorithm without a content encryption' => [
+            self::KEY_CLIENT
+                + [
+                    'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                ],
+            'registers id_token_encrypted_response_alg without id_token_encrypted_response_enc',
+        ];
+        yield 'a content encryption without an encryption algorithm' => [
+            self::KEY_CLIENT
+                + [
+                    'userinfo_encrypted_response_enc' => 'A256GCM',
+                ],
+            'registers userinfo_encrypted_response_enc without userinfo_encrypted_response_alg',
+        ];
+        yield 'an encryption algorithm the provider is not wired with' => [
+            self::KEY_CLIENT
+                + [
+                    'authorization_encrypted_response_alg' => 'RSA1_5',
+                    'authorization_encrypted_response_enc' => 'A256GCM',
+                ],
+            'The authorization_encrypted_response_alg option of the client "bad" must be one of: ECDH-ES+A256KW, RSA-OAEP-256.',
+        ];
+        yield 'a content encryption the provider is not wired with' => [
+            self::KEY_CLIENT
+                + [
+                    'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                    'id_token_encrypted_response_enc' => 'A128CBC-HS256',
+                ],
+            'The id_token_encrypted_response_enc option of the client "bad" must be one of: A256GCM.',
+        ];
+        yield 'an encrypted response and no key published at all' => [
+            $base
+                + [
+                    'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                    'id_token_encrypted_response_enc' => 'A256GCM',
+                ],
+            'registers an encrypted response, which is addressed to a key of the client, and therefore publishes its keys',
+        ];
+        yield 'an encrypted response and no key it can be addressed to' => [
+            self::KEY_CLIENT
+                + [
+                    'id_token_encrypted_response_alg' => 'RSA-OAEP-256',
+                    'id_token_encrypted_response_enc' => 'A256GCM',
+                ],
+            'publishes no key it can be addressed to',
+        ];
+        yield 'an encrypted response and only a signing key' => [
+            [
+                'redirect_uris' => ['https://key.example/callback'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
+                'jwks' => [
+                    'keys' => [[
+                        'kty' => 'EC',
+                        'crv' => 'P-256',
+                        'kid' => 'one',
+                        'use' => 'sig',
+                        'x' => 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+                        'y' => 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
+                    ]],
+                ],
+                'userinfo_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                'userinfo_encrypted_response_enc' => 'A256GCM',
             ],
-            'userinfo_encrypted_response_alg' => 'ECDH-ES+A256KW',
-            'userinfo_encrypted_response_enc' => 'A256GCM',
-        ], 'publishes no key it can be addressed to'];
-        yield 'secret not a string' => [[
-            'secret' => 12345,
-        ] + $base, 'must be a string'];
-        yield 'secret too short' => [[
-            'secret' => 'short',
-        ] + $base, 'at least 32 visible ASCII characters'];
-        yield 'secret with a non-ASCII character' => [[
-            'secret' => 'é' . Clients::SECRET,
-        ] + $base, 'at least 32 visible ASCII characters'];
-        yield 'confidential without a secret' => [[
-            'redirect_uris' => ['https://rp.example/cb'],
-        ], 'needs a secret'];
-        yield 'public with a secret' => [$base + [
-            'token_endpoint_auth_method' => 'none',
-        ], 'cannot hold a secret'];
-        yield 'an authentication method nothing is wired with' => [$base + [
-            'token_endpoint_auth_method' => 'smoke_signal',
-        ], 'must be one of: client_secret_basic, client_secret_post, private_key_jwt, client_secret_jwt, tls_client_auth, self_signed_tls_client_auth, none'];
-        yield 'two of the values of RFC 8705 §2.1.2' => [$base + [
-            'token_endpoint_auth_method' => 'tls_client_auth',
-            'tls_client_auth_subject_dn' => 'cn=client',
-            'tls_client_auth_san_dns' => 'client.example.com',
-        ], 'registers exactly one of the values of RFC 8705 section 2.1.2'];
-        yield 'a subject distinguished name that is not one' => [$base + [
-            'token_endpoint_auth_method' => 'tls_client_auth',
-            'tls_client_auth_subject_dn' => 'heidi mtls client',
-        ], 'must be a distinguished name of RFC 4514'];
-        yield 'a certificate name that is not a string' => [$base + [
-            'token_endpoint_auth_method' => 'tls_client_auth',
-            'tls_client_auth_san_dns' => 42,
-        ], 'tls_client_auth_san_dns option of the client "bad" must be a string'];
-        yield 'authentication method not a string' => [$base + [
-            'token_endpoint_auth_method' => true,
-        ], 'token_endpoint_auth_method option of the client "bad" must be a string'];
-        yield 'private_key_jwt without keys (RFC 7591 §2)' => [[
-            'redirect_uris' => ['https://rp.example/cb'],
-            'token_endpoint_auth_method' => 'private_key_jwt',
-        ], 'publishes its keys in "jwks" or behind a "jwks_uri"'];
-        yield 'jwks and jwks_uri together (RFC 7591 §2)' => [[
-            'redirect_uris' => ['https://rp.example/cb'],
-            'token_endpoint_auth_method' => 'private_key_jwt',
-            'jwks' => [
-                'keys' => [[
-                    'kty' => 'EC',
-                    'crv' => 'P-256',
-                    'x' => 'x',
-                    'y' => 'y',
-                ]],
+            'publishes no key it can be addressed to',
+        ];
+        yield 'secret not a string' => [
+            [
+                'secret' => 12345,
+            ] + $base,
+            'must be a string',
+        ];
+        yield 'secret too short' => [
+            [
+                'secret' => 'short',
+            ] + $base,
+            'at least 32 visible ASCII characters',
+        ];
+        yield 'secret with a non-ASCII character' => [
+            [
+                'secret' => 'é' . Clients::SECRET,
+            ] + $base,
+            'at least 32 visible ASCII characters',
+        ];
+        yield 'confidential without a secret' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
             ],
-            'jwks_uri' => 'https://rp.example/jwks',
-        ], 'either inline in "jwks" or behind a "jwks_uri", never both'];
-        yield 'jwks not a JWK Set' => [[
-            'redirect_uris' => ['https://rp.example/cb'],
-            'token_endpoint_auth_method' => 'private_key_jwt',
-            'jwks' => [
-                'keys' => 'no',
+            'needs a secret',
+        ];
+        yield 'public with a secret' => [
+            $base
+                + [
+                    'token_endpoint_auth_method' => 'none',
+                ],
+            'cannot hold a secret',
+        ];
+        yield 'an authentication method nothing is wired with' => [
+            $base
+                + [
+                    'token_endpoint_auth_method' => 'smoke_signal',
+                ],
+            'must be one of: client_secret_basic, client_secret_post, private_key_jwt, client_secret_jwt, tls_client_auth, self_signed_tls_client_auth, none',
+        ];
+        yield 'two of the values of RFC 8705 §2.1.2' => [
+            $base
+                + [
+                    'token_endpoint_auth_method' => 'tls_client_auth',
+                    'tls_client_auth_subject_dn' => 'cn=client',
+                    'tls_client_auth_san_dns' => 'client.example.com',
+                ],
+            'registers exactly one of the values of RFC 8705 section 2.1.2',
+        ];
+        yield 'a subject distinguished name that is not one' => [
+            $base
+                + [
+                    'token_endpoint_auth_method' => 'tls_client_auth',
+                    'tls_client_auth_subject_dn' => 'heidi mtls client',
+                ],
+            'must be a distinguished name of RFC 4514',
+        ];
+        yield 'a certificate name that is not a string' => [
+            $base
+                + [
+                    'token_endpoint_auth_method' => 'tls_client_auth',
+                    'tls_client_auth_san_dns' => 42,
+                ],
+            'tls_client_auth_san_dns option of the client "bad" must be a string',
+        ];
+        yield 'authentication method not a string' => [
+            $base
+                + [
+                    'token_endpoint_auth_method' => true,
+                ],
+            'token_endpoint_auth_method option of the client "bad" must be a string',
+        ];
+        yield 'private_key_jwt without keys (RFC 7591 §2)' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
             ],
-        ], 'object with a "keys" member'];
-        yield 'a symmetric key in jwks (RFC 8725 §3.5)' => [[
-            'redirect_uris' => ['https://rp.example/cb'],
-            'token_endpoint_auth_method' => 'private_key_jwt',
-            'jwks' => [
-                'keys' => [[
-                    'kty' => 'oct',
-                    'k' => 'AAAA',
-                ]],
+            'publishes its keys in "jwks" or behind a "jwks_uri"',
+        ];
+        yield 'jwks and jwks_uri together (RFC 7591 §2)' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
+                'jwks' => [
+                    'keys' => [[
+                        'kty' => 'EC',
+                        'crv' => 'P-256',
+                        'x' => 'x',
+                        'y' => 'y',
+                    ]],
+                ],
+                'jwks_uri' => 'https://rp.example/jwks',
             ],
-        ], 'symmetric key in a JWK Set is refused'];
-        yield 'requires_consent as a string' => [$base + [
-            'requires_consent' => 'false',
-        ], 'must be a boolean'];
-        yield 'requires_pkce as a string' => [$base + [
-            'requires_pkce' => 'false',
-        ], 'requires_pkce option of the client "bad" must be a boolean'];
-        yield 'require_pushed_authorization_requests as a string' => [$base + [
-            'require_pushed_authorization_requests' => 'true',
-        ], 'require_pushed_authorization_requests option of the client "bad" must be a boolean'];
-        yield 'public client without the PKCE requirement (RFC 9700 §2.1.1)' => [[
-            'redirect_uris' => ['https://rp.example/cb'],
-            'token_endpoint_auth_method' => 'none',
-            'requires_pkce' => false,
-        ], 'is public and must use PKCE'];
-        yield 'name not a string' => [$base + [
-            'name' => ['x'],
-        ], 'name of the client "bad" must be a string'];
-        yield 'redirect_uris not a list' => [[
-            'redirect_uris' => 'https://rp.example/cb',
-        ] + $base, 'redirect_uris option of the client "bad" must be a list of strings'];
-        yield 'redirect_uris with a non-string' => [[
-            'redirect_uris' => [42],
-        ] + $base, 'redirect_uris option of the client "bad" must be a list of strings'];
-        yield 'redirect URI with a fragment' => [[
-            'redirect_uris' => ['https://rp.example/cb#x'],
-        ] + $base, 'fragment'];
-        yield 'no redirect URI' => [[
-            'redirect_uris' => [],
-        ] + $base, 'at least one redirect URI'];
-        yield 'post logout URI over plain http' => [$base + [
-            'post_logout_redirect_uris' => ['http://rp.example/'],
-        ], 'HTTPS'];
-        yield 'no grant type' => [$base + [
-            'grant_types' => [],
-        ], 'at least one grant type'];
-        yield 'refresh_token alone' => [$base + [
-            'grant_types' => ['refresh_token'],
-        ], 'requires authorization_code'];
-        yield 'unknown grant' => [$base + [
-            'grant_types' => ['implicit'],
-        ], 'must be one of: authorization_code, refresh_token'];
-        yield 'invalid scope' => [$base + [
-            'allowed_scopes' => ['openid profile'],
-        ], 'scope token'];
-        yield 'no scope' => [$base + [
-            'allowed_scopes' => [],
-        ], 'at least one scope'];
-        yield 'empty name' => [$base + [
-            'name' => '',
-        ], 'has a name'];
-        yield 'unknown signing algorithm' => [$base + [
-            'id_token_signed_response_alg' => 'HS256',
-        ], 'must be one of: RS256, PS256, ES256, EdDSA'];
-        yield 'unknown request object algorithm' => [$base + [
-            'request_object_signing_alg' => 'HS256',
-        ], 'must be "none" or one of: RS256, PS256, ES256, EdDSA'];
-        yield 'request object algorithm without a key to verify it' => [$base + [
-            'request_object_signing_alg' => 'ES256',
-        ], 'registers a request_object_signing_alg'];
-        yield 'request_uri over plain http' => [$base + [
-            'request_uris' => ['http://rp.example/request.jwt'],
-        ], 'HTTPS'];
-        yield 'request_uris as a string' => [$base + [
-            'request_uris' => 'https://rp.example/request.jwt',
-        ], 'request_uris option of the client "bad" must be a list of strings'];
-        yield 'back-channel logout URI over plain http' => [$base + [
-            'backchannel_logout_uri' => 'http://rp.example/backchannel-logout',
-        ], 'HTTPS'];
-        yield 'back-channel logout URI with a fragment' => [$base + [
-            'backchannel_logout_uri' => 'https://rp.example/backchannel-logout#x',
-        ], 'fragment'];
-        yield 'back-channel logout URI not a string' => [$base + [
-            'backchannel_logout_uri' => ['https://rp.example/backchannel-logout'],
-        ], 'backchannel_logout_uri option of the client "bad" must be a string'];
-        yield 'backchannel_logout_session_required as a string' => [$base + [
-            'backchannel_logout_uri' => 'https://rp.example/backchannel-logout',
-            'backchannel_logout_session_required' => 'true',
-        ], 'backchannel_logout_session_required option of the client "bad" must be a boolean'];
-        yield 'a "sid" required with nowhere to send it' => [$base + [
-            'backchannel_logout_session_required' => true,
-        ], 'registers no backchannel_logout_uri'];
-        yield 'front-channel logout URI over plain http' => [$base + [
-            'frontchannel_logout_uri' => 'http://rp.example/frontchannel-logout',
-        ], 'HTTPS'];
-        yield 'front-channel logout URI with a fragment' => [$base + [
-            'frontchannel_logout_uri' => 'https://rp.example/frontchannel-logout#x',
-        ], 'fragment'];
-        yield 'front-channel logout URI not a string' => [$base + [
-            'frontchannel_logout_uri' => ['https://rp.example/frontchannel-logout'],
-        ], 'frontchannel_logout_uri option of the client "bad" must be a string'];
-        yield 'frontchannel_logout_session_required as a string' => [$base + [
-            'frontchannel_logout_uri' => 'https://rp.example/frontchannel-logout',
-            'frontchannel_logout_session_required' => 'true',
-        ], 'frontchannel_logout_session_required option of the client "bad" must be a boolean'];
-        yield 'an "iss" and a "sid" required on no URI' => [$base + [
-            'frontchannel_logout_session_required' => true,
-        ], 'registers no frontchannel_logout_uri'];
+            'either inline in "jwks" or behind a "jwks_uri", never both',
+        ];
+        yield 'jwks not a JWK Set' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
+                'jwks' => [
+                    'keys' => 'no',
+                ],
+            ],
+            'object with a "keys" member',
+        ];
+        yield 'a symmetric key in jwks (RFC 8725 §3.5)' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
+                'jwks' => [
+                    'keys' => [[
+                        'kty' => 'oct',
+                        'k' => 'AAAA',
+                    ]],
+                ],
+            ],
+            'symmetric key in a JWK Set is refused',
+        ];
+        yield 'requires_consent as a string' => [
+            $base
+                + [
+                    'requires_consent' => 'false',
+                ],
+            'must be a boolean',
+        ];
+        yield 'requires_pkce as a string' => [
+            $base
+                + [
+                    'requires_pkce' => 'false',
+                ],
+            'requires_pkce option of the client "bad" must be a boolean',
+        ];
+        yield 'require_pushed_authorization_requests as a string' => [
+            $base
+                + [
+                    'require_pushed_authorization_requests' => 'true',
+                ],
+            'require_pushed_authorization_requests option of the client "bad" must be a boolean',
+        ];
+        yield 'public client without the PKCE requirement (RFC 9700 §2.1.1)' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'token_endpoint_auth_method' => 'none',
+                'requires_pkce' => false,
+            ],
+            'is public and must use PKCE',
+        ];
+        yield 'name not a string' => [
+            $base
+                + [
+                    'name' => ['x'],
+                ],
+            'name of the client "bad" must be a string',
+        ];
+        yield 'redirect_uris not a list' => [
+            [
+                'redirect_uris' => 'https://rp.example/cb',
+            ] + $base,
+            'redirect_uris option of the client "bad" must be a list of strings',
+        ];
+        yield 'redirect_uris with a non-string' => [
+            [
+                'redirect_uris' => [42],
+            ] + $base,
+            'redirect_uris option of the client "bad" must be a list of strings',
+        ];
+        yield 'redirect URI with a fragment' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb#x'],
+            ] + $base,
+            'fragment',
+        ];
+        yield 'no redirect URI' => [
+            [
+                'redirect_uris' => [],
+            ] + $base,
+            'at least one redirect URI',
+        ];
+        yield 'post logout URI over plain http' => [
+            $base
+                + [
+                    'post_logout_redirect_uris' => ['http://rp.example/'],
+                ],
+            'HTTPS',
+        ];
+        yield 'no grant type' => [
+            $base
+                + [
+                    'grant_types' => [],
+                ],
+            'at least one grant type',
+        ];
+        yield 'refresh_token alone' => [
+            $base
+                + [
+                    'grant_types' => ['refresh_token'],
+                ],
+            'requires authorization_code',
+        ];
+        yield 'unknown grant' => [
+            $base
+                + [
+                    'grant_types' => ['implicit'],
+                ],
+            'must be one of: authorization_code, refresh_token',
+        ];
+        yield 'invalid scope' => [
+            $base
+                + [
+                    'allowed_scopes' => ['openid profile'],
+                ],
+            'scope token',
+        ];
+        yield 'no scope' => [
+            $base
+                + [
+                    'allowed_scopes' => [],
+                ],
+            'at least one scope',
+        ];
+        yield 'empty name' => [
+            $base
+                + [
+                    'name' => '',
+                ],
+            'has a name',
+        ];
+        yield 'unknown signing algorithm' => [
+            $base
+                + [
+                    'id_token_signed_response_alg' => 'HS256',
+                ],
+            'must be one of: RS256, PS256, ES256, EdDSA',
+        ];
+        yield 'unknown request object algorithm' => [
+            $base
+                + [
+                    'request_object_signing_alg' => 'HS256',
+                ],
+            'must be "none" or one of: RS256, PS256, ES256, EdDSA',
+        ];
+        yield 'request object algorithm without a key to verify it' => [
+            $base
+                + [
+                    'request_object_signing_alg' => 'ES256',
+                ],
+            'registers a request_object_signing_alg',
+        ];
+        yield 'request_uri over plain http' => [
+            $base
+                + [
+                    'request_uris' => ['http://rp.example/request.jwt'],
+                ],
+            'HTTPS',
+        ];
+        yield 'request_uris as a string' => [
+            $base
+                + [
+                    'request_uris' => 'https://rp.example/request.jwt',
+                ],
+            'request_uris option of the client "bad" must be a list of strings',
+        ];
+        yield 'back-channel logout URI over plain http' => [
+            $base
+                + [
+                    'backchannel_logout_uri' => 'http://rp.example/backchannel-logout',
+                ],
+            'HTTPS',
+        ];
+        yield 'back-channel logout URI with a fragment' => [
+            $base
+                + [
+                    'backchannel_logout_uri' => 'https://rp.example/backchannel-logout#x',
+                ],
+            'fragment',
+        ];
+        yield 'back-channel logout URI not a string' => [
+            $base
+                + [
+                    'backchannel_logout_uri' => ['https://rp.example/backchannel-logout'],
+                ],
+            'backchannel_logout_uri option of the client "bad" must be a string',
+        ];
+        yield 'backchannel_logout_session_required as a string' => [
+            $base
+                + [
+                    'backchannel_logout_uri' => 'https://rp.example/backchannel-logout',
+                    'backchannel_logout_session_required' => 'true',
+                ],
+            'backchannel_logout_session_required option of the client "bad" must be a boolean',
+        ];
+        yield 'a "sid" required with nowhere to send it' => [
+            $base
+                + [
+                    'backchannel_logout_session_required' => true,
+                ],
+            'registers no backchannel_logout_uri',
+        ];
+        yield 'front-channel logout URI over plain http' => [
+            $base
+                + [
+                    'frontchannel_logout_uri' => 'http://rp.example/frontchannel-logout',
+                ],
+            'HTTPS',
+        ];
+        yield 'front-channel logout URI with a fragment' => [
+            $base
+                + [
+                    'frontchannel_logout_uri' => 'https://rp.example/frontchannel-logout#x',
+                ],
+            'fragment',
+        ];
+        yield 'front-channel logout URI not a string' => [
+            $base
+                + [
+                    'frontchannel_logout_uri' => ['https://rp.example/frontchannel-logout'],
+                ],
+            'frontchannel_logout_uri option of the client "bad" must be a string',
+        ];
+        yield 'frontchannel_logout_session_required as a string' => [
+            $base
+                + [
+                    'frontchannel_logout_uri' => 'https://rp.example/frontchannel-logout',
+                    'frontchannel_logout_session_required' => 'true',
+                ],
+            'frontchannel_logout_session_required option of the client "bad" must be a boolean',
+        ];
+        yield 'an "iss" and a "sid" required on no URI' => [
+            $base
+                + [
+                    'frontchannel_logout_session_required' => true,
+                ],
+            'registers no frontchannel_logout_uri',
+        ];
     }
 
     /**
@@ -931,8 +1151,28 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionHasNoSecret(): void
     {
         // When / Then
-        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption())->hasSecret());
-        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption())->hasSecret());
+        static::assertFalse(
+            ClientDefinition::fromArray(
+                'spa',
+                self::SPA,
+                Algorithms::all(),
+                Methods::all(),
+                new PkiFrameworkCertificateReader(),
+                Algorithms::keyEncryption(),
+                Algorithms::contentEncryption(),
+            )->hasSecret(),
+        );
+        static::assertTrue(
+            ClientDefinition::fromArray(
+                'oidc-demo',
+                self::DEMO,
+                Algorithms::all(),
+                Methods::all(),
+                new PkiFrameworkCertificateReader(),
+                Algorithms::keyEncryption(),
+                Algorithms::contentEncryption(),
+            )->hasSecret(),
+        );
     }
 
     /**
@@ -942,7 +1182,15 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionRefusesToKeepASecret(): void
     {
         // Given
-        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
+        $definition = ClientDefinition::fromArray(
+            'spa',
+            self::SPA,
+            Algorithms::all(),
+            Methods::all(),
+            new PkiFrameworkCertificateReader(),
+            Algorithms::keyEncryption(),
+            Algorithms::contentEncryption(),
+        );
 
         // Then
         $this->expectException(LogicException::class);
@@ -979,19 +1227,35 @@ final class ConfigurationClientRepositoryTest extends TestCase
             ...self::SPA,
             'access_token_format' => 'opaque',
         ];
-        yield 'jwt by default' => [[
-            'spa' => self::SPA,
-        ], AccessTokenFormat::Jwt, true];
-        yield 'no opaque client' => [[
-            'spa' => self::SPA,
-        ], AccessTokenFormat::Opaque, false];
-        yield 'one opaque client among jwt ones' => [[
-            'spa' => self::SPA,
-            'api' => $opaque,
-        ], AccessTokenFormat::Opaque, true];
-        yield 'every client opaque, no jwt' => [[
-            'api' => $opaque,
-        ], AccessTokenFormat::Jwt, false];
+        yield 'jwt by default' => [
+            [
+                'spa' => self::SPA,
+            ],
+            AccessTokenFormat::Jwt,
+            true,
+        ];
+        yield 'no opaque client' => [
+            [
+                'spa' => self::SPA,
+            ],
+            AccessTokenFormat::Opaque,
+            false,
+        ];
+        yield 'one opaque client among jwt ones' => [
+            [
+                'spa' => self::SPA,
+                'api' => $opaque,
+            ],
+            AccessTokenFormat::Opaque,
+            true,
+        ];
+        yield 'every client opaque, no jwt' => [
+            [
+                'api' => $opaque,
+            ],
+            AccessTokenFormat::Jwt,
+            false,
+        ];
         yield 'no client at all' => [[], AccessTokenFormat::Jwt, false];
     }
 
@@ -1012,7 +1276,16 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     private function repository(array $clients, ?PasswordHasherInterface $hasher = null): ConfigurationClientRepository
     {
-        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
+        return new ConfigurationClientRepository(
+            $this->tenant->slug,
+            $clients,
+            $hasher ?? new FakePasswordHasher(),
+            Algorithms::all(),
+            Methods::all(),
+            new PkiFrameworkCertificateReader(),
+            Algorithms::keyEncryption(),
+            Algorithms::contentEncryption(),
+        );
     }
 
     private static function find(ConfigurationClientRepository $repository, Tenant $tenant, string $clientId): Client
@@ -1029,10 +1302,11 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'jar' => self::KEY_CLIENT + [
-                'request_object_signing_alg' => 'ES256',
-                'request_uris' => ['https://key.example/request.jwt'],
-            ],
+            'jar' => self::KEY_CLIENT
+                + [
+                    'request_object_signing_alg' => 'ES256',
+                    'request_uris' => ['https://key.example/request.jwt'],
+                ],
         ]);
 
         // When
@@ -1066,16 +1340,23 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     public static function provideRegistrationsAndWhatTheyAnnounce(): iterable
     {
-        $unsigned = self::SPA + [
+        $unsigned = self::SPA
+        + [
             'request_object_signing_alg' => 'none',
         ];
-        yield 'no client registers none' => [[
-            'spa' => self::SPA,
-        ], false];
-        yield 'one client among others registers none' => [[
-            'spa' => self::SPA,
-            'unsigned' => $unsigned,
-        ], true];
+        yield 'no client registers none' => [
+            [
+                'spa' => self::SPA,
+            ],
+            false,
+        ];
+        yield 'one client among others registers none' => [
+            [
+                'spa' => self::SPA,
+                'unsigned' => $unsigned,
+            ],
+            true,
+        ];
         yield 'no client at all' => [[], false];
     }
 
@@ -1084,9 +1365,10 @@ final class ConfigurationClientRepositoryTest extends TestCase
     {
         // Given
         $repository = $this->repository([
-            'unsigned' => self::SPA + [
-                'request_object_signing_alg' => 'none',
-            ],
+            'unsigned' => self::SPA
+                + [
+                    'request_object_signing_alg' => 'none',
+                ],
         ]);
 
         // When / Then

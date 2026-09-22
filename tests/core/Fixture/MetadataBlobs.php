@@ -34,8 +34,12 @@ final class MetadataBlobs
      *
      * @return array<string, mixed>
      */
-    public static function entry(string $aaguid, array $statuses = [AuthenticatorStatus::FIDO_CERTIFIED], string $description = 'Authenticator of the tests', array $attestationRootCertificates = []): array
-    {
+    public static function entry(
+        string $aaguid,
+        array $statuses = [AuthenticatorStatus::FIDO_CERTIFIED],
+        string $description = 'Authenticator of the tests',
+        array $attestationRootCertificates = [],
+    ): array {
         $reports = [];
         foreach ($statuses as $status) {
             $reports[] = [

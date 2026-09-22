@@ -68,7 +68,15 @@ final class KeyBoundArtifactsTest extends TestCase
     public function theIdTokenLivesAsLongAsItsIssuerSays(): void
     {
         // Given
-        $kind = new IdTokenJwsKind(new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H')));
+        $kind = new IdTokenJwsKind(
+            new JwtIdTokenIssuer(
+                $this->jwts->documents,
+                new PublicSubjectIdentifierResolver(),
+                new StandardClaimsProvider(),
+                Algorithms::all(),
+                new DateInterval('PT1H'),
+            ),
+        );
 
         // When / Then
         static::assertEquals(new DateInterval('PT1H'), $kind->longestLifetime($this->tenant));
@@ -79,7 +87,10 @@ final class KeyBoundArtifactsTest extends TestCase
     {
         // Given
         $this->clients->save(Clients::public($this->tenant));
-        $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT20M')), $this->clients);
+        $kind = new AccessTokenJwsKind(
+            new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT20M')),
+            $this->clients,
+        );
 
         // When / Then
         static::assertEquals(new DateInterval('PT20M'), $kind->longestLifetime($this->tenant));
@@ -127,8 +138,19 @@ final class KeyBoundArtifactsTest extends TestCase
             new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]),
             Keys::sealer(),
             [
-                new IdTokenJwsKind(new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT2M'))),
-                new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT2M')), $this->clients),
+                new IdTokenJwsKind(
+                    new JwtIdTokenIssuer(
+                        $this->jwts->documents,
+                        new PublicSubjectIdentifierResolver(),
+                        new StandardClaimsProvider(),
+                        Algorithms::all(),
+                        new DateInterval('PT2M'),
+                    ),
+                ),
+                new AccessTokenJwsKind(
+                    new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT2M')),
+                    $this->clients,
+                ),
                 new ResponseDocumentJwsKind($this->documents(new DateInterval('PT5M')), ServedModes::signedToo()),
             ],
             new DateInterval('PT6M'),
@@ -152,7 +174,11 @@ final class KeyBoundArtifactsTest extends TestCase
     public function theSelfContainedAccessTokenIsNotIssuedWhenEveryClientReceivesAnOpaqueOne(): void
     {
         // Given
-        $this->clients->save(Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), accessTokenFormat: AccessTokenFormat::Opaque));
+        $this->clients->save(Clients::confidential(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            accessTokenFormat: AccessTokenFormat::Opaque,
+        ));
         $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all()), $this->clients);
 
         // When / Then
@@ -203,8 +229,19 @@ final class KeyBoundArtifactsTest extends TestCase
             new JwtLibraryKeyPairGenerator(Algorithms::everyUse()),
             Keys::sealer(),
             [
-                new IdTokenJwsKind(new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT2M'))),
-                new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT2M')), $this->clients),
+                new IdTokenJwsKind(
+                    new JwtIdTokenIssuer(
+                        $this->jwts->documents,
+                        new PublicSubjectIdentifierResolver(),
+                        new StandardClaimsProvider(),
+                        Algorithms::all(),
+                        new DateInterval('PT2M'),
+                    ),
+                ),
+                new AccessTokenJwsKind(
+                    new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT2M')),
+                    $this->clients,
+                ),
                 new RequestObjectJweKind(new RequestObjectValidator(new DateInterval('PT10M'), new DateInterval('PT30S'))),
                 new PushedRequestJweKind($this->pushedRequests(new DateInterval('PT90S'))),
             ],

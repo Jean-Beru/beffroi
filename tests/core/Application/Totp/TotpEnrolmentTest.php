@@ -50,7 +50,16 @@ final class TotpEnrolmentTest extends TestCase
         $this->hasher = new FakePasswordHasher();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
-        $this->enrolment = new TotpEnrolment($this->credentials, new ActiveTotp($this->credentials), Totps::algorithm(), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->clock, $this->events);
+        $this->enrolment = new TotpEnrolment(
+            $this->credentials,
+            new ActiveTotp($this->credentials),
+            Totps::algorithm(),
+            new TotpCodeMatcher(Totps::algorithm()),
+            Totps::sealer(),
+            $this->hasher,
+            $this->clock,
+            $this->events,
+        );
     }
 
     /**
@@ -154,7 +163,12 @@ final class TotpEnrolmentTest extends TestCase
         $provisioning = $this->enrolment->begin($this->alice);
 
         // When
-        $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $totp = $this->enrolment->complete(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
 
         // Then
         static::assertFalse($totp->acceptsStep(Totps::stepAt($this->clock->now())));
@@ -165,8 +179,7 @@ final class TotpEnrolmentTest extends TestCase
     {
         // Given
         $provisioning = $this->enrolment->begin($this->alice);
-        $early = $this->clock->now()
-            ->modify('-30 seconds');
+        $early = $this->clock->now()->modify('-30 seconds');
 
         // When
         $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($early, $provisioning->secret), Fixtures::context($this->clock->now()));
@@ -204,7 +217,12 @@ final class TotpEnrolmentTest extends TestCase
         $this->expectExceptionMessageIs('The code does not match the secret.');
 
         // When
-        $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $this->enrolment->complete(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
     }
 
     #[Test]
@@ -240,7 +258,12 @@ final class TotpEnrolmentTest extends TestCase
         $this->expectExceptionMessageIs('The user has a TOTP already; it is revoked before another is enrolled.');
 
         // When
-        $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $this->enrolment->complete(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
     }
 
     #[Test]

@@ -72,7 +72,17 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $hasher = new NativePasswordHasher();
-        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new DecoyHash($hasher), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->attempts, new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
+        $this->authenticator = new PasswordAuthenticator(
+            $this->users,
+            $this->credentials,
+            $hasher,
+            new DecoyHash($hasher),
+            new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            $this->attempts,
+            new SecondFactorRequirement($this->credentials),
+            $this->clock,
+            $this->events,
+        );
     }
 
     #[Test]
@@ -92,10 +102,12 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame($context, $session->createdFrom);
         static::assertEquals($this->clock->now(), $session->establishedAt);
         static::assertEquals($this->clock->now(), $session->authenticatedAt());
-        static::assertSame([
-            'pwd' => $this->clock->now()
-                ->getTimestamp(),
-        ], $session->proofs->toTimestamps());
+        static::assertSame(
+            [
+                'pwd' => $this->clock->now()->getTimestamp(),
+            ],
+            $session->proofs->toTimestamps(),
+        );
         static::assertEquals($this->clock->now()->modify('+8 hours'), $session->expiresAt);
     }
 
@@ -315,7 +327,14 @@ final class PasswordAuthenticatorTest extends TestCase
         // Given
         $carol = Fixtures::user($this->tenant, 'carol', 'carol-subject');
         $this->users->save($carol);
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $carol, new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)), Fixtures::now()));
+        $this->credentials->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                $carol,
+                new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)),
+                Fixtures::now(),
+            ),
+        );
 
         // When
         $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
@@ -333,7 +352,14 @@ final class PasswordAuthenticatorTest extends TestCase
         // Given
         $carol = Fixtures::user($this->tenant, 'carol', 'carol-subject');
         $this->users->save($carol);
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $carol, new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)), Fixtures::now()));
+        $this->credentials->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                $carol,
+                new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)),
+                Fixtures::now(),
+            ),
+        );
 
         // When
         $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
@@ -406,7 +432,17 @@ final class PasswordAuthenticatorTest extends TestCase
         // Given
         $this->users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $hasher = new FakePasswordHasher();
-        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new DecoyHash($hasher), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), new FakeAttemptLimiter($allowedAttempts), new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
+        $authenticator = new PasswordAuthenticator(
+            $this->users,
+            $this->credentials,
+            $hasher,
+            new DecoyHash($hasher),
+            new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            new FakeAttemptLimiter($allowedAttempts),
+            new SecondFactorRequirement($this->credentials),
+            $this->clock,
+            $this->events,
+        );
 
         // When
         try {

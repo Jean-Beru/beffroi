@@ -28,10 +28,9 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
 
     public function find(Uuid $id): ?AuthenticationSession
     {
-        return $this->repository()
-            ->findOneBy([
-                'id' => $id,
-            ]);
+        return $this->repository()->findOneBy([
+            'id' => $id,
+        ]);
     }
 
     public function findActiveByUser(User $user, DateTimeImmutable $now): array

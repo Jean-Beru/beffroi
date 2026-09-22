@@ -49,8 +49,7 @@ final readonly class CeremonyStore
     public function takeCreation(string $challenge): ?array
     {
         $key = self::key('creation', $challenge);
-        $stored = $this->cache->getItem($key)
-            ->get();
+        $stored = $this->cache->getItem($key)->get();
         $this->cache->deleteItem($key);
         if (! is_array($stored) || ! is_string($stored['user'] ?? null) || ! ($stored['options'] ?? null) instanceof PublicKeyCredentialCreationOptions) {
             return null;
@@ -70,8 +69,7 @@ final readonly class CeremonyStore
     public function takeRequest(string $challenge): ?PublicKeyCredentialRequestOptions
     {
         $key = self::key('request', $challenge);
-        $options = $this->cache->getItem($key)
-            ->get();
+        $options = $this->cache->getItem($key)->get();
         $this->cache->deleteItem($key);
 
         return $options instanceof PublicKeyCredentialRequestOptions ? $options : null;

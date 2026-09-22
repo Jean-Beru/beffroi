@@ -63,8 +63,7 @@ final class BytesTypeTest extends TestCase
         $this->expectException(ConversionException::class);
 
         // When
-        new BytesType()
-            ->convertToDatabaseValue(12, new SQLitePlatform());
+        new BytesType()->convertToDatabaseValue(12, new SQLitePlatform());
     }
 
     #[Test]
@@ -75,8 +74,7 @@ final class BytesTypeTest extends TestCase
         $this->expectException(ConversionException::class);
 
         // When
-        new BytesType()
-            ->convertToPHPValue($stored, new SQLitePlatform());
+        new BytesType()->convertToPHPValue($stored, new SQLitePlatform());
     }
 
     /**

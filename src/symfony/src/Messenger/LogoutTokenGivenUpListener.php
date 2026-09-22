@@ -33,11 +33,19 @@ final readonly class LogoutTokenGivenUpListener
         if ($event->willRetry()) {
             return;
         }
-        $message = $event->getEnvelope()
-            ->getMessage();
+        $message = $event->getEnvelope()->getMessage();
         if (! $message instanceof SendLogoutToken) {
             return;
         }
-        $this->events->dispatch(new LogoutTokenGivenUp($this->clock->now(), $message->tenant, $message->context, $message->clientId, $message->sessionId, ExceptionTrail::of($event->getThrowable())));
+        $this->events->dispatch(
+            new LogoutTokenGivenUp(
+                $this->clock->now(),
+                $message->tenant,
+                $message->context,
+                $message->clientId,
+                $message->sessionId,
+                ExceptionTrail::of($event->getThrowable()),
+            ),
+        );
     }
 }

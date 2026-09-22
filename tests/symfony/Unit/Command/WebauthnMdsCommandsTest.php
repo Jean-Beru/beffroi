@@ -49,14 +49,12 @@ final class WebauthnMdsCommandsTest extends TestCase
         $this->service = MetadataSigner::create();
         $this->store = new InMemoryMetadataBlobStore();
         $this->directory = sys_get_temp_dir() . '/heidi-bundle-tests/mds-' . uniqid();
-        new Filesystem()
-            ->mkdir($this->directory);
+        new Filesystem()->mkdir($this->directory);
     }
 
     protected function tearDown(): void
     {
-        new Filesystem()
-            ->remove($this->directory);
+        new Filesystem()->remove($this->directory);
     }
 
     #[Test]
@@ -124,7 +122,10 @@ final class WebauthnMdsCommandsTest extends TestCase
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
         static::assertSame([], $this->store->readAll());
-        static::assertStringContainsString('refused, nothing of it is kept: The certificate chain of the blob does not lead to the pinned root', self::flattened($tester));
+        static::assertStringContainsString(
+            'refused, nothing of it is kept: The certificate chain of the blob does not lead to the pinned root',
+            self::flattened($tester),
+        );
     }
 
     /**
@@ -151,7 +152,10 @@ final class WebauthnMdsCommandsTest extends TestCase
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
         static::assertSame([], $this->store->readAll());
-        static::assertStringContainsString('the service redirects to https://mds.fidoalliance.org/, and no outbound request follows a redirect; name that URL instead', self::flattened($tester));
+        static::assertStringContainsString(
+            'the service redirects to https://mds.fidoalliance.org/, and no outbound request follows a redirect; name that URL instead',
+            self::flattened($tester),
+        );
     }
 
     #[Test]
@@ -160,7 +164,11 @@ final class WebauthnMdsCommandsTest extends TestCase
         // Given
         $blob = $this->service->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]));
         $root = $this->service->rootCertificate();
-        $tester = $this->refresh(new MockHttpClient(static fn (string $method, string $url): MockResponse => new MockResponse($url === 'https://mds.example/root.crt' ? $root : $blob)));
+        $tester = $this->refresh(
+            new MockHttpClient(
+                static fn (string $method, string $url): MockResponse => new MockResponse($url === 'https://mds.example/root.crt' ? $root : $blob),
+            ),
+        );
 
         // When
         $tester->execute([
@@ -191,17 +199,20 @@ final class WebauthnMdsCommandsTest extends TestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertSame(['statement-' . self::AAGUID], array_keys($this->store->readAll()));
         $document = json_decode($this->store->readAll()['statement-' . self::AAGUID], true, 16, JSON_THROW_ON_ERROR);
-        static::assertSame([
-            'legalHeader' => 'For the tests.',
-            'no' => 0,
-            'nextUpdate' => '2026-09-15',
-            'entries' => [[
-                'aaguid' => self::AAGUID,
-                'metadataStatement' => $statement,
-                'statusReports' => [],
-                'timeOfLastStatusChange' => '2026-09-15',
-            ]],
-        ], $document);
+        static::assertSame(
+            [
+                'legalHeader' => 'For the tests.',
+                'no' => 0,
+                'nextUpdate' => '2026-09-15',
+                'entries' => [[
+                    'aaguid' => self::AAGUID,
+                    'metadataStatement' => $statement,
+                    'statusReports' => [],
+                    'timeOfLastStatusChange' => '2026-09-15',
+                ]],
+            ],
+            $document,
+        );
         $metadata = new StoredMetadata($this->store);
         static::assertSame('Virtual authenticator of the tools', $metadata->findOneByAAGUID(self::AAGUID)?->description);
         static::assertSame([], $metadata->findStatusReportsByAAGUID(self::AAGUID));

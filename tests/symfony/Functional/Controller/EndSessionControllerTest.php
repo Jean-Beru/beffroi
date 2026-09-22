@@ -77,7 +77,8 @@ final class EndSessionControllerTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('https://demo.test/?state=after-logout', $response->headers->get('Location'));
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertTrue($ended->hasEnded());
     }
 
@@ -116,7 +117,8 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
         static::assertStringContainsString('data-logged-out="no"', self::string($response->getContent()));
-        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertFalse($kept->hasEnded());
     }
 
@@ -241,7 +243,8 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
         static::assertStringContainsString('data-logged-out="yes"', self::string($response->getContent()));
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertTrue($ended->hasEnded());
     }
 
@@ -281,7 +284,8 @@ final class EndSessionControllerTest extends BrowserTestCase
 
         // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
-        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertFalse($kept->hasEnded());
     }
 
@@ -318,14 +322,19 @@ final class EndSessionControllerTest extends BrowserTestCase
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
         $tokens = self::json($this->browser->getResponse());
         static::assertIsString($tokens['id_token'] ?? null, self::string($this->browser->getResponse()->getContent()));
 

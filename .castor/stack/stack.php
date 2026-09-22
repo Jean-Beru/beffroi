@@ -59,13 +59,17 @@ const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
  */
 const WORKER_REDIRECTOR_SERVICE = 'conformance-worker-redirector';
 
-#[AsTask(description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds LocalStack (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran')]
+#[AsTask(
+    description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds LocalStack (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran',
+)]
 function start(
     bool $conformance = false,
     bool $build = false,
     #[AsOption(description: 'The access token shape of the clients of the conformance suite: jwt (default) or opaque; the plans must be green with either')]
     ?string $accessTokenFormat = null,
-    #[AsOption(description: 'The KMS that seals the signing keys: sodium (default) or file (in the process, nothing to start), vault (HashiCorp Vault Transit, dev mode, initialised at every start by docker/vault/init.sh) or aws (LocalStack with the KMS service, initialised at every start by docker/localstack/init.sh)')]
+    #[AsOption(
+        description: 'The KMS that seals the signing keys: sodium (default) or file (in the process, nothing to start), vault (HashiCorp Vault Transit, dev mode, initialised at every start by docker/vault/init.sh) or aws (LocalStack with the KMS service, initialised at every start by docker/localstack/init.sh)',
+    )]
     string $kms = 'sodium',
 ): void {
     if ($accessTokenFormat !== null && ! in_array($accessTokenFormat, ['jwt', 'opaque'], true)) {
@@ -94,11 +98,16 @@ function start(
     run($command, context: context()->withEnvironment($environment));
     $started = match ($kms) {
         'vault' => ', Vault: http://localhost:8200 (dev mode, root token in compose.yaml); "castor provision --kms vault" seals the signing keys with it',
-        'aws' => ', LocalStack (AWS KMS): http://localhost:4566 (credentials test/test, region eu-west-3); "castor provision --kms aws" seals the signing keys with it',
+        'aws'
+            => ', LocalStack (AWS KMS): http://localhost:4566 (credentials test/test, region eu-west-3); "castor provision --kms aws" seals the signing keys with it',
         default => '',
     };
-    io()
-        ->success('OP: https://op.localhost' . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '') . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat)) . $started);
+    io()->success(
+        'OP: https://op.localhost'
+        . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '')
+        . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat))
+        . $started,
+    );
 }
 
 /**
@@ -137,9 +146,7 @@ function compose_running_services(): array
 {
     $running = run(
         ['docker', 'compose', ...compose_profiles(), 'ps', '--status', 'running', '--services'],
-        context: context()
-            ->withAllowFailure()
-            ->withQuiet(),
+        context: context()->withAllowFailure()->withQuiet(),
     );
 
     return $running->isSuccessful() ? explode("\n", trim($running->getOutput())) : [];

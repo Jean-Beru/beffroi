@@ -66,17 +66,23 @@ final class FidoConformanceTest extends BrowserTestCase
         static::assertIsString($options['challenge']);
         static::assertSame(32, strlen(Base64UrlSafe::decodeNoPadding($options['challenge'])));
         static::assertSame([-7, -257], self::column($options, 'pubKeyCredParams', 'alg'));
-        static::assertSame([
-            'requireResidentKey' => true,
-            'authenticatorAttachment' => 'cross-platform',
-            'userVerification' => 'required',
-            'residentKey' => 'required',
-        ], self::section($options, 'authenticatorSelection'));
+        static::assertSame(
+            [
+                'requireResidentKey' => true,
+                'authenticatorAttachment' => 'cross-platform',
+                'userVerification' => 'required',
+                'residentKey' => 'required',
+            ],
+            self::section($options, 'authenticatorSelection'),
+        );
         static::assertSame('direct', $options['attestation']);
         static::assertSame([], $options['excludeCredentials']);
-        static::assertSame([
-            'example.extension' => true,
-        ], self::section($options, 'extensions'));
+        static::assertSame(
+            [
+                'example.extension' => true,
+            ],
+            self::section($options, 'extensions'),
+        );
         $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'johndoe@example.com');
         static::assertSame('John Doe', $user?->profile->name);
     }
@@ -92,7 +98,8 @@ final class FidoConformanceTest extends BrowserTestCase
         $device = new SoftwareAuthenticator(self::ORIGIN);
         $enrolled = $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('johndoe@example.com')));
         static::assertSame('ok', $enrolled['status'], json_encode($enrolled, JSON_THROW_ON_ERROR));
-        $passkey = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByExternalId(self::tenant(), PasskeyCredential::class, $device->credentialId);
+        $passkey = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            ->findByExternalId(self::tenant(), PasskeyCredential::class, $device->credentialId);
         static::assertSame(AttestationResultController::PASSKEY_NAME, $passkey?->name);
 
         // When
@@ -107,12 +114,16 @@ final class FidoConformanceTest extends BrowserTestCase
         static::assertSame('op.test', $options['rpId']);
         static::assertSame('preferred', $options['userVerification']);
         static::assertSame([Base64UrlSafe::encodeUnpadded($device->credentialId)], self::column($options, 'allowCredentials', 'id'));
-        static::assertSame([
-            'status' => 'ok',
-            'errorMessage' => '',
-        ], $asserted);
+        static::assertSame(
+            [
+                'status' => 'ok',
+                'errorMessage' => '',
+            ],
+            $asserted,
+        );
         self::reload();
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'johndoe@example.com') ?? static::fail('The user is gone.');
+        $user = self::service('test.heidi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'johndoe@example.com') ?? static::fail('The user is gone.');
         static::assertCount(1, self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, self::now()));
     }
 
@@ -140,15 +151,22 @@ final class FidoConformanceTest extends BrowserTestCase
     public function attestationOptionsWithoutUsernameAreRefused(): void
     {
         // When
-        $answer = $this->post('/fido/conformance/attestation/options', [
-            'displayName' => 'John Doe',
-        ], Response::HTTP_BAD_REQUEST);
+        $answer = $this->post(
+            '/fido/conformance/attestation/options',
+            [
+                'displayName' => 'John Doe',
+            ],
+            Response::HTTP_BAD_REQUEST,
+        );
 
         // Then
-        static::assertSame([
-            'status' => 'failed',
-            'errorMessage' => '"username" is required.',
-        ], $answer);
+        static::assertSame(
+            [
+                'status' => 'failed',
+                'errorMessage' => '"username" is required.',
+            ],
+            $answer,
+        );
     }
 
     #[Test]
@@ -179,7 +197,10 @@ final class FidoConformanceTest extends BrowserTestCase
         // Given
         $device = new SoftwareAuthenticator(self::ORIGIN, attestation: 'packed');
         self::service('test.heidi.metadata_store', MetadataBlobStoreInterface::class)
-            ->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(Uuid::fromBinary($device->aaguid)->toRfc4122(), [AuthenticatorStatus::USER_VERIFICATION_BYPASS])]));
+            ->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(
+                Uuid::fromBinary($device->aaguid)->toRfc4122(),
+                [AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+            )]));
         $options = $this->creationOptions('johndoe@example.com', 'direct');
 
         // When
@@ -194,15 +215,22 @@ final class FidoConformanceTest extends BrowserTestCase
     public function assertionOptionsForAnUnknownUserAreRefused(): void
     {
         // When
-        $answer = $this->post('/fido/conformance/assertion/options', [
-            'username' => 'nobody@example.com',
-        ], Response::HTTP_BAD_REQUEST);
+        $answer = $this->post(
+            '/fido/conformance/assertion/options',
+            [
+                'username' => 'nobody@example.com',
+            ],
+            Response::HTTP_BAD_REQUEST,
+        );
 
         // Then
-        static::assertSame([
-            'status' => 'failed',
-            'errorMessage' => 'This user is unknown.',
-        ], $answer);
+        static::assertSame(
+            [
+                'status' => 'failed',
+                'errorMessage' => 'This user is unknown.',
+            ],
+            $answer,
+        );
     }
 
     /**
@@ -219,13 +247,20 @@ final class FidoConformanceTest extends BrowserTestCase
         ]);
 
         // When
-        $answer = $this->post('/fido/conformance/assertion/result', $device->atOrigin('https://phishing.example')->get(json_encode($options, JSON_THROW_ON_ERROR)), Response::HTTP_BAD_REQUEST);
+        $answer = $this->post(
+            '/fido/conformance/assertion/result',
+            $device->atOrigin('https://phishing.example')->get(json_encode($options, JSON_THROW_ON_ERROR)),
+            Response::HTTP_BAD_REQUEST,
+        );
 
         // Then
-        static::assertSame([
-            'status' => 'failed',
-            'errorMessage' => 'invalid_credential',
-        ], $answer);
+        static::assertSame(
+            [
+                'status' => 'failed',
+                'errorMessage' => 'invalid_credential',
+            ],
+            $answer,
+        );
     }
 
     /**
@@ -247,10 +282,13 @@ final class FidoConformanceTest extends BrowserTestCase
 
         // Then
         static::assertSame('required', $options['userVerification']);
-        static::assertSame([
-            'status' => 'failed',
-            'errorMessage' => 'invalid_credential',
-        ], $answer);
+        static::assertSame(
+            [
+                'status' => 'failed',
+                'errorMessage' => 'invalid_credential',
+            ],
+            $answer,
+        );
     }
 
     /**
@@ -298,9 +336,16 @@ final class FidoConformanceTest extends BrowserTestCase
      */
     private function post(string $path, array|string $body, int $expectedStatus = Response::HTTP_OK): array
     {
-        $this->browser->request('POST', $path, [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], is_array($body) ? json_encode($body, JSON_THROW_ON_ERROR) : $body);
+        $this->browser->request(
+            'POST',
+            $path,
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+            ],
+            is_array($body) ? json_encode($body, JSON_THROW_ON_ERROR) : $body,
+        );
         $response = $this->browser->getResponse();
         $content = $response->getContent();
         static::assertIsString($content);

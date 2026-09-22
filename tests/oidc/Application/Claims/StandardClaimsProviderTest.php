@@ -42,22 +42,25 @@ final class StandardClaimsProviderTest extends TestCase
         $claims = $this->provider->claims(self::fullUser(), self::scopes(['profile']), []);
 
         // Then
-        static::assertSame([
-            'name' => 'Alice Martin',
-            'given_name' => 'Alice',
-            'family_name' => 'Martin',
-            'middle_name' => 'Jeanne',
-            'nickname' => 'ali',
-            'preferred_username' => 'alice',
-            'profile' => 'https://social.example/alice',
-            'picture' => 'https://social.example/alice.png',
-            'website' => 'https://alice.example',
-            'gender' => 'female',
-            'birthdate' => '1990-04-12',
-            'zoneinfo' => 'Europe/Paris',
-            'locale' => 'fr-FR',
-            'updated_at' => Fixtures::now()->modify('+1 day')->getTimestamp(),
-        ], $claims);
+        static::assertSame(
+            [
+                'name' => 'Alice Martin',
+                'given_name' => 'Alice',
+                'family_name' => 'Martin',
+                'middle_name' => 'Jeanne',
+                'nickname' => 'ali',
+                'preferred_username' => 'alice',
+                'profile' => 'https://social.example/alice',
+                'picture' => 'https://social.example/alice.png',
+                'website' => 'https://alice.example',
+                'gender' => 'female',
+                'birthdate' => '1990-04-12',
+                'zoneinfo' => 'Europe/Paris',
+                'locale' => 'fr-FR',
+                'updated_at' => Fixtures::now()->modify('+1 day')->getTimestamp(),
+            ],
+            $claims,
+        );
     }
 
     /**
@@ -71,19 +74,22 @@ final class StandardClaimsProviderTest extends TestCase
         $claims = $this->provider->claims(self::fullUser(), self::scopes(['email', 'address', 'phone']), []);
 
         // Then
-        static::assertSame([
-            'email' => 'alice@acme.example',
-            'email_verified' => true,
-            'phone_number' => '+33612345678',
-            'phone_number_verified' => false,
-            'address' => [
-                'formatted' => "1 rue de la Paix\n75002 Paris",
-                'street_address' => '1 rue de la Paix',
-                'locality' => 'Paris',
-                'postal_code' => '75002',
-                'country' => 'FR',
+        static::assertSame(
+            [
+                'email' => 'alice@acme.example',
+                'email_verified' => true,
+                'phone_number' => '+33612345678',
+                'phone_number_verified' => false,
+                'address' => [
+                    'formatted' => "1 rue de la Paix\n75002 Paris",
+                    'street_address' => '1 rue de la Paix',
+                    'locality' => 'Paris',
+                    'postal_code' => '75002',
+                    'country' => 'FR',
+                ],
             ],
-        ], $claims);
+            $claims,
+        );
     }
 
     /**
@@ -100,7 +106,10 @@ final class StandardClaimsProviderTest extends TestCase
         $json = json_encode($claims, JSON_THROW_ON_ERROR);
 
         // Then
-        static::assertSame('{"email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false,"address":{"formatted":"1 rue de la Paix\n75002 Paris","street_address":"1 rue de la Paix","locality":"Paris","postal_code":"75002","country":"FR"}}', $json);
+        static::assertSame(
+            '{"email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false,"address":{"formatted":"1 rue de la Paix\n75002 Paris","street_address":"1 rue de la Paix","locality":"Paris","postal_code":"75002","country":"FR"}}',
+            $json,
+        );
     }
 
     /**
@@ -114,9 +123,12 @@ final class StandardClaimsProviderTest extends TestCase
         $claims = $this->provider->claims(Fixtures::user(), self::scopes(['profile', 'email', 'address', 'phone']), []);
 
         // Then
-        static::assertSame([
-            'updated_at' => Fixtures::now()->getTimestamp(),
-        ], $claims);
+        static::assertSame(
+            [
+                'updated_at' => Fixtures::now()->getTimestamp(),
+            ],
+            $claims,
+        );
     }
 
     /**
@@ -135,10 +147,13 @@ final class StandardClaimsProviderTest extends TestCase
         $claims = $this->provider->claims($user, self::scopes(['email', 'address']), []);
 
         // Then
-        static::assertSame([
-            'email' => 'alice@acme.example',
-            'email_verified' => false,
-        ], $claims);
+        static::assertSame(
+            [
+                'email' => 'alice@acme.example',
+                'email_verified' => false,
+            ],
+            $claims,
+        );
     }
 
     /**
@@ -165,12 +180,30 @@ final class StandardClaimsProviderTest extends TestCase
         $claims = $this->provider->supportedClaims();
 
         // Then
-        static::assertSame([
-            'name', 'family_name', 'given_name', 'middle_name', 'nickname', 'preferred_username', 'profile', 'picture', 'website', 'gender', 'birthdate', 'zoneinfo', 'locale', 'updated_at',
-            'email', 'email_verified',
-            'address',
-            'phone_number', 'phone_number_verified',
-        ], $claims);
+        static::assertSame(
+            [
+                'name',
+                'family_name',
+                'given_name',
+                'middle_name',
+                'nickname',
+                'preferred_username',
+                'profile',
+                'picture',
+                'website',
+                'gender',
+                'birthdate',
+                'zoneinfo',
+                'locale',
+                'updated_at',
+                'email',
+                'email_verified',
+                'address',
+                'phone_number',
+                'phone_number_verified',
+            ],
+            $claims,
+        );
         static::assertNotContains('sub', $claims);
     }
 
@@ -255,7 +288,21 @@ final class StandardClaimsProviderTest extends TestCase
             'alice',
             new EmailAddress('alice@acme.example'),
             true,
-            new Profile('Alice Martin', 'Alice', 'Martin', 'Jeanne', 'ali', 'alice', 'https://social.example/alice', 'https://social.example/alice.png', 'https://alice.example', 'female', '1990-04-12', 'Europe/Paris', 'fr-FR'),
+            new Profile(
+                'Alice Martin',
+                'Alice',
+                'Martin',
+                'Jeanne',
+                'ali',
+                'alice',
+                'https://social.example/alice',
+                'https://social.example/alice.png',
+                'https://alice.example',
+                'female',
+                '1990-04-12',
+                'Europe/Paris',
+                'fr-FR',
+            ),
             '+33612345678',
             false,
             new Address("1 rue de la Paix\n75002 Paris", '1 rue de la Paix', 'Paris', null, '75002', 'FR'),

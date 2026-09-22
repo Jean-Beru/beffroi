@@ -47,7 +47,12 @@ final readonly class RouterEndpointLocator implements EndpointLocatorInterface, 
         $discovery = $origin . $this->path('heidi_protocol_discovery');
         $expected = $issuer . ProviderMetadata::OPENID_CONFIGURATION_PATH;
         if ($discovery !== $expected) {
-            throw new LogicException(sprintf('The discovery document is served at "%s" but the issuer "%s" makes clients look for it at "%s" (OIDC Discovery section 4.1): mount the routes of the bundle under the path of the issuer.', $discovery, $issuer, $expected));
+            throw new LogicException(sprintf(
+                'The discovery document is served at "%s" but the issuer "%s" makes clients look for it at "%s" (OIDC Discovery section 4.1): mount the routes of the bundle under the path of the issuer.',
+                $discovery,
+                $issuer,
+                $expected,
+            ));
         }
 
         return $this->endpointsUnder($origin);

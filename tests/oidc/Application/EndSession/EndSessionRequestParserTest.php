@@ -44,7 +44,11 @@ final class EndSessionRequestParserTest extends TestCase
         $clients->save($this->client);
         $clients->save(Clients::public($this->tenant));
         $jws = new FakeJwsVerifier();
-        $jws->knows($this->tenant, self::ALICE_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo","exp":1,"sid":"' . self::SID . '"}');
+        $jws->knows(
+            $this->tenant,
+            self::ALICE_HINT,
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo","exp":1,"sid":"' . self::SID . '"}',
+        );
         $jws->knows($this->tenant, self::LISTED_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":["ghost","oidc-demo","spa"]}');
         $jws->knows($this->tenant, self::GHOST_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"ghost"}');
         $this->parser = new EndSessionRequestParser($clients, new IdTokenHintVerifier($jws));
@@ -157,17 +161,26 @@ final class EndSessionRequestParserTest extends TestCase
      */
     public static function provideClientIds(): iterable
     {
-        yield 'alone' => [[
-            'client_id' => 'spa',
-        ], 'spa'];
-        yield 'with a hint naming it' => [[
-            'client_id' => 'oidc-demo',
-            'id_token_hint' => self::ALICE_HINT,
-        ], 'oidc-demo'];
-        yield 'with a hint listing it' => [[
-            'client_id' => 'spa',
-            'id_token_hint' => self::LISTED_HINT,
-        ], 'spa'];
+        yield 'alone' => [
+            [
+                'client_id' => 'spa',
+            ],
+            'spa',
+        ];
+        yield 'with a hint naming it' => [
+            [
+                'client_id' => 'oidc-demo',
+                'id_token_hint' => self::ALICE_HINT,
+            ],
+            'oidc-demo',
+        ];
+        yield 'with a hint listing it' => [
+            [
+                'client_id' => 'spa',
+                'id_token_hint' => self::LISTED_HINT,
+            ],
+            'spa',
+        ];
     }
 
     /**
@@ -216,73 +229,133 @@ final class EndSessionRequestParserTest extends TestCase
      */
     public static function provideInvalidRequests(): iterable
     {
-        yield 'hint not a JWS' => [[
-            'id_token_hint' => 'not-a-jwt',
-        ], 'The id_token_hint parameter is not a signed compact JWT.'];
-        yield 'hint issued to no client of the tenant' => [[
-            'id_token_hint' => self::GHOST_HINT,
-        ], 'The id_token_hint parameter is not an ID token issued to a client of this provider.'];
-        yield 'client_id not an audience of the hint' => [[
-            'id_token_hint' => self::ALICE_HINT,
-            'client_id' => 'spa',
-        ], 'The client_id parameter is not an audience of the id_token_hint parameter.'];
-        yield 'client_id unknown' => [[
-            'client_id' => 'ghost',
-        ], 'The client is unknown.'];
-        yield 'client_id unknown even when the hint lists it' => [[
-            'id_token_hint' => self::LISTED_HINT,
-            'client_id' => 'ghost',
-        ], 'The client is unknown.'];
-        yield 'redirect without a client' => [[
-            'post_logout_redirect_uri' => 'https://demo.localhost/',
-        ], 'The post_logout_redirect_uri parameter requires id_token_hint or client_id to identify the client.'];
-        yield 'redirect not registered' => [[
-            'id_token_hint' => self::ALICE_HINT,
-            'post_logout_redirect_uri' => 'https://demo.localhost/logged-out',
-        ], 'The post_logout_redirect_uri parameter is not registered for this client.'];
-        yield 'redirect registered for the authorization response only' => [[
-            'id_token_hint' => self::ALICE_HINT,
-            'post_logout_redirect_uri' => 'https://demo.localhost/login/check',
-        ], 'The post_logout_redirect_uri parameter is not registered for this client.'];
-        yield 'redirect registered on another client' => [[
-            'client_id' => 'spa',
-            'post_logout_redirect_uri' => 'https://demo.localhost/',
-        ], 'The post_logout_redirect_uri parameter is not registered for this client.'];
-        yield 'redirect with a trailing slash more' => [[
-            'id_token_hint' => self::ALICE_HINT,
-            'post_logout_redirect_uri' => 'https://demo.localhost',
-        ], 'The post_logout_redirect_uri parameter is not registered for this client.'];
-        yield 'state not printable ASCII' => [[
-            'state' => "tab\there",
-        ], 'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).'];
-        yield 'state with a trailing newline' => [[
-            'state' => "af0ifjsldkj\n",
-        ], 'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).'];
-        yield 'hint with a trailing newline' => [[
-            'id_token_hint' => self::ALICE_HINT . "\n",
-        ], 'The id_token_hint parameter is not a signed compact JWT.'];
-        yield 'ui_locales with a trailing newline' => [[
-            'ui_locales' => "fr\n",
-        ], 'The ui_locales parameter must be a space-separated list of language tags.'];
-        yield 'logout_hint with a control character' => [[
-            'logout_hint' => "alice\n",
-        ], 'The logout_hint parameter must be text without control characters.'];
-        yield 'ui_locales not language tags' => [[
-            'ui_locales' => 'fr_FR',
-        ], 'The ui_locales parameter must be a space-separated list of language tags.'];
-        yield 'repeated id_token_hint' => [[
-            'id_token_hint' => [self::ALICE_HINT, self::ALICE_HINT],
-        ], 'The id_token_hint parameter must be a single string.'];
-        yield 'repeated client_id' => [[
-            'client_id' => ['oidc-demo', 'spa'],
-        ], 'The client_id parameter must be a single string.'];
-        yield 'repeated post_logout_redirect_uri' => [[
-            'id_token_hint' => self::ALICE_HINT,
-            'post_logout_redirect_uri' => ['https://demo.localhost/', 'https://demo.localhost/'],
-        ], 'The post_logout_redirect_uri parameter must be a single string.'];
-        yield 'repeated state' => [[
-            'state' => ['a', 'b'],
-        ], 'The state parameter must be a single string.'];
+        yield 'hint not a JWS' => [
+            [
+                'id_token_hint' => 'not-a-jwt',
+            ],
+            'The id_token_hint parameter is not a signed compact JWT.',
+        ];
+        yield 'hint issued to no client of the tenant' => [
+            [
+                'id_token_hint' => self::GHOST_HINT,
+            ],
+            'The id_token_hint parameter is not an ID token issued to a client of this provider.',
+        ];
+        yield 'client_id not an audience of the hint' => [
+            [
+                'id_token_hint' => self::ALICE_HINT,
+                'client_id' => 'spa',
+            ],
+            'The client_id parameter is not an audience of the id_token_hint parameter.',
+        ];
+        yield 'client_id unknown' => [
+            [
+                'client_id' => 'ghost',
+            ],
+            'The client is unknown.',
+        ];
+        yield 'client_id unknown even when the hint lists it' => [
+            [
+                'id_token_hint' => self::LISTED_HINT,
+                'client_id' => 'ghost',
+            ],
+            'The client is unknown.',
+        ];
+        yield 'redirect without a client' => [
+            [
+                'post_logout_redirect_uri' => 'https://demo.localhost/',
+            ],
+            'The post_logout_redirect_uri parameter requires id_token_hint or client_id to identify the client.',
+        ];
+        yield 'redirect not registered' => [
+            [
+                'id_token_hint' => self::ALICE_HINT,
+                'post_logout_redirect_uri' => 'https://demo.localhost/logged-out',
+            ],
+            'The post_logout_redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect registered for the authorization response only' => [
+            [
+                'id_token_hint' => self::ALICE_HINT,
+                'post_logout_redirect_uri' => 'https://demo.localhost/login/check',
+            ],
+            'The post_logout_redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect registered on another client' => [
+            [
+                'client_id' => 'spa',
+                'post_logout_redirect_uri' => 'https://demo.localhost/',
+            ],
+            'The post_logout_redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect with a trailing slash more' => [
+            [
+                'id_token_hint' => self::ALICE_HINT,
+                'post_logout_redirect_uri' => 'https://demo.localhost',
+            ],
+            'The post_logout_redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'state not printable ASCII' => [
+            [
+                'state' => "tab\there",
+            ],
+            'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).',
+        ];
+        yield 'state with a trailing newline' => [
+            [
+                'state' => "af0ifjsldkj\n",
+            ],
+            'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).',
+        ];
+        yield 'hint with a trailing newline' => [
+            [
+                'id_token_hint' => self::ALICE_HINT . "\n",
+            ],
+            'The id_token_hint parameter is not a signed compact JWT.',
+        ];
+        yield 'ui_locales with a trailing newline' => [
+            [
+                'ui_locales' => "fr\n",
+            ],
+            'The ui_locales parameter must be a space-separated list of language tags.',
+        ];
+        yield 'logout_hint with a control character' => [
+            [
+                'logout_hint' => "alice\n",
+            ],
+            'The logout_hint parameter must be text without control characters.',
+        ];
+        yield 'ui_locales not language tags' => [
+            [
+                'ui_locales' => 'fr_FR',
+            ],
+            'The ui_locales parameter must be a space-separated list of language tags.',
+        ];
+        yield 'repeated id_token_hint' => [
+            [
+                'id_token_hint' => [self::ALICE_HINT, self::ALICE_HINT],
+            ],
+            'The id_token_hint parameter must be a single string.',
+        ];
+        yield 'repeated client_id' => [
+            [
+                'client_id' => ['oidc-demo', 'spa'],
+            ],
+            'The client_id parameter must be a single string.',
+        ];
+        yield 'repeated post_logout_redirect_uri' => [
+            [
+                'id_token_hint' => self::ALICE_HINT,
+                'post_logout_redirect_uri' => ['https://demo.localhost/', 'https://demo.localhost/'],
+            ],
+            'The post_logout_redirect_uri parameter must be a single string.',
+        ];
+        yield 'repeated state' => [
+            [
+                'state' => ['a', 'b'],
+            ],
+            'The state parameter must be a single string.',
+        ];
     }
 
     /**

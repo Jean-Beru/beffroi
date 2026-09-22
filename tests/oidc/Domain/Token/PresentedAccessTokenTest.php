@@ -54,16 +54,28 @@ final class PresentedAccessTokenTest extends TestCase
         yield 'header, padded token' => ['Bearer abc+/==', [], 'abc+/=='];
         yield 'DPoP header' => ['DPoP ' . self::JWS, [], self::JWS, KeyConfirmation::SCHEME];
         yield 'DPoP header, scheme in lower case' => ['dpop ' . self::JWS, [], self::JWS, KeyConfirmation::SCHEME];
-        yield 'body' => [null, [
-            'access_token' => self::JWS,
-        ], self::JWS];
-        yield 'body next to another scheme' => ['Basic Y2xpZW50OnNlY3JldA==', [
-            'access_token' => self::JWS,
-        ], self::JWS];
-        yield 'body next to other parameters' => [null, [
-            'other' => 'value',
-            'access_token' => self::JWS,
-        ], self::JWS];
+        yield 'body' => [
+            null,
+            [
+                'access_token' => self::JWS,
+            ],
+            self::JWS,
+        ];
+        yield 'body next to another scheme' => [
+            'Basic Y2xpZW50OnNlY3JldA==',
+            [
+                'access_token' => self::JWS,
+            ],
+            self::JWS,
+        ];
+        yield 'body next to other parameters' => [
+            null,
+            [
+                'other' => 'value',
+                'access_token' => self::JWS,
+            ],
+            self::JWS,
+        ];
     }
 
     /**
@@ -91,12 +103,18 @@ final class PresentedAccessTokenTest extends TestCase
         yield 'a scheme that starts like Bearer' => ['Bearerish ' . self::JWS, []];
         yield 'a scheme that starts like DPoP' => ['DPoPish ' . self::JWS, []];
         yield 'empty header' => ['', []];
-        yield 'empty parameter' => [null, [
-            'access_token' => '',
-        ]];
-        yield 'another parameter' => [null, [
-            'token' => self::JWS,
-        ]];
+        yield 'empty parameter' => [
+            null,
+            [
+                'access_token' => '',
+            ],
+        ];
+        yield 'another parameter' => [
+            null,
+            [
+                'token' => self::JWS,
+            ],
+        ];
     }
 
     /**
@@ -128,9 +146,13 @@ final class PresentedAccessTokenTest extends TestCase
      */
     public static function provideMalformed(): iterable
     {
-        yield 'both methods' => ['Bearer ' . self::JWS, [
-            'access_token' => self::JWS,
-        ], 'more than one method'];
+        yield 'both methods' => [
+            'Bearer ' . self::JWS,
+            [
+                'access_token' => self::JWS,
+            ],
+            'more than one method',
+        ];
         yield 'scheme alone' => ['Bearer', [], 'Authorization header'];
         yield 'DPoP scheme alone' => ['DPoP', [], 'Authorization header'];
         yield 'DPoP token with a space' => ['DPoP abc def', [], 'Authorization header'];
@@ -139,15 +161,27 @@ final class PresentedAccessTokenTest extends TestCase
         yield 'token with a double quote' => ['Bearer "abc"', [], 'Authorization header'];
         yield 'padding before the end' => ['Bearer abc=def', [], 'Authorization header'];
         yield 'tab as separator' => ["Bearer\t" . self::JWS, [], 'Authorization header'];
-        yield 'parameter repeated' => [null, [
-            'access_token' => [self::JWS, self::JWS],
-        ], 'access_token parameter'];
-        yield 'parameter with a space' => [null, [
-            'access_token' => 'abc def',
-        ], 'access_token parameter'];
-        yield 'parameter with a comma' => [null, [
-            'access_token' => 'abc,def',
-        ], 'access_token parameter'];
+        yield 'parameter repeated' => [
+            null,
+            [
+                'access_token' => [self::JWS, self::JWS],
+            ],
+            'access_token parameter',
+        ];
+        yield 'parameter with a space' => [
+            null,
+            [
+                'access_token' => 'abc def',
+            ],
+            'access_token parameter',
+        ];
+        yield 'parameter with a comma' => [
+            null,
+            [
+                'access_token' => 'abc,def',
+            ],
+            'access_token parameter',
+        ];
     }
 
     /**

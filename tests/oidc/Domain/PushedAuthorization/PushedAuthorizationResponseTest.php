@@ -23,14 +23,16 @@ final class PushedAuthorizationResponseTest extends TestCase
         $requestUri = RequestUri::generate();
 
         // When
-        $parameters = new PushedAuthorizationResponse($requestUri, 60)
-            ->parameters();
+        $parameters = new PushedAuthorizationResponse($requestUri, 60)->parameters();
 
         // Then
-        static::assertSame([
-            'request_uri' => $requestUri->value,
-            'expires_in' => 60,
-        ], $parameters);
+        static::assertSame(
+            [
+                'request_uri' => $requestUri->value,
+                'expires_in' => 60,
+            ],
+            $parameters,
+        );
     }
 
     /**

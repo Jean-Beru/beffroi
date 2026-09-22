@@ -29,10 +29,9 @@ final readonly class DoctrinePushedAuthorizationRequestRepository extends Doctri
 
     public function findByRequestUriHash(string $requestUriHash): ?PushedAuthorizationRequest
     {
-        $request = $this->repository()
-            ->findOneBy([
-                'requestUriHash' => $requestUriHash,
-            ]);
+        $request = $this->repository()->findOneBy([
+            'requestUriHash' => $requestUriHash,
+        ]);
 
         return $request !== null && ClientResolver::isResolved($request) ? $request : null;
     }
@@ -46,8 +45,8 @@ final readonly class DoctrinePushedAuthorizationRequestRepository extends Doctri
     {
         $manager = $this->manager();
         $metadata = $manager->getClassMetadata(PushedAuthorizationRequest::class);
-        $claimed = $manager->getConnection()
-            ->executeStatement(
+        $claimed =
+            $manager->getConnection()->executeStatement(
                 sprintf(
                     'UPDATE %s SET %s = :now WHERE %s = :requestUriHash AND %s IS NULL',
                     $metadata->getTableName(),
@@ -69,21 +68,20 @@ final readonly class DoctrinePushedAuthorizationRequestRepository extends Doctri
 
             return true;
         }
-        $usedAt = $manager->getConnection()
-            ->fetchOne(
-                sprintf(
-                    'SELECT %s FROM %s WHERE %s = :requestUriHash',
-                    $metadata->getColumnName('usedAt'),
-                    $metadata->getTableName(),
-                    $metadata->getColumnName('requestUriHash'),
-                ),
-                [
-                    'requestUriHash' => $request->requestUriHash,
-                ],
-                [
-                    'requestUriHash' => ParameterType::STRING,
-                ],
-            );
+        $usedAt = $manager->getConnection()->fetchOne(
+            sprintf(
+                'SELECT %s FROM %s WHERE %s = :requestUriHash',
+                $metadata->getColumnName('usedAt'),
+                $metadata->getTableName(),
+                $metadata->getColumnName('requestUriHash'),
+            ),
+            [
+                'requestUriHash' => $request->requestUriHash,
+            ],
+            [
+                'requestUriHash' => ParameterType::STRING,
+            ],
+        );
         if (is_string($usedAt)) {
             $request->recordConsumption(new DateTimeImmutable($usedAt));
         }

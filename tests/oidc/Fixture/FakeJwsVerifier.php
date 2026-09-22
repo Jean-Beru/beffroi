@@ -39,18 +39,31 @@ final class FakeJwsVerifier implements JwsVerifierInterface
         if ($issuer === null || $payload === null || ! $issuer->equals($tenant)) {
             throw new InvalidJwsException(sprintf('The token "%s" does not verify.', $compactJws));
         }
-        $key = new TenantKey('fake-kid', $tenant, Algorithms::rs256(), [
-            'kid' => 'fake-kid',
-            'kty' => 'RSA',
-            'alg' => 'RS256',
-            'use' => 'sig',
-            'n' => 'AQAB',
-            'e' => 'AQAB',
-        ], 'sealed', Fixtures::now(), Fixtures::now());
+        $key = new TenantKey(
+            'fake-kid',
+            $tenant,
+            Algorithms::rs256(),
+            [
+                'kid' => 'fake-kid',
+                'kty' => 'RSA',
+                'alg' => 'RS256',
+                'use' => 'sig',
+                'n' => 'AQAB',
+                'e' => 'AQAB',
+            ],
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now(),
+        );
 
-        return new VerifiedJws($key, $header + [
-            'alg' => 'RS256',
-            'kid' => 'fake-kid',
-        ], $payload);
+        return new VerifiedJws(
+            $key,
+            $header
+            + [
+                'alg' => 'RS256',
+                'kid' => 'fake-kid',
+            ],
+            $payload,
+        );
     }
 }

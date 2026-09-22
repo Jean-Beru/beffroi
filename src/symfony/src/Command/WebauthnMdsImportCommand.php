@@ -43,8 +43,7 @@ final readonly class WebauthnMdsImportCommand
         private MetadataBlobStoreInterface $store,
         private ClockInterface $clock,
     ) {
-        $this->serializer = new WebauthnSerializerFactory(AttestationStatementSupportManager::create())
-            ->create();
+        $this->serializer = new WebauthnSerializerFactory(AttestationStatementSupportManager::create())->create();
     }
 
     /**
@@ -89,8 +88,7 @@ final readonly class WebauthnMdsImportCommand
         if (! is_array($document)) {
             throw new InvalidArgumentException('the file is not a JSON object');
         }
-        $today = $this->clock->now()
-            ->format('Y-m-d');
+        $today = $this->clock->now()->format('Y-m-d');
         $payload = json_encode([
             'legalHeader' => $statement->legalHeader,
             'no' => 0,

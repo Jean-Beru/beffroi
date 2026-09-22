@@ -137,7 +137,14 @@ final class TotpCredentialTest extends TestCase
         $this->expectExceptionMessageIs('A TOTP credential holds its secret sealed.');
 
         // When
-        new TotpCredential(Uuid::v7(), Fixtures::user(), '', array_map(static fn (string $code): BackupCode => new BackupCode(new PasswordHash(PasswordAlgorithm::Argon2id, $code)), Totps::BACKUP_CODES), 0, Fixtures::now());
+        new TotpCredential(
+            Uuid::v7(),
+            Fixtures::user(),
+            '',
+            array_map(static fn (string $code): BackupCode => new BackupCode(new PasswordHash(PasswordAlgorithm::Argon2id, $code)), Totps::BACKUP_CODES),
+            0,
+            Fixtures::now(),
+        );
     }
 
     #[Test]

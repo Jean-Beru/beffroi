@@ -133,7 +133,9 @@ final class SoftwareAuthenticator
             throw new LogicException('The creation options name no user.');
         }
         $this->userHandle = $userHandle;
-        $relyingPartyId = $this->relyingPartyId ?? (is_array($rp) && is_string($rp['id'] ?? null) ? $rp['id'] : throw new LogicException('The creation options name no relying party.'));
+        $relyingPartyId =
+            $this->relyingPartyId
+            ?? (is_array($rp) && is_string($rp['id'] ?? null) ? $rp['id'] : throw new LogicException('The creation options name no relying party.'));
         $attestedCredentialData = $this->aaguid . pack('n', strlen($this->credentialId)) . $this->credentialId . $this->cosePublicKey();
         $authenticatorData = $this->authenticatorData($relyingPartyId, AuthenticatorData::FLAG_AT, $attestedCredentialData);
         $clientDataJson = $this->clientDataJson('webauthn.create', self::challenge($options));
@@ -166,7 +168,9 @@ final class SoftwareAuthenticator
     public function get(string $requestOptions): string
     {
         $options = self::decode($requestOptions);
-        $relyingPartyId = $this->relyingPartyId ?? (is_string($options['rpId'] ?? null) ? $options['rpId'] : throw new LogicException('The request options name no relying party.'));
+        $relyingPartyId =
+            $this->relyingPartyId
+            ?? (is_string($options['rpId'] ?? null) ? $options['rpId'] : throw new LogicException('The request options name no relying party.'));
         if (! $this->backupEligible) {
             ++$this->signCount;
         }
@@ -224,7 +228,10 @@ final class SoftwareAuthenticator
 
         return MapObject::create([
             MapItem::create(TextStringObject::create('alg'), NegativeIntegerObject::create(-7)),
-            MapItem::create(TextStringObject::create('sig'), ByteStringObject::create($this->forgesAttestation ? str_repeat("\0", strlen($signature)) : $signature)),
+            MapItem::create(
+                TextStringObject::create('sig'),
+                ByteStringObject::create($this->forgesAttestation ? str_repeat("\0", strlen($signature)) : $signature),
+            ),
         ]);
     }
 
@@ -245,7 +252,8 @@ final class SoftwareAuthenticator
      */
     private function authenticatorData(string $relyingPartyId, int $flags, string $trailer): string
     {
-        $flags |= ($this->userPresent ? AuthenticatorData::FLAG_UP : 0)
+        $flags |=
+            ($this->userPresent ? AuthenticatorData::FLAG_UP : 0)
             | ($this->userVerified ? AuthenticatorData::FLAG_UV : 0)
             | ($this->backupEligible ? AuthenticatorData::FLAG_BE : 0)
             | ($this->backedUp ? AuthenticatorData::FLAG_BS : 0);

@@ -79,12 +79,15 @@ final class ClientJwksTest extends TestCase
         yield 'a key published for encryption' => [[self::key('one', use: 'enc')], 'one'];
         yield 'a key reserved for signing' => [[self::key('one', use: 'sig')], null];
         yield 'a key of another algorithm' => [[self::key('one', algorithm: 'RSA-OAEP-256')], null];
-        yield 'a key of another type' => [[[
-            'kty' => 'RSA',
-            'kid' => 'one',
-            'n' => 'x',
-            'e' => 'AQAB',
-        ]], null];
+        yield 'a key of another type' => [
+            [[
+                'kty' => 'RSA',
+                'kid' => 'one',
+                'n' => 'x',
+                'e' => 'AQAB',
+            ]],
+            null,
+        ];
         yield 'the one that names the algorithm, before the one that only says what it is for' => [
             [self::key('one', use: 'enc'), self::key('two', algorithm: 'ECDH-ES+A256KW')],
             'two',
@@ -99,12 +102,18 @@ final class ClientJwksTest extends TestCase
             [self::key('one', algorithm: 'ECDH-ES+A256KW'), self::key('two', algorithm: 'ECDH-ES+A256KW')],
             'one',
         ];
-        yield 'past a key of another type' => [[[
-            'kty' => 'RSA',
-            'kid' => 'one',
-            'n' => 'x',
-            'e' => 'AQAB',
-        ], self::key('two')], 'two'];
+        yield 'past a key of another type' => [
+            [
+                [
+                    'kty' => 'RSA',
+                    'kid' => 'one',
+                    'n' => 'x',
+                    'e' => 'AQAB',
+                ],
+                self::key('two'),
+            ],
+            'two',
+        ];
         yield 'past a key of another algorithm' => [[self::key('one', algorithm: 'ECDH-ES+A128KW'), self::key('two')], 'two'];
         yield 'past a key reserved for signing' => [[self::key('one', use: 'sig'), self::key('two')], 'two'];
         yield 'the signing key of a client that publishes only that' => [[self::key('one', use: 'sig'), self::key('two', algorithm: 'ES256')], null];
@@ -131,26 +140,41 @@ final class ClientJwksTest extends TestCase
     public static function provideDocumentsThatAreNotJwkSets(): iterable
     {
         yield 'no keys member' => [[], 'object with a "keys" member'];
-        yield 'keys not a list' => [[
-            'keys' => 'no',
-        ], 'object with a "keys" member'];
-        yield 'a key that is not an object' => [[
-            'keys' => ['no'],
-        ], 'Every member of "keys" is a JWK object'];
-        yield 'no key at all' => [[
-            'keys' => [],
-        ], 'holds at least one key'];
-        yield 'a key without a type' => [[
-            'keys' => [[
-                'kid' => 'one',
-            ]],
-        ], 'names its key type'];
-        yield 'a symmetric key (RFC 8725 §3.5)' => [[
-            'keys' => [[
-                'kty' => 'oct',
-                'k' => 'AAAA',
-            ]],
-        ], 'symmetric key in a JWK Set is refused'];
+        yield 'keys not a list' => [
+            [
+                'keys' => 'no',
+            ],
+            'object with a "keys" member',
+        ];
+        yield 'a key that is not an object' => [
+            [
+                'keys' => ['no'],
+            ],
+            'Every member of "keys" is a JWK object',
+        ];
+        yield 'no key at all' => [
+            [
+                'keys' => [],
+            ],
+            'holds at least one key',
+        ];
+        yield 'a key without a type' => [
+            [
+                'keys' => [[
+                    'kid' => 'one',
+                ]],
+            ],
+            'names its key type',
+        ];
+        yield 'a symmetric key (RFC 8725 §3.5)' => [
+            [
+                'keys' => [[
+                    'kty' => 'oct',
+                    'k' => 'AAAA',
+                ]],
+            ],
+            'symmetric key in a JWK Set is refused',
+        ];
     }
 
     /**
@@ -216,9 +240,12 @@ final class ClientJwksTest extends TestCase
     public function anUnreadableCertificateChainPublishesNothing(): void
     {
         // Given
-        $keys = new ClientJwks([self::key('one') + [
-            'x5c' => ['!!!!'],
-        ]]);
+        $keys = new ClientJwks([
+            self::key('one')
+                + [
+                    'x5c' => ['!!!!'],
+                ],
+        ]);
 
         // When / Then
         static::assertFalse($keys->publishes(Certificates::selfSigned()));

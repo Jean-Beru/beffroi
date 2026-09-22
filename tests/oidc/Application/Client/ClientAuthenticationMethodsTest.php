@@ -25,7 +25,10 @@ final class ClientAuthenticationMethodsTest extends TestCase
         $methods = new ClientAuthenticationMethods([Methods::none(), Methods::clientSecretBasic()])->clientAuthenticationMethods();
 
         // Then
-        static::assertSame(['none', 'client_secret_basic'], array_map(static fn (ClientAuthenticationMethodInterface $method): string => $method->name(), $methods));
+        static::assertSame(
+            ['none', 'client_secret_basic'],
+            array_map(static fn (ClientAuthenticationMethodInterface $method): string => $method->name(), $methods),
+        );
     }
 
     #[Test]

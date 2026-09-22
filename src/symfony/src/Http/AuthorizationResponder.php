@@ -60,7 +60,10 @@ final readonly class AuthorizationResponder
         if ($decision instanceof Granted) {
             $this->browser->forget($request->getSession(), $decision->interaction);
 
-            return $this->renderers->render($decision->interaction->request->responseMode, new AuthorizationAnswer($decision->interaction->request->client, $decision->response->redirectUri, $decision->response->parameters()));
+            return $this->renderers->render(
+                $decision->interaction->request->responseMode,
+                new AuthorizationAnswer($decision->interaction->request->client, $decision->response->redirectUri, $decision->response->parameters()),
+            );
         }
 
         throw new LogicException(sprintf('The decision "%s" is not one the authorization endpoint knows.', $decision::class));

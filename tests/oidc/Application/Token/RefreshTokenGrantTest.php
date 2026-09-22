@@ -257,8 +257,11 @@ final class RefreshTokenGrantTest extends TestCase
     {
         // Given
         $this->token('the-token', ['openid', 'profile', 'email']);
-        $narrowed = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(scope: 'email profile'), $this->context)
-            ->refreshToken ?? static::fail('A refresh always issues a successor.');
+        $narrowed = $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            $this->request(scope: 'email profile'),
+            $this->context,
+        )->refreshToken ?? static::fail('A refresh always issues a successor.');
 
         // When
         $again = $this->grant->grant(new AuthenticatedClient($this->client), $this->request($narrowed->value, 'openid'), $this->context);
@@ -357,9 +360,13 @@ final class RefreshTokenGrantTest extends TestCase
         $this->expectExceptionMessageIs('invalid_request: The refresh_token parameter is missing.');
 
         // When
-        $this->grant->grant(new AuthenticatedClient($this->client), new TokenRequest([
-            'grant_type' => 'refresh_token',
-        ]), $this->context);
+        $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            new TokenRequest([
+                'grant_type' => 'refresh_token',
+            ]),
+            $this->context,
+        );
     }
 
     /**
@@ -523,7 +530,7 @@ final class RefreshTokenGrantTest extends TestCase
     {
         // Given
         $this->token('sliding');
-        $this->clock->sleep(30 * 86400 - 1);
+        $this->clock->sleep((30 * 86400) - 1);
 
         // When
         $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request('sliding'), $this->context);
@@ -622,8 +629,13 @@ final class RefreshTokenGrantTest extends TestCase
     /**
      * @param list<string> $scopes
      */
-    private function token(string $value, array $scopes = ['openid'], ?Client $client = null, ?RefreshTokenFamily $family = null, ?AuthenticationSession $session = null): RefreshToken
-    {
+    private function token(
+        string $value,
+        array $scopes = ['openid'],
+        ?Client $client = null,
+        ?RefreshTokenFamily $family = null,
+        ?AuthenticationSession $session = null,
+    ): RefreshToken {
         $token = Tokens::refreshToken($value, $client ?? $this->client, $session ?? $this->session, $this->clock->now(), $family, $scopes);
         $this->refreshTokens->save($token);
 
@@ -654,7 +666,13 @@ final class RefreshTokenGrantTest extends TestCase
     public function aBoundTokenIsNotRefreshedByARequestThatProvesAnythingElse(?string $thumbprint): void
     {
         // Given
-        $this->refreshTokens->save(Tokens::refreshToken('the-token', $this->client, $this->session, $this->clock->now(), confirmation: new KeyConfirmation(self::THUMBPRINT)));
+        $this->refreshTokens->save(Tokens::refreshToken(
+            'the-token',
+            $this->client,
+            $this->session,
+            $this->clock->now(),
+            confirmation: new KeyConfirmation(self::THUMBPRINT),
+        ));
         $proven = $thumbprint === null ? null : new KeyConfirmation($thumbprint);
 
         // Then
@@ -704,11 +722,17 @@ final class RefreshTokenGrantTest extends TestCase
     private function twoRotationsOf(string $value): array
     {
         $this->clock->sleep(60);
-        $second = $this->grant->grant(new AuthenticatedClient($this->client), $this->request($value), $this->context)
-            ->refreshToken ?? static::fail('A refresh always issues a successor.');
+        $second = $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            $this->request($value),
+            $this->context,
+        )->refreshToken ?? static::fail('A refresh always issues a successor.');
         $this->clock->sleep(60);
-        $third = $this->grant->grant(new AuthenticatedClient($this->client), $this->request($second->value), $this->context)
-            ->refreshToken ?? static::fail('A refresh always issues a successor.');
+        $third = $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            $this->request($second->value),
+            $this->context,
+        )->refreshToken ?? static::fail('A refresh always issues a successor.');
         $this->clock->sleep(60);
 
         return [$second, $third];

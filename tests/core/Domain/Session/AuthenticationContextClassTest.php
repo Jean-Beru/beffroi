@@ -61,7 +61,11 @@ final class AuthenticationContextClassTest extends TestCase
         yield 'the single factor' => [AuthenticationContextClass::singleFactor(), '1', AuthenticationPredicate::SingleFactor];
         yield 'two factors' => [AuthenticationContextClass::twoFactors(), '2', AuthenticationPredicate::TwoFactors];
         yield 'phishing resistant' => [AuthenticationContextClass::phishingResistant(), 'phr', AuthenticationPredicate::PhishingResistant];
-        yield 'phishing resistant, hardware' => [AuthenticationContextClass::phishingResistantHardware(), 'phrh', AuthenticationPredicate::PhishingResistantHardware];
+        yield 'phishing resistant, hardware' => [
+            AuthenticationContextClass::phishingResistantHardware(),
+            'phrh',
+            AuthenticationPredicate::PhishingResistantHardware,
+        ];
     }
 
     #[Test]
@@ -122,7 +126,13 @@ final class AuthenticationContextClassTest extends TestCase
     public function twoClassesAreEqualByName(): void
     {
         // When / Then
-        static::assertTrue(new AuthenticationContextClass('1', AuthenticationPredicate::SingleFactor)->equals(new AuthenticationContextClass('1', AuthenticationPredicate::TwoFactors)));
-        static::assertFalse(new AuthenticationContextClass('1', AuthenticationPredicate::SingleFactor)->equals(new AuthenticationContextClass('2', AuthenticationPredicate::SingleFactor)));
+        static::assertTrue(new AuthenticationContextClass('1', AuthenticationPredicate::SingleFactor)->equals(new AuthenticationContextClass(
+            '1',
+            AuthenticationPredicate::TwoFactors,
+        )));
+        static::assertFalse(new AuthenticationContextClass('1', AuthenticationPredicate::SingleFactor)->equals(new AuthenticationContextClass(
+            '2',
+            AuthenticationPredicate::SingleFactor,
+        )));
     }
 }

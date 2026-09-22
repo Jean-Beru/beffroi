@@ -74,8 +74,7 @@ final class JweDecryptionTest extends TestCase
         $jwe = self::encryptedTo($this->encryption, '{"iss":"acme-console"}');
 
         // When
-        $payload = $this->decrypter()
-            ->decrypt($this->tenant, $jwe);
+        $payload = $this->decrypter()->decrypt($this->tenant, $jwe);
 
         // Then
         static::assertSame('{"iss":"acme-console"}', $payload);
@@ -99,8 +98,7 @@ final class JweDecryptionTest extends TestCase
         $this->expectExceptionMessageIsOrContains('has retired: what was encrypted to it is not opened any more');
 
         // When
-        $this->decrypter()
-            ->decrypt($this->tenant, $jwe);
+        $this->decrypter()->decrypt($this->tenant, $jwe);
     }
 
     /**
@@ -126,14 +124,17 @@ final class JweDecryptionTest extends TestCase
     public function aKeyPublishedToBeEncryptedToDoesNotVerifyASignature(): void
     {
         // Given
-        $jws = new JwsCompactSerializer()
-            ->serialize(new JWSBuilder(new AlgorithmManager([new JoseRs256()]))->create()
+        $jws = new JwsCompactSerializer()->serialize(
+            new JWSBuilder(new AlgorithmManager([new JoseRs256()]))
+                ->create()
                 ->withPayload('{"sub":"alice"}')
                 ->addSignature(new JWK(Keys::pair()->privateJwk), [
                     'alg' => 'RS256',
                     'kid' => $this->encryption->kid,
                 ])
-                ->build(), 0);
+                ->build(),
+            0,
+        );
 
         // Then
         $this->expectException(InvalidJwsException::class);
@@ -158,8 +159,7 @@ final class JweDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('The token does not name the key it was encrypted to (RFC 7516 section 4.1.6).');
 
         // When
-        $this->decrypter()
-            ->decrypt($this->tenant, $jwe);
+        $this->decrypter()->decrypt($this->tenant, $jwe);
     }
 
     /**
@@ -170,8 +170,9 @@ final class JweDecryptionTest extends TestCase
     {
         // Given
         $rsa = $this->activate(Algorithms::rsaOaep256(), null);
-        $jwe = new CompactSerializer()
-            ->serialize(new JWEBuilder(new AlgorithmManager([new RSAOAEP(), new A256GCM()]))->create()
+        $jwe = new CompactSerializer()->serialize(
+            new JWEBuilder(new AlgorithmManager([new RSAOAEP(), new A256GCM()]))
+                ->create()
                 ->withPayload('{}')
                 ->withSharedProtectedHeader([
                     'alg' => 'RSA-OAEP',
@@ -182,15 +183,15 @@ final class JweDecryptionTest extends TestCase
                     ...$rsa->publicJwk,
                     'alg' => 'RSA-OAEP',
                 ]))
-                ->build());
+                ->build(),
+        );
 
         // Then
         $this->expectException(InvalidJweException::class);
         $this->expectExceptionMessageIs('The token is encrypted to with an algorithm this provider is not wired with.');
 
         // When
-        $this->decrypter()
-            ->decrypt($this->tenant, $jwe);
+        $this->decrypter()->decrypt($this->tenant, $jwe);
     }
 
     /**
@@ -200,8 +201,9 @@ final class JweDecryptionTest extends TestCase
     public function aContentEncryptionTheProviderIsNotWiredWithIsRefused(): void
     {
         // Given
-        $jwe = new CompactSerializer()
-            ->serialize(new JWEBuilder(new AlgorithmManager([new ECDHESA256KW(), new A128GCM()]))->create()
+        $jwe = new CompactSerializer()->serialize(
+            new JWEBuilder(new AlgorithmManager([new ECDHESA256KW(), new A128GCM()]))
+                ->create()
                 ->withPayload('{}')
                 ->withSharedProtectedHeader([
                     'alg' => 'ECDH-ES+A256KW',
@@ -209,15 +211,15 @@ final class JweDecryptionTest extends TestCase
                     'kid' => $this->encryption->kid,
                 ])
                 ->addRecipient(new JWK($this->encryption->publicJwk))
-                ->build());
+                ->build(),
+        );
 
         // Then
         $this->expectException(InvalidJweException::class);
         $this->expectExceptionMessageIs('The token encrypts its payload with a method this provider is not wired with.');
 
         // When
-        $this->decrypter()
-            ->decrypt($this->tenant, $jwe);
+        $this->decrypter()->decrypt($this->tenant, $jwe);
     }
 
     /**
@@ -230,7 +232,10 @@ final class JweDecryptionTest extends TestCase
         // Given
         $jwe = self::encryptedTo($this->encryption, '{}');
         $decrypter = new JwtLibraryJweDecrypter(
-            new SealedKeyProvider($this->repository, new EnvelopeKeySealer(new EnvelopesThatThrow(new KeyManagementFailure('the KMS did not answer')), Keys::KMS_KEY_ID)),
+            new SealedKeyProvider(
+                $this->repository,
+                new EnvelopeKeySealer(new EnvelopesThatThrow(new KeyManagementFailure('the KMS did not answer')), Keys::KMS_KEY_ID),
+            ),
             Algorithms::encryption(),
         );
 
@@ -267,7 +272,15 @@ final class JweDecryptionTest extends TestCase
     private function activate(KeyAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair): TenantKey
     {
         $pair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate($algorithm);
-        $key = new TenantKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $key = new TenantKey(
+            $pair->kid,
+            $this->tenant,
+            $algorithm,
+            $pair->publicJwk,
+            Keys::sealer()->seal($this->tenant, $pair->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $key->activate(Fixtures::now());
         $this->repository->save($key);
 
@@ -287,11 +300,13 @@ final class JweDecryptionTest extends TestCase
             $header['kid'] = $key->kid;
         }
 
-        return new CompactSerializer()
-            ->serialize(new JWEBuilder(new AlgorithmManager([new ECDHESA256KW(), new A256GCM()]))->create()
+        return new CompactSerializer()->serialize(
+            new JWEBuilder(new AlgorithmManager([new ECDHESA256KW(), new A256GCM()]))
+                ->create()
                 ->withPayload($payload)
                 ->withSharedProtectedHeader($header)
                 ->addRecipient(new JWK($key->publicJwk))
-                ->build());
+                ->build(),
+        );
     }
 }

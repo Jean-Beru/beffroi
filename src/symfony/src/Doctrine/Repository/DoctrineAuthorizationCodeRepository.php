@@ -33,20 +33,18 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
 
     public function findByCodeHash(string $codeHash): ?AuthorizationCode
     {
-        $code = $this->repository()
-            ->findOneBy([
-                'codeHash' => $codeHash,
-            ]);
+        $code = $this->repository()->findOneBy([
+            'codeHash' => $codeHash,
+        ]);
 
         return $code !== null && ClientResolver::isResolved($code) ? $code : null;
     }
 
     public function findByGrantId(Uuid $grantId): ?AuthorizationCode
     {
-        $code = $this->repository()
-            ->findOneBy([
-                'grantId' => $grantId,
-            ]);
+        $code = $this->repository()->findOneBy([
+            'grantId' => $grantId,
+        ]);
 
         return $code !== null && ClientResolver::isResolved($code) ? $code : null;
     }
@@ -60,13 +58,12 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
      */
     public function ofSession(Uuid $session): array
     {
-        $codes = $this->repository()
-            ->findBy([
-                'session' => $session,
-            ], [
-                'issuedAt' => 'ASC',
-                'codeHash' => 'ASC',
-            ]);
+        $codes = $this->repository()->findBy([
+            'session' => $session,
+        ], [
+            'issuedAt' => 'ASC',
+            'codeHash' => 'ASC',
+        ]);
         $clients = [];
         foreach ($codes as $code) {
             if ($code->isUsed() && ClientResolver::isResolved($code)) {
@@ -86,8 +83,8 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
     {
         $manager = $this->manager();
         $metadata = $manager->getClassMetadata(AuthorizationCode::class);
-        $claimed = $manager->getConnection()
-            ->executeStatement(
+        $claimed =
+            $manager->getConnection()->executeStatement(
                 sprintf(
                     'UPDATE %s SET %s = :now WHERE %s = :codeHash AND %s IS NULL',
                     $metadata->getTableName(),
@@ -109,21 +106,20 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
 
             return true;
         }
-        $usedAt = $manager->getConnection()
-            ->fetchOne(
-                sprintf(
-                    'SELECT %s FROM %s WHERE %s = :codeHash',
-                    $metadata->getColumnName('usedAt'),
-                    $metadata->getTableName(),
-                    $metadata->getColumnName('codeHash'),
-                ),
-                [
-                    'codeHash' => $code->codeHash,
-                ],
-                [
-                    'codeHash' => ParameterType::STRING,
-                ],
-            );
+        $usedAt = $manager->getConnection()->fetchOne(
+            sprintf(
+                'SELECT %s FROM %s WHERE %s = :codeHash',
+                $metadata->getColumnName('usedAt'),
+                $metadata->getTableName(),
+                $metadata->getColumnName('codeHash'),
+            ),
+            [
+                'codeHash' => $code->codeHash,
+            ],
+            [
+                'codeHash' => ParameterType::STRING,
+            ],
+        );
         if (is_string($usedAt)) {
             $code->recordConsumption(new DateTimeImmutable($usedAt));
         }

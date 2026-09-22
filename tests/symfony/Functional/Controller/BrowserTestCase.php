@@ -75,8 +75,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected function setUp(): void
     {
         $this->browser = self::browser($this->configureContainer());
-        new Filesystem()
-            ->remove(self::keyStorage());
+        new Filesystem()->remove(self::keyStorage());
     }
 
     /**
@@ -92,8 +91,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected function tearDown(): void
     {
         parent::tearDown();
-        new Filesystem()
-            ->remove(self::keyStorage());
+        new Filesystem()->remove(self::keyStorage());
     }
 
     /**
@@ -122,8 +120,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
             ])),
             default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->value)),
         };
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
-            ->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
+        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
 
         return $user;
     }
@@ -157,8 +154,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
             'nonce-of-the-client',
         );
         $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, null, $createdAt, $expiresAt);
-        self::service('test.heidi.interactions', InteractionRepositoryInterface::class)
-            ->save($interaction);
+        self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->save($interaction);
         $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->begin($httpSession, $interaction));
 
         return $interaction;
@@ -170,8 +166,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function signingKey(): TenantKey
     {
-        return self::rotator()
-            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        return self::rotator()->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**
@@ -180,8 +175,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function encryptionKey(): TenantKey
     {
-        return self::rotator()
-            ->rotate(self::tenant(), Algorithms::ecdhEsA256Kw(), self::context());
+        return self::rotator()->rotate(self::tenant(), Algorithms::ecdhEsA256Kw(), self::context());
     }
 
     /**
@@ -189,8 +183,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function stagedKey(): TenantKey
     {
-        return self::rotator()
-            ->stage(self::tenant(), Algorithms::rs256(), self::context());
+        return self::rotator()->stage(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**
@@ -198,8 +191,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function retireKey(TenantKey $key): void
     {
-        self::rotator()
-            ->retire(self::tenant(), $key->kid, self::context(), force: true);
+        self::rotator()->retire(self::tenant(), $key->kid, self::context(), force: true);
     }
 
     protected static function rotator(): TenantKeyRotator
@@ -233,8 +225,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
             $interaction = self::redirectedInteraction($this->browser->getResponse());
             $this->browser->submit($this->browser->request('GET', '/consent', [
                 'interaction' => $interaction,
-            ])->selectButton('Allow')
-                ->form());
+            ])->selectButton('Allow')->form());
         }
         $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail(sprintf('The client "%s" got no code.', $clientId));
         $parameters = [
@@ -455,7 +446,8 @@ abstract class BrowserTestCase extends DatabaseTestCase
         $write($httpSession, self::service('test.heidi.browser_session', BrowserSession::class));
         $httpSession->save();
         // the cookie the kernel set carries a domain, and a cookie with a domain wins over one without
-        $this->browser->getCookieJar()
-            ->set(new Cookie($httpSession->getName(), $httpSession->getId(), null, $cookie?->getPath() ?? '/', $cookie?->getDomain() ?? ''));
+        $this->browser->getCookieJar()->set(
+            new Cookie($httpSession->getName(), $httpSession->getId(), null, $cookie?->getPath() ?? '/', $cookie?->getDomain() ?? ''),
+        );
     }
 }

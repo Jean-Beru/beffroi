@@ -173,10 +173,19 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']), [new Scope('openid')]);
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
+            [new Scope('openid')],
+        );
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(
+            RefreshToken::hash('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
 
         // Then
         static::assertEquals($code->scopes, $token->scopes, 'the token keeps what was granted, not what this response narrowed to');
@@ -188,10 +197,19 @@ final class RefreshTokenTest extends TestCase
     public function itIsIssuedFromAnAuthorizationWithItsAuthentication(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']), [new Scope('openid')]);
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
+            [new Scope('openid')],
+        );
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(
+            RefreshToken::hash('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
 
         // Then
         static::assertSame($authorization->claimsRequest, $token->claimsRequest);
@@ -209,10 +227,20 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $key = new KeyConfirmation(self::THUMBPRINT);
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family), null, $key);
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family),
+            null,
+            $key,
+        );
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(
+            RefreshToken::hash('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
 
         // Then
         static::assertEquals($key, $token->confirmation);
@@ -227,10 +255,20 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $client = Clients::confidential($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $client, $this->session, Fixtures::now(), $this->family), null, new KeyConfirmation(self::THUMBPRINT));
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('previous', $client, $this->session, Fixtures::now(), $this->family),
+            null,
+            new KeyConfirmation(self::THUMBPRINT),
+        );
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(
+            RefreshToken::hash('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
 
         // Then
         static::assertNull($token->confirmation);
@@ -241,7 +279,14 @@ final class RefreshTokenTest extends TestCase
     public function itIsRefreshedByWhatProvesWhatItIsBoundTo(?string $bound, ?string $proven, bool $refreshed): void
     {
         // Given
-        $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), $this->family, confirmation: $bound === null ? null : new KeyConfirmation($bound));
+        $token = Tokens::refreshToken(
+            'the-token',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            $this->family,
+            confirmation: $bound === null ? null : new KeyConfirmation($bound),
+        );
 
         // When / Then
         static::assertSame($refreshed, $token->isRefreshedBy($proven === null ? null : new KeyConfirmation($proven)));
@@ -267,7 +312,10 @@ final class RefreshTokenTest extends TestCase
     public function itNeverOutlivesItsFamily(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']), [new Scope('openid')]);
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
+            [new Scope('openid')],
+        );
         $late = Fixtures::now()->modify('+80 days');
 
         // When
@@ -488,8 +536,14 @@ final class RefreshTokenTest extends TestCase
      * @param list<Scope>|null $scopes
      * @param list<string>|null $methods
      */
-    private function token(?string $tokenHash = null, ?Client $client = null, ?array $scopes = null, ?array $methods = null, ?DateTimeImmutable $issuedAt = null, ?DateTimeImmutable $expiresAt = null): RefreshToken
-    {
+    private function token(
+        ?string $tokenHash = null,
+        ?Client $client = null,
+        ?array $scopes = null,
+        ?array $methods = null,
+        ?DateTimeImmutable $issuedAt = null,
+        ?DateTimeImmutable $expiresAt = null,
+    ): RefreshToken {
         return new RefreshToken(
             $tokenHash ?? RefreshToken::hash('the-token'),
             $this->family,
@@ -497,7 +551,11 @@ final class RefreshTokenTest extends TestCase
             $this->session,
             $scopes ?? [Scope::openid()],
             null,
-            new AuthenticationSnapshot($this->session->authenticatedAt(), $methods ?? $this->session->methodReferences(), $this->session->authenticationContextClass()->value),
+            new AuthenticationSnapshot(
+                $this->session->authenticatedAt(),
+                $methods ?? $this->session->methodReferences(),
+                $this->session->authenticationContextClass()->value,
+            ),
             $issuedAt ?? Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+30 days'),
         );

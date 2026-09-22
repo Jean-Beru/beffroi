@@ -41,14 +41,12 @@ final class KmsOutage implements EnvelopeEncrypterInterface, EnvelopeDecrypterIn
 
     public function encrypt(string $key, #[SensitiveParameter] string $plaintext, string $aad = ''): Envelope
     {
-        return $this->reach()
-            ->encrypt($key, $plaintext, $aad);
+        return $this->reach()->encrypt($key, $plaintext, $aad);
     }
 
     public function decrypt(Envelope $envelope, string $aad = ''): string
     {
-        return $this->reach()
-            ->decrypt($envelope, $aad);
+        return $this->reach()->decrypt($envelope, $aad);
     }
 
     /**

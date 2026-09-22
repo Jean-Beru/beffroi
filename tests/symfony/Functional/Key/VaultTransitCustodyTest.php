@@ -152,10 +152,13 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         $scheme = $dsn->getOption('scheme', 'https');
         $path = $dsn->path === '' || $dsn->path === '/' ? '/v1/' : $dsn->path;
 
-        return HttpClient::createForBaseUri(sprintf('%s://%s%s%s', is_string($scheme) ? $scheme : 'https', $dsn->host, $dsn->port === null ? '' : ':' . $dsn->port, $path), [
-            'headers' => [
-                'X-Vault-Token' => (string) $dsn->user,
+        return HttpClient::createForBaseUri(
+            sprintf('%s://%s%s%s', is_string($scheme) ? $scheme : 'https', $dsn->host, $dsn->port === null ? '' : ':' . $dsn->port, $path),
+            [
+                'headers' => [
+                    'X-Vault-Token' => (string) $dsn->user,
+                ],
             ],
-        ]);
+        );
     }
 }

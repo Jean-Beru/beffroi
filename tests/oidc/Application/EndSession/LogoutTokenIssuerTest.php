@@ -60,11 +60,14 @@ final class LogoutTokenIssuerTest extends TestCase
         ['header' => $header] = $this->jwts->verify($token, 'spa', Fixtures::now(), self::MANDATORY);
 
         // Then
-        static::assertSame([
-            'typ' => 'logout+jwt',
-            'alg' => 'RS256',
-            'kid' => $this->jwts->key->kid,
-        ], $header);
+        static::assertSame(
+            [
+                'typ' => 'logout+jwt',
+                'alg' => 'RS256',
+                'kid' => $this->jwts->key->kid,
+            ],
+            $header,
+        );
     }
 
     /**
@@ -76,18 +79,30 @@ final class LogoutTokenIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'), idToken: ResponseFormat::signed(Algorithms::es256()));
+        $client = new Client(
+            $this->session->tenant,
+            'spa',
+            'Single page application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'),
+            idToken: ResponseFormat::signed(Algorithms::es256()),
+        );
 
         // When
         $token = $this->issuer->issue($client, $this->session, Fixtures::now());
 
         // Then
         ['header' => $header] = $this->jwts->verify($token, 'spa', Fixtures::now(), self::MANDATORY);
-        static::assertSame([
-            'typ' => 'logout+jwt',
-            'alg' => 'ES256',
-            'kid' => $es256Key->kid,
-        ], $header);
+        static::assertSame(
+            [
+                'typ' => 'logout+jwt',
+                'alg' => 'ES256',
+                'kid' => $es256Key->kid,
+            ],
+            $header,
+        );
     }
 
     /**
@@ -143,9 +158,12 @@ final class LogoutTokenIssuerTest extends TestCase
         ['claims' => $claims] = $this->jwts->verify($token, 'spa', Fixtures::now(), self::MANDATORY);
 
         // Then
-        static::assertSame([
-            'http://schemas.openid.net/event/backchannel-logout' => [],
-        ], $claims['events']);
+        static::assertSame(
+            [
+                'http://schemas.openid.net/event/backchannel-logout' => [],
+            ],
+            $claims['events'],
+        );
     }
 
     /**

@@ -49,8 +49,7 @@ final class RefreshTokenRevocationTest extends TestCase
         $this->session = Fixtures::session($this->alice);
         $this->clock = new MockClock('2026-09-20T10:00:00+00:00');
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
-        $issuedAt = $this->clock->now()
-            ->modify('-1 hour');
+        $issuedAt = $this->clock->now()->modify('-1 hour');
         $this->family = Tokens::family($issuedAt, 'the-code');
         $this->first = Tokens::refreshToken('first', $this->client, $this->session, $issuedAt, $this->family);
         $this->second = Tokens::refreshToken('second', $this->client, $this->session, $issuedAt->modify('+10 minutes'), $this->family);

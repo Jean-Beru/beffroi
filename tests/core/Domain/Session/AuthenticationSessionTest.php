@@ -75,8 +75,19 @@ final class AuthenticationSessionTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::now(),
+        );
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            $proofs,
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
 
         // When / Then
         static::assertTrue($session->satisfies(AuthenticationContextClass::singleFactor()));
@@ -105,10 +116,21 @@ final class AuthenticationSessionTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::now(),
+        );
 
         // When
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            $proofs,
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
 
         // Then
         static::assertSame(['pwd', 'otp', 'mfa'], $session->methodReferences());
@@ -124,7 +146,15 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), Fixtures::context(), Fixtures::now());
+        new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()),
+            Fixtures::context(),
+            Fixtures::now(),
+        );
     }
 
     #[Test]
@@ -137,7 +167,15 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')), Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')),
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
     }
 
     #[Test]
@@ -150,7 +188,15 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(
+            Uuid::v7(),
+            Fixtures::tenant('other', 'https://id.other.example'),
+            $user,
+            Fixtures::now(),
+            AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()),
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
     }
 
     /**
@@ -181,7 +227,10 @@ final class AuthenticationSessionTest extends TestCase
         $session = Fixtures::session();
 
         // When
-        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), Fixtures::context(Fixtures::now()->modify('+2 hours'), '198.51.100.7'));
+        $session->recordProof(
+            new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY),
+            Fixtures::context(Fixtures::now()->modify('+2 hours'), '198.51.100.7'),
+        );
 
         // Then
         static::assertSame(['pwd', 'hwk', 'mfa'], $session->methodReferences());

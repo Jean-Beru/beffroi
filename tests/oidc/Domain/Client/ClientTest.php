@@ -35,8 +35,7 @@ final class ClientTest extends TestCase
     public function aConfidentialClientHoldsAHashedSecret(): void
     {
         // Given
-        $hash = new FakePasswordHasher()
-            ->hash(Clients::SECRET);
+        $hash = new FakePasswordHasher()->hash(Clients::SECRET);
 
         // When
         $client = Clients::confidential(Fixtures::tenant(), $hash);
@@ -57,8 +56,7 @@ final class ClientTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $hash = new FakePasswordHasher()
-            ->hash(Clients::SECRET);
+        $hash = new FakePasswordHasher()->hash(Clients::SECRET);
 
         // When / Then
         static::assertFalse(Clients::confidential($tenant, $hash)->requiresPushedAuthorizationRequests);
@@ -149,7 +147,15 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessageIs('The client "spa" is public and must use PKCE (RFC 9700 section 2.1.1): requires_pkce cannot be false.');
 
         // When
-        new Client(Fixtures::tenant(), 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], requiresPkce: false);
+        new Client(
+            Fixtures::tenant(),
+            'spa',
+            'Single page application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            requiresPkce: false,
+        );
     }
 
     /**
@@ -286,8 +292,7 @@ final class ClientTest extends TestCase
      */
     public static function provideInvalidClients(): iterable
     {
-        $hash = new FakePasswordHasher()
-            ->hash(Clients::SECRET);
+        $hash = new FakePasswordHasher()->hash(Clients::SECRET);
         $uris = [new RedirectUri('https://rp.example/cb')];
 
         yield 'empty client id' => [
@@ -389,7 +394,16 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessageIsOrContains('either inline in "jwks" or behind a "jwks_uri", never both');
 
         // When
-        new Client(Fixtures::tenant(), 'key-client', 'Key client', Methods::privateKeyJwt(), null, [new RedirectUri('https://key.example/callback')], jwks: ClientAssertions::publishedKeys(), jwksUri: new ClientUri('https://key.example/jwks'));
+        new Client(
+            Fixtures::tenant(),
+            'key-client',
+            'Key client',
+            Methods::privateKeyJwt(),
+            null,
+            [new RedirectUri('https://key.example/callback')],
+            jwks: ClientAssertions::publishedKeys(),
+            jwksUri: new ClientUri('https://key.example/jwks'),
+        );
     }
 
     /**
@@ -419,7 +433,15 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessageIsOrContains('registers none of the values of RFC 8705 section 2.1.2');
 
         // When
-        new Client(Fixtures::tenant(), 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], certificateIdentity: new SubjectDistinguishedName('cn=client'));
+        new Client(
+            Fixtures::tenant(),
+            'spa',
+            'Single page application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            certificateIdentity: new SubjectDistinguishedName('cn=client'),
+        );
     }
 
     /**
@@ -434,7 +456,14 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessageIsOrContains('publishes its keys in "jwks" or behind a "jwks_uri"');
 
         // When
-        new Client(Fixtures::tenant(), 'self-signed-client', 'Self-signed client', Methods::selfSignedTlsClientAuth(), null, [new RedirectUri('https://self-signed.example/callback')]);
+        new Client(
+            Fixtures::tenant(),
+            'self-signed-client',
+            'Self-signed client',
+            Methods::selfSignedTlsClientAuth(),
+            null,
+            [new RedirectUri('https://self-signed.example/callback')],
+        );
     }
 
     /**
@@ -450,7 +479,14 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessageIsOrContains('is not kept in a shape client_secret_basic verifies against');
 
         // When
-        new Client(Fixtures::tenant(), 'demo', 'Name', Methods::clientSecretBasic(), new SharedClientSecret(Clients::SECRET), [new RedirectUri('https://rp.example/cb')]);
+        new Client(
+            Fixtures::tenant(),
+            'demo',
+            'Name',
+            Methods::clientSecretBasic(),
+            new SharedClientSecret(Clients::SECRET),
+            [new RedirectUri('https://rp.example/cb')],
+        );
     }
 
     /**
@@ -461,7 +497,15 @@ final class ClientTest extends TestCase
     public function aClientMayPublishKeysWithoutAuthenticatingWithThem(): void
     {
         // When
-        $client = new Client(Fixtures::tenant(), 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], jwks: ClientAssertions::publishedKeys());
+        $client = new Client(
+            Fixtures::tenant(),
+            'spa',
+            'Single page application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            jwks: ClientAssertions::publishedKeys(),
+        );
 
         // Then
         static::assertInstanceOf(ClientJwks::class, $client->jwks);
@@ -475,7 +519,10 @@ final class ClientTest extends TestCase
     public function aRegisteredRequestUriIsMatchedByteForByte(): void
     {
         // Given
-        $client = Clients::sendingRequestObjects(Fixtures::tenant(), requestUris: [new ClientUri('https://jar.example/request.jwt'), new ClientUri('https://jar.example/request.jwt')]);
+        $client = Clients::sendingRequestObjects(Fixtures::tenant(), requestUris: [
+            new ClientUri('https://jar.example/request.jwt'),
+            new ClientUri('https://jar.example/request.jwt'),
+        ]);
 
         // When / Then
         static::assertCount(1, $client->requestUris);
@@ -496,7 +543,15 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessageIsOrContains('registers a request_object_signing_alg');
 
         // When
-        new Client(Fixtures::tenant(), 'jar-client', 'Client that signs its requests', Methods::none(), null, [new RedirectUri('https://jar.example/callback')], requestObjectSigning: new OneRegisteredAlgorithm(Algorithms::es256()));
+        new Client(
+            Fixtures::tenant(),
+            'jar-client',
+            'Client that signs its requests',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://jar.example/callback')],
+            requestObjectSigning: new OneRegisteredAlgorithm(Algorithms::es256()),
+        );
     }
 
     /**
@@ -507,7 +562,15 @@ final class ClientTest extends TestCase
     public function aClientSendingUnsignedRequestObjectsPublishesNothing(): void
     {
         // When
-        $client = new Client(Fixtures::tenant(), 'unsigned-client', 'Client that signs nothing', Methods::none(), null, [new RedirectUri('https://jar.example/callback')], requestObjectSigning: new UnsignedRequestObjects());
+        $client = new Client(
+            Fixtures::tenant(),
+            'unsigned-client',
+            'Client that signs nothing',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://jar.example/callback')],
+            requestObjectSigning: new UnsignedRequestObjects(),
+        );
 
         // Then
         static::assertTrue($client->requestObjectSigning->acceptsUnsigned());

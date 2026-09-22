@@ -71,12 +71,26 @@ final class LoginCompletionTest extends TestCase
         $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
         // enrolled an hour ago: the step of its first code is long past
-        $credentials->save(Totps::credential($this->alice, $hasher, Totps::stepAt($this->clock->now()->modify('-1 hour')), createdAt: $this->clock->now()->modify('-1 hour')));
+        $credentials->save(Totps::credential(
+            $this->alice,
+            $hasher,
+            Totps::stepAt($this->clock->now()->modify('-1 hour')),
+            createdAt: $this->clock->now()->modify('-1 hour'),
+        ));
         // the password was typed a minute ago
         $this->login = PendingLogin::provenAt($this->alice->id, [AuthenticationMethod::password()], $this->clock->now()->modify('-1 minute'));
         $this->completion = new LoginCompletion(
             $users,
-            new TotpAuthentication($credentials, new ActiveTotp($credentials), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $hasher, $this->attempts, $this->clock, $this->events),
+            new TotpAuthentication(
+                $credentials,
+                new ActiveTotp($credentials),
+                new TotpCodeMatcher(Totps::algorithm()),
+                Totps::sealer(),
+                $hasher,
+                $this->attempts,
+                $this->clock,
+                $this->events,
+            ),
             new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
             $this->clock,
             $this->events,
@@ -111,12 +125,14 @@ final class LoginCompletionTest extends TestCase
         $session = $this->completion->complete($this->tenant, $this->login, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));
 
         // Then
-        $now = $this->clock->now()
-            ->getTimestamp();
-        static::assertSame([
-            'pwd' => $now,
-            'otp' => $now,
-        ], $session->proofs->toTimestamps());
+        $now = $this->clock->now()->getTimestamp();
+        static::assertSame(
+            [
+                'pwd' => $now,
+                'otp' => $now,
+            ],
+            $session->proofs->toTimestamps(),
+        );
         static::assertEquals($this->clock->now(), $session->authenticatedAt());
     }
 
@@ -128,7 +144,11 @@ final class LoginCompletionTest extends TestCase
     public function everythingTheFirstStepProvedIsCarriedOntoTheSession(): void
     {
         // Given
-        $login = PendingLogin::provenAt($this->alice->id, [new AuthenticationMethod(AuthenticationMethod::PIN), new AuthenticationMethod(AuthenticationMethod::SMART_CARD)], $this->clock->now()->modify('-1 minute'));
+        $login = PendingLogin::provenAt(
+            $this->alice->id,
+            [new AuthenticationMethod(AuthenticationMethod::PIN), new AuthenticationMethod(AuthenticationMethod::SMART_CARD)],
+            $this->clock->now()->modify('-1 minute'),
+        );
 
         // When
         $session = $this->completion->complete($this->tenant, $login, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));

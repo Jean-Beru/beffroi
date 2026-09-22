@@ -35,27 +35,47 @@ const DEV_TENANT_SLUG = 'default';
  * scope with its claims, and a user without them ends those modules in a warning (issue #45).
  */
 const DEV_USER_PROFILE = [
-    '--name', 'Alice Liddell',
-    '--given-name', 'Alice',
-    '--family-name', 'Liddell',
-    '--middle-name', 'Pleasance',
-    '--nickname', 'Ali',
-    '--preferred-username', 'alice',
-    '--profile-url', 'https://op.localhost/alice',
-    '--picture', 'https://op.localhost/alice.png',
-    '--website', 'https://op.localhost/',
-    '--gender', 'female',
-    '--birthdate', '1852-05-04',
-    '--zoneinfo', 'Europe/London',
-    '--locale', 'en-GB',
-    '--phone-number', '+44 1865 000000',
+    '--name',
+    'Alice Liddell',
+    '--given-name',
+    'Alice',
+    '--family-name',
+    'Liddell',
+    '--middle-name',
+    'Pleasance',
+    '--nickname',
+    'Ali',
+    '--preferred-username',
+    'alice',
+    '--profile-url',
+    'https://op.localhost/alice',
+    '--picture',
+    'https://op.localhost/alice.png',
+    '--website',
+    'https://op.localhost/',
+    '--gender',
+    'female',
+    '--birthdate',
+    '1852-05-04',
+    '--zoneinfo',
+    'Europe/London',
+    '--locale',
+    'en-GB',
+    '--phone-number',
+    '+44 1865 000000',
     '--phone-number-verified',
-    '--address', "1 Wonderland Road\nOxford OX1 1AA\nUnited Kingdom",
-    '--street-address', '1 Wonderland Road',
-    '--locality', 'Oxford',
-    '--region', 'Oxfordshire',
-    '--postal-code', 'OX1 1AA',
-    '--country', 'United Kingdom',
+    '--address',
+    "1 Wonderland Road\nOxford OX1 1AA\nUnited Kingdom",
+    '--street-address',
+    '1 Wonderland Road',
+    '--locality',
+    'Oxford',
+    '--region',
+    'Oxfordshire',
+    '--postal-code',
+    'OX1 1AA',
+    '--country',
+    'United Kingdom',
 ];
 
 /**
@@ -90,23 +110,24 @@ const DEV_CLIENT_SECRETS = [
     'OIDC_DEMO_SECOND_SECRET',
 ];
 
-#[AsTask(description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password')]
+#[AsTask(
+    description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password',
+)]
 function provision(
-    #[AsOption(description: 'The KMS to seal the keys of the tenant with when apps/op/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS')]
+    #[AsOption(
+        description: 'The KMS to seal the keys of the tenant with when apps/op/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS',
+    )]
     ?string $kms = null,
 ): void {
     io()->title('Provisioning the development OP');
 
-    io()
-        ->section('Development secrets');
+    io()->section('Development secrets');
     $env = provision_env_local($kms);
 
-    io()
-        ->section('Tenant');
+    io()->section('Tenant');
     op_console(['heidi:tenant:synchronize']);
 
-    io()
-        ->section('Keys');
+    io()->section('Keys');
     // The console wraps its blocks: flatten before searching the sentence.
     $keys = (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
     if (str_contains($keys, 'no published key')) {
@@ -117,11 +138,13 @@ function provision(
         // command says which key and what to do, this task deletes nothing and stops here.
         $check = op_console(['heidi:keys:list', '--check'], context()->withAllowFailure());
         if (! $check->isSuccessful()) {
-            io()->error(sprintf('The KMS of %s cannot open a published key (above). Run "castor console heidi:keys:rotate --now" once the KMS is back with its key, or with its new one, then this task again.', DEV_ENV_LOCAL));
+            io()->error(sprintf(
+                'The KMS of %s cannot open a published key (above). Run "castor console heidi:keys:rotate --now" once the KMS is back with its key, or with its new one, then this task again.',
+                DEV_ENV_LOCAL,
+            ));
             exit(1);
         }
-        io()
-            ->note('A signing key is published already and opens with the KMS; "castor console heidi:keys:rotate" rotates it without an outage.');
+        io()->note('A signing key is published already and opens with the KMS; "castor console heidi:keys:rotate" rotates it without an outage.');
     }
     // The other half of the JWK Set: the key a client encrypts a request object to, same custody, same
     // four states, published with "use": "enc". The document announces the algorithms the bundle wires,
@@ -130,17 +153,13 @@ function provision(
     if (preg_match('/Use enc/', $keys) !== 1) {
         op_console(['heidi:keys:generate', '--algorithm=ECDH-ES+A256KW']);
     } else {
-        io()
-            ->note('An encryption key is published already; "castor console heidi:keys:rotate --algorithm=ECDH-ES+A256KW" rotates it without an outage.');
+        io()->note('An encryption key is published already; "castor console heidi:keys:rotate --algorithm=ECDH-ES+A256KW" rotates it without an outage.');
     }
 
-    io()
-        ->section(sprintf('User "%s"', DEV_USERNAME));
+    io()->section(sprintf('User "%s"', DEV_USERNAME));
     $creation = op_console(
         ['heidi:user:create', DEV_USERNAME, '--email', DEV_USERNAME . '@op.localhost', '--email-verified'],
-        context()
-            ->withAllowFailure()
-            ->withQuiet(),
+        context()->withAllowFailure()->withQuiet(),
     );
     if ($creation->isSuccessful()) {
         io()->write($creation->getOutput());
@@ -156,39 +175,34 @@ function provision(
     // Never on the command line: the command reads it on its standard input.
     op_console(
         ['heidi:user:set-password', DEV_USERNAME, '--password-stdin'],
-        context()
-            ->withInput($env['HEIDI_DEV_USER_PASSWORD'] . "\n"),
+        context()->withInput($env['HEIDI_DEV_USER_PASSWORD'] . "\n"),
     );
 
-    io()
-        ->section('Client certificate');
+    io()->section('Client certificate');
     provision_mtls_client();
 
-    io()
-        ->success('The OP is provisioned.');
-    io()
-        ->definitionList(
-            [
-                'Discovery' => $env['HEIDI_ISSUER'] . '/.well-known/openid-configuration',
-            ],
-            [
-                'JWKS' => $env['HEIDI_ISSUER'] . '/jwks',
-            ],
-            [
-                'KMS' => sprintf('%s, key %s', kms_backend_of($env['HEIDI_KMS_DSN']) ?? 'unknown', $env['HEIDI_KMS_KEY_ID']),
-            ],
-            [
-                'Username' => DEV_USERNAME,
-            ],
-            [
-                'Password' => $env['HEIDI_DEV_USER_PASSWORD'],
-            ],
-            ...array_map(static fn (string $name): array => [
-                $name => $env[$name],
-            ], DEV_CLIENT_SECRETS),
-        );
-    io()
-        ->note(sprintf('These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others.', DEV_ENV_LOCAL));
+    io()->success('The OP is provisioned.');
+    io()->definitionList(
+        [
+            'Discovery' => $env['HEIDI_ISSUER'] . '/.well-known/openid-configuration',
+        ],
+        [
+            'JWKS' => $env['HEIDI_ISSUER'] . '/jwks',
+        ],
+        [
+            'KMS' => sprintf('%s, key %s', kms_backend_of($env['HEIDI_KMS_DSN']) ?? 'unknown', $env['HEIDI_KMS_KEY_ID']),
+        ],
+        [
+            'Username' => DEV_USERNAME,
+        ],
+        [
+            'Password' => $env['HEIDI_DEV_USER_PASSWORD'],
+        ],
+        ...array_map(static fn (string $name): array => [
+            $name => $env[$name],
+        ], DEV_CLIENT_SECRETS),
+    );
+    io()->note(sprintf('These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others.', DEV_ENV_LOCAL));
 }
 
 /**
@@ -210,7 +224,13 @@ function provision_env_local(?string $kms): array
     if ($current !== null && $kms !== null && $kms !== $current) {
         io()->error([
             sprintf('%s seals the signing keys with %s; "--kms %s" is a change of KMS, which this task never does by itself.', DEV_ENV_LOCAL, $current, $kms),
-            sprintf('To switch: remove HEIDI_KMS_DSN and HEIDI_KMS_KEY_ID from %s, run this task again with "--kms %s", then "castor console heidi:keys:rotate --now": the envelopes sealed by %s cannot be opened by %s, the key that signed retires with its window and its public half still verifies what it signed; nothing is deleted.', DEV_ENV_LOCAL, $kms, $current, $kms),
+            sprintf(
+                'To switch: remove HEIDI_KMS_DSN and HEIDI_KMS_KEY_ID from %s, run this task again with "--kms %s", then "castor console heidi:keys:rotate --now": the envelopes sealed by %s cannot be opened by %s, the key that signed retires with its window and its public half still verifies what it signed; nothing is deleted.',
+                DEV_ENV_LOCAL,
+                $kms,
+                $current,
+                $kms,
+            ),
         ]);
         exit(1);
     }
@@ -255,9 +275,15 @@ function provision_env_local(?string $kms): array
         kms_file_write('heidi-' . DEV_TENANT_SLUG);
     }
     if ($current === 'vault' && ! vault_token_works(vault_token_of($env['HEIDI_KMS_DSN']))) {
-        io()->warning(sprintf('The Vault token of %s no longer works (the dev server forgets its tokens and its keys when it restarts): a new one is minted. The keys sealed before the restart cannot be opened any more, which the check of the published key says below.', DEV_ENV_LOCAL));
+        io()->warning(sprintf(
+            'The Vault token of %s no longer works (the dev server forgets its tokens and its keys when it restarts): a new one is minted. The keys sealed before the restart cannot be opened any more, which the check of the published key says below.',
+            DEV_ENV_LOCAL,
+        ));
         $env['HEIDI_KMS_DSN'] = $values['HEIDI_KMS_DSN']();
-        file_put_contents($path, (string) preg_replace('/^HEIDI_KMS_DSN=.*$/m', sprintf('HEIDI_KMS_DSN="%s"', $env['HEIDI_KMS_DSN']), (string) file_get_contents($path)));
+        file_put_contents(
+            $path,
+            (string) preg_replace('/^HEIDI_KMS_DSN=.*$/m', sprintf('HEIDI_KMS_DSN="%s"', $env['HEIDI_KMS_DSN']), (string) file_get_contents($path)),
+        );
     }
 
     $lines = [];
@@ -276,8 +302,7 @@ function provision_env_local(?string $kms): array
 
     $existing = file_exists($path) ? rtrim((string) file_get_contents($path), "\n") . "\n\n" : '';
     file_put_contents($path, $existing . "###> castor provision ###\n" . implode("\n", $lines) . "\n###< castor provision ###\n");
-    io()
-        ->text(sprintf('Wrote %d development value(s) into %s.', count($lines), DEV_ENV_LOCAL));
+    io()->text(sprintf('Wrote %d development value(s) into %s.', count($lines), DEV_ENV_LOCAL));
     provision_restart_consumers();
 
     return $env;
@@ -328,17 +353,34 @@ function kms_file_write(string $name): void
 {
     $path = sprintf('%s/%s.key', KMS_FILE_DIRECTORY, $name);
     $written = run(
-        ['docker', 'compose', 'exec', '-T', 'op', 'sh', '-c', sprintf('umask 077 && mkdir -p %1$s && chmod 700 %1$s && if [ -e %2$s ]; then echo kept; else head -c 32 /dev/urandom > %2$s && echo written; fi', KMS_FILE_DIRECTORY, $path)],
-        context: context()
-            ->withAllowFailure()
-            ->withQuiet(),
+        [
+            'docker',
+            'compose',
+            'exec',
+            '-T',
+            'op',
+            'sh',
+            '-c',
+            sprintf(
+                'umask 077 && mkdir -p %1$s && chmod 700 %1$s && if [ -e %2$s ]; then echo kept; else head -c 32 /dev/urandom > %2$s && echo written; fi',
+                KMS_FILE_DIRECTORY,
+                $path,
+            ),
+        ],
+        context: context()->withAllowFailure()->withQuiet(),
     );
     if (! $written->isSuccessful()) {
-        io()->error(['The key file could not be written in the op container: is the stack running? "castor start" starts it.', trim($written->getErrorOutput())]);
+        io()->error([
+            'The key file could not be written in the op container: is the stack running? "castor start" starts it.',
+            trim($written->getErrorOutput()),
+        ]);
         exit(1);
     }
-    io()
-        ->text(sprintf('%s the key of the file backend, %s in the op container (volume kms_data, mode 0600).', trim($written->getOutput()) === 'kept' ? 'Kept' : 'Wrote', $path));
+    io()->text(sprintf(
+        '%s the key of the file backend, %s in the op container (volume kms_data, mode 0600).',
+        trim($written->getOutput()) === 'kept' ? 'Kept' : 'Wrote',
+        $path,
+    ));
 }
 
 /**
@@ -364,7 +406,10 @@ function vault_mint_op_token(): string
 {
     $minted = vault_cli(['token', 'create', '-policy=heidi-op', '-no-default-policy', '-display-name=heidi-op', '-format=json']);
     if (! $minted->isSuccessful()) {
-        io()->error(['The token of the OP could not be minted: is Vault running? "castor start --kms vault" starts it and initialises it.', trim($minted->getErrorOutput())]);
+        io()->error([
+            'The token of the OP could not be minted: is Vault running? "castor start --kms vault" starts it and initialises it.',
+            trim($minted->getErrorOutput()),
+        ]);
         exit(1);
     }
     $token = json_decode($minted->getOutput(), true)['auth']['client_token'] ?? null;
@@ -372,8 +417,7 @@ function vault_mint_op_token(): string
         io()->error('Vault answered without a token.');
         exit(1);
     }
-    io()
-        ->text('Minted a token for the OP on Vault, under the policy "heidi-op".');
+    io()->text('Minted a token for the OP on Vault, under the policy "heidi-op".');
 
     return $token;
 }
@@ -405,9 +449,7 @@ function vault_cli(array $args, array $environment = []): Process
 
     return run(
         ['docker', 'compose', 'exec', '-T', ...$options, 'vault', 'vault', ...$args],
-        context: context()
-            ->withAllowFailure()
-            ->withQuiet(),
+        context: context()->withAllowFailure()->withQuiet(),
     );
 }
 
@@ -435,14 +477,15 @@ function provision_mtls_client(): void
             exit(1);
         }
         $certificate = provision_mtls_issue($certificateFile, $keyFile);
-        io()
-            ->text(sprintf('Issued %s, self-signed, valid %d days.', DEV_MTLS_DIRECTORY . '/client.crt', DEV_MTLS_CLIENT_DAYS));
+        io()->text(sprintf('Issued %s, self-signed, valid %d days.', DEV_MTLS_DIRECTORY . '/client.crt', DEV_MTLS_CLIENT_DAYS));
     } else {
-        io()
-            ->text(sprintf('%s is there and still valid; it is kept.', DEV_MTLS_DIRECTORY . '/client.crt'));
+        io()->text(sprintf('%s is there and still valid; it is kept.', DEV_MTLS_DIRECTORY . '/client.crt'));
     }
-    io()
-        ->text(sprintf('Thumbprint (RFC 8705 §3.1, "x5t#S256"): <info>%s</info>. "castor mtls" presents it to https://%s.', mtls_thumbprint($certificate), DEV_MTLS_SERVER_NAME));
+    io()->text(sprintf(
+        'Thumbprint (RFC 8705 §3.1, "x5t#S256"): <info>%s</info>. "castor mtls" presents it to https://%s.',
+        mtls_thumbprint($certificate),
+        DEV_MTLS_SERVER_NAME,
+    ));
 }
 
 /**
@@ -472,14 +515,29 @@ function provision_mtls_issue(string $certificateFile, string $keyFile): string
         'private_key_type' => \OPENSSL_KEYTYPE_EC,
         'curve_name' => 'prime256v1',
     ]);
-    $request = $key === false ? false : openssl_csr_new([
-        'commonName' => DEV_MTLS_CLIENT_NAME,
-    ], $key, [
-        'digest_alg' => 'sha256',
-    ]);
-    $signed = $request === false ? false : openssl_csr_sign($request, null, $key, DEV_MTLS_CLIENT_DAYS, [
-        'digest_alg' => 'sha256',
-    ], random_int(1, \PHP_INT_MAX));
+    $request = $key === false
+        ? false
+        : openssl_csr_new(
+            [
+                'commonName' => DEV_MTLS_CLIENT_NAME,
+            ],
+            $key,
+            [
+                'digest_alg' => 'sha256',
+            ],
+        );
+    $signed = $request === false
+        ? false
+        : openssl_csr_sign(
+            $request,
+            null,
+            $key,
+            DEV_MTLS_CLIENT_DAYS,
+            [
+                'digest_alg' => 'sha256',
+            ],
+            random_int(1, \PHP_INT_MAX),
+        );
     if ($key === false || $signed === false || ! openssl_x509_export($signed, $certificate) || ! openssl_pkey_export($key, $privateKey)) {
         io()->error(sprintf('Cannot issue a client certificate: %s', openssl_error_string() ?: 'no reason given by OpenSSL'));
         exit(1);

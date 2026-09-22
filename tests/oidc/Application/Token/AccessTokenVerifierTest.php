@@ -74,12 +74,26 @@ final class AccessTokenVerifierTest extends TestCase
         // Given
         $session = Fixtures::session(Fixtures::user($this->tenant));
         $jwts = new Jwts($this->tenant);
-        $code = Tokens::code('the-code', $this->client, $session, Fixtures::now(), ['openid', 'email'], claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'));
-        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
-            ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now());
+        $code = Tokens::code(
+            'the-code',
+            $this->client,
+            $session,
+            Fixtures::now(),
+            ['openid', 'email'],
+            claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'),
+        );
+        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+            GrantedAuthorization::fromAuthorizationCode($code),
+            Fixtures::now(),
+        );
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $verifier = new AccessTokenVerifier(new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+        $verifier = new AccessTokenVerifier(
+            new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()),
+            $clients,
+            $this->storedTokens,
+            new PublicSubjectIdentifierResolver(),
+        );
 
         // When
         $token = $verifier->verify($this->tenant, $minted->value, Fixtures::now()->modify('+9 minutes'));
@@ -110,7 +124,14 @@ final class AccessTokenVerifierTest extends TestCase
     {
         // Given
         $session = Fixtures::session(Fixtures::user($this->tenant));
-        $record = Tokens::storedAccessToken('the-opaque-token', $this->client, $session, Fixtures::now(), scopes: ['openid', 'email'], claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}}}'));
+        $record = Tokens::storedAccessToken(
+            'the-opaque-token',
+            $this->client,
+            $session,
+            Fixtures::now(),
+            scopes: ['openid', 'email'],
+            claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}}}'),
+        );
         $this->storedTokens->keep($record);
 
         // When
@@ -137,7 +158,12 @@ final class AccessTokenVerifierTest extends TestCase
     public function anOpaqueTokenWithoutAClaimsRequestAskedForNoClaimByName(): void
     {
         // Given
-        $this->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', $this->client, Fixtures::session(Fixtures::user($this->tenant)), Fixtures::now()));
+        $this->storedTokens->keep(Tokens::storedAccessToken(
+            'the-opaque-token',
+            $this->client,
+            Fixtures::session(Fixtures::user($this->tenant)),
+            Fixtures::now(),
+        ));
 
         // When
         $token = $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now());
@@ -177,11 +203,21 @@ final class AccessTokenVerifierTest extends TestCase
         yield 'no record' => [static function (): void {
         }];
         yield 'another value' => [static function (self $test): void {
-            $test->storedTokens->keep(Tokens::storedAccessToken('another-token', $test->client, Fixtures::session(Fixtures::user($test->tenant)), Fixtures::now()));
+            $test->storedTokens->keep(Tokens::storedAccessToken(
+                'another-token',
+                $test->client,
+                Fixtures::session(Fixtures::user($test->tenant)),
+                Fixtures::now(),
+            ));
         }];
         yield 'a record of another tenant' => [static function (self $test): void {
             $other = Fixtures::tenant('other', 'https://id.other.example');
-            $test->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', Clients::public($other), Fixtures::session(Fixtures::user($other)), Fixtures::now()));
+            $test->storedTokens->keep(Tokens::storedAccessToken(
+                'the-opaque-token',
+                Clients::public($other),
+                Fixtures::session(Fixtures::user($other)),
+                Fixtures::now(),
+            ));
         }];
     }
 
@@ -193,7 +229,12 @@ final class AccessTokenVerifierTest extends TestCase
     public function itRefusesAnExpiredOpaqueToken(): void
     {
         // Given
-        $this->storedTokens->keep(Tokens::storedAccessToken('the-opaque-token', $this->client, Fixtures::session(Fixtures::user($this->tenant)), Fixtures::now()));
+        $this->storedTokens->keep(Tokens::storedAccessToken(
+            'the-opaque-token',
+            $this->client,
+            Fixtures::session(Fixtures::user($this->tenant)),
+            Fixtures::now(),
+        ));
 
         // When
         try {
@@ -213,8 +254,12 @@ final class AccessTokenVerifierTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideValidPayloads')]
-    public function itReadsTheClaimsOfAnAccessTokenOfThisProvider(string $payload, string $expectedScopes, array $expectedClaims, int $expectedExpiry = 1789467000): void
-    {
+    public function itReadsTheClaimsOfAnAccessTokenOfThisProvider(
+        string $payload,
+        string $expectedScopes,
+        array $expectedClaims,
+        int $expectedExpiry = 1789467000,
+    ): void {
         // Given
         $this->knows($payload);
 
@@ -235,19 +280,36 @@ final class AccessTokenVerifierTest extends TestCase
     public static function provideValidPayloads(): iterable
     {
         yield 'as issued' => [self::PAYLOAD, 'openid profile', []];
-        yield 'audience list' => [self::with([
-            'aud' => ['api', 'spa'],
-        ]), 'openid profile', []];
+        yield 'audience list' => [
+            self::with([
+                'aud' => ['api', 'spa'],
+            ]),
+            'openid profile',
+            [],
+        ];
         yield 'no scope' => [self::without('scope'), '', []];
-        yield 'claims asked for by name' => [self::with([
-            'userinfo_claims' => ['email', 'name'],
-        ]), 'openid profile', ['email', 'name']];
-        yield 'claims asked for by name, none' => [self::with([
-            'userinfo_claims' => [],
-        ]), 'openid profile', []];
-        yield 'one second before expiry' => [self::with([
-            'exp' => 1789466401,
-        ]), 'openid profile', [], 1789466401];
+        yield 'claims asked for by name' => [
+            self::with([
+                'userinfo_claims' => ['email', 'name'],
+            ]),
+            'openid profile',
+            ['email', 'name'],
+        ];
+        yield 'claims asked for by name, none' => [
+            self::with([
+                'userinfo_claims' => [],
+            ]),
+            'openid profile',
+            [],
+        ];
+        yield 'one second before expiry' => [
+            self::with([
+                'exp' => 1789466401,
+            ]),
+            'openid profile',
+            [],
+            1789466401,
+        ];
     }
 
     /**
@@ -293,120 +355,248 @@ final class AccessTokenVerifierTest extends TestCase
     {
         yield 'does not verify' => [null, null, InvalidJwsException::class];
         yield 'not JSON' => ['not json', null, JsonException::class];
-        yield 'too deep' => [self::with([
-            'amr' => [['pwd']],
-        ]), null, JsonException::class];
+        yield 'too deep' => [
+            self::with([
+                'amr' => [['pwd']],
+            ]),
+            null,
+            JsonException::class,
+        ];
         yield 'a JSON string' => ['"iss"', null, null];
         yield 'a JSON list' => ['["https://id.acme.example"]', null, null];
         yield 'no typ header' => [self::PAYLOAD, [], null];
-        yield 'another typ header' => [self::PAYLOAD, [
-            'typ' => 'JWT',
-        ], null];
-        yield 'typ header in another case' => [self::PAYLOAD, [
-            'typ' => 'AT+JWT',
-        ], null];
-        yield 'no iss' => [self::without('iss'), null, null];
-        yield 'another iss' => [self::with([
-            'iss' => 'https://id.other.example',
-        ]), null, null];
-        yield 'no exp' => [self::without('exp'), null, null];
-        yield 'exp as a string' => [self::with([
-            'exp' => '1789467000',
-        ]), null, null];
-        yield 'exp as a float' => [self::with([
-            'exp' => 1789467000.5,
-        ]), null, null];
-        yield 'no client_id' => [self::without('client_id'), null, null];
-        yield 'client_id not a string' => [self::with([
-            'client_id' => 1,
-        ]), null, null];
-        yield 'unknown client' => [self::with([
-            'client_id' => 'other',
-        ]), null, null];
-        yield 'no aud' => [self::without('aud'), null, null];
-        yield 'aud of another client' => [self::with([
-            'aud' => 'other',
-        ]), null, null];
-        yield 'aud list without the client' => [self::with([
-            'aud' => ['api', 'other'],
-        ]), null, null];
-        yield 'aud as an object' => [self::with([
-            'aud' => [
-                'spa' => 'spa',
+        yield 'another typ header' => [
+            self::PAYLOAD,
+            [
+                'typ' => 'JWT',
             ],
-        ]), null, null];
-        yield 'aud as a number' => [self::with([
-            'aud' => 1,
-        ]), null, null];
+            null,
+        ];
+        yield 'typ header in another case' => [
+            self::PAYLOAD,
+            [
+                'typ' => 'AT+JWT',
+            ],
+            null,
+        ];
+        yield 'no iss' => [self::without('iss'), null, null];
+        yield 'another iss' => [
+            self::with([
+                'iss' => 'https://id.other.example',
+            ]),
+            null,
+            null,
+        ];
+        yield 'no exp' => [self::without('exp'), null, null];
+        yield 'exp as a string' => [
+            self::with([
+                'exp' => '1789467000',
+            ]),
+            null,
+            null,
+        ];
+        yield 'exp as a float' => [
+            self::with([
+                'exp' => 1789467000.5,
+            ]),
+            null,
+            null,
+        ];
+        yield 'no client_id' => [self::without('client_id'), null, null];
+        yield 'client_id not a string' => [
+            self::with([
+                'client_id' => 1,
+            ]),
+            null,
+            null,
+        ];
+        yield 'unknown client' => [
+            self::with([
+                'client_id' => 'other',
+            ]),
+            null,
+            null,
+        ];
+        yield 'no aud' => [self::without('aud'), null, null];
+        yield 'aud of another client' => [
+            self::with([
+                'aud' => 'other',
+            ]),
+            null,
+            null,
+        ];
+        yield 'aud list without the client' => [
+            self::with([
+                'aud' => ['api', 'other'],
+            ]),
+            null,
+            null,
+        ];
+        yield 'aud as an object' => [
+            self::with([
+                'aud' => [
+                    'spa' => 'spa',
+                ],
+            ]),
+            null,
+            null,
+        ];
+        yield 'aud as a number' => [
+            self::with([
+                'aud' => 1,
+            ]),
+            null,
+            null,
+        ];
         yield 'no sub' => [self::without('sub'), null, null];
         yield 'no iat' => [self::without('iat'), null, null];
-        yield 'iat as a string' => [self::with([
-            'iat' => '1789466400',
-        ]), null, null];
-        yield 'exp not after iat' => [self::with([
-            'iat' => 1789467000,
-        ]), null, null];
+        yield 'iat as a string' => [
+            self::with([
+                'iat' => '1789466400',
+            ]),
+            null,
+            null,
+        ];
+        yield 'exp not after iat' => [
+            self::with([
+                'iat' => 1789467000,
+            ]),
+            null,
+            null,
+        ];
         yield 'no auth_time' => [self::without('auth_time'), null, Throwable::class];
         yield 'no sid' => [self::without('sid'), null, null];
-        yield 'sid not a UUID' => [self::with([
-            'sid' => 'the-session',
-        ]), null, null];
+        yield 'sid not a UUID' => [
+            self::with([
+                'sid' => 'the-session',
+            ]),
+            null,
+            null,
+        ];
         yield 'no acr' => [self::without('acr'), null, Throwable::class];
-        yield 'acr empty' => [self::with([
-            'acr' => '',
-        ]), null, Throwable::class];
+        yield 'acr empty' => [
+            self::with([
+                'acr' => '',
+            ]),
+            null,
+            Throwable::class,
+        ];
         yield 'no amr' => [self::without('amr'), null, Throwable::class];
-        yield 'amr not a list' => [self::with([
-            'amr' => 'pwd',
-        ]), null, Throwable::class];
-        yield 'amr with an empty value' => [self::with([
-            'amr' => [''],
-        ]), null, Throwable::class];
-        yield 'amr empty' => [self::with([
-            'amr' => [],
-        ]), null, Throwable::class];
-        yield 'amr with a value that is not a method reference' => [self::with([
-            'amr' => ['not a method'],
-        ]), null, Throwable::class];
-        yield 'acr with a space' => [self::with([
-            'acr' => 'level one',
-        ]), null, Throwable::class];
+        yield 'amr not a list' => [
+            self::with([
+                'amr' => 'pwd',
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'amr with an empty value' => [
+            self::with([
+                'amr' => [''],
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'amr empty' => [
+            self::with([
+                'amr' => [],
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'amr with a value that is not a method reference' => [
+            self::with([
+                'amr' => ['not a method'],
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'acr with a space' => [
+            self::with([
+                'acr' => 'level one',
+            ]),
+            null,
+            Throwable::class,
+        ];
         yield 'no grant_id' => [self::without('grant_id'), null, null];
-        yield 'grant_id not a string' => [self::with([
-            'grant_id' => 1,
-        ]), null, null];
-        yield 'grant_id not a UUID' => [self::with([
-            'grant_id' => 'the-grant',
-        ]), null, null];
-        yield 'sub not a string' => [self::with([
-            'sub' => 1,
-        ]), null, null];
-        yield 'sub empty' => [self::with([
-            'sub' => '',
-        ]), null, Throwable::class];
-        yield 'scope not a string' => [self::with([
-            'scope' => ['openid'],
-        ]), null, Throwable::class];
-        yield 'scope empty' => [self::with([
-            'scope' => '',
-        ]), null, Throwable::class];
-        yield 'scope with two spaces' => [self::with([
-            'scope' => 'openid  profile',
-        ]), null, Throwable::class];
-        yield 'userinfo_claims not a list' => [self::with([
-            'userinfo_claims' => 'email',
-        ]), null, null];
-        yield 'userinfo_claims as an object' => [self::with([
-            'userinfo_claims' => [
-                'email' => null,
-            ],
-        ]), null, null];
-        yield 'userinfo_claims with a number' => [self::with([
-            'userinfo_claims' => ['email', 1],
-        ]), null, null];
-        yield 'userinfo_claims with an empty name' => [self::with([
-            'userinfo_claims' => [''],
-        ]), null, null];
+        yield 'grant_id not a string' => [
+            self::with([
+                'grant_id' => 1,
+            ]),
+            null,
+            null,
+        ];
+        yield 'grant_id not a UUID' => [
+            self::with([
+                'grant_id' => 'the-grant',
+            ]),
+            null,
+            null,
+        ];
+        yield 'sub not a string' => [
+            self::with([
+                'sub' => 1,
+            ]),
+            null,
+            null,
+        ];
+        yield 'sub empty' => [
+            self::with([
+                'sub' => '',
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'scope not a string' => [
+            self::with([
+                'scope' => ['openid'],
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'scope empty' => [
+            self::with([
+                'scope' => '',
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'scope with two spaces' => [
+            self::with([
+                'scope' => 'openid  profile',
+            ]),
+            null,
+            Throwable::class,
+        ];
+        yield 'userinfo_claims not a list' => [
+            self::with([
+                'userinfo_claims' => 'email',
+            ]),
+            null,
+            null,
+        ];
+        yield 'userinfo_claims as an object' => [
+            self::with([
+                'userinfo_claims' => [
+                    'email' => null,
+                ],
+            ]),
+            null,
+            null,
+        ];
+        yield 'userinfo_claims with a number' => [
+            self::with([
+                'userinfo_claims' => ['email', 1],
+            ]),
+            null,
+            null,
+        ];
+        yield 'userinfo_claims with an empty name' => [
+            self::with([
+                'userinfo_claims' => [''],
+            ]),
+            null,
+            null,
+        ];
     }
 
     /**
@@ -456,9 +646,14 @@ final class AccessTokenVerifierTest extends TestCase
      */
     private function knows(string $payload, ?array $header = null): void
     {
-        $this->jws->knows($this->tenant, self::TOKEN, $payload, $header ?? [
-            'typ' => 'at+jwt',
-        ]);
+        $this->jws->knows(
+            $this->tenant,
+            self::TOKEN,
+            $payload,
+            $header ?? [
+                'typ' => 'at+jwt',
+            ],
+        );
     }
 
     /**

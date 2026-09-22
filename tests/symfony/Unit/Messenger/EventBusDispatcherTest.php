@@ -42,8 +42,7 @@ final class EventBusDispatcherTest extends TestCase
         $event = new AuthenticationSessionEnded($session, Fixtures::now(), Fixtures::context());
 
         // When
-        $returned = new EventBusDispatcher($bus)
-            ->dispatch($event);
+        $returned = new EventBusDispatcher($bus)->dispatch($event);
 
         // Then
         static::assertSame($event, $returned);

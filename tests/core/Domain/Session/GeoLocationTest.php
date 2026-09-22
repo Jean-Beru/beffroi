@@ -16,7 +16,13 @@ final class GeoLocationTest extends TestCase
     public function itAcceptsAPartialLocation(): void
     {
         // When
-        $location = new GeoLocation(countryCode: 'FR', autonomousSystemNumber: 12322, autonomousSystemOrganization: 'Free SAS', latitude: 45.76, longitude: 4.83);
+        $location = new GeoLocation(
+            countryCode: 'FR',
+            autonomousSystemNumber: 12322,
+            autonomousSystemOrganization: 'Free SAS',
+            latitude: 45.76,
+            longitude: 4.83,
+        );
 
         // Then
         static::assertSame('FR', $location->countryCode);

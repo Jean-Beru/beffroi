@@ -395,8 +395,7 @@ final class RequestObjectTest extends BrowserTestCase
             ])
             ->build();
 
-        return new CompactSerializer()
-            ->serialize($jws, 0);
+        return new CompactSerializer()->serialize($jws, 0);
     }
 
     /**
@@ -406,9 +405,14 @@ final class RequestObjectTest extends BrowserTestCase
      */
     private static function unsigned(array $claims): string
     {
-        return self::segment(JwtPayload::encode([
-            'alg' => 'none',
-        ])) . '.' . self::segment(JwtPayload::encode($claims)) . '.';
+        return (
+            self::segment(JwtPayload::encode([
+                'alg' => 'none',
+            ]))
+            . '.'
+            . self::segment(JwtPayload::encode($claims))
+            . '.'
+        );
     }
 
     private static function segment(string $value): string

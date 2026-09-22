@@ -69,7 +69,12 @@ final class ClientAuthenticatorTest extends TestCase
         $this->clients->save($this->basicClient);
         $this->clients->save($this->postClient);
         $this->clients->save($this->publicClient);
-        $this->clients->save(Clients::confidential(Fixtures::tenant('other', 'https://id.other.example'), $this->hasher->hash(Clients::SECRET), Methods::clientSecretBasic(), 'foreign-client'));
+        $this->clients->save(Clients::confidential(
+            Fixtures::tenant('other', 'https://id.other.example'),
+            $this->hasher->hash(Clients::SECRET),
+            Methods::clientSecretBasic(),
+            'foreign-client',
+        ));
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->authenticator = new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events);
@@ -83,9 +88,15 @@ final class ClientAuthenticatorTest extends TestCase
     public function itAuthenticatesWithClientSecretBasic(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'grant_type' => 'authorization_code',
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'grant_type' => 'authorization_code',
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertSame($this->basicClient, $client->client);
@@ -172,9 +183,15 @@ final class ClientAuthenticatorTest extends TestCase
     public function itAcceptsAMatchingClientIdInTheBodyNextToTheHeader(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'client_id' => 'basic-client',
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'client_id' => 'basic-client',
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertSame($this->basicClient, $client->client);
@@ -187,10 +204,16 @@ final class ClientAuthenticatorTest extends TestCase
     public function itAuthenticatesWithClientSecretPost(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, null, [
-            'client_id' => 'post-client',
-            'client_secret' => Clients::SECRET,
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            [
+                'client_id' => 'post-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertSame($this->postClient, $client->client);
@@ -204,9 +227,15 @@ final class ClientAuthenticatorTest extends TestCase
     public function itIdentifiesAPublicClientByItsIdAlone(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, null, [
-            'client_id' => 'public-client',
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            [
+                'client_id' => 'public-client',
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertSame($this->publicClient, $client->client);
@@ -223,10 +252,16 @@ final class ClientAuthenticatorTest extends TestCase
         $this->expectException(InvalidRequestException::class);
 
         // When
-        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'client_id' => 'basic-client',
-            'client_secret' => Clients::SECRET,
-        ], $this->context);
+        $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'client_id' => 'basic-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            $this->context,
+        );
     }
 
     /**
@@ -265,9 +300,15 @@ final class ClientAuthenticatorTest extends TestCase
         $this->expectException(InvalidRequestException::class);
 
         // When
-        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'client_id' => 'post-client',
-        ], $this->context);
+        $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'client_id' => 'post-client',
+            ],
+            $this->context,
+        );
     }
 
     #[Test]
@@ -600,8 +641,13 @@ final class ClientAuthenticatorTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideUnexpectedMethods')]
-    public function anUnexpectedMethodCostsAVerificationAgainstADecoyWhenASecretIsPresented(?string $header, array $parameters, string $clientId, string $used, bool $secretPresented): void
-    {
+    public function anUnexpectedMethodCostsAVerificationAgainstADecoyWhenASecretIsPresented(
+        ?string $header,
+        array $parameters,
+        string $clientId,
+        string $used,
+        bool $secretPresented,
+    ): void {
         // When
         $this->failToAuthenticate($header, $parameters);
 
@@ -619,8 +665,13 @@ final class ClientAuthenticatorTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideUnexpectedMethods')]
-    public function anUnexpectedMethodIsAnnouncedWithTheMethodUsed(?string $header, array $parameters, string $clientId, string $used, bool $secretPresented): void
-    {
+    public function anUnexpectedMethodIsAnnouncedWithTheMethodUsed(
+        ?string $header,
+        array $parameters,
+        string $clientId,
+        string $used,
+        bool $secretPresented,
+    ): void {
         // When
         $this->failToAuthenticate($header, $parameters);
 
@@ -633,19 +684,37 @@ final class ClientAuthenticatorTest extends TestCase
      */
     public static function provideUnexpectedMethods(): iterable
     {
-        yield 'registered basic, used post' => [null, [
-            'client_id' => 'basic-client',
-            'client_secret' => Clients::SECRET,
-        ], 'basic-client', 'client_secret_post', true];
-        yield 'registered basic, used none' => [null, [
-            'client_id' => 'basic-client',
-        ], 'basic-client', 'none', false];
+        yield 'registered basic, used post' => [
+            null,
+            [
+                'client_id' => 'basic-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            'basic-client',
+            'client_secret_post',
+            true,
+        ];
+        yield 'registered basic, used none' => [
+            null,
+            [
+                'client_id' => 'basic-client',
+            ],
+            'basic-client',
+            'none',
+            false,
+        ];
         yield 'registered post, used basic' => [self::basic('post-client', Clients::SECRET), [], 'post-client', 'client_secret_basic', true];
         yield 'registered none, used basic' => [self::basic('public-client', Clients::SECRET), [], 'public-client', 'client_secret_basic', true];
-        yield 'registered none, used post' => [null, [
-            'client_id' => 'public-client',
-            'client_secret' => Clients::SECRET,
-        ], 'public-client', 'client_secret_post', true];
+        yield 'registered none, used post' => [
+            null,
+            [
+                'client_id' => 'public-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            'public-client',
+            'client_secret_post',
+            true,
+        ];
     }
 
     /**

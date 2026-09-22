@@ -121,14 +121,19 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
 
         // When
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
 
         // Then
         $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']));
@@ -153,14 +158,14 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $this->loginWithPasskey($interaction, $device);
 
         // Then
-        $authenticatedAt = $this->boundSession()
-            ->authenticatedAt()
-            ->getTimestamp();
-        static::assertSame([
-            'hwk' => $authenticatedAt,
-            'user' => $authenticatedAt,
-        ], $this->securityToken()
-            ->getAuthenticationProofs());
+        $authenticatedAt = $this->boundSession()->authenticatedAt()->getTimestamp();
+        static::assertSame(
+            [
+                'hwk' => $authenticatedAt,
+                'user' => $authenticatedAt,
+            ],
+            $this->securityToken()->getAuthenticationProofs(),
+        );
     }
 
     /**
@@ -312,7 +317,23 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $bob = User::create(Uuid::v7(), $other, new Subject('bob-subject'), 'bob', self::now());
         self::entityManager()->persist($other);
         self::service('test.heidi.users', UserRepositoryInterface::class)->save($bob);
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->save(new PasskeyCredential(Uuid::v7(), $bob, 'Other key', $device->credentialId, $device->cosePublicKey(), 0, ['usb'], false, false, Uuid::v4(), new PasskeyUserHandle($device->userHandle), self::now()));
+        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            ->save(
+                new PasskeyCredential(
+                    Uuid::v7(),
+                    $bob,
+                    'Other key',
+                    $device->credentialId,
+                    $device->cosePublicKey(),
+                    0,
+                    ['usb'],
+                    false,
+                    false,
+                    Uuid::v4(),
+                    new PasskeyUserHandle($device->userHandle),
+                    self::now(),
+                ),
+            );
         $interaction = $this->authorize();
 
         // When
@@ -378,16 +399,12 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $this->enrol(self::user('alice'), $device);
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
-        $token = $this->loginPage($interaction)
-            ->filter('form[data-passkey="login"] input[name="_csrf_token"]')
-            ->attr('value');
+        $token = $this->loginPage($interaction)->filter('form[data-passkey="login"] input[name="_csrf_token"]')->attr('value');
         $assertion = $device->get($this->requestOptions($interaction));
         $this->postPasskeyLogin($interaction, $assertion, $token);
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
-        $token = $this->loginPage($interaction)
-            ->filter('form[data-passkey="login"] input[name="_csrf_token"]')
-            ->attr('value');
+        $token = $this->loginPage($interaction)->filter('form[data-passkey="login"] input[name="_csrf_token"]')->attr('value');
 
         // When
         $this->postPasskeyLogin($interaction, $assertion, $token);
@@ -433,7 +450,11 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertNotNull($passkey->attr('hidden'), 'The passkey form waits for the script to find a capable browser.');
         static::assertCount(1, $passkey->filter('button[type="button"][data-passkey-button]'));
         static::assertSame('/passkey.js', $crawler->filter('script')->attr('src'));
-        static::assertCount(1, $crawler->filter('form')->first()->filter('button[type="submit"]'), 'The password form comes first: the scripted browser of the conformance suite clicks the first submit button.');
+        static::assertCount(
+            1,
+            $crawler->filter('form')->first()->filter('button[type="submit"]'),
+            'The password form comes first: the scripted browser of the conformance suite clicks the first submit button.',
+        );
     }
 
     /**
@@ -474,9 +495,12 @@ final class PasskeyLoginTest extends PasskeyTestCase
         // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        static::assertSame([
-            'error' => 'unknown_interaction',
-        ], self::json($response));
+        static::assertSame(
+            [
+                'error' => 'unknown_interaction',
+            ],
+            self::json($response),
+        );
     }
 
     /**
@@ -490,9 +514,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $this->enrol($alice, self::device());
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
-        $form = $this->loginPage($interaction)
-            ->selectButton('Sign in')
-            ->form();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
         $form['_username'] = 'alice';
         $form['_password'] = 'correct horse battery staple';
 
@@ -520,6 +542,12 @@ final class PasskeyLoginTest extends PasskeyTestCase
      */
     private function creationOptionsOfAnotherProvider(): string
     {
-        return '{"rp":{"id":"op.test","name":"Other"},"user":{"id":"' . Base64UrlSafe::encodeUnpadded(PasskeyUserHandle::generate()->value) . '","name":"bob","displayName":"bob"},"challenge":"' . str_repeat('A', 43) . '","pubKeyCredParams":[{"type":"public-key","alg":-7}]}';
+        return (
+            '{"rp":{"id":"op.test","name":"Other"},"user":{"id":"'
+            . Base64UrlSafe::encodeUnpadded(PasskeyUserHandle::generate()->value)
+            . '","name":"bob","displayName":"bob"},"challenge":"'
+            . str_repeat('A', 43)
+            . '","pubKeyCredParams":[{"type":"public-key","alg":-7}]}'
+        );
     }
 }

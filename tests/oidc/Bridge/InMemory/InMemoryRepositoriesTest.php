@@ -384,7 +384,12 @@ final class InMemoryRepositoriesTest extends TestCase
         $repository = new InMemoryRefreshTokenRepository();
         $lineage = $this->lineage(Tokens::family(Fixtures::now(), 'first-code'));
         $other = Tokens::refreshToken('other', $this->client, $this->session, Fixtures::now(), Tokens::family(Fixtures::now(), 'other-code'));
-        $elsewhere = Tokens::refreshToken('elsewhere', $this->client, Fixtures::session(Fixtures::user($this->session->tenant, 'bob', 'bob-subject')), Fixtures::now());
+        $elsewhere = Tokens::refreshToken(
+            'elsewhere',
+            $this->client,
+            Fixtures::session(Fixtures::user($this->session->tenant, 'bob', 'bob-subject')),
+            Fixtures::now(),
+        );
         foreach ([...$lineage, $other, $elsewhere] as $token) {
             $repository->save($token);
         }
@@ -421,7 +426,13 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryAccessTokenRepository();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'email']));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'email'],
+        ));
 
         // When
         $value = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
@@ -517,7 +528,12 @@ final class InMemoryRepositoriesTest extends TestCase
         // Given
         $repository = new InMemoryAccessTokenRepository();
         $here = Tokens::storedAccessToken('here', $this->client, $this->session, Fixtures::now());
-        $elsewhere = Tokens::storedAccessToken('elsewhere', $this->client, Fixtures::session(Fixtures::user($this->session->tenant, 'bob', 'bob-subject')), Fixtures::now());
+        $elsewhere = Tokens::storedAccessToken(
+            'elsewhere',
+            $this->client,
+            Fixtures::session(Fixtures::user($this->session->tenant, 'bob', 'bob-subject')),
+            Fixtures::now(),
+        );
         $repository->keep($here);
         $repository->keep($elsewhere);
 
@@ -531,7 +547,14 @@ final class InMemoryRepositoriesTest extends TestCase
 
     private function interaction(): Interaction
     {
-        return new Interaction(Interaction::generateId(), $this->client->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        return new Interaction(
+            Interaction::generateId(),
+            $this->client->tenant,
+            Requests::authorization($this->client),
+            null,
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
     }
 
     private function consent(User $user, Client $client, string $grantedAt): Consent
@@ -541,14 +564,34 @@ final class InMemoryRepositoriesTest extends TestCase
 
     private function pushedRequest(RequestUri $requestUri): PushedAuthorizationRequest
     {
-        return new PushedAuthorizationRequest($requestUri->hash(), $this->client, [
-            'scope' => 'openid',
-        ], Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        return new PushedAuthorizationRequest(
+            $requestUri->hash(),
+            $this->client,
+            [
+                'scope' => 'openid',
+            ],
+            Fixtures::now(),
+            Fixtures::now()->modify('+60 seconds'),
+        );
     }
 
     private function code(string $value): AuthorizationCode
     {
-        return new AuthorizationCode(AuthorizationCode::hash($value), Uuid::v7(), $this->client, $this->session, $this->client->redirectUris[0], [Scope::openid()], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, null, new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'), Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        return new AuthorizationCode(
+            AuthorizationCode::hash($value),
+            Uuid::v7(),
+            $this->client,
+            $this->session,
+            $this->client->redirectUris[0],
+            [Scope::openid()],
+            null,
+            new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            null,
+            null,
+            new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'),
+            Fixtures::now(),
+            Fixtures::now()->modify('+60 seconds'),
+        );
     }
 
     /**

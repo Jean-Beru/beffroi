@@ -206,9 +206,16 @@ final class DpopProofVerifierTest extends TestCase
     public function aProofSignedByAnotherKeyThanTheOneItCarriesIsRefused(): void
     {
         // Given
-        $proof = Proofs::proof('POST', self::ENDPOINT, $this->now(), null, [], [
-            DpopProof::KEY => Proofs::otherKey()->toPublic()->all(),
-        ]);
+        $proof = Proofs::proof(
+            'POST',
+            self::ENDPOINT,
+            $this->now(),
+            null,
+            [],
+            [
+                DpopProof::KEY => Proofs::otherKey()->toPublic()->all(),
+            ],
+        );
 
         // Then
         $this->expectException(InvalidDpopProofException::class);
@@ -226,9 +233,16 @@ final class DpopProofVerifierTest extends TestCase
     public function aProofCarryingAPrivateKeyIsRefused(): void
     {
         // Given
-        $proof = Proofs::proof('POST', self::ENDPOINT, $this->now(), null, [], [
-            DpopProof::KEY => Proofs::key()->all(),
-        ]);
+        $proof = Proofs::proof(
+            'POST',
+            self::ENDPOINT,
+            $this->now(),
+            null,
+            [],
+            [
+                DpopProof::KEY => Proofs::key()->all(),
+            ],
+        );
 
         // Then
         $this->expectException(InvalidDpopProofException::class);
@@ -259,9 +273,12 @@ final class DpopProofVerifierTest extends TestCase
             static::assertSame(400, $exception->statusCode, 'an endpoint that issues tokens answers the JSON of RFC 6749 section 5.2 (RFC 9449 section 8.1)');
             static::assertFalse($exception->redirectable);
             static::assertSame('the-nonce', $exception->nonce);
-            static::assertSame([
-                'DPoP-Nonce' => 'the-nonce',
-            ], $exception->challengeHeaders());
+            static::assertSame(
+                [
+                    'DPoP-Nonce' => 'the-nonce',
+                ],
+                $exception->challengeHeaders(),
+            );
         }
     }
 
@@ -337,30 +354,60 @@ final class DpopProofVerifierTest extends TestCase
         $now = new DateTimeImmutable(self::NOW);
 
         yield 'not a JWT at all' => ['not-a-jwt', 'not a readable JWT'];
-        yield 'another type' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [], [
-            'typ' => 'jwt',
-        ]), 'is a JWT of type dpop+jwt'];
+        yield 'another type' => [
+            Proofs::proof(
+                'POST',
+                self::ENDPOINT,
+                $now,
+                null,
+                [],
+                [
+                    'typ' => 'jwt',
+                ],
+            ),
+            'is a JWT of type dpop+jwt',
+        ];
         yield 'no jti' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [
-            'jti' => null,
-        ]), 'carries a jti'];
+                'jti' => null,
+            ]), 'carries a jti'];
         yield 'no htm' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [
-            'htm' => null,
-        ]), 'carries a htm'];
+                'htm' => null,
+            ]), 'carries a htm'];
         yield 'no htu' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [
-            'htu' => null,
-        ]), 'carries a htu'];
+                'htu' => null,
+            ]), 'carries a htu'];
         yield 'no iat' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [
-            'iat' => null,
-        ]), 'carries an iat'];
+                'iat' => null,
+            ]), 'carries an iat'];
         yield 'an iat that is not a number' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [
-            'iat' => 'now',
-        ]), 'carries an iat'];
-        yield 'no key in the header' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [], [
-            DpopProof::KEY => null,
-        ]), 'not signed by the key it carries'];
-        yield 'a key that is not one' => [Proofs::proof('POST', self::ENDPOINT, $now, null, [], [
-            DpopProof::KEY => 'a-key',
-        ]), 'not signed by the key it carries'];
+                'iat' => 'now',
+            ]), 'carries an iat'];
+        yield 'no key in the header' => [
+            Proofs::proof(
+                'POST',
+                self::ENDPOINT,
+                $now,
+                null,
+                [],
+                [
+                    DpopProof::KEY => null,
+                ],
+            ),
+            'not signed by the key it carries',
+        ];
+        yield 'a key that is not one' => [
+            Proofs::proof(
+                'POST',
+                self::ENDPOINT,
+                $now,
+                null,
+                [],
+                [
+                    DpopProof::KEY => 'a-key',
+                ],
+            ),
+            'not signed by the key it carries',
+        ];
     }
 
     private function now(): DateTimeImmutable

@@ -95,7 +95,7 @@ final readonly class UserSetPasswordCommand
         $stream = $input instanceof StreamableInputInterface ? $input->getStream() : null;
         $contents = stream_get_contents($stream ?? STDIN);
 
-        return $contents === false ? '' : (preg_replace('/\r?\n.*$/Ds', '', $contents) ?? '');
+        return $contents === false ? '' : preg_replace('/\r?\n.*$/Ds', '', $contents) ?? '';
     }
 
     /**

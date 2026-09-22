@@ -350,10 +350,22 @@ final class InteractionTest extends TestCase
     public static function provideConsentsOfSomeoneElse(): iterable
     {
         yield 'another user' => [
-            static fn (self $test): Consent => new Consent(Uuid::v7(), Fixtures::user($test->user->tenant, 'bob', 'bob-subject'), $test->client, [new Scope('openid'), new Scope('profile')], Fixtures::now()),
+            static fn (self $test): Consent => new Consent(
+                Uuid::v7(),
+                Fixtures::user($test->user->tenant, 'bob', 'bob-subject'),
+                $test->client,
+                [new Scope('openid'), new Scope('profile')],
+                Fixtures::now(),
+            ),
         ];
         yield 'another client' => [
-            static fn (self $test): Consent => new Consent(Uuid::v7(), $test->user, Clients::public($test->user->tenant), [new Scope('openid'), new Scope('profile')], Fixtures::now()),
+            static fn (self $test): Consent => new Consent(
+                Uuid::v7(),
+                $test->user,
+                Clients::public($test->user->tenant),
+                [new Scope('openid'), new Scope('profile')],
+                Fixtures::now(),
+            ),
         ];
     }
 
@@ -402,7 +414,14 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new Interaction(Interaction::generateId(), Fixtures::tenant('other', 'https://id.other.example'), Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        new Interaction(
+            Interaction::generateId(),
+            Fixtures::tenant('other', 'https://id.other.example'),
+            Requests::authorization($this->client),
+            null,
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
     }
 
     #[Test]
@@ -412,7 +431,14 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client), '', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        new Interaction(
+            Interaction::generateId(),
+            $this->user->tenant,
+            Requests::authorization($this->client),
+            '',
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
     }
 
     #[Test]
@@ -429,7 +455,14 @@ final class InteractionTest extends TestCase
     {
         $createdAt ??= Fixtures::now();
 
-        return new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client, ['openid', 'profile']), null, $createdAt, $createdAt->modify('+10 minutes'));
+        return new Interaction(
+            Interaction::generateId(),
+            $this->user->tenant,
+            Requests::authorization($this->client, ['openid', 'profile']),
+            null,
+            $createdAt,
+            $createdAt->modify('+10 minutes'),
+        );
     }
 
     private function completedInteraction(): Interaction

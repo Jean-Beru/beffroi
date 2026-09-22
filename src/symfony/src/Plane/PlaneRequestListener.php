@@ -29,12 +29,15 @@ final readonly class PlaneRequestListener
 
     public function __invoke(RequestEvent $event): void
     {
-        $route = $event->getRequest()
-            ->attributes->getString('_route');
+        $route = $event->getRequest()->attributes->getString('_route');
         if ($route === '' || $this->plane->serves($route)) {
             return;
         }
 
-        throw new NotFoundHttpException(sprintf('The route "%s" belongs to a plane this process does not serve (HEIDI_PLANE=%s).', $route, $this->plane->value));
+        throw new NotFoundHttpException(sprintf(
+            'The route "%s" belongs to a plane this process does not serve (HEIDI_PLANE=%s).',
+            $route,
+            $this->plane->value,
+        ));
     }
 }

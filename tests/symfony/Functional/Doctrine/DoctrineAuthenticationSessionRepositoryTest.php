@@ -30,9 +30,19 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         // Given
         $user = self::user();
         $establishedAt = self::now();
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt->modify('-1 minute'))
-            ->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $establishedAt);
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, $proofs, self::enrichedContext($establishedAt), $establishedAt->modify('+12 hours'));
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt->modify('-1 minute'))->with(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            $establishedAt,
+        );
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            $establishedAt,
+            $proofs,
+            self::enrichedContext($establishedAt),
+            $establishedAt->modify('+12 hours'),
+        );
         self::sessions()->save($session);
         self::reload();
 
@@ -62,7 +72,15 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         $user = self::user();
         $establishedAt = self::now();
         $createdFrom = self::enrichedContext($establishedAt);
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt), $createdFrom, $establishedAt->modify('+12 hours'));
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            $establishedAt,
+            AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt),
+            $createdFrom,
+            $establishedAt->modify('+12 hours'),
+        );
         self::sessions()->save($session);
         self::reload();
 
@@ -140,7 +158,10 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         $active = self::sessions()->findActiveByUser($alice, self::now()->modify('+1 minute'));
 
         // Then
-        static::assertSame([$first->id->toRfc4122(), $second->id->toRfc4122()], array_map(static fn (AuthenticationSession $session): string => $session->id->toRfc4122(), $active));
+        static::assertSame(
+            [$first->id->toRfc4122(), $second->id->toRfc4122()],
+            array_map(static fn (AuthenticationSession $session): string => $session->id->toRfc4122(), $active),
+        );
     }
 
     #[Test]
@@ -175,6 +196,12 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
      */
     private static function enrichedContext(DateTimeImmutable $receivedAt): RequestContext
     {
-        return new RequestContext($receivedAt, '203.0.113.10', 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0', new GeoLocation('FR', 'Île-de-France', 'Paris', 3215, 'Orange S.A.', 48.8566, 2.3522), new Device(DeviceType::Desktop, 'Firefox', '140.0', 'Linux'));
+        return new RequestContext(
+            $receivedAt,
+            '203.0.113.10',
+            'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0',
+            new GeoLocation('FR', 'Île-de-France', 'Paris', 3215, 'Orange S.A.', 48.8566, 2.3522),
+            new Device(DeviceType::Desktop, 'Firefox', '140.0', 'Linux'),
+        );
     }
 }

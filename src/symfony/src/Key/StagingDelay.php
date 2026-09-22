@@ -23,7 +23,7 @@ final readonly class StagingDelay
 
     public static function seconds(?int $configured, int $jwksMaxAge): int
     {
-        return $configured ?? $jwksMaxAge + self::ROTATION_COOLDOWN;
+        return $configured ?? ($jwksMaxAge + self::ROTATION_COOLDOWN);
     }
 
     public static function interval(?int $configured, int $jwksMaxAge): DateInterval

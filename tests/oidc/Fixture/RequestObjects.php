@@ -72,9 +72,14 @@ final class RequestObjects
      */
     public static function unsigned(array $claims): string
     {
-        return self::segment(JwtPayload::encode([
-            'alg' => 'none',
-        ])) . '.' . self::segment(JwtPayload::encode($claims)) . '.';
+        return (
+            self::segment(JwtPayload::encode([
+                'alg' => 'none',
+            ]))
+            . '.'
+            . self::segment(JwtPayload::encode($claims))
+            . '.'
+        );
     }
 
     /**
@@ -88,7 +93,8 @@ final class RequestObjects
      */
     public static function encryptedTo(array $publicJwk, string $payload, array $header = []): string
     {
-        $jwe = new JWEBuilder(Algorithms::encryption()->manager())->create()
+        $jwe = new JWEBuilder(Algorithms::encryption()->manager())
+            ->create()
             ->withPayload($payload)
             ->withSharedProtectedHeader([
                 'alg' => $publicJwk['alg'] ?? null,
@@ -99,12 +105,16 @@ final class RequestObjects
             ->addRecipient(new JWK($publicJwk))
             ->build();
 
-        return new CompactSerializer()
-            ->serialize($jwe, 0);
+        return new CompactSerializer()->serialize($jwe, 0);
     }
 
-    public static function resolver(ClientRepositoryInterface $clients, ClockInterface $clock, ?RequestObjectFetcherInterface $references = null, ?ClientKeySetProvider $keys = null, ?JweDecrypterInterface $decrypter = null): RequestObjectResolver
-    {
+    public static function resolver(
+        ClientRepositoryInterface $clients,
+        ClockInterface $clock,
+        ?RequestObjectFetcherInterface $references = null,
+        ?ClientKeySetProvider $keys = null,
+        ?JweDecrypterInterface $decrypter = null,
+    ): RequestObjectResolver {
         return new RequestObjectResolver(
             $clients,
             new RequestObjectReader(new JwtLibraryCompactJwtReader(), $decrypter ?? self::decrypter()),

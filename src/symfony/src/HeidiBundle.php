@@ -192,7 +192,8 @@ final class HeidiBundle extends AbstractBundle
 
     public function configure(DefinitionConfigurator $definition): void
     {
-        $definition->rootNode()
+        $definition
+            ->rootNode()
             ->children()
             ->arrayNode('tenant')
             ->info('The one tenant of this deployment: the key is already a tenant, a table comes later.')
@@ -312,7 +313,13 @@ final class HeidiBundle extends AbstractBundle
             ->end()
             ->end()
             ->validate()
-            ->ifTrue(static fn (array $tokens): bool => is_int($tokens['refresh_token_ttl']) && is_int($tokens['refresh_token_absolute_ttl']) && $tokens['refresh_token_ttl'] > $tokens['refresh_token_absolute_ttl'])
+            ->ifTrue(
+                static fn (array $tokens): bool => (
+                    is_int($tokens['refresh_token_ttl'])
+                    && is_int($tokens['refresh_token_absolute_ttl'])
+                    && $tokens['refresh_token_ttl'] > $tokens['refresh_token_absolute_ttl']
+                ),
+            )
             ->thenInvalid('The sliding lifetime of a refresh token (refresh_token_ttl) cannot exceed the absolute lifetime of its family (refresh_token_absolute_ttl).')
             ->end()
             ->end()
@@ -446,7 +453,8 @@ final class HeidiBundle extends AbstractBundle
             ->arrayNode('grant_types')
             ->defaultValue(self::DEFAULT_GRANT_TYPES)
             ->enumPrototype()
-            ->values(array_column(GrantType::cases(), 'value'))->end()
+            ->values(array_column(GrantType::cases(), 'value'))
+            ->end()
             ->end()
             ->arrayNode('allowed_scopes')
             ->defaultValue(self::DEFAULT_ALLOWED_SCOPES)
@@ -695,89 +703,71 @@ final class HeidiBundle extends AbstractBundle
         $mutualTls = self::section($config, 'mutual_tls');
 
         $services = $container->services();
-        $services->get(TenantFactory::class)
-            ->arg('$issuer', self::string($tenant, 'issuer'))
-            ->arg('$slug', self::string($tenant, 'slug'))
-            ->arg('$name', is_string($tenant['name'] ?? null) ? $tenant['name'] : null)
-            ->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'));
+        $services->get(TenantFactory::class)->arg('$issuer', self::string($tenant, 'issuer'))->arg('$slug', self::string($tenant, 'slug'))->arg(
+            '$name',
+            is_string($tenant['name'] ?? null) ? $tenant['name'] : null,
+        )->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'));
 
         // the DSN is an argument, not a parameter: it may carry key material
-        $services->set('heidi.kms', EncrypterInterface::class)
+        $services
+            ->set('heidi.kms', EncrypterInterface::class)
             ->factory([service('key_management.factory'), 'fromString'])
             ->args([self::string($keys, 'kms')]);
-        $services->set('heidi.kms.envelopes', EnvelopeEncrypter::class)
-            ->args([service('heidi.kms')]);
-        $services->get(EnvelopeKeySealer::class)
-            ->arg('$envelopes', service('heidi.kms.envelopes'))
-            ->arg('$kmsKeyId', self::string($keys, 'key_id'));
-        $services->get(EnvelopeSecretSealer::class)
-            ->arg('$envelopes', service('heidi.kms.envelopes'))
-            ->arg('$kmsKeyId', self::string($keys, 'key_id'));
-        $services->get(FileTenantKeyRepository::class)
-            ->arg('$directory', self::string($keys, 'storage'));
-        $services->get(FileMetadataBlobStore::class)
-            ->arg('$directory', self::string($webauthn, 'metadata_storage'));
-        $services->get(JwksHandler::class)
-            ->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
-        $services->get(RouterEndpointLocator::class)
-            ->arg('$mutualTlsOrigin', is_string($mutualTls['origin'] ?? null) ? $mutualTls['origin'] : null);
+        $services->set('heidi.kms.envelopes', EnvelopeEncrypter::class)->args([service('heidi.kms')]);
+        $services->get(EnvelopeKeySealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
+        $services->get(EnvelopeSecretSealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
+        $services->get(FileTenantKeyRepository::class)->arg('$directory', self::string($keys, 'storage'));
+        $services->get(FileMetadataBlobStore::class)->arg('$directory', self::string($webauthn, 'metadata_storage'));
+        $services->get(JwksHandler::class)->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
+        $services->get(RouterEndpointLocator::class)->arg('$mutualTlsOrigin', is_string($mutualTls['origin'] ?? null) ? $mutualTls['origin'] : null);
         // derived at runtime, once the environment placeholders are numbers
-        $services->get(TenantKeyRotator::class)
-            ->arg('$stagingDelay', inline_service(DateInterval::class)
-                ->factory(StagingDelay::interval(...))
-                ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]));
+        $services->get(TenantKeyRotator::class)->arg('$stagingDelay', inline_service(DateInterval::class)
+            ->factory(StagingDelay::interval(...))
+            ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]));
 
-        $services->get(AuthorizationHandler::class)
-            ->arg('$codeLifetime', self::seconds($tokens, 'authorization_code_ttl'));
-        $services->get(PushedAuthorizationHandler::class)
-            ->arg('$lifetime', self::seconds($tokens, 'request_uri_ttl'));
-        $services->get(JwtAccessTokenIssuer::class)
-            ->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
-        $services->get(OpaqueAccessTokenIssuer::class)
-            ->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
-        $services->get(JwtIdTokenIssuer::class)
-            ->arg('$lifetime', self::seconds($tokens, 'id_token_ttl'));
-        $services->get(TokenIssuer::class)
-            ->arg('$refreshTokenLifetime', self::seconds($tokens, 'refresh_token_ttl'));
-        $services->get(AuthorizationCodeGrant::class)
-            ->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
+        $services->get(AuthorizationHandler::class)->arg('$codeLifetime', self::seconds($tokens, 'authorization_code_ttl'));
+        $services->get(PushedAuthorizationHandler::class)->arg('$lifetime', self::seconds($tokens, 'request_uri_ttl'));
+        $services->get(JwtAccessTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
+        $services->get(OpaqueAccessTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
+        $services->get(JwtIdTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'id_token_ttl'));
+        $services->get(TokenIssuer::class)->arg('$refreshTokenLifetime', self::seconds($tokens, 'refresh_token_ttl'));
+        $services->get(AuthorizationCodeGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
 
-        $services->get(LogoutTokenSender::class)
-            ->arg('$timeout', self::float(self::section($config, 'back_channel_logout'), 'timeout'));
+        $services->get(LogoutTokenSender::class)->arg('$timeout', self::float(self::section($config, 'back_channel_logout'), 'timeout'));
 
         $clientAuthentication = self::section($config, 'client_authentication');
-        $services->get(ClientAssertionValidator::class)
-            ->arg('$maximumLifetime', self::seconds($clientAuthentication, 'assertion_max_lifetime'))
-            ->arg('$leeway', self::seconds($clientAuthentication, 'assertion_leeway'));
-        $services->get(ClientKeySetProvider::class)
-            ->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
-        $services->get(ClientJwksFetcher::class)
-            ->arg('$timeout', self::float($clientAuthentication, 'jwks_timeout'))
-            ->arg('$maximumSize', self::integer($clientAuthentication, 'jwks_max_size'));
-        $services->get(ClientJwksCache::class)
-            ->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
+        $services->get(ClientAssertionValidator::class)->arg('$maximumLifetime', self::seconds(
+            $clientAuthentication,
+            'assertion_max_lifetime',
+        ))->arg('$leeway', self::seconds($clientAuthentication, 'assertion_leeway'));
+        $services->get(ClientKeySetProvider::class)->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
+        $services->get(ClientJwksFetcher::class)->arg('$timeout', self::float($clientAuthentication, 'jwks_timeout'))->arg('$maximumSize', self::integer(
+            $clientAuthentication,
+            'jwks_max_size',
+        ));
+        $services->get(ClientJwksCache::class)->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
 
         $dpop = self::section($config, 'dpop');
         $nonces = self::section($dpop, 'nonce');
-        $services->get(DpopProofValidator::class)
-            ->arg('$maximumAge', self::seconds($dpop, 'proof_max_age'))
-            ->arg('$leeway', self::seconds($dpop, 'leeway'));
-        $services->get(CachedDpopNonce::class)
-            ->arg('$lifetime', self::seconds($nonces, 'ttl'));
+        $services->get(DpopProofValidator::class)->arg('$maximumAge', self::seconds($dpop, 'proof_max_age'))->arg('$leeway', self::seconds($dpop, 'leeway'));
+        $services->get(CachedDpopNonce::class)->arg('$lifetime', self::seconds($nonces, 'ttl'));
         // what the provider asks of a proof is a class it is wired with, never a flag read at every request
         $services->alias(DpopNonceInterface::class, ($nonces['required'] ?? false) === true ? CachedDpopNonce::class : NoDpopNonce::class);
 
         $requestObjects = self::section($config, 'request_objects');
-        $services->get(RequestObjectValidator::class)
-            ->arg('$maximumLifetime', self::seconds($requestObjects, 'max_lifetime'))
-            ->arg('$leeway', self::seconds($requestObjects, 'leeway'));
-        $services->get(RequestObjectFetcher::class)
-            ->arg('$timeout', self::float($requestObjects, 'timeout'))
-            ->arg('$maximumSize', self::integer($requestObjects, 'max_size'));
+        $services->get(RequestObjectValidator::class)->arg('$maximumLifetime', self::seconds($requestObjects, 'max_lifetime'))->arg('$leeway', self::seconds(
+            $requestObjects,
+            'leeway',
+        ));
+        $services->get(RequestObjectFetcher::class)->arg('$timeout', self::float($requestObjects, 'timeout'))->arg('$maximumSize', self::integer(
+            $requestObjects,
+            'max_size',
+        ));
 
-        $services->get(ConfigurationClientRepository::class)
-            ->arg('$tenantSlug', self::string($tenant, 'slug'))
-            ->arg('$definitions', is_array($config['clients'] ?? null) ? $config['clients'] : []);
+        $services->get(ConfigurationClientRepository::class)->arg('$tenantSlug', self::string($tenant, 'slug'))->arg(
+            '$definitions',
+            is_array($config['clients'] ?? null) ? $config['clients'] : [],
+        );
     }
 
     /**
@@ -847,7 +837,6 @@ final class HeidiBundle extends AbstractBundle
             throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a number of seconds.', $key));
         }
 
-        return inline_service(DateInterval::class)
-            ->args(['PT' . $value . 'S']);
+        return inline_service(DateInterval::class)->args(['PT' . $value . 'S']);
     }
 }

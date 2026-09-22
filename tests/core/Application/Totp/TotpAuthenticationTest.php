@@ -61,9 +61,23 @@ final class TotpAuthenticationTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
         // enrolled an hour ago: the step of its first code is long past
-        $this->totp = Totps::credential($this->alice, $this->hasher, Totps::stepAt($this->clock->now()->modify('-1 hour')), createdAt: $this->clock->now()->modify('-1 hour'));
+        $this->totp = Totps::credential(
+            $this->alice,
+            $this->hasher,
+            Totps::stepAt($this->clock->now()->modify('-1 hour')),
+            createdAt: $this->clock->now()->modify('-1 hour'),
+        );
         $credentials->save($this->totp);
-        $this->authentication = new TotpAuthentication($credentials, new ActiveTotp($credentials), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
+        $this->authentication = new TotpAuthentication(
+            $credentials,
+            new ActiveTotp($credentials),
+            new TotpCodeMatcher(Totps::algorithm()),
+            Totps::sealer(),
+            $this->hasher,
+            $this->attempts,
+            $this->clock,
+            $this->events,
+        );
     }
 
     #[Test]
@@ -96,10 +110,18 @@ final class TotpAuthenticationTest extends TestCase
     {
         // Given
         $credentials = $this->createMock(CredentialRepositoryInterface::class);
-        $credentials->method('findByUser')
-            ->willReturn([$this->totp]);
+        $credentials->method('findByUser')->willReturn([$this->totp]);
         $credentials->expects(static::once())->method('save')->with($this->totp);
-        $authentication = new TotpAuthentication($credentials, new ActiveTotp($credentials), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
+        $authentication = new TotpAuthentication(
+            $credentials,
+            new ActiveTotp($credentials),
+            new TotpCodeMatcher(Totps::algorithm()),
+            Totps::sealer(),
+            $this->hasher,
+            $this->attempts,
+            $this->clock,
+            $this->events,
+        );
 
         // When
         $authentication->authenticate($this->alice, $code === 'totp' ? Totps::codeAt($this->clock->now()) : $code, Fixtures::context($this->clock->now()));
@@ -477,14 +499,22 @@ final class TotpAuthenticationTest extends TestCase
      */
     private function authenticationWith(SecretSealerInterface $sealer): TotpAuthentication
     {
-        return new TotpAuthentication($this->credentials, new ActiveTotp($this->credentials), new TotpCodeMatcher(Totps::algorithm()), $sealer, $this->hasher, $this->attempts, $this->clock, $this->events);
+        return new TotpAuthentication(
+            $this->credentials,
+            new ActiveTotp($this->credentials),
+            new TotpCodeMatcher(Totps::algorithm()),
+            $sealer,
+            $this->hasher,
+            $this->attempts,
+            $this->clock,
+            $this->events,
+        );
     }
 
     private function sealerThatDoesNotAnswer(): SecretSealerInterface
     {
         $sealer = static::createStub(SecretSealerInterface::class);
-        $sealer->method('unseal')
-            ->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
+        $sealer->method('unseal')->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
 
         return $sealer;
     }

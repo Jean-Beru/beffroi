@@ -78,12 +78,17 @@ final class InteractionLoginHandlerTest extends TestCase
     public function theInteractionIsReadFromTheQueryOnly(): void
     {
         // Given
-        $request = Request::create('/login', 'POST', [
-            'interaction' => 'from-the-body',
-            '_target_path' => '/elsewhere',
-        ], server: [
-            'HTTP_REFERER' => 'https://op.test/login?interaction=from-the-referer',
-        ]);
+        $request = Request::create(
+            '/login',
+            'POST',
+            [
+                'interaction' => 'from-the-body',
+                '_target_path' => '/elsewhere',
+            ],
+            server: [
+                'HTTP_REFERER' => 'https://op.test/login?interaction=from-the-referer',
+            ],
+        );
 
         // When
         $response = $this->handler->onAuthenticationSuccess($request, new NullToken());

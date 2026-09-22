@@ -36,9 +36,12 @@ final class AuthorizationAnswerTest extends TestCase
         $signed = $answer->signedWith('the.signed.document');
 
         // Then
-        static::assertSame([
-            'response' => 'the.signed.document',
-        ], $signed->parameters);
+        static::assertSame(
+            [
+                'response' => 'the.signed.document',
+            ],
+            $signed->parameters,
+        );
         static::assertSame($client, $signed->client);
         static::assertSame($answer->redirectUri, $signed->redirectUri);
     }

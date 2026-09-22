@@ -150,11 +150,15 @@ final class PkceExemptFlowTest extends BrowserTestCase
      */
     private static function legacyParameters(array $parameters = []): array
     {
-        return self::authorizationParameters(self::CLIENT_ID, $parameters + [
-            'redirect_uri' => self::REDIRECT_URI,
-            'code_challenge' => null,
-            'code_challenge_method' => null,
-        ]);
+        return self::authorizationParameters(
+            self::CLIENT_ID,
+            $parameters
+            + [
+                'redirect_uri' => self::REDIRECT_URI,
+                'code_challenge' => null,
+                'code_challenge_method' => null,
+            ],
+        );
     }
 
     /**
@@ -191,12 +195,17 @@ final class PkceExemptFlowTest extends BrowserTestCase
      */
     private function exchange(string $code, array $parameters = []): void
     {
-        $this->browser->request('POST', '/token', $parameters + [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => self::REDIRECT_URI,
-            'client_id' => self::CLIENT_ID,
-            'client_secret' => self::SECRET,
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            $parameters
+            + [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => self::REDIRECT_URI,
+                'client_id' => self::CLIENT_ID,
+                'client_secret' => self::SECRET,
+            ],
+        );
     }
 }

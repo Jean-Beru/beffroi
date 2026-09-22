@@ -44,7 +44,7 @@ jobs:
           fi
 
   quality:
-    name: "1️⃣ Quality (PHPStan, ECS, Rector, composer.json, syntax, licenses, Deptrac)"
+    name: "1️⃣ Quality (PHPStan, Mago, Rector, composer.json, syntax, licenses, Deptrac)"
     needs: [pre_checks]
     runs-on: ubuntu-latest
     container:
@@ -59,9 +59,14 @@ jobs:
       - name: "Static Analysis (PHPStan)"
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: castor phpstan
-      - name: "Coding Standards (ECS)"
+      # Mago is a Rust binary the phpqa image already carries (/tools/mago); nothing is installed for
+      # it here and it needs no PHP runtime. It reads mago.toml at the root of the repository.
+      - name: "Formatting (Mago)"
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
-        run: castor ecs
+        run: castor mago-format
+      - name: "Coding Standards (Mago)"
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: castor mago-lint
       - name: "Refactoring (Rector)"
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: castor rector

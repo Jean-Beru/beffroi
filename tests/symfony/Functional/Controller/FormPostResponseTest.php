@@ -98,8 +98,7 @@ final class FormPostResponseTest extends BrowserTestCase
         // Then
         static::assertSame(
             sprintf("default-src 'none'; script-src '%s'; form-action https://demo.test; base-uri 'none'; frame-ancestors 'none'", self::SCRIPT_HASH),
-            $this->browser->getResponse()
-                ->headers->get('Content-Security-Policy'),
+            $this->browser->getResponse()->headers->get('Content-Security-Policy'),
         );
     }
 
@@ -152,12 +151,15 @@ final class FormPostResponseTest extends BrowserTestCase
         // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertFalse($this->browser->getResponse()->headers->has('Location'));
-        static::assertSame([
-            'error' => 'invalid_request',
-            'error_description' => 'The code_challenge parameter is missing (RFC 7636 section 4.3).',
-            'state' => 'state-of-the-client',
-            'iss' => 'https://op.test',
-        ], self::postedFields($crawler));
+        static::assertSame(
+            [
+                'error' => 'invalid_request',
+                'error_description' => 'The code_challenge parameter is missing (RFC 7636 section 4.3).',
+                'state' => 'state-of-the-client',
+                'iss' => 'https://op.test',
+            ],
+            self::postedFields($crawler),
+        );
     }
 
     /**
@@ -247,9 +249,13 @@ final class FormPostResponseTest extends BrowserTestCase
      */
     private static function formPostParameters(array $parameters = [], string $clientId = 'oidc-demo'): array
     {
-        return self::authorizationParameters($clientId, $parameters + [
-            'response_mode' => 'form_post',
-        ]);
+        return self::authorizationParameters(
+            $clientId,
+            $parameters
+            + [
+                'response_mode' => 'form_post',
+            ],
+        );
     }
 
     /**

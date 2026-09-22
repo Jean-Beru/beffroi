@@ -29,8 +29,7 @@ final class ClientEncryption
     public static function privateKey(): JWK
     {
         return self::$privateKey ??= new JWK([
-            ...Algorithms::ecdhEsA256Kw()->generateKey()
-                ->all(),
+            ...Algorithms::ecdhEsA256Kw()->generateKey()->all(),
             'kid' => self::KEY_ID,
         ]);
     }
@@ -42,10 +41,8 @@ final class ClientEncryption
     {
         /** @var list<array<string, mixed>> $keys */
         $keys = [
-            ClientAssertions::privateKey()->toPublic()
-                ->all(),
-            self::privateKey()->toPublic()
-                ->all(),
+            ClientAssertions::privateKey()->toPublic()->all(),
+            self::privateKey()->toPublic()->all(),
         ];
 
         return new ClientJwks($keys);
@@ -64,8 +61,7 @@ final class ClientEncryption
      */
     public static function open(string $compactJwe): array
     {
-        $jwe = new CompactSerializer()
-            ->unserialize($compactJwe);
+        $jwe = new CompactSerializer()->unserialize($compactJwe);
         $opened = new JWEDecrypter(Algorithms::encryption()->manager())->decryptUsingKey($jwe, self::privateKey(), 0);
         Assert::assertTrue($opened, 'The client could not open the document addressed to it.');
         $payload = $jwe->getPayload();

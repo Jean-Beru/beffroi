@@ -85,9 +85,19 @@ final class AuthenticationSnapshotTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), $this->authenticatedAt->modify('-1 hour'))
-            ->with(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), $this->authenticatedAt);
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $this->authenticatedAt, $proofs, Fixtures::context($this->authenticatedAt), $this->authenticatedAt->modify('+12 hours'));
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), $this->authenticatedAt->modify('-1 hour'))->with(
+            new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY),
+            $this->authenticatedAt,
+        );
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            $this->authenticatedAt,
+            $proofs,
+            Fixtures::context($this->authenticatedAt),
+            $this->authenticatedAt->modify('+12 hours'),
+        );
 
         // When
         $snapshot = AuthenticationSnapshot::ofSession($session, AuthenticationContextClass::phishingResistant());
@@ -108,11 +118,14 @@ final class AuthenticationSnapshotTest extends TestCase
         $claims = $snapshot->toClaims();
 
         // Then
-        static::assertSame([
-            'auth_time' => 1789905600,
-            'acr' => '1',
-            'amr' => ['pwd'],
-        ], $claims);
+        static::assertSame(
+            [
+                'auth_time' => 1789905600,
+                'acr' => '1',
+                'amr' => ['pwd'],
+            ],
+            $claims,
+        );
     }
 
     #[Test]
@@ -157,42 +170,66 @@ final class AuthenticationSnapshotTest extends TestCase
             'amr' => ['pwd'],
         ];
         yield 'no auth_time' => [self::without($written, 'auth_time'), 'The auth_time claim is not a number of seconds.'];
-        yield 'auth_time as a string' => [[
-            ...$written,
-            'auth_time' => '1789473600',
-        ], 'The auth_time claim is not a number of seconds.'];
-        yield 'no amr' => [self::without($written, 'amr'), 'The amr claim is not a list.'];
-        yield 'amr as a string' => [[
-            ...$written,
-            'amr' => 'pwd',
-        ], 'The amr claim is not a list.'];
-        yield 'amr as a map' => [[
-            ...$written,
-            'amr' => [
-                'first' => 'pwd',
+        yield 'auth_time as a string' => [
+            [
+                ...$written,
+                'auth_time' => '1789473600',
             ],
-        ], 'The amr claim is not a list.'];
-        yield 'amr with an empty value' => [[
-            ...$written,
-            'amr' => [''],
-        ], 'The amr claim is not a list of strings.'];
-        yield 'amr with a number' => [[
-            ...$written,
-            'amr' => [1],
-        ], 'The amr claim is not a list of strings.'];
-        yield 'amr empty' => [[
-            ...$written,
-            'amr' => [],
-        ], 'An authentication records at least one method (RFC 8176).'];
+            'The auth_time claim is not a number of seconds.',
+        ];
+        yield 'no amr' => [self::without($written, 'amr'), 'The amr claim is not a list.'];
+        yield 'amr as a string' => [
+            [
+                ...$written,
+                'amr' => 'pwd',
+            ],
+            'The amr claim is not a list.',
+        ];
+        yield 'amr as a map' => [
+            [
+                ...$written,
+                'amr' => [
+                    'first' => 'pwd',
+                ],
+            ],
+            'The amr claim is not a list.',
+        ];
+        yield 'amr with an empty value' => [
+            [
+                ...$written,
+                'amr' => [''],
+            ],
+            'The amr claim is not a list of strings.',
+        ];
+        yield 'amr with a number' => [
+            [
+                ...$written,
+                'amr' => [1],
+            ],
+            'The amr claim is not a list of strings.',
+        ];
+        yield 'amr empty' => [
+            [
+                ...$written,
+                'amr' => [],
+            ],
+            'An authentication records at least one method (RFC 8176).',
+        ];
         yield 'no acr' => [self::without($written, 'acr'), 'The acr claim is not a string.'];
-        yield 'acr empty' => [[
-            ...$written,
-            'acr' => '',
-        ], 'The acr claim is not a string.'];
-        yield 'acr as a number' => [[
-            ...$written,
-            'acr' => 1,
-        ], 'The acr claim is not a string.'];
+        yield 'acr empty' => [
+            [
+                ...$written,
+                'acr' => '',
+            ],
+            'The acr claim is not a string.',
+        ];
+        yield 'acr as a number' => [
+            [
+                ...$written,
+                'acr' => 1,
+            ],
+            'The acr claim is not a string.',
+        ];
     }
 
     /**

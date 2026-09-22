@@ -27,9 +27,14 @@ final readonly class PasskeyScriptController
     #[Route('/passkey.js', name: self::ROUTE, methods: ['GET'])]
     public function __invoke(Request $request): Response
     {
-        $response = new BinaryFileResponse(dirname(__DIR__, 2) . '/assets/' . self::FILE, Response::HTTP_OK, [
-            'Content-Type' => 'text/javascript; charset=utf-8',
-        ], false);
+        $response = new BinaryFileResponse(
+            dirname(__DIR__, 2) . '/assets/' . self::FILE,
+            Response::HTTP_OK,
+            [
+                'Content-Type' => 'text/javascript; charset=utf-8',
+            ],
+            false,
+        );
         $response->setAutoEtag();
         $response->setPublic();
         $response->setMaxAge(3600);

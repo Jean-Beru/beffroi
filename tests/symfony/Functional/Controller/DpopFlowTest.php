@@ -49,9 +49,12 @@ final class DpopFlowTest extends BrowserTestCase
 
         // Then
         static::assertSame('DPoP', $tokens['token_type']);
-        static::assertSame([
-            'jkt' => Proofs::thumbprintOf(Proofs::key())->thumbprint,
-        ], self::claimsOf(self::string($tokens['access_token']))['cnf']);
+        static::assertSame(
+            [
+                'jkt' => Proofs::thumbprintOf(Proofs::key())->thumbprint,
+            ],
+            self::claimsOf(self::string($tokens['access_token']))['cnf'],
+        );
     }
 
     /**
@@ -229,9 +232,17 @@ final class DpopFlowTest extends BrowserTestCase
 
     private function proof(string $method, string $url, ?string $accessToken = null, ?JWK $key = null): string
     {
-        return Proofs::proof($method, $url, Clock::get()->now(), $accessToken, [
-            'jti' => 'proof-' . self::$proofs++,
-        ], [], $key);
+        return Proofs::proof(
+            $method,
+            $url,
+            Clock::get()->now(),
+            $accessToken,
+            [
+                'jti' => 'proof-' . self::$proofs++,
+            ],
+            [],
+            $key,
+        );
     }
 
     /**

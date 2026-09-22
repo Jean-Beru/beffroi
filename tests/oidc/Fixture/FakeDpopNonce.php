@@ -25,8 +25,11 @@ final readonly class FakeDpopNonce implements DpopNonceInterface
             return;
         }
 
-        throw new UseDpopNonceException($this->nonce, $nonce === null
-            ? 'This provider asks a DPoP proof to carry a nonce it issued (RFC 9449 section 8).'
-            : 'The DPoP proof carries a nonce this provider no longer accepts (RFC 9449 section 8).');
+        throw new UseDpopNonceException(
+            $this->nonce,
+            $nonce === null
+                ? 'This provider asks a DPoP proof to carry a nonce it issued (RFC 9449 section 8).'
+                : 'The DPoP proof carries a nonce this provider no longer accepts (RFC 9449 section 8).',
+        );
     }
 }

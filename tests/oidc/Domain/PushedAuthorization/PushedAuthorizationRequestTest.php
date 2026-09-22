@@ -213,7 +213,10 @@ final class PushedAuthorizationRequestTest extends TestCase
         $request = $this->request();
 
         // When / Then
-        static::assertFalse($request->belongsTo(Clients::confidential(Fixtures::tenant('other', 'https://id.other.example'), new FakePasswordHasher()->hash(Clients::SECRET))));
+        static::assertFalse($request->belongsTo(Clients::confidential(
+            Fixtures::tenant('other', 'https://id.other.example'),
+            new FakePasswordHasher()->hash(Clients::SECRET),
+        )));
     }
 
     /**

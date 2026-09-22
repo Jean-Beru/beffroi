@@ -239,7 +239,10 @@ final class OAuth2ExceptionTest extends TestCase
     public static function provideErrorsOfARequestObject(): iterable
     {
         yield 'invalid_request_object' => ['invalid_request_object', new InvalidRequestObjectException('The request object has expired.')];
-        yield 'invalid_request_uri' => ['invalid_request_uri', new InvalidRequestUriException('The request_uri parameter names no URL this client registered.')];
+        yield 'invalid_request_uri' => [
+            'invalid_request_uri',
+            new InvalidRequestUriException('The request_uri parameter names no URL this client registered.'),
+        ];
     }
 
     /**

@@ -231,26 +231,27 @@ final class HeidiBundleExtensionTest extends TestCase
     private static function load(array $config, ?ContainerBuilder $container = null): ContainerBuilder
     {
         $container ??= new ContainerBuilder();
-        $extension = new HeidiBundle()
-            ->getContainerExtension();
+        $extension = new HeidiBundle()->getContainerExtension();
         static::assertNotNull($extension);
-        $extension->load([$config + [
-            'tenant' => [
-                'issuer' => 'https://op.test',
-            ],
-            'keys' => [
-                'kms' => 'sodium://?keys[signing]=AAAA',
-                'key_id' => 'signing',
-            ],
-        ]], $container);
+        $extension->load([
+            $config
+                + [
+                    'tenant' => [
+                        'issuer' => 'https://op.test',
+                    ],
+                    'keys' => [
+                        'kms' => 'sodium://?keys[signing]=AAAA',
+                        'key_id' => 'signing',
+                    ],
+                ],
+        ], $container);
 
         return $container;
     }
 
     private static function interval(ContainerBuilder $container, string $service, string $argument): string
     {
-        $definition = $container->getDefinition($service)
-            ->getArgument($argument);
+        $definition = $container->getDefinition($service)->getArgument($argument);
         static::assertInstanceOf(Definition::class, $definition);
         static::assertSame(DateInterval::class, $definition->getClass());
         $spec = $definition->getArgument(0);

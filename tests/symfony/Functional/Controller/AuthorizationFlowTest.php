@@ -317,12 +317,15 @@ final class AuthorizationFlowTest extends BrowserTestCase
         // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
-        static::assertSame([
-            'error' => 'access_denied',
-            'error_description' => 'The end user denied the request.',
-            'state' => 'state-of-the-client',
-            'iss' => 'https://op.test',
-        ], self::redirectedQuery($response));
+        static::assertSame(
+            [
+                'error' => 'access_denied',
+                'error_description' => 'The end user denied the request.',
+                'state' => 'state-of-the-client',
+                'iss' => 'https://op.test',
+            ],
+            self::redirectedQuery($response),
+        );
     }
 
     /**
@@ -539,7 +542,8 @@ final class AuthorizationFlowTest extends BrowserTestCase
         ]);
 
         // Then
-        $pending = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction) ?? static::fail('The interaction is gone.');
+        $pending = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)
+            ->find($interaction) ?? static::fail('The interaction is gone.');
         static::assertFalse($pending->isCompleted());
     }
 
@@ -553,9 +557,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
         // Given
         $session = $this->signIn(self::user('alice'));
         $interaction = $this->beginAuthorization();
-        $form = $this->consentPage($interaction)
-            ->selectButton('Allow')
-            ->form();
+        $form = $this->consentPage($interaction)->selectButton('Allow')->form();
         $this->endSession($session);
 
         // When

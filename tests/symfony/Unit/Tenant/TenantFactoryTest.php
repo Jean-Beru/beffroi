@@ -85,10 +85,8 @@ final class TenantFactoryTest extends TestCase
         $clock = new MockClock(Fixtures::now());
 
         // When
-        $tenant = new TenantFactory('https://op.test/idp', 'main', 'Main tenant', $clock)
-            ->create();
-        $again = new TenantFactory('https://other.test', 'main', null, $clock)
-            ->create();
+        $tenant = new TenantFactory('https://op.test/idp', 'main', 'Main tenant', $clock)->create();
+        $again = new TenantFactory('https://other.test', 'main', null, $clock)->create();
 
         // Then
         static::assertTrue($tenant->id->equals(TenantFactory::identifier('main')));

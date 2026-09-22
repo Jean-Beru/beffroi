@@ -112,7 +112,9 @@ final class SchemaTest extends DatabaseTestCase
         self::reload();
 
         // When
-        $tables = array_map(static fn (OptionallyQualifiedName $table): string => $table->getUnqualifiedName()->getValue(), self::entityManager()->getConnection()->createSchemaManager()->introspectTableNames());
+        $tables = array_map(static fn (OptionallyQualifiedName $table): string => $table
+            ->getUnqualifiedName()
+            ->getValue(), self::entityManager()->getConnection()->createSchemaManager()->introspectTableNames());
 
         // Then
         static::assertContains('app_user', $tables);
@@ -128,13 +130,10 @@ final class SchemaTest extends DatabaseTestCase
     private static function tablesOfTheBundle(): array
     {
         $entityManager = self::entityManager();
-        $schema = new SchemaTool($entityManager)
-            ->getSchemaFromMetadata($entityManager->getMetadataFactory()->getAllMetadata());
+        $schema = new SchemaTool($entityManager)->getSchemaFromMetadata($entityManager->getMetadataFactory()->getAllMetadata());
         $tables = [];
         foreach ($schema->getTables() as $table) {
-            $name = $table->getObjectName()
-                ->getUnqualifiedName()
-                ->getValue();
+            $name = $table->getObjectName()->getUnqualifiedName()->getValue();
             if ($name !== 'app_user') {
                 $tables[$name] = $table;
             }

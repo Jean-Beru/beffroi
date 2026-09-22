@@ -134,8 +134,7 @@ final class TotpProvisioningStoreTest extends TestCase
         static::assertIsArray($stored);
         $this->session->set(TotpProvisioningStore::KEY, [
             'user' => $elsewhere->id->toRfc4122(),
-            'expires_at' => $this->now->modify('+10 minutes')
-                ->getTimestamp(),
+            'expires_at' => $this->now->modify('+10 minutes')->getTimestamp(),
             'sealed' => $stored['sealed'],
         ]);
 
@@ -167,8 +166,7 @@ final class TotpProvisioningStoreTest extends TestCase
         $this->expectException(KmsUnavailableException::class);
 
         // When
-        $this->storeOnAKmsThatDoesNotAnswer()
-            ->provisioning($this->session, $this->alice, $this->now);
+        $this->storeOnAKmsThatDoesNotAnswer()->provisioning($this->session, $this->alice, $this->now);
     }
 
     #[Test]
@@ -177,8 +175,7 @@ final class TotpProvisioningStoreTest extends TestCase
         // Given
         $this->store->store($this->session, $this->alice, $this->provisioning, $this->now);
         try {
-            $this->storeOnAKmsThatDoesNotAnswer()
-                ->provisioning($this->session, $this->alice, $this->now);
+            $this->storeOnAKmsThatDoesNotAnswer()->provisioning($this->session, $this->alice, $this->now);
         } catch (KmsUnavailableException) {
         }
 
@@ -193,8 +190,7 @@ final class TotpProvisioningStoreTest extends TestCase
     private function storeOnAKmsThatDoesNotAnswer(): TotpProvisioningStore
     {
         $sealer = static::createStub(SecretSealerInterface::class);
-        $sealer->method('unseal')
-            ->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
+        $sealer->method('unseal')->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
 
         return new TotpProvisioningStore(new TotpProvisioningSealer($sealer));
     }

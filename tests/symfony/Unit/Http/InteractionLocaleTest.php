@@ -37,8 +37,13 @@ final class InteractionLocaleTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideChoices')]
-    public function theLocaleIsUiLocalesThenAcceptLanguageThenTheDefault(array $enabled, string $default, array $uiLocales, ?string $acceptLanguage, string $expected): void
-    {
+    public function theLocaleIsUiLocalesThenAcceptLanguageThenTheDefault(
+        array $enabled,
+        string $default,
+        array $uiLocales,
+        ?string $acceptLanguage,
+        string $expected,
+    ): void {
         // Given
         $locale = new InteractionLocale(new LocaleSwitcher($default, []), $enabled, $default);
         // Request::create() gives every request an English Accept-Language; the case says which header there is

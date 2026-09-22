@@ -144,7 +144,17 @@ final class SelfSignedTlsClientAuthTest extends TestCase
     public function aClientWhoseKeysCannotBeReadBackIsRefused(): void
     {
         // Given
-        $this->clients->save(new Client($this->tenant, 'remote-client', 'Client publishing its certificate behind a URI', Methods::selfSignedTlsClientAuth(), null, $this->client->redirectUris, jwksUri: new ClientUri(self::JWKS_URI)));
+        $this->clients->save(
+            new Client(
+                $this->tenant,
+                'remote-client',
+                'Client publishing its certificate behind a URI',
+                Methods::selfSignedTlsClientAuth(),
+                null,
+                $this->client->redirectUris,
+                jwksUri: new ClientUri(self::JWKS_URI),
+            ),
+        );
         $fetcher = new FakeClientJwksFetcher([]);
         $fetcher->failure = new ClientKeysUnavailableException('The keys of the client could not be read back.');
 
@@ -167,16 +177,28 @@ final class SelfSignedTlsClientAuthTest extends TestCase
         static::assertSame('self_signed_tls_client_auth', Methods::selfSignedTlsClientAuth()->name());
     }
 
-    private function authenticate(ClientCertificate $certificate, string $clientId = 'self-signed-client', ?FakeClientJwksFetcher $fetcher = null): AuthenticatedClient
-    {
-        return $this->authenticator($fetcher)
-            ->authenticate($this->tenant, self::ENDPOINT, null, [
+    private function authenticate(
+        ClientCertificate $certificate,
+        string $clientId = 'self-signed-client',
+        ?FakeClientJwksFetcher $fetcher = null,
+    ): AuthenticatedClient {
+        return $this->authenticator($fetcher)->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            [
                 'client_id' => $clientId,
-            ], $this->context, $certificate);
+            ],
+            $this->context,
+            $certificate,
+        );
     }
 
-    private function failToAuthenticate(ClientCertificate $certificate, string $clientId = 'self-signed-client', ?FakeClientJwksFetcher $fetcher = null): OAuth2Exception
-    {
+    private function failToAuthenticate(
+        ClientCertificate $certificate,
+        string $clientId = 'self-signed-client',
+        ?FakeClientJwksFetcher $fetcher = null,
+    ): OAuth2Exception {
         try {
             $this->authenticate($certificate, $clientId, $fetcher);
         } catch (OAuth2Exception $exception) {

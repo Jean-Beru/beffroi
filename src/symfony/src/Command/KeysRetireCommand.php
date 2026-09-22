@@ -45,7 +45,9 @@ final readonly class KeysRetireCommand
         SymfonyStyle $io,
         #[Argument(description: 'The identifier ("kid") of the retiring key, as heidi:keys:list shows it.')]
         ?string $kid = null,
-        #[Option(description: 'Retire the key although what is bound to it may still arrive: after a compromise, or when everything it is bound to is known to have expired.')]
+        #[Option(
+            description: 'Retire the key although what is bound to it may still arrive: after a compromise, or when everything it is bound to is known to have expired.',
+        )]
         bool $force = false,
         #[Option(description: 'Retire every key past its retirement date, and no other: what the scheduled step does.')]
         bool $due = false,
@@ -72,7 +74,11 @@ final readonly class KeysRetireCommand
 
                 return Command::SUCCESS;
             }
-            $io->listing(array_map(static fn (TenantKey $key): string => sprintf('%s, due since %s', $key->kid, $key->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'), $retired));
+            $io->listing(array_map(static fn (TenantKey $key): string => sprintf(
+                '%s, due since %s',
+                $key->kid,
+                $key->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?',
+            ), $retired));
             $io->success(sprintf('%d key(s) of "%s" left the JWK Set.', count($retired), $tenant->slug));
 
             return Command::SUCCESS;

@@ -163,7 +163,12 @@ final class TlsClientAuthTest extends TestCase
     public function aClientRegisteredForAnotherMethodIsRefused(): void
     {
         // Given
-        $this->clients->save(Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), Methods::clientSecretBasic(), 'basic-client'));
+        $this->clients->save(Clients::confidential(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            Methods::clientSecretBasic(),
+            'basic-client',
+        ));
 
         // When
         $this->failToAuthenticate(Certificates::client(), 'basic-client');
@@ -206,8 +211,14 @@ final class TlsClientAuthTest extends TestCase
         $this->clients->save($basic);
 
         // When
-        $authenticated = $this->authenticator()
-            ->authenticate($this->tenant, self::ENDPOINT, 'Basic ' . base64_encode('basic-client:' . Clients::SECRET), [], $this->context, Certificates::client());
+        $authenticated = $this->authenticator()->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            'Basic ' . base64_encode('basic-client:' . Clients::SECRET),
+            [],
+            $this->context,
+            Certificates::client(),
+        );
 
         // Then
         static::assertSame($basic, $authenticated->client);
@@ -222,11 +233,22 @@ final class TlsClientAuthTest extends TestCase
     public function theTokensOfAClientAuthenticatedOtherwiseAreNotBound(): void
     {
         // Given
-        $this->clients->save(Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), Methods::clientSecretBasic(), 'basic-client'));
+        $this->clients->save(Clients::confidential(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            Methods::clientSecretBasic(),
+            'basic-client',
+        ));
 
         // When
-        $authenticated = $this->authenticator()
-            ->authenticate($this->tenant, self::ENDPOINT, 'Basic ' . base64_encode('basic-client:' . Clients::SECRET), [], $this->context, Certificates::client());
+        $authenticated = $this->authenticator()->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            'Basic ' . base64_encode('basic-client:' . Clients::SECRET),
+            [],
+            $this->context,
+            Certificates::client(),
+        );
 
         // Then
         static::assertNull($authenticated->confirmation);
@@ -249,7 +271,8 @@ final class TlsClientAuthTest extends TestCase
     {
         // the distinguished name a registration carries is written back by the reader of the provider,
         // as ClientDefinition does when it reads a client (RFC 8705 §2.1.2)
-        yield 'the subject distinguished name' => [new SubjectDistinguishedName(new PkiFrameworkCertificateReader()->distinguishedName(Certificates::SUBJECT_DN))];
+        yield 'the subject distinguished name' =>
+            [new SubjectDistinguishedName(new PkiFrameworkCertificateReader()->distinguishedName(Certificates::SUBJECT_DN))];
 
         yield 'a dNSName' => [new DnsName(Certificates::DNS_NAME)];
 
@@ -262,10 +285,16 @@ final class TlsClientAuthTest extends TestCase
 
     private function authenticate(?ClientCertificate $certificate, string $clientId = 'mtls-client'): AuthenticatedClient
     {
-        return $this->authenticator()
-            ->authenticate($this->tenant, self::ENDPOINT, null, [
+        return $this->authenticator()->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            [
                 'client_id' => $clientId,
-            ], $this->context, $certificate);
+            ],
+            $this->context,
+            $certificate,
+        );
     }
 
     private function failToAuthenticate(?ClientCertificate $certificate, string $clientId = 'mtls-client'): OAuth2Exception

@@ -23,7 +23,14 @@ final class ClientAuthenticationFailedTest extends TestCase
         $context = Fixtures::context();
 
         // When
-        $event = new ClientAuthenticationFailed(Fixtures::now(), $tenant, $context, ClientAuthenticationFailureReason::InvalidSecret, 'oidc-demo', 'client_secret_basic');
+        $event = new ClientAuthenticationFailed(
+            Fixtures::now(),
+            $tenant,
+            $context,
+            ClientAuthenticationFailureReason::InvalidSecret,
+            'oidc-demo',
+            'client_secret_basic',
+        );
 
         // Then
         static::assertEquals(Fixtures::now(), $event->occurredAt);

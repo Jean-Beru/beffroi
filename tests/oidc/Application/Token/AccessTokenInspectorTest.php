@@ -71,7 +71,17 @@ final class AccessTokenInspectorTest extends TestCase
         $users->save($this->user);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $this->inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users);
+        $this->inspector = new AccessTokenInspector(
+            new AccessTokenVerifier(
+                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                $clients,
+                $this->tokens,
+                new PublicSubjectIdentifierResolver(),
+            ),
+            $this->sessions,
+            $this->grants,
+            $users,
+        );
     }
 
     #[Test]
@@ -144,7 +154,17 @@ final class AccessTokenInspectorTest extends TestCase
     public function itRefusesATokenOfAUserGone(): void
     {
         // Given
-        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), new InMemoryClientRepository(), $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, new InMemoryUserRepository());
+        $inspector = new AccessTokenInspector(
+            new AccessTokenVerifier(
+                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                new InMemoryClientRepository(),
+                $this->tokens,
+                new PublicSubjectIdentifierResolver(),
+            ),
+            $this->sessions,
+            $this->grants,
+            new InMemoryUserRepository(),
+        );
         $token = $this->tokenOf($this->code());
 
         // Then
@@ -213,7 +233,17 @@ final class AccessTokenInspectorTest extends TestCase
         $users->save($this->user);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users);
+        $inspector = new AccessTokenInspector(
+            new AccessTokenVerifier(
+                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                $clients,
+                $this->tokens,
+                new PublicSubjectIdentifierResolver(),
+            ),
+            $sessions,
+            $this->grants,
+            $users,
+        );
 
         // Then
         $this->expectException(InvalidTokenException::class);
@@ -246,8 +276,9 @@ final class AccessTokenInspectorTest extends TestCase
             return $this->tokenOf($code);
         }
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
-            ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now())
-            ->value;
+        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+            GrantedAuthorization::fromAuthorizationCode($code),
+            Fixtures::now(),
+        )->value;
     }
 }

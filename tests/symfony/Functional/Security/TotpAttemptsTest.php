@@ -48,7 +48,16 @@ final class TotpAttemptsTest extends DatabaseTestCase
         $this->secret = Totps::secret();
         $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
         self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
-            ->save(new TotpCredential(Uuid::v7(), $this->alice, $sealed, Totps::credential($this->alice, new FakePasswordHasher())->backupCodes, intdiv(new DateTimeImmutable('-1 hour')->getTimestamp(), TotpCredential::PERIOD), new DateTimeImmutable('-1 hour')));
+            ->save(
+                new TotpCredential(
+                    Uuid::v7(),
+                    $this->alice,
+                    $sealed,
+                    Totps::credential($this->alice, new FakePasswordHasher())->backupCodes,
+                    intdiv(new DateTimeImmutable('-1 hour')->getTimestamp(), TotpCredential::PERIOD),
+                    new DateTimeImmutable('-1 hour'),
+                ),
+            );
     }
 
     /**
@@ -69,11 +78,20 @@ final class TotpAttemptsTest extends DatabaseTestCase
 
         // Then
         static::assertStringNotContainsString($provisioning->secret->bytes, $totp->sealedSecret);
-        static::assertSame($provisioning->secret->bytes, self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $totp->sealedSecret));
+        static::assertSame(
+            $provisioning->secret->bytes,
+            self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $totp->sealedSecret),
+        );
         static::assertSame(intdiv($aStepAgo->getTimestamp(), TotpCredential::PERIOD), $totp->lastAcceptedStep);
         static::assertSame(PasswordAlgorithm::Argon2id, $totp->backupCodes[0]->hash->algorithm);
-        static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($totp->backupCodes[0]->hash, BackupCode::normalize($provisioning->backupCodes[0])));
-        static::assertSame($totp, self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, TotpCredential::class)[0] ?? null);
+        static::assertTrue(
+            self::service('test.heidi.password_hasher', PasswordHasherInterface::class)
+                ->verify($totp->backupCodes[0]->hash, BackupCode::normalize($provisioning->backupCodes[0])),
+        );
+        static::assertSame(
+            $totp,
+            self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, TotpCredential::class)[0] ?? null,
+        );
     }
 
     #[Test]
@@ -172,7 +190,8 @@ final class TotpAttemptsTest extends DatabaseTestCase
 
     private function codeAt(DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
+        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)
+            ->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
     private function failToAuthenticate(User $user, string $code): AuthenticationFailedException

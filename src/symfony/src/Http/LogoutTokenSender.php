@@ -62,10 +62,17 @@ final readonly class LogoutTokenSender
             return LogoutTokenDelivery::delivered($status);
         }
         if ($status >= 300 && $status < 400) {
-            return LogoutTokenDelivery::refused(sprintf('the client redirects to %s, and no outbound request follows a redirect; register that URL instead', $location ?? '?'));
+            return LogoutTokenDelivery::refused(sprintf(
+                'the client redirects to %s, and no outbound request follows a redirect; register that URL instead',
+                $location ?? '?',
+            ));
         }
         if ($status === 400 || $status === 501) {
-            return LogoutTokenDelivery::refused(sprintf('the client answered %d, which Back-Channel Logout 1.0 §2.8 makes final: it read the %s and refused it', $status, LogoutToken::TYPE));
+            return LogoutTokenDelivery::refused(sprintf(
+                'the client answered %d, which Back-Channel Logout 1.0 §2.8 makes final: it read the %s and refused it',
+                $status,
+                LogoutToken::TYPE,
+            ));
         }
 
         return LogoutTokenDelivery::unreachable(sprintf('the client answered %d', $status));

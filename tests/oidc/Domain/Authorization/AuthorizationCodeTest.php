@@ -126,7 +126,21 @@ final class AuthorizationCodeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthorizationCode(AuthorizationCode::hash(''), Uuid::v7(), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, null, new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'), Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        new AuthorizationCode(
+            AuthorizationCode::hash(''),
+            Uuid::v7(),
+            $client,
+            $this->session,
+            $client->redirectUris[0],
+            [new Scope('openid')],
+            null,
+            new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            null,
+            null,
+            new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'),
+            Fixtures::now(),
+            Fixtures::now()->modify('+60 seconds'),
+        );
     }
 
     #[Test]
@@ -289,8 +303,12 @@ final class AuthorizationCodeTest extends TestCase
     /**
      * @param list<Scope> $scopes
      */
-    private function code(DateTimeImmutable $issuedAt, DateTimeImmutable $expiresAt, string $codeHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', array $scopes = [new Scope('openid')]): AuthorizationCode
-    {
+    private function code(
+        DateTimeImmutable $issuedAt,
+        DateTimeImmutable $expiresAt,
+        string $codeHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        array $scopes = [new Scope('openid')],
+    ): AuthorizationCode {
         return new AuthorizationCode(
             $codeHash,
             Uuid::v7(),

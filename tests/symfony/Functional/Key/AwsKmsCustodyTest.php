@@ -69,14 +69,13 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
         $envelope = self::envelopeOf($rotated);
         static::assertSame(self::ALIAS, $envelope->keyId);
         static::assertIsString($envelope->wrappedDek);
-        $unwrapped = $this->kms()
-            ->decrypt(new DecryptRequest([
-                'KeyId' => self::ALIAS,
-                'CiphertextBlob' => $envelope->wrappedDek,
-                'EncryptionContext' => [
-                    'aad' => base64_encode(self::AAD),
-                ],
-            ]));
+        $unwrapped = $this->kms()->decrypt(new DecryptRequest([
+            'KeyId' => self::ALIAS,
+            'CiphertextBlob' => $envelope->wrappedDek,
+            'EncryptionContext' => [
+                'aad' => base64_encode(self::AAD),
+            ],
+        ]));
         static::assertSame(32, strlen((string) $unwrapped->getPlaintext()));
         static::assertStringContainsString(':key/', (string) $unwrapped->getKeyId());
     }
@@ -89,8 +88,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     public function theKmsRefusesToUnwrapTheDataKeyUnderAnotherTenant(): void
     {
         // Given
-        $rotated = self::service('test.heidi.key_rotator', TenantKeyRotator::class)
-            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        $rotated = self::service('test.heidi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
         $envelope = self::envelopeOf($rotated);
 
         // Then
@@ -105,7 +103,8 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
                 'EncryptionContext' => [
                     'aad' => base64_encode('heidi:signing-key:v2:other'),
                 ],
-            ]))->getPlaintext();
+            ]))
+            ->getPlaintext();
     }
 
     /**
@@ -127,8 +126,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
 
     private static function envelopeOf(TenantKey $key): Envelope
     {
-        $stored = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)
-            ->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
+        $stored = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
 
         return Envelope::fromBytes($stored->sealedPrivateJwk);
     }
@@ -159,7 +157,11 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
             'headers' => [
                 'Content-Type' => 'application/x-amz-json-1.1',
                 'X-Amz-Target' => 'TrentService.DescribeKey',
-                'Authorization' => sprintf('AWS4-HMAC-SHA256 Credential=%s/20260101/%s/kms/aws4_request, SignedHeaders=host, Signature=unsigned', (string) $this->dsn->user, $this->option('region')),
+                'Authorization' => sprintf(
+                    'AWS4-HMAC-SHA256 Credential=%s/20260101/%s/kms/aws4_request, SignedHeaders=host, Signature=unsigned',
+                    (string) $this->dsn->user,
+                    $this->option('region'),
+                ),
             ],
             'json' => [
                 'KeyId' => $keyId,

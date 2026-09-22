@@ -100,7 +100,14 @@ final class InMemoryRepositoriesTest extends TestCase
         $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
         $repository->save($password);
         $repository->save(Fixtures::passkey($this->alice));
-        $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
+        $repository->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                Fixtures::user(username: 'bob', subject: 'bob-subject'),
+                new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'),
+                Fixtures::now(),
+            ),
+        );
 
         // When / Then
         static::assertSame([$password], $repository->findByUser($this->alice, PasswordCredential::class));
@@ -115,7 +122,14 @@ final class InMemoryRepositoriesTest extends TestCase
         $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
         $repository->save($password);
         $repository->save($passkey);
-        $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
+        $repository->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                Fixtures::user(username: 'bob', subject: 'bob-subject'),
+                new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'),
+                Fixtures::now(),
+            ),
+        );
 
         // When / Then
         static::assertSame([$passkey, $password], $repository->findByUser($this->alice));

@@ -99,9 +99,36 @@ final readonly class UserProfileCommand
 
             return Command::FAILURE;
         }
-        $said = array_filter([$name, $givenName, $familyName, $middleName, $nickname, $preferredUsername, $profileUrl, $picture, $website, $gender, $birthdate, $zoneinfo, $locale, $phoneNumber, $address, $streetAddress, $locality, $region, $postalCode, $country], static fn (?string $value): bool => self::given($value) !== null);
+        $said = array_filter(
+            [
+                $name,
+                $givenName,
+                $familyName,
+                $middleName,
+                $nickname,
+                $preferredUsername,
+                $profileUrl,
+                $picture,
+                $website,
+                $gender,
+                $birthdate,
+                $zoneinfo,
+                $locale,
+                $phoneNumber,
+                $address,
+                $streetAddress,
+                $locality,
+                $region,
+                $postalCode,
+                $country,
+            ],
+            static fn (?string $value): bool => self::given($value) !== null,
+        );
         if ($said === [] && ! $phoneNumberVerified) {
-            $io->error(['Nothing was said: this command writes the whole profile and clears what it is not told.', 'To read a user, run "heidi:user:show"; to clear the profile, say at least one claim.']);
+            $io->error([
+                'Nothing was said: this command writes the whole profile and clears what it is not told.',
+                'To read a user, run "heidi:user:show"; to clear the profile, say at least one claim.',
+            ]);
 
             return Command::INVALID;
         }

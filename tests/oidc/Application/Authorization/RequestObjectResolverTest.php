@@ -89,12 +89,15 @@ final class RequestObjectResolverTest extends TestCase
         ]);
 
         // Then
-        static::assertSame([
-            'client_id' => 'jar-client',
-            'response_type' => 'code',
-            'redirect_uri' => 'https://jar.example/callback',
-            'scope' => 'openid profile',
-        ], $parameters);
+        static::assertSame(
+            [
+                'client_id' => 'jar-client',
+                'response_type' => 'code',
+                'redirect_uri' => 'https://jar.example/callback',
+                'scope' => 'openid profile',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -111,15 +114,22 @@ final class RequestObjectResolverTest extends TestCase
         ]));
 
         // When
-        $parameters = $this->resolver->resolve($this->tenant, [
-            'request' => $object,
-        ], $client);
+        $parameters = $this->resolver->resolve(
+            $this->tenant,
+            [
+                'request' => $object,
+            ],
+            $client,
+        );
 
         // Then
-        static::assertSame([
-            'client_id' => 'jar-client',
-            'scope' => 'openid profile',
-        ], $parameters);
+        static::assertSame(
+            [
+                'client_id' => 'jar-client',
+                'scope' => 'openid profile',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -129,11 +139,15 @@ final class RequestObjectResolverTest extends TestCase
     public function anObjectSentByValueAndByReferenceAtOnceIsRefused(): void
     {
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())),
-            'request_uri' => self::PUBLISHED,
-        ], 'invalid_request', 'The request and request_uri parameters are never sent together (OIDC Core section 6).');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())),
+                'request_uri' => self::PUBLISHED,
+            ],
+            'invalid_request',
+            'The request and request_uri parameters are never sent together (OIDC Core section 6).',
+        );
     }
 
     /**
@@ -144,29 +158,41 @@ final class RequestObjectResolverTest extends TestCase
     public function anObjectOfNoNamedClientIsRefused(): void
     {
         // When / Then
-        $this->refuses([
-            'request' => RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())),
-        ], 'invalid_request', 'The client_id parameter is missing.');
+        $this->refuses(
+            [
+                'request' => RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())),
+            ],
+            'invalid_request',
+            'The client_id parameter is missing.',
+        );
     }
 
     #[Test]
     public function anObjectOfAnUnknownClientIsRefused(): void
     {
         // When / Then
-        $this->refuses([
-            'client_id' => 'nobody',
-            'request' => RequestObjects::signed(RequestObjects::claims('nobody', $this->tenant->issuer->value, $this->clock->now())),
-        ], 'invalid_request', 'The client is unknown.');
+        $this->refuses(
+            [
+                'client_id' => 'nobody',
+                'request' => RequestObjects::signed(RequestObjects::claims('nobody', $this->tenant->issuer->value, $this->clock->now())),
+            ],
+            'invalid_request',
+            'The client is unknown.',
+        );
     }
 
     #[Test]
     public function somethingThatIsNotAJwtIsRefused(): void
     {
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => 'not-a-jwt',
-        ], 'invalid_request_object', 'The request object is not a readable JWT (RFC 9101 section 4).');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => 'not-a-jwt',
+            ],
+            'invalid_request_object',
+            'The request object is not a readable JWT (RFC 9101 section 4).',
+        );
     }
 
     /**
@@ -178,17 +204,20 @@ final class RequestObjectResolverTest extends TestCase
     {
         // Given
         $other = new JWK([
-            ...Algorithms::es256()->generateKey()
-                ->all(),
+            ...Algorithms::es256()->generateKey()->all(),
             'kid' => ClientAssertions::KEY_ID,
         ]);
         $object = RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now()), [], $other);
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The signature of the request object verifies against no key the client publishes.');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The signature of the request object verifies against no key the client publishes.',
+        );
     }
 
     /**
@@ -203,10 +232,14 @@ final class RequestObjectResolverTest extends TestCase
         $object = RequestObjects::signed(RequestObjects::claims('ps256-client', $this->tenant->issuer->value, $this->clock->now()));
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'ps256-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The request object is not signed with the algorithm the client registered in request_object_signing_alg (OIDC Registration section 2).');
+        $this->refuses(
+            [
+                'client_id' => 'ps256-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The request object is not signed with the algorithm the client registered in request_object_signing_alg (OIDC Registration section 2).',
+        );
     }
 
     /**
@@ -219,10 +252,14 @@ final class RequestObjectResolverTest extends TestCase
         $object = RequestObjects::unsigned(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now()));
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The request object is not signed with the algorithm the client registered in request_object_signing_alg (OIDC Registration section 2).');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The request object is not signed with the algorithm the client registered in request_object_signing_alg (OIDC Registration section 2).',
+        );
     }
 
     /**
@@ -316,10 +353,15 @@ final class RequestObjectResolverTest extends TestCase
         $resolver = RequestObjects::resolver($this->clients, $this->clock, $fetcher);
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'reference-client',
-            'request_uri' => self::PUBLISHED,
-        ], 'invalid_request_uri', 'The request object behind the request_uri parameter cannot be read back.', $resolver);
+        $this->refuses(
+            [
+                'client_id' => 'reference-client',
+                'request_uri' => self::PUBLISHED,
+            ],
+            'invalid_request_uri',
+            'The request object behind the request_uri parameter cannot be read back.',
+            $resolver,
+        );
     }
 
     /**
@@ -336,10 +378,15 @@ final class RequestObjectResolverTest extends TestCase
         $object = RequestObjects::signed(RequestObjects::claims('unreadable-client', $this->tenant->issuer->value, $this->clock->now()));
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'unreadable-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The keys of the client cannot be read, and its request object cannot be verified.', $resolver);
+        $this->refuses(
+            [
+                'client_id' => 'unreadable-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The keys of the client cannot be read, and its request object cannot be verified.',
+            $resolver,
+        );
     }
 
     /**
@@ -349,8 +396,7 @@ final class RequestObjectResolverTest extends TestCase
     {
         // When
         try {
-            ($resolver ?? $this->resolver)
-                ->resolve($this->tenant, $parameters);
+            ($resolver ?? $this->resolver)->resolve($this->tenant, $parameters);
             static::fail('The request should have been refused.');
         } catch (OAuth2Exception $exception) {
             // Then

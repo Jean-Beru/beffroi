@@ -266,7 +266,8 @@ final class EnvelopeSecretSealerTest extends TestCase
     {
         yield 'an envelope invalid, tampered, foreign, or under a key the KMS does not know' => [new DecryptionFailedException()];
         yield 'a stored data key the store no longer holds' => [new DataKeyNotFoundException('reference')];
-        yield 'what the backend cannot do by configuration' => [new UnsupportedOperationException('Vault Transit silently ignores the context parameter on non-derived keys.')];
+        yield 'what the backend cannot do by configuration' =>
+            [new UnsupportedOperationException('Vault Transit silently ignores the context parameter on non-derived keys.')];
         yield 'a format the decrypter cannot resolve' => [new KeyManagementLogicException('The envelope refers to a stored data key.')];
         yield 'a failure that is not the component\'s' => [new JsonException('Syntax error')];
     }

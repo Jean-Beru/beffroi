@@ -46,7 +46,15 @@ final class TenantKeyTest extends TestCase
     public function aNewKeySaysWhenItsActivationIsDue(): void
     {
         // When
-        $key = new TenantKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
+        $key = new TenantKey(
+            Keys::pair()->kid,
+            Fixtures::tenant(),
+            Algorithms::rs256(),
+            Keys::pair()->publicJwk,
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now()->modify('+6 minutes'),
+        );
 
         // Then
         static::assertEquals(Fixtures::now()->modify('+6 minutes'), $key->activationDueAt);
@@ -60,7 +68,15 @@ final class TenantKeyTest extends TestCase
         $this->expectExceptionMessageIs('The activation of a key is due when it is created at the earliest.');
 
         // When
-        new TenantKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now()->modify('-1 second'));
+        new TenantKey(
+            Keys::pair()->kid,
+            Fixtures::tenant(),
+            Algorithms::rs256(),
+            Keys::pair()->publicJwk,
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now()->modify('-1 second'),
+        );
     }
 
     #[Test]
@@ -291,29 +307,44 @@ final class TenantKeyTest extends TestCase
     {
         $good = Keys::pair()->publicJwk;
         yield 'kid mismatch' => [$good, 'another-kid'];
-        yield 'missing alg' => [[
-            'kty' => 'RSA',
-            'kid' => $good['kid'],
-            'use' => 'sig',
-            'n' => $good['n'],
-            'e' => $good['e'],
-        ], $good['kid']];
-        yield 'wrong use' => [[
-            ...$good,
-            'use' => 'enc',
-        ], $good['kid']];
-        yield 'wrong key type' => [[
-            ...$good,
-            'kty' => 'EC',
-        ], $good['kid']];
-        yield 'private exponent present' => [[
-            ...$good,
-            'd' => 'secret',
-        ], $good['kid']];
-        yield 'empty kid' => [[
-            ...$good,
-            'kid' => '',
-        ], ''];
+        yield 'missing alg' => [
+            [
+                'kty' => 'RSA',
+                'kid' => $good['kid'],
+                'use' => 'sig',
+                'n' => $good['n'],
+                'e' => $good['e'],
+            ],
+            $good['kid'],
+        ];
+        yield 'wrong use' => [
+            [
+                ...$good,
+                'use' => 'enc',
+            ],
+            $good['kid'],
+        ];
+        yield 'wrong key type' => [
+            [
+                ...$good,
+                'kty' => 'EC',
+            ],
+            $good['kid'],
+        ];
+        yield 'private exponent present' => [
+            [
+                ...$good,
+                'd' => 'secret',
+            ],
+            $good['kid'],
+        ];
+        yield 'empty kid' => [
+            [
+                ...$good,
+                'kid' => '',
+            ],
+            '',
+        ];
     }
 
     /**
@@ -411,9 +442,12 @@ final class TenantKeyTest extends TestCase
         // Then
         static::assertFalse($set->isEmpty());
         static::assertSame([$staged], $set->keys);
-        static::assertSame([
-            'keys' => [$staged->publicJwk],
-        ], $set->toJwks());
+        static::assertSame(
+            [
+                'keys' => [$staged->publicJwk],
+            ],
+            $set->toJwks(),
+        );
     }
 
     #[Test]
@@ -463,7 +497,15 @@ final class TenantKeyTest extends TestCase
 
     private static function encryptionKey(): TenantKey
     {
-        return new TenantKey(Keys::encryptionPair()->kid, Fixtures::tenant(), Algorithms::ecdhEsA256Kw(), Keys::encryptionPair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        return new TenantKey(
+            Keys::encryptionPair()->kid,
+            Fixtures::tenant(),
+            Algorithms::ecdhEsA256Kw(),
+            Keys::encryptionPair()->publicJwk,
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now(),
+        );
     }
 
     /**
@@ -471,7 +513,15 @@ final class TenantKeyTest extends TestCase
      */
     private static function key(?string $kid = null, ?array $publicJwk = null): TenantKey
     {
-        return new TenantKey($kid ?? Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), $publicJwk ?? Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        return new TenantKey(
+            $kid ?? Keys::pair()->kid,
+            Fixtures::tenant(),
+            Algorithms::rs256(),
+            $publicJwk ?? Keys::pair()->publicJwk,
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now(),
+        );
     }
 
     private static function stagedKey(DateTimeImmutable $activationDueAt): TenantKey

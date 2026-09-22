@@ -53,7 +53,11 @@ abstract class ConsoleTestCase extends BrowserTestCase
     protected static function displayed(CommandTester $tester, string $label): string
     {
         $display = $tester->getDisplay(true);
-        static::assertSame(1, preg_match(sprintf('/^\s*%s\s+(\S.*?)\s*$/m', $label), $display, $matches), sprintf('"%s" is not displayed in: %s', $label, $display));
+        static::assertSame(
+            1,
+            preg_match(sprintf('/^\s*%s\s+(\S.*?)\s*$/m', $label), $display, $matches),
+            sprintf('"%s" is not displayed in: %s', $label, $display),
+        );
 
         return $matches[1];
     }

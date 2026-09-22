@@ -39,7 +39,11 @@ final class MetadataBlobVerifierTest extends TestCase
     public function aBlobSignedUnderThePinnedRootIsVerifiedAndRead(): void
     {
         // Given
-        $payload = MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID, [AuthenticatorStatus::FIDO_CERTIFIED])], serialNumber: 42, nextUpdate: '2026-10-01');
+        $payload = MetadataBlobs::payload(
+            [MetadataBlobs::entry(self::AAGUID, [AuthenticatorStatus::FIDO_CERTIFIED])],
+            serialNumber: 42,
+            nextUpdate: '2026-10-01',
+        );
         $token = $this->service->sign($payload);
 
         // When

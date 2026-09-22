@@ -54,7 +54,13 @@ final readonly class KmsUnavailableListener
         }
         $context = $this->contexts->fromRequest($event->getRequest());
         $this->events->dispatch(new KmsUnavailable($context->receivedAt, $this->tenants->provide(), $context, ExceptionTrail::of($outage)));
-        $event->setThrowable(new ServiceUnavailableHttpException(self::RETRY_AFTER, 'The key management service did not answer or refused; the request is served once it is back.', $event->getThrowable()));
+        $event->setThrowable(
+            new ServiceUnavailableHttpException(
+                self::RETRY_AFTER,
+                'The key management service did not answer or refused; the request is served once it is back.',
+                $event->getThrowable(),
+            ),
+        );
     }
 
     /**

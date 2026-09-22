@@ -83,10 +83,13 @@ final class SignatureAlgorithmsTest extends TestCase
         $jws = new JwtLibraryJwsSigner($keys, Algorithms::all())->sign($this->tenant, $algorithm, '{"sub":"alice"}');
 
         // Then
-        $unserialized = new CompactSerializer()
-            ->unserialize($jws);
+        $unserialized = new CompactSerializer()->unserialize($jws);
         static::assertSame($algorithm->name(), $unserialized->getSignature(0)->getProtectedHeader()['alg']);
-        static::assertTrue(new JWSVerifier(Algorithms::all()->manager())->verifyWithKeySet($unserialized, JWKSet::createFromKeyData($keys->publicKeys($this->tenant)->toJwks()), 0));
+        static::assertTrue(new JWSVerifier(Algorithms::all()->manager())->verifyWithKeySet(
+            $unserialized,
+            JWKSet::createFromKeyData($keys->publicKeys($this->tenant)->toJwks()),
+            0,
+        ));
     }
 
     /**
@@ -106,28 +109,40 @@ final class SignatureAlgorithmsTest extends TestCase
      */
     public static function provideWiredAlgorithms(): iterable
     {
-        yield 'RS256' => [Algorithms::rs256(), [
-            'kty' => 'RSA',
-            'alg' => 'RS256',
-            'use' => 'sig',
-        ]];
-        yield 'PS256' => [Algorithms::ps256(), [
-            'kty' => 'RSA',
-            'alg' => 'PS256',
-            'use' => 'sig',
-        ]];
-        yield 'ES256' => [Algorithms::es256(), [
-            'kty' => 'EC',
-            'crv' => 'P-256',
-            'alg' => 'ES256',
-            'use' => 'sig',
-        ]];
-        yield 'EdDSA' => [Algorithms::edDsa(), [
-            'kty' => 'OKP',
-            'crv' => 'Ed25519',
-            'alg' => 'EdDSA',
-            'use' => 'sig',
-        ]];
+        yield 'RS256' => [
+            Algorithms::rs256(),
+            [
+                'kty' => 'RSA',
+                'alg' => 'RS256',
+                'use' => 'sig',
+            ],
+        ];
+        yield 'PS256' => [
+            Algorithms::ps256(),
+            [
+                'kty' => 'RSA',
+                'alg' => 'PS256',
+                'use' => 'sig',
+            ],
+        ];
+        yield 'ES256' => [
+            Algorithms::es256(),
+            [
+                'kty' => 'EC',
+                'crv' => 'P-256',
+                'alg' => 'ES256',
+                'use' => 'sig',
+            ],
+        ];
+        yield 'EdDSA' => [
+            Algorithms::edDsa(),
+            [
+                'kty' => 'OKP',
+                'crv' => 'Ed25519',
+                'alg' => 'EdDSA',
+                'use' => 'sig',
+            ],
+        ];
     }
 
     /**
@@ -208,29 +223,37 @@ final class SignatureAlgorithmsTest extends TestCase
         $unwired = new FakeSignatureAlgorithm();
         $algorithms = new JoseSignatureAlgorithms([$unwired]);
         $repository = new InMemoryTenantKeyRepository();
-        $pair = new JwtLibraryKeyPairGenerator(new JoseKeyAlgorithms($algorithms, Algorithms::noKeyEncryption()))
-            ->generate($unwired);
-        $key = new TenantKey($pair->kid, $this->tenant, $unwired, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $pair = new JwtLibraryKeyPairGenerator(new JoseKeyAlgorithms($algorithms, Algorithms::noKeyEncryption()))->generate($unwired);
+        $key = new TenantKey(
+            $pair->kid,
+            $this->tenant,
+            $unwired,
+            $pair->publicJwk,
+            Keys::sealer()->seal($this->tenant, $pair->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $key->activate(Fixtures::now());
         $repository->save($key);
         $keys = new SealedKeyProvider($repository, Keys::sealer());
 
         // When
-        $jws = new JwtLibraryJwsSigner($keys, $algorithms)
-            ->sign($this->tenant, $unwired, '{"sub":"alice"}');
+        $jws = new JwtLibraryJwsSigner($keys, $algorithms)->sign($this->tenant, $unwired, '{"sub":"alice"}');
 
         // Then
         static::assertSame($key, new JwtLibraryJwsVerifier($keys, $algorithms)->verify($this->tenant, $jws)->key);
-        static::assertSame([[
-            'kid' => $pair->kid,
-            'alg' => 'ES256UNWIRED',
-            'use' => 'sig',
-        ]], array_map(static fn (array $jwk): array => self::members($jwk, [
-            'kid' => '',
-            'alg' => '',
-            'use' => '',
-        ]), $keys->publicKeys($this->tenant)
-            ->toJwks()['keys']));
+        static::assertSame(
+            [[
+                'kid' => $pair->kid,
+                'alg' => 'ES256UNWIRED',
+                'use' => 'sig',
+            ]],
+            array_map(static fn (array $jwk): array => self::members($jwk, [
+                'kid' => '',
+                'alg' => '',
+                'use' => '',
+            ]), $keys->publicKeys($this->tenant)->toJwks()['keys']),
+        );
     }
 
     #[Test]
@@ -259,7 +282,15 @@ final class SignatureAlgorithmsTest extends TestCase
     {
         $repository = new InMemoryTenantKeyRepository();
         $pair = $algorithm === Algorithms::rs256() ? Keys::pair() : new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate($algorithm);
-        $key = new TenantKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $key = new TenantKey(
+            $pair->kid,
+            $this->tenant,
+            $algorithm,
+            $pair->publicJwk,
+            Keys::sealer()->seal($this->tenant, $pair->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $key->activate(Fixtures::now());
         $repository->save($key);
 

@@ -53,8 +53,7 @@ final class JwtLibraryProofKeyVerifierTest extends TestCase
     public function itAnswersTheThumbprintOfTheKeyThatSigned(): void
     {
         // Given
-        $proof = new JwtLibraryCompactJwtReader()
-            ->read(Proofs::proof('POST', self::ENDPOINT, new DateTimeImmutable(self::NOW)));
+        $proof = new JwtLibraryCompactJwtReader()->read(Proofs::proof('POST', self::ENDPOINT, new DateTimeImmutable(self::NOW)));
 
         // When
         $thumbprint = self::verifier()->keyThatSigned($proof, ['ES256']);
@@ -71,8 +70,7 @@ final class JwtLibraryProofKeyVerifierTest extends TestCase
     public function aProofSignedWithAnAlgorithmTheProviderDoesNotTakeIsRefused(): void
     {
         // Given
-        $proof = new JwtLibraryCompactJwtReader()
-            ->read(Proofs::proof('POST', self::ENDPOINT, new DateTimeImmutable(self::NOW)));
+        $proof = new JwtLibraryCompactJwtReader()->read(Proofs::proof('POST', self::ENDPOINT, new DateTimeImmutable(self::NOW)));
 
         // Then
         $this->expectException(InvalidJwtException::class);

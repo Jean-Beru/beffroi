@@ -34,12 +34,15 @@ final class AuthorizationErrorResponseTest extends TestCase
         $response = AuthorizationErrorResponse::fromException($target, new UnsupportedResponseTypeException('Only the code response type is supported.'));
 
         // Then
-        static::assertSame([
-            'error' => 'unsupported_response_type',
-            'error_description' => 'Only the code response type is supported.',
-            'state' => 'af0ifjsldkj',
-            'iss' => 'https://id.acme.example',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'error' => 'unsupported_response_type',
+                'error_description' => 'Only the code response type is supported.',
+                'state' => 'af0ifjsldkj',
+                'iss' => 'https://id.acme.example',
+            ],
+            $response->parameters(),
+        );
     }
 
     /**

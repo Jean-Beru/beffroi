@@ -28,7 +28,18 @@ final class Totps
      */
     public const string SEED = '12345678901234567890';
 
-    public const array BACKUP_CODES = ['K7Q2M-X9PL4', 'A3BCD-EFGH2', 'JKLMN-OPQR3', 'STUVW-XYZ24', 'B5CDE-FGHJ6', 'KLMNP-QRST7', 'UVWXY-Z234A', 'CDEFG-HJKL2', 'MNPQR-STUV3', 'WXYZ2-34567'];
+    public const array BACKUP_CODES = [
+        'K7Q2M-X9PL4',
+        'A3BCD-EFGH2',
+        'JKLMN-OPQR3',
+        'STUVW-XYZ24',
+        'B5CDE-FGHJ6',
+        'KLMNP-QRST7',
+        'UVWXY-Z234A',
+        'CDEFG-HJKL2',
+        'MNPQR-STUV3',
+        'WXYZ2-34567',
+    ];
 
     private static ?EnvelopeSecretSealer $sealer = null;
 
@@ -63,8 +74,14 @@ final class Totps
     /**
      * @param list<string> $backupCodes in clear, hashed here
      */
-    public static function credential(User $user, PasswordHasherInterface $hasher, int $lastAcceptedStep = 0, array $backupCodes = self::BACKUP_CODES, ?TotpSecret $secret = null, ?DateTimeImmutable $createdAt = null): TotpCredential
-    {
+    public static function credential(
+        User $user,
+        PasswordHasherInterface $hasher,
+        int $lastAcceptedStep = 0,
+        array $backupCodes = self::BACKUP_CODES,
+        ?TotpSecret $secret = null,
+        ?DateTimeImmutable $createdAt = null,
+    ): TotpCredential {
         return new TotpCredential(
             Uuid::v7(),
             $user,

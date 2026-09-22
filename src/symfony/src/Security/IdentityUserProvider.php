@@ -93,7 +93,10 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
         if ($credential === null) {
             return;
         }
-        $hash = CorePasswordHasher::decode($newHashedPassword) ?? throw new LogicException(sprintf('The hash to upgrade to was not produced by "%s"; the firewall of the interaction pages uses another password hasher than the one the bundle configures.', CorePasswordHasher::class));
+        $hash = CorePasswordHasher::decode($newHashedPassword) ?? throw new LogicException(sprintf(
+            'The hash to upgrade to was not produced by "%s"; the firewall of the interaction pages uses another password hasher than the one the bundle configures.',
+            CorePasswordHasher::class,
+        ));
         $now = $this->clock->now();
         $credential->rehash($hash, $now);
         $this->credentials->save($credential);

@@ -31,8 +31,7 @@ final class FileMetadataBlobStoreTest extends TestCase
 
     protected function tearDown(): void
     {
-        new Filesystem()
-            ->remove($this->directory);
+        new Filesystem()->remove($this->directory);
     }
 
     #[Test]
@@ -57,10 +56,13 @@ final class FileMetadataBlobStoreTest extends TestCase
         $documents = $this->store->readAll();
 
         // Then
-        static::assertSame([
-            'mds-a' => '{"no": 1}',
-            'statement-b' => '{"no": 2}',
-        ], $documents);
+        static::assertSame(
+            [
+                'mds-a' => '{"no": 1}',
+                'statement-b' => '{"no": 2}',
+            ],
+            $documents,
+        );
     }
 
     #[Test]
@@ -73,9 +75,12 @@ final class FileMetadataBlobStoreTest extends TestCase
         $this->store->write('mds-a', '{"no": 2}');
 
         // Then
-        static::assertSame([
-            'mds-a' => '{"no": 2}',
-        ], $this->store->readAll());
+        static::assertSame(
+            [
+                'mds-a' => '{"no": 2}',
+            ],
+            $this->store->readAll(),
+        );
     }
 
     #[Test]

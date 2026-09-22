@@ -58,10 +58,13 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $found->hash->algorithm);
         static::assertSame('base64digest', $found->hash->encoded);
-        static::assertSame([
-            'salt' => 'c2FsdA',
-            'iterations' => 27500,
-        ], $found->hash->parameters);
+        static::assertSame(
+            [
+                'salt' => 'c2FsdA',
+                'iterations' => 27500,
+            ],
+            $found->hash->parameters,
+        );
         static::assertEquals(self::now(), $found->createdAt);
         static::assertEquals(self::now(), $found->hashChangedAt);
         static::assertEquals(self::now()->modify('+1 minute'), $found->lastUsedAt);
@@ -95,7 +98,20 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         $handle = PasskeyUserHandle::generate();
         $credentialId = random_bytes(32);
         $aaguid = Uuid::v4();
-        $passkey = new PasskeyCredential(Uuid::v7(), $user, 'Pixel', $credentialId, "\xa5\x01\x02\x03\x26", 7, ['internal', 'hybrid'], true, true, $aaguid, $handle, self::now());
+        $passkey = new PasskeyCredential(
+            Uuid::v7(),
+            $user,
+            'Pixel',
+            $credentialId,
+            "\xa5\x01\x02\x03\x26",
+            7,
+            ['internal', 'hybrid'],
+            true,
+            true,
+            $aaguid,
+            $handle,
+            self::now(),
+        );
         $passkey->markUsed(self::now()->modify('+1 minute'));
         $passkey->revoke(self::now()->modify('+2 minutes'));
         self::credentials()->save($passkey);
@@ -232,7 +248,8 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $bob = self::user('bob', 'bob-subject');
-        self::credentials()->save(new PasswordCredential(Uuid::v7(), self::user(), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now()));
+        self::credentials()
+            ->save(new PasswordCredential(Uuid::v7(), self::user(), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now()));
         self::reload();
 
         // When / Then
@@ -315,7 +332,20 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
      */
     private static function passkey(User $user, ?string $credentialId = null, ?DateTimeImmutable $createdAt = null): PasskeyCredential
     {
-        return new PasskeyCredential(Uuid::v7(), $user, 'YubiKey 5', $credentialId ?? random_bytes(16), 'cose-public-key', 0, ['usb'], false, false, Uuid::v4(), PasskeyUserHandle::generate(), $createdAt ?? self::now());
+        return new PasskeyCredential(
+            Uuid::v7(),
+            $user,
+            'YubiKey 5',
+            $credentialId ?? random_bytes(16),
+            'cose-public-key',
+            0,
+            ['usb'],
+            false,
+            false,
+            Uuid::v4(),
+            PasskeyUserHandle::generate(),
+            $createdAt ?? self::now(),
+        );
     }
 
     private static function credentials(): CredentialRepositoryInterface

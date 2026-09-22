@@ -59,7 +59,11 @@ final class AuthorizationRequestParserTest extends TestCase
         $this->clients = new InMemoryClientRepository();
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->clients->save($this->client);
-        $this->clients->save(Clients::confidential(Fixtures::tenant('other', 'https://id.other.example'), new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'foreign'));
+        $this->clients->save(Clients::confidential(
+            Fixtures::tenant('other', 'https://id.other.example'),
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            clientId: 'foreign',
+        ));
         $this->parser = new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost());
     }
 
@@ -99,9 +103,12 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertSame(['urn:mace:incommon:iap:silver', 'urn:mace:incommon:iap:bronze'], $request->acrValues);
         static::assertSame(Display::Page, $request->display);
         static::assertSame(self::ID_TOKEN, $request->idTokenHint);
-        static::assertEquals([
-            'auth_time' => new ClaimRequest(true),
-        ], $request->claims?->idToken);
+        static::assertEquals(
+            [
+                'auth_time' => new ClaimRequest(true),
+            ],
+            $request->claims?->idToken,
+        );
         static::assertSame('query', $request->responseMode->value);
     }
 
@@ -384,51 +391,96 @@ final class AuthorizationRequestParserTest extends TestCase
      */
     public static function provideRequestsShownToTheUser(): iterable
     {
-        yield 'no client_id' => [[
-            'client_id' => null,
-        ], 'The client_id parameter is missing.'];
-        yield 'empty client_id' => [[
-            'client_id' => '',
-        ], 'The client_id parameter is missing.'];
-        yield 'unknown client' => [[
-            'client_id' => 'nobody',
-        ], 'The client is unknown.'];
-        yield 'client of another tenant' => [[
-            'client_id' => 'foreign',
-        ], 'The client is unknown.'];
-        yield 'client_id differing by case (RFC 6749 appendix A.1, exact match)' => [[
-            'client_id' => 'OIDC-DEMO',
-        ], 'The client is unknown.'];
-        yield 'no redirect_uri' => [[
-            'redirect_uri' => null,
-        ], 'The redirect_uri parameter is missing.'];
-        yield 'unregistered redirect_uri' => [[
-            'redirect_uri' => 'https://attacker.example/login/check',
-        ], 'The redirect_uri parameter is not registered for this client.'];
-        yield 'redirect_uri with a trailing slash (RFC 6749 §3.1.2.3, byte for byte)' => [[
-            'redirect_uri' => 'https://demo.localhost/login/check/',
-        ], 'The redirect_uri parameter is not registered for this client.'];
-        yield 'redirect_uri with a query (RFC 9700 §4.1.3, no pattern)' => [[
-            'redirect_uri' => 'https://demo.localhost/login/check?x=1',
-        ], 'The redirect_uri parameter is not registered for this client.'];
-        yield 'redirect_uri with a different scheme' => [[
-            'redirect_uri' => 'http://demo.localhost/login/check',
-        ], 'The redirect_uri parameter is not registered for this client.'];
-        yield 'redirect_uri differing by case' => [[
-            'redirect_uri' => 'https://demo.localhost/Login/Check',
-        ], 'The redirect_uri parameter is not registered for this client.'];
-        yield 'redirect_uri of the post-logout list' => [[
-            'redirect_uri' => 'https://demo.localhost/',
-        ], 'The redirect_uri parameter is not registered for this client.'];
-        yield 'state beyond ASCII (RFC 6749 appendix A.5)' => [[
-            'state' => 'état',
-        ], 'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).'];
-        yield 'state with a line break' => [[
-            'state' => "a\nb",
-        ], 'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).'];
-        yield 'state with a trailing newline' => [[
-            'state' => "af0ifjsldkj\n",
-        ], 'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).'];
+        yield 'no client_id' => [
+            [
+                'client_id' => null,
+            ],
+            'The client_id parameter is missing.',
+        ];
+        yield 'empty client_id' => [
+            [
+                'client_id' => '',
+            ],
+            'The client_id parameter is missing.',
+        ];
+        yield 'unknown client' => [
+            [
+                'client_id' => 'nobody',
+            ],
+            'The client is unknown.',
+        ];
+        yield 'client of another tenant' => [
+            [
+                'client_id' => 'foreign',
+            ],
+            'The client is unknown.',
+        ];
+        yield 'client_id differing by case (RFC 6749 appendix A.1, exact match)' => [
+            [
+                'client_id' => 'OIDC-DEMO',
+            ],
+            'The client is unknown.',
+        ];
+        yield 'no redirect_uri' => [
+            [
+                'redirect_uri' => null,
+            ],
+            'The redirect_uri parameter is missing.',
+        ];
+        yield 'unregistered redirect_uri' => [
+            [
+                'redirect_uri' => 'https://attacker.example/login/check',
+            ],
+            'The redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect_uri with a trailing slash (RFC 6749 §3.1.2.3, byte for byte)' => [
+            [
+                'redirect_uri' => 'https://demo.localhost/login/check/',
+            ],
+            'The redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect_uri with a query (RFC 9700 §4.1.3, no pattern)' => [
+            [
+                'redirect_uri' => 'https://demo.localhost/login/check?x=1',
+            ],
+            'The redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect_uri with a different scheme' => [
+            [
+                'redirect_uri' => 'http://demo.localhost/login/check',
+            ],
+            'The redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect_uri differing by case' => [
+            [
+                'redirect_uri' => 'https://demo.localhost/Login/Check',
+            ],
+            'The redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'redirect_uri of the post-logout list' => [
+            [
+                'redirect_uri' => 'https://demo.localhost/',
+            ],
+            'The redirect_uri parameter is not registered for this client.',
+        ];
+        yield 'state beyond ASCII (RFC 6749 appendix A.5)' => [
+            [
+                'state' => 'état',
+            ],
+            'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).',
+        ];
+        yield 'state with a line break' => [
+            [
+                'state' => "a\nb",
+            ],
+            'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).',
+        ];
+        yield 'state with a trailing newline' => [
+            [
+                'state' => "af0ifjsldkj\n",
+            ],
+            'The state parameter must be printable ASCII text (RFC 6749 appendix A.5).',
+        ];
     }
 
     /**
@@ -497,7 +549,22 @@ final class AuthorizationRequestParserTest extends TestCase
      */
     public static function provideParametersOfTheSecondStage(): iterable
     {
-        foreach (['response_type', 'response_mode', 'scope', 'code_challenge', 'code_challenge_method', 'nonce', 'prompt', 'max_age', 'login_hint', 'ui_locales', 'acr_values', 'display', 'id_token_hint', 'claims'] as $name) {
+        foreach ([
+            'response_type',
+            'response_mode',
+            'scope',
+            'code_challenge',
+            'code_challenge_method',
+            'nonce',
+            'prompt',
+            'max_age',
+            'login_hint',
+            'ui_locales',
+            'acr_values',
+            'display',
+            'id_token_hint',
+            'claims',
+        ] as $name) {
             yield $name => [$name];
         }
     }
@@ -601,159 +668,363 @@ final class AuthorizationRequestParserTest extends TestCase
      */
     public static function provideRequestsSentBackToTheClient(): iterable
     {
-        yield 'no response_type (RFC 6749 §4.1.1)' => [[
-            'response_type' => null,
-        ], 'invalid_request', 'The response_type parameter is missing.'];
-        yield 'implicit flow (OIDC Core §3.2, decision 0006)' => [[
-            'response_type' => 'id_token token',
-        ], 'unsupported_response_type', 'Only the code response type is supported.'];
-        yield 'hybrid flow (OIDC Core §3.3)' => [[
-            'response_type' => 'code id_token',
-        ], 'unsupported_response_type', 'Only the code response type is supported.'];
-        yield 'token response type (RFC 6749 §4.2)' => [[
-            'response_type' => 'token',
-        ], 'unsupported_response_type', 'Only the code response type is supported.'];
-        yield 'response_type in capitals' => [[
-            'response_type' => 'CODE',
-        ], 'unsupported_response_type', 'Only the code response type is supported.'];
-        yield 'fragment response mode (Multiple Response Type Encoding Practices §2.1)' => [[
-            'response_mode' => 'fragment',
-        ], 'unsupported_response_mode', 'The requested response mode is not supported.'];
-        yield 'response mode of no specification' => [[
-            'response_mode' => 'web_message',
-        ], 'unsupported_response_mode', 'The requested response mode is not supported.'];
-        yield 'response mode in capitals' => [[
-            'response_mode' => 'FORM_POST',
-        ], 'unsupported_response_mode', 'The requested response mode is not supported.'];
-        yield 'no scope (OIDC Core §3.1.2.1)' => [[
-            'scope' => null,
-        ], 'invalid_request', 'The scope parameter is missing.'];
-        yield 'scope without openid (OIDC Core §3.1.2.2 step 3)' => [[
-            'scope' => 'profile email',
-        ], 'invalid_scope', 'The scope parameter must contain openid (OIDC Core section 3.1.2.1).'];
-        yield 'scope with two spaces (RFC 6749 §3.3)' => [[
-            'scope' => 'openid  profile',
-        ], 'invalid_scope', 'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).'];
-        yield 'scope with a trailing space' => [[
-            'scope' => 'openid ',
-        ], 'invalid_scope', 'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).'];
-        yield 'scope with a double quote' => [[
-            'scope' => 'openid "profile"',
-        ], 'invalid_scope', 'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).'];
-        yield 'scope not allowed to the client (RFC 6749 §4.1.2.1)' => [[
-            'scope' => 'openid address',
-        ], 'invalid_scope', 'The requested scope is not allowed for this client.'];
-        yield 'scope differing by case' => [[
-            'scope' => 'openid Profile',
-        ], 'invalid_scope', 'The requested scope is not allowed for this client.'];
-        yield 'no code_challenge (RFC 7636 §4.4.1)' => [[
-            'code_challenge' => null,
-        ], 'invalid_request', 'The code_challenge parameter is missing (RFC 7636 section 4.3).'];
-        yield 'no code_challenge_method, which RFC 7636 §4.3 would read as plain' => [[
-            'code_challenge_method' => null,
-        ], 'invalid_request', 'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).'];
-        yield 'plain code_challenge_method (decision 0006)' => [[
-            'code_challenge_method' => 'plain',
-        ], 'invalid_request', 'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).'];
-        yield 'code_challenge_method in lower case' => [[
-            'code_challenge_method' => 's256',
-        ], 'invalid_request', 'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).'];
-        yield 'code_challenge too short (RFC 7636 §4.2)' => [[
-            'code_challenge' => str_repeat('a', 42),
-        ], 'invalid_request', 'The code_challenge parameter is not 43 to 128 unreserved characters (RFC 7636 section 4.2).'];
-        yield 'code_challenge with base64 padding' => [[
-            'code_challenge' => str_repeat('a', 43) . '=',
-        ], 'invalid_request', 'The code_challenge parameter is not 43 to 128 unreserved characters (RFC 7636 section 4.2).'];
-        yield 'nonce with a control character' => [[
-            'nonce' => "n-0S6\x00WzA2Mj",
-        ], 'invalid_request', 'The nonce parameter must be text without control characters.'];
-        yield 'nonce that is not UTF-8' => [[
-            'nonce' => "\xff\xfe",
-        ], 'invalid_request', 'The nonce parameter must be text without control characters.'];
-        yield 'unknown prompt value' => [[
-            'prompt' => 'create',
-        ], 'invalid_request', 'The prompt parameter is not a space-separated list of none, login, consent or select_account.'];
-        yield 'prompt in capitals (case sensitive)' => [[
-            'prompt' => 'Login',
-        ], 'invalid_request', 'The prompt parameter is not a space-separated list of none, login, consent or select_account.'];
-        yield 'prompt with two spaces' => [[
-            'prompt' => 'login  consent',
-        ], 'invalid_request', 'The prompt parameter is not a space-separated list of none, login, consent or select_account.'];
-        yield 'prompt none with another value (OIDC Core §3.1.2.1)' => [[
-            'prompt' => 'none login',
-        ], 'invalid_request', 'The prompt value none cannot be combined with another value (OIDC Core section 3.1.2.1).'];
-        yield 'prompt none after another value' => [[
-            'prompt' => 'consent none',
-        ], 'invalid_request', 'The prompt value none cannot be combined with another value (OIDC Core section 3.1.2.1).'];
-        yield 'negative max_age' => [[
-            'max_age' => '-1',
-        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
-        yield 'decimal max_age' => [[
-            'max_age' => '1.5',
-        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
-        yield 'max_age with a leading zero' => [[
-            'max_age' => '01',
-        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
-        yield 'max_age with a sign' => [[
-            'max_age' => '+1',
-        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
-        yield 'max_age beyond an integer' => [[
-            'max_age' => '1000000000000000000',
-        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
-        yield 'max_age that is not a number' => [[
-            'max_age' => 'yesterday',
-        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
-        yield 'login_hint with a control character' => [[
-            'login_hint' => "alice\r\n@acme.example",
-        ], 'invalid_request', 'The login_hint parameter must be text without control characters.'];
-        yield 'login_hint with a trailing newline' => [[
-            'login_hint' => "alice@acme.example\n",
-        ], 'invalid_request', 'The login_hint parameter must be text without control characters.'];
-        yield 'max_age with a trailing newline' => [[
-            'max_age' => "60\n",
-        ], 'invalid_request', 'The max_age parameter must be a non-negative integer.'];
-        yield 'ui_locales that is not a language tag' => [[
-            'ui_locales' => 'fr_FR',
-        ], 'invalid_request', 'The ui_locales parameter must be a space-separated list of language tags.'];
-        yield 'ui_locales with two spaces' => [[
-            'ui_locales' => 'fr  en',
-        ], 'invalid_request', 'The ui_locales parameter must be a space-separated list of language tags.'];
-        yield 'ui_locales with a subtag too long' => [[
-            'ui_locales' => 'en-abcdefghi',
-        ], 'invalid_request', 'The ui_locales parameter must be a space-separated list of language tags.'];
-        yield 'acr_values with a control character' => [[
-            'acr_values' => "urn:a\tb",
-        ], 'invalid_request', 'The acr_values parameter must be a space-separated list of printable ASCII values.'];
-        yield 'acr_values beyond ASCII' => [[
-            'acr_values' => 'argenté',
-        ], 'invalid_request', 'The acr_values parameter must be a space-separated list of printable ASCII values.'];
-        yield 'acr_values with a trailing newline' => [[
-            'acr_values' => "urn:a\n",
-        ], 'invalid_request', 'The acr_values parameter must be a space-separated list of printable ASCII values.'];
-        yield 'unknown display value' => [[
-            'display' => 'modal',
-        ], 'invalid_request', 'The display parameter is not one of page, popup, touch or wap.'];
-        yield 'display in capitals' => [[
-            'display' => 'Page',
-        ], 'invalid_request', 'The display parameter is not one of page, popup, touch or wap.'];
-        yield 'id_token_hint that is not a JWT' => [[
-            'id_token_hint' => 'not-a-token',
-        ], 'invalid_request', 'The id_token_hint parameter is not a signed compact JWT.'];
-        yield 'id_token_hint without a signature (RFC 7515 §7.1, OIDC Core §2)' => [[
-            'id_token_hint' => 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJhbGljZSJ9.',
-        ], 'invalid_request', 'The id_token_hint parameter is not a signed compact JWT.'];
-        yield 'id_token_hint with base64 padding' => [[
-            'id_token_hint' => 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.c2ln=',
-        ], 'invalid_request', 'The id_token_hint parameter is not a signed compact JWT.'];
-        yield 'claims that is not JSON' => [[
-            'claims' => '{',
-        ], 'invalid_request', 'The claims parameter is not a claims request (OIDC Core section 5.5).'];
-        yield 'claims that is not an object' => [[
-            'claims' => '["email"]',
-        ], 'invalid_request', 'The claims parameter is not a claims request (OIDC Core section 5.5).'];
-        yield 'claims with essential as a string' => [[
-            'claims' => '{"userinfo": {"email": {"essential": "true"}}}',
-        ], 'invalid_request', 'The claims parameter is not a claims request (OIDC Core section 5.5).'];
+        yield 'no response_type (RFC 6749 §4.1.1)' => [
+            [
+                'response_type' => null,
+            ],
+            'invalid_request',
+            'The response_type parameter is missing.',
+        ];
+        yield 'implicit flow (OIDC Core §3.2, decision 0006)' => [
+            [
+                'response_type' => 'id_token token',
+            ],
+            'unsupported_response_type',
+            'Only the code response type is supported.',
+        ];
+        yield 'hybrid flow (OIDC Core §3.3)' => [
+            [
+                'response_type' => 'code id_token',
+            ],
+            'unsupported_response_type',
+            'Only the code response type is supported.',
+        ];
+        yield 'token response type (RFC 6749 §4.2)' => [
+            [
+                'response_type' => 'token',
+            ],
+            'unsupported_response_type',
+            'Only the code response type is supported.',
+        ];
+        yield 'response_type in capitals' => [
+            [
+                'response_type' => 'CODE',
+            ],
+            'unsupported_response_type',
+            'Only the code response type is supported.',
+        ];
+        yield 'fragment response mode (Multiple Response Type Encoding Practices §2.1)' => [
+            [
+                'response_mode' => 'fragment',
+            ],
+            'unsupported_response_mode',
+            'The requested response mode is not supported.',
+        ];
+        yield 'response mode of no specification' => [
+            [
+                'response_mode' => 'web_message',
+            ],
+            'unsupported_response_mode',
+            'The requested response mode is not supported.',
+        ];
+        yield 'response mode in capitals' => [
+            [
+                'response_mode' => 'FORM_POST',
+            ],
+            'unsupported_response_mode',
+            'The requested response mode is not supported.',
+        ];
+        yield 'no scope (OIDC Core §3.1.2.1)' => [
+            [
+                'scope' => null,
+            ],
+            'invalid_request',
+            'The scope parameter is missing.',
+        ];
+        yield 'scope without openid (OIDC Core §3.1.2.2 step 3)' => [
+            [
+                'scope' => 'profile email',
+            ],
+            'invalid_scope',
+            'The scope parameter must contain openid (OIDC Core section 3.1.2.1).',
+        ];
+        yield 'scope with two spaces (RFC 6749 §3.3)' => [
+            [
+                'scope' => 'openid  profile',
+            ],
+            'invalid_scope',
+            'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).',
+        ];
+        yield 'scope with a trailing space' => [
+            [
+                'scope' => 'openid ',
+            ],
+            'invalid_scope',
+            'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).',
+        ];
+        yield 'scope with a double quote' => [
+            [
+                'scope' => 'openid "profile"',
+            ],
+            'invalid_scope',
+            'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).',
+        ];
+        yield 'scope not allowed to the client (RFC 6749 §4.1.2.1)' => [
+            [
+                'scope' => 'openid address',
+            ],
+            'invalid_scope',
+            'The requested scope is not allowed for this client.',
+        ];
+        yield 'scope differing by case' => [
+            [
+                'scope' => 'openid Profile',
+            ],
+            'invalid_scope',
+            'The requested scope is not allowed for this client.',
+        ];
+        yield 'no code_challenge (RFC 7636 §4.4.1)' => [
+            [
+                'code_challenge' => null,
+            ],
+            'invalid_request',
+            'The code_challenge parameter is missing (RFC 7636 section 4.3).',
+        ];
+        yield 'no code_challenge_method, which RFC 7636 §4.3 would read as plain' => [
+            [
+                'code_challenge_method' => null,
+            ],
+            'invalid_request',
+            'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).',
+        ];
+        yield 'plain code_challenge_method (decision 0006)' => [
+            [
+                'code_challenge_method' => 'plain',
+            ],
+            'invalid_request',
+            'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).',
+        ];
+        yield 'code_challenge_method in lower case' => [
+            [
+                'code_challenge_method' => 's256',
+            ],
+            'invalid_request',
+            'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).',
+        ];
+        yield 'code_challenge too short (RFC 7636 §4.2)' => [
+            [
+                'code_challenge' => str_repeat('a', 42),
+            ],
+            'invalid_request',
+            'The code_challenge parameter is not 43 to 128 unreserved characters (RFC 7636 section 4.2).',
+        ];
+        yield 'code_challenge with base64 padding' => [
+            [
+                'code_challenge' => str_repeat('a', 43) . '=',
+            ],
+            'invalid_request',
+            'The code_challenge parameter is not 43 to 128 unreserved characters (RFC 7636 section 4.2).',
+        ];
+        yield 'nonce with a control character' => [
+            [
+                'nonce' => "n-0S6\x00WzA2Mj",
+            ],
+            'invalid_request',
+            'The nonce parameter must be text without control characters.',
+        ];
+        yield 'nonce that is not UTF-8' => [
+            [
+                'nonce' => "\xff\xfe",
+            ],
+            'invalid_request',
+            'The nonce parameter must be text without control characters.',
+        ];
+        yield 'unknown prompt value' => [
+            [
+                'prompt' => 'create',
+            ],
+            'invalid_request',
+            'The prompt parameter is not a space-separated list of none, login, consent or select_account.',
+        ];
+        yield 'prompt in capitals (case sensitive)' => [
+            [
+                'prompt' => 'Login',
+            ],
+            'invalid_request',
+            'The prompt parameter is not a space-separated list of none, login, consent or select_account.',
+        ];
+        yield 'prompt with two spaces' => [
+            [
+                'prompt' => 'login  consent',
+            ],
+            'invalid_request',
+            'The prompt parameter is not a space-separated list of none, login, consent or select_account.',
+        ];
+        yield 'prompt none with another value (OIDC Core §3.1.2.1)' => [
+            [
+                'prompt' => 'none login',
+            ],
+            'invalid_request',
+            'The prompt value none cannot be combined with another value (OIDC Core section 3.1.2.1).',
+        ];
+        yield 'prompt none after another value' => [
+            [
+                'prompt' => 'consent none',
+            ],
+            'invalid_request',
+            'The prompt value none cannot be combined with another value (OIDC Core section 3.1.2.1).',
+        ];
+        yield 'negative max_age' => [
+            [
+                'max_age' => '-1',
+            ],
+            'invalid_request',
+            'The max_age parameter must be a non-negative integer.',
+        ];
+        yield 'decimal max_age' => [
+            [
+                'max_age' => '1.5',
+            ],
+            'invalid_request',
+            'The max_age parameter must be a non-negative integer.',
+        ];
+        yield 'max_age with a leading zero' => [
+            [
+                'max_age' => '01',
+            ],
+            'invalid_request',
+            'The max_age parameter must be a non-negative integer.',
+        ];
+        yield 'max_age with a sign' => [
+            [
+                'max_age' => '+1',
+            ],
+            'invalid_request',
+            'The max_age parameter must be a non-negative integer.',
+        ];
+        yield 'max_age beyond an integer' => [
+            [
+                'max_age' => '1000000000000000000',
+            ],
+            'invalid_request',
+            'The max_age parameter must be a non-negative integer.',
+        ];
+        yield 'max_age that is not a number' => [
+            [
+                'max_age' => 'yesterday',
+            ],
+            'invalid_request',
+            'The max_age parameter must be a non-negative integer.',
+        ];
+        yield 'login_hint with a control character' => [
+            [
+                'login_hint' => "alice\r\n@acme.example",
+            ],
+            'invalid_request',
+            'The login_hint parameter must be text without control characters.',
+        ];
+        yield 'login_hint with a trailing newline' => [
+            [
+                'login_hint' => "alice@acme.example\n",
+            ],
+            'invalid_request',
+            'The login_hint parameter must be text without control characters.',
+        ];
+        yield 'max_age with a trailing newline' => [
+            [
+                'max_age' => "60\n",
+            ],
+            'invalid_request',
+            'The max_age parameter must be a non-negative integer.',
+        ];
+        yield 'ui_locales that is not a language tag' => [
+            [
+                'ui_locales' => 'fr_FR',
+            ],
+            'invalid_request',
+            'The ui_locales parameter must be a space-separated list of language tags.',
+        ];
+        yield 'ui_locales with two spaces' => [
+            [
+                'ui_locales' => 'fr  en',
+            ],
+            'invalid_request',
+            'The ui_locales parameter must be a space-separated list of language tags.',
+        ];
+        yield 'ui_locales with a subtag too long' => [
+            [
+                'ui_locales' => 'en-abcdefghi',
+            ],
+            'invalid_request',
+            'The ui_locales parameter must be a space-separated list of language tags.',
+        ];
+        yield 'acr_values with a control character' => [
+            [
+                'acr_values' => "urn:a\tb",
+            ],
+            'invalid_request',
+            'The acr_values parameter must be a space-separated list of printable ASCII values.',
+        ];
+        yield 'acr_values beyond ASCII' => [
+            [
+                'acr_values' => 'argenté',
+            ],
+            'invalid_request',
+            'The acr_values parameter must be a space-separated list of printable ASCII values.',
+        ];
+        yield 'acr_values with a trailing newline' => [
+            [
+                'acr_values' => "urn:a\n",
+            ],
+            'invalid_request',
+            'The acr_values parameter must be a space-separated list of printable ASCII values.',
+        ];
+        yield 'unknown display value' => [
+            [
+                'display' => 'modal',
+            ],
+            'invalid_request',
+            'The display parameter is not one of page, popup, touch or wap.',
+        ];
+        yield 'display in capitals' => [
+            [
+                'display' => 'Page',
+            ],
+            'invalid_request',
+            'The display parameter is not one of page, popup, touch or wap.',
+        ];
+        yield 'id_token_hint that is not a JWT' => [
+            [
+                'id_token_hint' => 'not-a-token',
+            ],
+            'invalid_request',
+            'The id_token_hint parameter is not a signed compact JWT.',
+        ];
+        yield 'id_token_hint without a signature (RFC 7515 §7.1, OIDC Core §2)' => [
+            [
+                'id_token_hint' => 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJhbGljZSJ9.',
+            ],
+            'invalid_request',
+            'The id_token_hint parameter is not a signed compact JWT.',
+        ];
+        yield 'id_token_hint with base64 padding' => [
+            [
+                'id_token_hint' => 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.c2ln=',
+            ],
+            'invalid_request',
+            'The id_token_hint parameter is not a signed compact JWT.',
+        ];
+        yield 'claims that is not JSON' => [
+            [
+                'claims' => '{',
+            ],
+            'invalid_request',
+            'The claims parameter is not a claims request (OIDC Core section 5.5).',
+        ];
+        yield 'claims that is not an object' => [
+            [
+                'claims' => '["email"]',
+            ],
+            'invalid_request',
+            'The claims parameter is not a claims request (OIDC Core section 5.5).',
+        ];
+        yield 'claims with essential as a string' => [
+            [
+                'claims' => '{"userinfo": {"email": {"essential": "true"}}}',
+            ],
+            'invalid_request',
+            'The claims parameter is not a claims request (OIDC Core section 5.5).',
+        ];
     }
 
     /**
@@ -835,7 +1106,10 @@ final class AuthorizationRequestParserTest extends TestCase
             static::fail('A dpop_jkt that is not a thumbprint should have been refused.');
         } catch (InvalidRequestException $exception) {
             // Then
-            static::assertSame('invalid_request: The dpop_jkt parameter is the JWK thumbprint of a key, the base64url of a SHA-256 (RFC 9449 section 10).', $exception->getMessage());
+            static::assertSame(
+                'invalid_request: The dpop_jkt parameter is the JWK thumbprint of a key, the base64url of a SHA-256 (RFC 9449 section 10).',
+                $exception->getMessage(),
+            );
             static::assertTrue($exception->redirectable, 'the client and the redirect URI are known by then, so the refusal goes back to the client');
         }
     }
@@ -918,15 +1192,24 @@ final class AuthorizationRequestParserTest extends TestCase
      */
     public static function provideMalformedPkceOfAClientThatDoesNotRequireIt(): iterable
     {
-        yield 'plain method (decision 0006)' => [[
-            'code_challenge_method' => 'plain',
-        ], 'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).'];
-        yield 'method without a challenge' => [[
-            'code_challenge' => null,
-        ], 'The code_challenge parameter is missing (RFC 7636 section 4.3).'];
-        yield 'challenge without a method, which RFC 7636 §4.3 would read as plain' => [[
-            'code_challenge_method' => null,
-        ], 'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).'];
+        yield 'plain method (decision 0006)' => [
+            [
+                'code_challenge_method' => 'plain',
+            ],
+            'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).',
+        ];
+        yield 'method without a challenge' => [
+            [
+                'code_challenge' => null,
+            ],
+            'The code_challenge parameter is missing (RFC 7636 section 4.3).',
+        ];
+        yield 'challenge without a method, which RFC 7636 §4.3 would read as plain' => [
+            [
+                'code_challenge_method' => null,
+            ],
+            'The code_challenge_method parameter must be S256 (RFC 7636 section 4.3).',
+        ];
     }
 
     /**
@@ -961,10 +1244,14 @@ final class AuthorizationRequestParserTest extends TestCase
         $this->pushingClient();
 
         // When
-        $target = $this->parser->redirectTarget($this->tenant, self::parameters([
-            'client_id' => 'fapi-demo',
-            'redirect_uri' => 'https://fapi.localhost/login/check',
-        ]), true);
+        $target = $this->parser->redirectTarget(
+            $this->tenant,
+            self::parameters([
+                'client_id' => 'fapi-demo',
+                'redirect_uri' => 'https://fapi.localhost/login/check',
+            ]),
+            true,
+        );
 
         // Then
         static::assertSame('fapi-demo', $target->client->clientId);

@@ -32,13 +32,16 @@ final class RequestObjectTest extends TestCase
         $parameters = $object->parameters();
 
         // Then
-        static::assertSame([
-            'response_type' => 'code',
-            'client_id' => 'oidc-demo',
-            'redirect_uri' => 'https://demo.localhost/login/check',
-            'scope' => 'openid profile',
-            'state' => 'af0ifjsldkj',
-        ], $parameters);
+        static::assertSame(
+            [
+                'response_type' => 'code',
+                'client_id' => 'oidc-demo',
+                'redirect_uri' => 'https://demo.localhost/login/check',
+                'scope' => 'openid profile',
+                'state' => 'af0ifjsldkj',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -62,9 +65,12 @@ final class RequestObjectTest extends TestCase
         $parameters = $object->parameters();
 
         // Then
-        static::assertSame([
-            'scope' => 'openid',
-        ], $parameters);
+        static::assertSame(
+            [
+                'scope' => 'openid',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -83,9 +89,12 @@ final class RequestObjectTest extends TestCase
         $parameters = $object->parameters();
 
         // Then
-        static::assertSame([
-            'max_age' => '86400',
-        ], $parameters);
+        static::assertSame(
+            [
+                'max_age' => '86400',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -110,9 +119,12 @@ final class RequestObjectTest extends TestCase
         $parameters = $object->parameters();
 
         // Then
-        static::assertSame([
-            'claims' => '{"id_token":{"acr":{"essential":true}}}',
-        ], $parameters);
+        static::assertSame(
+            [
+                'claims' => '{"id_token":{"acr":{"essential":true}}}',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -179,8 +191,14 @@ final class RequestObjectTest extends TestCase
      */
     private static function objectOf(array $claims): RequestObject
     {
-        return new RequestObject(new UnverifiedJwt('the.compact.jws', [
-            'alg' => 'ES256',
-        ], $claims));
+        return new RequestObject(
+            new UnverifiedJwt(
+                'the.compact.jws',
+                [
+                    'alg' => 'ES256',
+                ],
+                $claims,
+            ),
+        );
     }
 }

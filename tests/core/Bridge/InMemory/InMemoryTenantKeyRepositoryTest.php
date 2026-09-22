@@ -125,7 +125,15 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
     {
         // Given
         $newest = self::activeKey($this->acme, Keys::pair()->kid, Fixtures::now());
-        $oldest = new TenantKey(Keys::otherPair()->kid, $this->acme, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $oldest = new TenantKey(
+            Keys::otherPair()->kid,
+            $this->acme,
+            Algorithms::rs256(),
+            Keys::otherPair()->publicJwk,
+            'sealed',
+            Fixtures::now()->modify('-1 day'),
+            Fixtures::now()->modify('-1 day'),
+        );
         $this->repository->save($newest);
         $this->repository->save($oldest);
 
@@ -135,9 +143,17 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
 
     private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): TenantKey
     {
-        $key = new TenantKey($kid, $tenant, Algorithms::rs256(), [
-            'kid' => $kid,
-        ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now(), $createdAt ?? Fixtures::now());
+        $key = new TenantKey(
+            $kid,
+            $tenant,
+            Algorithms::rs256(),
+            [
+                'kid' => $kid,
+            ] + Keys::pair()->publicJwk,
+            'sealed',
+            $createdAt ?? Fixtures::now(),
+            $createdAt ?? Fixtures::now(),
+        );
         $key->activate($createdAt ?? Fixtures::now());
 
         return $key;

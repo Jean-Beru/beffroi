@@ -104,8 +104,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $key = str_replace(' ', '', self::keyOf($crawler));
 
         // When
-        $stored = $this->readHttpSession()
-            ->get(TotpProvisioningStore::KEY);
+        $stored = $this->readHttpSession()->get(TotpProvisioningStore::KEY);
 
         // Then
         static::assertIsArray($stored);
@@ -206,9 +205,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     {
         // Given
         $this->signIn(self::user('alice'));
-        $token = $this->twoFactorPage()
-            ->filter('form[data-two-factor="begin"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->twoFactorPage()->filter('form[data-two-factor="begin"] input[name="_token"]')->attr('value');
 
         // When
         $crawler = $this->browser->request('POST', '/account/two-factor', [
@@ -217,7 +214,11 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode(), 'The token of the begin form is not the token of the enrol form.');
+        static::assertSame(
+            Response::HTTP_FORBIDDEN,
+            $this->browser->getResponse()->getStatusCode(),
+            'The token of the begin form is not the token of the enrol form.',
+        );
         static::assertSame('invalid_csrf_token', $crawler->filter('p[data-error]')->attr('data-error'));
     }
 
@@ -226,9 +227,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     {
         // Given
         $this->signIn(self::user('alice'));
-        $token = $this->begin()
-            ->filter('form[data-two-factor="enrol"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->begin()->filter('form[data-two-factor="enrol"] input[name="_token"]')->attr('value');
         $this->httpSession(static function (SessionInterface $httpSession): void {
             $httpSession->remove(TotpProvisioningStore::KEY);
         });
@@ -253,9 +252,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     {
         // Given
         $this->signIn(self::user('alice'));
-        $token = $this->twoFactorPage()
-            ->filter('form[data-two-factor="begin"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->twoFactorPage()->filter('form[data-two-factor="begin"] input[name="_token"]')->attr('value');
         $secret = self::secretOf($this->begin());
         $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
 
@@ -322,9 +319,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $this->signIn($alice);
         $secret = self::secretOf($this->begin());
         $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
-        $token = $this->twoFactorPage()
-            ->filter('form[data-two-factor="revoke"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->twoFactorPage()->filter('form[data-two-factor="revoke"] input[name="_token"]')->attr('value');
         $this->revoke();
 
         // When
@@ -348,10 +343,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $alice = self::userWithPassword('alice', self::PASSWORD);
         $this->signIn($alice);
         $secret = self::secretOf($this->begin());
-        $backupCode = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()))
-            ->filter('ul[data-two-factor="backup-codes"] li')
-            ->eq(4)
-            ->text();
+        $backupCode = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()))->filter('ul[data-two-factor="backup-codes"] li')->eq(4)->text();
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
@@ -407,9 +399,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
     private function submitFirstCode(string $code): Crawler
     {
-        $form = $this->browser->getCrawler()
-            ->selectButton('Confirm')
-            ->form();
+        $form = $this->browser->getCrawler()->selectButton('Confirm')->form();
         $form['code'] = $code;
 
         return $this->browser->submit($form);
@@ -422,9 +412,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
     private function submitLogin(string $interaction, string $username, string $password): void
     {
-        $form = $this->loginPage($interaction)
-            ->selectButton('Sign in')
-            ->form();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
         $form['_username'] = $username;
         $form['_password'] = $password;
         $this->browser->submit($form);
@@ -435,16 +423,14 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $crawler = $this->browser->request('GET', '/login/code', [
             'interaction' => $interaction,
         ]);
-        $form = $crawler->selectButton('Continue')
-            ->form();
+        $form = $crawler->selectButton('Continue')->form();
         $form['_code'] = $code;
         $this->browser->submit($form);
     }
 
     private static function keyOf(Crawler $crawler): string
     {
-        return $crawler->filter('code[data-two-factor="key"]')
-            ->text();
+        return $crawler->filter('code[data-two-factor="key"]')->text();
     }
 
     /**

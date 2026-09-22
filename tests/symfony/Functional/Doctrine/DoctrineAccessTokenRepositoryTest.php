@@ -39,7 +39,8 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
             'name' => new ClaimRequest(true),
         ]);
         $code = Tokens::code('the-code', $client, $session, self::now(), ['openid', 'email'], claims: $claims);
-        $value = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));
+        $value = self::tokens()
+            ->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));
         self::reload();
 
         // When
@@ -102,8 +103,10 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         // Given
         $session = self::session(self::user());
         $code = Tokens::code('the-code', self::client(), $session, self::now());
-        $second = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+2 minutes'), self::now()->modify('+12 minutes'));
-        $first = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));
+        $second = self::tokens()
+            ->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+2 minutes'), self::now()->modify('+12 minutes'));
+        $first = self::tokens()
+            ->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));
         $other = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
 
@@ -154,8 +157,24 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $session = self::session(self::user());
         $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
         $grant = Uuid::v7();
-        $orphan = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('ghost-code', $ghost, $session, self::now(), grantId: $grant)), self::now(), self::now()->modify('+10 minutes'));
-        $kept = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', self::client(), $session, self::now()->modify('+1 minute'), grantId: $grant)), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));
+        $orphan = self::tokens()
+            ->issue(
+                GrantedAuthorization::fromAuthorizationCode(Tokens::code('ghost-code', $ghost, $session, self::now(), grantId: $grant)),
+                self::now(),
+                self::now()->modify('+10 minutes'),
+            );
+        $kept = self::tokens()
+            ->issue(
+                GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+                    'the-code',
+                    self::client(),
+                    $session,
+                    self::now()->modify('+1 minute'),
+                    grantId: $grant,
+                )),
+                self::now()->modify('+1 minute'),
+                self::now()->modify('+11 minutes'),
+            );
         self::reload();
 
         // When
@@ -165,7 +184,11 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         // Then
         static::assertNull($found);
         static::assertSame([OpaqueTokenValue::hash($kept)], self::hashes($revoked));
-        static::assertEquals(0, self::entityManager()->getConnection()->fetchOne('SELECT COUNT(*) FROM heidi_access_token'), 'the row of the ghost went with the others');
+        static::assertEquals(
+            0,
+            self::entityManager()->getConnection()->fetchOne('SELECT COUNT(*) FROM heidi_access_token'),
+            'the row of the ghost went with the others',
+        );
     }
 
     private static function authorization(AuthenticationSession $session): GrantedAuthorization

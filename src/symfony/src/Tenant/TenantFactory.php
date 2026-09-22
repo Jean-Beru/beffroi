@@ -41,7 +41,14 @@ final readonly class TenantFactory
     {
         $issuer = new Issuer($this->issuer);
 
-        return new Tenant(self::identifier($this->slug), $this->slug, $issuer, $this->name ?? $issuer->host, $this->clock->now(), $this->authenticationContextPolicy());
+        return new Tenant(
+            self::identifier($this->slug),
+            $this->slug,
+            $issuer,
+            $this->name ?? $issuer->host,
+            $this->clock->now(),
+            $this->authenticationContextPolicy(),
+        );
     }
 
     public function authenticationContextPolicy(): AuthenticationContextPolicy

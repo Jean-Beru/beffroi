@@ -101,7 +101,20 @@ final class UserTest extends TestCase
     public function itCanBeCreatedWithAVerifiedEmailAndAVerifiedPhoneNumber(): void
     {
         // When
-        $user = new User(Uuid::v7(), Fixtures::tenant(), new Subject('s'), 'alice', new EmailAddress('alice@acme.example'), true, Profile::empty(), '+33600000000', true, null, Fixtures::now(), Fixtures::now());
+        $user = new User(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            new Subject('s'),
+            'alice',
+            new EmailAddress('alice@acme.example'),
+            true,
+            Profile::empty(),
+            '+33600000000',
+            true,
+            null,
+            Fixtures::now(),
+            Fixtures::now(),
+        );
 
         // Then
         static::assertTrue($user->emailVerified);

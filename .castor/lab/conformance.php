@@ -154,9 +154,14 @@ const CONFORMANCE_OP_TIMEOUT = 180;
  * @param array<string> $plan
  * @param array<string> $module
  */
-#[AsTask(description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module')]
+#[AsTask(
+    description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
+)]
 function conformance(
-    #[AsOption(description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout or rotate-keys (repeatable); every plan by default', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
+    #[AsOption(
+        description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout or rotate-keys (repeatable); every plan by default',
+        mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
+    )]
     array $plan = [],
     #[AsOption(description: 'Run only the modules whose name contains this text (repeatable)', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY)]
     array $module = [],
@@ -164,7 +169,9 @@ function conformance(
     string $suite = 'https://localhost:8443',
     #[AsOption(description: 'Fail on WARNING as well as on FAILED, which is what the CI asks of the plans')]
     bool $strict = false,
-    #[AsOption(description: 'Empty the database of the OP and provision it again before the plans run, which is the state they were written against: a development user with a password and nothing else')]
+    #[AsOption(
+        description: 'Empty the database of the OP and provision it again before the plans run, which is the state they were written against: a development user with a password and nothing else',
+    )]
     bool $reset = false,
 ): void {
     $unknown = array_diff($plan, array_keys(CONFORMANCE_PLANS));
@@ -173,8 +180,7 @@ function conformance(
         exit(1);
     }
     $plans = $plan === [] ? CONFORMANCE_PLANS : array_intersect_key(CONFORMANCE_PLANS, array_flip($plan));
-    io()
-        ->title(sprintf('Conformance: %s', implode(', ', array_column($plans, 'name'))));
+    io()->title(sprintf('Conformance: %s', implode(', ', array_column($plans, 'name'))));
 
     $env = load_dot_env(getcwd() . '/apps/op/.env');
     $missing = array_filter(CONFORMANCE_REQUIRED_VALUES, static fn (string $name): bool => ($env[$name] ?? '') === '');
@@ -187,8 +193,7 @@ function conformance(
     }
 
     $server = conformance_server($suite);
-    io()
-        ->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['HEIDI_ISSUER']));
+    io()->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['HEIDI_ISSUER']));
     $rows = [];
     $verdict = [];
     $stale = [];
@@ -207,36 +212,43 @@ function conformance(
             ];
         } else {
             $configuration = conformance_configuration($env, $definition['client'] ?? []);
-            $created = conformance_request($suite, 'POST', '/api/plan', [
-                'query' => [
-                    'planName' => $definition['name'],
-                    'variant' => json_encode((object) $definition['variant'], \JSON_THROW_ON_ERROR),
+            $created = conformance_request(
+                $suite,
+                'POST',
+                '/api/plan',
+                [
+                    'query' => [
+                        'planName' => $definition['name'],
+                        'variant' => json_encode((object) $definition['variant'], \JSON_THROW_ON_ERROR),
+                    ],
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                    ],
+                    'body' => $configuration,
                 ],
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                ],
-                'body' => $configuration,
-            ], 201);
+                201,
+            );
             $planId = (string) $created['id'];
             $planUrl = sprintf('%s/plan-detail.html?plan=%s', $suite, $planId);
             $planUrls[] = sprintf('%s: %s', $definition['name'], $planUrl);
         }
         // What a plan runs by default, which naming a module with --module lifts: the restriction is
         // there to keep a run lean, never to stop an operator from asking for a module by its name.
-        $only = $module === [] ? ($definition['modules'] ?? []) : [];
+        $only = $module === [] ? $definition['modules'] ?? [] : [];
         $modules = array_values(array_filter(
             $created['modules'],
-            static fn (array $moduleDefinition): bool => ($only === [] || in_array((string) $moduleDefinition['testModule'], $only, true))
-                && ($module === []
-                    || array_any($module, static fn (string $needle): bool => str_contains((string) $moduleDefinition['testModule'], $needle))),
+            static fn (array $moduleDefinition): bool => (
+                ($only === [] || in_array((string) $moduleDefinition['testModule'], $only, true))
+                && ($module === [] || array_any($module, static fn (string $needle): bool => str_contains((string) $moduleDefinition['testModule'], $needle)))
+            ),
         ));
-        io()
-            ->section($planId === null
+        io()->section(
+            $planId === null
                 ? sprintf('%s: one module on its own, no plan', $definition['name'])
-                : sprintf('%s: plan %s, %d module(s)', $definition['name'], $planId, count($modules)));
+                : sprintf('%s: plan %s, %d module(s)', $definition['name'], $planId, count($modules)),
+        );
         if ($planUrl !== null) {
-            io()
-                ->text($planUrl);
+            io()->text($planUrl);
         }
         if ($modules === []) {
             io()->warning(sprintf('No module of %s matches %s.', $definition['name'], implode(', ', $module)));
@@ -245,8 +257,7 @@ function conformance(
 
         foreach ($modules as $index => $moduleDefinition) {
             $name = (string) $moduleDefinition['testModule'];
-            io()
-                ->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
+            io()->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
             $started = microtime(true);
             $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, $definition['before_start'] ?? null);
             if ($planUrl === null) {
@@ -260,8 +271,12 @@ function conformance(
             }
             $rows[] = [$definition['name'], $name, $result, sprintf('%ds', (int) $elapsed), $run['url']];
             $verdict[$result] = ($verdict[$result] ?? 0) + 1;
-            io()
-                ->text(sprintf('  %s in %ds: %s', $result === 'KNOWN' ? sprintf('%s, known (%s)', $run['result'], $known) : $result, (int) $elapsed, $run['url']));
+            io()->text(sprintf(
+                '  %s in %ds: %s',
+                $result === 'KNOWN' ? sprintf('%s, known (%s)', $run['result'], $known) : $result,
+                (int) $elapsed,
+                $run['url'],
+            ));
             foreach ($run['findings'] as $finding) {
                 io()->text('    ' . $finding);
             }
@@ -275,18 +290,19 @@ function conformance(
         exit(1);
     }
 
-    io()
-        ->newLine();
-    io()
-        ->table(['Plan', 'Module', 'Result', 'Time', 'Log'], $rows);
-    io()
-        ->text(sprintf('%d plan(s) on suite %s: %s', count($planUrls), $server['version'] ?? '?', implode(', ', array_map(
+    io()->newLine();
+    io()->table(['Plan', 'Module', 'Result', 'Time', 'Log'], $rows);
+    io()->text(sprintf(
+        '%d plan(s) on suite %s: %s',
+        count($planUrls),
+        $server['version'] ?? '?',
+        implode(', ', array_map(
             static fn (string $result, int $count): string => sprintf('%d %s', $count, $result),
             array_keys($verdict),
             $verdict,
-        ))));
-    io()
-        ->listing($planUrls);
+        )),
+    ));
+    io()->listing($planUrls);
 
     // A module listed as known that no longer fails is a line to delete, not a result to keep: the list
     // says what the OP cannot do yet, and it is wrong the moment it can.
@@ -306,10 +322,11 @@ function conformance(
         exit(1);
     }
     $known = $verdict['KNOWN'] ?? 0;
-    io()
-        ->success($known === 0
+    io()->success(
+        $known === 0
             ? 'Every module passed.'
-            : sprintf('Every module passed but %d left to a gap named in CONFORMANCE_PLANS.', $known));
+            : sprintf('Every module passed but %d left to a gap named in CONFORMANCE_PLANS.', $known),
+    );
 }
 
 /**
@@ -356,8 +373,7 @@ function conformance_server(string $suite): array
  */
 function conformance_reset(string $issuer): void
 {
-    io()
-        ->section('Resetting the OP');
+    io()->section('Resetting the OP');
     op_console(['doctrine:schema:drop', '--full-database', '--force', '--no-interaction']);
     op_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
     provision();
@@ -376,8 +392,7 @@ function conformance_wait_for_op(string $issuer): void
     $deadline = microtime(true) + CONFORMANCE_OP_TIMEOUT;
     // The development OP is served by the internal CA of Caddy, which nothing on the host trusts.
     $url = $issuer . '/.well-known/openid-configuration';
-    io()
-        ->text(sprintf('Waiting for the OP on %s.', $url));
+    io()->text(sprintf('Waiting for the OP on %s.', $url));
     while (true) {
         try {
             if (http_request('GET', $url, [
@@ -454,17 +469,26 @@ function conformance_run_module(string $suite, ?string $planId, array $definitio
     if (($definition['variant'] ?? []) !== []) {
         $query['variant'] = json_encode($definition['variant'], \JSON_THROW_ON_ERROR);
     }
-    $created = conformance_request($suite, 'POST', '/api/runner', [
-        'query' => $query,
-        // The configuration is the plan's, or the module's own when it has no plan; an empty POST must not
-        // be declared as a form.
-        'headers' => [
-            'Content-Type' => 'application/json',
+    $created = conformance_request(
+        $suite,
+        'POST',
+        '/api/runner',
+        [
+            'query' => $query,
+            // The configuration is the plan's, or the module's own when it has no plan; an empty POST must not
+            // be declared as a form.
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            ...(
+                $planId === null
+                    ? [
+                        'body' => $configuration,
+                    ] : []
+            ),
         ],
-        ...($planId === null ? [
-            'body' => $configuration,
-        ] : []),
-    ], 201);
+        201,
+    );
     $id = (string) $created['id'];
     $url = sprintf('%s/log-detail.html?log=%s', $suite, $id);
     $deadline = microtime(true) + CONFORMANCE_MODULE_TIMEOUT;
@@ -525,16 +549,23 @@ function conformance_run_module(string $suite, ?string $planId, array $definitio
  */
 function conformance_start_module(string $suite, string $id, float $deadline): string
 {
-    $start = static fn (): array => conformance_request($suite, 'POST', sprintf('/api/runner/%s', $id), [
-        'headers' => [
-            'Content-Type' => 'application/json',
+    $start = static fn (): array => conformance_request(
+        $suite,
+        'POST',
+        sprintf('/api/runner/%s', $id),
+        [
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
         ],
-    ], null);
+        null,
+    );
 
     $start();
-    if (conformance_wait_state($suite, $id, ['RUNNING', 'WAITING', 'FINISHED'], min($deadline, microtime(true) + CONFORMANCE_START_CONFIRMATION)) === 'TIMEOUT') {
-        io()
-            ->text('  the suite did not report the module started; asking it again');
+    if (
+        conformance_wait_state($suite, $id, ['RUNNING', 'WAITING', 'FINISHED'], min($deadline, microtime(true) + CONFORMANCE_START_CONFIRMATION)) === 'TIMEOUT'
+    ) {
+        io()->text('  the suite did not report the module started; asking it again');
         $start();
     }
 
@@ -623,7 +654,11 @@ function conformance_request(string $suite, string $method, string $path, array 
     }
     $decoded = json_decode($content, true, flags: \JSON_THROW_ON_ERROR);
 
-    return is_array($decoded) ? $decoded : [
-        'value' => $decoded,
-    ];
+    return (
+        is_array($decoded)
+            ? $decoded
+            : [
+                'value' => $decoded,
+            ]
+    );
 }

@@ -65,7 +65,9 @@ final class RefreshTokenFamilyTest extends TestCase
         $family = new RefreshTokenFamily($id, AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
 
         // When / Then
-        static::assertTrue($family->equals(new RefreshTokenFamily($id, AuthorizationCode::hash('another'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+1 day'))));
+        static::assertTrue($family->equals(
+            new RefreshTokenFamily($id, AuthorizationCode::hash('another'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+1 day')),
+        ));
     }
 
     #[Test]
@@ -75,7 +77,9 @@ final class RefreshTokenFamilyTest extends TestCase
         $family = new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
 
         // When / Then
-        static::assertFalse($family->equals(new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'))));
+        static::assertFalse($family->equals(
+            new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days')),
+        ));
     }
 
     #[Test]

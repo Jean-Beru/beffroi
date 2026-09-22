@@ -107,75 +107,111 @@ final class RequestObjectValidatorTest extends TestCase
     {
         $now = new DateTimeImmutable(self::NOW)->getTimestamp();
 
-        yield 'issued by another client' => [[
-            'iss' => 'another-client',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now,
-            'exp' => $now + 300,
-        ], 'The iss of a request object names the client that sends it'];
-        yield 'no issuer at all' => [[
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now,
-            'exp' => $now + 300,
-        ], 'The iss of a request object names the client that sends it'];
-        yield 'addressed to another provider' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://other.example',
-            'nbf' => $now,
-            'exp' => $now + 300,
-        ], 'The aud of a request object names the issuer of this provider'];
-        yield 'no audience at all' => [[
-            'iss' => 'oidc-demo',
-            'nbf' => $now,
-            'exp' => $now + 300,
-        ], 'The aud of a request object names the issuer of this provider'];
-        yield 'naming another client inside' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now,
-            'exp' => $now + 300,
-            'client_id' => 'another-client',
-        ], 'The client_id inside a request object is the one the request names outside it'];
-        yield 'without an "nbf"' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'exp' => $now + 300,
-        ], 'A request object carries an nbf'];
-        yield 'not valid yet' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now + 31,
-            'exp' => $now + 300,
-        ], 'The request object is not valid yet'];
-        yield 'without an "exp"' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now,
-        ], 'A request object carries an exp'];
-        yield 'expired' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now - 600,
-            'exp' => $now - 31,
-        ], 'The request object has expired'];
-        yield 'expired at the edge of the leeway' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now - 600,
-            'exp' => $now - 30,
-        ], 'The request object has expired'];
-        yield 'standing longer than this provider accepts' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now,
-            'exp' => $now + 3601,
-        ], 'stays inside the lifetime this provider accepts'];
-        yield 'an "exp" that is not a number of seconds' => [[
-            'iss' => 'oidc-demo',
-            'aud' => 'https://id.acme.example',
-            'nbf' => $now,
-            'exp' => (string) ($now + 300),
-        ], 'A request object carries an exp'];
+        yield 'issued by another client' => [
+            [
+                'iss' => 'another-client',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now,
+                'exp' => $now + 300,
+            ],
+            'The iss of a request object names the client that sends it',
+        ];
+        yield 'no issuer at all' => [
+            [
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now,
+                'exp' => $now + 300,
+            ],
+            'The iss of a request object names the client that sends it',
+        ];
+        yield 'addressed to another provider' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://other.example',
+                'nbf' => $now,
+                'exp' => $now + 300,
+            ],
+            'The aud of a request object names the issuer of this provider',
+        ];
+        yield 'no audience at all' => [
+            [
+                'iss' => 'oidc-demo',
+                'nbf' => $now,
+                'exp' => $now + 300,
+            ],
+            'The aud of a request object names the issuer of this provider',
+        ];
+        yield 'naming another client inside' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now,
+                'exp' => $now + 300,
+                'client_id' => 'another-client',
+            ],
+            'The client_id inside a request object is the one the request names outside it',
+        ];
+        yield 'without an "nbf"' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'exp' => $now + 300,
+            ],
+            'A request object carries an nbf',
+        ];
+        yield 'not valid yet' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now + 31,
+                'exp' => $now + 300,
+            ],
+            'The request object is not valid yet',
+        ];
+        yield 'without an "exp"' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now,
+            ],
+            'A request object carries an exp',
+        ];
+        yield 'expired' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now - 600,
+                'exp' => $now - 31,
+            ],
+            'The request object has expired',
+        ];
+        yield 'expired at the edge of the leeway' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now - 600,
+                'exp' => $now - 30,
+            ],
+            'The request object has expired',
+        ];
+        yield 'standing longer than this provider accepts' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now,
+                'exp' => $now + 3601,
+            ],
+            'stays inside the lifetime this provider accepts',
+        ];
+        yield 'an "exp" that is not a number of seconds' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => $now,
+                'exp' => (string) ($now + 300),
+            ],
+            'A request object carries an exp',
+        ];
     }
 
     /**
@@ -259,8 +295,7 @@ final class RequestObjectValidatorTest extends TestCase
 
     private function timestamp(): int
     {
-        return $this->now()
-            ->getTimestamp();
+        return $this->now()->getTimestamp();
     }
 
     /**
@@ -268,9 +303,15 @@ final class RequestObjectValidatorTest extends TestCase
      */
     private static function objectOf(array $claims): RequestObject
     {
-        return new RequestObject(new UnverifiedJwt('the.compact.jws', [
-            'alg' => 'ES256',
-        ], $claims));
+        return new RequestObject(
+            new UnverifiedJwt(
+                'the.compact.jws',
+                [
+                    'alg' => 'ES256',
+                ],
+                $claims,
+            ),
+        );
     }
 
     /**
@@ -278,8 +319,14 @@ final class RequestObjectValidatorTest extends TestCase
      */
     private static function unsignedObjectOf(array $claims): RequestObject
     {
-        return new RequestObject(new UnverifiedJwt('the.unsigned.', [
-            'alg' => 'none',
-        ], $claims));
+        return new RequestObject(
+            new UnverifiedJwt(
+                'the.unsigned.',
+                [
+                    'alg' => 'none',
+                ],
+                $claims,
+            ),
+        );
     }
 }

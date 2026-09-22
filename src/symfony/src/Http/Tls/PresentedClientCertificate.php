@@ -36,7 +36,10 @@ final readonly class PresentedClientCertificate
         try {
             return $this->certificates->ofRequest($request);
         } catch (ForgedClientCertificateException $refusal) {
-            throw new InvalidRequestException('The request carries a client certificate in a header, which nothing in front of this provider sets.', previous: $refusal);
+            throw new InvalidRequestException(
+                'The request carries a client certificate in a header, which nothing in front of this provider sets.',
+                previous: $refusal,
+            );
         } catch (InvalidArgumentException $exception) {
             throw new InvalidRequestException('The client certificate of this request could not be read.', previous: $exception);
         }

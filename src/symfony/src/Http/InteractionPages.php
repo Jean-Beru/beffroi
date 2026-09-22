@@ -59,11 +59,15 @@ final readonly class InteractionPages
      */
     public function error(int $status, string $error, ?string $description = null): Response
     {
-        return $this->render('error.html.twig', [
-            'status' => $status,
-            'error' => $error,
-            'description' => $description,
-        ], $status);
+        return $this->render(
+            'error.html.twig',
+            [
+                'status' => $status,
+                'error' => $error,
+                'description' => $description,
+            ],
+            $status,
+        );
     }
 
     public function redirect(string $uri): RedirectResponse
@@ -80,8 +84,13 @@ final readonly class InteractionPages
     {
         $interaction = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
 
-        return $this->redirect($this->router->generate($route, $interaction === '' ? [] : [
-            AuthorizationResponder::INTERACTION_PARAMETER => $interaction,
-        ]));
+        return $this->redirect($this->router->generate(
+            $route,
+            $interaction === ''
+                ? []
+                : [
+                    AuthorizationResponder::INTERACTION_PARAMETER => $interaction,
+                ],
+        ));
     }
 }

@@ -102,7 +102,12 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     {
         // Given
         $client = self::client('native-app');
-        $request = new AuthorizationRequest($client, $client->redirectUris[0], [new Scope('openid')], new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256));
+        $request = new AuthorizationRequest(
+            $client,
+            $client->redirectUris[0],
+            [new Scope('openid')],
+            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+        );
         $id = Interaction::generateId();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
         self::reload();
@@ -134,9 +139,13 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         $session = self::session($user);
         $client = self::client();
         $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid')], self::now());
-        self::service('test.heidi.consents', ConsentRepositoryInterface::class)
-            ->save($consent);
-        $request = new AuthorizationRequest($client, $client->redirectUris[0], [new Scope('openid')], new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256));
+        self::service('test.heidi.consents', ConsentRepositoryInterface::class)->save($consent);
+        $request = new AuthorizationRequest(
+            $client,
+            $client->redirectUris[0],
+            [new Scope('openid')],
+            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+        );
         $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, 'en', self::now(), self::now()->modify('+10 minutes'));
         self::interactions()->save($interaction);
         $interaction->authenticate($session, self::now()->modify('+1 minute'));
@@ -166,7 +175,12 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     {
         // Given
         $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
-        $request = new AuthorizationRequest($ghost, $ghost->redirectUris[0], [new Scope('openid')], new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256));
+        $request = new AuthorizationRequest(
+            $ghost,
+            $ghost->redirectUris[0],
+            [new Scope('openid')],
+            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+        );
         $id = Interaction::generateId();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
         self::reload();
