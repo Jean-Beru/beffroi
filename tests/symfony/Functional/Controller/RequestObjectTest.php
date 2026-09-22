@@ -6,9 +6,11 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use function array_filter;
 use function base64_encode;
+use Closure;
 use DateTimeImmutable;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Domain\Token\JwtPayload;
+use Heidi\Oidc\Tests\Fixture\RequestObjects;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\JWSBuilder;
@@ -16,13 +18,21 @@ use Jose\Component\Signature\Serializer\CompactSerializer;
 use PHPUnit\Framework\Attributes\Test;
 use function rtrim;
 use function strtr;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * RFC 9101 §6.1 and OIDC Core §6, the request the client signs: the authorization endpoint reads the
  * object and not the query, the object of a client that registered "none" is read unsigned, and a
  * "request_uri" is read back only from a URL the client registered (decision 0006).
+ *
+ * The same object encrypted to the key the tenant publishes (issue #189) is served the same way, by
+ * value and by reference, and opens with that key alone: once it has retired, the object is refused.
+ * What the client publishes behind its "request_uri" is answered here by a mock, so that what is seen
+ * is the endpoint and nothing of the network.
  */
 final class RequestObjectTest extends BrowserTestCase
 {
@@ -38,6 +48,19 @@ final class RequestObjectTest extends BrowserTestCase
         'y' => 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
         'd' => 'jpsQnnGQmL-YBIffH1136cspYG6-0iY7X1fCE9-E9LI',
     ];
+
+    /**
+     * What the client publishes behind the "request_uri" it registered, which the provider reads back
+     * with one GET (RFC 9101 §5.2).
+     */
+    private string $published = '';
+
+    protected function configureContainer(): Closure
+    {
+        return function (ContainerInterface $container): void {
+            $container->set('http_client', new MockHttpClient(fn (): MockResponse => new MockResponse($this->published)));
+        };
+    }
 
     /**
      * RFC 9101 §6.1: a request carried in a JWT starts the flow like any other, the end user being sent
@@ -246,6 +269,84 @@ final class RequestObjectTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertStringContainsString('data-error="invalid_request"', self::string($response->getContent()));
+    }
+
+    /**
+     * The acceptance of issue #189: the same request, encrypted to the key the tenant publishes for
+     * encryption, starts the same flow. Nothing of it is readable on the wire, and the signature the
+     * client wrote inside is the one that is verified.
+     */
+    #[Test]
+    public function aRequestEncryptedToThePublishedKeyStartsTheFlow(): void
+    {
+        // Given
+        $key = self::encryptionKey();
+
+        // When
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => 'jar-app',
+            'request' => RequestObjects::encryptedTo($key->publicJwk, $this->signed(self::request()), [
+                'cty' => 'JWT',
+            ]),
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertStringStartsWith('/login?', self::string($response->headers->get('Location')));
+    }
+
+    /**
+     * OIDC Core §6.2: an encrypted object published behind a registered "request_uri" is read back and
+     * opened exactly as one sent by value.
+     */
+    #[Test]
+    public function anEncryptedObjectBehindARegisteredReferenceIsReadBack(): void
+    {
+        // Given
+        $key = self::encryptionKey();
+        $this->published = RequestObjects::encryptedTo($key->publicJwk, $this->signed(self::request()), [
+            'cty' => 'JWT',
+        ]);
+
+        // When
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => 'jar-app',
+            'request_uri' => 'https://jar.test/request.jwt',
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertStringStartsWith('/login?', self::string($response->headers->get('Location')));
+    }
+
+    /**
+     * Architecture §3.3: an encryption key opens what was encrypted to it as long as the JWK Set
+     * publishes it; past its retirement, the object is refused on a page, the request never having been
+     * read.
+     */
+    #[Test]
+    public function anObjectEncryptedToAKeyThatHasRetiredIsRefusedOnAPage(): void
+    {
+        // Given
+        $retired = self::encryptionKey();
+        $object = RequestObjects::encryptedTo($retired->publicJwk, $this->signed(self::request()), [
+            'cty' => 'JWT',
+        ]);
+        self::encryptionKey();
+        self::retireKey($retired);
+
+        // When
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => 'jar-app',
+            'request' => $object,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        static::assertStringContainsString('data-error="invalid_request_object"', self::string($response->getContent()));
     }
 
     /**

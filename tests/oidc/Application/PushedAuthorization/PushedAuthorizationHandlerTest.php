@@ -8,10 +8,15 @@ use function array_filter;
 use function array_merge;
 use function base64_encode;
 use DateInterval;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Port\JweDecrypterInterface;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Core\Tests\Fixture\Keys;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
@@ -29,6 +34,7 @@ use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
 use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
+use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Proofs;
 use Heidi\Oidc\Tests\Fixture\RequestObjects;
@@ -55,6 +61,13 @@ final class PushedAuthorizationHandlerTest extends TestCase
 
     private MockClock $clock;
 
+    /**
+     * The key the tenant publishes for encryption, which a client encrypts its pushed request object to.
+     */
+    private TenantKey $encryption;
+
+    private JweDecrypterInterface $decrypter;
+
     private PushedAuthorizationHandler $handler;
 
     protected function setUp(): void
@@ -68,6 +81,9 @@ final class PushedAuthorizationHandlerTest extends TestCase
         $this->clients->save(Clients::public($this->tenant));
         $this->requests = new InMemoryPushedAuthorizationRequestRepository();
         $this->clock = new MockClock('2026-09-22T12:00:00+00:00');
+        $keys = new Jwts($this->tenant);
+        $this->encryption = $keys->activate(Algorithms::ecdhEsA256Kw(), Keys::encryptionPair());
+        $this->decrypter = new JwtLibraryJweDecrypter($keys->keys, Algorithms::encryption());
         $this->handler = $this->handler($this->requests);
     }
 
@@ -147,6 +163,48 @@ final class PushedAuthorizationHandlerTest extends TestCase
             'code_challenge' => self::CHALLENGE,
             'code_challenge_method' => 'S256',
         ]));
+
+        // When
+        $response = $this->pushWith(self::basic('jar-client', Clients::SECRET), [
+            'request' => $object,
+            'redirect_uri' => null,
+            'scope' => null,
+            'response_type' => null,
+            'code_challenge' => null,
+            'code_challenge_method' => null,
+        ]);
+
+        // Then
+        static::assertSame([
+            'client_id' => 'jar-client',
+            'response_type' => 'code',
+            'redirect_uri' => 'https://jar.example/callback',
+            'scope' => 'openid profile',
+            'code_challenge' => self::CHALLENGE,
+            'code_challenge_method' => 'S256',
+        ], $this->storedRequest($response)
+            ->parameters);
+    }
+
+    /**
+     * Issue #189, RFC 9101 §6.1: the object a client pushes may be encrypted to a key the tenant
+     * publishes. The endpoint opens it with that key and keeps the request it carried, which is what the
+     * authorization endpoint does with the same object.
+     */
+    #[Test]
+    public function itOpensARequestObjectAClientEncryptedToTheProvider(): void
+    {
+        // Given
+        $this->clients->save(Clients::sendingRequestObjects($this->tenant, clientId: 'jar-client'));
+        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now(), [
+            'response_type' => 'code',
+            'redirect_uri' => 'https://jar.example/callback',
+            'scope' => 'openid profile',
+            'code_challenge' => self::CHALLENGE,
+            'code_challenge_method' => 'S256',
+        ])), [
+            'cty' => 'JWT',
+        ]);
 
         // When
         $response = $this->pushWith(self::basic('jar-client', Clients::SECRET), [
@@ -423,7 +481,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
             Proofs::verifier(),
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
-            RequestObjects::resolver($this->clients, $this->clock),
+            RequestObjects::resolver($this->clients, $this->clock, decrypter: $this->decrypter),
             $requests,
             $this->clock,
             $lifetime ?? new DateInterval('PT60S'),
