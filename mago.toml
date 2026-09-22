@@ -1,0 +1,155 @@
+# Mago, the Rust toolchain of Carthage Software: the formatter and the linter of this repository.
+#
+# The file sits at the root, not in .ci-tools, because that is where every editor integration of Mago
+# looks for it (the same reason infection.json.dist sits there). The tasks that run it are in
+# .castor/stack/qa.php; the binary ships with the phpqa image, so nothing is installed for it.
+#
+# What Mago replaces here: Easy Coding Standard. What it does not: PHPStan (level max, see the
+# comment on [analyzer] below), Rector, Deptrac, PHPUnit, Infection, the license check.
+
+# The version the phpqa image carries (/tools/mago), which is what every quality task runs. A binary
+# of another version warns about the drift instead of silently formatting differently: 1.46 and 1.50
+# do not indent the continuation lines of a multi-line condition the same way. Raise this the day the
+# image is rebuilt on a newer Mago, and reformat in the same commit.
+version = "1.50"
+php-version = "8.4"
+
+[source]
+# The paths ECS covered, the configurations of the other tools included.
+paths = ["src", "tests", "castor.php", ".castor", ".ci-tools/rector.php"]
+# Read, never reported on: what the analyzer needs to resolve a symbol. The second path is where the
+# phpqa image keeps PHPUnit, as phpstan.neon reads it from there too; it simply does not exist outside
+# the image, which is where the quality tasks run.
+includes = ["vendor", "/tools/.composer/vendor-bin/phpunit/vendor"]
+
+# ---------------------------------------------------------------------------------------------------
+# The formatter, in place of the whitespace fixers of ECS (PSR-12, SPACES, ARRAY, CLEAN_CODE...).
+# Every option below is a departure from Mago's default, chosen so that the formatter writes the style
+# the repository already has instead of a style of its own.
+# ---------------------------------------------------------------------------------------------------
+[formatter]
+end-of-line = "lf"
+# The repository has no line limit today: 2569 lines are longer than 120 characters, the default.
+# 160 is the measured compromise; lower it and the formatter rewraps proportionally more. One pass
+# over a tree at HEAD, with the options below: 120 gives 492 files and +19668/-6506, 160 gives 358
+# files and +11196/-4778, 200 gives 294 files and +8438/-4247. All three converge in one pass.
+print-width = 160
+
+# `use` statements: ECS (OrderedImportsFixer) sorts classes, functions and constants together in one
+# alphabetical block. Mago always groups them by kind and cannot interleave them, so sorting is left
+# to the author rather than have the formatter move every `use function` of the repository.
+sort-uses = "preserve"
+separate-use-types = false
+
+# `! $x`, `fn ($x)`: the spacing ECS produces.
+space-after-logical-not-unary-prefix-operator = true
+space-before-arrow-function-parameter-list-parenthesis = true
+
+# An empty body stays `{` and `}` on two lines, as PSR-12 and the repository write it, not `{}`.
+inline-empty-constructor-braces = false
+inline-empty-method-braces = false
+inline-empty-function-braces = false
+inline-empty-closure-braces = false
+inline-empty-classlike-braces = false
+inline-empty-anonymous-class-braces = false
+
+# A break the author wrote in a list is a break the formatter keeps: it only adds the ones the print
+# width forces, and it never joins a list that was deliberately spread out.
+#
+# The same family exists for binary expressions and for member access chains. Both are left at their
+# default (off) on purpose: turning them on makes the formatter read its own previous output, and it
+# stops converging. Measured on Mago 1.50 over the 693 files the repository held at the time of the
+# migration, one pass then "mago format --check":
+#
+#   with preserve-breaking-binary-expression and preserve-breaking-member-access-chain  17 files unstable
+#   with preserve-breaking-member-access-chain only                                      7 files unstable
+#   with preserve-breaking-binary-expression only                                       11 files unstable
+#   with neither, what is written below                                                  0 files unstable
+#
+# The price of dropping them was 16 more files reformatted (271 instead of 255) and method chains that
+# fit on one line being joined, the Doctrine repositories and src/symfony/config/services.php above
+# all. The price of keeping them is a formatter whose output is not a fixed point, which no --check
+# can gate. Stability wins.
+preserve-breaking-argument-list = true
+inline-single-breaking-value-argument = true
+preserve-breaking-parameter-list = true
+preserve-breaking-attribute-list = true
+preserve-breaking-conditional-expression = true
+first-method-chain-on-new-line = false
+
+# ---------------------------------------------------------------------------------------------------
+# The linter, in place of the rules of ECS that are not whitespace. Every rule disabled below is
+# disabled because the repository deliberately writes what it forbids, or because honouring it means
+# changing source for the sake of the tool. The count in each comment is what it reports today.
+# ---------------------------------------------------------------------------------------------------
+[linter]
+integrations = ["symfony", "phpunit"]
+# ECS failed on any violation whatever its weight; the linter does the same, instead of letting
+# everything below "error" pass silently.
+minimum-fail-level = "note"
+
+[linter.rules]
+
+# `getenv('X') ?: $default` is how the castor tasks read their environment; the rule stands elsewhere.
+no-shorthand-ternary = { exclude = ["castor.php", ".castor/**"] }
+
+# Maintainability metrics. Nothing measured complexity here before; turning them on is a refactoring
+# programme, not a coding standard.
+cyclomatic-complexity = { enabled = false }   # 29
+halstead = { enabled = false }                # 13
+kan-defect = { enabled = false }              # 7
+excessive-parameter-list = { enabled = false }# 64
+excessive-nesting = { enabled = false }
+too-many-methods = { enabled = false }        # 106
+too-many-properties = { enabled = false }     # 6
+too-many-enum-cases = { enabled = false }
+
+# Style opinions ECS never enforced and the repository does not follow.
+literal-named-argument = { enabled = false }  # 274, every literal argument would become a named one
+readable-literal = { enabled = false }        # 34, digit separators in numbers
+no-boolean-flag-parameter = { enabled = false } # 36
+prefer-early-continue = { enabled = false }   # 31
+no-else-clause = { enabled = false }          # 23, ECS only removed the superfluous elseif
+no-isset = { enabled = false }                # 23
+prefer-static-closure = { enabled = false }   # 3
+no-multi-assignments = { enabled = false }    # 2
+inline-variable-return = { enabled = false }  # 1
+prefer-first-class-callable = { enabled = false } # 2
+
+# Conventions of the repository, written down in CLAUDE.md.
+# A test that measures the state left after a failure swallows the exception with an empty catch.
+no-empty-catch-clause = { enabled = false }   # 36
+# A fixture used by one test class lives in the file of that class.
+single-class-per-file = { enabled = false }   # 2
+# tests/demo/passkey-browser.php is a script run by castor, not a PSR-4 class file.
+file-name = { enabled = false }               # 1
+
+# Deliberate: the filesystem stores of the keys and of the FIDO metadata silence the warnings of the
+# native calls and read the return value instead.
+no-error-control-operator = { enabled = false } # 13
+
+# Security rules that do not read this code correctly.
+# 88 hits: it asks for #[SensitiveParameter] on every parameter whose name looks like a secret,
+# including the ones the repository already passes through hash_equals.
+sensitive-parameter = { enabled = false }
+# 60 hits, all of them fixtures and provisioning defaults.
+no-literal-password = { enabled = false }
+# 3 hits, 2 of them wrong: it reads `$nonce !== null` and `$this->idToken === []` as comparisons of
+# secrets. The third, SecurityUser::isEqualTo, compares two password hashes, which is what Symfony's
+# EquatableInterface is for.
+no-insecure-comparison = { enabled = false }
+
+# ---------------------------------------------------------------------------------------------------
+# The analyzer. It is NOT wired into the CI and NOT part of prepare-pr: PHPStan stays. On a tree
+# PHPStan reports nothing at level max with an empty baseline, the analyzer reports 312 issues
+# (48 errors), and a sample of the errors is false positives it cannot see through: readonly
+# properties written in __unserialize, out parameters of openssl_pkey_export, the generic returns of
+# the repositories. It also has no counterpart to phpstan-symfony, phpstan-phpunit,
+# phpstan-strict-rules, phpstan-deprecation-rules or the banned-code extension.
+# `castor mago-analyze` runs it so the figure can be checked again; read the report before trusting it.
+# ---------------------------------------------------------------------------------------------------
+[analyzer]
+# Neither castor nor its tasks are in vendor: the analyzer cannot resolve a single one of their calls.
+# tests/symfony/config holds the bundle declarations of the test kernel, which phpstan.neon excludes
+# too; the formatter and the linter still read them, as ECS did.
+excludes = ["castor.php", ".castor", ".ci-tools/rector.php", "tests/symfony/config"]

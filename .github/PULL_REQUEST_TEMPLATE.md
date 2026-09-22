@@ -8,7 +8,7 @@
 
 ## Checklist
 
-- [ ] `castor prepare-pr` is clean (ECS, Rector, PHPStan level max, Deptrac, lint) and `castor phpunit` passes
+- [ ] `castor prepare-pr` is clean (Mago, Rector, PHPStan level max, Deptrac, lint) and `castor phpunit` passes
 - [ ] Tests name the specification section they verify
 - [ ] No new synchronous write, or the exception is listed in `messenger.yaml` with its reason
 - [ ] No boolean from a third party is cast, every secret comparison uses `hash_equals()`

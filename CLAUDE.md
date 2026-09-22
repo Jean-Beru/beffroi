@@ -43,7 +43,7 @@ The journal is written as the spike runs, one row per working day, `Fait` and `A
 
 ## Commands
 
-Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `demo.php`, `mtls.php`). A new task goes to the file of its side.
+Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available; [Mago](https://mago.carthage.software/) is a Rust binary that image already carries (`/tools/mago`), so nothing is installed for it. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `demo.php`, `mtls.php`). A new task goes to the file of its side.
 
 ```bash
 composer install                  # monorepo (packages, tests)
@@ -85,10 +85,12 @@ The FIDO Conformance Tools are run by hand against `https://op.localhost/fido/co
 ```bash
 castor phpunit            # tests with coverage
 castor phpstan            # level max
-castor ecs / castor ecs-fix
+castor mago-format / castor mago-format-fix   # Mago, the formatter, in place of ECS; mago.toml at the root (where its editor integrations look for it)
+castor mago-lint / castor mago-lint-fix       # Mago, the linter, in place of the rules of ECS that are not whitespace
+castor mago-analyze       # Mago, the analyzer: informative only, it is not PHPStan's equal and the CI does not run it (see [analyzer] in mago.toml)
 castor rector / castor rector-fix
 castor deptrac / castor lint / castor check-licenses
-castor prepare-pr         # ecs-fix, rector-fix, phpstan-baseline, deptrac, lint
+castor prepare-pr         # mago-lint-fix, rector-fix, mago-format-fix, phpstan-baseline, deptrac, lint
 castor infect --diff      # mutation testing of the lines changed since origin/main (--base to change), what CI runs on every PR and push; --reuse-coverage skips the PHPUnit run when .ci-tools/coverage is fresh
 castor infect             # the whole source (core and oidc): hours, deliberate only
 ```

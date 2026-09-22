@@ -19,7 +19,7 @@ use function Castor\run;
  */
 #[AsTask(description: 'Check licenses.')]
 function check_licenses(
-    array $allowedLicenses = ['Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'MIT', 'MPL-2.0', 'OSL-3.0']
+    array $allowedLicenses = ['Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'MIT', 'MPL-2.0', 'OSL-3.0'],
 ): void {
     io()->title('Checking licenses');
     $allowedExceptions = [];
@@ -37,15 +37,13 @@ function check_licenses(
     $licenses = json_decode((string) $result->getOutput(), true);
     $disallowed = array_filter(
         $licenses['dependencies'],
-        static fn (array $info, $name) => ! in_array($name, $allowedExceptions, true)
-            && count(array_diff($info['license'], $allowedLicenses)) === 1,
-        \ARRAY_FILTER_USE_BOTH
+        static fn (array $info, $name) => ! in_array($name, $allowedExceptions, true) && count(array_diff($info['license'], $allowedLicenses)) === 1,
+        \ARRAY_FILTER_USE_BOTH,
     );
     $allowed = array_filter(
         $licenses['dependencies'],
-        static fn (array $info, $name) => in_array($name, $allowedExceptions, true)
-            || count(array_diff($info['license'], $allowedLicenses)) === 0,
-        \ARRAY_FILTER_USE_BOTH
+        static fn (array $info, $name) => in_array($name, $allowedExceptions, true) || count(array_diff($info['license'], $allowedLicenses)) === 0,
+        \ARRAY_FILTER_USE_BOTH,
     );
     if (count($disallowed) > 0) {
         io()->table(
@@ -53,24 +51,21 @@ function check_licenses(
             array_map(
                 static fn ($name, $info) => [$name, implode(', ', $info['license'])],
                 array_keys($disallowed),
-                $disallowed
-            )
+                $disallowed,
+            ),
         );
-        io()
-            ->error('Disallowed licenses found');
+        io()->error('Disallowed licenses found');
         exit(1);
     }
-    io()
-        ->table(
-            ['Package', 'License'],
-            array_map(
-                static fn ($name, $info) => [$name, implode(', ', $info['license'])],
-                array_keys($allowed),
-                $allowed
-            )
-        );
-    io()
-        ->success('All licenses are allowed');
+    io()->table(
+        ['Package', 'License'],
+        array_map(
+            static fn ($name, $info) => [$name, implode(', ', $info['license'])],
+            array_keys($allowed),
+            $allowed,
+        ),
+    );
+    io()->success('All licenses are allowed');
 }
 
 /**
@@ -104,12 +99,18 @@ function phpqa(array $command, array $environment = []): void
         '--rm',
         '--init',
         stream_isatty(\STDOUT) ? '-it' : '-i',
-        '--user', sprintf('%s:%s', getmyuid(), getmygid()),
-        '-v', getcwd() . ':/project',
-        '-v', getcwd() . '/tmp-phpqa:/project/tmp-phpqa',
-        '-w', '/project',
-        '-e', 'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d',
-        '-e', 'PHP_INI_ENTRY=sys_temp_dir=/project/tmp-phpqa',
+        '--user',
+        sprintf('%s:%s', getmyuid(), getmygid()),
+        '-v',
+        getcwd() . ':/project',
+        '-v',
+        getcwd() . '/tmp-phpqa:/project/tmp-phpqa',
+        '-w',
+        '/project',
+        '-e',
+        'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d',
+        '-e',
+        'PHP_INI_ENTRY=sys_temp_dir=/project/tmp-phpqa',
     ];
     foreach ($environment as $name => $value) {
         $dockerOptions[] = '-e';
@@ -117,7 +118,8 @@ function phpqa(array $command, array $environment = []): void
     }
 
     run([
-        'docker', 'run',
+        'docker',
+        'run',
         ...$dockerOptions,
         sprintf('ghcr.io/spomky-labs/phpqa:%s', $phpVersion),
         ...$command,
@@ -127,7 +129,7 @@ function phpqa(array $command, array $environment = []): void
 #[AsTask(description: 'Update the PHPQA Docker image')]
 function phpqa_update(): void
 {
-    $phpVersion = getenv('PHP_VERSION') ?: (\PHP_MAJOR_VERSION . '.' . \PHP_MINOR_VERSION);
+    $phpVersion = getenv('PHP_VERSION') ?: \PHP_MAJOR_VERSION . '.' . \PHP_MINOR_VERSION;
 
     run(['docker', 'pull', 'ghcr.io/spomky-labs/phpqa:' . $phpVersion]);
 }
@@ -137,30 +139,61 @@ function phpunit(#[AsRawTokens] array $args = []): void
 {
     phpqa(
         [
-            'composer', 'exec', '--', 'phpunit',
-            '--coverage-xml', '.ci-tools/coverage',
+            'composer',
+            'exec',
+            '--',
+            'phpunit',
+            '--coverage-xml',
+            '.ci-tools/coverage',
             '--log-junit=.ci-tools/coverage/junit.xml',
-            '--configuration', '.ci-tools/phpunit.xml.dist',
+            '--configuration',
+            '.ci-tools/phpunit.xml.dist',
             '--display-warnings',
             '--display-deprecations',
             ...$args,
         ],
         [
             'XDEBUG_MODE' => 'coverage',
-        ]
+        ],
     );
 }
 
-#[AsTask(description: 'Run Easy Coding Standard')]
-function ecs(): void
+/*
+ * Mago (https://mago.carthage.software/), the toolchain of Carthage Software: one Rust binary, no PHP
+ * runtime, already installed in the phpqa image (/tools/mago), configured by mago.toml at the root of
+ * the repository, which is where its editor integrations look for it. It holds the formatter and the
+ * linter, in place of Easy Coding Standard. Its analyzer is not PHPStan's equal and replaces nothing:
+ * see mago_analyze() below and the [analyzer] section of mago.toml.
+ */
+
+#[AsTask(description: 'Check the formatting with Mago')]
+function mago_format(): void
 {
-    phpqa(['composer', 'exec', '--', 'ecs', 'check', '--config', '.ci-tools/ecs.php']);
+    phpqa(['mago', 'format', '--check']);
 }
 
-#[AsTask(description: 'Fix coding style with Easy Coding Standard')]
-function ecs_fix(): void
+#[AsTask(description: 'Format the code with Mago')]
+function mago_format_fix(): void
 {
-    phpqa(['composer', 'exec', '--', 'ecs', 'check', '--config', '.ci-tools/ecs.php', '--fix']);
+    phpqa(['mago', 'format']);
+}
+
+#[AsTask(description: 'Run the Mago linter')]
+function mago_lint(): void
+{
+    phpqa(['mago', 'lint']);
+}
+
+#[AsTask(description: 'Apply the fixes the Mago linter offers')]
+function mago_lint_fix(): void
+{
+    phpqa(['mago', 'lint', '--fix']);
+}
+
+#[AsTask(description: 'Run the Mago analyzer. Informative only: PHPStan at level max is what the CI gates on, and the two do not find the same things')]
+function mago_analyze(#[AsRawTokens] array $args = []): void
+{
+    phpqa(['mago', 'analyze', ...$args]);
 }
 
 #[AsTask(description: 'Run Rector dry-run')]
@@ -179,7 +212,13 @@ function rector_fix(): void
 function phpstan(): void
 {
     phpqa([
-        'composer', 'exec', '--', 'phpstan', 'analyse', '--error-format=github', '--configuration=.ci-tools/phpstan.neon',
+        'composer',
+        'exec',
+        '--',
+        'phpstan',
+        'analyse',
+        '--error-format=github',
+        '--configuration=.ci-tools/phpstan.neon',
     ]);
 }
 
@@ -187,7 +226,11 @@ function phpstan(): void
 function phpstan_baseline(): void
 {
     phpqa([
-        'composer', 'exec', '--', 'phpstan', 'analyse',
+        'composer',
+        'exec',
+        '--',
+        'phpstan',
+        'analyse',
         '--configuration=.ci-tools/phpstan.neon',
         '--generate-baseline=.ci-tools/phpstan-baseline.neon',
         // A clean analysis is the expected outcome, not a failure of the task.
@@ -199,8 +242,12 @@ function phpstan_baseline(): void
 function deptrac(): void
 {
     phpqa([
-        'composer', 'exec', '--', 'deptrac',
-        '--config-file', '.ci-tools/deptrac.yaml',
+        'composer',
+        'exec',
+        '--',
+        'deptrac',
+        '--config-file',
+        '.ci-tools/deptrac.yaml',
         '--report-uncovered',
         '--report-skipped',
         '--fail-on-uncovered',
@@ -213,7 +260,9 @@ function lint(): void
     phpqa(['composer', 'exec', '--', 'parallel-lint', 'src', 'tests']);
 }
 
-#[AsTask(description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run. --diff keeps only the mutants of the lines added or modified since the base branch, the shape of every CI run; without it the whole source is mutated, which takes hours')]
+#[AsTask(
+    description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run. --diff keeps only the mutants of the lines added or modified since the base branch, the shape of every CI run; without it the whole source is mutated, which takes hours',
+)]
 function infect(
     int $minMsi = 0,
     int $minCoveredMsi = 0,
@@ -223,7 +272,9 @@ function infect(
     string $base = 'origin/main',
     #[AsOption(description: 'Mutant processes run in parallel; "max" is the number of cores minus one')]
     string $threads = 'max',
-    #[AsOption(description: 'Reuse the coverage of the last "castor phpunit" in .ci-tools/coverage instead of running the tests again; it must come from the same source and the same paths')]
+    #[AsOption(
+        description: 'Reuse the coverage of the last "castor phpunit" in .ci-tools/coverage instead of running the tests again; it must come from the same source and the same paths',
+    )]
     bool $reuseCoverage = false,
 ): void {
     // The XML coverage and the JUnit report of a "castor phpunit" run are what Infection reads from .ci-tools/coverage.
@@ -271,15 +322,15 @@ function prepare_pr(): void
 {
     io()->title('Preparing code for pull request…');
 
-    ecs_fix();
+    // The formatter runs last: Rector and the linter rewrite statements, the formatter lays them out.
+    mago_lint_fix();
     rector_fix();
+    mago_format_fix();
 
-    io()
-        ->section('Running static analysis…');
+    io()->section('Running static analysis…');
     phpstan_baseline();
     deptrac();
     lint();
 
-    io()
-        ->success('Code is ready. You may now commit and push your changes.');
+    io()->success('Code is ready. You may now commit and push your changes.');
 }

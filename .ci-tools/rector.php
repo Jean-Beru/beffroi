@@ -26,7 +26,6 @@ $builder->withPaths([
     __DIR__ . '/../tests',
     __DIR__ . '/../castor.php',
     __DIR__ . '/../.castor',
-    __DIR__ . '/ecs.php',
     __DIR__ . '/rector.php',
 ]);
 $builder->withSkip([

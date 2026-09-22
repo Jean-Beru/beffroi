@@ -77,17 +77,18 @@ docker compose cp op:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
 
 ## Quality tools
 
-Every tool runs inside `ghcr.io/spomky-labs/phpqa` through Castor. Task names are kebab-case.
+Every tool runs inside `ghcr.io/spomky-labs/phpqa` through Castor. Task names are kebab-case. The formatter and the coding standard are [Mago](https://mago.carthage.software/), a single Rust binary the image already carries, configured by `mago.toml` at the root of the repository.
 
 ```bash
 castor phpunit
 castor phpstan          # level max
-castor ecs              # castor ecs-fix to apply
+castor mago-format      # Mago, the formatter; castor mago-format-fix to apply
+castor mago-lint        # Mago, the linter; castor mago-lint-fix to apply
 castor rector           # castor rector-fix to apply
 castor deptrac          # package graph and layers
 castor lint
 castor check-licenses
-castor prepare-pr       # ecs-fix, rector-fix, phpstan-baseline, deptrac, lint
+castor prepare-pr       # mago-lint-fix, rector-fix, mago-format-fix, phpstan-baseline, deptrac, lint
 castor infect --diff    # mutation testing of the lines changed since origin/main; escaped mutants are listed in .ci-tools/infection.txt
 ```
 
