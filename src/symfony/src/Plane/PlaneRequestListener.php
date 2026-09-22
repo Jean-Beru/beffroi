@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Plane;
 
-use function is_string;
 use function sprintf;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -31,8 +30,8 @@ final readonly class PlaneRequestListener
     public function __invoke(RequestEvent $event): void
     {
         $route = $event->getRequest()
-            ->attributes->get('_route');
-        if (! is_string($route) || $this->plane->serves($route)) {
+            ->attributes->getString('_route');
+        if ($route === '' || $this->plane->serves($route)) {
             return;
         }
 

@@ -10,7 +10,6 @@ use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Core\Domain\Event\AuthenticationFailureReason;
 use Heidi\Core\Exception\PasskeyCeremonyFailedException;
 use Heidi\Core\Port\PasskeyAuthenticatorInterface;
-use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -48,14 +47,14 @@ final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface
 
     public function supports(Request $request): bool
     {
-        return $request->isMethod('POST') && $request->attributes->get('_route') === PasskeyLoginController::ROUTE;
+        return $request->isMethod('POST') && $request->attributes->getString('_route') === PasskeyLoginController::ROUTE;
     }
 
     public function authenticate(Request $request): Passport
     {
-        $assertion = $request->request->get(self::ASSERTION_PARAMETER);
-        $token = $request->request->get(self::CSRF_TOKEN_PARAMETER);
-        if (! is_string($assertion) || $assertion === '') {
+        $assertion = $request->request->getString(self::ASSERTION_PARAMETER);
+        $token = $request->request->getString(self::CSRF_TOKEN_PARAMETER);
+        if ($assertion === '') {
             throw new AuthenticationException('The login carries no assertion.');
         }
         $options = $this->options->takeRequest($request->getSession()) ?? throw new AuthenticationException('No passkey ceremony is pending for this browser.');
@@ -77,7 +76,7 @@ final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface
         return new Passport(
             new UserBadge($credential->user->username),
             new PasskeyCredentials($verified),
-            [new CsrfTokenBadge(self::CSRF_TOKEN_ID, is_string($token) ? $token : null)],
+            [new CsrfTokenBadge(self::CSRF_TOKEN_ID, $token)],
         );
     }
 
