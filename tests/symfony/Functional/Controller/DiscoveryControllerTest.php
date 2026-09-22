@@ -124,6 +124,25 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Discovery §3 and RFC 9101 §10.5: both ways a request object comes in are served, a
+     * "request_uri" is read back only from a URL its client registered, and "none" is announced beside
+     * the wired algorithms because a client of this tenant registered it (issue #98).
+     */
+    #[Test]
+    public function theMetadataAnnouncesHowARequestObjectIsReadAndSignedFor(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $metadata = self::json($this->browser->getResponse());
+        static::assertTrue($metadata['request_parameter_supported']);
+        static::assertTrue($metadata['request_uri_parameter_supported']);
+        static::assertTrue($metadata['require_request_uri_registration']);
+        static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA', 'none'], $metadata['request_object_signing_alg_values_supported']);
+    }
+
+    /**
      * OIDC Discovery §3 "acr_values_supported", decision 0010: the classes of the policy of the tenant the
      * logins of the firewall, a password and a passkey, can prove: the four of the default policy.
      */

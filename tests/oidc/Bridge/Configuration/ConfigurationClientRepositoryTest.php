@@ -787,6 +787,18 @@ final class ConfigurationClientRepositoryTest extends TestCase
         yield 'unknown signing algorithm' => [$base + [
             'id_token_signed_response_alg' => 'HS256',
         ], 'must be one of: RS256, PS256, ES256, EdDSA'];
+        yield 'unknown request object algorithm' => [$base + [
+            'request_object_signing_alg' => 'HS256',
+        ], 'must be "none" or one of: RS256, PS256, ES256, EdDSA'];
+        yield 'request object algorithm without a key to verify it' => [$base + [
+            'request_object_signing_alg' => 'ES256',
+        ], 'registers a request_object_signing_alg'];
+        yield 'request_uri over plain http' => [$base + [
+            'request_uris' => ['http://rp.example/request.jwt'],
+        ], 'HTTPS'];
+        yield 'request_uris as a string' => [$base + [
+            'request_uris' => 'https://rp.example/request.jwt',
+        ], 'request_uris option of the client "bad" must be a list of strings'];
         yield 'back-channel logout URI over plain http' => [$base + [
             'backchannel_logout_uri' => 'http://rp.example/backchannel-logout',
         ], 'HTTPS'];
@@ -915,5 +927,78 @@ final class ConfigurationClientRepositoryTest extends TestCase
     private static function find(ConfigurationClientRepository $repository, Tenant $tenant, string $clientId): Client
     {
         return $repository->findByClientId($tenant, $clientId) ?? static::fail(sprintf('The client "%s" should have been found.', $clientId));
+    }
+
+    /**
+     * OIDC Registration §2: what the client registered in "request_object_signing_alg" and in
+     * "request_uris" is read as it is written, the algorithm among those the provider is wired with.
+     */
+    #[Test]
+    public function aClientRegistersHowItSignsItsRequestObjectsAndWhereTheyArePublished(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'jar' => self::KEY_CLIENT + [
+                'request_object_signing_alg' => 'ES256',
+                'request_uris' => ['https://key.example/request.jwt'],
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'jar');
+
+        // Then
+        static::assertTrue($client->requestObjectSigning->accepts('ES256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
+        static::assertFalse($client->requestObjectSigning->accepts('PS256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
+        static::assertSame('https://key.example/request.jwt', $client->registeredRequestUri('https://key.example/request.jwt')?->value);
+    }
+
+    /**
+     * Decision 0006: "none" is registered per client, and the tenant announces it because a client of
+     * its own registered it (issue #98).
+     *
+     * @param array<string, array<string, mixed>> $clients
+     */
+    #[Test]
+    #[DataProvider('provideRegistrationsAndWhatTheyAnnounce')]
+    public function theTenantReadsUnsignedRequestObjectsWhenAClientRegisteredThem(array $clients, bool $expected): void
+    {
+        // Given
+        $repository = $this->repository($clients);
+
+        // When / Then
+        static::assertSame($expected, $repository->acceptsUnsignedRequestObjects($this->tenant));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, array<string, mixed>>, bool}>
+     */
+    public static function provideRegistrationsAndWhatTheyAnnounce(): iterable
+    {
+        $unsigned = self::SPA + [
+            'request_object_signing_alg' => 'none',
+        ];
+        yield 'no client registers none' => [[
+            'spa' => self::SPA,
+        ], false];
+        yield 'one client among others registers none' => [[
+            'spa' => self::SPA,
+            'unsigned' => $unsigned,
+        ], true];
+        yield 'no client at all' => [[], false];
+    }
+
+    #[Test]
+    public function anotherTenantReadsNoUnsignedRequestObjectHere(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'unsigned' => self::SPA + [
+                'request_object_signing_alg' => 'none',
+            ],
+        ]);
+
+        // When / Then
+        static::assertFalse($repository->acceptsUnsignedRequestObjects(Fixtures::tenant('other', 'https://id.other.example')));
     }
 }

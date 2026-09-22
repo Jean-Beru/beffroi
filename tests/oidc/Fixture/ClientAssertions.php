@@ -7,7 +7,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 use function base64_encode;
 use DateTimeImmutable;
 use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Client\ClientAssertion;
+use Heidi\Oidc\Application\Client\ClientAuthenticationRequest;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
@@ -113,7 +113,7 @@ final class ClientAssertions
     public static function parameters(string $assertion): array
     {
         return [
-            'client_assertion_type' => ClientAssertion::TYPE,
+            'client_assertion_type' => ClientAuthenticationRequest::ASSERTION_TYPE,
             'client_assertion' => $assertion,
         ];
     }

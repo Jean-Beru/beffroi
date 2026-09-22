@@ -61,9 +61,6 @@ const CONFORMANCE_PLANS = [
             'server_metadata' => 'discovery',
             'client_registration' => 'static_client',
         ],
-        'known' => [
-            'oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported' => 'the module writes response_mode only inside the request object, which the OP refuses unread (OIDC Core §6); heidi#142 closes it with JAR, spike 5',
-        ],
     ],
     'rp-initiated-logout' => [
         'name' => 'oidcc-rp-initiated-logout-certification-test-plan',

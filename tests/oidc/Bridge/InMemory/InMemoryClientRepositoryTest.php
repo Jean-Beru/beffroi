@@ -10,6 +10,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -130,5 +131,40 @@ final class InMemoryClientRepositoryTest extends TestCase
 
         // When / Then
         static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Opaque));
+    }
+
+    /**
+     * OIDC Registration §2: "none" is announced when a client of the tenant registered it, and by one
+     * client, not by all of them, since one is enough to send an unsigned object.
+     */
+    #[Test]
+    public function theTenantReadsUnsignedRequestObjectsWhenOneOfItsClientsRegisteredThem(): void
+    {
+        // Given
+        $this->repository->save(Clients::sendingRequestObjects($this->tenant, new UnsignedRequestObjects()));
+
+        // When / Then
+        static::assertTrue($this->repository->acceptsUnsignedRequestObjects($this->tenant));
+    }
+
+    #[Test]
+    public function aTenantWhoseClientsAllSignTheirRequestObjectsReadsNoUnsignedOne(): void
+    {
+        // Given
+        $this->repository->save(Clients::sendingRequestObjects($this->tenant));
+
+        // When / Then
+        static::assertFalse($this->repository->acceptsUnsignedRequestObjects($this->tenant));
+    }
+
+    #[Test]
+    public function theUnsignedRequestObjectsOfAnotherTenantDoNotCount(): void
+    {
+        // Given
+        $other = Fixtures::tenant('other', 'https://id.other.example');
+        $this->repository->save(Clients::sendingRequestObjects($other, new UnsignedRequestObjects()));
+
+        // When / Then
+        static::assertFalse($this->repository->acceptsUnsignedRequestObjects($this->tenant));
     }
 }

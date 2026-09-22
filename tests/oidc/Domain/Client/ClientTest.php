@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Domain\Client;
 
 use function array_map;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
@@ -16,6 +17,8 @@ use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
+use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
@@ -462,5 +465,51 @@ final class ClientTest extends TestCase
 
         // Then
         static::assertInstanceOf(ClientJwks::class, $client->jwks);
+    }
+
+    /**
+     * OIDC Registration §2 "request_uris": compared byte for byte, like every other URL a client
+     * registers, and registered twice is registered once.
+     */
+    #[Test]
+    public function aRegisteredRequestUriIsMatchedByteForByte(): void
+    {
+        // Given
+        $client = Clients::sendingRequestObjects(Fixtures::tenant(), requestUris: [new ClientUri('https://jar.example/request.jwt'), new ClientUri('https://jar.example/request.jwt')]);
+
+        // When / Then
+        static::assertCount(1, $client->requestUris);
+        static::assertSame('https://jar.example/request.jwt', $client->registeredRequestUri('https://jar.example/request.jwt')?->value);
+        static::assertNull($client->registeredRequestUri('https://jar.example/request.jwt?v=2'));
+        static::assertNull($client->registeredRequestUri('https://jar.example/Request.jwt'));
+    }
+
+    /**
+     * RFC 7591 §2: a client whose request objects are verified against a key of its own publishes that
+     * key, and a registration that names an algorithm without publishing one fails at boot.
+     */
+    #[Test]
+    public function aClientRegisteringARequestObjectAlgorithmPublishesItsKeys(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('registers a request_object_signing_alg');
+
+        // When
+        new Client(Fixtures::tenant(), 'jar-client', 'Client that signs its requests', Methods::none(), null, [new RedirectUri('https://jar.example/callback')], requestObjectSigning: new OneRegisteredAlgorithm(Algorithms::es256()));
+    }
+
+    /**
+     * Decision 0006: a client whose objects carry no signature has no key to publish, and registering
+     * "none" is therefore no reason to ask it for one.
+     */
+    #[Test]
+    public function aClientSendingUnsignedRequestObjectsPublishesNothing(): void
+    {
+        // When
+        $client = new Client(Fixtures::tenant(), 'unsigned-client', 'Client that signs nothing', Methods::none(), null, [new RedirectUri('https://jar.example/callback')], requestObjectSigning: new UnsignedRequestObjects());
+
+        // Then
+        static::assertTrue($client->requestObjectSigning->acceptsUnsigned());
     }
 }

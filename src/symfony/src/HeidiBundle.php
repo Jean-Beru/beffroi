@@ -9,6 +9,7 @@ use DateInterval;
 use function dirname;
 use Heidi\Bundle\Client\ClientJwksCache;
 use Heidi\Bundle\Client\ClientJwksFetcher;
+use Heidi\Bundle\Client\RequestObjectFetcher;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
@@ -41,6 +42,7 @@ use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationPredicate;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientKeySetProvider;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
@@ -123,6 +125,28 @@ final class HeidiBundle extends AbstractBundle
      * Symfony's own client (spike 2).
      */
     public const int DEFAULT_JWKS_REFETCH_COOLDOWN = 300;
+
+    /**
+     * RFC 9101 §4: how long a request object may stand, from its "nbf". One hour is what FAPI 2.0
+     * Message Signing allows; an object is a request made now, not an authorization kept for a day.
+     */
+    public const int DEFAULT_REQUEST_OBJECT_MAX_LIFETIME = 3600;
+
+    /**
+     * What is allowed of the clock of a client, both ways.
+     */
+    public const int DEFAULT_REQUEST_OBJECT_LEEWAY = 30;
+
+    /**
+     * Seconds one read of a "request_uri" is given, connection included: the browser of a user is
+     * waiting on it.
+     */
+    public const float DEFAULT_REQUEST_OBJECT_TIMEOUT = 3.0;
+
+    /**
+     * Bytes a "request_uri" may answer; a request object carries the parameters of one request.
+     */
+    public const int DEFAULT_REQUEST_OBJECT_MAX_SIZE = 65536;
 
     /**
      * Restated from the module: the configuration tree cannot tell an absent list from an empty one.
@@ -316,6 +340,32 @@ final class HeidiBundle extends AbstractBundle
             ->end()
             ->end()
             ->end()
+            ->arrayNode('request_objects')
+            ->info('How a request the client carried in a JWT is read (RFC 9101 §4, OIDC Core §6). Which algorithm verifies it is the wiring and the registration of the client, not this; an unsigned object is read from a client that registered "none" and from no other.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->integerNode('max_lifetime')
+            ->info('Seconds a request object may stand, from its "nbf" (RFC 9101 §4). An object is a request made now; a long one is an authorization a client keeps.')
+            ->defaultValue(self::DEFAULT_REQUEST_OBJECT_MAX_LIFETIME)
+            ->min(1)
+            ->end()
+            ->integerNode('leeway')
+            ->info('Seconds allowed of the clock of a client, both ways.')
+            ->defaultValue(self::DEFAULT_REQUEST_OBJECT_LEEWAY)
+            ->min(0)
+            ->end()
+            ->floatNode('timeout')
+            ->info('Seconds one read of a request_uri is given, connection included. The browser of a user is waiting on it; no redirect is followed and only a URL the client registered is ever read.')
+            ->defaultValue(self::DEFAULT_REQUEST_OBJECT_TIMEOUT)
+            ->min(0.1)
+            ->end()
+            ->integerNode('max_size')
+            ->info('Bytes a request_uri may answer before the read stops; a request object carries the parameters of one request.')
+            ->defaultValue(self::DEFAULT_REQUEST_OBJECT_MAX_SIZE)
+            ->min(1)
+            ->end()
+            ->end()
+            ->end()
             ->arrayNode('clients')
             ->info('The clients of the tenant, keyed by client identifier. A secret is hashed when the client is loaded and never kept in clear, unless the method it registered has to compute a MAC with it (client_secret_jwt).')
             ->useAttributeAsKey('client_id')
@@ -398,6 +448,15 @@ final class HeidiBundle extends AbstractBundle
             ->scalarNode('jwks_uri')
             ->info('Where the JWK Set of the client is read back from (RFC 7591 §2); HTTPS, or plain HTTP on a loopback host, no redirect followed. Exclusive with jwks.')
             ->defaultNull()
+            ->end()
+            ->scalarNode('request_object_signing_alg')
+            ->info('The JWS algorithm the request objects of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, any of them verifies one. The value "none" is the named exception of decision 0006: the objects of that client carry no signature and are read all the same, which no FAPI client registers. A client that names an algorithm publishes its keys in jwks or behind a jwks_uri.')
+            ->defaultNull()
+            ->end()
+            ->arrayNode('request_uris')
+            ->info('The URLs a request object of this client is read back from (OIDC Registration §2), compared byte for byte with the request_uri of a request; one that is not registered is refused before any request leaves the process, which is what require_request_uri_registration announces.')
+            ->scalarPrototype()
+            ->end()
             ->end()
             ->scalarNode(CertificateIdentities::SUBJECT_DN)
             ->info('The subject distinguished name of the certificate this client presents (RFC 8705 §2.1.2), in the string form of RFC 4514; it is written back at boot the way the provider writes the name it reads out of a certificate, so a name as "openssl x509 -noout -subject -nameopt RFC2253" prints it is registered as it is. One of the five keys below, and one only, for a client that authenticates with tls_client_auth.')
@@ -607,6 +666,14 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$maximumSize', self::integer($clientAuthentication, 'jwks_max_size'));
         $services->get(ClientJwksCache::class)
             ->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
+
+        $requestObjects = self::section($config, 'request_objects');
+        $services->get(RequestObjectValidator::class)
+            ->arg('$maximumLifetime', self::seconds($requestObjects, 'max_lifetime'))
+            ->arg('$leeway', self::seconds($requestObjects, 'leeway'));
+        $services->get(RequestObjectFetcher::class)
+            ->arg('$timeout', self::float($requestObjects, 'timeout'))
+            ->arg('$maximumSize', self::integer($requestObjects, 'max_size'));
 
         $services->get(ConfigurationClientRepository::class)
             ->arg('$tenantSlug', self::string($tenant, 'slug'))

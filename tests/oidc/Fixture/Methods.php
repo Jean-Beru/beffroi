@@ -21,9 +21,9 @@ use Heidi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
 use Heidi\Oidc\Application\Client\Method\TlsClientAuth;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientAssertionReplayGuard;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientJwksCache;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionKeyVerifier;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
@@ -61,8 +61,8 @@ final class Methods
     public static function privateKeyJwt(?ClientKeySetProvider $keys = null, ?ClientAssertionValidator $claims = null): PrivateKeyJwt
     {
         return new PrivateKeyJwt(
-            new JwtLibraryClientAssertionReader(),
-            new JwtLibraryClientAssertionKeyVerifier(Algorithms::all()->manager()),
+            new JwtLibraryCompactJwtReader(),
+            new JwtLibraryJwtKeyVerifier(Algorithms::all()->manager()),
             $keys ?? self::keySetProvider(),
             $claims ?? self::assertionValidator(),
             Algorithms::all(),
@@ -72,7 +72,7 @@ final class Methods
     public static function clientSecretJwt(?ClientAssertionValidator $claims = null): ClientSecretJwt
     {
         return new ClientSecretJwt(
-            new JwtLibraryClientAssertionReader(),
+            new JwtLibraryCompactJwtReader(),
             new JwtLibraryClientAssertionSecretVerifier(new AlgorithmManager([new HS256()])),
             $claims ?? self::assertionValidator(),
         );
