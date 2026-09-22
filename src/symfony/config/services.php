@@ -96,6 +96,7 @@ use Heidi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
 use Heidi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
@@ -153,6 +154,7 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
+use Heidi\Oidc\Application\Client\ClientDocumentIssuer;
 use Heidi\Oidc\Application\Client\ClientKeySetProvider;
 use Heidi\Oidc\Application\Client\Method\ClientSecretBasic;
 use Heidi\Oidc\Application\Client\Method\ClientSecretJwt;
@@ -194,6 +196,7 @@ use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
 use Heidi\Oidc\Bridge\Null\NoDpopNonce;
@@ -216,6 +219,7 @@ use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Heidi\Oidc\Port\JweEncrypterInterface;
 use Heidi\Oidc\Port\JwtKeyVerifierInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
@@ -439,6 +443,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JoseContentEncryptionAlgorithms::class)
         ->args([tagged_iterator('heidi.content_encryption_algorithm')]);
     $services->alias(ContentEncryptionAlgorithmsInterface::class, JoseContentEncryptionAlgorithms::class);
+    $services->set(JoseEncryptionAlgorithms::class);
     // What a key may be generated for, the two lists read as one: the key commands and the key files
     // resolve an algorithm name against this, whatever the key is published for
     $services->set(JoseKeyAlgorithms::class);
@@ -556,6 +561,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwtLibraryJwtKeyVerifier::class)
         ->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
     $services->alias(JwtKeyVerifierInterface::class, JwtLibraryJwtKeyVerifier::class);
+    // What the provider encrypts for a client: the key management and content encryption algorithms it is
+    // wired with, the same ones it opens a JWE with, read from the two registries of the core and never
+    // from a list kept beside them
+    $services->set('heidi.oidc.client_encryption.algorithms', AlgorithmManager::class)
+        ->factory([service(JoseEncryptionAlgorithms::class), 'manager']);
+    $services->set(JwtLibraryJweEncrypter::class)
+        ->args([service('heidi.oidc.client_encryption.algorithms')]);
+    $services->alias(JweEncrypterInterface::class, JwtLibraryJweEncrypter::class);
+    $services->set(ClientDocumentIssuer::class);
     $services->set('heidi.oidc.client_assertion.mac_algorithms', AlgorithmManager::class)
         ->args([[inline_service(HS256::class)]]);
     $services->set(JwtLibraryClientAssertionSecretVerifier::class)

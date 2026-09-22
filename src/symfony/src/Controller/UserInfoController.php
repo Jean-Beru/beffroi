@@ -60,8 +60,8 @@ final readonly class UserInfoController
             ] + $error->headers());
         }
 
-        return new Response($response->toJson(), Response::HTTP_OK, [
-            'Content-Type' => UserInfoResponse::CONTENT_TYPE,
+        return new Response($response->body, Response::HTTP_OK, [
+            'Content-Type' => $response->contentType,
         ] + UserInfoResponse::HEADERS);
     }
 }

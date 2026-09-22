@@ -64,6 +64,11 @@ final class ProviderMetadataTest extends TestCase
             'acr_values_supported' => ['phrh', 'phr', '2', '1'],
             'subject_types_supported' => ['public'],
             'id_token_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+            'id_token_encryption_alg_values_supported' => ['ECDH-ES+A256KW', 'RSA-OAEP-256'],
+            'id_token_encryption_enc_values_supported' => ['A256GCM'],
+            'userinfo_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+            'userinfo_encryption_alg_values_supported' => ['ECDH-ES+A256KW', 'RSA-OAEP-256'],
+            'userinfo_encryption_enc_values_supported' => ['A256GCM'],
             'token_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'none'],
             'token_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
             'claims_supported' => ['sub', 'name', 'email', 'email_verified'],
@@ -108,6 +113,55 @@ final class ProviderMetadataTest extends TestCase
         // Then
         static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $document['request_object_encryption_alg_values_supported']);
         static::assertSame(['A256GCM'], $document['request_object_encryption_enc_values_supported']);
+    }
+
+    /**
+     * Issue #165: the same wired lists answer for every kind of document at once, because the provider
+     * opens and mints them all with them. A deployment that wires encryption announces it for the request
+     * object a client encrypts to it and for the three documents it encrypts to a client.
+     */
+    #[Test]
+    public function itAnnouncesTheSameEncryptionForEveryKindOfDocument(): void
+    {
+        // When
+        $document = self::metadata()->toArray();
+
+        // Then
+        foreach (['id_token_encryption', 'userinfo_encryption', 'request_object_encryption'] as $member) {
+            static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $document[$member . '_alg_values_supported'], $member);
+            static::assertSame(['A256GCM'], $document[$member . '_enc_values_supported'], $member);
+        }
+    }
+
+    /**
+     * OIDC Core §5.3.2 and OIDC Discovery §3: a client may have the UserInfo answer signed by the tenant,
+     * with the algorithms the provider signs everything else with.
+     */
+    #[Test]
+    public function itAnnouncesWhatAUserInfoAnswerMayBeSignedWith(): void
+    {
+        // When
+        $document = self::metadata()->toArray();
+
+        // Then
+        static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA'], $document['userinfo_signing_alg_values_supported']);
+    }
+
+    /**
+     * JARM §3: the two members that say what a signed authorization response may be encrypted with are
+     * announced where a signed mode is wired, and nowhere else: a deployment that signs no answer has
+     * none to encrypt.
+     */
+    #[Test]
+    public function itAnnouncesWhatASignedAuthorizationResponseMayBeEncryptedWithWhereOneIsWired(): void
+    {
+        // Given
+        $signed = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [ResponseMode::Query, ResponseMode::QueryJwt], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), self::keyEncryptionAlgorithms(), self::contentEncryptionAlgorithms(), 60)->toArray();
+
+        // Then
+        static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $signed['authorization_encryption_alg_values_supported']);
+        static::assertSame(['A256GCM'], $signed['authorization_encryption_enc_values_supported']);
+        static::assertArrayNotHasKey('authorization_encryption_alg_values_supported', self::metadata()->toArray());
     }
 
     /**

@@ -231,8 +231,7 @@ final class JweDecryptionTest extends TestCase
         $jwe = self::encryptedTo($this->encryption, '{}');
         $decrypter = new JwtLibraryJweDecrypter(
             new SealedKeyProvider($this->repository, new EnvelopeKeySealer(new EnvelopesThatThrow(new KeyManagementFailure('the KMS did not answer')), Keys::KMS_KEY_ID)),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
+            Algorithms::encryption(),
         );
 
         // Then
@@ -262,7 +261,7 @@ final class JweDecryptionTest extends TestCase
 
     private function decrypter(): JwtLibraryJweDecrypter
     {
-        return new JwtLibraryJweDecrypter($this->provider, Algorithms::keyEncryption(), Algorithms::contentEncryption());
+        return new JwtLibraryJweDecrypter($this->provider, Algorithms::encryption());
     }
 
     private function activate(KeyAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair): TenantKey

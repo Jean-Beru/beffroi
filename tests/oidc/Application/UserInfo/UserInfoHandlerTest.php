@@ -28,6 +28,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ResponseFormat;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
@@ -39,6 +40,7 @@ use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Exception\MissingBearerTokenException;
 use Heidi\Oidc\Exception\TokenBindingNotProvenException;
 use Heidi\Oidc\Tests\Fixture\Certificates;
+use Heidi\Oidc\Tests\Fixture\ClientEncryption;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Jwts;
@@ -352,7 +354,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $authorization = $this->authorization(['openid', 'email']);
-        $idToken = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all())
+        $idToken = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all())
             ->issue($authorization, $this->accessTokens->issue($authorization, Fixtures::now()), Fixtures::now());
 
         // Then
@@ -497,6 +499,105 @@ final class UserInfoHandlerTest extends TestCase
         $this->handler->handle(Fixtures::tenant('other', 'https://id.other.example'), 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
+    /**
+     * The acceptance of issue #165: a client that registered nothing keeps receiving the JSON answer,
+     * which is what every client does today.
+     */
+    #[Test]
+    public function aClientThatRegisteredNothingReceivesTheJson(): void
+    {
+        // Given
+        $token = $this->accessToken(['openid', 'email']);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        static::assertSame('application/json', $response->contentType);
+        static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true}', $response->body);
+    }
+
+    /**
+     * OIDC Core §5.3.2: a client that registered a signature receives the same claims as a JWT, served as
+     * "application/jwt", and the JWT names who wrote it and for whom, which the JSON has no room to say.
+     */
+    #[Test]
+    public function aClientThatRegisteredASignatureReceivesAJwt(): void
+    {
+        // Given
+        $this->client = Clients::encryptedFor($this->tenant, userInfo: ResponseFormat::signed(), clientId: 'spa');
+        $token = $this->reopenedWith(['openid', 'email']);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        static::assertSame('application/jwt', $response->contentType);
+        ['claims' => $claims] = $this->jwts->verify($response->body, 'spa', Fixtures::now(), ['iss', 'aud']);
+        static::assertSame([
+            'sub' => 'alice-subject',
+            'email' => 'alice@acme.example',
+            'email_verified' => true,
+            'iss' => (string) $this->tenant->issuer,
+            'aud' => 'spa',
+        ], $claims);
+    }
+
+    /**
+     * §5.3.2: a client that registered an encryption receives a JWE it opens with its own key, carrying
+     * the signed answer.
+     */
+    #[Test]
+    public function aClientThatRegisteredAnEncryptionReceivesAJweItOpens(): void
+    {
+        // Given
+        $this->client = Clients::encryptedFor($this->tenant, userInfo: ResponseFormat::signed(null, ClientEncryption::registration()), clientId: 'spa');
+        $token = $this->reopenedWith(['openid', 'email']);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        static::assertSame('application/jwt', $response->contentType);
+        ['header' => $header, 'payload' => $signed] = ClientEncryption::open($response->body);
+        static::assertSame('JWT', $header['cty']);
+        static::assertSame('alice-subject', $this->jwts->verify($signed, 'spa', Fixtures::now(), ['iss', 'aud'])['claims']['sub']);
+    }
+
+    /**
+     * §5.3.2: an answer may be encrypted without being signed, and what the JWE carries is then the JSON
+     * of the claims, which says nothing about who wrote it beyond the key it was addressed to.
+     */
+    #[Test]
+    public function aClientThatRegisteredOnlyAnEncryptionReceivesTheJsonInsideTheJwe(): void
+    {
+        // Given
+        $this->client = Clients::encryptedFor($this->tenant, userInfo: ResponseFormat::unsigned(ClientEncryption::registration()), clientId: 'spa');
+        $token = $this->reopenedWith(['openid', 'email']);
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        ['header' => $header, 'payload' => $payload] = ClientEncryption::open($response->body);
+        static::assertArrayNotHasKey('cty', $header);
+        static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"iss":"' . $this->tenant->issuer . '","aud":"spa"}', $payload);
+    }
+
+    /**
+     * A token issued to the client as it is now, once the registration under test replaced it.
+     *
+     * @param list<string> $scopes
+     */
+    private function reopenedWith(array $scopes): string
+    {
+        $users = new InMemoryUserRepository();
+        $users->save($this->user);
+        $this->handler = $this->handler($users);
+
+        return $this->accessToken($scopes);
+    }
+
     private function handler(InMemoryUserRepository $users): UserInfoHandler
     {
         $clients = new InMemoryClientRepository();
@@ -504,6 +605,7 @@ final class UserInfoHandlerTest extends TestCase
 
         return new UserInfoHandler(
             new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users),
+            $this->jwts->documents,
             Proofs::verifier(),
             new Endpoints(),
             new PublicSubjectIdentifierResolver(),

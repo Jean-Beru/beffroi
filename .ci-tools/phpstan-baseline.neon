@@ -1,2 +1,25 @@
 parameters:
-	ignoreErrors: []
+	ignoreErrors:
+		-
+			rawMessage: Using nullsafe property access on non-nullable type Heidi\Oidc\Domain\Client\ResponseEncryption. Use -> instead.
+			identifier: nullsafe.neverNull
+			count: 1
+			path: ../tests/oidc/Bridge/Configuration/ConfigurationClientRepositoryTest.php
+
+		-
+			rawMessage: 'Method Heidi\Oidc\Tests\Fixture\ClientEncryption::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
+			identifier: return.type
+			count: 1
+			path: ../tests/oidc/Fixture/ClientEncryption.php
+
+		-
+			rawMessage: Casting to string something that's already string.
+			identifier: cast.useless
+			count: 1
+			path: ../tests/symfony/Functional/Controller/EncryptedForTheClientTest.php
+
+		-
+			rawMessage: 'Method Heidi\Bundle\Tests\Functional\Controller\EncryptedForTheClientTest::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
+			identifier: return.type
+			count: 1
+			path: ../tests/symfony/Functional/Controller/EncryptedForTheClientTest.php

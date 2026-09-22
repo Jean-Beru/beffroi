@@ -25,7 +25,7 @@ final class UserInfoResponseTest extends TestCase
     public function itWritesSubFirstThenTheClaimsAsTheyAre(): void
     {
         // When
-        $response = new UserInfoResponse('alice-subject', [
+        $response = UserInfoResponse::json('alice-subject', [
             'email' => 'alice@acme.example',
             'sub' => 'someone-else',
             'email_verified' => true,
@@ -46,14 +46,15 @@ final class UserInfoResponseTest extends TestCase
                 'country' => 'FR',
             ],
         ], $response->claims);
-        static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"updated_at":1789466400,"address":{"country":"FR"}}', $response->toJson());
+        static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"updated_at":1789466400,"address":{"country":"FR"}}', $response->body);
+        static::assertSame('application/json', $response->contentType);
     }
 
     #[Test]
     public function aResponseWithoutClaimsCarriesSubAlone(): void
     {
         // When / Then
-        static::assertSame('{"sub":"alice-subject"}', new UserInfoResponse('alice-subject', [])->toJson());
+        static::assertSame('{"sub":"alice-subject"}', UserInfoResponse::json('alice-subject', [])->body);
     }
 
     #[Test]
@@ -63,7 +64,7 @@ final class UserInfoResponseTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new UserInfoResponse('', []);
+        UserInfoResponse::json('', []);
     }
 
     /**

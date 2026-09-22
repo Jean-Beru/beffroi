@@ -650,7 +650,60 @@ final class ConfigurationClientRepositoryTest extends TestCase
         // When
         new ConfigurationClientRepository('acme', [
             'bad' => $definition,
-        ], new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
+        ], new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
+    }
+
+    /**
+     * OIDC Registration §2 and JARM §3: what a client registers for each of the three documents it
+     * receives is read back on it, the algorithm it is signed with and the pair it is encrypted with.
+     */
+    #[Test]
+    public function aClientIsReadBackWithWhatItRegisteredForEachDocument(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'key-client' => self::KEY_CLIENT + [
+                'id_token_signed_response_alg' => 'ES256',
+                'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                'id_token_encrypted_response_enc' => 'A256GCM',
+                'userinfo_signed_response_alg' => 'ES256',
+                'authorization_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                'authorization_encrypted_response_enc' => 'A256GCM',
+            ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'key-client');
+
+        // Then
+        static::assertSame('ES256', $client->idToken->signature?->name());
+        static::assertSame('ECDH-ES+A256KW', $client->idToken->encryption?->algorithm->name());
+        static::assertSame('A256GCM', $client->idToken->encryption?->method->name());
+        static::assertTrue($client->userInfo->isSigned);
+        static::assertFalse($client->userInfo->isEncrypted());
+        static::assertTrue($client->authorizationResponse->isEncrypted());
+    }
+
+    /**
+     * A client that registers nothing receives what every client receives: its ID tokens and its signed
+     * authorization responses signed with what the provider signs with, its UserInfo answer as JSON.
+     */
+    #[Test]
+    public function aClientThatRegistersNothingTakesTheOrdinaryShapes(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'oidc-demo' => self::DEMO,
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'oidc-demo');
+
+        // Then
+        static::assertSame('RS256', $client->idToken->signature?->name());
+        static::assertFalse($client->idToken->isEncrypted());
+        static::assertTrue($client->userInfo->isPlain());
+        static::assertFalse($client->authorizationResponse->isEncrypted());
     }
 
     /**
@@ -666,6 +719,44 @@ final class ConfigurationClientRepositoryTest extends TestCase
         yield 'unknown key' => [$base + [
             'insecure_allow_plain_pkce' => true,
         ], 'unknown keys: insecure_allow_plain_pkce'];
+        yield 'an encryption algorithm without a content encryption' => [self::KEY_CLIENT + [
+            'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+        ], 'registers id_token_encrypted_response_alg without id_token_encrypted_response_enc'];
+        yield 'a content encryption without an encryption algorithm' => [self::KEY_CLIENT + [
+            'userinfo_encrypted_response_enc' => 'A256GCM',
+        ], 'registers userinfo_encrypted_response_enc without userinfo_encrypted_response_alg'];
+        yield 'an encryption algorithm the provider is not wired with' => [self::KEY_CLIENT + [
+            'authorization_encrypted_response_alg' => 'RSA1_5',
+            'authorization_encrypted_response_enc' => 'A256GCM',
+        ], 'The authorization_encrypted_response_alg option of the client "bad" must be one of: ECDH-ES+A256KW, RSA-OAEP-256.'];
+        yield 'a content encryption the provider is not wired with' => [self::KEY_CLIENT + [
+            'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+            'id_token_encrypted_response_enc' => 'A128CBC-HS256',
+        ], 'The id_token_encrypted_response_enc option of the client "bad" must be one of: A256GCM.'];
+        yield 'an encrypted response and no key published at all' => [$base + [
+            'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+            'id_token_encrypted_response_enc' => 'A256GCM',
+        ], 'registers an encrypted response, which is addressed to a key of the client, and therefore publishes its keys'];
+        yield 'an encrypted response and no key it can be addressed to' => [self::KEY_CLIENT + [
+            'id_token_encrypted_response_alg' => 'RSA-OAEP-256',
+            'id_token_encrypted_response_enc' => 'A256GCM',
+        ], 'publishes no key it can be addressed to'];
+        yield 'an encrypted response and only a signing key' => [[
+            'redirect_uris' => ['https://key.example/callback'],
+            'token_endpoint_auth_method' => 'private_key_jwt',
+            'jwks' => [
+                'keys' => [[
+                    'kty' => 'EC',
+                    'crv' => 'P-256',
+                    'kid' => 'one',
+                    'use' => 'sig',
+                    'x' => 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+                    'y' => 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
+                ]],
+            ],
+            'userinfo_encrypted_response_alg' => 'ECDH-ES+A256KW',
+            'userinfo_encrypted_response_enc' => 'A256GCM',
+        ], 'publishes no key it can be addressed to'];
         yield 'secret not a string' => [[
             'secret' => 12345,
         ] + $base, 'must be a string'];
@@ -840,8 +931,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionHasNoSecret(): void
     {
         // When / Then
-        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader())->hasSecret());
-        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader())->hasSecret());
+        static::assertFalse(ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption())->hasSecret());
+        static::assertTrue(ClientDefinition::fromArray('oidc-demo', self::DEMO, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption())->hasSecret());
     }
 
     /**
@@ -851,7 +942,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     public function aPublicDefinitionRefusesToKeepASecret(): void
     {
         // Given
-        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
+        $definition = ClientDefinition::fromArray('spa', self::SPA, Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
 
         // Then
         $this->expectException(LogicException::class);
@@ -921,7 +1012,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     private function repository(array $clients, ?PasswordHasherInterface $hasher = null): ConfigurationClientRepository
     {
-        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
+        return new ConfigurationClientRepository($this->tenant->slug, $clients, $hasher ?? new FakePasswordHasher(), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
     }
 
     private static function find(ConfigurationClientRepository $repository, Tenant $tenant, string $clientId): Client

@@ -13,6 +13,7 @@ use Heidi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
 use Heidi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
@@ -45,6 +46,8 @@ final class Algorithms
     private static ?JoseContentEncryptionAlgorithms $contentEncryption = null;
 
     private static ?JoseKeyAlgorithms $everyUse = null;
+
+    private static ?JoseEncryptionAlgorithms $encryption = null;
 
     public static function rs256(): Rs256
     {
@@ -107,6 +110,14 @@ final class Algorithms
     public static function noContentEncryption(): JoseContentEncryptionAlgorithms
     {
         return new JoseContentEncryptionAlgorithms([]);
+    }
+
+    /**
+     * What a JWE is made and opened with, the two lists of one use read as one.
+     */
+    public static function encryption(): JoseEncryptionAlgorithms
+    {
+        return self::$encryption ??= new JoseEncryptionAlgorithms(self::keyEncryption(), self::contentEncryption());
     }
 
     /**

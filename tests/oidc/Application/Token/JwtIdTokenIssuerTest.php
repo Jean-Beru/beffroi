@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Application\Token;
 use function array_keys;
 use function base64_encode;
 use DateInterval;
+use function explode;
 use function hash;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Identity\EmailAddress;
@@ -24,10 +25,12 @@ use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\ResponseFormat;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\AccessToken;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
+use Heidi\Oidc\Tests\Fixture\ClientEncryption;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -60,7 +63,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
+        $this->issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
         $this->accessToken = new AccessToken(self::ACCESS_TOKEN, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
@@ -221,7 +224,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 return [];
             }
         };
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
 
         // When
         $issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $claims)), $this->accessToken, Fixtures::now());
@@ -268,7 +271,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 return ['name'];
             }
         };
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: ClaimsRequest::fromJson('{"id_token":{"name":null}}')));
 
         // When
@@ -288,7 +291,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theLifetimeIsConfigurable(): void
     {
         // Given
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
         $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
         // When
@@ -302,7 +305,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function aTokenIsRefusedOncePastItsLifetime(): void
     {
         // Given
-        $issuer = new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
         $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
         // Then
@@ -357,7 +360,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::es256());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idToken: ResponseFormat::signed(Algorithms::es256()));
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
 
         // When
@@ -380,7 +383,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $this->jwts->activate(Algorithms::edDsa());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idTokenSignedResponseAlg: Algorithms::edDsa());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idToken: ResponseFormat::signed(Algorithms::edDsa()));
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
 
         // When
@@ -394,6 +397,51 @@ final class JwtIdTokenIssuerTest extends TestCase
     private static function leftHalf(string $digest): string
     {
         return rtrim(strtr(base64_encode(substr($digest, 0, 32)), '+/', '-_'), '=');
+    }
+
+    /**
+     * The acceptance of issue #165: a client that registered an encryption receives a JWE it opens with
+     * its own private key, and what it finds inside is the ID token signed by the tenant, which verifies
+     * against the published JWK Set exactly as an unencrypted one does.
+     */
+    #[Test]
+    public function aClientThatRegisteredAnEncryptionReceivesAJweItOpens(): void
+    {
+        // Given
+        $client = Clients::encryptedFor($this->session->tenant, idToken: ResponseFormat::signed(null, ClientEncryption::registration()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+
+        // When
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+
+        // Then
+        ['header' => $header, 'payload' => $signed] = ClientEncryption::open($idToken);
+        static::assertSame('ECDH-ES+A256KW', $header['alg']);
+        static::assertSame('A256GCM', $header['enc']);
+        static::assertSame(ClientEncryption::KEY_ID, $header['kid']);
+        // RFC 7519 §5.2: the payload of the JWE says it is itself a JWT
+        static::assertSame('JWT', $header['cty']);
+        ['claims' => $claims] = $this->jwts->verify($signed, 'encrypted-client', Fixtures::now()->modify('+9 minutes'));
+        static::assertSame('alice-subject', $claims['sub']);
+    }
+
+    /**
+     * The signature is inside and not outside (OIDC Core §16.14): the client that registered an encryption
+     * receives one token and not two, and nothing of the ID token is readable before the JWE is opened.
+     */
+    #[Test]
+    public function anEncryptedIdTokenIsNotAJwsAnyoneCanRead(): void
+    {
+        // Given
+        $client = Clients::encryptedFor($this->session->tenant, idToken: ResponseFormat::signed(null, ClientEncryption::registration()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+
+        // When
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+
+        // Then
+        static::assertCount(5, explode('.', $idToken));
+        static::assertStringNotContainsString('alice-subject', $idToken);
     }
 
     private function authorizationFromCode(): GrantedAuthorization
