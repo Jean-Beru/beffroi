@@ -44,9 +44,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
     protected function enrol(User $user, SoftwareAuthenticator $device, string $name = 'YubiKey 5', ?DateTimeImmutable $signedInAt = null): PasskeyCredential
     {
         $this->signIn($user, $signedInAt);
-        $token = $this->passkeysPage()
-            ->filter('form[data-passkey="enrol"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
         static::assertIsString($token);
         $this->browser->request('POST', '/account/passkeys', [
             '_token' => $token,
@@ -98,9 +96,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
      */
     protected function loginWithPasskey(string $interaction, SoftwareAuthenticator $device): void
     {
-        $token = $this->loginPage($interaction)
-            ->filter('form[data-passkey="login"] input[name="_csrf_token"]')
-            ->attr('value');
+        $token = $this->loginPage($interaction)->filter('form[data-passkey="login"] input[name="_csrf_token"]')->attr('value');
         static::assertIsString($token);
         $this->postPasskeyLogin($interaction, $device->get($this->requestOptions($interaction)), $token);
     }
@@ -141,8 +137,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
      */
     protected function forgetTheBrowser(): void
     {
-        $this->browser->getCookieJar()
-            ->clear();
+        $this->browser->getCookieJar()->clear();
     }
 
     /**
@@ -152,7 +147,10 @@ abstract class PasskeyTestCase extends BrowserTestCase
     {
         self::reload();
 
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByExternalId(self::tenant(), PasskeyCredential::class, $device->credentialId) ?? static::fail('The passkey is not in the rows.');
+        return (
+            self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+                ->findByExternalId(self::tenant(), PasskeyCredential::class, $device->credentialId) ?? static::fail('The passkey is not in the rows.')
+        );
     }
 
     /**
@@ -160,18 +158,19 @@ abstract class PasskeyTestCase extends BrowserTestCase
      */
     protected function boundSession(): AuthenticationSession
     {
-        $id = $this->readHttpSession()
-            ->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
+        $id = $this->readHttpSession()->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
         static::assertIsString($id, 'The browser is bound to no session.');
         self::reload();
 
-        return self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find(Uuid::fromString($id)) ?? static::fail('The bound session is gone.');
+        return (
+            self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+                ->find(Uuid::fromString($id)) ?? static::fail('The bound session is gone.')
+        );
     }
 
     protected function isBoundToASession(): bool
     {
-        return $this->readHttpSession()
-            ->has(BrowserSession::AUTHENTICATION_SESSION_KEY);
+        return $this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY);
     }
 
     /**
@@ -179,8 +178,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
      */
     protected function securityToken(): TokenInterface
     {
-        $serialized = $this->readHttpSession()
-            ->get('_security_heidi_interaction');
+        $serialized = $this->readHttpSession()->get('_security_heidi_interaction');
         static::assertIsString($serialized, 'The firewall stored no token.');
         $token = unserialize($serialized);
         static::assertInstanceOf(TokenInterface::class, $token);

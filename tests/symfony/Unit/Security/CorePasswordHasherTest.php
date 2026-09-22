@@ -43,10 +43,13 @@ final class CorePasswordHasherTest extends TestCase
         static::assertNotNull($decoded);
         static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $decoded->algorithm);
         static::assertSame('ZGlnZXN0', $decoded->encoded);
-        static::assertSame([
-            'salt' => 'c2FsdA',
-            'iterations' => 27500,
-        ], $decoded->parameters);
+        static::assertSame(
+            [
+                'salt' => 'c2FsdA',
+                'iterations' => 27500,
+            ],
+            $decoded->parameters,
+        );
     }
 
     #[Test]

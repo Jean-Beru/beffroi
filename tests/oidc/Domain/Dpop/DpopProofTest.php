@@ -108,9 +108,15 @@ final class DpopProofTest extends TestCase
      */
     private static function proof(array $claims): DpopProof
     {
-        return new DpopProof(new UnverifiedJwt('the.compact.proof', [
-            'typ' => DpopProof::TYPE,
-            'alg' => 'ES256',
-        ], $claims));
+        return new DpopProof(
+            new UnverifiedJwt(
+                'the.compact.proof',
+                [
+                    'typ' => DpopProof::TYPE,
+                    'alg' => 'ES256',
+                ],
+                $claims,
+            ),
+        );
     }
 }

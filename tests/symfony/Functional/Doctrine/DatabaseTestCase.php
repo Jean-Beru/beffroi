@@ -54,9 +54,13 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function browser(?Closure $configureContainer = null): KernelBrowser
     {
         self::ensureKernelShutdown();
-        $browser = self::createClient($configureContainer === null ? [] : [
-            'configure_container' => $configureContainer,
-        ]);
+        $browser = self::createClient(
+            $configureContainer === null
+                ? []
+                : [
+                    'configure_container' => $configureContainer,
+                ],
+        );
         self::prepareDatabase();
 
         return $browser;
@@ -72,8 +76,7 @@ abstract class DatabaseTestCase extends WebTestCase
 
     private static function prepareDatabase(): void
     {
-        $connection = self::entityManager()
-            ->getConnection();
+        $connection = self::entityManager()->getConnection();
         $connection->close();
         $database = static::getContainer()->getParameter('heidi_test.database');
         if (! is_string($database)) {
@@ -87,8 +90,7 @@ abstract class DatabaseTestCase extends WebTestCase
         } else {
             copy(self::$template, $database) || static::fail('The database was not restored from its template.');
         }
-        self::entityManager()
-            ->clear();
+        self::entityManager()->clear();
     }
 
     /**
@@ -103,8 +105,7 @@ abstract class DatabaseTestCase extends WebTestCase
             $schema->dropDatabase();
             $schema->createSchema($entityManager->getMetadataFactory()->getAllMetadata());
         });
-        self::service('test.heidi.tenant_synchronizer', TenantSynchronizer::class)
-            ->synchronize();
+        self::service('test.heidi.tenant_synchronizer', TenantSynchronizer::class)->synchronize();
     }
 
     protected static function entityManager(): EntityManagerInterface
@@ -122,8 +123,7 @@ abstract class DatabaseTestCase extends WebTestCase
      */
     protected static function tenant(): Tenant
     {
-        return self::service('test.heidi.tenant_provider', TenantProvider::class)
-            ->provide();
+        return self::service('test.heidi.tenant_provider', TenantProvider::class)->provide();
     }
 
     /**
@@ -145,8 +145,7 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function user(string $username = 'alice', string $subject = 'alice-subject'): User
     {
         $user = User::create(Uuid::v7(), self::tenant(), new Subject($subject), $username, self::now());
-        self::service('test.heidi.users', UserRepositoryInterface::class)
-            ->save($user);
+        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
 
         return $user;
     }
@@ -157,9 +156,16 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function session(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
     {
         $establishedAt ??= self::now();
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $establishedAt, AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt), self::context($establishedAt), $establishedAt->modify('+12 hours'));
-        self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
-            ->save($session);
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            $establishedAt,
+            AuthenticationProofs::of(AuthenticationMethod::password(), $establishedAt),
+            self::context($establishedAt),
+            $establishedAt->modify('+12 hours'),
+        );
+        self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->save($session);
 
         return $session;
     }
@@ -169,8 +175,12 @@ abstract class DatabaseTestCase extends WebTestCase
      */
     protected static function client(string $clientId = 'oidc-demo'): Client
     {
-        return self::service('test.heidi.clients', ClientRepositoryInterface::class)
-            ->findByClientId(self::tenant(), $clientId) ?? static::fail(sprintf('The client "%s" is not configured.', $clientId));
+        return (
+            self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId) ?? static::fail(sprintf(
+                'The client "%s" is not configured.',
+                $clientId,
+            ))
+        );
     }
 
     /**
@@ -179,8 +189,7 @@ abstract class DatabaseTestCase extends WebTestCase
      */
     protected static function reload(): void
     {
-        self::entityManager()
-            ->clear();
+        self::entityManager()->clear();
     }
 
     /**

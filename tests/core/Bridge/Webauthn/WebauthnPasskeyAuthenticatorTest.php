@@ -213,7 +213,11 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         $this->expectExceptionMessageIs('The response names no passkey of the tenant.');
 
         // When
-        $this->authenticator->verifyAssertion($other, $options, $device->forRelyingParty('id.other.example')->atOrigin('https://id.other.example')->get($this->ceremonies->optionsToJson($options)));
+        $this->authenticator->verifyAssertion(
+            $other,
+            $options,
+            $device->forRelyingParty('id.other.example')->atOrigin('https://id.other.example')->get($this->ceremonies->optionsToJson($options)),
+        );
     }
 
     #[Test]
@@ -221,7 +225,11 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     {
         // Given
         $device = new SoftwareAuthenticator('https://id.acme.example');
-        $device->create($this->ceremonies->optionsToJson(new WebauthnPasskeyRegistrar($this->ceremonies)->creationOptions($this->alice, PasskeyUserHandle::generate(), [])));
+        $device->create($this->ceremonies->optionsToJson(new WebauthnPasskeyRegistrar($this->ceremonies)->creationOptions(
+            $this->alice,
+            PasskeyUserHandle::generate(),
+            [],
+        )));
         $options = $this->authenticator->requestOptions($this->tenant, []);
 
         // Then
@@ -245,7 +253,11 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         $this->expectExceptionMessageIsOrContains('The assertion was refused');
 
         // When
-        $this->authenticator->verifyAssertion($this->tenant, $options, $device->atOrigin('https://phishing.example')->get($this->ceremonies->optionsToJson($options)));
+        $this->authenticator->verifyAssertion(
+            $this->tenant,
+            $options,
+            $device->atOrigin('https://phishing.example')->get($this->ceremonies->optionsToJson($options)),
+        );
     }
 
     #[Test]
@@ -261,7 +273,11 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         $this->expectExceptionMessageIsOrContains('The assertion was refused');
 
         // When
-        $this->authenticator->verifyAssertion($this->tenant, $options, $device->forRelyingParty('acme.example')->get($this->ceremonies->optionsToJson($options)));
+        $this->authenticator->verifyAssertion(
+            $this->tenant,
+            $options,
+            $device->forRelyingParty('acme.example')->get($this->ceremonies->optionsToJson($options)),
+        );
     }
 
     /**
@@ -294,9 +310,28 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         $device = new SoftwareAuthenticator('https://id.acme.example');
         $passkey = $this->enrol($device);
         $impostor = new SoftwareAuthenticator('https://id.acme.example');
-        $this->credentials->save(new PasskeyCredential(Uuid::v7(), $this->alice, 'Impostor', $device->credentialId . '-', $impostor->cosePublicKey(), 0, [], false, false, Uuid::v4(), $passkey->userHandle, Fixtures::now()));
+        $this->credentials->save(
+            new PasskeyCredential(
+                Uuid::v7(),
+                $this->alice,
+                'Impostor',
+                $device->credentialId . '-',
+                $impostor->cosePublicKey(),
+                0,
+                [],
+                false,
+                false,
+                Uuid::v4(),
+                $passkey->userHandle,
+                Fixtures::now(),
+            ),
+        );
         $options = $this->authenticator->requestOptions($this->tenant, []);
-        $response = str_replace(Base64UrlSafe::encodeUnpadded($device->credentialId) . '"', Base64UrlSafe::encodeUnpadded($device->credentialId . '-') . '"', $device->get($this->ceremonies->optionsToJson($options)));
+        $response = str_replace(
+            Base64UrlSafe::encodeUnpadded($device->credentialId) . '"',
+            Base64UrlSafe::encodeUnpadded($device->credentialId . '-') . '"',
+            $device->get($this->ceremonies->optionsToJson($options)),
+        );
 
         // Then
         $this->expectException(PasskeyCeremonyFailedException::class);

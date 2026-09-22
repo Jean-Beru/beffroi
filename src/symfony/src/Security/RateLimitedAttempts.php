@@ -42,21 +42,16 @@ final readonly class RateLimitedAttempts implements CodeAttemptLimiterInterface,
      */
     public function mayAttempt(User $user): bool
     {
-        return $this->limiters->create($user->id->toRfc4122())
-            ->consume(0)
-            ->getRemainingTokens() > 0;
+        return $this->limiters->create($user->id->toRfc4122())->consume(0)->getRemainingTokens() > 0;
     }
 
     public function attempt(User $user): bool
     {
-        return $this->limiters->create($user->id->toRfc4122())
-            ->consume()
-            ->isAccepted();
+        return $this->limiters->create($user->id->toRfc4122())->consume()->isAccepted();
     }
 
     public function reset(User $user): void
     {
-        $this->limiters->create($user->id->toRfc4122())
-            ->reset();
+        $this->limiters->create($user->id->toRfc4122())->reset();
     }
 }

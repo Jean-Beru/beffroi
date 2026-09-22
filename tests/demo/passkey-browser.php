@@ -60,7 +60,10 @@ final class PasskeyBrowser
             'name' => $name,
             '_passkey' => $device->create($options),
         ]);
-        self::expect($status === 302 && str_ends_with($location, '/account/passkeys'), sprintf('the passkey is enrolled (got %d %s)', $status, $status === 302 ? $location : self::reason($page)));
+        self::expect(
+            $status === 302 && str_ends_with($location, '/account/passkeys'),
+            sprintf('the passkey is enrolled (got %d %s)', $status, $status === 302 ? $location : self::reason($page)),
+        );
     }
 
     /**
@@ -78,7 +81,11 @@ final class PasskeyBrowser
             '_csrf_token' => $token,
             '_passkey' => $device->get($options),
         ]);
-        self::expect($status === 302, sprintf('the assertion is accepted, back to the login page (got %d %s)', $status, $status === 302 ? $location : self::reason($page)));
+        self::expect($status === 302, sprintf(
+            'the assertion is accepted, back to the login page (got %d %s)',
+            $status,
+            $status === 302 ? $location : self::reason($page),
+        ));
 
         return $location;
     }
@@ -91,7 +98,11 @@ final class PasskeyBrowser
     {
         $options = [
             'headers' => [
-                'Cookie' => implode('; ', array_map(static fn (string $name, string $value): string => $name . '=' . $value, array_keys($this->cookies), array_values($this->cookies))),
+                'Cookie' => implode('; ', array_map(
+                    static fn (string $name, string $value): string => $name . '=' . $value,
+                    array_keys($this->cookies),
+                    array_values($this->cookies),
+                )),
             ],
         ];
         if ($form !== []) {
@@ -101,7 +112,8 @@ final class PasskeyBrowser
         $headers = $response->getHeaders(false);
         foreach ($headers['set-cookie'] ?? [] as $cookie) {
             [$pair] = explode(';', $cookie, 2);
-            [$name, $value] = explode('=', $pair, 2) + [
+            [$name, $value] = explode('=', $pair, 2)
+            + [
                 1 => '',
             ];
             $this->cookies[trim($name)] = trim($value);
@@ -169,9 +181,16 @@ $browser = new PasskeyBrowser($issuer, $cafile, $cookies);
 $browser->enrol($device, $name);
 $location = $browser->login($device, $interaction);
 
-fwrite(\STDOUT, json_encode([
-    'cookies' => $browser->cookies,
-    'location' => $location,
-    'credential_id' => Base64UrlSafe::encodeUnpadded($device->credentialId),
-    'sign_count' => $device->signCount,
-], \JSON_THROW_ON_ERROR) . "\n");
+fwrite(
+    \STDOUT,
+    json_encode(
+        [
+            'cookies' => $browser->cookies,
+            'location' => $location,
+            'credential_id' => Base64UrlSafe::encodeUnpadded($device->credentialId),
+            'sign_count' => $device->signCount,
+        ],
+        \JSON_THROW_ON_ERROR,
+    )
+        . "\n",
+);

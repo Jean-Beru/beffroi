@@ -195,6 +195,12 @@ final class CertificateIdentityTest extends TestCase
      */
     private static function subject(): CertificateSubject
     {
-        return new CertificateSubject('cn=client,o=Heidi Test', ['client.example.com'], ['https://client.example.com/callback'], ['198.51.100.7'], ['ops@client.example.com']);
+        return new CertificateSubject(
+            'cn=client,o=Heidi Test',
+            ['client.example.com'],
+            ['https://client.example.com/callback'],
+            ['198.51.100.7'],
+            ['ops@client.example.com'],
+        );
     }
 }

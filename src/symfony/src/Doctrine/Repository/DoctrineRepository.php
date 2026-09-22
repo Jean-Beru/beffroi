@@ -43,14 +43,12 @@ abstract readonly class DoctrineRepository
      */
     protected function repository(): EntityRepository
     {
-        return $this->manager()
-            ->getRepository($this->class);
+        return $this->manager()->getRepository($this->class);
     }
 
     protected function queryBuilder(string $alias): QueryBuilder
     {
-        return $this->repository()
-            ->createQueryBuilder($alias);
+        return $this->repository()->createQueryBuilder($alias);
     }
 
     protected function store(object $entity): void

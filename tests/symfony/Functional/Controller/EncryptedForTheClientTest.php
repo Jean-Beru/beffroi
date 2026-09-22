@@ -126,14 +126,19 @@ final class EncryptedForTheClientTest extends BrowserTestCase
         $this->signIn(self::user('alice'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
         $tokens = self::json($this->browser->getResponse());
 
         // When
@@ -158,14 +163,19 @@ final class EncryptedForTheClientTest extends BrowserTestCase
             'redirect_uri' => 'https://encrypted.test/callback',
         ]));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://encrypted.test/callback',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('encrypted-app:encrypted-secret-of-at-least-32-characters'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://encrypted.test/callback',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('encrypted-app:encrypted-secret-of-at-least-32-characters'),
+            ],
+        );
 
         return self::json($this->browser->getResponse());
     }
@@ -177,8 +187,7 @@ final class EncryptedForTheClientTest extends BrowserTestCase
      */
     private function open(string $compactJwe): array
     {
-        $jwe = new JweSerializer()
-            ->unserialize($compactJwe);
+        $jwe = new JweSerializer()->unserialize($compactJwe);
         static::assertTrue(new JWEDecrypter(Algorithms::encryption()->manager())->decryptUsingKey($jwe, new JWK(self::PRIVATE_KEY), 0));
         $payload = $jwe->getPayload();
         static::assertIsString($payload);
@@ -201,9 +210,12 @@ final class EncryptedForTheClientTest extends BrowserTestCase
         static::assertIsArray($published['keys']);
         /** @var array<int, array<string, mixed>> $keys */
         $keys = $published['keys'];
-        $jws = new JwsSerializer()
-            ->unserialize($compactJws);
-        static::assertTrue(new JWSVerifier(Algorithms::all()->manager())->verifyWithKeySet($jws, new JWKSet(array_map(static fn (array $key): JWK => new JWK($key), $keys)), 0));
+        $jws = new JwsSerializer()->unserialize($compactJws);
+        static::assertTrue(new JWSVerifier(Algorithms::all()->manager())->verifyWithKeySet(
+            $jws,
+            new JWKSet(array_map(static fn (array $key): JWK => new JWK($key), $keys)),
+            0,
+        ));
         $payload = $jws->getPayload();
         static::assertIsString($payload);
         /** @var array<string, mixed> $claims */

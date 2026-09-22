@@ -27,9 +27,10 @@ final class AuthenticationProofsTest extends TestCase
         $login = Fixtures::now();
 
         // When
-        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::PIN), $login)
-            ->with(AuthenticationMethod::password(), $login)
-            ->with(AuthenticationMethod::password(), $login->modify('+2 hours'));
+        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::PIN), $login)->with(AuthenticationMethod::password(), $login)->with(
+            AuthenticationMethod::password(),
+            $login->modify('+2 hours'),
+        );
 
         // Then
         static::assertSame(['pin', 'pwd'], $proofs->methodReferences());
@@ -49,7 +50,10 @@ final class AuthenticationProofsTest extends TestCase
     public function mfaIsListedWhenTwoFactorsWereProven(array $methods, array $references): void
     {
         // Given
-        $proofs = AuthenticationProofs::ofAll(array_map(static fn (string $method): AuthenticationMethod => new AuthenticationMethod($method), $methods), Fixtures::now());
+        $proofs = AuthenticationProofs::ofAll(
+            array_map(static fn (string $method): AuthenticationMethod => new AuthenticationMethod($method), $methods),
+            Fixtures::now(),
+        );
 
         // When / Then
         static::assertSame($references, $proofs->methodReferences());
@@ -64,8 +68,14 @@ final class AuthenticationProofsTest extends TestCase
         yield 'a password and a PIN, one kind' => [['pwd', 'pin'], ['pwd', 'pin']];
         yield 'a password and a one-time password' => [['pwd', 'otp'], ['pwd', 'otp', 'mfa']];
         yield 'a password and a hardware key with presence' => [['hwk', 'user', 'pwd'], ['hwk', 'user', 'pwd', 'mfa']];
-        yield 'a hardware key verified by a PIN, mfa asserted by the authenticator' => [['hwk', 'user', 'mfa'], ['hwk', 'user', 'mfa']];
-        yield 'a password and a verified key, mfa once' => [['pwd', 'hwk', 'user', 'mfa'], ['pwd', 'hwk', 'user', 'mfa']];
+        yield 'a hardware key verified by a PIN, mfa asserted by the authenticator' => [
+            ['hwk', 'user', 'mfa'],
+            ['hwk', 'user', 'mfa'],
+        ];
+        yield 'a password and a verified key, mfa once' => [
+            ['pwd', 'hwk', 'user', 'mfa'],
+            ['pwd', 'hwk', 'user', 'mfa'],
+        ];
     }
 
     /**
@@ -77,8 +87,10 @@ final class AuthenticationProofsTest extends TestCase
         // Given
         $login = Fixtures::now();
         $reauth = $login->modify('+2 hours');
-        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)
-            ->with(AuthenticationMethod::password(), $reauth);
+        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)->with(
+            AuthenticationMethod::password(),
+            $reauth,
+        );
 
         // When / Then
         static::assertEquals($reauth, $proofs->latest());
@@ -90,15 +102,20 @@ final class AuthenticationProofsTest extends TestCase
         // Given
         $login = Fixtures::now();
         $reauth = $login->modify('+2 hours');
-        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)
-            ->with(AuthenticationMethod::password(), $reauth);
+        $proofs = AuthenticationProofs::of(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), $login)->with(
+            AuthenticationMethod::password(),
+            $reauth,
+        );
 
         // When / Then
         static::assertEquals($login, $proofs->provenAt(new AuthenticationMethod('otp')));
-        static::assertSame([
-            'otp' => $login->getTimestamp(),
-            'pwd' => $reauth->getTimestamp(),
-        ], $proofs->toTimestamps());
+        static::assertSame(
+            [
+                'otp' => $login->getTimestamp(),
+                'pwd' => $reauth->getTimestamp(),
+            ],
+            $proofs->toTimestamps(),
+        );
     }
 
     /**
@@ -121,9 +138,18 @@ final class AuthenticationProofsTest extends TestCase
     {
         $now = Fixtures::now();
         yield 'a password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now), [AuthenticationFactor::Knowledge]];
-        yield 'a password and a PIN' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('pin'), $now), [AuthenticationFactor::Knowledge]];
-        yield 'a password and a one-time password, in that order' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now), [AuthenticationFactor::Knowledge, AuthenticationFactor::Possession]];
-        yield 'a hardware key and a fingerprint' => [AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now)->with(new AuthenticationMethod('fpt'), $now), [AuthenticationFactor::Possession, AuthenticationFactor::Inherence]];
+        yield 'a password and a PIN' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('pin'), $now),
+            [AuthenticationFactor::Knowledge],
+        ];
+        yield 'a password and a one-time password, in that order' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now),
+            [AuthenticationFactor::Knowledge, AuthenticationFactor::Possession],
+        ];
+        yield 'a hardware key and a fingerprint' => [
+            AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now)->with(new AuthenticationMethod('fpt'), $now),
+            [AuthenticationFactor::Possession, AuthenticationFactor::Inherence],
+        ];
         yield 'a presence check alone' => [AuthenticationProofs::of(new AuthenticationMethod('user'), $now), []];
     }
 

@@ -41,8 +41,11 @@ final class Fixtures
         return new Tenant(Uuid::v7(), $slug, new Issuer($issuer), 'Acme', self::now());
     }
 
-    public static function context(?DateTimeImmutable $receivedAt = null, ?string $ipAddress = '203.0.113.10', ?string $userAgent = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0'): RequestContext
-    {
+    public static function context(
+        ?DateTimeImmutable $receivedAt = null,
+        ?string $ipAddress = '203.0.113.10',
+        ?string $userAgent = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0',
+    ): RequestContext {
         return new RequestContext($receivedAt ?? self::now(), $ipAddress, $userAgent);
     }
 
@@ -54,7 +57,15 @@ final class Fixtures
         $user ??= self::user();
         $authenticatedAt ??= self::now();
 
-        return new AuthenticationSession(Uuid::v7(), $user->tenant, $user, $authenticatedAt, $proofs ?? AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt), self::context($authenticatedAt), $authenticatedAt->modify('+12 hours'));
+        return new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            $authenticatedAt,
+            $proofs ?? AuthenticationProofs::of(AuthenticationMethod::password(), $authenticatedAt),
+            self::context($authenticatedAt),
+            $authenticatedAt->modify('+12 hours'),
+        );
     }
 
     /**
@@ -62,23 +73,54 @@ final class Fixtures
      */
     public static function password(?User $user = null, ?DateTimeImmutable $createdAt = null): PasswordCredential
     {
-        return new PasswordCredential(Uuid::v7(), $user ?? self::user(), new FakePasswordHasher()->hash('correct horse battery staple'), $createdAt ?? self::now());
+        return new PasswordCredential(
+            Uuid::v7(),
+            $user ?? self::user(),
+            new FakePasswordHasher()->hash('correct horse battery staple'),
+            $createdAt ?? self::now(),
+        );
     }
 
     /**
      * A device-bound passkey, unused, with a handle of its own unless one is given.
      */
-    public static function passkey(?User $user = null, string $name = 'YubiKey 5', string $credentialId = 'credential-id', ?PasskeyUserHandle $userHandle = null, bool $backupEligible = false, bool $backedUp = false, ?DateTimeImmutable $createdAt = null): PasskeyCredential
-    {
-        return new PasskeyCredential(Uuid::v7(), $user ?? self::user(), $name, $credentialId, 'cose-public-key', 0, ['usb'], $backupEligible, $backedUp, Uuid::v4(), $userHandle ?? PasskeyUserHandle::generate(), $createdAt ?? self::now());
+    public static function passkey(
+        ?User $user = null,
+        string $name = 'YubiKey 5',
+        string $credentialId = 'credential-id',
+        ?PasskeyUserHandle $userHandle = null,
+        bool $backupEligible = false,
+        bool $backedUp = false,
+        ?DateTimeImmutable $createdAt = null,
+    ): PasskeyCredential {
+        return new PasskeyCredential(
+            Uuid::v7(),
+            $user ?? self::user(),
+            $name,
+            $credentialId,
+            'cose-public-key',
+            0,
+            ['usb'],
+            $backupEligible,
+            $backedUp,
+            Uuid::v4(),
+            $userHandle ?? PasskeyUserHandle::generate(),
+            $createdAt ?? self::now(),
+        );
     }
 
     /**
      * The authenticator data of an assertion (WebAuthn Level 3 §6.1), its flags chosen by the test.
      */
-    public static function authenticatorData(bool $userPresent = true, bool $userVerified = false, bool $backupEligible = false, bool $backedUp = false, int $signCount = 0): AuthenticatorData
-    {
-        $flags = ($userPresent ? AuthenticatorData::FLAG_UP : 0)
+    public static function authenticatorData(
+        bool $userPresent = true,
+        bool $userVerified = false,
+        bool $backupEligible = false,
+        bool $backedUp = false,
+        int $signCount = 0,
+    ): AuthenticatorData {
+        $flags =
+            ($userPresent ? AuthenticatorData::FLAG_UP : 0)
             | ($userVerified ? AuthenticatorData::FLAG_UV : 0)
             | ($backupEligible ? AuthenticatorData::FLAG_BE : 0)
             | ($backedUp ? AuthenticatorData::FLAG_BS : 0);

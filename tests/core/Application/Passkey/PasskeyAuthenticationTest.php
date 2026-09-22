@@ -61,7 +61,13 @@ final class PasskeyAuthenticationTest extends TestCase
         $this->ceremony = new FakePasskeyAuthenticator();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
-        $this->authentication = new PasskeyAuthentication($this->credentials, $this->ceremony, new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->clock, $this->events);
+        $this->authentication = new PasskeyAuthentication(
+            $this->credentials,
+            $this->ceremony,
+            new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            $this->clock,
+            $this->events,
+        );
         $this->options = $this->authentication->requestOptions($this->tenant);
     }
 

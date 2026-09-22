@@ -112,6 +112,10 @@ final class PasskeyOptionsStoreTest extends TestCase
 
     private static function creationOptions(): PublicKeyCredentialCreationOptions
     {
-        return PublicKeyCredentialCreationOptions::create(PublicKeyCredentialRpEntity::create('op.test', 'op.test'), PublicKeyCredentialUserEntity::create('alice', str_repeat('h', 64), 'alice'), str_repeat('c', 32));
+        return PublicKeyCredentialCreationOptions::create(
+            PublicKeyCredentialRpEntity::create('op.test', 'op.test'),
+            PublicKeyCredentialUserEntity::create('alice', str_repeat('h', 64), 'alice'),
+            str_repeat('c', 32),
+        );
     }
 }

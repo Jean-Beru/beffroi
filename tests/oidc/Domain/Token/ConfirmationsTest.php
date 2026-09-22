@@ -41,11 +41,14 @@ final class ConfirmationsTest extends TestCase
         // Then
         static::assertSame($certificate->x5tS256(), $confirmation->value());
         static::assertSame(TokenResponse::BEARER, $confirmation->scheme());
-        static::assertSame([
-            'cnf' => [
-                'x5t#S256' => $certificate->x5tS256(),
+        static::assertSame(
+            [
+                'cnf' => [
+                    'x5t#S256' => $certificate->x5tS256(),
+                ],
             ],
-        ], $confirmation->toClaims());
+            $confirmation->toClaims(),
+        );
     }
 
     /**
@@ -61,11 +64,14 @@ final class ConfirmationsTest extends TestCase
         // Then
         static::assertSame(self::THUMBPRINT, $confirmation->value());
         static::assertSame('DPoP', $confirmation->scheme());
-        static::assertSame([
-            'cnf' => [
-                'jkt' => self::THUMBPRINT,
+        static::assertSame(
+            [
+                'cnf' => [
+                    'jkt' => self::THUMBPRINT,
+                ],
             ],
-        ], $confirmation->toClaims());
+            $confirmation->toClaims(),
+        );
     }
 
     #[Test]
@@ -151,8 +157,16 @@ final class ConfirmationsTest extends TestCase
     {
         yield 'the same key' => [new KeyConfirmation(self::THUMBPRINT), new KeyConfirmation(self::THUMBPRINT), true];
         yield 'another key' => [new KeyConfirmation(self::THUMBPRINT), new KeyConfirmation('5bPRpDFfR6QNNOFrxJLPHlbCcFEHFwWVtOJQCg8h2hM'), false];
-        yield 'the same certificate' => [CertificateConfirmation::ofCertificate(Certificates::client()), CertificateConfirmation::ofCertificate(Certificates::client()), true];
-        yield 'another certificate' => [CertificateConfirmation::ofCertificate(Certificates::client()), CertificateConfirmation::ofCertificate(Certificates::other()), false];
+        yield 'the same certificate' => [
+            CertificateConfirmation::ofCertificate(Certificates::client()),
+            CertificateConfirmation::ofCertificate(Certificates::client()),
+            true,
+        ];
+        yield 'another certificate' => [
+            CertificateConfirmation::ofCertificate(Certificates::client()),
+            CertificateConfirmation::ofCertificate(Certificates::other()),
+            false,
+        ];
         yield 'the same thumbprint of another kind' => [new KeyConfirmation(self::THUMBPRINT), new CertificateConfirmation(self::THUMBPRINT), false];
     }
 
@@ -161,21 +175,33 @@ final class ConfirmationsTest extends TestCase
      */
     public static function provideUnreadableConfirmations(): iterable
     {
-        yield 'a thumbprint that is not a string' => [[
-            'x5t#S256' => 42,
-        ], 'carries a thumbprint'];
+        yield 'a thumbprint that is not a string' => [
+            [
+                'x5t#S256' => 42,
+            ],
+            'carries a thumbprint',
+        ];
 
-        yield 'an empty thumbprint' => [[
-            'x5t#S256' => '',
-        ], 'names the certificate'];
+        yield 'an empty thumbprint' => [
+            [
+                'x5t#S256' => '',
+            ],
+            'names the certificate',
+        ];
 
-        yield 'a key thumbprint of the wrong shape' => [[
-            'jkt' => 'a-key-thumbprint',
-        ], 'JWK thumbprint'];
+        yield 'a key thumbprint of the wrong shape' => [
+            [
+                'jkt' => 'a-key-thumbprint',
+            ],
+            'JWK thumbprint',
+        ];
 
-        yield 'a member this provider does not write' => [[
-            'kid' => 'the-key',
-        ], 'names one of'];
+        yield 'a member this provider does not write' => [
+            [
+                'kid' => 'the-key',
+            ],
+            'names one of',
+        ];
 
         yield 'a confirmation that is not an object' => ['x5t#S256', 'names one of'];
     }

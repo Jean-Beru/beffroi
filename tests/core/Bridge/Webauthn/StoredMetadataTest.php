@@ -38,7 +38,11 @@ final class StoredMetadataTest extends TestCase
     public function theStatementAndTheReportsOfAnAuthenticatorAreFoundByItsAaguid(string $aaguid): void
     {
         // Given
-        $this->store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID, [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS], 'Compromised key')]));
+        $this->store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(
+            self::AAGUID,
+            [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+            'Compromised key',
+        )]));
 
         // When
         $statement = $this->metadata->findOneByAAGUID($aaguid);
@@ -46,7 +50,10 @@ final class StoredMetadataTest extends TestCase
 
         // Then
         static::assertSame('Compromised key', $statement?->description);
-        static::assertSame([AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS], array_map(static fn (StatusReport $report): string => $report->status, $reports));
+        static::assertSame(
+            [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+            array_map(static fn (StatusReport $report): string => $report->status, $reports),
+        );
     }
 
     /**

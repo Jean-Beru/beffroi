@@ -62,8 +62,7 @@ final class TenantProviderTest extends DatabaseTestCase
         // Given
         $provider = self::service('test.heidi.tenant_provider', TenantProvider::class);
         $first = $provider->provide();
-        self::entityManager()
-            ->clear();
+        self::entityManager()->clear();
 
         // When
         $second = $provider->provide();
@@ -80,8 +79,7 @@ final class TenantProviderTest extends DatabaseTestCase
         // Given
         $provider = self::service('test.heidi.tenant_provider', TenantProvider::class);
         $first = $provider->provide();
-        self::service('services_resetter', ResetInterface::class)
-            ->reset();
+        self::service('services_resetter', ResetInterface::class)->reset();
 
         // When
         $second = $provider->provide();
@@ -112,9 +110,7 @@ final class TenantProviderTest extends DatabaseTestCase
     {
         // Given
         $provider = new TenantProvider(self::factory('https://op.test', 'default', null), self::registry());
-        self::entityManager()
-            ->createQuery('DELETE FROM Heidi\Core\Domain\Tenant\Tenant t')
-            ->execute();
+        self::entityManager()->createQuery('DELETE FROM Heidi\Core\Domain\Tenant\Tenant t')->execute();
 
         // Then
         $this->expectException(TenantNotSynchronizedException::class);
@@ -160,8 +156,7 @@ final class TenantProviderTest extends DatabaseTestCase
         $provider = new TenantProvider($factory, self::registry());
 
         // When
-        $synchronized = new TenantSynchronizer($factory, self::registry())
-            ->synchronize();
+        $synchronized = new TenantSynchronizer($factory, self::registry())->synchronize();
         self::reload();
 
         // Then
@@ -191,8 +186,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function anotherSlugIsAnotherTenant(): void
     {
         // When
-        $other = new TenantSynchronizer(self::factory('https://other.test', 'other', null), self::registry())
-            ->synchronize();
+        $other = new TenantSynchronizer(self::factory('https://other.test', 'other', null), self::registry())->synchronize();
         self::reload();
 
         // Then
@@ -228,14 +222,12 @@ final class TenantProviderTest extends DatabaseTestCase
         $provider = new TenantProvider($factory, self::registry());
 
         // When
-        $synchronized = new TenantSynchronizer($factory, self::registry())
-            ->synchronize();
+        $synchronized = new TenantSynchronizer($factory, self::registry())->synchronize();
         self::reload();
 
         // Then
         static::assertSame(['urn:okta:loa:2fa:any', 'urn:okta:loa:1fa:any'], $synchronized->authenticationContextPolicy->names());
-        $stored = $provider->provide()
-            ->authenticationContextPolicy;
+        $stored = $provider->provide()->authenticationContextPolicy;
         static::assertSame(['urn:okta:loa:2fa:any', 'urn:okta:loa:1fa:any'], $stored->names());
         static::assertSame(AuthenticationPredicate::TwoFactors, $stored->classes[0]->predicate);
     }
@@ -262,8 +254,12 @@ final class TenantProviderTest extends DatabaseTestCase
     /**
      * @param array<array-key, string> $authenticationClasses
      */
-    private static function factory(string $issuer, string $slug, ?string $name, array $authenticationClasses = HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES): TenantFactory
-    {
+    private static function factory(
+        string $issuer,
+        string $slug,
+        ?string $name,
+        array $authenticationClasses = HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
+    ): TenantFactory {
         return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses);
     }
 }

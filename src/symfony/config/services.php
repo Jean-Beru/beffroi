@@ -252,7 +252,8 @@ use Webauthn\MetadataService\StatusReportRepository;
  */
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
-    $services->defaults()
+    $services
+        ->defaults()
         ->autowire()
         ->autoconfigure()
         ->private()
@@ -260,10 +261,8 @@ return static function (ContainerConfigurator $container): void {
         ->bind(EventDispatcherInterface::class, service(EventBusDispatcher::class));
 
     // The bundle
-    $services->set(EventBusDispatcher::class)
-        ->args([service('event.bus')]);
-    $services->set(PlaneRequestListener::class)
-        ->args(['%env(enum:' . Plane::class . ':HEIDI_PLANE)%']);
+    $services->set(EventBusDispatcher::class)->args([service('event.bus')]);
+    $services->set(PlaneRequestListener::class)->args(['%env(enum:' . Plane::class . ':HEIDI_PLANE)%']);
     $services->set(TenantFactory::class);
 
     // The bundle: the two planes (architecture §5.2)
@@ -273,25 +272,19 @@ return static function (ContainerConfigurator $container): void {
     $services->set(InteractionPages::class);
     // what every page of the account asks first: the session of this browser, and the form token when it posts
     $services->set(AccountAccess::class);
-    $services->set(InteractionLocale::class)
-        ->args([
-            '$enabledLocales' => '%kernel.enabled_locales%',
-            '$defaultLocale' => '%kernel.default_locale%',
-        ]);
+    $services->set(InteractionLocale::class)->args([
+        '$enabledLocales' => '%kernel.enabled_locales%',
+        '$defaultLocale' => '%kernel.default_locale%',
+    ]);
     // how the answer of the authorization endpoint reaches the client (Multiple Response Type Encoding
     // Practices §2.1): one class per mode, and what is tagged is what the parser accepts and what the
     // discovery document announces, never an enumeration kept beside them
-    $services->set(QueryResponseRenderer::class)
-        ->tag('heidi.response_mode');
-    $services->set(FormPostResponseRenderer::class)
-        ->tag('heidi.response_mode');
+    $services->set(QueryResponseRenderer::class)->tag('heidi.response_mode');
+    $services->set(FormPostResponseRenderer::class)->tag('heidi.response_mode');
     // JARM §2.1: the same two deliveries, of a document the tenant signs rather than of the parameters
-    $services->set(SignedQueryResponseRenderer::class)
-        ->tag('heidi.response_mode');
-    $services->set(SignedFormPostResponseRenderer::class)
-        ->tag('heidi.response_mode');
-    $services->set(AuthorizationResponseRenderers::class)
-        ->args([tagged_iterator('heidi.response_mode')]);
+    $services->set(SignedQueryResponseRenderer::class)->tag('heidi.response_mode');
+    $services->set(SignedFormPostResponseRenderer::class)->tag('heidi.response_mode');
+    $services->set(AuthorizationResponseRenderers::class)->args([tagged_iterator('heidi.response_mode')]);
     $services->alias(ServedResponseModesInterface::class, AuthorizationResponseRenderers::class);
     $services->set(AuthorizationResponder::class);
     $services->set(PasskeyOptionsStore::class);
@@ -322,8 +315,7 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle: the handlers of its own messages and what time does on its own (architecture §5.6)
     $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
-    $services->get(QueueLogoutTokenHandler::class)
-        ->tag('heidi.logout_channel');
+    $services->get(QueueLogoutTokenHandler::class)->tag('heidi.logout_channel');
     $services->set(HeidiSchedule::class);
     // what carries a logout token to a client, and what says the provider gave up on one (§4.9)
     $services->set(LogoutTokenSender::class);
@@ -342,21 +334,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpLoginAuthenticator::class);
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010):
     // one class per login, and what is tagged is what the provider announces
-    $services->set(PasswordLogin::class)
-        ->tag('heidi.login');
-    $services->set(PasskeyLogin::class)
-        ->tag('heidi.login');
-    $services->set(TotpLogin::class)
-        ->tag('heidi.login');
-    $services->set(PassportProofs::class)
-        ->args([tagged_iterator('heidi.login')]);
+    $services->set(PasswordLogin::class)->tag('heidi.login');
+    $services->set(PasskeyLogin::class)->tag('heidi.login');
+    $services->set(TotpLogin::class)->tag('heidi.login');
+    $services->set(PassportProofs::class)->args([tagged_iterator('heidi.login')]);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
     // the attempts at a code and at a password, counted per user by the two limiters the bundle declares in the framework (architecture §3.4)
-    $services->set('heidi.security.code_attempts', RateLimitedAttempts::class)
-        ->args([service('limiter.' . RateLimitedAttempts::CODE_LIMITER)]);
+    $services->set('heidi.security.code_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::CODE_LIMITER)]);
     $services->alias(CodeAttemptLimiterInterface::class, 'heidi.security.code_attempts');
-    $services->set('heidi.security.password_attempts', RateLimitedAttempts::class)
-        ->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
+    $services->set('heidi.security.password_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
     $services->alias(PasswordAttemptLimiterInterface::class, 'heidi.security.password_attempts');
     $services->set(PasswordAttemptListener::class);
     // the decoy hash of the core paid where the firewall refuses a password before any hash (architecture §5.4)
@@ -366,16 +352,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(KmsUnavailableListener::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
-    $services->set(TenantProvider::class)
-        ->tag('kernel.reset', [
-            'method' => 'reset',
-        ])
-        ->tag('doctrine.event_listener', [
-            'event' => 'onClear',
-        ]);
+    $services->set(TenantProvider::class)->tag('kernel.reset', [
+        'method' => 'reset',
+    ])->tag('doctrine.event_listener', [
+        'event' => 'onClear',
+    ]);
     $services->set(TenantSynchronizer::class);
-    $services->set(ClientResolver::class)
-        ->tag('doctrine.orm.entity_listener');
+    $services->set(ClientResolver::class)->tag('doctrine.orm.entity_listener');
     $services->set(DoctrineUserRepository::class);
     $services->alias(UserRepositoryInterface::class, DoctrineUserRepository::class);
     $services->set(DoctrineCredentialRepository::class);
@@ -414,35 +397,31 @@ return static function (ContainerConfigurator $container): void {
     // key commands and the signer follow on their own. RS256 is mandatory (OIDC Core §15.1) and FAPI 2.0
     // §5.2.2 refuses it: a deployment that follows that profile drops this line and keeps the others.
     $services->set(RsaKeyBits::class);
-    $services->set(Rs256::class)
+    $services
+        ->set(Rs256::class)
         ->args([service(RsaKeyBits::class)])
         ->tag('heidi.signature_algorithm');
-    $services->set(Ps256::class)
+    $services
+        ->set(Ps256::class)
         ->args([service(RsaKeyBits::class)])
         ->tag('heidi.signature_algorithm');
-    $services->set(Es256::class)
-        ->tag('heidi.signature_algorithm');
-    $services->set(EdDsa::class)
-        ->tag('heidi.signature_algorithm');
-    $services->set(JoseSignatureAlgorithms::class)
-        ->args([tagged_iterator('heidi.signature_algorithm')]);
+    $services->set(Es256::class)->tag('heidi.signature_algorithm');
+    $services->set(EdDsa::class)->tag('heidi.signature_algorithm');
+    $services->set(JoseSignatureAlgorithms::class)->args([tagged_iterator('heidi.signature_algorithm')]);
     $services->alias(SignatureAlgorithmsInterface::class, JoseSignatureAlgorithms::class);
     // The algorithms a client encrypts to the provider with, wired the same way: the "alg" that wraps or
     // agrees on the content encryption key, and the "enc" that encrypts the payload. RFC 8725 §3.4 keeps
     // RSA1_5 out, and a deployment nobody encrypts to drops these lines: it then generates no encryption
     // key, publishes none and announces none, the document and the decrypter reading this one list.
-    $services->set(EcdhEsA256Kw::class)
-        ->tag('heidi.key_encryption_algorithm');
-    $services->set(RsaOaep256::class)
+    $services->set(EcdhEsA256Kw::class)->tag('heidi.key_encryption_algorithm');
+    $services
+        ->set(RsaOaep256::class)
         ->args([service(RsaKeyBits::class)])
         ->tag('heidi.key_encryption_algorithm');
-    $services->set(A256Gcm::class)
-        ->tag('heidi.content_encryption_algorithm');
-    $services->set(JoseKeyEncryptionAlgorithms::class)
-        ->args([tagged_iterator('heidi.key_encryption_algorithm')]);
+    $services->set(A256Gcm::class)->tag('heidi.content_encryption_algorithm');
+    $services->set(JoseKeyEncryptionAlgorithms::class)->args([tagged_iterator('heidi.key_encryption_algorithm')]);
     $services->alias(KeyEncryptionAlgorithmsInterface::class, JoseKeyEncryptionAlgorithms::class);
-    $services->set(JoseContentEncryptionAlgorithms::class)
-        ->args([tagged_iterator('heidi.content_encryption_algorithm')]);
+    $services->set(JoseContentEncryptionAlgorithms::class)->args([tagged_iterator('heidi.content_encryption_algorithm')]);
     $services->alias(ContentEncryptionAlgorithmsInterface::class, JoseContentEncryptionAlgorithms::class);
     $services->set(JoseEncryptionAlgorithms::class);
     // What a key may be generated for, the two lists read as one: the key commands and the key files
@@ -459,16 +438,13 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JweDecrypterInterface::class, JwtLibraryJweDecrypter::class);
     // the modules tag the kinds of artifact bound to a key, each naming the use it holds back; the
     // rotation dates a retirement from the longest of those of the use of the key retiring (architecture §3.3)
-    $services->set(TenantKeyRotator::class)
-        ->args([
-            '$artifacts' => tagged_iterator('heidi.key_bound_artifact'),
-        ]);
+    $services->set(TenantKeyRotator::class)->args([
+        '$artifacts' => tagged_iterator('heidi.key_bound_artifact'),
+    ]);
 
     // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
-    $services->set(NativePasswordHasher::class)
-        ->tag('heidi.password_hasher');
-    $services->set(PasswordHasherRegistry::class)
-        ->args([tagged_iterator('heidi.password_hasher')]);
+    $services->set(NativePasswordHasher::class)->tag('heidi.password_hasher');
+    $services->set(PasswordHasherRegistry::class)->args([tagged_iterator('heidi.password_hasher')]);
     $services->alias(PasswordHasherInterface::class, PasswordHasherRegistry::class);
     // the hash a refused password is verified against when none of the user could be, computed once per process
     $services->set(DecoyHash::class);
@@ -529,22 +505,14 @@ return static function (ContainerConfigurator $container): void {
     // The first tagged one is what a client that names none registers. FAPI 2.0 §5.2.2 takes
     // private_key_jwt and mTLS alone: a deployment that follows the profile drops the three lines that
     // prove a shared secret, and the provider stops taking them and stops announcing them.
-    $services->set(ClientSecretBasic::class)
-        ->tag('heidi.client_authentication_method');
-    $services->set(ClientSecretPost::class)
-        ->tag('heidi.client_authentication_method');
-    $services->set(PrivateKeyJwt::class)
-        ->tag('heidi.client_authentication_method');
-    $services->set(ClientSecretJwt::class)
-        ->tag('heidi.client_authentication_method');
-    $services->set(TlsClientAuth::class)
-        ->tag('heidi.client_authentication_method');
-    $services->set(SelfSignedTlsClientAuth::class)
-        ->tag('heidi.client_authentication_method');
-    $services->set(NoAuthentication::class)
-        ->tag('heidi.client_authentication_method');
-    $services->set(ClientAuthenticationMethods::class)
-        ->args([tagged_iterator('heidi.client_authentication_method')]);
+    $services->set(ClientSecretBasic::class)->tag('heidi.client_authentication_method');
+    $services->set(ClientSecretPost::class)->tag('heidi.client_authentication_method');
+    $services->set(PrivateKeyJwt::class)->tag('heidi.client_authentication_method');
+    $services->set(ClientSecretJwt::class)->tag('heidi.client_authentication_method');
+    $services->set(TlsClientAuth::class)->tag('heidi.client_authentication_method');
+    $services->set(SelfSignedTlsClientAuth::class)->tag('heidi.client_authentication_method');
+    $services->set(NoAuthentication::class)->tag('heidi.client_authentication_method');
+    $services->set(ClientAuthenticationMethods::class)->args([tagged_iterator('heidi.client_authentication_method')]);
     $services->alias(ClientAuthenticationMethodsInterface::class, ClientAuthenticationMethods::class);
     $services->set(ClientAuthenticator::class);
     // what reads an X.509 certificate and writes a distinguished name back (RFC 8705 §2.1.2): the same
@@ -557,24 +525,18 @@ return static function (ContainerConfigurator $container): void {
     // with HS256 and nothing else (RFC 8725 §3.1)
     $services->set(JwtLibraryCompactJwtReader::class);
     $services->alias(CompactJwtReaderInterface::class, JwtLibraryCompactJwtReader::class);
-    $services->set('heidi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)
-        ->factory([service(JoseSignatureAlgorithms::class), 'manager']);
-    $services->set(JwtLibraryJwtKeyVerifier::class)
-        ->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
+    $services->set('heidi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)->factory([service(JoseSignatureAlgorithms::class), 'manager']);
+    $services->set(JwtLibraryJwtKeyVerifier::class)->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
     $services->alias(JwtKeyVerifierInterface::class, JwtLibraryJwtKeyVerifier::class);
     // What the provider encrypts for a client: the key management and content encryption algorithms it is
     // wired with, the same ones it opens a JWE with, read from the two registries of the core and never
     // from a list kept beside them
-    $services->set('heidi.oidc.client_encryption.algorithms', AlgorithmManager::class)
-        ->factory([service(JoseEncryptionAlgorithms::class), 'manager']);
-    $services->set(JwtLibraryJweEncrypter::class)
-        ->args([service('heidi.oidc.client_encryption.algorithms')]);
+    $services->set('heidi.oidc.client_encryption.algorithms', AlgorithmManager::class)->factory([service(JoseEncryptionAlgorithms::class), 'manager']);
+    $services->set(JwtLibraryJweEncrypter::class)->args([service('heidi.oidc.client_encryption.algorithms')]);
     $services->alias(JweEncrypterInterface::class, JwtLibraryJweEncrypter::class);
     $services->set(ClientDocumentIssuer::class);
-    $services->set('heidi.oidc.client_assertion.mac_algorithms', AlgorithmManager::class)
-        ->args([[inline_service(HS256::class)]]);
-    $services->set(JwtLibraryClientAssertionSecretVerifier::class)
-        ->args([service('heidi.oidc.client_assertion.mac_algorithms')]);
+    $services->set('heidi.oidc.client_assertion.mac_algorithms', AlgorithmManager::class)->args([[inline_service(HS256::class)]]);
+    $services->set(JwtLibraryClientAssertionSecretVerifier::class)->args([service('heidi.oidc.client_assertion.mac_algorithms')]);
     $services->alias(ClientAssertionSecretVerifierInterface::class, JwtLibraryClientAssertionSecretVerifier::class);
     $services->set(ClientAssertionValidator::class);
     $services->set(ClientKeySetProvider::class);
@@ -582,34 +544,29 @@ return static function (ContainerConfigurator $container): void {
     // assertions already seen kept until they expire
     $services->set(ClientJwksFetcher::class);
     $services->alias(ClientJwksFetcherInterface::class, ClientJwksFetcher::class);
-    $services->set(ClientJwksCache::class)
-        ->args([
-            '$cache' => service('heidi.client_keys'),
-        ]);
+    $services->set(ClientJwksCache::class)->args([
+        '$cache' => service('heidi.client_keys'),
+    ]);
     $services->alias(ClientJwksCacheInterface::class, ClientJwksCache::class);
-    $services->set(ClientAssertionReplayGuard::class)
-        ->args([
-            '$cache' => service('heidi.client_assertions'),
-        ]);
+    $services->set(ClientAssertionReplayGuard::class)->args([
+        '$cache' => service('heidi.client_assertions'),
+    ]);
     $services->alias(ClientAssertionReplayGuardInterface::class, ClientAssertionReplayGuard::class);
 
     // The module: the proof of possession a request carries (RFC 9449), read with the reader every JWT
     // a client signs is read with and verified against the key of its own header, with the algorithms
     // the provider is wired with; the proofs already seen and the nonces it hands out live in a pool
     // the workers share, as the assertions already seen do
-    $services->set(JwtLibraryProofKeyVerifier::class)
-        ->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
+    $services->set(JwtLibraryProofKeyVerifier::class)->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
     $services->alias(ProofKeyVerifierInterface::class, JwtLibraryProofKeyVerifier::class);
-    $services->set(CachedDpopProofReplayGuard::class)
-        ->args([
-            '$cache' => service('heidi.dpop'),
-        ]);
+    $services->set(CachedDpopProofReplayGuard::class)->args([
+        '$cache' => service('heidi.dpop'),
+    ]);
     $services->alias(DpopProofReplayGuardInterface::class, CachedDpopProofReplayGuard::class);
     $services->set(NoDpopNonce::class);
-    $services->set(CachedDpopNonce::class)
-        ->args([
-            '$cache' => service('heidi.dpop'),
-        ]);
+    $services->set(CachedDpopNonce::class)->args([
+        '$cache' => service('heidi.dpop'),
+    ]);
     $services->set(DpopProofValidator::class);
     $services->set(DpopProofVerifier::class);
 
@@ -634,10 +591,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PushedAuthorizationHandler::class);
     // What a client may still be encrypting to a key of the tenant, which is what holds an encryption key
     // back from retiring: each one reads its lifetime where that lifetime is set (architecture §3.3)
-    $services->set(RequestObjectJweKind::class)
-        ->tag('heidi.key_bound_artifact');
-    $services->set(PushedRequestJweKind::class)
-        ->tag('heidi.key_bound_artifact');
+    $services->set(RequestObjectJweKind::class)->tag('heidi.key_bound_artifact');
+    $services->set(PushedRequestJweKind::class)->tag('heidi.key_bound_artifact');
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
@@ -646,32 +601,25 @@ return static function (ContainerConfigurator $container): void {
     // The module: token endpoint; the grants are tagged by hand, the issuers named by the format each one writes
     $services->set(JwtAccessTokenIssuer::class);
     $services->set(OpaqueAccessTokenIssuer::class);
-    $services->set(AccessTokenIssuer::class)
-        ->args([
-            '$issuers' => [
-                AccessTokenFormat::Jwt->value => service(JwtAccessTokenIssuer::class),
-                AccessTokenFormat::Opaque->value => service(OpaqueAccessTokenIssuer::class),
-            ],
-        ]);
+    $services->set(AccessTokenIssuer::class)->args([
+        '$issuers' => [
+            AccessTokenFormat::Jwt->value => service(JwtAccessTokenIssuer::class),
+            AccessTokenFormat::Opaque->value => service(OpaqueAccessTokenIssuer::class),
+        ],
+    ]);
     $services->alias(AccessTokenIssuerInterface::class, AccessTokenIssuer::class);
     $services->set(JwtIdTokenIssuer::class);
     $services->alias(IdTokenIssuerInterface::class, JwtIdTokenIssuer::class);
-    $services->set(IdTokenJwsKind::class)
-        ->tag('heidi.key_bound_artifact');
-    $services->set(AccessTokenJwsKind::class)
-        ->tag('heidi.key_bound_artifact');
-    $services->set(ResponseDocumentJwsKind::class)
-        ->tag('heidi.key_bound_artifact');
+    $services->set(IdTokenJwsKind::class)->tag('heidi.key_bound_artifact');
+    $services->set(AccessTokenJwsKind::class)->tag('heidi.key_bound_artifact');
+    $services->set(ResponseDocumentJwsKind::class)->tag('heidi.key_bound_artifact');
     $services->set(TokenIssuer::class);
     $services->set(RefreshTokenRevocation::class);
-    $services->set(AuthorizationCodeGrant::class)
-        ->tag('heidi.oidc.grant');
-    $services->set(RefreshTokenGrant::class)
-        ->tag('heidi.oidc.grant');
-    $services->set(TokenHandler::class)
-        ->args([
-            '$grants' => tagged_iterator('heidi.oidc.grant'),
-        ]);
+    $services->set(AuthorizationCodeGrant::class)->tag('heidi.oidc.grant');
+    $services->set(RefreshTokenGrant::class)->tag('heidi.oidc.grant');
+    $services->set(TokenHandler::class)->args([
+        '$grants' => tagged_iterator('heidi.oidc.grant'),
+    ]);
     $services->set(AccessTokenVerifier::class);
     $services->set(AccessTokenInspector::class);
 
@@ -679,10 +627,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(UserInfoHandler::class);
     $services->set(IntrospectionHandler::class);
     $services->set(RevocationHandler::class);
-    $services->set(DiscoveryHandler::class)
-        ->args([
-            '$grants' => tagged_iterator('heidi.oidc.grant'),
-        ]);
+    $services->set(DiscoveryHandler::class)->args([
+        '$grants' => tagged_iterator('heidi.oidc.grant'),
+    ]);
     $services->set(JwksHandler::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
@@ -691,9 +638,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(FrontChannelLogout::class);
     // The two ways of telling a client that a session ended (architecture §4.9): one class per channel,
     // and what is tagged is what the discovery document announces, never an enumeration kept beside it
-    $services->set(FrontChannelLogoutRenderer::class)
-        ->tag('heidi.logout_channel');
-    $services->set(LogoutChannels::class)
-        ->args([tagged_iterator('heidi.logout_channel')]);
+    $services->set(FrontChannelLogoutRenderer::class)->tag('heidi.logout_channel');
+    $services->set(LogoutChannels::class)->args([tagged_iterator('heidi.logout_channel')]);
     $services->alias(ServedLogoutChannelsInterface::class, LogoutChannels::class);
 };

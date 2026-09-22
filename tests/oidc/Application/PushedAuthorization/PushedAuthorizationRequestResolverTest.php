@@ -60,10 +60,14 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     public function aRequestThatWasNotPushedIsLeftAlone(): void
     {
         // When / Then
-        static::assertNull($this->resolver->resolve($this->tenant, [
-            'client_id' => 'oidc-demo',
-            'scope' => 'openid',
-        ], $this->context));
+        static::assertNull($this->resolver->resolve(
+            $this->tenant,
+            [
+                'client_id' => 'oidc-demo',
+                'scope' => 'openid',
+            ],
+            $this->context,
+        ));
     }
 
     /**
@@ -75,10 +79,14 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     public function aReferenceThatIsNotOursIsLeftToTheAuthorizationEndpoint(string $requestUri): void
     {
         // When / Then
-        static::assertNull($this->resolver->resolve($this->tenant, [
-            'client_id' => 'oidc-demo',
-            'request_uri' => $requestUri,
-        ], $this->context));
+        static::assertNull($this->resolver->resolve(
+            $this->tenant,
+            [
+                'client_id' => 'oidc-demo',
+                'request_uri' => $requestUri,
+            ],
+            $this->context,
+        ));
     }
 
     /**
@@ -104,20 +112,27 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         ]);
 
         // When
-        $parameters = $this->resolver->resolve($this->tenant, [
-            'client_id' => 'oidc-demo',
-            'request_uri' => $requestUri->value,
-            'scope' => 'openid banking',
-            'state' => 'query-state',
-            'prompt' => 'none',
-        ], $this->context);
+        $parameters = $this->resolver->resolve(
+            $this->tenant,
+            [
+                'client_id' => 'oidc-demo',
+                'request_uri' => $requestUri->value,
+                'scope' => 'openid banking',
+                'state' => 'query-state',
+                'prompt' => 'none',
+            ],
+            $this->context,
+        );
 
         // Then
-        static::assertSame([
-            'scope' => 'openid profile',
-            'state' => 'pushed-state',
-            'client_id' => 'oidc-demo',
-        ], $parameters);
+        static::assertSame(
+            [
+                'scope' => 'openid profile',
+                'state' => 'pushed-state',
+                'client_id' => 'oidc-demo',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -171,10 +186,14 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         $this->expectExceptionMessageIs(self::REFUSED);
 
         // When
-        $this->resolver->resolve($this->tenant, [
-            'client_id' => 'spa',
-            'request_uri' => $requestUri->value,
-        ], $this->context);
+        $this->resolver->resolve(
+            $this->tenant,
+            [
+                'client_id' => 'spa',
+                'request_uri' => $requestUri->value,
+            ],
+            $this->context,
+        );
     }
 
     /**
@@ -189,10 +208,14 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
 
         // When
         try {
-            $this->resolver->resolve($this->tenant, [
-                'client_id' => 'spa',
-                'request_uri' => $requestUri->value,
-            ], $this->context);
+            $this->resolver->resolve(
+                $this->tenant,
+                [
+                    'client_id' => 'spa',
+                    'request_uri' => $requestUri->value,
+                ],
+                $this->context,
+            );
         } catch (InvalidRequestUriException) {
         }
 
@@ -285,8 +308,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
             $this->client,
             $parameters,
             $this->clock->now(),
-            $this->clock->now()
-                ->add(new DateInterval('PT60S')),
+            $this->clock->now()->add(new DateInterval('PT60S')),
         ));
 
         return $requestUri;

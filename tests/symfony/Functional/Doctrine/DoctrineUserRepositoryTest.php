@@ -27,7 +27,24 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = User::create(Uuid::v7(), self::tenant(), new Subject('alice-subject'), 'alice', self::now(), new EmailAddress('alice@example.com'), true);
-        $user->updateProfile(new Profile('Alice Example', 'Alice', 'Example', null, 'ali', 'alice', 'https://example.com/alice', 'https://example.com/alice.png', 'https://alice.example', 'female', '1990-01-31', 'Europe/Paris', 'fr-FR'), self::now());
+        $user->updateProfile(
+            new Profile(
+                'Alice Example',
+                'Alice',
+                'Example',
+                null,
+                'ali',
+                'alice',
+                'https://example.com/alice',
+                'https://example.com/alice.png',
+                'https://alice.example',
+                'female',
+                '1990-01-31',
+                'Europe/Paris',
+                'fr-FR',
+            ),
+            self::now(),
+        );
         $user->changePhoneNumber('+33612345678', true, self::now());
         $user->changeAddress(new Address('1 rue de la Paix, 75002 Paris', '1 rue de la Paix', 'Paris', 'Île-de-France', '75002', 'FR'), self::now());
         $user->disable(self::now()->modify('+1 day'));
@@ -131,8 +148,7 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     {
         // Given
         self::user();
-        $other = new TenantSynchronizer(new TenantFactory('https://other.test', 'other', null, new MockClock(self::now())), self::registry())
-            ->synchronize();
+        $other = new TenantSynchronizer(new TenantFactory('https://other.test', 'other', null, new MockClock(self::now())), self::registry())->synchronize();
         $stranger = User::create(Uuid::v7(), $other, new Subject('alice-subject'), 'alice', self::now());
         self::users()->save($stranger);
         self::reload();

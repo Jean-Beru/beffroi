@@ -24,7 +24,11 @@ use Symfony\Component\Uid\Uuid;
  *
  * @extends DoctrineRepository<StoredAccessToken>
  */
-final readonly class DoctrineAccessTokenRepository extends DoctrineRepository implements AccessTokenRepositoryInterface, CanRevokeAccessTokenInterface, CanRevokeAccessTokensByGrantInterface, CanRevokeAccessTokensBySessionInterface
+final readonly class DoctrineAccessTokenRepository extends DoctrineRepository implements
+    AccessTokenRepositoryInterface,
+    CanRevokeAccessTokenInterface,
+    CanRevokeAccessTokensByGrantInterface,
+    CanRevokeAccessTokensBySessionInterface
 {
     public function __construct(ManagerRegistry $registry)
     {
@@ -41,10 +45,9 @@ final readonly class DoctrineAccessTokenRepository extends DoctrineRepository im
 
     public function find(string $token): ?StoredAccessToken
     {
-        $record = $this->repository()
-            ->findOneBy([
-                'tokenHash' => OpaqueTokenValue::hash($token),
-            ]);
+        $record = $this->repository()->findOneBy([
+            'tokenHash' => OpaqueTokenValue::hash($token),
+        ]);
 
         return $record !== null && ClientResolver::isResolved($record) ? $record : null;
     }
@@ -75,11 +78,10 @@ final readonly class DoctrineAccessTokenRepository extends DoctrineRepository im
      */
     private function removeMatching(array $criteria): array
     {
-        $tokens = $this->repository()
-            ->findBy($criteria, [
-                'issuedAt' => 'ASC',
-                'tokenHash' => 'ASC',
-            ]);
+        $tokens = $this->repository()->findBy($criteria, [
+            'issuedAt' => 'ASC',
+            'tokenHash' => 'ASC',
+        ]);
         $this->remove($tokens);
 
         return array_values(array_filter($tokens, ClientResolver::isResolved(...)));

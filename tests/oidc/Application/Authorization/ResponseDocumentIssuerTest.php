@@ -98,10 +98,13 @@ final class ResponseDocumentIssuerTest extends TestCase
         ['header' => $header] = $this->jwts->verify($document, 'spa', Fixtures::now(), self::MANDATORY);
 
         // Then
-        static::assertSame([
-            'alg' => 'RS256',
-            'kid' => $this->jwts->key->kid,
-        ], $header);
+        static::assertSame(
+            [
+                'alg' => 'RS256',
+                'kid' => $this->jwts->key->kid,
+            ],
+            $header,
+        );
     }
 
     /**
@@ -112,7 +115,15 @@ final class ResponseDocumentIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], authorizationResponse: ResponseFormat::signed(Algorithms::es256()));
+        $client = new Client(
+            $this->tenant,
+            'spa',
+            'Single page application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            authorizationResponse: ResponseFormat::signed(Algorithms::es256()),
+        );
 
         // When
         $document = $this->issuer->issue(new AuthorizationAnswer($client, new RedirectUri('https://spa.example/callback'), [
@@ -121,10 +132,13 @@ final class ResponseDocumentIssuerTest extends TestCase
 
         // Then
         ['header' => $header] = $this->jwts->verify($document, 'spa', Fixtures::now(), self::MANDATORY);
-        static::assertSame([
-            'alg' => 'ES256',
-            'kid' => $es256Key->kid,
-        ], $header);
+        static::assertSame(
+            [
+                'alg' => 'ES256',
+                'kid' => $es256Key->kid,
+            ],
+            $header,
+        );
     }
 
     /**

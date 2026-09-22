@@ -78,10 +78,25 @@ final class StoredAccessTokenTest extends TestCase
     {
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'email']);
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), Tokens::family(Fixtures::now(), grantId: $code->grantId), ['openid', 'email']), [new Scope('email')]);
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken(
+                'previous',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+                Tokens::family(Fixtures::now(), grantId: $code->grantId),
+                ['openid', 'email'],
+            ),
+            [new Scope('email')],
+        );
 
         // When
-        $token = StoredAccessToken::fromAuthorization(OpaqueTokenValue::hash('the-token'), $authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $token = StoredAccessToken::fromAuthorization(
+            OpaqueTokenValue::hash('the-token'),
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
 
         // Then
         static::assertEquals([new Scope('email')], $token->scopes);
@@ -159,8 +174,13 @@ final class StoredAccessTokenTest extends TestCase
      * @param list<Scope>|null $scopes
      * @param list<string>|null $methods
      */
-    private function token(?string $tokenHash = null, ?Client $client = null, ?array $scopes = null, ?array $methods = null, ?DateTimeImmutable $expiresAt = null): StoredAccessToken
-    {
+    private function token(
+        ?string $tokenHash = null,
+        ?Client $client = null,
+        ?array $scopes = null,
+        ?array $methods = null,
+        ?DateTimeImmutable $expiresAt = null,
+    ): StoredAccessToken {
         return new StoredAccessToken(
             $tokenHash ?? OpaqueTokenValue::hash('the-token'),
             Uuid::v7(),

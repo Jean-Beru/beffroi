@@ -44,7 +44,9 @@ final class FakePasskeyAuthenticator implements PasskeyAuthenticatorInterface
 
     public function requestOptions(Tenant $tenant, array $allowed): PublicKeyCredentialRequestOptions
     {
-        $this->allowed = array_map(static fn (PasskeyCredential $passkey): PublicKeyCredentialDescriptor => $passkey->record()->getPublicKeyCredentialDescriptor(), $allowed);
+        $this->allowed = array_map(static fn (PasskeyCredential $passkey): PublicKeyCredentialDescriptor => $passkey
+            ->record()
+            ->getPublicKeyCredentialDescriptor(), $allowed);
 
         return PublicKeyCredentialRequestOptions::create(str_repeat('c', 32), rpId: 'id.acme.example', allowCredentials: $this->allowed);
     }

@@ -67,12 +67,15 @@ final class WebauthnCeremoniesTest extends TestCase
         $json = $ceremonies->optionsToJson($options);
 
         // Then
-        static::assertSame([
-            'challenge' => str_repeat('_', 42) . '8',
-            'rpId' => 'id.acme.example',
-            'allowCredentials' => [],
-            'userVerification' => 'preferred',
-        ], json_decode($json, true, 8, JSON_THROW_ON_ERROR));
+        static::assertSame(
+            [
+                'challenge' => str_repeat('_', 42) . '8',
+                'rpId' => 'id.acme.example',
+                'allowCredentials' => [],
+                'userVerification' => 'preferred',
+            ],
+            json_decode($json, true, 8, JSON_THROW_ON_ERROR),
+        );
     }
 
     #[Test]
@@ -99,7 +102,10 @@ final class WebauthnCeremoniesTest extends TestCase
         // Given
         $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed');
         $store = new InMemoryMetadataBlobStore();
-        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(Uuid::fromBinary($authenticator->aaguid)->toRfc4122(), [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS])]));
+        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(
+            Uuid::fromBinary($authenticator->aaguid)->toRfc4122(),
+            [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+        )]));
         $ceremonies = Fixtures::ceremonies($store);
         $options = self::creationOptionsAskingForAnAttestation();
         $credential = $ceremonies->credentialFromJson($authenticator->create($ceremonies->optionsToJson($options)));
@@ -110,8 +116,7 @@ final class WebauthnCeremoniesTest extends TestCase
         $this->expectExceptionMessageIs('The authenticator is compromised and cannot be used');
 
         // When
-        $ceremonies->attestationValidator(Fixtures::tenant())
-            ->check($credential->response, $options, 'id.acme.example');
+        $ceremonies->attestationValidator(Fixtures::tenant())->check($credential->response, $options, 'id.acme.example');
     }
 
     /**
@@ -124,15 +129,16 @@ final class WebauthnCeremoniesTest extends TestCase
         // Given
         $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed');
         $store = new InMemoryMetadataBlobStore();
-        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry('2fc0579f-8113-47ea-b116-bb5a8db9202a', [AuthenticatorStatus::USER_VERIFICATION_BYPASS])]));
+        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry('2fc0579f-8113-47ea-b116-bb5a8db9202a', [
+            AuthenticatorStatus::USER_VERIFICATION_BYPASS,
+        ])]));
         $ceremonies = Fixtures::ceremonies($store);
         $options = self::creationOptionsAskingForAnAttestation();
         $credential = $ceremonies->credentialFromJson($authenticator->create($ceremonies->optionsToJson($options)));
         static::assertInstanceOf(AuthenticatorAttestationResponse::class, $credential->response);
 
         // When
-        $record = $ceremonies->attestationValidator(Fixtures::tenant())
-            ->check($credential->response, $options, 'id.acme.example');
+        $record = $ceremonies->attestationValidator(Fixtures::tenant())->check($credential->response, $options, 'id.acme.example');
 
         // Then
         static::assertSame('self', $record->attestationType);

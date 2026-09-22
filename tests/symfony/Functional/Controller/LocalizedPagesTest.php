@@ -32,11 +32,16 @@ final class LocalizedPagesTest extends BrowserTestCase
     public function uiLocalesFrIsRecordedOnTheInteraction(): void
     {
         // When
-        $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
-            'ui_locales' => 'fr',
-        ]), server: [
-            'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
-        ]);
+        $this->browser->request(
+            'GET',
+            '/authorize',
+            self::authorizationParameters('native-app', [
+                'ui_locales' => 'fr',
+            ]),
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
+            ],
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -75,9 +80,7 @@ final class LocalizedPagesTest extends BrowserTestCase
     {
         // Given
         self::userWithPassword('alice', 'correct horse battery staple');
-        $form = $this->page('/login', $this->frenchInteraction(), self::ENGLISH_BROWSER)
-            ->selectButton('Se connecter')
-            ->form();
+        $form = $this->page('/login', $this->frenchInteraction(), self::ENGLISH_BROWSER)->selectButton('Se connecter')->form();
         $form['_username'] = 'alice';
         $form['_password'] = 'wrong';
 
@@ -100,11 +103,16 @@ final class LocalizedPagesTest extends BrowserTestCase
         $user = self::user('alice');
         $interaction = $this->frenchInteraction();
         $this->signIn($user);
-        $this->browser->request('GET', '/login', [
-            'interaction' => $interaction,
-        ], server: [
-            'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
-        ]);
+        $this->browser->request(
+            'GET',
+            '/login',
+            [
+                'interaction' => $interaction,
+            ],
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
+            ],
+        );
         static::assertSame('/consent?interaction=' . $interaction, $this->browser->getResponse()->headers->get('Location'));
 
         // When
@@ -114,7 +122,10 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Autoriser native-app', $crawler->filter('h1')->text());
         static::assertSame('Session ouverte pour alice.', $crawler->filter('main > p')->first()->text());
-        static::assertSame(['Qui vous êtes : votre identifiant chez ce fournisseur', 'Votre profil : nom, photo, langue'], $crawler->filter('li[data-scope]')->each(static fn (Crawler $scope): string => $scope->text()));
+        static::assertSame(
+            ['Qui vous êtes : votre identifiant chez ce fournisseur', 'Votre profil : nom, photo, langue'],
+            $crawler->filter('li[data-scope]')->each(static fn (Crawler $scope): string => $scope->text()),
+        );
         static::assertCount(1, $crawler->selectButton('Autoriser'));
         static::assertCount(1, $crawler->selectButton('Refuser'));
     }
@@ -127,11 +138,16 @@ final class LocalizedPagesTest extends BrowserTestCase
     public function acceptLanguageDecidesWhenUiLocalesMatchesNothing(): void
     {
         // When
-        $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
-            'ui_locales' => 'de-DE de',
-        ]), server: [
-            'HTTP_ACCEPT_LANGUAGE' => 'fr-CA,fr;q=0.9,en;q=0.5',
-        ]);
+        $this->browser->request(
+            'GET',
+            '/authorize',
+            self::authorizationParameters('native-app', [
+                'ui_locales' => 'de-DE de',
+            ]),
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => 'fr-CA,fr;q=0.9,en;q=0.5',
+            ],
+        );
 
         // Then
         $interaction = self::redirectedInteraction($this->browser->getResponse());
@@ -169,11 +185,16 @@ final class LocalizedPagesTest extends BrowserTestCase
     public function anErrorPageWithoutAnInteractionSpeaksTheLanguageOfTheBrowser(): void
     {
         // When
-        $crawler = $this->browser->request('GET', '/login', [
-            'interaction' => 'nothing-this-browser-began',
-        ], server: [
-            'HTTP_ACCEPT_LANGUAGE' => 'fr',
-        ]);
+        $crawler = $this->browser->request(
+            'GET',
+            '/login',
+            [
+                'interaction' => 'nothing-this-browser-began',
+            ],
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => 'fr',
+            ],
+        );
 
         // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
@@ -192,17 +213,25 @@ final class LocalizedPagesTest extends BrowserTestCase
     public function aRefusedAuthorizationRequestIsExplainedInTheLanguageOfTheBrowser(): void
     {
         // When
-        $crawler = $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
-            'client_id' => 'nobody',
-        ]), server: [
-            'HTTP_ACCEPT_LANGUAGE' => 'fr',
-        ]);
+        $crawler = $this->browser->request(
+            'GET',
+            '/authorize',
+            self::authorizationParameters('native-app', [
+                'client_id' => 'nobody',
+            ]),
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => 'fr',
+            ],
+        );
 
         // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('invalid_request', $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame('L’application a envoyé une requête que ce fournisseur ne peut pas servir. Recommencez depuis l’application.', $crawler->filter('p[data-error]')->text());
+        static::assertSame(
+            'L’application a envoyé une requête que ce fournisseur ne peut pas servir. Recommencez depuis l’application.',
+            $crawler->filter('p[data-error]')->text(),
+        );
         static::assertSame('invalid_request: The client is unknown.', $crawler->filter('p[data-description]')->text());
     }
 
@@ -260,7 +289,10 @@ final class LocalizedPagesTest extends BrowserTestCase
 
         // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
-        static::assertSame('Votre déconnexion est demandée. Session ouverte pour alice. Voulez-vous vous déconnecter ?', $crawler->filter('p[data-reason]')->text(normalizeWhitespace: true));
+        static::assertSame(
+            'Votre déconnexion est demandée. Session ouverte pour alice. Voulez-vous vous déconnecter ?',
+            $crawler->filter('p[data-reason]')->text(normalizeWhitespace: true),
+        );
     }
 
     #[Test]
@@ -332,11 +364,16 @@ final class LocalizedPagesTest extends BrowserTestCase
      */
     private function frenchInteraction(): string
     {
-        $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
-            'ui_locales' => 'fr',
-        ]), server: [
-            'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
-        ]);
+        $this->browser->request(
+            'GET',
+            '/authorize',
+            self::authorizationParameters('native-app', [
+                'ui_locales' => 'fr',
+            ]),
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER,
+            ],
+        );
 
         return self::redirectedInteraction($this->browser->getResponse());
     }
@@ -346,28 +383,39 @@ final class LocalizedPagesTest extends BrowserTestCase
      */
     private function frenchLogoutPage(): Crawler
     {
-        return $this->browser->request('GET', '/logout', [
-            'client_id' => 'oidc-demo',
-            'ui_locales' => 'fr-FR',
-        ], server: [
-            'HTTP_ACCEPT_LANGUAGE' => 'en',
-        ]);
+        return $this->browser->request(
+            'GET',
+            '/logout',
+            [
+                'client_id' => 'oidc-demo',
+                'ui_locales' => 'fr-FR',
+            ],
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => 'en',
+            ],
+        );
     }
 
     private function storedLocale(string $interaction): ?string
     {
-        $stored = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction) ?? static::fail('The interaction is gone.');
+        $stored = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)
+            ->find($interaction) ?? static::fail('The interaction is gone.');
 
         return $stored->locale;
     }
 
     private function page(string $path, string $interaction, string $acceptLanguage): Crawler
     {
-        $crawler = $this->browser->request('GET', $path, [
-            'interaction' => $interaction,
-        ], server: [
-            'HTTP_ACCEPT_LANGUAGE' => $acceptLanguage,
-        ]);
+        $crawler = $this->browser->request(
+            'GET',
+            $path,
+            [
+                'interaction' => $interaction,
+            ],
+            server: [
+                'HTTP_ACCEPT_LANGUAGE' => $acceptLanguage,
+            ],
+        );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         self::assertInteractionHeaders($response);

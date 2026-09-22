@@ -68,7 +68,13 @@ final class GrantedAuthorizationTest extends TestCase
     public function itKnowsTheScopesItCarries(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'profile'],
+        ));
 
         // When / Then
         static::assertTrue($authorization->hasScope(new Scope('profile')));
@@ -193,8 +199,14 @@ final class GrantedAuthorizationTest extends TestCase
      * @param list<Scope>|null $grantedScopes
      * @param list<string>|null $methods
      */
-    private function authorization(GrantType $grantType = GrantType::AuthorizationCode, ?Client $client = null, ?array $scopes = null, ?array $grantedScopes = null, ?string $nonce = null, ?array $methods = null): GrantedAuthorization
-    {
+    private function authorization(
+        GrantType $grantType = GrantType::AuthorizationCode,
+        ?Client $client = null,
+        ?array $scopes = null,
+        ?array $grantedScopes = null,
+        ?string $nonce = null,
+        ?array $methods = null,
+    ): GrantedAuthorization {
         return new GrantedAuthorization(
             $grantType,
             Uuid::v7(),
@@ -204,7 +216,11 @@ final class GrantedAuthorizationTest extends TestCase
             $grantedScopes ?? [Scope::openid()],
             $nonce,
             null,
-            new AuthenticationSnapshot($this->session->authenticatedAt(), $methods ?? $this->session->methodReferences(), $this->session->authenticationContextClass()->value),
+            new AuthenticationSnapshot(
+                $this->session->authenticatedAt(),
+                $methods ?? $this->session->methodReferences(),
+                $this->session->authenticationContextClass()->value,
+            ),
         );
     }
 }

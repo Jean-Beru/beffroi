@@ -37,9 +37,12 @@ final readonly class CachedDpopNonce implements DpopNonceInterface
             return;
         }
 
-        throw new UseDpopNonceException($this->issue($now), $nonce === null
-            ? 'This provider asks a DPoP proof to carry a nonce it issued (RFC 9449 section 8).'
-            : 'The DPoP proof carries a nonce this provider no longer accepts (RFC 9449 section 8).');
+        throw new UseDpopNonceException(
+            $this->issue($now),
+            $nonce === null
+                ? 'This provider asks a DPoP proof to carry a nonce it issued (RFC 9449 section 8).'
+                : 'The DPoP proof carries a nonce this provider no longer accepts (RFC 9449 section 8).',
+        );
     }
 
     private function issue(DateTimeImmutable $now): string

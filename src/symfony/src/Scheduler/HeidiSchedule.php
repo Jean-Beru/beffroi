@@ -27,7 +27,6 @@ final readonly class HeidiSchedule implements ScheduleProviderInterface
 
     public function getSchedule(): Schedule
     {
-        return new Schedule()
-            ->add(RecurringMessage::every(self::KEY_LIFECYCLE_EVERY, new AdvanceKeyLifecycle()));
+        return new Schedule()->add(RecurringMessage::every(self::KEY_LIFECYCLE_EVERY, new AdvanceKeyLifecycle()));
     }
 }

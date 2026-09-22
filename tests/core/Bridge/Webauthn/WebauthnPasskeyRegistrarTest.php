@@ -110,13 +110,19 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     {
         // Given
         $handle = PasskeyUserHandle::generate();
-        $existing = [Fixtures::passkey($this->alice, credentialId: 'first', userHandle: $handle), Fixtures::passkey($this->alice, credentialId: 'second', userHandle: $handle)];
+        $existing = [
+            Fixtures::passkey($this->alice, credentialId: 'first', userHandle: $handle),
+            Fixtures::passkey($this->alice, credentialId: 'second', userHandle: $handle),
+        ];
 
         // When
         $options = $this->registrar->creationOptions($this->alice, $handle, $existing);
 
         // Then
-        static::assertSame(['first', 'second'], array_map(static fn (PublicKeyCredentialDescriptor $descriptor): string => $descriptor->id, $options->excludeCredentials));
+        static::assertSame(
+            ['first', 'second'],
+            array_map(static fn (PublicKeyCredentialDescriptor $descriptor): string => $descriptor->id, $options->excludeCredentials),
+        );
         static::assertSame(['usb'], $options->excludeCredentials[0]->transports);
     }
 
@@ -185,7 +191,10 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         // Given
         $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed');
         $store = new InMemoryMetadataBlobStore();
-        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(Uuid::fromBinary($authenticator->aaguid)->toRfc4122(), [AuthenticatorStatus::USER_VERIFICATION_BYPASS])]));
+        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(
+            Uuid::fromBinary($authenticator->aaguid)->toRfc4122(),
+            [AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+        )]));
         $ceremonies = Fixtures::ceremonies($store);
         $registrar = new WebauthnPasskeyRegistrar($ceremonies);
         $options = $registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);

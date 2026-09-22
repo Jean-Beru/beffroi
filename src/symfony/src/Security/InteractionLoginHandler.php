@@ -34,8 +34,7 @@ final readonly class InteractionLoginHandler implements AuthenticationSuccessHan
      */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response
     {
-        $request->getSession()
-            ->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
+        $request->getSession()->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
 
         return $this->pages->redirectToPage('heidi_interaction_login', $request);
     }

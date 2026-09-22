@@ -53,8 +53,7 @@ final readonly class FakeSignatureAlgorithm implements JoseSignatureAlgorithmInt
     {
         return JWKFactory::createECKey('P-256', [
             'alg' => $this->name,
-            'use' => $this->keyUse()
-                ->value,
+            'use' => $this->keyUse()->value,
         ]);
     }
 }

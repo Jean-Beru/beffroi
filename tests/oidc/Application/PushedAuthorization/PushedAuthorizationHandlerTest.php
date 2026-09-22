@@ -133,17 +133,19 @@ final class PushedAuthorizationHandlerTest extends TestCase
         ]);
 
         // Then
-        static::assertSame([
-            'response_type' => 'code',
-            'scope' => 'openid profile',
-            'redirect_uri' => 'https://demo.localhost/login/check',
-            'code_challenge' => self::CHALLENGE,
-            'code_challenge_method' => 'S256',
-            'state' => 'af0ifjsldkj',
-            'nonce' => 'n-0S6_WzA2Mj',
-            'client_id' => 'oidc-demo',
-        ], $this->storedRequest($response)
-            ->parameters);
+        static::assertSame(
+            [
+                'response_type' => 'code',
+                'scope' => 'openid profile',
+                'redirect_uri' => 'https://demo.localhost/login/check',
+                'code_challenge' => self::CHALLENGE,
+                'code_challenge_method' => 'S256',
+                'state' => 'af0ifjsldkj',
+                'nonce' => 'n-0S6_WzA2Mj',
+                'client_id' => 'oidc-demo',
+            ],
+            $this->storedRequest($response)->parameters,
+        );
     }
 
     /**
@@ -175,15 +177,17 @@ final class PushedAuthorizationHandlerTest extends TestCase
         ]);
 
         // Then
-        static::assertSame([
-            'client_id' => 'jar-client',
-            'response_type' => 'code',
-            'redirect_uri' => 'https://jar.example/callback',
-            'scope' => 'openid profile',
-            'code_challenge' => self::CHALLENGE,
-            'code_challenge_method' => 'S256',
-        ], $this->storedRequest($response)
-            ->parameters);
+        static::assertSame(
+            [
+                'client_id' => 'jar-client',
+                'response_type' => 'code',
+                'redirect_uri' => 'https://jar.example/callback',
+                'scope' => 'openid profile',
+                'code_challenge' => self::CHALLENGE,
+                'code_challenge_method' => 'S256',
+            ],
+            $this->storedRequest($response)->parameters,
+        );
     }
 
     /**
@@ -196,15 +200,19 @@ final class PushedAuthorizationHandlerTest extends TestCase
     {
         // Given
         $this->clients->save(Clients::sendingRequestObjects($this->tenant, clientId: 'jar-client'));
-        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now(), [
-            'response_type' => 'code',
-            'redirect_uri' => 'https://jar.example/callback',
-            'scope' => 'openid profile',
-            'code_challenge' => self::CHALLENGE,
-            'code_challenge_method' => 'S256',
-        ])), [
-            'cty' => 'JWT',
-        ]);
+        $object = RequestObjects::encryptedTo(
+            $this->encryption->publicJwk,
+            RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now(), [
+                'response_type' => 'code',
+                'redirect_uri' => 'https://jar.example/callback',
+                'scope' => 'openid profile',
+                'code_challenge' => self::CHALLENGE,
+                'code_challenge_method' => 'S256',
+            ])),
+            [
+                'cty' => 'JWT',
+            ],
+        );
 
         // When
         $response = $this->pushWith(self::basic('jar-client', Clients::SECRET), [
@@ -217,15 +225,17 @@ final class PushedAuthorizationHandlerTest extends TestCase
         ]);
 
         // Then
-        static::assertSame([
-            'client_id' => 'jar-client',
-            'response_type' => 'code',
-            'redirect_uri' => 'https://jar.example/callback',
-            'scope' => 'openid profile',
-            'code_challenge' => self::CHALLENGE,
-            'code_challenge_method' => 'S256',
-        ], $this->storedRequest($response)
-            ->parameters);
+        static::assertSame(
+            [
+                'client_id' => 'jar-client',
+                'response_type' => 'code',
+                'redirect_uri' => 'https://jar.example/callback',
+                'scope' => 'openid profile',
+                'code_challenge' => self::CHALLENGE,
+                'code_challenge_method' => 'S256',
+            ],
+            $this->storedRequest($response)->parameters,
+        );
     }
 
     /**
@@ -259,8 +269,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
         ]);
 
         // Then
-        $parameters = $this->storedRequest($response)
-            ->parameters;
+        $parameters = $this->storedRequest($response)->parameters;
         static::assertArrayNotHasKey('client_secret', $parameters);
         static::assertSame('post-client', $parameters['client_id'] ?? null);
     }
@@ -333,29 +342,53 @@ final class PushedAuthorizationHandlerTest extends TestCase
      */
     public static function provideRequestsTheAuthorizationEndpointRefuses(): iterable
     {
-        yield 'a redirect URI the client did not register' => [[
-            'redirect_uri' => 'https://attacker.example/callback',
-        ], InvalidRequestException::class, 'The redirect_uri parameter is not registered for this client.'];
+        yield 'a redirect URI the client did not register' => [
+            [
+                'redirect_uri' => 'https://attacker.example/callback',
+            ],
+            InvalidRequestException::class,
+            'The redirect_uri parameter is not registered for this client.',
+        ];
 
-        yield 'no redirect URI at all' => [[
-            'redirect_uri' => null,
-        ], InvalidRequestException::class, 'The redirect_uri parameter is missing.'];
+        yield 'no redirect URI at all' => [
+            [
+                'redirect_uri' => null,
+            ],
+            InvalidRequestException::class,
+            'The redirect_uri parameter is missing.',
+        ];
 
-        yield 'no scope' => [[
-            'scope' => null,
-        ], InvalidRequestException::class, 'The scope parameter is missing.'];
+        yield 'no scope' => [
+            [
+                'scope' => null,
+            ],
+            InvalidRequestException::class,
+            'The scope parameter is missing.',
+        ];
 
-        yield 'a scope the client is not allowed' => [[
-            'scope' => 'openid banking',
-        ], InvalidScopeException::class, 'The requested scope is not allowed for this client.'];
+        yield 'a scope the client is not allowed' => [
+            [
+                'scope' => 'openid banking',
+            ],
+            InvalidScopeException::class,
+            'The requested scope is not allowed for this client.',
+        ];
 
-        yield 'a PKCE method the provider refuses' => [[
-            'code_challenge_method' => 'plain',
-        ], InvalidRequestException::class, 'The code_challenge_method parameter must be S256'];
+        yield 'a PKCE method the provider refuses' => [
+            [
+                'code_challenge_method' => 'plain',
+            ],
+            InvalidRequestException::class,
+            'The code_challenge_method parameter must be S256',
+        ];
 
-        yield 'a response type the provider does not serve' => [[
-            'response_type' => 'token',
-        ], UnsupportedResponseTypeException::class, 'Only the code response type is supported.'];
+        yield 'a response type the provider does not serve' => [
+            [
+                'response_type' => 'token',
+            ],
+            UnsupportedResponseTypeException::class,
+            'Only the code response type is supported.',
+        ];
     }
 
     /**
@@ -366,8 +399,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     {
         // Given
         $requests = $this->createMock(PushedAuthorizationRequestRepositoryInterface::class);
-        $requests->expects(static::never())
-            ->method('save');
+        $requests->expects(static::never())->method('save');
         $this->handler = $this->handler($requests);
 
         // When
@@ -420,7 +452,14 @@ final class PushedAuthorizationHandlerTest extends TestCase
     public function aRequestPushedWithAProofReservesItsCodeForThatKey(): void
     {
         // When
-        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo', Clients::SECRET), self::parameters([]), $this->context, null, $this->proof());
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo', Clients::SECRET),
+            self::parameters([]),
+            $this->context,
+            null,
+            $this->proof(),
+        );
 
         // Then
         static::assertSame(Proofs::thumbprintOf(Proofs::key())->thumbprint, $this->storedRequest($response)->parameters['dpop_jkt']);
@@ -438,9 +477,16 @@ final class PushedAuthorizationHandlerTest extends TestCase
         $this->expectExceptionMessageIs('invalid_request: The dpop_jkt of the pushed request names another key than the proof that carried it (RFC 9449 section 10.1).');
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo', Clients::SECRET), self::parameters([
-            'dpop_jkt' => Proofs::thumbprintOf(Proofs::otherKey())->thumbprint,
-        ]), $this->context, null, $this->proof());
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo', Clients::SECRET),
+            self::parameters([
+                'dpop_jkt' => Proofs::thumbprintOf(Proofs::otherKey())->thumbprint,
+            ]),
+            $this->context,
+            null,
+            $this->proof(),
+        );
     }
 
     /**
@@ -471,7 +517,11 @@ final class PushedAuthorizationHandlerTest extends TestCase
      */
     private function storedRequest(PushedAuthorizationResponse $response): PushedAuthorizationRequest
     {
-        return $this->requests->findByRequestUriHash($response->requestUri->hash()) ?? static::fail('The endpoint kept no request for the reference it answered with.');
+        return (
+            $this->requests->findByRequestUriHash(
+                $response->requestUri->hash(),
+            ) ?? static::fail('The endpoint kept no request for the reference it answered with.')
+        );
     }
 
     private function handler(PushedAuthorizationRequestRepositoryInterface $requests, ?DateInterval $lifetime = null): PushedAuthorizationHandler

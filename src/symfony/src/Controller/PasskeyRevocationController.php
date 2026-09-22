@@ -40,9 +40,14 @@ final readonly class PasskeyRevocationController
     ) {
     }
 
-    #[Route('/account/passkeys/{id}/revoke', name: self::ROUTE, methods: ['POST'], requirements: [
-        'id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
-    ])]
+    #[Route(
+        '/account/passkeys/{id}/revoke',
+        name: self::ROUTE,
+        methods: ['POST'],
+        requirements: [
+            'id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+        ],
+    )]
     public function __invoke(Request $request, string $id): Response
     {
         $session = $this->account->granted($request, self::CSRF_TOKEN_ID);

@@ -47,7 +47,16 @@ final class MigrationTest extends DatabaseTestCase
      *
      * @return list<class-string<AbstractMigration>>
      */
-    private const array MIGRATIONS = [Version20260915171732::class, Version20260917180000::class, Version20260919150000::class, Version20260920120000::class, Version20260920180000::class, Version20260922120000::class, Version20260922180000::class, Version20260923090000::class];
+    private const array MIGRATIONS = [
+        Version20260915171732::class,
+        Version20260917180000::class,
+        Version20260919150000::class,
+        Version20260920120000::class,
+        Version20260920180000::class,
+        Version20260922120000::class,
+        Version20260922180000::class,
+        Version20260923090000::class,
+    ];
 
     #[Test]
     public function theMigrationsCreateWhatTheMappingsDescribeOnPostgreSql(): void
@@ -293,7 +302,9 @@ final class MigrationTest extends DatabaseTestCase
                 $statement = $query->getStatement();
                 if (preg_match('/^ALTER TABLE (\S+) ADD (?!CONSTRAINT )(.+)$/', $statement, $matches) === 1) {
                     $statements = array_map(
-                        static fn (string $earlier): string => str_starts_with($earlier, 'CREATE TABLE ' . $matches[1] . ' (') ? substr($earlier, 0, -1) . ', ' . $matches[2] . ')' : $earlier,
+                        static fn (string $earlier): string => str_starts_with($earlier, 'CREATE TABLE ' . $matches[1] . ' (')
+                            ? substr($earlier, 0, -1) . ', ' . $matches[2] . ')'
+                            : $earlier,
                         $statements,
                     );
 

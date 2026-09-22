@@ -26,10 +26,14 @@ final readonly class PasskeysPage
      */
     public function render(User $user, ?string $error = null, int $status = Response::HTTP_OK): Response
     {
-        return $this->pages->render('account/passkeys.html.twig', [
-            'user' => $user,
-            'passkeys' => $this->credentials->findByUser($user, PasskeyCredential::class),
-            'error' => $error,
-        ], $status);
+        return $this->pages->render(
+            'account/passkeys.html.twig',
+            [
+                'user' => $user,
+                'passkeys' => $this->credentials->findByUser($user, PasskeyCredential::class),
+                'error' => $error,
+            ],
+            $status,
+        );
     }
 }

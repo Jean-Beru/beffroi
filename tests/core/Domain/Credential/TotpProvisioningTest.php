@@ -20,7 +20,11 @@ final class TotpProvisioningTest extends TestCase
     public function itCarriesTheSecretTheUriAndTheBackupCodes(): void
     {
         // When
-        $provisioning = new TotpProvisioning(Totps::secret(), 'otpauth://totp/Acme%3Aalice?issuer=Acme&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', Totps::BACKUP_CODES);
+        $provisioning = new TotpProvisioning(
+            Totps::secret(),
+            'otpauth://totp/Acme%3Aalice?issuer=Acme&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+            Totps::BACKUP_CODES,
+        );
 
         // Then
         static::assertSame(Totps::SEED, $provisioning->secret->bytes);

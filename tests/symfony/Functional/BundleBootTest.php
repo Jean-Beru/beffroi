@@ -38,15 +38,13 @@ final class BundleBootTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        new Filesystem()
-            ->remove(self::keyStorage());
+        new Filesystem()->remove(self::keyStorage());
     }
 
     protected function tearDown(): void
     {
         parent::tearDown();
-        new Filesystem()
-            ->remove(self::keyStorage());
+        new Filesystem()->remove(self::keyStorage());
     }
 
     #[Test]
@@ -239,7 +237,8 @@ final class BundleBootTest extends DatabaseTestCase
     {
         // Given
         $tenant = self::tenant();
-        $key = self::service('test.heidi.key_rotator', TenantKeyRotator::class)->rotate($tenant, Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+        $key = self::service('test.heidi.key_rotator', TenantKeyRotator::class)
+            ->rotate($tenant, Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
 
         // When
         $published = json_decode(self::service('test.heidi.jwks', JwksHandler::class)->handle($tenant)->toJson(), true, 8, JSON_THROW_ON_ERROR);
@@ -276,10 +275,16 @@ final class BundleBootTest extends DatabaseTestCase
 
         // When
         try {
-            $authenticator->authenticate(self::tenant(), 'https://op.test/token', null, [
-                'client_id' => 'oidc-demo',
-                'client_secret' => 'wrong-secret-of-at-least-32-characters-long',
-            ], new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+            $authenticator->authenticate(
+                self::tenant(),
+                'https://op.test/token',
+                null,
+                [
+                    'client_id' => 'oidc-demo',
+                    'client_secret' => 'wrong-secret-of-at-least-32-characters-long',
+                ],
+                new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'),
+            );
             static::fail('A wrong secret is refused.');
         } catch (InvalidClientException) {
         }

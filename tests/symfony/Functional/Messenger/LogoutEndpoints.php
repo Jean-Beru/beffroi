@@ -110,11 +110,14 @@ final class LogoutEndpoints
             'headers' => self::headersOf($options),
             'parameters' => self::parametersOf($options['body'] ?? ''),
         ];
-        $answer = count($this->answers) > 1 ? array_shift($this->answers) : ($this->answers[0] ?? null);
+        $answer = count($this->answers) > 1 ? array_shift($this->answers) : $this->answers[0] ?? null;
 
-        return $answer === null ? new MockResponse('', [
-            'http_code' => 200,
-        ]) : $answer();
+        return (
+            $answer === null
+                ? new MockResponse('', [
+                    'http_code' => 200,
+                ]) : $answer()
+        );
     }
 
     /**
@@ -150,7 +153,8 @@ final class LogoutEndpoints
             if (! is_string($line)) {
                 continue;
             }
-            [$name, $value] = explode(':', $line, 2) + [
+            [$name, $value] = explode(':', $line, 2)
+            + [
                 1 => '',
             ];
             $headers[strtolower($name)][] = trim($value);

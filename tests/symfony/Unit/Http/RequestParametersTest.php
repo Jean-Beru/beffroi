@@ -21,10 +21,13 @@ final class RequestParametersTest extends TestCase
         $request = Request::create('/authorize?client_id=demo&scope=openid', 'GET');
 
         // When / Then
-        static::assertSame([
-            'client_id' => 'demo',
-            'scope' => 'openid',
-        ], RequestParameters::ofBrowserRequest($request));
+        static::assertSame(
+            [
+                'client_id' => 'demo',
+                'scope' => 'openid',
+            ],
+            RequestParameters::ofBrowserRequest($request),
+        );
     }
 
     #[Test]
@@ -36,9 +39,12 @@ final class RequestParametersTest extends TestCase
         ]);
 
         // When / Then
-        static::assertSame([
-            'client_id' => 'from-the-body',
-        ], RequestParameters::ofBrowserRequest($request));
+        static::assertSame(
+            [
+                'client_id' => 'from-the-body',
+            ],
+            RequestParameters::ofBrowserRequest($request),
+        );
     }
 
     #[Test]
@@ -50,9 +56,12 @@ final class RequestParametersTest extends TestCase
         ]);
 
         // When / Then
-        static::assertSame([
-            'grant_type' => 'from-the-body',
-        ], RequestParameters::ofForm($request));
+        static::assertSame(
+            [
+                'grant_type' => 'from-the-body',
+            ],
+            RequestParameters::ofForm($request),
+        );
     }
 
     /**
@@ -65,9 +74,12 @@ final class RequestParametersTest extends TestCase
         $request = Request::create('/authorize?scope[]=openid&scope[]=profile', 'GET');
 
         // When / Then
-        static::assertSame([
-            'scope' => ['openid', 'profile'],
-        ], RequestParameters::ofBrowserRequest($request));
+        static::assertSame(
+            [
+                'scope' => ['openid', 'profile'],
+            ],
+            RequestParameters::ofBrowserRequest($request),
+        );
     }
 
     /**
@@ -80,8 +92,11 @@ final class RequestParametersTest extends TestCase
         $request = Request::create('/authorize?0=zero&client_id=demo', 'GET');
 
         // When / Then
-        static::assertSame([
-            'client_id' => 'demo',
-        ], RequestParameters::ofBrowserRequest($request));
+        static::assertSame(
+            [
+                'client_id' => 'demo',
+            ],
+            RequestParameters::ofBrowserRequest($request),
+        );
     }
 }

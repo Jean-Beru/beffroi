@@ -44,7 +44,9 @@ final readonly class KeysGenerateCommand
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Option(description: 'The algorithm the key pair is generated for, among those the provider is wired with: a JWS algorithm for a key that signs, a JWE key management one for a key clients encrypt to. The default signature algorithm when none is named.')]
+        #[Option(
+            description: 'The algorithm the key pair is generated for, among those the provider is wired with: a JWS algorithm for a key that signs, a JWE key management one for a key clients encrypt to. The default signature algorithm when none is named.',
+        )]
         ?string $algorithm = null,
     ): int {
         try {
@@ -74,8 +76,7 @@ final readonly class KeysGenerateCommand
                 'Algorithm' => $key->algorithm->name(),
             ],
             [
-                'Use' => $key->algorithm->keyUse()
-                    ->value,
+                'Use' => $key->algorithm->keyUse()->value,
             ],
             [
                 'Status' => $key->status->value,
@@ -85,7 +86,10 @@ final readonly class KeysGenerateCommand
             ],
         );
         if ($previous !== null) {
-            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set while what is bound to it may still arrive.', $previous->kid));
+            $io->note(sprintf(
+                'The key "%s" was active and is now retiring: it stays in the JWK Set while what is bound to it may still arrive.',
+                $previous->kid,
+            ));
         }
         $io->success(sprintf('The key "%s" is the active %s key of "%s" from now on.', $key->kid, $key->algorithm->name(), $tenant->slug));
 

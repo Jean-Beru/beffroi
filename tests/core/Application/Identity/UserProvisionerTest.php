@@ -312,7 +312,10 @@ final class UserProvisionerTest extends TestCase
         }
 
         // Then
-        static::assertTrue($this->hasher->verify($this->credentials->findByUser($user, PasswordCredential::class)[0]->hash ?? static::fail('The credential is gone.'), 'éééééééé'));
+        static::assertTrue($this->hasher->verify(
+            $this->credentials->findByUser($user, PasswordCredential::class)[0]->hash ?? static::fail('The credential is gone.'),
+            'éééééééé',
+        ));
     }
 
     #[Test]

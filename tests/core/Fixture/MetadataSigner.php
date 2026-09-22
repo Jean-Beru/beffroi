@@ -73,8 +73,7 @@ final readonly class MetadataSigner
      */
     public function rootCertificate(): string
     {
-        return $this->root->toPEM()
-            ->string();
+        return $this->root->toPEM()->string();
     }
 
     /**
@@ -93,8 +92,7 @@ final readonly class MetadataSigner
             ])
             ->build();
 
-        return new CompactSerializer()
-            ->serialize($jws, 0);
+        return new CompactSerializer()->serialize($jws, 0);
     }
 
     /**

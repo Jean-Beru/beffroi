@@ -209,8 +209,7 @@ final class JarmResponseTest extends BrowserTestCase
      */
     private static function signedResponseKey(): TenantKey
     {
-        return self::rotator()
-            ->rotate(self::tenant(), Algorithms::es256(), self::context());
+        return self::rotator()->rotate(self::tenant(), Algorithms::es256(), self::context());
     }
 
     /**
@@ -223,10 +222,14 @@ final class JarmResponseTest extends BrowserTestCase
      */
     private static function jarmParameters(array $parameters = []): array
     {
-        return self::authorizationParameters(self::CLIENT, $parameters + [
-            'redirect_uri' => self::REDIRECT_URI,
-            'response_mode' => 'jwt',
-        ]);
+        return self::authorizationParameters(
+            self::CLIENT,
+            $parameters
+            + [
+                'redirect_uri' => self::REDIRECT_URI,
+                'response_mode' => 'jwt',
+            ],
+        );
     }
 
     /**
@@ -246,8 +249,7 @@ final class JarmResponseTest extends BrowserTestCase
     private function verified(string $document): array
     {
         $this->browser->request('GET', '/jwks');
-        $jws = new CompactSerializer()
-            ->unserialize($document);
+        $jws = new CompactSerializer()->unserialize($document);
         static::assertTrue(
             new JWSVerifier(Algorithms::all()->manager())->verifyWithKeySet($jws, JWKSet::createFromKeyData(self::json($this->browser->getResponse())), 0),
             'the signature verifies against the published JWK Set',
@@ -260,8 +262,7 @@ final class JarmResponseTest extends BrowserTestCase
         }
 
         return [
-            'header' => $jws->getSignature(0)
-                ->getProtectedHeader(),
+            'header' => $jws->getSignature(0)->getProtectedHeader(),
             'claims' => $claims,
         ];
     }

@@ -78,7 +78,12 @@ final readonly class LoginFailureListener
             $reason = $user->getPassword() === null ? AuthenticationFailureReason::NoSuchCredential : AuthenticationFailureReason::InvalidCredential;
         }
 
-        return new LoginFailure(AuthenticationMethod::password(), $reason, $badge->getUserIdentifier(), $reason === AuthenticationFailureReason::UnknownUser ? null : $user?->user());
+        return new LoginFailure(
+            AuthenticationMethod::password(),
+            $reason,
+            $badge->getUserIdentifier(),
+            $reason === AuthenticationFailureReason::UnknownUser ? null : $user?->user(),
+        );
     }
 
     /**
@@ -99,7 +104,12 @@ final readonly class LoginFailureListener
         }
         $credential = $passkey->assertion->credential;
 
-        return new LoginFailure($credential->methods($passkey->assertion->authenticatorData)[0], AuthenticationFailureReason::DisabledUser, null, $credential->user);
+        return new LoginFailure(
+            $credential->methods($passkey->assertion->authenticatorData)[0],
+            AuthenticationFailureReason::DisabledUser,
+            null,
+            $credential->user,
+        );
     }
 
     private static function reasonBehind(AuthenticationException $exception): ?AuthenticationFailureReason

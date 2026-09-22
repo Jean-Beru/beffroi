@@ -30,7 +30,12 @@ final class AuthenticationContextPolicyTest extends TestCase
         // Then
         static::assertSame(['phrh', 'phr', '2', '1'], $policy->names());
         static::assertSame(
-            [AuthenticationPredicate::PhishingResistantHardware, AuthenticationPredicate::PhishingResistant, AuthenticationPredicate::TwoFactors, AuthenticationPredicate::SingleFactor],
+            [
+                AuthenticationPredicate::PhishingResistantHardware,
+                AuthenticationPredicate::PhishingResistant,
+                AuthenticationPredicate::TwoFactors,
+                AuthenticationPredicate::SingleFactor,
+            ],
             array_map(static fn (AuthenticationContextClass $class): AuthenticationPredicate => $class->predicate, $policy->classes),
         );
     }
@@ -54,10 +59,16 @@ final class AuthenticationContextPolicyTest extends TestCase
     {
         $now = Fixtures::now();
         yield 'a password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now), '1'];
-        yield 'a password and a one-time password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now), '2'];
+        yield 'a password and a one-time password' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now),
+            '2',
+        ];
         yield 'a software key' => [AuthenticationProofs::of(new AuthenticationMethod('swk'), $now), 'phr'];
         yield 'a hardware key' => [AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now), 'phrh'];
-        yield 'a password and a hardware key' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('hwk'), $now), 'phrh'];
+        yield 'a password and a hardware key' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('hwk'), $now),
+            'phrh',
+        ];
     }
 
     /**
@@ -120,7 +131,10 @@ final class AuthenticationContextPolicyTest extends TestCase
     public function theClassesProvableWithMethodsAreThoseTheirProofsSatisfyTogether(array $methods, array $provable): void
     {
         // When
-        $classes = AuthenticationContextPolicy::default()->provableWith(array_map(static fn (string $method): AuthenticationMethod => new AuthenticationMethod($method), $methods));
+        $classes = AuthenticationContextPolicy::default()->provableWith(array_map(
+            static fn (string $method): AuthenticationMethod => new AuthenticationMethod($method),
+            $methods,
+        ));
 
         // Then
         static::assertSame($provable, array_map(static fn (AuthenticationContextClass $class): string => $class->value, $classes));
@@ -158,9 +172,25 @@ final class AuthenticationContextPolicyTest extends TestCase
     public static function providePoliciesThatDifferFromTheDefault(): iterable
     {
         yield 'fewer classes' => [new AuthenticationContextPolicy([AuthenticationContextClass::singleFactor()])];
-        yield 'one class more' => [new AuthenticationContextPolicy([AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::phishingResistant(), AuthenticationContextClass::twoFactors(), AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('urn:okta:loa:1fa:any', AuthenticationPredicate::SingleFactor)])];
-        yield 'another order' => [new AuthenticationContextPolicy([AuthenticationContextClass::singleFactor(), AuthenticationContextClass::twoFactors(), AuthenticationContextClass::phishingResistant(), AuthenticationContextClass::phishingResistantHardware()])];
-        yield 'another predicate under a name' => [new AuthenticationContextPolicy([AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::phishingResistant(), new AuthenticationContextClass('2', AuthenticationPredicate::PhishingResistant), AuthenticationContextClass::singleFactor()])];
+        yield 'one class more' => [new AuthenticationContextPolicy([
+            AuthenticationContextClass::phishingResistantHardware(),
+            AuthenticationContextClass::phishingResistant(),
+            AuthenticationContextClass::twoFactors(),
+            AuthenticationContextClass::singleFactor(),
+            new AuthenticationContextClass('urn:okta:loa:1fa:any', AuthenticationPredicate::SingleFactor),
+        ])];
+        yield 'another order' => [new AuthenticationContextPolicy([
+            AuthenticationContextClass::singleFactor(),
+            AuthenticationContextClass::twoFactors(),
+            AuthenticationContextClass::phishingResistant(),
+            AuthenticationContextClass::phishingResistantHardware(),
+        ])];
+        yield 'another predicate under a name' => [new AuthenticationContextPolicy([
+            AuthenticationContextClass::phishingResistantHardware(),
+            AuthenticationContextClass::phishingResistant(),
+            new AuthenticationContextClass('2', AuthenticationPredicate::PhishingResistant),
+            AuthenticationContextClass::singleFactor(),
+        ])];
     }
 
     /**
@@ -186,12 +216,30 @@ final class AuthenticationContextPolicyTest extends TestCase
     public static function providePoliciesRefused(): iterable
     {
         yield 'empty' => [[], 'names at least one class'];
-        yield 'level 0' => [[AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('0', AuthenticationPredicate::SingleFactor)], '"0" is not a class a policy may name'];
-        yield 'phr on the single factor' => [[AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phr', AuthenticationPredicate::SingleFactor)], '"phr" is a registered name'];
-        yield 'phr on two factors' => [[AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phr', AuthenticationPredicate::TwoFactors)], '"phr" is a registered name'];
-        yield 'phrh on the phishing-resistant predicate that admits software' => [[AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phrh', AuthenticationPredicate::PhishingResistant)], '"phrh" is a registered name'];
-        yield 'a name twice' => [[AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('1', AuthenticationPredicate::TwoFactors)], 'names "1" once'];
-        yield 'no class on the single factor' => [[AuthenticationContextClass::twoFactors(), AuthenticationContextClass::phishingResistant()], 'names a class on the single factor'];
+        yield 'level 0' => [
+            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('0', AuthenticationPredicate::SingleFactor)],
+            '"0" is not a class a policy may name',
+        ];
+        yield 'phr on the single factor' => [
+            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phr', AuthenticationPredicate::SingleFactor)],
+            '"phr" is a registered name',
+        ];
+        yield 'phr on two factors' => [
+            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phr', AuthenticationPredicate::TwoFactors)],
+            '"phr" is a registered name',
+        ];
+        yield 'phrh on the phishing-resistant predicate that admits software' => [
+            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phrh', AuthenticationPredicate::PhishingResistant)],
+            '"phrh" is a registered name',
+        ];
+        yield 'a name twice' => [
+            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('1', AuthenticationPredicate::TwoFactors)],
+            'names "1" once',
+        ];
+        yield 'no class on the single factor' => [
+            [AuthenticationContextClass::twoFactors(), AuthenticationContextClass::phishingResistant()],
+            'names a class on the single factor',
+        ];
     }
 
     /**
@@ -201,7 +249,10 @@ final class AuthenticationContextPolicyTest extends TestCase
     public function phrMayBeNamedOnTheHardwarePredicate(): void
     {
         // When
-        $policy = new AuthenticationContextPolicy([new AuthenticationContextClass('phr', AuthenticationPredicate::PhishingResistantHardware), AuthenticationContextClass::singleFactor()]);
+        $policy = new AuthenticationContextPolicy([
+            new AuthenticationContextClass('phr', AuthenticationPredicate::PhishingResistantHardware),
+            AuthenticationContextClass::singleFactor(),
+        ]);
 
         // Then
         static::assertSame(['phr', '1'], $policy->names());

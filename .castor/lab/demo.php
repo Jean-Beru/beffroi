@@ -40,26 +40,40 @@ const DEMO_SECOND_URL = 'http://demo.localhost:8003';
 
 const DEMO_SECOND_CLIENT_ID = 'oidc-demo-second';
 
-#[AsTask(description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first')]
+#[AsTask(
+    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first',
+)]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
     ?string $dir = null,
     #[AsOption(description: 'Sign in as the development user, open /profile and log out, from the command line, and print what was verified')]
     bool $check = false,
-    #[AsOption(description: 'The second success criterion of spike 2 (issue #59): sign in, rotate the signing key of the OP, let the scheduled step activate it, sign in again, refresh, log out, retire the old key, then measure the refetch cooldown of oidc_login; the JWK Set max-age and the token lifetimes are shortened in apps/op/.env.local for the time of the run (about six minutes)')]
+    #[AsOption(
+        description: 'The second success criterion of spike 2 (issue #59): sign in, rotate the signing key of the OP, let the scheduled step activate it, sign in again, refresh, log out, retire the old key, then measure the refetch cooldown of oidc_login; the JWK Set max-age and the token lifetimes are shortened in apps/op/.env.local for the time of the run (about six minutes)',
+    )]
     bool $rotate = false,
-    #[AsOption(description: 'The third success criterion of spike 3 (issue #93): sign in with a password, open /profile, be sent back to the OP by /vault with acr_values=phr and prompt=login, enrol a passkey and sign the assertion with a software authenticator (tests/demo/passkey-browser.php), open /vault with an ID token carrying acr=phr, log out; the passkey is revoked afterwards')]
+    #[AsOption(
+        description: 'The third success criterion of spike 3 (issue #93): sign in with a password, open /profile, be sent back to the OP by /vault with acr_values=phr and prompt=login, enrol a passkey and sign the assertion with a software authenticator (tests/demo/passkey-browser.php), open /vault with an ID token carrying acr=phr, log out; the passkey is revoked afterwards',
+    )]
     bool $passkey = false,
-    #[AsOption(description: 'The third success criterion of spike 4 (issue #137): the demo configured with response_mode=form_post, the authorization response posted back to its callback by the page of the OP, and what a SameSite cookie makes of that cross-site POST')]
+    #[AsOption(
+        description: 'The third success criterion of spike 4 (issue #137): the demo configured with response_mode=form_post, the authorization response posted back to its callback by the page of the OP, and what a SameSite cookie makes of that cross-site POST',
+    )]
     bool $formPost = false,
-    #[AsOption(description: 'The second success criterion of spike 4 (issue #137): a second instance of the demo on another client of the same OP, signed in on the same session, logged out by back-channel when the first instance logs out; the delay is measured and printed')]
+    #[AsOption(
+        description: 'The second success criterion of spike 4 (issue #137): a second instance of the demo on another client of the same OP, signed in on the same session, logged out by back-channel when the first instance logs out; the delay is measured and printed',
+    )]
     bool $logoutOthers = false,
-    #[AsOption(description: 'The last acceptance step of issue #61 (issue #64): the demo as a resource server behind the introspection endpoint, with an opaque access token and with an "at+jwt", the introspection response read as JSON and required signed (RFC 9701), and what revoking the token does to each')]
+    #[AsOption(
+        description: 'The last acceptance step of issue #61 (issue #64): the demo as a resource server behind the introspection endpoint, with an opaque access token and with an "at+jwt", the introspection response read as JSON and required signed (RFC 9701), and what revoking the token does to each',
+    )]
     bool $resourceServer = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
-    $isDemo = static fn (string $dir): bool => file_exists($dir . '/config/packages/security.yaml') && str_contains((string) file_get_contents($dir . '/config/packages/security.yaml'), 'oidc_login');
+    $isDemo = static fn (string $dir): bool => (
+        file_exists($dir . '/config/packages/security.yaml') && str_contains((string) file_get_contents($dir . '/config/packages/security.yaml'), 'oidc_login')
+    );
     $candidates = $dir === null ? DEMO_DIRS : [$dir];
     $dir = null;
     foreach ($candidates as $candidate) {
@@ -73,16 +87,14 @@ function demo(
         io()->error(sprintf('oidc-demo is not in %s (no oidc_login firewall in config/packages/security.yaml). Pass --dir.', implode(' nor ', $candidates)));
         exit(1);
     }
-    $server = context()
-        ->withWorkingDirectory($dir);
+    $server = context()->withWorkingDirectory($dir);
     if ($stop) {
         run(['symfony', 'server:stop'], context: $server->withAllowFailure());
 
         return;
     }
 
-    io()
-        ->title('oidc-demo against the development OP');
+    io()->title('oidc-demo against the development OP');
     $env = load_dot_env(getcwd() . '/apps/op/.env');
     foreach (['HEIDI_ISSUER', 'OIDC_DEMO_SECRET', 'HEIDI_DEV_USER_PASSWORD'] as $name) {
         if (($env[$name] ?? '') === '') {
@@ -91,8 +103,7 @@ function demo(
         }
     }
 
-    io()
-        ->section('Configuration');
+    io()->section('Configuration');
     // .env.local only: the .env of the demo, which its repository holds, is not touched
     demo_write_env_local($dir . '/.env.local', [
         'OIDC_PROVIDER_URI' => $env['HEIDI_ISSUER'],
@@ -107,12 +118,14 @@ function demo(
         mkdir($dir . '/var', 0o777, true);
     }
     run(['docker', 'compose', 'cp', 'op:/data/caddy/pki/authorities/local/root.crt', $ca], context: context()->withQuiet());
-    file_put_contents($dir . '/php.ini', sprintf("; written by \"castor demo\" of the OP: trust the CA of Caddy for https://op.localhost\nopenssl.cafile=%s\ncurl.cainfo=%s\n", $ca, $ca));
-    io()
-        ->text(sprintf('Issuer %s, client "%s", secret from apps/op/.env.local, CA of Caddy in %s.', $env['HEIDI_ISSUER'], DEMO_CLIENT_ID, $ca));
+    file_put_contents($dir . '/php.ini', sprintf(
+        "; written by \"castor demo\" of the OP: trust the CA of Caddy for https://op.localhost\nopenssl.cafile=%s\ncurl.cainfo=%s\n",
+        $ca,
+        $ca,
+    ));
+    io()->text(sprintf('Issuer %s, client "%s", secret from apps/op/.env.local, CA of Caddy in %s.', $env['HEIDI_ISSUER'], DEMO_CLIENT_ID, $ca));
 
-    io()
-        ->section('Server');
+    io()->section('Server');
     // the discovery document of the previous issuer may still be cached
     run(['php', 'bin/console', 'cache:clear'], context: $server->withQuiet());
     $status = run(['symfony', 'server:status'], context: $server->withAllowFailure()->withQuiet())->getOutput();
@@ -121,8 +134,7 @@ function demo(
     } else {
         run(['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'], context: $server);
     }
-    io()
-        ->success(sprintf('%s/profile signs in on %s as "%s", password %s.', DEMO_URL, $env['HEIDI_ISSUER'], DEV_USERNAME, $env['HEIDI_DEV_USER_PASSWORD']));
+    io()->success(sprintf('%s/profile signs in on %s as "%s", password %s.', DEMO_URL, $env['HEIDI_ISSUER'], DEV_USERNAME, $env['HEIDI_DEV_USER_PASSWORD']));
 
     if ($check) {
         demo_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
@@ -185,8 +197,7 @@ function demo_write_env_local(string $path, array $values): void
  */
 function demo_check(string $issuer, string $password, string $ca): void
 {
-    io()
-        ->section('Sign in, /profile, logout');
+    io()->section('Sign in, /profile, logout');
     $cookies = [];
     $verified = [];
 
@@ -207,12 +218,12 @@ function demo_check(string $issuer, string $password, string $ca): void
     demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?'), 'the OP asks for a login again: its session ended');
     $verified[] = ['RP-Initiated Logout', 'id_token_hint verified, back to ' . DEMO_URL . '/, the OP asks for a login again'];
 
-    io()
-        ->table(['Step', 'Verified'], $verified);
-    io()
-        ->note(sprintf('The refresh of the access token (refresh_access_token) happens on the first request after it expired, ten minutes after the login (access_token_ttl of the application): sign in from a browser, open %s/profile again then and compare the "jti"; "castor demo --rotate" sees it happen with a shorter lifetime.', DEMO_URL));
-    io()
-        ->success('oidc-demo signed in, opened /profile and logged out against the OP, without a patch.');
+    io()->table(['Step', 'Verified'], $verified);
+    io()->note(sprintf(
+        'The refresh of the access token (refresh_access_token) happens on the first request after it expired, ten minutes after the login (access_token_ttl of the application): sign in from a browser, open %s/profile again then and compare the "jti"; "castor demo --rotate" sees it happen with a shorter lifetime.',
+        DEMO_URL,
+    ));
+    io()->success('oidc-demo signed in, opened /profile and logged out against the OP, without a patch.');
 }
 
 /**
@@ -244,43 +255,79 @@ const DEMO_PASSKEY_CLASS = 'phr';
  */
 function demo_passkey_check(string $issuer, string $password, string $ca): void
 {
-    io()
-        ->section('Sign in with a password, /vault asks for a passkey, logout');
+    io()->section('Sign in with a password, /vault asks for a passkey, logout');
     $cookies = [];
     $verified = [];
     $host = (string) parse_url($issuer, \PHP_URL_HOST);
 
     $session = demo_sign_in($cookies, $issuer, $password, $ca);
     $before = $session['tokens']['id_token']['claims'];
-    demo_expect(($before['acr'] ?? null) !== DEMO_PASSKEY_CLASS, sprintf('the ID token of a password login says acr=%s, not %s', json_encode($before['acr'] ?? null), DEMO_PASSKEY_CLASS));
-    $verified[] = ['Password login', sprintf('/profile open, acr=%s, amr=%s, auth_time %s, sid %s', $before['acr'] ?? '?', json_encode($before['amr'] ?? null), $before['auth_time'] ?? '?', $before['sid'] ?? '?')];
+    demo_expect(($before['acr'] ?? null) !== DEMO_PASSKEY_CLASS, sprintf(
+        'the ID token of a password login says acr=%s, not %s',
+        json_encode($before['acr'] ?? null),
+        DEMO_PASSKEY_CLASS,
+    ));
+    $verified[] = [
+        'Password login',
+        sprintf(
+            '/profile open, acr=%s, amr=%s, auth_time %s, sid %s',
+            $before['acr'] ?? '?',
+            json_encode($before['amr'] ?? null),
+            $before['auth_time'] ?? '?',
+            $before['sid'] ?? '?',
+        ),
+    ];
 
     // /vault: the demo denies IS_AUTHENTICATED_IN_CONTEXT:phr and starts the re-authentication
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/vault');
-    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('/vault sends the browser back to the authorization endpoint (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/authorize?'),
+        sprintf('/vault sends the browser back to the authorization endpoint (got %d %s)', $status, $location),
+    );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
-    demo_expect(($authorization['acr_values'] ?? null) === DEMO_PASSKEY_CLASS && ($authorization['prompt'] ?? null) === 'login', sprintf('the authorization request carries acr_values=%s and prompt=login', DEMO_PASSKEY_CLASS));
-    demo_expect(($authorization['id_token_hint'] ?? null) === $session['tokens']['id_token']['raw'], 'the authorization request carries the previous ID token as id_token_hint');
-    demo_expect(($authorization['code_challenge_method'] ?? null) === 'S256' && isset($authorization['state'], $authorization['nonce']), 'it stays an ordinary authorization request: PKCE S256, state, nonce');
+    demo_expect(($authorization['acr_values'] ?? null) === DEMO_PASSKEY_CLASS && ($authorization['prompt'] ?? null) === 'login', sprintf(
+        'the authorization request carries acr_values=%s and prompt=login',
+        DEMO_PASSKEY_CLASS,
+    ));
+    demo_expect(
+        ($authorization['id_token_hint'] ?? null) === $session['tokens']['id_token']['raw'],
+        'the authorization request carries the previous ID token as id_token_hint',
+    );
+    demo_expect(
+        ($authorization['code_challenge_method'] ?? null) === 'S256' && isset($authorization['state'], $authorization['nonce']),
+        'it stays an ordinary authorization request: PKCE S256, state, nonce',
+    );
     $verified[] = ['/vault', sprintf('302 to the OP with acr_values=%s, prompt=login, id_token_hint', DEMO_PASSKEY_CLASS)];
 
     // the OP holds the session of the password login and asks for a login anyway (prompt=login)
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf('the OP asks for a login on its existing session (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/login?interaction='),
+        sprintf('the OP asks for a login on its existing session (got %d %s)', $status, $location),
+    );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $login);
 
     // the browser with the software authenticator: a passkey enrolled, the assertion signed and posted
-    io()
-        ->text(' <comment>tests/demo/passkey-browser.php</comment>');
-    $browser = run(['php', DEMO_PASSKEY_BROWSER], context: context()->withQuiet()->withAllowFailure()->withEnvironment([
-        'XDEBUG_MODE' => 'off',
-    ])->withInput(json_encode([
-        'issuer' => $issuer,
-        'cafile' => $ca,
-        'cookies' => $cookies[$host] ?? [],
-        'interaction' => (string) ($login['interaction'] ?? ''),
-        'name' => 'castor demo --passkey ' . date('Y-m-d H:i:s'),
-    ], \JSON_THROW_ON_ERROR)));
+    io()->text(' <comment>tests/demo/passkey-browser.php</comment>');
+    $browser = run(
+        ['php', DEMO_PASSKEY_BROWSER],
+        context: context()
+            ->withQuiet()
+            ->withAllowFailure()
+            ->withEnvironment([
+                'XDEBUG_MODE' => 'off',
+            ])
+            ->withInput(json_encode(
+                [
+                    'issuer' => $issuer,
+                    'cafile' => $ca,
+                    'cookies' => $cookies[$host] ?? [],
+                    'interaction' => (string) ($login['interaction'] ?? ''),
+                    'name' => 'castor demo --passkey ' . date('Y-m-d H:i:s'),
+                ],
+                \JSON_THROW_ON_ERROR,
+            )),
+    );
     // the steps of the browser, then the reason of a failure without the trace of the exception that ends it
     foreach (explode("\n", rtrim($browser->getErrorOutput(), "\n")) as $line) {
         if (str_starts_with($line, 'Stack trace:')) {
@@ -293,15 +340,32 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     demo_expect($browser->isSuccessful(), 'the passkey is enrolled and the assertion accepted');
     $passkey = (array) json_decode($browser->getOutput(), true, 4, \JSON_THROW_ON_ERROR);
     $cookies[$host] = (array) ($passkey['cookies'] ?? []);
-    $verified[] = ['Passkey', sprintf('enrolled on the account page (credential %s), assertion signed (sign count %d) and accepted on the login page', $passkey['credential_id'] ?? '?', $passkey['sign_count'] ?? 0)];
+    $verified[] = [
+        'Passkey',
+        sprintf(
+            'enrolled on the account page (credential %s), assertion signed (sign count %d) and accepted on the login page',
+            $passkey['credential_id'] ?? '?',
+            $passkey['sign_count'] ?? 0,
+        ),
+    ];
 
     // the login page resumes the interaction: the browser goes to the callback with a code
     [$status, $location] = demo_request($cookies, $ca, 'GET', (string) ($passkey['location'] ?? ''));
-    demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'), sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
+        sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location),
+    );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
-    demo_expect(isset($callback['code']) && ($callback['state'] ?? null) === $authorization['state'] && ($callback['iss'] ?? null) === $issuer, 'the callback carries a code, the state of the re-authentication and iss');
+    demo_expect(
+        isset($callback['code']) && ($callback['state'] ?? null) === $authorization['state'] && ($callback['iss'] ?? null) === $issuer,
+        'the callback carries a code, the state of the re-authentication and iss',
+    );
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 302 && $location === DEMO_URL . '/vault', sprintf('the demo verifies the ID token and sends the browser back to /vault (got %d %s)', $status, $location));
+    demo_expect($status === 302 && $location === DEMO_URL . '/vault', sprintf(
+        'the demo verifies the ID token and sends the browser back to /vault (got %d %s)',
+        $status,
+        $location,
+    ));
     $verified[] = ['Callback', 'code exchanged, ID token verified, back to /vault'];
 
     // /vault opens: what oidc_login recorded from the new ID token
@@ -313,10 +377,23 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     }
     $amr = (array) json_decode($received['amr'], true);
     demo_expect($received['acr'] === DEMO_PASSKEY_CLASS, sprintf('the ID token says acr=%s (got %s)', DEMO_PASSKEY_CLASS, json_encode($received['acr'])));
-    demo_expect(in_array('hwk', $amr, true) && in_array('pwd', $amr, true), sprintf('amr lists the passkey and the password of the same session (got %s)', $received['amr']));
-    demo_expect($received['sid'] === ($before['sid'] ?? null), sprintf('the sid is the one of the password login: one session on the OP (got %s)', $received['sid']));
-    demo_expect((int) $received['auth-time'] >= (int) ($before['auth_time'] ?? 0), sprintf('auth_time is the passkey\'s (%s, was %s)', $received['auth-time'], $before['auth_time'] ?? '?'));
-    $verified[] = ['/vault', sprintf('open; oidc_login received acr=%s, amr=%s, auth_time %s, sid %s', $received['acr'], $received['amr'], $received['auth-time'], $received['sid'])];
+    demo_expect(
+        in_array('hwk', $amr, true) && in_array('pwd', $amr, true),
+        sprintf('amr lists the passkey and the password of the same session (got %s)', $received['amr']),
+    );
+    demo_expect($received['sid'] === ($before['sid'] ?? null), sprintf(
+        'the sid is the one of the password login: one session on the OP (got %s)',
+        $received['sid'],
+    ));
+    demo_expect((int) $received['auth-time'] >= (int) ($before['auth_time'] ?? 0), sprintf(
+        'auth_time is the passkey\'s (%s, was %s)',
+        $received['auth-time'],
+        $before['auth_time'] ?? '?',
+    ));
+    $verified[] = [
+        '/vault',
+        sprintf('open; oidc_login received acr=%s, amr=%s, auth_time %s, sid %s', $received['acr'], $received['amr'], $received['auth-time'], $received['sid']),
+    ];
 
     // RP-Initiated Logout across the step-up: the hint is the new ID token, the one session ends
     $kid = demo_logout($cookies, $issuer, $ca);
@@ -324,19 +401,26 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), '/profile asks for a new login');
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
     demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?'), 'the OP asks for a login again: its session ended');
-    $verified[] = ['RP-Initiated Logout', sprintf('id_token_hint of the step-up verified (kid %s), back to %s/, the OP asks for a login again', $kid, DEMO_URL)];
+    $verified[] = [
+        'RP-Initiated Logout',
+        sprintf('id_token_hint of the step-up verified (kid %s), back to %s/, the OP asks for a login again', $kid, DEMO_URL),
+    ];
 
     // the passkey of the run is revoked: heidi:user:show lists it by its name, heidi:user:revoke-credential takes its identifier
     $shown = op_console(['heidi:user:show', DEV_USERNAME], context()->withQuiet())->getOutput();
     $name = 'castor demo --passkey';
-    demo_expect(preg_match('/^\s*passkey\s+([0-9a-f-]{36})\s+' . preg_quote($name, '/') . '/m', $shown, $found) === 1, 'heidi:user:show lists the passkey of the run');
+    demo_expect(
+        preg_match('/^\s*passkey\s+([0-9a-f-]{36})\s+' . preg_quote($name, '/') . '/m', $shown, $found) === 1,
+        'heidi:user:show lists the passkey of the run',
+    );
     op_console(['heidi:user:revoke-credential', DEV_USERNAME, $found[1]], context()->withQuiet());
     $verified[] = ['Cleanup', sprintf('passkey %s revoked (heidi:user:revoke-credential)', $found[1])];
 
-    io()
-        ->table(['Step', 'Verified'], $verified);
-    io()
-        ->success(sprintf('oidc-demo required acr_values=%s on /vault and got a passkey login against the OP, without a patch of oidc_login.', DEMO_PASSKEY_CLASS));
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success(sprintf(
+        'oidc-demo required acr_values=%s on /vault and got a passkey login against the OP, without a patch of oidc_login.',
+        DEMO_PASSKEY_CLASS,
+    ));
 }
 
 /**
@@ -368,8 +452,7 @@ const DEMO_SESSION_COOKIE = 'PHPSESSID';
  */
 function demo_form_post_check(string $dir, string $issuer, string $password, string $ca): void
 {
-    io()
-        ->section('response_mode=form_post');
+    io()->section('response_mode=form_post');
     demo_write_env_local($dir . '/.env.local', [
         DEMO_RESPONSE_MODE_ENV => 'form_post',
     ]);
@@ -381,7 +464,10 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
         // /profile: the demo starts the flow, asking for the mode it is configured with
         $setCookies = [];
         [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile', setCookies: $setCookies);
-        demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('/profile sends the browser to the authorization endpoint (got %d %s)', $status, $location));
+        demo_expect(
+            $status === 302 && str_starts_with($location, $issuer . '/authorize?'),
+            sprintf('/profile sends the browser to the authorization endpoint (got %d %s)', $status, $location),
+        );
         parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
         demo_expect(($authorization['response_mode'] ?? null) === 'form_post', 'the authorization request asks for response_mode=form_post');
         $sameSite = demo_same_site_of($setCookies, DEMO_SESSION_COOKIE);
@@ -390,9 +476,15 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
 
         // the login of the OP, unchanged: the mode says how the response comes back, not how it is obtained
         [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-        demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf('the OP asks for a login (got %d %s)', $status, $location));
+        demo_expect(
+            $status === 302 && str_starts_with($location, $issuer . '/login?interaction='),
+            sprintf('the OP asks for a login (got %d %s)', $status, $location),
+        );
         [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
-        demo_expect($status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1, 'the login page carries the form');
+        demo_expect(
+            $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1,
+            'the login page carries the form',
+        );
         [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
             '_username' => DEV_USERNAME,
             '_password' => $password,
@@ -402,41 +494,63 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
 
         // and here the mode shows: a page, not a redirection
         [$status, $location, $page, $headers] = demo_request($cookies, $ca, 'GET', $location);
-        demo_expect($status === 200 && $location === '', sprintf('the OP answers the authorization request with a page of its own, not with a redirection (got %d %s)', $status, $location));
+        demo_expect($status === 200 && $location === '', sprintf(
+            'the OP answers the authorization request with a page of its own, not with a redirection (got %d %s)',
+            $status,
+            $location,
+        ));
         demo_expect(str_contains($headers['cache-control'][0] ?? '', 'no-store'), 'the page is never cached (Form Post Response Mode §2)');
         demo_expect(preg_match('/form[^>]+method="post"[^>]+action="([^"]+)"/i', $page, $form) === 1, 'the page carries a form that posts');
         $formAction = html_entity_decode($form[1]);
         demo_expect($formAction === DEMO_URL . '/oidc/callback', sprintf('the form posts to the callback of the demo (got %s)', $formAction));
         $response = demo_form_fields($page);
-        demo_expect(isset($response['code'], $response['state']) && ($response['iss'] ?? null) === $issuer, 'the form carries code, state and iss (RFC 9207), as a query string would');
+        demo_expect(
+            isset($response['code'], $response['state']) && ($response['iss'] ?? null) === $issuer,
+            'the form carries code, state and iss (RFC 9207), as a query string would',
+        );
         $verified[] = ['Authorization response', sprintf('a form of %d fields posted to %s, no-store', count($response), $formAction)];
 
         // the cross-site POST, first as a browser makes it of a cookie it does not send
         $withoutCookies = [];
         [$status, $location] = demo_request($withoutCookies, $ca, 'POST', $formAction, $response);
-        demo_expect($status === 302 && $location === DEMO_URL . '/login', sprintf('without the session cookie, the demo refuses the callback and sends the browser to its failure path (got %d %s)', $status, $location));
+        demo_expect($status === 302 && $location === DEMO_URL . '/login', sprintf(
+            'without the session cookie, the demo refuses the callback and sends the browser to its failure path (got %d %s)',
+            $status,
+            $location,
+        ));
         [$status, , $page] = demo_request($withoutCookies, $ca, 'GET', DEMO_URL . '/login');
         demo_expect(preg_match('/<code>([^<]+)<\/code>/', $page, $detail) === 1, 'the login page of the demo says why');
         $refusal = html_entity_decode($detail[1]);
-        demo_expect(str_contains($refusal, 'state'), sprintf('the login fails on the "state", which the session it did not receive was holding: "%s"', $refusal));
+        demo_expect(
+            str_contains($refusal, 'state'),
+            sprintf('the login fails on the "state", which the session it did not receive was holding: "%s"', $refusal),
+        );
         $verified[] = ['Cookie withheld', sprintf('"%s", which is what SameSite=Lax makes of the POST', $refusal)];
 
         // then as a browser makes it of a cookie it does send
         [$status, $location] = demo_request($cookies, $ca, 'POST', $formAction, $response);
-        demo_expect($status === 302 && $location === DEMO_URL . '/profile', sprintf('with the session cookie, the demo signs the user in (got %d %s)', $status, $location));
+        demo_expect($status === 302 && $location === DEMO_URL . '/profile', sprintf(
+            'with the session cookie, the demo signs the user in (got %d %s)',
+            $status,
+            $location,
+        ));
         [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
         demo_expect($status === 200, sprintf('/profile opens (got %d)', $status));
         $tokens = demo_tokens_of($page);
         demo_expect(isset($tokens['id_token'], $tokens['access_token']), '/profile shows an ID token and an access token');
-        $verified[] = ['Cookie sent', sprintf('the code was exchanged, sub %s, acr=%s', $tokens['id_token']['claims']['sub'] ?? '?', $tokens['id_token']['claims']['acr'] ?? '?')];
+        $verified[] = [
+            'Cookie sent',
+            sprintf('the code was exchanged, sub %s, acr=%s', $tokens['id_token']['claims']['sub'] ?? '?', $tokens['id_token']['claims']['acr'] ?? '?'),
+        ];
 
         demo_logout($cookies, $issuer, $ca);
         $verified[] = ['Session cookie of the demo', sprintf('SameSite=%s (framework.session.cookie_samesite)', $sameSite)];
 
-        io()
-            ->table(['Step', 'Verified'], $verified);
-        io()
-            ->success(sprintf('oidc-demo received a form_post response and found its session again, "state" and PKCE verifier included, on a "SameSite=%s" cookie; the same POST without the cookie fails on the "state".', $sameSite));
+        io()->table(['Step', 'Verified'], $verified);
+        io()->success(sprintf(
+            'oidc-demo received a form_post response and found its session again, "state" and PKCE verifier included, on a "SameSite=%s" cookie; the same POST without the cookie fails on the "state".',
+            $sameSite,
+        ));
     } finally {
         demo_write_env_local($dir . '/.env.local', [
             DEMO_RESPONSE_MODE_ENV => 'query',
@@ -496,8 +610,7 @@ function demo_form_fields(string $page): array
  */
 function demo_logout_others_check(string $dir, string $issuer, string $password, string $secret, string $ca): void
 {
-    io()
-        ->section('Two instances on one OP, the second logged out by back-channel');
+    io()->section('Two instances on one OP, the second logged out by back-channel');
     $second = demo_second_instance($dir, $issuer, $secret, $ca);
 
     try {
@@ -510,8 +623,14 @@ function demo_logout_others_check(string $dir, string $issuer, string $password,
         $verified[] = [DEMO_CLIENT_ID, sprintf('signed in, sid %s', $sid)];
 
         $secondTokens = demo_second_sign_in($cookies, $issuer, $ca);
-        demo_expect(($secondTokens['id_token']['claims']['sid'] ?? null) === $sid, 'the second instance signed in on the same session of the OP: the same "sid"');
-        demo_expect(in_array(DEMO_SECOND_CLIENT_ID, (array) ($secondTokens['id_token']['claims']['aud'] ?? []), true), 'its ID token is the one of the second client');
+        demo_expect(
+            ($secondTokens['id_token']['claims']['sid'] ?? null) === $sid,
+            'the second instance signed in on the same session of the OP: the same "sid"',
+        );
+        demo_expect(
+            in_array(DEMO_SECOND_CLIENT_ID, (array) ($secondTokens['id_token']['claims']['aud'] ?? []), true),
+            'its ID token is the one of the second client',
+        );
         $verified[] = [DEMO_SECOND_CLIENT_ID, 'signed in on the same session, without a login page'];
 
         // the first instance logs out: its own session, then the one of the OP, and nothing of the second
@@ -522,10 +641,11 @@ function demo_logout_others_check(string $dir, string $issuer, string $password,
         $elapsed = demo_wait_for_logout($cookies, $ca, $startedAt);
         $verified[] = ['Back-channel logout', sprintf('%s asks for a login again %.1f s later', DEMO_SECOND_URL, $elapsed)];
 
-        io()
-            ->table(['Step', 'Verified'], $verified);
-        io()
-            ->success(sprintf('The second instance was logged out %.1f s after the first one logged out, by a logout token the OP posted to it: the whole delay, from the logout request to the page it refuses to serve again.', $elapsed));
+        io()->table(['Step', 'Verified'], $verified);
+        io()->success(sprintf(
+            'The second instance was logged out %.1f s after the first one logged out, by a logout token the OP posted to it: the whole delay, from the logout request to the page it refuses to serve again.',
+            $elapsed,
+        ));
     } finally {
         $second->stop();
     }
@@ -543,13 +663,30 @@ function demo_second_instance(string $dir, string $issuer, string $secret, strin
     $port = (string) parse_url(DEMO_SECOND_URL, \PHP_URL_PORT);
     // variables_order: the built-in server of PHP does not put the environment of the process into
     // $_ENV unless it is asked to, and the dotenv of the demo only steps aside for what is there
-    $server = new Process(['php', '-d', 'variables_order=EGPCS', '-d', 'openssl.cafile=' . $ca, '-d', 'curl.cainfo=' . $ca, '-S', '0.0.0.0:' . $port, '-t', 'public', 'public/index.php'], $dir, [
-        'APP_ENV' => 'dev',
-        'OIDC_PROVIDER_URI' => $issuer,
-        'OIDC_CLIENT_ID' => DEMO_SECOND_CLIENT_ID,
-        'OIDC_CLIENT_SECRET' => $secret,
-        'OIDC_RESPONSE_MODE' => 'query',
-    ]);
+    $server = new Process(
+        [
+            'php',
+            '-d',
+            'variables_order=EGPCS',
+            '-d',
+            'openssl.cafile=' . $ca,
+            '-d',
+            'curl.cainfo=' . $ca,
+            '-S',
+            '0.0.0.0:' . $port,
+            '-t',
+            'public',
+            'public/index.php',
+        ],
+        $dir,
+        [
+            'APP_ENV' => 'dev',
+            'OIDC_PROVIDER_URI' => $issuer,
+            'OIDC_CLIENT_ID' => DEMO_SECOND_CLIENT_ID,
+            'OIDC_CLIENT_SECRET' => $secret,
+            'OIDC_RESPONSE_MODE' => 'query',
+        ],
+    );
     $server->setTimeout(null);
     $server->start();
 
@@ -567,8 +704,7 @@ function demo_second_instance(string $dir, string $issuer, string $secret, strin
         usleep(200_000);
     }
 
-    io()
-        ->error(sprintf("The second instance of oidc-demo did not start on %s:\n%s", DEMO_SECOND_URL, $server->getErrorOutput()));
+    io()->error(sprintf("The second instance of oidc-demo did not start on %s:\n%s", DEMO_SECOND_URL, $server->getErrorOutput()));
     $server->stop();
     exit(1);
 }
@@ -584,16 +720,26 @@ function demo_second_instance(string $dir, string $issuer, string $secret, strin
 function demo_second_sign_in(array &$cookies, string $issuer, string $ca): array
 {
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_SECOND_URL . '/profile');
-    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('the second instance sends the browser to the authorization endpoint (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/authorize?'),
+        sprintf('the second instance sends the browser to the authorization endpoint (got %d %s)', $status, $location),
+    );
 
     for ($hop = 0; $hop < 5 && str_starts_with($location, $issuer); ++$hop) {
         [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
         demo_expect($status === 302, sprintf('the OP answers from the session it holds, without asking anything (got %d)', $status));
     }
-    demo_expect(str_starts_with($location, DEMO_SECOND_URL . '/oidc/callback?'), sprintf('the OP sends the browser to the callback of the second instance (got %s)', $location));
+    demo_expect(
+        str_starts_with($location, DEMO_SECOND_URL . '/oidc/callback?'),
+        sprintf('the OP sends the browser to the callback of the second instance (got %s)', $location),
+    );
 
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 302 && $location === DEMO_SECOND_URL . '/profile', sprintf('the second instance signs the user in (got %d %s)', $status, $location));
+    demo_expect($status === 302 && $location === DEMO_SECOND_URL . '/profile', sprintf(
+        'the second instance signs the user in (got %d %s)',
+        $status,
+        $location,
+    ));
     [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_SECOND_URL . '/profile');
     demo_expect($status === 200, sprintf('/profile of the second instance opens (got %d)', $status));
     $tokens = demo_tokens_of($page);
@@ -619,8 +765,7 @@ function demo_wait_for_logout(array &$cookies, string $ca, float|int $startedAt,
         usleep(100_000);
     }
 
-    io()
-        ->error(sprintf('The second instance was still signed in %.0f s after the logout. What the worker did with the logout token:', $timeout));
+    io()->error(sprintf('The second instance was still signed in %.0f s after the logout. What the worker did with the logout token:', $timeout));
     run(['docker', 'compose', 'logs', 'worker', '--tail', '20'], context: context()->withAllowFailure());
     exit(1);
 }
@@ -670,17 +815,22 @@ const DEMO_AUTHORIZATION_SERVER_METADATA_PATH = '/.well-known/oauth-authorizatio
  */
 function demo_resource_server_check(string $dir, string $issuer, string $password, string $opaqueSecret, string $demoSecret, string $ca): void
 {
-    io()
-        ->section('A resource server behind the introspection endpoint');
+    io()->section('A resource server behind the introspection endpoint');
     $verified = [];
 
     // RFC 8414 §3 and OIDC Discovery §4.1: one document, two well-known locations, and the token
     // handler of Symfony reads the keys of a signed introspection response at the first one
     $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
     $authorizationServer = demo_metadata($issuer . DEMO_AUTHORIZATION_SERVER_METADATA_PATH, $ca);
-    demo_expect($authorizationServer === $metadata, 'the OP serves the same document at /.well-known/oauth-authorization-server (RFC 8414 §3) as at /.well-known/openid-configuration');
+    demo_expect(
+        $authorizationServer === $metadata,
+        'the OP serves the same document at /.well-known/oauth-authorization-server (RFC 8414 §3) as at /.well-known/openid-configuration',
+    );
     $introspection = (string) ($metadata['introspection_endpoint'] ?? '');
-    demo_expect($introspection !== '' && is_string($metadata['jwks_uri'] ?? null), 'the document names the introspection endpoint and the JWK Set the signed answer is verified against');
+    demo_expect(
+        $introspection !== '' && is_string($metadata['jwks_uri'] ?? null),
+        'the document names the introspection endpoint and the JWK Set the signed answer is verified against',
+    );
     $verified[] = ['Authorization server metadata', sprintf('%s, jwks_uri %s', DEMO_AUTHORIZATION_SERVER_METADATA_PATH, $metadata['jwks_uri'])];
 
     try {
@@ -698,11 +848,19 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
         $verified[] = ['Opaque access token', sprintf('%d characters, no structure to read, sub %s on the ID token', strlen($accessToken), $subject)];
 
         [$status, $body] = demo_api(DEMO_URL . '/api/me', $accessToken);
-        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf('the resource server introspects the token and answers the sub of its badge (got %d %s)', $status, json_encode($body)));
+        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf(
+            'the resource server introspects the token and answers the sub of its badge (got %d %s)',
+            $status,
+            json_encode($body),
+        ));
         $verified[] = ['/api/me', sprintf('200, sub %s, scope %s, %s', $body['sub'], json_encode($body['scope'] ?? null), $body['user_class'] ?? '?')];
 
         [$status, $body] = demo_api(DEMO_URL . '/api/me/signed', $accessToken);
-        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf('the same answer required signed (RFC 9701), verified against the keys of the OP found through its RFC 8414 metadata (got %d %s)', $status, json_encode($body)));
+        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf(
+            'the same answer required signed (RFC 9701), verified against the keys of the OP found through its RFC 8414 metadata (got %d %s)',
+            $status,
+            json_encode($body),
+        ));
         $verified[] = ['/api/me/signed', sprintf('200, the JWT answer verified, typ "%s"', 'token-introspection+jwt')];
 
         [$status, $body] = demo_revoke($issuer, $ca, DEMO_OPAQUE_CLIENT_ID, $opaqueSecret, $accessToken);
@@ -721,30 +879,43 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
         $tokens = demo_resource_server_sign_in($cookies, $issuer, $password, $ca, DEMO_CLIENT_ID);
         $accessToken = $tokens['access_token'];
         $header = demo_jwt($accessToken)['header'];
-        demo_expect(($header['typ'] ?? null) === 'at+jwt', sprintf('the access token of %s is an at+jwt (RFC 9068 §2.1, got "%s")', DEMO_CLIENT_ID, $header['typ'] ?? ''));
+        demo_expect(($header['typ'] ?? null) === 'at+jwt', sprintf(
+            'the access token of %s is an at+jwt (RFC 9068 §2.1, got "%s")',
+            DEMO_CLIENT_ID,
+            $header['typ'] ?? '',
+        ));
         $subject = (string) (demo_jwt($tokens['id_token'])['claims']['sub'] ?? '?');
 
         [$status, $body] = demo_api(DEMO_URL . '/api/me/offline', $accessToken);
-        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf('the resource server verifies the token itself, against the JWK Set of the OP, and answers the sub of its badge (got %d %s)', $status, json_encode($body)));
+        demo_expect($status === 200 && ($body['sub'] ?? null) === $subject, sprintf(
+            'the resource server verifies the token itself, against the JWK Set of the OP, and answers the sub of its badge (got %d %s)',
+            $status,
+            json_encode($body),
+        ));
         $verified[] = ['/api/me/offline', sprintf('200, sub %s, kid %s, nothing asked of the OP', $body['sub'], $header['kid'] ?? '?')];
 
         [$status, $body] = demo_revoke($issuer, $ca, DEMO_CLIENT_ID, $demoSecret, $accessToken);
-        demo_expect($status === 400 && ($body['error'] ?? null) === 'unsupported_token_type', sprintf('that one cannot be revoked at all, and the OP says so rather than answering 200 (RFC 7009 §2.2.1, got %d %s)', $status, json_encode($body)));
+        demo_expect($status === 400 && ($body['error'] ?? null) === 'unsupported_token_type', sprintf(
+            'that one cannot be revoked at all, and the OP says so rather than answering 200 (RFC 7009 §2.2.1, got %d %s)',
+            $status,
+            json_encode($body),
+        ));
         $verified[] = ['/revoke of an at+jwt', sprintf('400 %s, "%s"', $body['error'], $body['error_description'] ?? '')];
 
         // what ends it is the end of the session, which the OP knows and the resource server does not
         demo_logout($cookies, $issuer, $ca);
         demo_expect(demo_userinfo($issuer, $ca, $accessToken) === 401, 'the session ended, and the OP refuses the same token at UserInfo (issue #150)');
         [$status, $body] = demo_api(DEMO_URL . '/api/me/offline', $accessToken);
-        demo_expect($status === 200, sprintf('the offline resource server accepts it still: nothing told it, and nothing could (got %d %s)', $status, json_encode($body)));
+        demo_expect($status === 200, sprintf(
+            'the offline resource server accepts it still: nothing told it, and nothing could (got %d %s)',
+            $status,
+            json_encode($body),
+        ));
         $verified[] = ['Session ended, then /api/me/offline', '200 until the token expires, while UserInfo of the OP answers 401'];
 
-        io()
-            ->table(['Step', 'Verified'], $verified);
-        io()
-            ->success('oidc-demo checked its access token in the three ways Symfony offers, on the two shapes the OP issues, without a patch.');
-        io()
-            ->note('An "at+jwt" is accepted by a resource server that verifies it offline until it expires (ten minutes here, HEIDI_ACCESS_TOKEN_TTL), whatever the OP knows of it: a deployment that needs a withdrawal to be felt at once registers its client for opaque tokens, and its resource server introspects them (architecture §4.6). The OP itself is not in that case: it knows where its sessions live, and refuses at UserInfo and at the introspection endpoint the token of a session that ended, whatever its shape (issue #150).');
+        io()->table(['Step', 'Verified'], $verified);
+        io()->success('oidc-demo checked its access token in the three ways Symfony offers, on the two shapes the OP issues, without a patch.');
+        io()->note('An "at+jwt" is accepted by a resource server that verifies it offline until it expires (ten minutes here, HEIDI_ACCESS_TOKEN_TTL), whatever the OP knows of it: a deployment that needs a withdrawal to be felt at once registers its client for opaque tokens, and its resource server introspects them (architecture §4.6). The OP itself is not in that case: it knows where its sessions live, and refuses at UserInfo and at the introspection endpoint the token of a session that ended, whatever its shape (issue #150).');
     } finally {
         demo_write_env_local($dir . '/.env.local', [
             'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
@@ -783,7 +954,8 @@ function demo_resource_server_sign_in(array &$cookies, string $issuer, string $p
 function demo_raw_tokens_of(string $page): array
 {
     preg_match_all('/<pre class="jwt">([^<]*)<\/pre>/', $page, $matches);
-    $raw = $matches[1] + [
+    $raw = $matches[1]
+    + [
         0 => '',
         1 => '',
     ];
@@ -886,37 +1058,51 @@ const DEMO_ROTATION_ENV_MARKER = 'castor demo --rotate';
  */
 function demo_rotation_check(Context $server, string $issuer, string $password, string $ca): void
 {
-    io()
-        ->section('A rotation, as scheduled');
+    io()->section('A rotation, as scheduled');
     $verified = [];
     $fetches = [];
     $utc = new DateTimeZone('UTC');
-    $at = static fn (DateTimeImmutable $date): string => $date->setTimezone($utc)
-        ->format('H:i:s');
+    $at = static fn (DateTimeImmutable $date): string => $date->setTimezone($utc)->format('H:i:s');
 
     $tenant = demo_keys();
     $active = array_keys(array_filter($tenant, static fn (array $key): bool => $key['status'] === 'active'));
     $staged = array_keys(array_filter($tenant, static fn (array $key): bool => $key['status'] === 'staged'));
-    demo_expect(count($active) === 1 && $staged === [], sprintf('the tenant has one active key and none staged before the run (got %d active, %d staged: "castor console heidi:keys:list" says which)', count($active), count($staged)));
+    demo_expect(
+        count($active) === 1 && $staged === [],
+        sprintf(
+            'the tenant has one active key and none staged before the run (got %d active, %d staged: "castor console heidi:keys:list" says which)',
+            count($active),
+            count($staged),
+        ),
+    );
     $kid1 = $active[0];
     demo_rotation_lifetimes($issuer, $ca, true);
     // A cold JWK Set copy, whatever ran before: the demo caches it in cache.app, with the discovery document.
     run(['php', 'bin/console', 'cache:pool:clear', 'cache.app'], context: $server->withQuiet());
     $before = demo_jwks($issuer, $ca);
-    io()
-        ->text(sprintf(' <info>✓</info> the run: JWK Set max-age %d s, ID and access tokens %d s, staging delay %d s, retirement window %d s; the key "%s" signs, the JWK Set has %d key(s)', DEMO_ROTATION_JWKS_MAX_AGE, DEMO_ROTATION_TOKEN_TTL, DEMO_ROTATION_JWKS_MAX_AGE + DEMO_ROTATION_COOLDOWN, DEMO_ROTATION_TOKEN_TTL, $kid1, count($before)));
+    io()->text(sprintf(
+        ' <info>✓</info> the run: JWK Set max-age %d s, ID and access tokens %d s, staging delay %d s, retirement window %d s; the key "%s" signs, the JWK Set has %d key(s)',
+        DEMO_ROTATION_JWKS_MAX_AGE,
+        DEMO_ROTATION_TOKEN_TTL,
+        DEMO_ROTATION_JWKS_MAX_AGE + DEMO_ROTATION_COOLDOWN,
+        DEMO_ROTATION_TOKEN_TTL,
+        $kid1,
+        count($before),
+    ));
 
     // 1. Two sessions, both signed by the first key: the first refreshes at step 5, the second logs out at
     // step 6 with the ID token of its login. The demo fetches the JWK Set once, for the first.
-    io()
-        ->text('<comment>1.</comment> Sign in, twice');
+    io()->text('<comment>1.</comment> Sign in, twice');
     $start = new DateTimeImmutable();
     $first = [];
     $second = [];
     $sessionA = demo_sign_in($first, $issuer, $password, $ca);
     $sessionB = demo_sign_in($second, $issuer, $password, $ca);
     $signedBy = static fn (array $session, string $token): string => (string) ($session['tokens'][$token]['header']['kid'] ?? '?');
-    demo_expect($signedBy($sessionA, 'id_token') === $kid1 && $signedBy($sessionA, 'access_token') === $kid1 && $signedBy($sessionB, 'id_token') === $kid1, sprintf('the ID tokens and the access token name the active key "%s"', $kid1));
+    demo_expect(
+        $signedBy($sessionA, 'id_token') === $kid1 && $signedBy($sessionA, 'access_token') === $kid1 && $signedBy($sessionB, 'id_token') === $kid1,
+        sprintf('the ID tokens and the access token name the active key "%s"', $kid1),
+    );
     $fetched = demo_jwks_fetches($start);
     demo_expect(count($fetched) === 1, sprintf('the demo fetched the JWK Set once, for the first verification (got %d)', count($fetched)));
     $verified[] = ['1. Sign in, twice', sprintf('ID tokens and access token signed by %s; one fetch of /jwks at %s (cold copy)', $kid1, $at($fetched[0]))];
@@ -924,81 +1110,150 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     $firstFetch = $fetched[0];
 
     // 2. The rotation as an operator does it: the new key is published at once and signs later.
-    io()
-        ->text('<comment>2.</comment> heidi:keys:rotate');
+    io()->text('<comment>2.</comment> heidi:keys:rotate');
     $kid2 = demo_rotate([]);
     $keys = demo_keys();
     $activationDue = $keys[$kid2]['activates_at'] ?? null;
     demo_expect(($keys[$kid2]['status'] ?? null) === 'staged' && $activationDue !== null, sprintf('the key "%s" is staged with an activation date', $kid2));
     $published = demo_jwks($issuer, $ca);
-    demo_expect(count($published) === count($before) + 1 && in_array($kid2, $published, true) && in_array($kid1, $published, true), sprintf('the JWK Set has one key more, the staged one (got %s)', implode(', ', $published)));
-    $verified[] = ['2. heidi:keys:rotate', sprintf('%s staged, activates at %s; the JWK Set has %d keys, %s still signs', $kid2, $at($activationDue), count($published), $kid1)];
+    demo_expect(
+        count($published) === (count($before) + 1) && in_array($kid2, $published, true) && in_array($kid1, $published, true),
+        sprintf('the JWK Set has one key more, the staged one (got %s)', implode(', ', $published)),
+    );
+    $verified[] = [
+        '2. heidi:keys:rotate',
+        sprintf('%s staged, activates at %s; the JWK Set has %d keys, %s still signs', $kid2, $at($activationDue), count($published), $kid1),
+    ];
 
     // 3. Time activates it: the scheduled step of the worker, every minute (compose.yaml).
-    io()
-        ->text('<comment>3.</comment> The scheduled step activates the key');
+    io()->text('<comment>3.</comment> The scheduled step activates the key');
     demo_wait_until($activationDue, sprintf('the staging delay of "%s"', $kid2));
     $deadline = $activationDue->modify('+90 seconds');
     while (($keys = demo_keys())[$kid2]['status'] !== 'active' && new DateTimeImmutable() < $deadline) {
         sleep(3);
     }
-    demo_expect($keys[$kid2]['status'] === 'active', sprintf('the scheduled step activated "%s" within 90 s of its date: is the worker running ("docker compose ps worker")? "castor console heidi:keys:activate %s" does it by hand', $kid2, $kid2));
+    demo_expect($keys[$kid2]['status'] === 'active', sprintf(
+        'the scheduled step activated "%s" within 90 s of its date: is the worker running ("docker compose ps worker")? "castor console heidi:keys:activate %s" does it by hand',
+        $kid2,
+        $kid2,
+    ));
     $activated = new DateTimeImmutable();
     $retirementDue = $keys[$kid1]['retirement_due_at'] ?? null;
     demo_expect($keys[$kid1]['status'] === 'retiring' && $retirementDue !== null, sprintf('the key "%s" is retiring with a retirement date', $kid1));
-    io()
-        ->text(sprintf(' <info>✓</info> "%s" active at %s, %d s after its date, by the scheduled step; "%s" retiring until %s', $kid2, $at($activated), $activated->getTimestamp() - $activationDue->getTimestamp(), $kid1, $at($retirementDue)));
-    $verified[] = ['3. Scheduled activation', sprintf('%s active at %s (%d s after its date), %s retiring until %s', $kid2, $at($activated), $activated->getTimestamp() - $activationDue->getTimestamp(), $kid1, $at($retirementDue))];
+    io()->text(sprintf(
+        ' <info>✓</info> "%s" active at %s, %d s after its date, by the scheduled step; "%s" retiring until %s',
+        $kid2,
+        $at($activated),
+        $activated->getTimestamp() - $activationDue->getTimestamp(),
+        $kid1,
+        $at($retirementDue),
+    ));
+    $verified[] = [
+        '3. Scheduled activation',
+        sprintf(
+            '%s active at %s (%d s after its date), %s retiring until %s',
+            $kid2,
+            $at($activated),
+            $activated->getTimestamp() - $activationDue->getTimestamp(),
+            $kid1,
+            $at($retirementDue),
+        ),
+    ];
 
     // 4. A fresh browser: the ID token names the new key. The copy of the demo is older than the max-age
     // by now, the login refreshes it as any expired copy, and the new key was in the JWK Set before it signed.
-    io()
-        ->text('<comment>4.</comment> Sign in again, in a fresh browser session');
+    io()->text('<comment>4.</comment> Sign in again, in a fresh browser session');
     $third = [];
     $since = new DateTimeImmutable();
     $sessionC = demo_sign_in($third, $issuer, $password, $ca);
-    demo_expect($signedBy($sessionC, 'id_token') === $kid2 && $signedBy($sessionC, 'access_token') === $kid2, sprintf('the ID token and the access token name the new key "%s"', $kid2));
+    demo_expect(
+        $signedBy($sessionC, 'id_token') === $kid2 && $signedBy($sessionC, 'access_token') === $kid2,
+        sprintf('the ID token and the access token name the new key "%s"', $kid2),
+    );
     $fetched = demo_jwks_fetches($since);
     demo_expect(count($fetched) === 1, sprintf('the demo fetched the JWK Set once during the login (got %d)', count($fetched)));
     $age = $fetched[0]->getTimestamp() - $firstFetch->getTimestamp();
-    io()
-        ->text(sprintf(' <info>✓</info> one fetch of /jwks at %s, %d s after the copy of step 1, past its max-age of %d s: the refresh of an expired copy, the new key was in it', $at($fetched[0]), $age, DEMO_ROTATION_JWKS_MAX_AGE));
-    $verified[] = ['4. Fresh session', sprintf('ID token and access token signed by %s; the demo verified them with a copy refreshed at %s', $kid2, $at($fetched[0]))];
-    $fetches[] = ['Expired copy', $at($fetched[0]), sprintf('%d s after the previous fetch, past the max-age: refreshed before any check, the staged key was in it', $age)];
+    io()->text(sprintf(
+        ' <info>✓</info> one fetch of /jwks at %s, %d s after the copy of step 1, past its max-age of %d s: the refresh of an expired copy, the new key was in it',
+        $at($fetched[0]),
+        $age,
+        DEMO_ROTATION_JWKS_MAX_AGE,
+    ));
+    $verified[] = [
+        '4. Fresh session',
+        sprintf('ID token and access token signed by %s; the demo verified them with a copy refreshed at %s', $kid2, $at($fetched[0])),
+    ];
+    $fetches[] = [
+        'Expired copy',
+        $at($fetched[0]),
+        sprintf('%d s after the previous fetch, past the max-age: refreshed before any check, the staged key was in it', $age),
+    ];
 
     // 5. The first session: its access token expired (lifetime minus the 30 s leeway of oidc_login), the
     // next request renews it with the refresh token grant; the new tokens are signed by the new key and
     // the demo verifies the new ID token; the refresh token, opaque, is not on the page and not concerned.
-    io()
-        ->text('<comment>5.</comment> The first session refreshes its access token');
+    io()->text('<comment>5.</comment> The first session refreshes its access token');
     [$status, , $page] = demo_request($first, $ca, 'GET', DEMO_URL . '/profile');
     demo_expect($status === 200, sprintf('/profile of the first session opens (got %d)', $status));
     $refreshed = demo_tokens_of($page);
     $jtiBefore = $sessionA['tokens']['access_token']['claims']['jti'] ?? '?';
     $jtiAfter = $refreshed['access_token']['claims']['jti'] ?? '?';
-    demo_expect($jtiAfter !== $jtiBefore && ($refreshed['access_token']['header']['kid'] ?? null) === $kid2, sprintf('the access token was renewed (jti %s to %s) and is signed by "%s"', $jtiBefore, $jtiAfter, $kid2));
-    demo_expect(($refreshed['id_token']['header']['kid'] ?? null) === $kid2 && ($refreshed['id_token']['claims']['sub'] ?? null) === ($sessionA['tokens']['id_token']['claims']['sub'] ?? '?'), sprintf('the ID token was re-issued, signed by "%s", same sub, and the demo verified it', $kid2));
-    $verified[] = ['5. refresh_access_token', sprintf('new at+jwt signed by %s (jti %s to %s), ID token re-issued and verified, same sub', $kid2, $jtiBefore, $jtiAfter)];
+    demo_expect($jtiAfter !== $jtiBefore && ($refreshed['access_token']['header']['kid'] ?? null) === $kid2, sprintf(
+        'the access token was renewed (jti %s to %s) and is signed by "%s"',
+        $jtiBefore,
+        $jtiAfter,
+        $kid2,
+    ));
+    demo_expect(($refreshed['id_token']['header']['kid'] ?? null) === $kid2
+    && ($refreshed['id_token']['claims']['sub'] ?? null) === ($sessionA['tokens']['id_token']['claims']['sub'] ?? '?'), sprintf(
+        'the ID token was re-issued, signed by "%s", same sub, and the demo verified it',
+        $kid2,
+    ));
+    $verified[] = [
+        '5. refresh_access_token',
+        sprintf('new at+jwt signed by %s (jti %s to %s), ID token re-issued and verified, same sub', $kid2, $jtiBefore, $jtiAfter),
+    ];
 
     // 6. Logout across the rotation, both ways. Through the demo: /logout runs the refresh listener first
     // (priority 0, the logout listener at -127), so the hint is the ID token just re-issued, signed by the
     // new key. As an oidc_login without refresh_access_token (its default) does it, with the ID token of
     // the login, signed by the key now retiring: the very request OidcEndSessionListener builds,
     // id_token_hint and post_logout_redirect_uri, on the OP session of the first browser.
-    io()
-        ->text('<comment>6.</comment> Log out, with the re-issued ID token and with the one of the login');
+    io()->text('<comment>6.</comment> Log out, with the re-issued ID token and with the one of the login');
     $hint = demo_logout($second, $issuer, $ca);
-    demo_expect($hint === $kid2, sprintf('through the demo, the id_token_hint is the ID token re-issued on the refresh, signed by "%s" (got "%s")', $kid2, $hint));
-    [$status, $location] = demo_request($first, $ca, 'GET', $issuer . '/logout?' . http_build_query([
-        'id_token_hint' => $sessionA['tokens']['id_token']['raw'],
-        'post_logout_redirect_uri' => DEMO_URL . '/',
-    ]));
-    demo_expect($status === 302 && $location === DEMO_URL . '/', sprintf('with the ID token of the login, signed by "%s" (retiring), the OP ends the session without a question (got %d %s)', $kid1, $status, $location));
-    $verified[] = ['6. Logout', sprintf('through the demo, id_token_hint re-issued and signed by %s; with the ID token of the login, signed by %s (retiring): no confirmation page either way, back to %s/', $kid2, $kid1, DEMO_URL)];
+    demo_expect($hint === $kid2, sprintf(
+        'through the demo, the id_token_hint is the ID token re-issued on the refresh, signed by "%s" (got "%s")',
+        $kid2,
+        $hint,
+    ));
+    [$status, $location] = demo_request(
+        $first,
+        $ca,
+        'GET',
+        $issuer . '/logout?'
+            . http_build_query([
+                'id_token_hint' => $sessionA['tokens']['id_token']['raw'],
+                'post_logout_redirect_uri' => DEMO_URL . '/',
+            ]),
+    );
+    demo_expect($status === 302 && $location === DEMO_URL . '/', sprintf(
+        'with the ID token of the login, signed by "%s" (retiring), the OP ends the session without a question (got %d %s)',
+        $kid1,
+        $status,
+        $location,
+    ));
+    $verified[] = [
+        '6. Logout',
+        sprintf(
+            'through the demo, id_token_hint re-issued and signed by %s; with the ID token of the login, signed by %s (retiring): no confirmation page either way, back to %s/',
+            $kid2,
+            $kid1,
+            DEMO_URL,
+        ),
+    ];
 
     // 7. The retirement, when due: every JWS the old key signed has expired.
-    io()
-        ->text('<comment>7.</comment> The old key retires');
+    io()->text('<comment>7.</comment> The old key retires');
     demo_wait_until($retirementDue, sprintf('the retirement window of "%s"', $kid1));
     $retirement = op_console(['heidi:keys:retire', '--due', '--no-ansi'], context()->withAllowFailure()->withQuiet());
     demo_expect($retirement->isSuccessful(), 'heidi:keys:retire --due ran (' . trim($retirement->getErrorOutput() . $retirement->getOutput()) . ')');
@@ -1006,17 +1261,22 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     $keys = demo_keys();
     demo_expect(($keys[$kid1]['status'] ?? null) === 'retired', sprintf('the key "%s" is retired (%s)', $kid1, $byWhom));
     $published = demo_jwks($issuer, $ca);
-    demo_expect(! in_array($kid1, $published, true) && in_array($kid2, $published, true), sprintf('the JWK Set lost "%s" and keeps "%s" (%d key(s): %s)', $kid1, $kid2, count($published), implode(', ', $published)));
+    demo_expect(
+        ! in_array($kid1, $published, true) && in_array($kid2, $published, true),
+        sprintf('the JWK Set lost "%s" and keeps "%s" (%d key(s): %s)', $kid1, $kid2, count($published), implode(', ', $published)),
+    );
     $status = demo_userinfo($issuer, $ca, $sessionA['tokens']['access_token']['raw']);
     demo_expect($status === 401, sprintf('the access token of step 1 is refused at UserInfo (got %d)', $status));
-    $verified[] = ['7. heidi:keys:retire --due', sprintf('%s retired %s, out of the JWK Set (%d key(s)); the access token of step 1 gets 401 at UserInfo', $kid1, $byWhom, count($published))];
+    $verified[] = [
+        '7. heidi:keys:retire --due',
+        sprintf('%s retired %s, out of the JWK Set (%d key(s)); the access token of step 1 gets 401 at UserInfo', $kid1, $byWhom, count($published)),
+    ];
 
     // What oidc_login does on an unknown "kid" (OidcSignatureVerifier::getKeys()): a copy older than the
     // max-age is refreshed before any check; a valid copy that lacks the "kid" is refetched once, if it
     // was fetched 60 s ago at least (ROTATION_COOLDOWN), and the verification fails otherwise. Measured on
     // the emergency path, "rotate --now", where the new key signs before any relying party could see it.
-    io()
-        ->section('What oidc_login does on an unknown "kid"');
+    io()->section('What oidc_login does on an unknown "kid"');
     run(['php', 'bin/console', 'cache:pool:clear', 'cache.app'], context: $server->withQuiet());
     $since = new DateTimeImmutable();
     $fourth = [];
@@ -1025,15 +1285,27 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     demo_expect(count($fetched) === 1, sprintf('the demo fetched the JWK Set once, its copy was cold (got %d)', count($fetched)));
     $copy = $fetched[0];
     $kid3 = demo_rotate(['--now']);
-    io()
-        ->text(sprintf(' <info>✓</info> "%s" signs at once (rotate --now), "%s" is retiring; the copy of the demo, fetched at %s, lacks it and is valid for %d s', $kid3, $kid2, $at($copy), DEMO_ROTATION_JWKS_MAX_AGE));
+    io()->text(sprintf(
+        ' <info>✓</info> "%s" signs at once (rotate --now), "%s" is retiring; the copy of the demo, fetched at %s, lacks it and is valid for %d s',
+        $kid3,
+        $kid2,
+        $at($copy),
+        DEMO_ROTATION_JWKS_MAX_AGE,
+    ));
     $since = new DateTimeImmutable();
     $fifth = [];
     $refused = demo_sign_in_refused($fifth, $issuer, $password, $ca);
     $ageAtRefusal = $since->getTimestamp() - $copy->getTimestamp();
-    demo_expect(str_contains($refused, 'signature is invalid'), sprintf('the login fails on the signature, %d s after the copy was fetched (the demo said: %s)', $ageAtRefusal, $refused));
+    demo_expect(
+        str_contains($refused, 'signature is invalid'),
+        sprintf('the login fails on the signature, %d s after the copy was fetched (the demo said: %s)', $ageAtRefusal, $refused),
+    );
     demo_expect(demo_jwks_fetches($since) === [], 'the demo did not refetch the JWK Set: its copy is younger than the cooldown');
-    $fetches[] = ['Warm copy, unknown "kid"', $at($since), sprintf('%d s after the fetch, under the cooldown: no refetch, the login fails ("%s")', $ageAtRefusal, $refused)];
+    $fetches[] = [
+        'Warm copy, unknown "kid"',
+        $at($since),
+        sprintf('%d s after the fetch, under the cooldown: no refetch, the login fails ("%s")', $ageAtRefusal, $refused),
+    ];
     demo_wait_until($copy->modify(sprintf('+%d seconds', DEMO_ROTATION_COOLDOWN + 1)), 'the refetch cooldown of oidc_login');
     $since = new DateTimeImmutable();
     $sixth = [];
@@ -1041,18 +1313,26 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     demo_expect($signedBy($sessionD, 'id_token') === $kid3, sprintf('the login succeeds, the ID token names "%s"', $kid3));
     $fetched = demo_jwks_fetches($since);
     $ageAtRefetch = $fetched === [] ? 0 : $fetched[0]->getTimestamp() - $copy->getTimestamp();
-    demo_expect(count($fetched) === 1 && $ageAtRefetch < DEMO_ROTATION_JWKS_MAX_AGE, sprintf('the demo refetched the JWK Set once while its copy was still valid (got %d fetch(es), %d s after the copy)', count($fetched), $ageAtRefetch));
-    $fetches[] = ['Warm copy, unknown "kid", past the cooldown', $at($fetched[0]), sprintf('%d s after the fetch: one refetch, the new key is in it, the login succeeds', $ageAtRefetch)];
+    demo_expect(
+        count($fetched) === 1 && $ageAtRefetch < DEMO_ROTATION_JWKS_MAX_AGE,
+        sprintf('the demo refetched the JWK Set once while its copy was still valid (got %d fetch(es), %d s after the copy)', count($fetched), $ageAtRefetch),
+    );
+    $fetches[] = [
+        'Warm copy, unknown "kid", past the cooldown',
+        $at($fetched[0]),
+        sprintf('%d s after the fetch: one refetch, the new key is in it, the login succeeds', $ageAtRefetch),
+    ];
 
-    io()
-        ->table(['Step', 'Verified'], $verified);
-    io()
-        ->table(['JWK Set copy of the demo', 'At (UTC)', 'What oidc_login did'], $fetches);
+    io()->table(['Step', 'Verified'], $verified);
+    io()->table(['JWK Set copy of the demo', 'At (UTC)', 'What oidc_login did'], $fetches);
     demo_rotation_lifetimes($issuer, $ca, false);
-    io()
-        ->note(sprintf('The OP is left with "%s" active and "%s" retiring until %s, the retirement window of the run; the lifetimes of apps/op/.env are back.', $kid3, $kid2, $at(demo_keys()[$kid2]['retirement_due_at'] ?? new DateTimeImmutable())));
-    io()
-        ->success('oidc-demo noticed nothing across a scheduled rotation; on an unknown "kid", oidc_login refetches the JWK Set once its copy is 60 s old, and refuses the token before that.');
+    io()->note(sprintf(
+        'The OP is left with "%s" active and "%s" retiring until %s, the retirement window of the run; the lifetimes of apps/op/.env are back.',
+        $kid3,
+        $kid2,
+        $at(demo_keys()[$kid2]['retirement_due_at'] ?? new DateTimeImmutable()),
+    ));
+    io()->success('oidc-demo noticed nothing across a scheduled rotation; on an unknown "kid", oidc_login refetches the JWK Set once its copy is 60 s old, and refuses the token before that.');
 }
 
 /**
@@ -1067,7 +1347,12 @@ function demo_rotation_lifetimes(string $issuer, string $ca, bool $shorten): voi
     $block = sprintf('/\n*###> %1$s ###\n.*?###< %1$s ###\n/s', preg_quote(DEMO_ROTATION_ENV_MARKER, '/'));
     $content = rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n";
     if ($shorten) {
-        $content .= sprintf("\n###> %1\$s ###\nHEIDI_JWKS_MAX_AGE=%2\$d\nHEIDI_ACCESS_TOKEN_TTL=%3\$d\nHEIDI_ID_TOKEN_TTL=%3\$d\n###< %1\$s ###\n", DEMO_ROTATION_ENV_MARKER, DEMO_ROTATION_JWKS_MAX_AGE, DEMO_ROTATION_TOKEN_TTL);
+        $content .= sprintf(
+            "\n###> %1\$s ###\nHEIDI_JWKS_MAX_AGE=%2\$d\nHEIDI_ACCESS_TOKEN_TTL=%3\$d\nHEIDI_ID_TOKEN_TTL=%3\$d\n###< %1\$s ###\n",
+            DEMO_ROTATION_ENV_MARKER,
+            DEMO_ROTATION_JWKS_MAX_AGE,
+            DEMO_ROTATION_TOKEN_TTL,
+        );
         // demo_expect() exits, and exit() skips finally blocks: the file is restored whatever ends the run.
         register_shutdown_function(static function () use ($path, $block): void {
             file_put_contents($path, rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n");
@@ -1084,15 +1369,22 @@ function demo_rotation_lifetimes(string $issuer, string $ca, bool $shorten): voi
         ]);
         $maxAge = preg_match('/max-age=(\d+)/', $response->getHeaders(false)['cache-control'][0] ?? '', $match) === 1 ? (int) $match[1] : null;
         if (($maxAge === DEMO_ROTATION_JWKS_MAX_AGE) === $shorten) {
-            io()
-                ->text(sprintf(' <info>✓</info> %s %s; the JWK Set announces max-age=%d, the worker restarted', $shorten ? 'wrote the windows of the run into' : 'removed the windows of the run from', DEV_ENV_LOCAL, $maxAge));
+            io()->text(sprintf(
+                ' <info>✓</info> %s %s; the JWK Set announces max-age=%d, the worker restarted',
+                $shorten ? 'wrote the windows of the run into' : 'removed the windows of the run from',
+                DEV_ENV_LOCAL,
+                $maxAge,
+            ));
 
             return;
         }
         sleep(1);
     } while (time() < $deadline);
-    io()
-        ->error(sprintf('The OP still announces max-age=%d on its JWK Set a minute after %s changed: do the workers of the op container watch .env.local (compose.yaml)?', $maxAge, DEV_ENV_LOCAL));
+    io()->error(sprintf(
+        'The OP still announces max-age=%d on its JWK Set a minute after %s changed: do the workers of the op container watch .env.local (compose.yaml)?',
+        $maxAge,
+        DEV_ENV_LOCAL,
+    ));
     exit(1);
 }
 
@@ -1155,14 +1447,26 @@ function demo_rotate(array $options): string
  */
 function demo_jwks_fetches(DateTimeImmutable $since): array
 {
-    $log = run(['docker', 'compose', 'logs', 'op', '--no-log-prefix', '--since', $since->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z')], context: context()->withQuiet())->getOutput();
+    $log = run([
+        'docker',
+        'compose',
+        'logs',
+        'op',
+        '--no-log-prefix',
+        '--since',
+        $since->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+    ], context: context()->withQuiet())->getOutput();
     $fetches = [];
     foreach (preg_split('/\R/', $log) ?: [] as $line) {
         if (preg_match('/^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d+)\t.*handled request\t(\{.*\})$/', $line, $match) !== 1) {
             continue;
         }
         $entry = json_decode($match[2], true);
-        if (! is_array($entry) || ($entry['request']['uri'] ?? null) !== '/jwks' || ! str_contains(implode(' ', $entry['request']['headers']['User-Agent'] ?? []), 'Symfony HttpClient')) {
+        if (
+            ! is_array($entry)
+            || ($entry['request']['uri'] ?? null) !== '/jwks'
+            || ! str_contains(implode(' ', $entry['request']['headers']['User-Agent'] ?? []), 'Symfony HttpClient')
+        ) {
             continue;
         }
         $at = new DateTimeImmutable(str_replace('/', '-', $match[1]), new DateTimeZone('UTC'));
@@ -1180,8 +1484,7 @@ function demo_wait_until(DateTimeImmutable $when, string $what): void
     if ($seconds <= 0) {
         return;
     }
-    io()
-        ->text(sprintf('   waiting %d s for %s, until %s UTC', $seconds, $what, $when->setTimezone(new DateTimeZone('UTC'))->format('H:i:s')));
+    io()->text(sprintf('   waiting %d s for %s, until %s UTC', $seconds, $what, $when->setTimezone(new DateTimeZone('UTC'))->format('H:i:s')));
     sleep($seconds);
 }
 
@@ -1208,15 +1511,26 @@ function demo_authenticate(array &$cookies, string $issuer, string $password, st
 {
     // /profile: the demo starts the flow
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
-    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf('/profile sends the browser to the authorization endpoint (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/authorize?'),
+        sprintf('/profile sends the browser to the authorization endpoint (got %d %s)', $status, $location),
+    );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
-    demo_expect(($authorization['response_type'] ?? null) === 'code' && ($authorization['code_challenge_method'] ?? null) === 'S256' && ($authorization['client_id'] ?? null) === $clientId, sprintf('the authorization request is response_type=code with PKCE S256, client_id=%s', $clientId));
+    demo_expect(($authorization['response_type'] ?? null) === 'code'
+    && ($authorization['code_challenge_method'] ?? null) === 'S256'
+    && ($authorization['client_id'] ?? null) === $clientId, sprintf('the authorization request is response_type=code with PKCE S256, client_id=%s', $clientId));
 
     // the OP parks the request and asks for a login
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf('the OP asks for a login (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/login?interaction='),
+        sprintf('the OP asks for a login (got %d %s)', $status, $location),
+    );
     [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1, 'the login page carries the form');
+    demo_expect(
+        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1,
+        'the login page carries the form',
+    );
 
     // the form, then the login page resumes the interaction and sends the browser back to the demo
     [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
@@ -1226,7 +1540,10 @@ function demo_authenticate(array &$cookies, string $issuer, string $password, st
     ]);
     demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'), sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
+        sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location),
+    );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
     demo_expect(isset($callback['code'], $callback['state']) && ($callback['iss'] ?? null) === $issuer, 'the callback carries code, state and iss (RFC 9207)');
 
@@ -1266,7 +1583,11 @@ function demo_sign_in_refused(array &$cookies, string $issuer, string $password,
 {
     $location = demo_authenticate($cookies, $issuer, $password, $ca);
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 302 && $location === DEMO_URL . '/login', sprintf('the demo refuses the login and sends the browser to its failure path (got %d %s)', $status, $location));
+    demo_expect($status === 302 && $location === DEMO_URL . '/login', sprintf(
+        'the demo refuses the login and sends the browser to its failure path (got %d %s)',
+        $status,
+        $location,
+    ));
     [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/login');
     demo_expect($status === 200 && preg_match('/<code>([^<]+)<\/code>/', $page, $detail) === 1, 'the login page of the demo says why');
 
@@ -1283,11 +1604,21 @@ function demo_sign_in_refused(array &$cookies, string $issuer, string $password,
 function demo_logout(array &$cookies, string $issuer, string $ca): string
 {
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/logout');
-    demo_expect($status === 302 && str_starts_with($location, $issuer . '/logout?'), sprintf('/logout sends the browser to the end session endpoint (got %d %s)', $status, $location));
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/logout?'),
+        sprintf('/logout sends the browser to the end session endpoint (got %d %s)', $status, $location),
+    );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $logout);
-    demo_expect(is_string($logout['id_token_hint'] ?? null) && ($logout['post_logout_redirect_uri'] ?? null) === DEMO_URL . '/', 'the logout request carries id_token_hint and post_logout_redirect_uri');
+    demo_expect(
+        is_string($logout['id_token_hint'] ?? null) && ($logout['post_logout_redirect_uri'] ?? null) === DEMO_URL . '/',
+        'the logout request carries id_token_hint and post_logout_redirect_uri',
+    );
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 302 && $location === DEMO_URL . '/', sprintf('the OP ends the session and sends the browser back to the demo (got %d %s)', $status, $location));
+    demo_expect($status === 302 && $location === DEMO_URL . '/', sprintf(
+        'the OP ends the session and sends the browser back to the demo (got %d %s)',
+        $status,
+        $location,
+    ));
 
     return (string) (demo_jwt($logout['id_token_hint'])['header']['kid'] ?? '?');
 }
@@ -1309,7 +1640,11 @@ function demo_request(array &$cookies, string $ca, string $method, string $url, 
     $options = [
         'max_redirects' => 0,
         'headers' => [
-            'Cookie' => implode('; ', array_map(static fn (string $name, string $value): string => $name . '=' . $value, array_keys($cookies[$host] ?? []), array_values($cookies[$host] ?? []))),
+            'Cookie' => implode('; ', array_map(
+                static fn (string $name, string $value): string => $name . '=' . $value,
+                array_keys($cookies[$host] ?? []),
+                array_values($cookies[$host] ?? []),
+            )),
         ],
     ];
     if ($host === 'localhost') {
@@ -1326,7 +1661,8 @@ function demo_request(array &$cookies, string $ca, string $method, string $url, 
     $setCookies = $headers['set-cookie'] ?? [];
     foreach ($setCookies as $cookie) {
         [$pair] = explode(';', $cookie, 2);
-        [$name, $value] = explode('=', $pair, 2) + [
+        [$name, $value] = explode('=', $pair, 2)
+        + [
             1 => '',
         ];
         $cookies[$host][trim($name)] = trim($value);
@@ -1348,8 +1684,7 @@ function demo_expect(bool $condition, string $what): void
         io()->error('Not verified: ' . $what);
         exit(1);
     }
-    io()
-        ->text(' <info>✓</info> ' . $what);
+    io()->text(' <info>✓</info> ' . $what);
 }
 
 /**
@@ -1382,7 +1717,8 @@ function demo_tokens_of(string $page): array
  */
 function demo_jwt(string $jwt): array
 {
-    [$header, $payload] = explode('.', $jwt) + [
+    [$header, $payload] = explode('.', $jwt)
+    + [
         1 => '',
     ];
     $decode = static fn (string $part): array => (array) json_decode((string) base64_decode(strtr($part, '-_', '+/'), true), true);

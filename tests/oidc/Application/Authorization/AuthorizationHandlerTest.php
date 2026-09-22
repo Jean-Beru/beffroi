@@ -98,7 +98,16 @@ final class AuthorizationHandlerTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
-        $this->firstParty = new Client($this->tenant, 'portal', 'Portal', Methods::none(), null, [new RedirectUri('https://portal.acme.example/callback')], allowedScopes: [Scope::openid(), new Scope('profile')], requiresConsent: false);
+        $this->firstParty = new Client(
+            $this->tenant,
+            'portal',
+            'Portal',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://portal.acme.example/callback')],
+            allowedScopes: [Scope::openid(), new Scope('profile')],
+            requiresConsent: false,
+        );
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->context = Fixtures::context($this->clock->now());
         $this->interactions = new InMemoryInteractionRepository();
@@ -110,7 +119,16 @@ final class AuthorizationHandlerTest extends TestCase
         $jws = new FakeJwsVerifier();
         $jws->knows($this->tenant, self::ALICE_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo"}');
         $jws->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
-        $this->handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier($jws), Logins::passwordAndPasskey(), $this->credentials, $this->clock, $this->events);
+        $this->handler = new AuthorizationHandler(
+            $this->interactions,
+            $this->consents,
+            $this->codes,
+            new IdTokenHintVerifier($jws),
+            Logins::passwordAndPasskey(),
+            $this->credentials,
+            $this->clock,
+            $this->events,
+        );
     }
 
     /**
@@ -305,16 +323,18 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->begin($this->request(), $this->session(), $this->context);
 
         // Then
-        $response = $this->granted($decision)
-            ->response;
+        $response = $this->granted($decision)->response;
         static::assertSame('https://id.acme.example', (string) $response->issuer);
         static::assertSame('af0ifjsldkj', $response->state);
         static::assertSame('https://demo.localhost/login/check', (string) $response->redirectUri);
-        static::assertSame([
-            'code' => $response->code,
-            'state' => 'af0ifjsldkj',
-            'iss' => 'https://id.acme.example',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'code' => $response->code,
+                'state' => 'af0ifjsldkj',
+                'iss' => 'https://id.acme.example',
+            ],
+            $response->parameters(),
+        );
     }
 
     #[Test]
@@ -469,7 +489,10 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
         $session = $this->session();
-        $login = $this->loginRequired($this->handler->begin($this->request(prompts: [Prompt::Login]), $session, $this->context), LoginRequirement::ReauthenticationRequested);
+        $login = $this->loginRequired(
+            $this->handler->begin($this->request(prompts: [Prompt::Login]), $session, $this->context),
+            LoginRequirement::ReauthenticationRequested,
+        );
         $this->clock->sleep(30);
         $session->recordProof(AuthenticationMethod::password(), Fixtures::context($this->clock->now()));
 
@@ -708,8 +731,7 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->grantConsent($consent->interaction, $session, Fixtures::context($this->clock->now()));
 
         // Then
-        $recorded = $this->granted($decision)
-            ->interaction->consent ?? static::fail('The consent should have been recorded.');
+        $recorded = $this->granted($decision)->interaction->consent ?? static::fail('The consent should have been recorded.');
         static::assertSame([$recorded], $this->consents->all());
         static::assertSame($recorded, $this->consents->findActive($this->alice, $this->client));
         static::assertSame($this->alice, $recorded->user);
@@ -726,7 +748,10 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // Given
         $session = $this->session();
-        $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $session, $this->context), ConsentRequirement::NotGranted);
+        $consent = $this->consentRequired(
+            $this->handler->begin($this->request(['openid', 'profile']), $session, $this->context),
+            ConsentRequirement::NotGranted,
+        );
         $this->clock->sleep(20);
         $context = Fixtures::context($this->clock->now());
 
@@ -773,14 +798,16 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now()));
-        $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context), ConsentRequirement::NotGranted);
+        $consent = $this->consentRequired(
+            $this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context),
+            ConsentRequirement::NotGranted,
+        );
 
         // When
         $decision = $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
 
         // Then
-        $recorded = $this->granted($decision)
-            ->interaction->consent ?? static::fail('The consent should have been recorded.');
+        $recorded = $this->granted($decision)->interaction->consent ?? static::fail('The consent should have been recorded.');
         static::assertEquals([Scope::openid(), new Scope('email'), new Scope('profile')], $recorded->scopes);
     }
 
@@ -793,7 +820,10 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $previous = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now());
         $this->consents->save($previous);
-        $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context), ConsentRequirement::NotGranted);
+        $consent = $this->consentRequired(
+            $this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context),
+            ConsentRequirement::NotGranted,
+        );
 
         // When
         $decision = $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
@@ -812,7 +842,10 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $previous = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now());
         $this->consents->save($previous);
-        $consent = $this->consentRequired($this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context), ConsentRequirement::NotGranted);
+        $consent = $this->consentRequired(
+            $this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context),
+            ConsentRequirement::NotGranted,
+        );
 
         // When
         $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
@@ -843,7 +876,10 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
         $session = $this->session();
-        $consent = $this->consentRequired($this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context), ConsentRequirement::ConsentRequested);
+        $consent = $this->consentRequired(
+            $this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context),
+            ConsentRequirement::ConsentRequested,
+        );
 
         // When
         $decision = $this->handler->resume($consent->interaction, $session, $this->context);
@@ -861,7 +897,10 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
         $session = $this->session();
-        $consent = $this->consentRequired($this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context), ConsentRequirement::ConsentRequested);
+        $consent = $this->consentRequired(
+            $this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context),
+            ConsentRequirement::ConsentRequested,
+        );
 
         // When
         $decision = $this->handler->grantConsent($consent->interaction, $session, $this->context);
@@ -1042,19 +1081,40 @@ final class AuthorizationHandlerTest extends TestCase
     public static function provideResumptions(): iterable
     {
         yield 'resume with a session' => [
-            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, $session, $test->context),
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume(
+                $interaction,
+                $session,
+                $test->context,
+            ),
         ];
         yield 'resume without a session' => [
-            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume($interaction, null, $test->context),
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->resume(
+                $interaction,
+                null,
+                $test->context,
+            ),
         ];
         yield 'grant the consent' => [
-            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $session, $test->context),
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent(
+                $interaction,
+                $session,
+                $test->context,
+            ),
         ];
         yield 'grant the consent with an ended session' => [
-            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent($interaction, $ended, $test->context),
+            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->grantConsent(
+                $interaction,
+                $ended,
+                $test->context,
+            ),
         ];
         yield 'deny' => [
-            static fn (self $test, Interaction $interaction, AuthenticationSession $session, AuthenticationSession $ended) => $test->handler->deny($interaction),
+            static fn (
+                self $test,
+                Interaction $interaction,
+                AuthenticationSession $session,
+                AuthenticationSession $ended,
+            ) => $test->handler->deny($interaction),
         ];
     }
 
@@ -1071,7 +1131,11 @@ final class AuthorizationHandlerTest extends TestCase
         $session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context(Fixtures::now()));
 
         // When
-        $decision = $this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phrh", "1"]}}}')), $session, $this->context);
+        $decision = $this->handler->begin(
+            Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phrh", "1"]}}}')),
+            $session,
+            $this->context,
+        );
 
         // Then
         static::assertSame('1', $this->granted($decision)->code->authentication->contextClass);
@@ -1085,7 +1149,14 @@ final class AuthorizationHandlerTest extends TestCase
     public function aVoluntaryRequestNamingNoClassOfTheTenantIsAnsweredWithTheCurrentClass(): void
     {
         // When
-        $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['urn:mace:incommon:iap:silver', 'http://schemas.openid.net/pape/policies/2007/06/multi-factor']), $this->session(), $this->context);
+        $decision = $this->handler->begin(
+            Requests::authorization(
+                $this->firstParty,
+                acrValues: ['urn:mace:incommon:iap:silver', 'http://schemas.openid.net/pape/policies/2007/06/multi-factor'],
+            ),
+            $this->session(),
+            $this->context,
+        );
 
         // Then
         static::assertSame('1', $this->granted($decision)->code->authentication->contextClass);
@@ -1101,7 +1172,11 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // When
         try {
-            $this->handler->begin($this->request(claims: '{"id_token": {"acr": {"essential": true, "values": ["urn:mace:incommon:iap:silver", "3"]}}}'), null, $this->context);
+            $this->handler->begin(
+                $this->request(claims: '{"id_token": {"acr": {"essential": true, "values": ["urn:mace:incommon:iap:silver", "3"]}}}'),
+                null,
+                $this->context,
+            );
             static::fail('The request should have been refused.');
         } catch (UnmetAuthenticationRequirementsException $exception) {
             // Then
@@ -1160,7 +1235,11 @@ final class AuthorizationHandlerTest extends TestCase
         $this->expectException(UnmetAuthenticationRequirementsException::class);
 
         // When
-        $this->handler->begin($this->request(prompts: [Prompt::None], claims: '{"id_token": {"acr": {"essential": true, "value": "urn:mace:incommon:iap:silver"}}}'), $this->session(), $this->context);
+        $this->handler->begin(
+            $this->request(prompts: [Prompt::None], claims: '{"id_token": {"acr": {"essential": true, "value": "urn:mace:incommon:iap:silver"}}}'),
+            $this->session(),
+            $this->context,
+        );
     }
 
     /**
@@ -1171,7 +1250,11 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // When
         try {
-            $this->handler->begin($this->request(claims: '{"id_token": {"acr": {"essential": true, "values": ["urn:mace:incommon:iap:silver"]}}}'), null, $this->context);
+            $this->handler->begin(
+                $this->request(claims: '{"id_token": {"acr": {"essential": true, "values": ["urn:mace:incommon:iap:silver"]}}}'),
+                null,
+                $this->context,
+            );
         } catch (UnmetAuthenticationRequirementsException) {
         }
 
@@ -1201,7 +1284,9 @@ final class AuthorizationHandlerTest extends TestCase
     public static function provideEssentialAcrRequestsTheProviderMeets(): iterable
     {
         yield 'the single factor' => ['{"id_token": {"acr": {"essential": true, "values": ["1"]}}}'];
-        yield 'the single factor after a class the provider does not assert' => ['{"id_token": {"acr": {"essential": true, "values": ["urn:mace:incommon:iap:silver", "1"]}}}'];
+        yield 'the single factor after a class the provider does not assert' => [
+            '{"id_token": {"acr": {"essential": true, "values": ["urn:mace:incommon:iap:silver", "1"]}}}',
+        ];
         yield 'a passkey class' => ['{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}'];
         yield 'essential without a value' => ['{"id_token": {"acr": {"essential": true}}}'];
     }
@@ -1213,7 +1298,11 @@ final class AuthorizationHandlerTest extends TestCase
     public function aVoluntaryAcrTheProviderCannotAssertAsksForTheLogin(): void
     {
         // When
-        $decision = $this->handler->begin($this->request(acrValues: ['phrh'], claims: '{"id_token": {"acr": {"values": ["urn:mace:incommon:iap:silver"]}}}'), null, $this->context);
+        $decision = $this->handler->begin(
+            $this->request(acrValues: ['phrh'], claims: '{"id_token": {"acr": {"values": ["urn:mace:incommon:iap:silver"]}}}'),
+            null,
+            $this->context,
+        );
 
         // Then
         $this->loginRequired($decision, LoginRequirement::NoSession);
@@ -1250,11 +1339,27 @@ final class AuthorizationHandlerTest extends TestCase
     public static function provideStepUpRequests(): iterable
     {
         $tenant = Fixtures::tenant();
-        $client = new Client($tenant, 'portal', 'Portal', Methods::none(), null, [new RedirectUri('https://portal.acme.example/callback')], allowedScopes: [Scope::openid(), new Scope('profile')], requiresConsent: false);
-        yield 'essential, the claims parameter' => [Requests::authorization($client, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}'))];
+        $client = new Client(
+            $tenant,
+            'portal',
+            'Portal',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://portal.acme.example/callback')],
+            allowedScopes: [Scope::openid(), new Scope('profile')],
+            requiresConsent: false,
+        );
+        yield 'essential, the claims parameter' => [Requests::authorization(
+            $client,
+            claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}'),
+        )];
         yield 'voluntary, acr_values' => [Requests::authorization($client, acrValues: ['phr'])];
         yield 'after a class the tenant does not name' => [Requests::authorization($client, acrValues: ['urn:mace:incommon:iap:silver', 'phr'])];
-        yield 'with prompt=login, as the re-authentication of Symfony sends it' => [Requests::authorization($client, prompts: [Prompt::Login], acrValues: ['phr'])];
+        yield 'with prompt=login, as the re-authentication of Symfony sends it' => [Requests::authorization(
+            $client,
+            prompts: [Prompt::Login],
+            acrValues: ['phr'],
+        )];
     }
 
     /**
@@ -1287,7 +1392,10 @@ final class AuthorizationHandlerTest extends TestCase
     public function aPasskeySessionAskedForTwoFactorsIsSatisfiedByAPassword(): void
     {
         // Given
-        $session = Fixtures::session($this->alice, proofs: AuthenticationProofs::ofAll([new AuthenticationMethod('hwk'), new AuthenticationMethod('user')], Fixtures::now()));
+        $session = Fixtures::session($this->alice, proofs: AuthenticationProofs::ofAll([
+            new AuthenticationMethod('hwk'),
+            new AuthenticationMethod('user'),
+        ], Fixtures::now()));
 
         // When
         $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['2']), $session, $this->context);
@@ -1322,7 +1430,11 @@ final class AuthorizationHandlerTest extends TestCase
     public function aSessionSatisfyingARequestedClassGetsTheCodeAtOnce(): void
     {
         // Given
-        $session = Fixtures::session($this->alice, proofs: AuthenticationProofs::ofAll([AuthenticationMethod::password(), new AuthenticationMethod('hwk'), new AuthenticationMethod('user')], Fixtures::now()));
+        $session = Fixtures::session($this->alice, proofs: AuthenticationProofs::ofAll([
+            AuthenticationMethod::password(),
+            new AuthenticationMethod('hwk'),
+            new AuthenticationMethod('user'),
+        ], Fixtures::now()));
 
         // When
         $decision = $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phr']), $session, $this->context);
@@ -1341,7 +1453,14 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $this->aliceHoldsAPasskey();
         $session = $this->session();
-        $interaction = $this->loginRequired($this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $session, $this->context), LoginRequirement::StrongerFactorRequired)->interaction;
+        $interaction = $this->loginRequired(
+            $this->handler->begin(
+                Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')),
+                $session,
+                $this->context,
+            ),
+            LoginRequirement::StrongerFactorRequired,
+        )->interaction;
         $this->clock->sleep(30);
         $session->recordProof(new AuthenticationMethod('hwk'), Fixtures::context($this->clock->now()));
         $session->recordProof(new AuthenticationMethod('user'), Fixtures::context($this->clock->now()));
@@ -1350,8 +1469,7 @@ final class AuthorizationHandlerTest extends TestCase
         $decision = $this->handler->resume($interaction, $session, $this->context);
 
         // Then
-        $code = $this->granted($decision)
-            ->code;
+        $code = $this->granted($decision)->code;
         static::assertSame('phr', $code->authentication->contextClass);
         static::assertSame(['pwd', 'hwk', 'user', 'mfa'], $code->authentication->methods);
         static::assertEquals($this->clock->now(), $code->authentication->authenticatedAt);
@@ -1368,7 +1486,14 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $this->aliceHoldsAPasskey();
         $session = $this->session();
-        $interaction = $this->loginRequired($this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $session, $this->context), LoginRequirement::StrongerFactorRequired)->interaction;
+        $interaction = $this->loginRequired(
+            $this->handler->begin(
+                Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')),
+                $session,
+                $this->context,
+            ),
+            LoginRequirement::StrongerFactorRequired,
+        )->interaction;
         $this->clock->sleep(30);
         $session->recordProof(AuthenticationMethod::password(), Fixtures::context($this->clock->now()));
 
@@ -1394,7 +1519,10 @@ final class AuthorizationHandlerTest extends TestCase
         // Given
         $this->aliceHoldsAPasskey();
         $session = $this->session();
-        $interaction = $this->loginRequired($this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phr']), $session, $this->context), LoginRequirement::StrongerFactorRequired)->interaction;
+        $interaction = $this->loginRequired(
+            $this->handler->begin(Requests::authorization($this->firstParty, acrValues: ['phr']), $session, $this->context),
+            LoginRequirement::StrongerFactorRequired,
+        )->interaction;
         $this->clock->sleep(30);
         $session->recordProof(AuthenticationMethod::password(), Fixtures::context($this->clock->now()));
 
@@ -1415,7 +1543,11 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // When
         try {
-            $this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $this->session(), $this->context);
+            $this->handler->begin(
+                Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')),
+                $this->session(),
+                $this->context,
+            );
             static::fail('The request should have been refused.');
         } catch (UnmetAuthenticationRequirementsException $exception) {
             // Then
@@ -1438,7 +1570,15 @@ final class AuthorizationHandlerTest extends TestCase
         $this->expectException(UnmetAuthenticationRequirementsException::class);
 
         // When
-        $this->handler->begin(Requests::authorization($this->firstParty, prompts: [Prompt::Login], claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $this->session(), $this->context);
+        $this->handler->begin(
+            Requests::authorization(
+                $this->firstParty,
+                prompts: [Prompt::Login],
+                claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}'),
+            ),
+            $this->session(),
+            $this->context,
+        );
     }
 
     /**
@@ -1464,7 +1604,11 @@ final class AuthorizationHandlerTest extends TestCase
     public function aVoluntaryAcrNoCredentialOfTheUserCanProveLeavesThePromptLoginAPlainReauthentication(): void
     {
         // When
-        $decision = $this->handler->begin(Requests::authorization($this->firstParty, prompts: [Prompt::Login], acrValues: ['phr']), $this->session(), $this->context);
+        $decision = $this->handler->begin(
+            Requests::authorization($this->firstParty, prompts: [Prompt::Login], acrValues: ['phr']),
+            $this->session(),
+            $this->context,
+        );
 
         // Then
         $login = $this->loginRequired($decision, LoginRequirement::ReauthenticationRequested);
@@ -1478,14 +1622,17 @@ final class AuthorizationHandlerTest extends TestCase
     public function aRevokedPasskeyOfTheUserCountsForNothing(): void
     {
         // Given
-        $this->aliceHoldsAPasskey()
-            ->revoke($this->clock->now());
+        $this->aliceHoldsAPasskey()->revoke($this->clock->now());
 
         // Then
         $this->expectException(UnmetAuthenticationRequirementsException::class);
 
         // When
-        $this->handler->begin(Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')), $this->session(), $this->context);
+        $this->handler->begin(
+            Requests::authorization($this->firstParty, claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["phr"]}}}')),
+            $this->session(),
+            $this->context,
+        );
     }
 
     /**
@@ -1535,7 +1682,18 @@ final class AuthorizationHandlerTest extends TestCase
     public function theInteractionLifetimeIsConfigurable(): void
     {
         // Given
-        $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), Logins::passwordAndPasskey(), $this->credentials, $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
+        $handler = new AuthorizationHandler(
+            $this->interactions,
+            $this->consents,
+            $this->codes,
+            new IdTokenHintVerifier(new FakeJwsVerifier()),
+            Logins::passwordAndPasskey(),
+            $this->credentials,
+            $this->clock,
+            $this->events,
+            new DateInterval('PT5M'),
+            new DateInterval('PT30S'),
+        );
 
         // When
         $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
@@ -1551,7 +1709,18 @@ final class AuthorizationHandlerTest extends TestCase
     public function theCodeLifetimeIsConfigurable(): void
     {
         // Given
-        $handler = new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), Logins::passwordAndPasskey(), $this->credentials, $this->clock, $this->events, new DateInterval('PT5M'), new DateInterval('PT30S'));
+        $handler = new AuthorizationHandler(
+            $this->interactions,
+            $this->consents,
+            $this->codes,
+            new IdTokenHintVerifier(new FakeJwsVerifier()),
+            Logins::passwordAndPasskey(),
+            $this->credentials,
+            $this->clock,
+            $this->events,
+            new DateInterval('PT5M'),
+            new DateInterval('PT30S'),
+        );
 
         // When
         $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
@@ -1565,9 +1734,23 @@ final class AuthorizationHandlerTest extends TestCase
      * @param list<Prompt> $prompts
      * @param list<string> $acrValues
      */
-    private function request(array $scopes = ['openid'], array $prompts = [], ?int $maxAge = null, ?string $idTokenHint = null, array $acrValues = [], ?string $claims = null): AuthorizationRequest
-    {
-        return Requests::authorization($this->client, $scopes, $prompts, $maxAge, $idTokenHint, claims: $claims === null ? null : ClaimsRequest::fromJson($claims), acrValues: $acrValues);
+    private function request(
+        array $scopes = ['openid'],
+        array $prompts = [],
+        ?int $maxAge = null,
+        ?string $idTokenHint = null,
+        array $acrValues = [],
+        ?string $claims = null,
+    ): AuthorizationRequest {
+        return Requests::authorization(
+            $this->client,
+            $scopes,
+            $prompts,
+            $maxAge,
+            $idTokenHint,
+            claims: $claims === null ? null : ClaimsRequest::fromJson($claims),
+            acrValues: $acrValues,
+        );
     }
 
     /**
@@ -1591,7 +1774,16 @@ final class AuthorizationHandlerTest extends TestCase
 
     private function handlerWith(Logins $logins): AuthorizationHandler
     {
-        return new AuthorizationHandler($this->interactions, $this->consents, $this->codes, new IdTokenHintVerifier(new FakeJwsVerifier()), $logins, $this->credentials, $this->clock, $this->events);
+        return new AuthorizationHandler(
+            $this->interactions,
+            $this->consents,
+            $this->codes,
+            new IdTokenHintVerifier(new FakeJwsVerifier()),
+            $logins,
+            $this->credentials,
+            $this->clock,
+            $this->events,
+        );
     }
 
     private function loginRequired(AuthorizationDecision $decision, LoginRequirement $requirement): LoginRequired

@@ -46,7 +46,10 @@ final readonly class RequestObjectFetcher implements RequestObjectFetcherInterfa
             ]);
             $status = $response->getStatusCode();
             if ($status >= 300 && $status < 400) {
-                throw new RequestObjectUnavailableException(sprintf('%s redirects, and no outbound request follows a redirect; publish the request object at the URL that is registered.', $requestUri->value));
+                throw new RequestObjectUnavailableException(sprintf(
+                    '%s redirects, and no outbound request follows a redirect; publish the request object at the URL that is registered.',
+                    $requestUri->value,
+                ));
             }
             if ($status < 200 || $status >= 300) {
                 throw new RequestObjectUnavailableException(sprintf('%s answered %d.', $requestUri->value, $status));
@@ -55,7 +58,11 @@ final readonly class RequestObjectFetcher implements RequestObjectFetcherInterfa
             foreach ($this->http->stream($response) as $chunk) {
                 $body .= $chunk->getContent();
                 if (strlen($body) > $this->maximumSize) {
-                    throw new RequestObjectUnavailableException(sprintf('%s answers more than %d bytes, which no request object needs.', $requestUri->value, $this->maximumSize));
+                    throw new RequestObjectUnavailableException(sprintf(
+                        '%s answers more than %d bytes, which no request object needs.',
+                        $requestUri->value,
+                        $this->maximumSize,
+                    ));
                 }
             }
 

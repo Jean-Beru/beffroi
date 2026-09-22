@@ -74,7 +74,7 @@ final readonly class EndSessionController
         $session = $this->browser->authenticationSession($request, $tenant);
         $context = $this->contexts->fromRequest($request);
 
-        $answer = $request->isMethod('POST') ? ($parameters[self::CONFIRM_PARAMETER] ?? null) : null;
+        $answer = $request->isMethod('POST') ? $parameters[self::CONFIRM_PARAMETER] ?? null : null;
         if ($answer === null) {
             $decision = $this->handler->begin($endSessionRequest, $session, $context);
         } else {

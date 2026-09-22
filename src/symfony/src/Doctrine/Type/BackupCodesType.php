@@ -92,15 +92,15 @@ final class BackupCodesType extends Type
     private function entry(string $document, mixed $entry): BackupCode
     {
         $algorithm = is_array($entry) && is_string($entry['algorithm'] ?? null) ? PasswordAlgorithm::tryFrom($entry['algorithm']) : null;
-        $encoded = is_array($entry) ? ($entry['encoded'] ?? null) : null;
-        $parameters = is_array($entry) ? ($entry['parameters'] ?? []) : null;
-        $usedAt = is_array($entry) ? ($entry['used_at'] ?? null) : null;
-        if ($algorithm === null || ! is_string($encoded) || ! is_array($parameters) || ($usedAt !== null && ! is_int($usedAt))) {
+        $encoded = is_array($entry) ? $entry['encoded'] ?? null : null;
+        $parameters = is_array($entry) ? $entry['parameters'] ?? [] : null;
+        $usedAt = is_array($entry) ? $entry['used_at'] ?? null : null;
+        if ($algorithm === null || ! is_string($encoded) || ! is_array($parameters) || $usedAt !== null && ! is_int($usedAt)) {
             throw ValueNotConvertible::new($document, self::NAME, 'A backup code is a typed hash and the Unix timestamp it was spent at.');
         }
         $typed = [];
         foreach ($parameters as $name => $parameter) {
-            if (! is_string($name) || (! is_int($parameter) && ! is_string($parameter))) {
+            if (! is_string($name) || ! is_int($parameter) && ! is_string($parameter)) {
                 throw ValueNotConvertible::new($document, self::NAME, 'The parameters of a hash are strings or integers by name.');
             }
             $typed[$name] = $parameter;

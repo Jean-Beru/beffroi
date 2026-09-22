@@ -47,9 +47,12 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
         $throwable = $event->getThrowable();
         static::assertInstanceOf(ServiceUnavailableHttpException::class, $throwable);
         static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $throwable->getStatusCode());
-        static::assertSame([
-            'Retry-After' => KmsUnavailableListener::RETRY_AFTER,
-        ], $throwable->getHeaders());
+        static::assertSame(
+            [
+                'Retry-After' => KmsUnavailableListener::RETRY_AFTER,
+            ],
+            $throwable->getHeaders(),
+        );
         static::assertSame($outage, $throwable->getPrevious());
     }
 
@@ -116,7 +119,11 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
      */
     private static function outage(): KmsUnavailableException
     {
-        return new KmsUnavailableException('The sealed secret could not be opened.', 0, new KeyManagementRuntimeException('Failed to reach Vault.', 0, new \RuntimeException("Could not resolve host:\n vault")));
+        return new KmsUnavailableException(
+            'The sealed secret could not be opened.',
+            0,
+            new KeyManagementRuntimeException('Failed to reach Vault.', 0, new \RuntimeException("Could not resolve host:\n vault")),
+        );
     }
 
     private static function event(Throwable $throwable): ExceptionEvent

@@ -46,7 +46,9 @@ final readonly class KeysListCommand
         SymfonyStyle $io,
         #[Option(description: 'Include the retired keys, out of the JWK Set for good.')]
         bool $all = false,
-        #[Option(description: 'Open the active and the staged keys with the KMS and say whether each one opens; a retiring key is opened only to read what was encrypted to it. Fails when one does not open.')]
+        #[Option(
+            description: 'Open the active and the staged keys with the KMS and say whether each one opens; a retiring key is opened only to read what was encrypted to it. Fails when one does not open.',
+        )]
         bool $check = false,
     ): int {
         try {
@@ -80,7 +82,13 @@ final readonly class KeysListCommand
         }
         if ($dead !== []) {
             $io->error([
-                sprintf('The KMS cannot open the key%s %s of "%s": nothing is done with %s.', count($dead) === 1 ? '' : 's', implode(', ', $dead), $tenant->slug, count($dead) === 1 ? 'it' : 'them'),
+                sprintf(
+                    'The KMS cannot open the key%s %s of "%s": nothing is done with %s.',
+                    count($dead) === 1 ? '' : 's',
+                    implode(', ', $dead),
+                    $tenant->slug,
+                    count($dead) === 1 ? 'it' : 'them',
+                ),
                 'If the KMS is not reachable, start it and run this command again. If the KMS lost the master key (Vault in dev mode and LocalStack forget everything when they restart), the envelopes sealed under it are dead: "heidi:keys:rotate --now" publishes a key sealed under the key it has now and signs with it at once, the dead key retires with its window, its public half still verifying what it signed. Nothing is deleted.',
             ]);
 
@@ -120,8 +128,7 @@ final readonly class KeysListCommand
                 'Algorithm' => $key->algorithm->name(),
             ],
             [
-                'Use' => $key->algorithm->keyUse()
-                    ->value,
+                'Use' => $key->algorithm->keyUse()->value,
             ],
             [
                 'Status' => $key->status->value,

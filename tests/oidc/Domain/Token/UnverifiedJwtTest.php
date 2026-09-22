@@ -18,10 +18,14 @@ final class UnverifiedJwtTest extends TestCase
     public function itReadsTheAlgorithmAndTheKeyOfTheHeader(): void
     {
         // Given
-        $jwt = new UnverifiedJwt('the.compact.jws', [
-            'alg' => 'ES256',
-            'kid' => 'client-key',
-        ], []);
+        $jwt = new UnverifiedJwt(
+            'the.compact.jws',
+            [
+                'alg' => 'ES256',
+                'kid' => 'client-key',
+            ],
+            [],
+        );
 
         // When / Then
         static::assertSame('ES256', $jwt->algorithm());
@@ -68,11 +72,15 @@ final class UnverifiedJwtTest extends TestCase
     public function aClaimIsTheTextItIsOrNothing(): void
     {
         // Given
-        $jwt = new UnverifiedJwt('the.compact.jws', [], [
-            'iss' => 'oidc-demo',
-            'sub' => '',
-            'jti' => 42,
-        ]);
+        $jwt = new UnverifiedJwt(
+            'the.compact.jws',
+            [],
+            [
+                'iss' => 'oidc-demo',
+                'sub' => '',
+                'jti' => 42,
+            ],
+        );
 
         // When / Then
         static::assertSame('oidc-demo', $jwt->claim('iss'));
@@ -88,11 +96,15 @@ final class UnverifiedJwtTest extends TestCase
     public function aNumericDateIsSecondsSinceTheEpochAndNothingElse(): void
     {
         // Given
-        $jwt = new UnverifiedJwt('the.compact.jws', [], [
-            'exp' => 1_790_078_400,
-            'iat' => '1790078400',
-            'nbf' => 1_790_078_400.5,
-        ]);
+        $jwt = new UnverifiedJwt(
+            'the.compact.jws',
+            [],
+            [
+                'exp' => 1_790_078_400,
+                'iat' => '1790078400',
+                'nbf' => 1_790_078_400.5,
+            ],
+        );
 
         // When / Then
         static::assertSame('2026-09-22T12:00:00+00:00', $jwt->time('exp')?->format('c'));
@@ -111,9 +123,13 @@ final class UnverifiedJwtTest extends TestCase
     public function theAudienceIsOneStringOrAListOfThem(mixed $audience, array $expected): void
     {
         // Given
-        $jwt = new UnverifiedJwt('the.compact.jws', [], [
-            'aud' => $audience,
-        ]);
+        $jwt = new UnverifiedJwt(
+            'the.compact.jws',
+            [],
+            [
+                'aud' => $audience,
+            ],
+        );
 
         // When / Then
         static::assertSame($expected, $jwt->audiences());
@@ -125,7 +141,10 @@ final class UnverifiedJwtTest extends TestCase
     public static function provideAudiences(): iterable
     {
         yield 'one string' => ['https://id.acme.example', ['https://id.acme.example']];
-        yield 'a list of strings' => [['https://id.acme.example', 'https://other.example'], ['https://id.acme.example', 'https://other.example']];
+        yield 'a list of strings' => [
+            ['https://id.acme.example', 'https://other.example'],
+            ['https://id.acme.example', 'https://other.example'],
+        ];
         yield 'a list with something that is not a string' => [['https://id.acme.example', 42], ['https://id.acme.example']];
         yield 'nothing at all' => [null, []];
     }

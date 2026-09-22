@@ -81,7 +81,16 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->alice = Fixtures::user($this->tenant);
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->publicClient = Clients::public($this->tenant);
-        $this->offlineClient = new Client($this->tenant, 'mobile', 'Mobile application', Methods::none(), null, [new RedirectUri('https://mobile.example/callback')], grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
+        $this->offlineClient = new Client(
+            $this->tenant,
+            'mobile',
+            'Mobile application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://mobile.example/callback')],
+            grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken],
+            allowedScopes: [Scope::openid(), new Scope('offline_access')],
+        );
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
         $this->context = Fixtures::context($this->clock->now());
@@ -192,15 +201,17 @@ final class AuthorizationCodeGrantTest extends TestCase
         $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
-        static::assertSame([
-            'access_token' => $issued->accessToken->value,
-            'token_type' => 'Bearer',
-            'expires_in' => 600,
-            'refresh_token' => $issued->refreshToken?->value,
-            'id_token' => $issued->idToken,
-            'scope' => 'openid profile',
-        ], $issued->toResponse()
-            ->parameters());
+        static::assertSame(
+            [
+                'access_token' => $issued->accessToken->value,
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'refresh_token' => $issued->refreshToken?->value,
+                'id_token' => $issued->idToken,
+                'scope' => 'openid profile',
+            ],
+            $issued->toResponse()->parameters(),
+        );
     }
 
     #[Test]
@@ -230,7 +241,11 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->offlineClient, ['openid']);
 
         // When
-        $issued = $this->grant->grant(new AuthenticatedClient($this->offlineClient), $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->offlineClient),
+            $this->request(redirectUri: 'https://mobile.example/callback'),
+            $this->context,
+        );
 
         // Then
         static::assertNull($issued->refreshToken);
@@ -247,7 +262,11 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->offlineClient, ['openid', 'offline_access']);
 
         // When
-        $issued = $this->grant->grant(new AuthenticatedClient($this->offlineClient), $this->request(redirectUri: 'https://mobile.example/callback'), $this->context);
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->offlineClient),
+            $this->request(redirectUri: 'https://mobile.example/callback'),
+            $this->context,
+        );
 
         // Then
         static::assertNotNull($issued->refreshToken);
@@ -264,7 +283,11 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->code('the-code', $this->publicClient, ['openid']);
 
         // When
-        $issued = $this->grant->grant(new AuthenticatedClient($this->publicClient), $this->request(redirectUri: 'https://spa.example/callback'), $this->context);
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->publicClient),
+            $this->request(redirectUri: 'https://spa.example/callback'),
+            $this->context,
+        );
 
         // Then
         static::assertNull($issued->refreshToken);
@@ -311,7 +334,15 @@ final class AuthorizationCodeGrantTest extends TestCase
     public function aClientNotRegisteredForTheGrantGetsNoRefreshTokenEvenWithOfflineAccess(): void
     {
         // Given
-        $codeOnly = new Client($this->tenant, 'code-only', 'Code only', Methods::clientSecretBasic(), new HashedClientSecret(new FakePasswordHasher()->hash(Clients::SECRET)), [new RedirectUri('https://demo.localhost/login/check')], allowedScopes: [Scope::openid(), new Scope('offline_access')]);
+        $codeOnly = new Client(
+            $this->tenant,
+            'code-only',
+            'Code only',
+            Methods::clientSecretBasic(),
+            new HashedClientSecret(new FakePasswordHasher()->hash(Clients::SECRET)),
+            [new RedirectUri('https://demo.localhost/login/check')],
+            allowedScopes: [Scope::openid(), new Scope('offline_access')],
+        );
         $this->code('the-code', $codeOnly, ['openid', 'offline_access']);
 
         // When
@@ -889,7 +920,16 @@ final class AuthorizationCodeGrantTest extends TestCase
     {
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events);
 
-        return new AuthorizationCodeGrant($this->codes, new RefreshTokenRevocation($this->refreshTokens), $this->accessTokens, $issuer, $this->clock, $this->events, $familyLifetime ?? new DateInterval('P90D'), $refreshTokenWithoutOfflineAccess);
+        return new AuthorizationCodeGrant(
+            $this->codes,
+            new RefreshTokenRevocation($this->refreshTokens),
+            $this->accessTokens,
+            $issuer,
+            $this->clock,
+            $this->events,
+            $familyLifetime ?? new DateInterval('P90D'),
+            $refreshTokenWithoutOfflineAccess,
+        );
     }
 
     /**
@@ -906,8 +946,11 @@ final class AuthorizationCodeGrantTest extends TestCase
     /**
      * @return array<string, string>
      */
-    private function parameters(string $code = 'the-code', string $redirectUri = 'https://demo.localhost/login/check', string $verifier = Tokens::CODE_VERIFIER): array
-    {
+    private function parameters(
+        string $code = 'the-code',
+        string $redirectUri = 'https://demo.localhost/login/check',
+        string $verifier = Tokens::CODE_VERIFIER,
+    ): array {
         return [
             'grant_type' => 'authorization_code',
             'code' => $code,
@@ -916,8 +959,11 @@ final class AuthorizationCodeGrantTest extends TestCase
         ];
     }
 
-    private function request(string $code = 'the-code', string $redirectUri = 'https://demo.localhost/login/check', string $verifier = Tokens::CODE_VERIFIER): TokenRequest
-    {
+    private function request(
+        string $code = 'the-code',
+        string $redirectUri = 'https://demo.localhost/login/check',
+        string $verifier = Tokens::CODE_VERIFIER,
+    ): TokenRequest {
         return new TokenRequest($this->parameters($code, $redirectUri, $verifier));
     }
 

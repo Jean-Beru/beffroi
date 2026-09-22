@@ -41,9 +41,14 @@ final class IntrospectionControllerTest extends BrowserTestCase
     public function aWrongSecretIsChallenged(): void
     {
         // When
-        $this->browser->request('POST', '/introspect', [
-            'token' => 'whatever',
-        ], server: self::credentials('opaque-app', 'wrong-secret-of-at-least-32-characters'));
+        $this->browser->request(
+            'POST',
+            '/introspect',
+            [
+                'token' => 'whatever',
+            ],
+            server: self::credentials('opaque-app', 'wrong-secret-of-at-least-32-characters'),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -85,10 +90,15 @@ final class IntrospectionControllerTest extends BrowserTestCase
         $accessToken = $this->opaqueAccessToken();
 
         // When
-        $this->browser->request('POST', '/introspect', [
-            'token' => $accessToken,
-            'token_type_hint' => 'access_token',
-        ], server: self::credentials('opaque-app'));
+        $this->browser->request(
+            'POST',
+            '/introspect',
+            [
+                'token' => $accessToken,
+                'token_type_hint' => 'access_token',
+            ],
+            server: self::credentials('opaque-app'),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -114,14 +124,22 @@ final class IntrospectionControllerTest extends BrowserTestCase
         $accessToken = $this->opaqueAccessToken();
 
         // When
-        $this->browser->request('POST', '/introspect', [
-            'token' => $accessToken,
-        ], server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'));
+        $this->browser->request(
+            'POST',
+            '/introspect',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'),
+        );
 
         // Then
-        static::assertSame([
-            'active' => false,
-        ], self::json($this->browser->getResponse()));
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            self::json($this->browser->getResponse()),
+        );
     }
 
     /**
@@ -135,11 +153,17 @@ final class IntrospectionControllerTest extends BrowserTestCase
         $accessToken = $this->opaqueAccessToken();
 
         // When
-        $this->browser->request('POST', '/introspect', [
-            'token' => $accessToken,
-        ], server: self::credentials('opaque-app') + [
-            'HTTP_ACCEPT' => 'application/token-introspection+jwt, application/json',
-        ]);
+        $this->browser->request(
+            'POST',
+            '/introspect',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::credentials('opaque-app')
+            + [
+                'HTTP_ACCEPT' => 'application/token-introspection+jwt, application/json',
+            ],
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -163,24 +187,37 @@ final class IntrospectionControllerTest extends BrowserTestCase
     {
         // Given
         $accessToken = $this->opaqueAccessToken();
-        $this->browser->request('POST', '/revoke', [
-            'token' => $accessToken,
-        ], server: self::credentials('opaque-app'));
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::credentials('opaque-app'),
+        );
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
 
         // When
-        $this->browser->request('POST', '/introspect', [
-            'token' => $accessToken,
-        ], server: self::credentials('opaque-app'));
+        $this->browser->request(
+            'POST',
+            '/introspect',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::credentials('opaque-app'),
+        );
         $introspection = self::json($this->browser->getResponse());
         $this->browser->request('GET', '/userinfo', server: [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
         ]);
 
         // Then
-        static::assertSame([
-            'active' => false,
-        ], $introspection);
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            $introspection,
+        );
         static::assertSame(Response::HTTP_UNAUTHORIZED, $this->browser->getResponse()->getStatusCode());
     }
 
@@ -199,14 +236,22 @@ final class IntrospectionControllerTest extends BrowserTestCase
         $this->endSession($session);
 
         // When
-        $this->browser->request('POST', '/introspect', [
-            'token' => $accessToken,
-        ], server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'));
+        $this->browser->request(
+            'POST',
+            '/introspect',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'),
+        );
 
         // Then
-        static::assertSame([
-            'active' => false,
-        ], self::json($this->browser->getResponse()));
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            self::json($this->browser->getResponse()),
+        );
     }
 
     /**
@@ -217,12 +262,17 @@ final class IntrospectionControllerTest extends BrowserTestCase
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'));
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: self::credentials('oidc-demo', 'demo-secret-of-at-least-32-characters-long'),
+        );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 
@@ -240,12 +290,17 @@ final class IntrospectionControllerTest extends BrowserTestCase
             'redirect_uri' => 'https://opaque.test/callback',
         ]));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://opaque.test/callback',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: self::credentials('opaque-app'));
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://opaque.test/callback',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: self::credentials('opaque-app'),
+        );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 

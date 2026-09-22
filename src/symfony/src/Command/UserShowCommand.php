@@ -124,16 +124,23 @@ final readonly class UserShowCommand
                 'Family name' => $user->profile->familyName ?? '',
             ],
             [
-                'Phone number' => $user->phoneNumber === null ? '' : sprintf('%s (%s)', $user->phoneNumber, $user->phoneNumberVerified ? 'verified' : 'unverified'),
+                'Phone number' => $user->phoneNumber === null
+                    ? ''
+                    : sprintf('%s (%s)', $user->phoneNumber, $user->phoneNumberVerified ? 'verified' : 'unverified'),
             ],
             [
-                'Address' => $user->address === null ? '' : implode(', ', array_filter([
-                    $user->address->streetAddress,
-                    $user->address->postalCode,
-                    $user->address->locality,
-                    $user->address->region,
-                    $user->address->country,
-                ], static fn (?string $member): bool => $member !== null)),
+                'Address' => $user->address === null
+                    ? ''
+                    : implode(', ', array_filter(
+                        [
+                            $user->address->streetAddress,
+                            $user->address->postalCode,
+                            $user->address->locality,
+                            $user->address->region,
+                            $user->address->country,
+                        ],
+                        static fn (?string $member): bool => $member !== null,
+                    )),
             ],
         ];
     }

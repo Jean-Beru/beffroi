@@ -37,12 +37,16 @@ final readonly class TwoFactorPage
     {
         $totp = $this->activeTotp->of($user);
 
-        return $this->pages->render('account/two_factor.html.twig', [
-            'user' => $user,
-            'totp' => $totp,
-            'backup_codes_left' => $totp === null ? 0 : count(array_filter($totp->backupCodes, static fn (BackupCode $code): bool => ! $code->isSpent())),
-            'error' => $error,
-        ], $status);
+        return $this->pages->render(
+            'account/two_factor.html.twig',
+            [
+                'user' => $user,
+                'totp' => $totp,
+                'backup_codes_left' => $totp === null ? 0 : count(array_filter($totp->backupCodes, static fn (BackupCode $code): bool => ! $code->isSpent())),
+                'error' => $error,
+            ],
+            $status,
+        );
     }
 
     /**
@@ -53,12 +57,16 @@ final readonly class TwoFactorPage
      */
     public function renderEnrolment(User $user, TotpProvisioning $provisioning, ?string $error = null, int $status = Response::HTTP_OK): Response
     {
-        return $this->pages->render('account/two_factor_enrol.html.twig', [
-            'user' => $user,
-            'qr_code' => $this->qrCode->svg($provisioning->uri),
-            'key' => implode(' ', str_split(Base32::encodeUpperUnpadded($provisioning->secret->bytes), 4)),
-            'error' => $error,
-        ], $status);
+        return $this->pages->render(
+            'account/two_factor_enrol.html.twig',
+            [
+                'user' => $user,
+                'qr_code' => $this->qrCode->svg($provisioning->uri),
+                'key' => implode(' ', str_split(Base32::encodeUpperUnpadded($provisioning->secret->bytes), 4)),
+                'error' => $error,
+            ],
+            $status,
+        );
     }
 
     /**

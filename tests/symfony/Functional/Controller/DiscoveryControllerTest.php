@@ -97,13 +97,16 @@ final class DiscoveryControllerTest extends BrowserTestCase
         // Then
         $metadata = self::json($this->browser->getResponse());
         static::assertTrue($metadata['tls_client_certificate_bound_access_tokens']);
-        static::assertSame([
-            'token_endpoint' => 'https://mtls.op.test/token',
-            'userinfo_endpoint' => 'https://mtls.op.test/userinfo',
-            'introspection_endpoint' => 'https://mtls.op.test/introspect',
-            'revocation_endpoint' => 'https://mtls.op.test/revoke',
-            'pushed_authorization_request_endpoint' => 'https://mtls.op.test/par',
-        ], $metadata['mtls_endpoint_aliases']);
+        static::assertSame(
+            [
+                'token_endpoint' => 'https://mtls.op.test/token',
+                'userinfo_endpoint' => 'https://mtls.op.test/userinfo',
+                'introspection_endpoint' => 'https://mtls.op.test/introspect',
+                'revocation_endpoint' => 'https://mtls.op.test/revoke',
+                'pushed_authorization_request_endpoint' => 'https://mtls.op.test/par',
+            ],
+            $metadata['mtls_endpoint_aliases'],
+        );
     }
 
     /**

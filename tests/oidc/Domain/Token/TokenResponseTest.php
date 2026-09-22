@@ -26,14 +26,17 @@ final class TokenResponseTest extends TestCase
         $response = new TokenResponse('at.value', 600, 'rt.value', 'id.value', [Scope::openid(), new Scope('profile')]);
 
         // Then
-        static::assertSame([
-            'access_token' => 'at.value',
-            'token_type' => 'Bearer',
-            'expires_in' => 600,
-            'refresh_token' => 'rt.value',
-            'id_token' => 'id.value',
-            'scope' => 'openid profile',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'access_token' => 'at.value',
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'refresh_token' => 'rt.value',
+                'id_token' => 'id.value',
+                'scope' => 'openid profile',
+            ],
+            $response->parameters(),
+        );
     }
 
     #[Test]
@@ -43,12 +46,15 @@ final class TokenResponseTest extends TestCase
         $response = new TokenResponse('at.value', 600, null, null, [Scope::openid()]);
 
         // Then
-        static::assertSame([
-            'access_token' => 'at.value',
-            'token_type' => 'Bearer',
-            'expires_in' => 600,
-            'scope' => 'openid',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'access_token' => 'at.value',
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'scope' => 'openid',
+            ],
+            $response->parameters(),
+        );
     }
 
     #[Test]
@@ -106,10 +112,13 @@ final class TokenResponseTest extends TestCase
         static::assertSame('invalid_grant', $response->error);
         static::assertSame('The authorization code is invalid.', $response->errorDescription);
         static::assertNull($response->challenge);
-        static::assertSame([
-            'error' => 'invalid_grant',
-            'error_description' => 'The authorization code is invalid.',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'error' => 'invalid_grant',
+                'error_description' => 'The authorization code is invalid.',
+            ],
+            $response->parameters(),
+        );
     }
 
     /**
@@ -122,10 +131,13 @@ final class TokenResponseTest extends TestCase
         $response = TokenErrorResponse::fromException(new InvalidGrantException('The authorization code is invalid.'));
 
         // Then
-        static::assertSame([
-            'Cache-Control' => 'no-store',
-            'Pragma' => 'no-cache',
-        ], $response->headers());
+        static::assertSame(
+            [
+                'Cache-Control' => 'no-store',
+                'Pragma' => 'no-cache',
+            ],
+            $response->headers(),
+        );
     }
 
     /**
@@ -140,11 +152,14 @@ final class TokenResponseTest extends TestCase
         // Then
         static::assertSame(401, $response->statusCode);
         static::assertSame('Basic realm="https://id.acme.example"', $response->challenge);
-        static::assertSame([
-            'Cache-Control' => 'no-store',
-            'Pragma' => 'no-cache',
-            'WWW-Authenticate' => 'Basic realm="https://id.acme.example"',
-        ], $response->headers());
+        static::assertSame(
+            [
+                'Cache-Control' => 'no-store',
+                'Pragma' => 'no-cache',
+                'WWW-Authenticate' => 'Basic realm="https://id.acme.example"',
+            ],
+            $response->headers(),
+        );
     }
 
     #[Test]

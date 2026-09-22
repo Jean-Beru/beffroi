@@ -97,7 +97,14 @@ final class TokenHandlerTest extends TestCase
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->events = new RecordingEventDispatcher();
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, $this->events);
-        $this->codeGrant = new AuthorizationCodeGrant($this->codes, new RefreshTokenRevocation($this->refreshTokens), new InMemoryAccessTokenRepository(), $issuer, $this->clock, $this->events);
+        $this->codeGrant = new AuthorizationCodeGrant(
+            $this->codes,
+            new RefreshTokenRevocation($this->refreshTokens),
+            new InMemoryAccessTokenRepository(),
+            $issuer,
+            $this->clock,
+            $this->events,
+        );
         $refreshGrant = new RefreshTokenGrant($this->refreshTokens, new RefreshTokenRevocation($this->refreshTokens), $issuer, $this->clock, $this->events);
         $this->handler = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), [$this->codeGrant, $refreshGrant]);
     }
@@ -152,12 +159,17 @@ final class TokenHandlerTest extends TestCase
         $this->refreshTokens->save($token);
 
         // When
-        $response = $this->handler->handle($this->tenant, null, [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => 'the-token',
-            'client_id' => 'post-client',
-            'client_secret' => Clients::SECRET,
-        ], $this->context);
+        $response = $this->handler->handle(
+            $this->tenant,
+            null,
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => 'the-token',
+                'client_id' => 'post-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            $this->context,
+        );
 
         // Then
         $parameters = $response->parameters();
@@ -180,9 +192,14 @@ final class TokenHandlerTest extends TestCase
 
         // When
         try {
-            $this->handler->handle($this->tenant, self::basic('basic-client', 'wrong-secret'), [
-                'code' => 'the-code',
-            ], $this->context);
+            $this->handler->handle(
+                $this->tenant,
+                self::basic('basic-client', 'wrong-secret'),
+                [
+                    'code' => 'the-code',
+                ],
+                $this->context,
+            );
             static::fail('The client should have been refused.');
         } catch (InvalidClientException $exception) {
             // Then
@@ -203,9 +220,14 @@ final class TokenHandlerTest extends TestCase
 
         // When
         try {
-            $this->handler->handle($this->tenant, self::basic('basic-client', 'wrong-secret'), [
-                'code' => 'the-code',
-            ], $this->context);
+            $this->handler->handle(
+                $this->tenant,
+                self::basic('basic-client', 'wrong-secret'),
+                [
+                    'code' => 'the-code',
+                ],
+                $this->context,
+            );
         } catch (InvalidClientException) {
         }
 
@@ -257,9 +279,14 @@ final class TokenHandlerTest extends TestCase
         $this->expectException(UnsupportedGrantTypeException::class);
 
         // When
-        $this->handler->handle($this->tenant, self::basic('basic-client', Clients::SECRET), [
-            'grant_type' => $grantType,
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'grant_type' => $grantType,
+            ],
+            $this->context,
+        );
     }
 
     /**
@@ -287,10 +314,15 @@ final class TokenHandlerTest extends TestCase
         $this->expectException(UnsupportedGrantTypeException::class);
 
         // When
-        $codeOnly->handle($this->tenant, null, [
-            'grant_type' => 'refresh_token',
-            'client_id' => 'public-client',
-        ], $this->context);
+        $codeOnly->handle(
+            $this->tenant,
+            null,
+            [
+                'grant_type' => 'refresh_token',
+                'client_id' => 'public-client',
+            ],
+            $this->context,
+        );
     }
 
     /**
@@ -348,7 +380,14 @@ final class TokenHandlerTest extends TestCase
     public function aRequestThatProvesAKeyBindsTheTokensToIt(): void
     {
         // Given
-        $this->codes->save(Tokens::code('the-code', $this->publicClient, $this->session, $this->clock->now(), ['openid'], dpopKey: Proofs::thumbprintOf(Proofs::key())));
+        $this->codes->save(Tokens::code(
+            'the-code',
+            $this->publicClient,
+            $this->session,
+            $this->clock->now(),
+            ['openid'],
+            dpopKey: Proofs::thumbprintOf(Proofs::key()),
+        ));
 
         // When
         $response = $this->handler->handle($this->tenant, null, $this->publicExchange(), $this->context, null, $this->proof());
@@ -385,7 +424,14 @@ final class TokenHandlerTest extends TestCase
     public function aCodeReservedForAKeyIsNotExchangedByAnother(): void
     {
         // Given
-        $this->codes->save(Tokens::code('the-code', $this->publicClient, $this->session, $this->clock->now(), ['openid'], dpopKey: Proofs::thumbprintOf(Proofs::otherKey())));
+        $this->codes->save(Tokens::code(
+            'the-code',
+            $this->publicClient,
+            $this->session,
+            $this->clock->now(),
+            ['openid'],
+            dpopKey: Proofs::thumbprintOf(Proofs::otherKey()),
+        ));
 
         // Then
         $this->expectException(InvalidGrantException::class);
@@ -412,13 +458,20 @@ final class TokenHandlerTest extends TestCase
         $this->expectExceptionMessageIs('invalid_dpop_proof: The tokens of a request are bound to one thing, and this request proves a certificate and a key (RFC 9449 section 5).');
 
         // When
-        $this->handler->handle($this->tenant, null, [
-            'grant_type' => 'authorization_code',
-            'code' => 'the-code',
-            'redirect_uri' => 'https://mtls.example/callback',
-            'client_id' => 'mtls-client',
-            'code_verifier' => Tokens::CODE_VERIFIER,
-        ], $this->context, Certificates::client(), $this->proof());
+        $this->handler->handle(
+            $this->tenant,
+            null,
+            [
+                'grant_type' => 'authorization_code',
+                'code' => 'the-code',
+                'redirect_uri' => 'https://mtls.example/callback',
+                'client_id' => 'mtls-client',
+                'code_verifier' => Tokens::CODE_VERIFIER,
+            ],
+            $this->context,
+            Certificates::client(),
+            $this->proof(),
+        );
     }
 
     private function authenticator(): ClientAuthenticator

@@ -55,12 +55,14 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
             if (! is_a($class, $kind, true)) {
                 continue;
             }
-            $credentials = array_merge($credentials, $this->manager($class)->getRepository($class)->findBy([
-                'user' => $user,
-            ], [
-                'createdAt' => 'ASC',
-                'id' => 'ASC',
-            ]));
+            $credentials = array_merge($credentials, $this->manager($class)
+                ->getRepository($class)
+                ->findBy([
+                    'user' => $user,
+                ], [
+                    'createdAt' => 'ASC',
+                    'id' => 'ASC',
+                ]));
         }
         usort($credentials, static fn (Credential $a, Credential $b): int => $a->createdAt <=> $b->createdAt);
 
@@ -70,8 +72,7 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
     public function find(Uuid $id): ?Credential
     {
         foreach ($this->kinds() as $class) {
-            $credential = $this->manager($class)
-                ->find($class, $id);
+            $credential = $this->manager($class)->find($class, $id);
             if ($credential !== null) {
                 return $credential;
             }

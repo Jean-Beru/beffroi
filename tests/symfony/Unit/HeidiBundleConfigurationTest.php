@@ -52,30 +52,42 @@ final class HeidiBundleConfigurationTest extends TestCase
         $config = self::process(self::MINIMAL);
 
         // Then
-        static::assertSame([
-            'issuer' => 'https://op.test',
-            'slug' => 'default',
-            'name' => null,
-            'authentication_classes' => HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
-        ], $config['tenant']);
-        static::assertSame([
-            'kms' => 'sodium://?keys[signing]=AAAA',
-            'key_id' => 'signing',
-            'storage' => '%kernel.project_dir%/var/keys',
-            'jwks_max_age' => JwksHandler::DEFAULT_MAX_AGE,
-            'staging_delay' => null,
-        ], $config['keys']);
-        static::assertSame([
-            'metadata_storage' => '%kernel.project_dir%/var/webauthn',
-        ], $config['webauthn']);
-        static::assertSame([
-            'authorization_code_ttl' => 60,
-            'access_token_ttl' => 600,
-            'id_token_ttl' => 600,
-            'request_uri_ttl' => 60,
-            'refresh_token_ttl' => 2592000,
-            'refresh_token_absolute_ttl' => 7776000,
-        ], $config['tokens']);
+        static::assertSame(
+            [
+                'issuer' => 'https://op.test',
+                'slug' => 'default',
+                'name' => null,
+                'authentication_classes' => HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
+            ],
+            $config['tenant'],
+        );
+        static::assertSame(
+            [
+                'kms' => 'sodium://?keys[signing]=AAAA',
+                'key_id' => 'signing',
+                'storage' => '%kernel.project_dir%/var/keys',
+                'jwks_max_age' => JwksHandler::DEFAULT_MAX_AGE,
+                'staging_delay' => null,
+            ],
+            $config['keys'],
+        );
+        static::assertSame(
+            [
+                'metadata_storage' => '%kernel.project_dir%/var/webauthn',
+            ],
+            $config['webauthn'],
+        );
+        static::assertSame(
+            [
+                'authorization_code_ttl' => 60,
+                'access_token_ttl' => 600,
+                'id_token_ttl' => 600,
+                'request_uri_ttl' => 60,
+                'refresh_token_ttl' => 2592000,
+                'refresh_token_absolute_ttl' => 7776000,
+            ],
+            $config['tokens'],
+        );
         static::assertSame([], $config['clients']);
     }
 
@@ -87,7 +99,13 @@ final class HeidiBundleConfigurationTest extends TestCase
     public function theDefaultAuthenticationClassesAreThoseOfTheCore(): void
     {
         // Given
-        $factory = new TenantFactory('https://op.test', 'default', null, new MockClock('2026-09-20T12:00:00+00:00'), HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES);
+        $factory = new TenantFactory(
+            'https://op.test',
+            'default',
+            null,
+            new MockClock('2026-09-20T12:00:00+00:00'),
+            HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
+        );
 
         // When / Then
         static::assertTrue(AuthenticationContextPolicy::default()->equals($factory->authenticationContextPolicy()));
@@ -102,22 +120,26 @@ final class HeidiBundleConfigurationTest extends TestCase
     {
         // When
         $config = self::process([
-            'tenant' => self::MINIMAL['tenant'] + [
-                'authentication_classes' => [
-                    'urn:okta:loa:2fa:any' => 'two_factors',
-                    '2' => 'two_factors',
-                    '1' => 'single_factor',
+            'tenant' => self::MINIMAL['tenant']
+                + [
+                    'authentication_classes' => [
+                        'urn:okta:loa:2fa:any' => 'two_factors',
+                        '2' => 'two_factors',
+                        '1' => 'single_factor',
+                    ],
                 ],
-            ],
         ] + self::MINIMAL);
 
         // Then
         static::assertIsArray($config['tenant']);
-        static::assertSame([
-            'urn:okta:loa:2fa:any' => 'two_factors',
-            2 => 'two_factors',
-            1 => 'single_factor',
-        ], $config['tenant']['authentication_classes']);
+        static::assertSame(
+            [
+                'urn:okta:loa:2fa:any' => 'two_factors',
+                2 => 'two_factors',
+                1 => 'single_factor',
+            ],
+            $config['tenant']['authentication_classes'],
+        );
     }
 
     /**
@@ -128,26 +150,45 @@ final class HeidiBundleConfigurationTest extends TestCase
     public function aClientDeclaredWithNothingGetsTheDefaultsOfTheModule(): void
     {
         // Given
-        $fromModule = ClientDefinition::fromArray('oidc-demo', [
-            'redirect_uris' => ['https://demo.test/login/check'],
-            'token_endpoint_auth_method' => 'none',
-        ], Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
+        $fromModule = ClientDefinition::fromArray(
+            'oidc-demo',
+            [
+                'redirect_uris' => ['https://demo.test/login/check'],
+                'token_endpoint_auth_method' => 'none',
+            ],
+            Algorithms::all(),
+            Methods::all(),
+            new PkiFrameworkCertificateReader(),
+            Algorithms::keyEncryption(),
+            Algorithms::contentEncryption(),
+        );
 
         // When
-        $config = self::process(self::MINIMAL + [
-            'clients' => [
-                'oidc-demo' => [
-                    'redirect_uris' => ['https://demo.test/login/check'],
-                    'token_endpoint_auth_method' => 'none',
+        $config = self::process(
+            self::MINIMAL
+            + [
+                'clients' => [
+                    'oidc-demo' => [
+                        'redirect_uris' => ['https://demo.test/login/check'],
+                        'token_endpoint_auth_method' => 'none',
+                    ],
                 ],
             ],
-        ]);
+        );
 
         // Then
         static::assertIsArray($config['clients']);
         static::assertSame(['oidc-demo'], array_keys($config['clients']));
         static::assertIsArray($config['clients']['oidc-demo']);
-        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
+        $fromTree = ClientDefinition::fromArray(
+            'oidc-demo',
+            self::stringKeyed($config['clients']['oidc-demo']),
+            Algorithms::all(),
+            Methods::all(),
+            new PkiFrameworkCertificateReader(),
+            Algorithms::keyEncryption(),
+            Algorithms::contentEncryption(),
+        );
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
         static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, array_map(static fn ($scope) => (string) $scope, $fromTree->allowedScopes));
@@ -158,92 +199,148 @@ final class HeidiBundleConfigurationTest extends TestCase
      */
     public static function provideRefusedConfigurations(): iterable
     {
-        yield 'no tenant' => [[
-            'keys' => self::MINIMAL['keys'],
-        ], 'tenant'];
-        yield 'no issuer' => [[
-            'tenant' => [],
-            'keys' => self::MINIMAL['keys'],
-        ], 'issuer'];
-        yield 'a predicate the provider does not define' => [[
-            'tenant' => self::MINIMAL['tenant'] + [
-                'authentication_classes' => [
-                    'gold' => 'attested_authenticator',
+        yield 'no tenant' => [
+            [
+                'keys' => self::MINIMAL['keys'],
+            ],
+            'tenant',
+        ];
+        yield 'no issuer' => [
+            [
+                'tenant' => [],
+                'keys' => self::MINIMAL['keys'],
+            ],
+            'issuer',
+        ];
+        yield 'a predicate the provider does not define' => [
+            [
+                'tenant' => self::MINIMAL['tenant']
+                    + [
+                        'authentication_classes' => [
+                            'gold' => 'attested_authenticator',
+                        ],
+                    ],
+                'keys' => self::MINIMAL['keys'],
+            ],
+            'authentication_classes',
+        ];
+        yield 'no kms' => [
+            [
+                'tenant' => self::MINIMAL['tenant'],
+                'keys' => [
+                    'key_id' => 'signing',
                 ],
             ],
-            'keys' => self::MINIMAL['keys'],
-        ], 'authentication_classes'];
-        yield 'no kms' => [[
-            'tenant' => self::MINIMAL['tenant'],
-            'keys' => [
-                'key_id' => 'signing',
-            ],
-        ], 'kms'];
-        yield 'no key id' => [[
-            'tenant' => self::MINIMAL['tenant'],
-            'keys' => [
-                'kms' => 'sodium://?keys[signing]=AAAA',
-            ],
-        ], 'key_id'];
-        yield 'an authorization code living longer than RFC 6749 section 4.1.2 recommends' => [self::MINIMAL + [
-            'tokens' => [
-                'authorization_code_ttl' => HeidiBundle::MAX_AUTHORIZATION_CODE_TTL + 1,
-            ],
-        ], 'authorization_code_ttl'];
-        yield 'a lifetime of zero' => [self::MINIMAL + [
-            'tokens' => [
-                'access_token_ttl' => 0,
-            ],
-        ], 'access_token_ttl'];
-        yield 'a negative cache lifetime of the JWK Set' => [[
-            'tenant' => self::MINIMAL['tenant'],
-            'keys' => self::MINIMAL['keys'] + [
-                'jwks_max_age' => -1,
-            ],
-        ], 'jwks_max_age'];
-        yield 'a negative staging delay' => [[
-            'tenant' => self::MINIMAL['tenant'],
-            'keys' => self::MINIMAL['keys'] + [
-                'staging_delay' => -1,
-            ],
-        ], 'staging_delay'];
-        yield 'a sliding refresh lifetime beyond the absolute one' => [self::MINIMAL + [
-            'tokens' => [
-                'refresh_token_ttl' => 100,
-                'refresh_token_absolute_ttl' => 99,
-            ],
-        ], 'refresh_token_ttl'];
-        yield 'an unknown client option' => [self::MINIMAL + [
-            'clients' => [
-                'app' => [
-                    'insecure_redirect_uris' => true,
+            'kms',
+        ];
+        yield 'no key id' => [
+            [
+                'tenant' => self::MINIMAL['tenant'],
+                'keys' => [
+                    'kms' => 'sodium://?keys[signing]=AAAA',
                 ],
             ],
-        ], 'insecure_redirect_uris'];
-        yield 'an unknown grant type' => [self::MINIMAL + [
-            'clients' => [
-                'app' => [
-                    'grant_types' => ['implicit'],
+            'key_id',
+        ];
+        yield 'an authorization code living longer than RFC 6749 section 4.1.2 recommends' => [
+            self::MINIMAL
+                + [
+                    'tokens' => [
+                        'authorization_code_ttl' => HeidiBundle::MAX_AUTHORIZATION_CODE_TTL + 1,
+                    ],
                 ],
-            ],
-        ], 'implicit'];
-        yield 'a consent flag that is not a boolean' => [self::MINIMAL + [
-            'clients' => [
-                'app' => [
-                    'requires_consent' => 'no',
+            'authorization_code_ttl',
+        ];
+        yield 'a lifetime of zero' => [
+            self::MINIMAL
+                + [
+                    'tokens' => [
+                        'access_token_ttl' => 0,
+                    ],
                 ],
+            'access_token_ttl',
+        ];
+        yield 'a negative cache lifetime of the JWK Set' => [
+            [
+                'tenant' => self::MINIMAL['tenant'],
+                'keys' => self::MINIMAL['keys']
+                    + [
+                        'jwks_max_age' => -1,
+                    ],
             ],
-        ], 'requires_consent'];
-        yield 'a PKCE flag that is not a boolean' => [self::MINIMAL + [
-            'clients' => [
-                'app' => [
-                    'requires_pkce' => 'no',
+            'jwks_max_age',
+        ];
+        yield 'a negative staging delay' => [
+            [
+                'tenant' => self::MINIMAL['tenant'],
+                'keys' => self::MINIMAL['keys']
+                    + [
+                        'staging_delay' => -1,
+                    ],
+            ],
+            'staging_delay',
+        ];
+        yield 'a sliding refresh lifetime beyond the absolute one' => [
+            self::MINIMAL
+                + [
+                    'tokens' => [
+                        'refresh_token_ttl' => 100,
+                        'refresh_token_absolute_ttl' => 99,
+                    ],
                 ],
-            ],
-        ], 'requires_pkce'];
-        yield 'an unknown top-level option' => [self::MINIMAL + [
-            'compatibility' => [],
-        ], 'compatibility'];
+            'refresh_token_ttl',
+        ];
+        yield 'an unknown client option' => [
+            self::MINIMAL
+                + [
+                    'clients' => [
+                        'app' => [
+                            'insecure_redirect_uris' => true,
+                        ],
+                    ],
+                ],
+            'insecure_redirect_uris',
+        ];
+        yield 'an unknown grant type' => [
+            self::MINIMAL
+                + [
+                    'clients' => [
+                        'app' => [
+                            'grant_types' => ['implicit'],
+                        ],
+                    ],
+                ],
+            'implicit',
+        ];
+        yield 'a consent flag that is not a boolean' => [
+            self::MINIMAL
+                + [
+                    'clients' => [
+                        'app' => [
+                            'requires_consent' => 'no',
+                        ],
+                    ],
+                ],
+            'requires_consent',
+        ];
+        yield 'a PKCE flag that is not a boolean' => [
+            self::MINIMAL
+                + [
+                    'clients' => [
+                        'app' => [
+                            'requires_pkce' => 'no',
+                        ],
+                    ],
+                ],
+            'requires_pkce',
+        ];
+        yield 'an unknown top-level option' => [
+            self::MINIMAL
+                + [
+                    'compatibility' => [],
+                ],
+            'compatibility',
+        ];
     }
 
     /**
@@ -268,12 +365,15 @@ final class HeidiBundleConfigurationTest extends TestCase
     public function clientIdentifiersAreKeptAsWritten(): void
     {
         // When
-        $config = self::process(self::MINIMAL + [
-            'clients' => [
-                'oidc-demo' => [],
-                'Conformance.Client_1' => [],
+        $config = self::process(
+            self::MINIMAL
+            + [
+                'clients' => [
+                    'oidc-demo' => [],
+                    'Conformance.Client_1' => [],
+                ],
             ],
-        ]);
+        );
 
         // Then
         static::assertIsArray($config['clients']);
@@ -343,8 +443,7 @@ final class HeidiBundleConfigurationTest extends TestCase
 
     private static function configuration(): ConfigurationInterface
     {
-        $extension = new HeidiBundle()
-            ->getContainerExtension();
+        $extension = new HeidiBundle()->getContainerExtension();
         static::assertInstanceOf(ConfigurationExtensionInterface::class, $extension);
         $configuration = $extension->getConfiguration([], new ContainerBuilder());
         static::assertInstanceOf(ConfigurationInterface::class, $configuration);

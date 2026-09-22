@@ -124,14 +124,19 @@ final class StepUpTest extends PasskeyTestCase
         $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
 
         // When
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
 
         // Then
         $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']));
@@ -191,14 +196,19 @@ final class StepUpTest extends PasskeyTestCase
         $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
 
         // When
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
 
         // Then
         $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']));
@@ -262,14 +272,19 @@ final class StepUpTest extends PasskeyTestCase
         $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
 
         // When
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
 
         // Then
         $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']));
@@ -324,9 +339,7 @@ final class StepUpTest extends PasskeyTestCase
 
     private function submitLogin(string $interaction, string $username, string $password): void
     {
-        $form = $this->loginPage($interaction)
-            ->selectButton('Sign in')
-            ->form();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
         $form['_username'] = $username;
         $form['_password'] = $password;
         $this->browser->submit($form);

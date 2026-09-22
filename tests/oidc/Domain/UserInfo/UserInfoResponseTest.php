@@ -37,16 +37,22 @@ final class UserInfoResponseTest extends TestCase
 
         // Then
         static::assertSame('alice-subject', $response->subject);
-        static::assertSame([
-            'sub' => 'alice-subject',
-            'email' => 'alice@acme.example',
-            'email_verified' => true,
-            'updated_at' => 1789466400,
-            'address' => [
-                'country' => 'FR',
+        static::assertSame(
+            [
+                'sub' => 'alice-subject',
+                'email' => 'alice@acme.example',
+                'email_verified' => true,
+                'updated_at' => 1789466400,
+                'address' => [
+                    'country' => 'FR',
+                ],
             ],
-        ], $response->claims);
-        static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"updated_at":1789466400,"address":{"country":"FR"}}', $response->body);
+            $response->claims,
+        );
+        static::assertSame(
+            '{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"updated_at":1789466400,"address":{"country":"FR"}}',
+            $response->body,
+        );
         static::assertSame('application/json', $response->contentType);
     }
 
@@ -83,10 +89,13 @@ final class UserInfoResponseTest extends TestCase
         static::assertSame('The access token expired.', $response->errorDescription);
         static::assertNull($response->scope);
         static::assertSame('Bearer error="invalid_token", error_description="The access token expired."', $response->challenge());
-        static::assertSame([
-            'error' => 'invalid_token',
-            'error_description' => 'The access token expired.',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'error' => 'invalid_token',
+                'error_description' => 'The access token expired.',
+            ],
+            $response->parameters(),
+        );
     }
 
     /**
@@ -99,11 +108,14 @@ final class UserInfoResponseTest extends TestCase
         $response = UserInfoErrorResponse::fromException(new InvalidTokenException('The access token expired.'));
 
         // Then
-        static::assertSame([
-            'WWW-Authenticate' => 'Bearer error="invalid_token", error_description="The access token expired."',
-            'Cache-Control' => 'no-store',
-            'Pragma' => 'no-cache',
-        ], $response->headers());
+        static::assertSame(
+            [
+                'WWW-Authenticate' => 'Bearer error="invalid_token", error_description="The access token expired."',
+                'Cache-Control' => 'no-store',
+                'Pragma' => 'no-cache',
+            ],
+            $response->headers(),
+        );
     }
 
     /**
@@ -127,17 +139,26 @@ final class UserInfoResponseTest extends TestCase
     public function anInsufficientScopeIsA403NamingTheScopes(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(new InsufficientScopeException('The token opens nothing here.', [Scope::openid(), new Scope('profile')]));
+        $response = UserInfoErrorResponse::fromException(new InsufficientScopeException('The token opens nothing here.', [
+            Scope::openid(),
+            new Scope('profile'),
+        ]));
 
         // Then
         static::assertSame(403, $response->statusCode);
         static::assertSame('insufficient_scope', $response->error);
         static::assertSame('openid profile', $response->scope);
-        static::assertSame('Bearer error="insufficient_scope", error_description="The token opens nothing here.", scope="openid profile"', $response->challenge());
-        static::assertSame([
-            'error' => 'insufficient_scope',
-            'error_description' => 'The token opens nothing here.',
-        ], $response->parameters());
+        static::assertSame(
+            'Bearer error="insufficient_scope", error_description="The token opens nothing here.", scope="openid profile"',
+            $response->challenge(),
+        );
+        static::assertSame(
+            [
+                'error' => 'insufficient_scope',
+                'error_description' => 'The token opens nothing here.',
+            ],
+            $response->parameters(),
+        );
     }
 
     /**
@@ -155,11 +176,14 @@ final class UserInfoResponseTest extends TestCase
         static::assertNull($response->errorDescription);
         static::assertNull($response->scope);
         static::assertSame('Bearer, DPoP', $response->challenge());
-        static::assertSame([
-            'WWW-Authenticate' => 'Bearer, DPoP',
-            'Cache-Control' => 'no-store',
-            'Pragma' => 'no-cache',
-        ], $response->headers());
+        static::assertSame(
+            [
+                'WWW-Authenticate' => 'Bearer, DPoP',
+                'Cache-Control' => 'no-store',
+                'Pragma' => 'no-cache',
+            ],
+            $response->headers(),
+        );
         static::assertSame([], $response->parameters());
     }
 
@@ -174,8 +198,11 @@ final class UserInfoResponseTest extends TestCase
 
         // Then
         static::assertSame('Bearer error="invalid_token"', $response->challenge());
-        static::assertSame([
-            'error' => 'invalid_token',
-        ], $response->parameters());
+        static::assertSame(
+            [
+                'error' => 'invalid_token',
+            ],
+            $response->parameters(),
+        );
     }
 }

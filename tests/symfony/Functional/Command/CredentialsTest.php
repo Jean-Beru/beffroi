@@ -49,7 +49,10 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $display = self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true)));
         static::assertStringContainsString('password ' . $password->id->toRfc4122() . ' 2026-09-15 10:00:00', $display);
-        static::assertStringContainsString('passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00', $display);
+        static::assertStringContainsString(
+            'passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00',
+            $display,
+        );
     }
 
     #[Test]
@@ -116,7 +119,10 @@ final class CredentialsTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertStringContainsString('The totp "' . $totp->id->toRfc4122() . '" of the user "alice" is revoked; it never authenticates again.', self::flattened($tester));
+        static::assertStringContainsString(
+            'The totp "' . $totp->id->toRfc4122() . '" of the user "alice" is revoked; it never authenticates again.',
+            self::flattened($tester),
+        );
         $revoked = self::credentials()->find($totp->id) ?? static::fail('The TOTP is gone.');
         static::assertInstanceOf(RevocableCredentialInterface::class, $revoked);
         static::assertTrue($revoked->isRevoked());
@@ -160,7 +166,10 @@ final class CredentialsTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertStringContainsString('The password "' . $password->id->toRfc4122() . '" cannot be revoked; a password is replaced, not revoked.', self::flattened($tester));
+        static::assertStringContainsString(
+            'The password "' . $password->id->toRfc4122() . '" cannot be revoked; a password is replaced, not revoked.',
+            self::flattened($tester),
+        );
     }
 
     #[Test]
@@ -215,7 +224,20 @@ final class CredentialsTest extends ConsoleTestCase
 
     private static function passkey(User $user): PasskeyCredential
     {
-        return new PasskeyCredential(Uuid::v7(), $user, 'YubiKey 5', random_bytes(16), 'cose-public-key', 0, ['usb'], false, false, Uuid::v4(), PasskeyUserHandle::generate(), self::now());
+        return new PasskeyCredential(
+            Uuid::v7(),
+            $user,
+            'YubiKey 5',
+            random_bytes(16),
+            'cose-public-key',
+            0,
+            ['usb'],
+            false,
+            false,
+            Uuid::v4(),
+            PasskeyUserHandle::generate(),
+            self::now(),
+        );
     }
 
     private static function credentials(): CredentialRepositoryInterface

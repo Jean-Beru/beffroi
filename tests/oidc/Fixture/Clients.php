@@ -27,8 +27,14 @@ final class Clients
 {
     public const string SECRET = 'a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3e7f2a6b0c4d8e1f5a9b3c7d0e4f8a2b6';
 
-    public static function confidential(Tenant $tenant, PasswordHash $secretHash, ?ClientAuthenticationMethodInterface $method = null, string $clientId = 'oidc-demo', bool $requiresPkce = true, AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt): Client
-    {
+    public static function confidential(
+        Tenant $tenant,
+        PasswordHash $secretHash,
+        ?ClientAuthenticationMethodInterface $method = null,
+        string $clientId = 'oidc-demo',
+        bool $requiresPkce = true,
+        AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt,
+    ): Client {
         return new Client(
             $tenant,
             $clientId,
@@ -92,8 +98,13 @@ final class Clients
      * publishes the key the document is addressed to, and receives the shapes given, signed then
      * encrypted. What it registers nothing for it receives as every other client does.
      */
-    public static function encryptedFor(Tenant $tenant, ?ResponseFormat $idToken = null, ?ResponseFormat $userInfo = null, ?ResponseFormat $authorizationResponse = null, string $clientId = 'encrypted-client'): Client
-    {
+    public static function encryptedFor(
+        Tenant $tenant,
+        ?ResponseFormat $idToken = null,
+        ?ResponseFormat $userInfo = null,
+        ?ResponseFormat $authorizationResponse = null,
+        string $clientId = 'encrypted-client',
+    ): Client {
         return new Client(
             $tenant,
             $clientId,
@@ -118,8 +129,12 @@ final class Clients
      *
      * @param list<ClientUri> $requestUris
      */
-    public static function sendingRequestObjects(Tenant $tenant, ?RequestObjectSigningInterface $signing = null, array $requestUris = [], string $clientId = 'jar-client'): Client
-    {
+    public static function sendingRequestObjects(
+        Tenant $tenant,
+        ?RequestObjectSigningInterface $signing = null,
+        array $requestUris = [],
+        string $clientId = 'jar-client',
+    ): Client {
         return new Client(
             $tenant,
             $clientId,
@@ -156,8 +171,12 @@ final class Clients
      * A client recognised by what its certificate says about it (RFC 8705 §2.1): it registers one of the
      * five values of §2.1.2, here the subject distinguished name unless the test names another.
      */
-    public static function withCertificateIdentity(Tenant $tenant, ?CertificateIdentityInterface $identity = null, string $clientId = 'mtls-client', AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt): Client
-    {
+    public static function withCertificateIdentity(
+        Tenant $tenant,
+        ?CertificateIdentityInterface $identity = null,
+        string $clientId = 'mtls-client',
+        AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt,
+    ): Client {
         return new Client(
             $tenant,
             $clientId,
@@ -196,8 +215,12 @@ final class Clients
      * A client the logout page loads in a frame when a session it signed in ends (Front-Channel Logout
      * 1.0 §3), which reads "iss" and "sid" only when it said so.
      */
-    public static function withFrontChannelLogout(Tenant $tenant, string $clientId = 'spa', string $logoutUri = 'https://spa.example/frontchannel-logout', bool $sessionRequired = false): Client
-    {
+    public static function withFrontChannelLogout(
+        Tenant $tenant,
+        string $clientId = 'spa',
+        string $logoutUri = 'https://spa.example/frontchannel-logout',
+        bool $sessionRequired = false,
+    ): Client {
         return new Client(
             $tenant,
             $clientId,

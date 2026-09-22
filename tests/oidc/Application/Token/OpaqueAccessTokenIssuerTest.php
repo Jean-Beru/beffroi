@@ -45,7 +45,13 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     public function itMintsAnOpaqueValueForTenMinutesAndKeepsItsRecord(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'email']));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'email'],
+        ));
 
         // When
         $token = $this->issuer->issue($authorization, Fixtures::now());
@@ -70,7 +76,10 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     {
         // Given
         $certificate = Certificates::client();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()), CertificateConfirmation::ofCertificate($certificate));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(
+            Tokens::code('the-code', $this->client, $this->session, Fixtures::now()),
+            CertificateConfirmation::ofCertificate($certificate),
+        );
 
         // When
         $token = $this->issuer->issue($authorization, Fixtures::now());

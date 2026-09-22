@@ -81,10 +81,13 @@ final class JwtIdTokenIssuerTest extends TestCase
         ['header' => $header] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
 
         // Then
-        static::assertSame([
-            'alg' => 'RS256',
-            'kid' => $this->jwts->key->kid,
-        ], $header);
+        static::assertSame(
+            [
+                'alg' => 'RS256',
+                'kid' => $this->jwts->key->kid,
+            ],
+            $header,
+        );
     }
 
     /**
@@ -140,7 +143,18 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function onARefreshThereIsNoNonceAndTheOriginalAuthenticationIsDescribed(): void
     {
         // Given
-        $session = new AuthenticationSession(Uuid::v7(), $this->session->tenant, $this->session->user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now()), Fixtures::context(), Fixtures::now()->modify('+12 hours'));
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $this->session->tenant,
+            $this->session->user,
+            Fixtures::now(),
+            AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(
+                new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+                Fixtures::now(),
+            ),
+            Fixtures::context(),
+            Fixtures::now()->modify('+12 hours'),
+        );
         $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $session, Fixtures::now()), null);
         $later = Fixtures::now()->modify('+20 days');
         $idToken = $this->issuer->issue($authorization, $this->accessToken, $later);
@@ -171,7 +185,10 @@ final class JwtIdTokenIssuerTest extends TestCase
         $decoded = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
 
         // Then
-        static::assertSame(['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'acr', 'amr', 'azp', 'at_hash', 'sid', 'email', 'email_verified'], array_keys($decoded));
+        static::assertSame(
+            ['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'acr', 'amr', 'azp', 'at_hash', 'sid', 'email', 'email_verified'],
+            array_keys($decoded),
+        );
         static::assertSame('alice@acme.example', $decoded['email']);
         static::assertArrayNotHasKey('family_name', $decoded);
         static::assertArrayNotHasKey('given_name', $decoded);
@@ -227,7 +244,11 @@ final class JwtIdTokenIssuerTest extends TestCase
         $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
 
         // When
-        $issuer->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $claims)), $this->accessToken, Fixtures::now());
+        $issuer->issue(
+            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $claims)),
+            $this->accessToken,
+            Fixtures::now(),
+        );
 
         // Then
         static::assertSame(0, $provider->calls);
@@ -272,7 +293,13 @@ final class JwtIdTokenIssuerTest extends TestCase
             }
         };
         $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: ClaimsRequest::fromJson('{"id_token":{"name":null}}')));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            claims: ClaimsRequest::fromJson('{"id_token":{"name":null}}'),
+        ));
 
         // When
         $claims = $this->jwts->verify($issuer->issue($authorization, $this->accessToken, Fixtures::now()), 'spa', Fixtures::now())['claims'];
@@ -291,7 +318,13 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theLifetimeIsConfigurable(): void
     {
         // Given
-        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
+        $issuer = new JwtIdTokenIssuer(
+            $this->jwts->documents,
+            new PublicSubjectIdentifierResolver(),
+            new StandardClaimsProvider(),
+            Algorithms::all(),
+            new DateInterval('PT1H'),
+        );
         $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
         // When
@@ -305,7 +338,13 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function aTokenIsRefusedOncePastItsLifetime(): void
     {
         // Given
-        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT1H'));
+        $issuer = new JwtIdTokenIssuer(
+            $this->jwts->documents,
+            new PublicSubjectIdentifierResolver(),
+            new StandardClaimsProvider(),
+            Algorithms::all(),
+            new DateInterval('PT1H'),
+        );
         $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
 
         // Then
@@ -341,7 +380,10 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theAudienceIsTheClient(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']), [new Scope('openid')]);
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
+            [new Scope('openid')],
+        );
         $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
 
         // Then
@@ -360,7 +402,15 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idToken: ResponseFormat::signed(Algorithms::es256()));
+        $client = new Client(
+            $this->session->tenant,
+            'spa',
+            'Single page application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            idToken: ResponseFormat::signed(Algorithms::es256()),
+        );
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
 
         // When
@@ -368,10 +418,13 @@ final class JwtIdTokenIssuerTest extends TestCase
 
         // Then
         ['header' => $header] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
-        static::assertSame([
-            'alg' => 'ES256',
-            'kid' => $es256Key->kid,
-        ], $header);
+        static::assertSame(
+            [
+                'alg' => 'ES256',
+                'kid' => $es256Key->kid,
+            ],
+            $header,
+        );
     }
 
     /**
@@ -383,7 +436,15 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $this->jwts->activate(Algorithms::edDsa());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], idToken: ResponseFormat::signed(Algorithms::edDsa()));
+        $client = new Client(
+            $this->session->tenant,
+            'spa',
+            'Single page application',
+            Methods::none(),
+            null,
+            [new RedirectUri('https://spa.example/callback')],
+            idToken: ResponseFormat::signed(Algorithms::edDsa()),
+        );
         $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
 
         // When
@@ -460,6 +521,13 @@ final class JwtIdTokenIssuerTest extends TestCase
         $user->updateProfile(new Profile(givenName: 'Alice'), Fixtures::now());
         $claims = ClaimsRequest::fromJson('{"id_token":{"email":null,"email_verified":{"essential":true},"family_name":null},"userinfo":{"given_name":null}}');
 
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, Fixtures::session($user), Fixtures::now(), ['openid', 'profile', 'email'], claims: $claims));
+        return GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            'the-code',
+            $this->client,
+            Fixtures::session($user),
+            Fixtures::now(),
+            ['openid', 'profile', 'email'],
+            claims: $claims,
+        ));
     }
 }

@@ -78,7 +78,8 @@ final readonly class LoginSuccessListener
         $this->recordUse($passport, $user, $now, $context);
 
         $this->browser->bind($request->getSession(), $session);
-        $event->getAuthenticatedToken()
+        $event
+            ->getAuthenticatedToken()
             ->setAuthenticationProofs(array_map(
                 static fn (DateTimeImmutable $provenAt): int => $provenAt->getTimestamp(),
                 $session->proofs->entries,

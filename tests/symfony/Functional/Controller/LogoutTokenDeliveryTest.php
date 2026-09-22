@@ -262,8 +262,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     {
         $this->browser->submit($this->browser->request('GET', '/logout', [
             'client_id' => 'oidc-demo',
-        ])->selectButton('Sign out')
-            ->form());
+        ])->selectButton('Sign out')->form());
     }
 
     private static function message(): SendLogoutToken

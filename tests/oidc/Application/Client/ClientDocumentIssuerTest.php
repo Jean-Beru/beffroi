@@ -66,8 +66,7 @@ final class ClientDocumentIssuerTest extends TestCase
         $client = Clients::withKeys($this->tenant, 'moved-on', jwksUri: new ClientUri('https://moved.example/jwks'));
         /** @var list<array<string, mixed>> $signingOnly */
         $signingOnly = [[
-            ...ClientEncryption::privateKey()->toPublic()
-                ->all(),
+            ...ClientEncryption::privateKey()->toPublic()->all(),
             'use' => 'sig',
         ]];
         $documents = $this->jwts->documentsFor(new FakeClientJwksFetcher([new ClientJwks($signingOnly)]));

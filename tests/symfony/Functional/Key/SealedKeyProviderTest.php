@@ -48,19 +48,16 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         $cacheDir = self::getContainer()->getParameter('kernel.cache_dir');
         static::assertIsString($cacheDir);
         $this->directory = $cacheDir . '/keys';
-        new Filesystem()
-            ->remove($this->directory);
+        new Filesystem()->remove($this->directory);
         $this->provider = self::service('test.heidi.key_provider', SigningKeyProviderInterface::class);
         $this->published = self::service('test.heidi.public_keys', PublicKeySetProviderInterface::class);
-        self::service('test.heidi.key_rotator', TenantKeyRotator::class)
-            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        self::service('test.heidi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     protected function tearDown(): void
     {
         parent::tearDown();
-        new Filesystem()
-            ->remove($this->directory);
+        new Filesystem()->remove($this->directory);
     }
 
     /**
@@ -133,8 +130,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         $this->provider->activeKey(self::tenant(), Algorithms::rs256());
 
         // Then
-        $opened = new ReflectionProperty($this->provider, 'opened')
-            ->getValue($this->provider);
+        $opened = new ReflectionProperty($this->provider, 'opened')->getValue($this->provider);
         static::assertIsArray($opened);
         static::assertSame([$rotated->kid], array_keys($opened));
     }

@@ -69,7 +69,10 @@ final readonly class TotpLoginAuthenticator implements AuthenticatorInterface, I
             throw new AuthenticationException('The login carries no code.');
         }
         $context = $this->contexts->fromRequest($request);
-        $login = $this->pendingLogins->pending($request->getSession(), $context->receivedAt) ?? throw new AuthenticationException('No login is pending for this browser.');
+        $login = $this->pendingLogins->pending(
+            $request->getSession(),
+            $context->receivedAt,
+        ) ?? throw new AuthenticationException('No login is pending for this browser.');
         $tenant = $this->tenants->provide();
         $user = $this->users->find($login->userId);
         if ($user === null || ! $user->tenant->equals($tenant)) {
@@ -108,8 +111,7 @@ final readonly class TotpLoginAuthenticator implements AuthenticatorInterface, I
      */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response
     {
-        $request->getSession()
-            ->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
+        $request->getSession()->set(SecurityRequestAttributes::AUTHENTICATION_ERROR, $exception);
 
         return $this->pages->redirectToPage(LoginCodeController::ROUTE, $request);
     }

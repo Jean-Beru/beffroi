@@ -89,8 +89,7 @@ final class BrowserSessionTest extends TestCase
     {
         // Given
         $request = self::request();
-        $before = $request->getSession()
-            ->getId();
+        $before = $request->getSession()->getId();
 
         // When
         $this->browser->bind($request->getSession(), $this->session());
@@ -145,8 +144,7 @@ final class BrowserSessionTest extends TestCase
     {
         // Given
         $request = self::request();
-        $request->getSession()
-            ->set(BrowserSession::AUTHENTICATION_SESSION_KEY, $bound);
+        $request->getSession()->set(BrowserSession::AUTHENTICATION_SESSION_KEY, $bound);
 
         // When / Then
         static::assertNull($this->browser->authenticationSession($request, $this->tenant));
@@ -285,8 +283,7 @@ final class BrowserSessionTest extends TestCase
         // Given
         $interaction = $this->interaction();
         $request = self::request();
-        $request->getSession()
-            ->set(BrowserSession::INTERACTIONS_KEY, 'not-a-list');
+        $request->getSession()->set(BrowserSession::INTERACTIONS_KEY, 'not-a-list');
 
         // When / Then
         static::assertNull($this->browser->pending($request, $this->tenant, $interaction->id));
@@ -298,8 +295,7 @@ final class BrowserSessionTest extends TestCase
         // Given
         $interaction = $this->interaction();
         $request = self::request();
-        $request->getSession()
-            ->set(BrowserSession::INTERACTIONS_KEY, [$interaction->id, 42]);
+        $request->getSession()->set(BrowserSession::INTERACTIONS_KEY, [$interaction->id, 42]);
 
         // When / Then
         static::assertSame($interaction, $this->browser->pending($request, $this->tenant, $interaction->id));

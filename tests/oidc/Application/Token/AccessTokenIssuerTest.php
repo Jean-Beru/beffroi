@@ -78,7 +78,12 @@ final class AccessTokenIssuerTest extends TestCase
     public function aClientWithoutAFormatGetsAJwt(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', Clients::public($this->session->tenant), $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            'the-code',
+            Clients::public($this->session->tenant),
+            $this->session,
+            Fixtures::now(),
+        ));
 
         // When
         $this->issuer->issue($authorization, Fixtures::now());

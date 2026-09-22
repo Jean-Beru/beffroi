@@ -162,7 +162,11 @@ final class IdTokenHintVerifierTest extends TestCase
     public function itVerifiesAgainstTheKeysOfTheTenantOfTheClient(): void
     {
         // Given
-        $this->jws->knows(Fixtures::tenant('other', 'https://id.other.example'), self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa"}');
+        $this->jws->knows(
+            Fixtures::tenant('other', 'https://id.other.example'),
+            self::TOKEN,
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa"}',
+        );
 
         // Then
         $this->expectException(InvalidRequestException::class);

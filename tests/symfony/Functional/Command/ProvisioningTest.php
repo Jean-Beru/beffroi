@@ -90,9 +90,13 @@ final class ProvisioningTest extends ConsoleTestCase
         ]);
 
         // When
-        $tester = self::console('heidi:user:set-password', [
-            'username' => 'alice',
-        ], [self::PASSWORD, self::PASSWORD]);
+        $tester = self::console(
+            'heidi:user:set-password',
+            [
+                'username' => 'alice',
+            ],
+            [self::PASSWORD, self::PASSWORD],
+        );
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
@@ -111,8 +115,7 @@ final class ProvisioningTest extends ConsoleTestCase
         $interaction = self::redirectedInteraction($this->browser->getResponse());
         $form = $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
-        ])->selectButton('Sign in')
-            ->form();
+        ])->selectButton('Sign in')->form();
         $form['_username'] = 'alice';
         $form['_password'] = self::PASSWORD;
 
@@ -202,27 +205,45 @@ final class ProvisioningTest extends ConsoleTestCase
     {
         yield 'heidi:keys:generate' => ['heidi:keys:generate', []];
         yield 'heidi:keys:rotate' => ['heidi:keys:rotate', []];
-        yield 'heidi:keys:activate' => ['heidi:keys:activate', [
-            'kid' => 'nope',
-        ]];
-        yield 'heidi:keys:retire' => ['heidi:keys:retire', [
-            '--due' => true,
-        ]];
+        yield 'heidi:keys:activate' => [
+            'heidi:keys:activate',
+            [
+                'kid' => 'nope',
+            ],
+        ];
+        yield 'heidi:keys:retire' => [
+            'heidi:keys:retire',
+            [
+                '--due' => true,
+            ],
+        ];
         yield 'heidi:keys:list' => ['heidi:keys:list', []];
-        yield 'heidi:user:create' => ['heidi:user:create', [
-            'username' => 'alice',
-        ]];
-        yield 'heidi:user:profile' => ['heidi:user:profile', [
-            'username' => 'alice',
-            '--name' => 'Alice Liddell',
-        ]];
-        yield 'heidi:user:show' => ['heidi:user:show', [
-            'username' => 'alice',
-        ]];
-        yield 'heidi:user:set-password' => ['heidi:user:set-password', [
-            'username' => 'alice',
-            '--password-stdin' => true,
-        ]];
+        yield 'heidi:user:create' => [
+            'heidi:user:create',
+            [
+                'username' => 'alice',
+            ],
+        ];
+        yield 'heidi:user:profile' => [
+            'heidi:user:profile',
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+            ],
+        ];
+        yield 'heidi:user:show' => [
+            'heidi:user:show',
+            [
+                'username' => 'alice',
+            ],
+        ];
+        yield 'heidi:user:set-password' => [
+            'heidi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+        ];
     }
 
     /**
@@ -242,7 +263,10 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertStringNotContainsString('is now retiring', $tester->getDisplay());
         $key = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), $kid) ?? static::fail('The key is not stored.');
         static::assertTrue($key->isActive());
-        static::assertSame($kid, self::service('test.heidi.key_provider', SigningKeyProviderInterface::class)->activeKey(self::tenant(), Algorithms::rs256())->key->kid);
+        static::assertSame(
+            $kid,
+            self::service('test.heidi.key_provider', SigningKeyProviderInterface::class)->activeKey(self::tenant(), Algorithms::rs256())->key->kid,
+        );
     }
 
     /**
@@ -259,7 +283,8 @@ final class ProvisioningTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $key = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), self::displayed($tester, 'Key identifier')) ?? static::fail('The key is not stored.');
+        $key = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)
+            ->find(self::tenant(), self::displayed($tester, 'Key identifier')) ?? static::fail('The key is not stored.');
         static::assertSame('ECDH-ES+A256KW', self::displayed($tester, 'Algorithm'));
         static::assertSame('enc', self::displayed($tester, 'Use'));
         static::assertTrue($key->isActive());
@@ -342,8 +367,17 @@ final class ProvisioningTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+Retiring since\s+2026-\S+\s+Retirement due at\s+2026-\S+/', $first), self::flattened($tester));
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+active\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+-/', $second), self::flattened($tester));
+        static::assertMatchesRegularExpression(
+            sprintf(
+                '/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+Retiring since\s+2026-\S+\s+Retirement due at\s+2026-\S+/',
+                $first,
+            ),
+            self::flattened($tester),
+        );
+        static::assertMatchesRegularExpression(
+            sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+active\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+-/', $second),
+            self::flattened($tester),
+        );
     }
 
     #[Test]
@@ -360,7 +394,8 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('bob', self::displayed($tester, 'Username'));
         static::assertSame('bob@example.com (unverified)', self::displayed($tester, 'Email'));
         static::assertInstanceOf(UuidV4::class, Uuid::fromString(self::displayed($tester, 'Subject')));
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
+        $user = self::service('test.heidi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
         static::assertFalse($user->emailVerified);
     }
 
@@ -373,7 +408,8 @@ final class ProvisioningTest extends ConsoleTestCase
         ]);
 
         // Then
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
+        $user = self::service('test.heidi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
         static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user));
     }
 
@@ -391,7 +427,9 @@ final class ProvisioningTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertNotNull(self::service('test.heidi.users', UserRepositoryInterface::class)->findBySubject(self::tenant(), new Subject('carol-from-keycloak')));
+        static::assertNotNull(
+            self::service('test.heidi.users', UserRepositoryInterface::class)->findBySubject(self::tenant(), new Subject('carol-from-keycloak')),
+        );
     }
 
     #[Test]
@@ -456,12 +494,18 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     public static function provideInvalidUserOptions(): iterable
     {
-        yield 'not an email address' => [[
-            '--email' => 'not an address',
-        ], 'is not a valid email address'];
-        yield 'not a subject' => [[
-            '--subject' => 'with a space',
-        ], 'printable ASCII'];
+        yield 'not an email address' => [
+            [
+                '--email' => 'not an address',
+            ],
+            'is not a valid email address',
+        ];
+        yield 'not a subject' => [
+            [
+                '--subject' => 'with a space',
+            ],
+            'printable ASCII',
+        ];
     }
 
     /**
@@ -656,20 +700,32 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     public static function provideDescriptionsRefused(): iterable
     {
-        yield 'not a birthdate' => [[
-            'username' => 'alice',
-            '--name' => 'Alice Liddell',
-            '--birthdate' => '4 May 1990',
-        ], Command::INVALID, 'must be "YYYY-MM-DD" or "YYYY"'];
-        yield 'a verified phone number without a number' => [[
-            'username' => 'alice',
-            '--name' => 'Alice Liddell',
-            '--phone-number-verified' => true,
-        ], Command::INVALID, 'An absent phone number cannot be verified.'];
-        yield 'unknown user' => [[
-            'username' => 'nobody',
-            '--name' => 'Nobody',
-        ], Command::FAILURE, 'There is no user named "nobody"'];
+        yield 'not a birthdate' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--birthdate' => '4 May 1990',
+            ],
+            Command::INVALID,
+            'must be "YYYY-MM-DD" or "YYYY"',
+        ];
+        yield 'a verified phone number without a number' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--phone-number-verified' => true,
+            ],
+            Command::INVALID,
+            'An absent phone number cannot be verified.',
+        ];
+        yield 'unknown user' => [
+            [
+                'username' => 'nobody',
+                '--name' => 'Nobody',
+            ],
+            Command::FAILURE,
+            'There is no user named "nobody"',
+        ];
     }
 
     /**
@@ -683,14 +739,19 @@ final class ProvisioningTest extends ConsoleTestCase
         $user = self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:set-password', [
-            'username' => 'alice',
-            '--password-stdin' => true,
-        ], [self::PASSWORD]);
+        $tester = self::console(
+            'heidi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
+        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
         static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
         static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD));
         static::assertFalse(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD . "\n"));
@@ -701,21 +762,31 @@ final class ProvisioningTest extends ConsoleTestCase
     {
         // Given
         $user = self::user('alice');
-        self::console('heidi:user:set-password', [
-            'username' => 'alice',
-            '--password-stdin' => true,
-        ], ['first password']);
-        $first = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0]->id ?? static::fail('No credential was created.');
+        self::console(
+            'heidi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            ['first password'],
+        );
+        $first = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0]->id ?? static::fail('No credential was created.');
         self::reload();
 
         // When
-        $tester = self::console('heidi:user:set-password', [
-            'username' => 'alice',
-        ], ['second password', 'second password']);
+        $tester = self::console(
+            'heidi:user:set-password',
+            [
+                'username' => 'alice',
+            ],
+            ['second password', 'second password'],
+        );
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
+        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
         static::assertTrue($first->equals($credential->id));
         static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'second password'));
         static::assertFalse(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'first password'));
@@ -727,8 +798,13 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     #[Test]
     #[DataProvider('providePasswordsRefused')]
-    public function aPasswordThatIsNotConfirmedTooShortEmptyOrUnaskableIsRefused(array $input, array $inputs, bool $interactive, int $status, string $message): void
-    {
+    public function aPasswordThatIsNotConfirmedTooShortEmptyOrUnaskableIsRefused(
+        array $input,
+        array $inputs,
+        bool $interactive,
+        int $status,
+        string $message,
+    ): void {
         // Given
         $user = self::user('alice');
 
@@ -749,7 +825,8 @@ final class ProvisioningTest extends ConsoleTestCase
         $alice = [
             'username' => 'alice',
         ];
-        $stdin = $alice + [
+        $stdin = $alice
+        + [
             '--password-stdin' => true,
         ];
         yield 'not confirmed' => [$alice, [self::PASSWORD, self::PASSWORD . 'r'], true, Command::INVALID, 'The two passwords differ.'];
@@ -758,10 +835,16 @@ final class ProvisioningTest extends ConsoleTestCase
         yield 'empty on the standard input' => [$stdin, [''], true, Command::INVALID, 'The password is empty.'];
         yield 'too long' => [$stdin, [str_repeat('a', 4097)], true, Command::INVALID, 'at most 4096 bytes'];
         yield 'not askable' => [$alice, [], false, Command::INVALID, '--password-stdin'];
-        yield 'unknown user' => [[
-            'username' => 'nobody',
-            '--password-stdin' => true,
-        ], [self::PASSWORD], true, Command::FAILURE, 'There is no user named "nobody"'];
+        yield 'unknown user' => [
+            [
+                'username' => 'nobody',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+            true,
+            Command::FAILURE,
+            'There is no user named "nobody"',
+        ];
     }
 
     /**
@@ -779,9 +862,13 @@ final class ProvisioningTest extends ConsoleTestCase
             '--email' => 'alice@example.com',
             '--email-verified' => true,
         ]), 'Subject');
-        self::console('heidi:user:set-password', [
-            'username' => 'alice',
-        ], [self::PASSWORD, self::PASSWORD]);
+        self::console(
+            'heidi:user:set-password',
+            [
+                'username' => 'alice',
+            ],
+            [self::PASSWORD, self::PASSWORD],
+        );
 
         return [
             'kid' => $kid,
@@ -798,8 +885,7 @@ final class ProvisioningTest extends ConsoleTestCase
         $interaction = self::redirectedInteraction($this->browser->getResponse());
         $form = $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
-        ])->selectButton('Sign in')
-            ->form();
+        ])->selectButton('Sign in')->form();
         $form['_username'] = 'alice';
         $form['_password'] = self::PASSWORD;
         $this->browser->submit($form);
@@ -816,9 +902,7 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     private static function dropTenant(): void
     {
-        self::entityManager()
-            ->getConnection()
-            ->executeStatement('DELETE FROM heidi_tenant');
+        self::entityManager()->getConnection()->executeStatement('DELETE FROM heidi_tenant');
         self::reload();
     }
 

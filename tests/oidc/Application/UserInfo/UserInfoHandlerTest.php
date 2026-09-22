@@ -113,13 +113,16 @@ final class UserInfoHandlerTest extends TestCase
         // Then
         static::assertSame('alice-subject', $response->subject);
         static::assertSame($this->jwts->verify($token, 'spa', Fixtures::now())['claims']['sub'], $response->subject);
-        static::assertSame([
-            'sub' => 'alice-subject',
-            'email' => 'alice@acme.example',
-            'email_verified' => true,
-            'phone_number' => '+33612345678',
-            'phone_number_verified' => false,
-        ], $response->claims);
+        static::assertSame(
+            [
+                'sub' => 'alice-subject',
+                'email' => 'alice@acme.example',
+                'email_verified' => true,
+                'phone_number' => '+33612345678',
+                'phone_number_verified' => false,
+            ],
+            $response->claims,
+        );
     }
 
     /**
@@ -130,18 +133,25 @@ final class UserInfoHandlerTest extends TestCase
     public function itServesTheClaimsOfAnOpaqueToken(): void
     {
         // Given
-        $token = $this->storedTokens->issue($this->authorization(['openid', 'email'], '{"userinfo":{"nickname":null}}'), Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $token = $this->storedTokens->issue(
+            $this->authorization(['openid', 'email'], '{"userinfo":{"nickname":null}}'),
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
 
         // When
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
 
         // Then
-        static::assertSame([
-            'sub' => 'alice-subject',
-            'nickname' => 'ali',
-            'email' => 'alice@acme.example',
-            'email_verified' => true,
-        ], $response->claims);
+        static::assertSame(
+            [
+                'sub' => 'alice-subject',
+                'nickname' => 'ali',
+                'email' => 'alice@acme.example',
+                'email_verified' => true,
+            ],
+            $response->claims,
+        );
     }
 
     /**
@@ -242,7 +252,10 @@ final class UserInfoHandlerTest extends TestCase
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
 
         // Then
-        static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false}', $response->toJson());
+        static::assertSame(
+            '{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"phone_number":"+33612345678","phone_number_verified":false}',
+            $response->toJson(),
+        );
     }
 
     /**
@@ -258,16 +271,25 @@ final class UserInfoHandlerTest extends TestCase
         $token = $this->accessToken(['openid'], '{"userinfo":{"nickname":null,"email":{"essential":true},"unknown":null},"id_token":{"name":null}}');
 
         // When
-        $response = $this->handler->handle($this->tenant, 'GET', null, [
-            'access_token' => $token,
-        ], Fixtures::context());
+        $response = $this->handler->handle(
+            $this->tenant,
+            'GET',
+            null,
+            [
+                'access_token' => $token,
+            ],
+            Fixtures::context(),
+        );
 
         // Then
-        static::assertSame([
-            'sub' => 'alice-subject',
-            'nickname' => 'ali',
-            'email' => 'alice@acme.example',
-        ], $response->claims);
+        static::assertSame(
+            [
+                'sub' => 'alice-subject',
+                'nickname' => 'ali',
+                'email' => 'alice@acme.example',
+            ],
+            $response->claims,
+        );
     }
 
     /**
@@ -285,9 +307,12 @@ final class UserInfoHandlerTest extends TestCase
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
 
         // Then
-        static::assertSame([
-            'sub' => 'alice-subject',
-        ], $response->claims);
+        static::assertSame(
+            [
+                'sub' => 'alice-subject',
+            ],
+            $response->claims,
+        );
     }
 
     /**
@@ -320,9 +345,15 @@ final class UserInfoHandlerTest extends TestCase
         $this->expectException(InvalidRequestException::class);
 
         // When
-        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [
-            'access_token' => $token,
-        ], Fixtures::context());
+        $this->handler->handle(
+            $this->tenant,
+            'GET',
+            'Bearer ' . $token,
+            [
+                'access_token' => $token,
+            ],
+            Fixtures::context(),
+        );
     }
 
     /**
@@ -341,7 +372,10 @@ final class UserInfoHandlerTest extends TestCase
             static::fail('The token should have been refused.');
         } catch (InvalidTokenException $exception) {
             // Then
-            static::assertSame('Bearer error="invalid_token", error_description="The access token expired."', UserInfoErrorResponse::fromException($exception)->challenge());
+            static::assertSame(
+                'Bearer error="invalid_token", error_description="The access token expired."',
+                UserInfoErrorResponse::fromException($exception)->challenge(),
+            );
         }
     }
 
@@ -354,8 +388,11 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $authorization = $this->authorization(['openid', 'email']);
-        $idToken = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all())
-            ->issue($authorization, $this->accessTokens->issue($authorization, Fixtures::now()), Fixtures::now());
+        $idToken = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all())->issue(
+            $authorization,
+            $this->accessTokens->issue($authorization, Fixtures::now()),
+            Fixtures::now(),
+        );
 
         // Then
         $this->expectException(InvalidTokenException::class);
@@ -383,7 +420,10 @@ final class UserInfoHandlerTest extends TestCase
         } catch (InsufficientScopeException $exception) {
             // Then
             static::assertSame(403, $exception->statusCode);
-            static::assertSame('Bearer error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid"', UserInfoErrorResponse::fromException($exception)->challenge());
+            static::assertSame(
+                'Bearer error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid"',
+                UserInfoErrorResponse::fromException($exception)->challenge(),
+            );
         }
     }
 
@@ -437,7 +477,10 @@ final class UserInfoHandlerTest extends TestCase
     public function itRefusesATokenWhoseGrantIsGone(): void
     {
         // Given
-        $token = $this->accessTokens->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('never-stored', $this->client, $this->session, Fixtures::now(), ['openid'])), Fixtures::now())->value;
+        $token = $this->accessTokens->issue(
+            GrantedAuthorization::fromAuthorizationCode(Tokens::code('never-stored', $this->client, $this->session, Fixtures::now(), ['openid'])),
+            Fixtures::now(),
+        )->value;
 
         // Then
         $this->expectException(InvalidTokenException::class);
@@ -534,13 +577,16 @@ final class UserInfoHandlerTest extends TestCase
         // Then
         static::assertSame('application/jwt', $response->contentType);
         ['claims' => $claims] = $this->jwts->verify($response->body, 'spa', Fixtures::now(), ['iss', 'aud']);
-        static::assertSame([
-            'sub' => 'alice-subject',
-            'email' => 'alice@acme.example',
-            'email_verified' => true,
-            'iss' => (string) $this->tenant->issuer,
-            'aud' => 'spa',
-        ], $claims);
+        static::assertSame(
+            [
+                'sub' => 'alice-subject',
+                'email' => 'alice@acme.example',
+                'email_verified' => true,
+                'iss' => (string) $this->tenant->issuer,
+                'aud' => 'spa',
+            ],
+            $claims,
+        );
     }
 
     /**
@@ -581,7 +627,10 @@ final class UserInfoHandlerTest extends TestCase
         // Then
         ['header' => $header, 'payload' => $payload] = ClientEncryption::open($response->body);
         static::assertArrayNotHasKey('cty', $header);
-        static::assertSame('{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"iss":"' . $this->tenant->issuer . '","aud":"spa"}', $payload);
+        static::assertSame(
+            '{"sub":"alice-subject","email":"alice@acme.example","email_verified":true,"iss":"' . $this->tenant->issuer . '","aud":"spa"}',
+            $payload,
+        );
     }
 
     /**
@@ -604,7 +653,17 @@ final class UserInfoHandlerTest extends TestCase
         $clients->save($this->client);
 
         return new UserInfoHandler(
-            new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->storedTokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users),
+            new AccessTokenInspector(
+                new AccessTokenVerifier(
+                    new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                    $clients,
+                    $this->storedTokens,
+                    new PublicSubjectIdentifierResolver(),
+                ),
+                $this->sessions,
+                $this->grants,
+                $users,
+            ),
             $this->jwts->documents,
             Proofs::verifier(),
             new Endpoints(),
@@ -666,9 +725,15 @@ final class UserInfoHandlerTest extends TestCase
             static::fail('A token bound to a key is not a bearer token.');
         } catch (TokenBindingNotProvenException $exception) {
             // Then
-            static::assertSame('invalid_token: The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1).', $exception->getMessage());
+            static::assertSame(
+                'invalid_token: The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1).',
+                $exception->getMessage(),
+            );
             static::assertSame('DPoP', $exception->challengeScheme());
-            static::assertSame('DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1)."', UserInfoErrorResponse::fromException($exception)->challenge());
+            static::assertSame(
+                'DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1)."',
+                UserInfoErrorResponse::fromException($exception)->challenge(),
+            );
         }
     }
 
@@ -748,7 +813,14 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function code(array $scopes, ?string $claims = null): AuthorizationCode
     {
-        $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), $scopes, claims: $claims === null ? null : ClaimsRequest::fromJson($claims));
+        $code = Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            $scopes,
+            claims: $claims === null ? null : ClaimsRequest::fromJson($claims),
+        );
         $this->grants->save($code);
 
         return $code;
@@ -764,6 +836,9 @@ final class UserInfoHandlerTest extends TestCase
     {
         $family = Tokens::family(Fixtures::now(), grantId: $this->code($granted)->grantId);
 
-        return GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $family, $granted), $scopes);
+        return GrantedAuthorization::fromRefreshToken(
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $family, $granted),
+            $scopes,
+        );
     }
 }

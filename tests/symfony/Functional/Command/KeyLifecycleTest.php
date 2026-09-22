@@ -234,7 +234,14 @@ final class KeyLifecycleTest extends ConsoleTestCase
 
         // Then
         static::assertEquals($staged->createdAt->modify(self::STAGING_DELAY), $staged->activationDueAt);
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+.*?Activates at\s+%s/', $staged->kid, preg_quote($staged->activationDueAt->format(DateTimeInterface::RFC3339), '/')), self::flattened($tester));
+        static::assertMatchesRegularExpression(
+            sprintf(
+                '/Key identifier\s+%s\s+.*?Activates at\s+%s/',
+                $staged->kid,
+                preg_quote($staged->activationDueAt->format(DateTimeInterface::RFC3339), '/'),
+            ),
+            self::flattened($tester),
+        );
     }
 
     #[Test]
@@ -248,7 +255,10 @@ final class KeyLifecycleTest extends ConsoleTestCase
 
         // Then
         $staged = self::key(self::displayed($tester, 'Key identifier'));
-        static::assertStringContainsString(sprintf('the scheduled step activates the new key at %s', $staged->activationDueAt->format(DateTimeInterface::RFC3339)), self::flattened($tester));
+        static::assertStringContainsString(
+            sprintf('the scheduled step activates the new key at %s', $staged->activationDueAt->format(DateTimeInterface::RFC3339)),
+            self::flattened($tester),
+        );
         static::assertStringContainsString(sprintf('"heidi:keys:activate %s" does it earlier', $staged->kid), self::flattened($tester));
     }
 
@@ -268,7 +278,10 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('active', self::displayed($tester, 'Status'));
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $previous), self::flattened($tester));
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
-        static::assertStringContainsString(sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)), self::flattened($tester));
+        static::assertStringContainsString(
+            sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)),
+            self::flattened($tester),
+        );
     }
 
     /**
@@ -313,7 +326,10 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $previous), self::flattened($tester));
         static::assertSame(KeyStatus::Active, self::key($staged)->status);
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
-        static::assertStringContainsString(sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)), self::flattened($tester));
+        static::assertStringContainsString(
+            sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)),
+            self::flattened($tester),
+        );
     }
 
     /**
@@ -327,7 +343,9 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $active = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:activate', array_map(static fn (string|bool $value): string|bool => $value === '{active}' ? $active : $value, $input));
+        $tester = self::console('heidi:keys:activate', array_map(static fn (string|bool $value): string|bool => $value === '{active}'
+            ? $active
+            : $value, $input));
 
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode());
@@ -340,12 +358,18 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     public static function provideActivationsRefused(): iterable
     {
-        yield 'unknown key' => [[
-            'kid' => 'nope',
-        ], 'has no key "nope"'];
-        yield 'the active key' => [[
-            'kid' => '{active}',
-        ], 'Only a staged key can be activated; this one is active.'];
+        yield 'unknown key' => [
+            [
+                'kid' => 'nope',
+            ],
+            'has no key "nope"',
+        ];
+        yield 'the active key' => [
+            [
+                'kid' => '{active}',
+            ],
+            'Only a staged key can be activated; this one is active.',
+        ];
     }
 
     /**
@@ -400,7 +424,9 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $active = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:retire', array_map(static fn (string|bool $value): string|bool => $value === '{active}' ? $active : $value, $input));
+        $tester = self::console('heidi:keys:retire', array_map(static fn (string|bool $value): string|bool => $value === '{active}'
+            ? $active
+            : $value, $input));
 
         // Then
         static::assertSame($status, $tester->getStatusCode());
@@ -413,18 +439,30 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     public static function provideRetirementsRefused(): iterable
     {
-        yield 'unknown key' => [[
-            'kid' => 'nope',
-            '--force' => true,
-        ], Command::FAILURE, 'has no key "nope"'];
-        yield 'the active key' => [[
-            'kid' => '{active}',
-            '--force' => true,
-        ], Command::FAILURE, 'The active key cannot be retired; rotate first.'];
-        yield 'a key and --due' => [[
-            'kid' => '{active}',
-            '--due' => true,
-        ], Command::INVALID, 'not both, not neither'];
+        yield 'unknown key' => [
+            [
+                'kid' => 'nope',
+                '--force' => true,
+            ],
+            Command::FAILURE,
+            'has no key "nope"',
+        ];
+        yield 'the active key' => [
+            [
+                'kid' => '{active}',
+                '--force' => true,
+            ],
+            Command::FAILURE,
+            'The active key cannot be retired; rotate first.',
+        ];
+        yield 'a key and --due' => [
+            [
+                'kid' => '{active}',
+                '--due' => true,
+            ],
+            Command::INVALID,
+            'not both, not neither',
+        ];
         yield 'neither a key nor --due' => [[], Command::INVALID, 'not both, not neither'];
     }
 
@@ -487,7 +525,13 @@ final class KeyLifecycleTest extends ConsoleTestCase
 
         // Then
         static::assertStringNotContainsString($retired->kid, $published);
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retired\s+Created at\s+\S+\s+Activated at\s+\S+\s+Retiring since\s+\S+\s+Retirement due at\s+\S+\s+Retired at\s+2026-\S+/', $retired->kid), $all);
+        static::assertMatchesRegularExpression(
+            sprintf(
+                '/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retired\s+Created at\s+\S+\s+Activated at\s+\S+\s+Retiring since\s+\S+\s+Retirement due at\s+\S+\s+Retired at\s+2026-\S+/',
+                $retired->kid,
+            ),
+            $all,
+        );
     }
 
     /**
@@ -549,9 +593,20 @@ final class KeyLifecycleTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertSame(1, preg_match(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+(.*?)Key identifier/', $retiring), self::flattened($tester), $matches), self::flattened($tester));
+        static::assertSame(
+            1,
+            preg_match(
+                sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+(.*?)Key identifier/', $retiring),
+                self::flattened($tester),
+                $matches,
+            ),
+            self::flattened($tester),
+        );
         static::assertStringNotContainsString('Opens with the KMS', $matches[1]);
-        static::assertMatchesRegularExpression('/Status\s+active\s+Created at\s+\S+\s+Activated at\s+\S+\s+Opens with the KMS\s+yes/', self::flattened($tester));
+        static::assertMatchesRegularExpression(
+            '/Status\s+active\s+Created at\s+\S+\s+Activated at\s+\S+\s+Opens with the KMS\s+yes/',
+            self::flattened($tester),
+        );
     }
 
     /**
@@ -631,9 +686,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     public function theScheduledStepDoesNothingWithoutATenant(): void
     {
         // Given
-        self::entityManager()
-            ->getConnection()
-            ->executeStatement('DELETE FROM heidi_tenant');
+        self::entityManager()->getConnection()->executeStatement('DELETE FROM heidi_tenant');
         self::reload();
 
         // When
@@ -680,8 +733,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     private static function tick(): void
     {
-        self::service('test.heidi.command_bus', MessageBusInterface::class)
-            ->dispatch(new AdvanceKeyLifecycle());
+        self::service('test.heidi.command_bus', MessageBusInterface::class)->dispatch(new AdvanceKeyLifecycle());
     }
 
     /**
@@ -707,8 +759,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $key = self::stagedKeyDated($yesterday->modify('-1 hour'), $yesterday->modify('-1 hour'));
         $key->activate($yesterday->modify('-1 hour'));
         $key->startRetiring($yesterday, $yesterday->modify('+10 minutes'));
-        self::keys()
-            ->save($key);
+        self::keys()->save($key);
 
         return $key;
     }
@@ -723,9 +774,16 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $sealer = new EnvelopeKeySealer(new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
             'signing' => random_bytes(32),
         ]))), 'signing');
-        $key = new TenantKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealer->seal(self::tenant(), $pair->privateJwk), self::currentSecond(), self::currentSecond()->modify(self::STAGING_DELAY));
-        self::keys()
-            ->save($key);
+        $key = new TenantKey(
+            $pair->kid,
+            self::tenant(),
+            Algorithms::rs256(),
+            $pair->publicJwk,
+            $sealer->seal(self::tenant(), $pair->privateJwk),
+            self::currentSecond(),
+            self::currentSecond()->modify(self::STAGING_DELAY),
+        );
+        self::keys()->save($key);
 
         return $key;
     }
@@ -739,16 +797,14 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
         $sealed = self::service('test.heidi.key_sealer', KeySealerInterface::class)->seal(self::tenant(), $pair->privateJwk);
         $key = new TenantKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
-        self::keys()
-            ->save($key);
+        self::keys()->save($key);
 
         return $key;
     }
 
     private static function key(string $kid): TenantKey
     {
-        return self::keys()
-            ->find(self::tenant(), $kid) ?? static::fail(sprintf('The key "%s" is not stored.', $kid));
+        return self::keys()->find(self::tenant(), $kid) ?? static::fail(sprintf('The key "%s" is not stored.', $kid));
     }
 
     /**

@@ -34,9 +34,12 @@ final class JwkSetResponseTest extends TestCase
         $document = json_decode($response->toJson(), true, 4, JSON_THROW_ON_ERROR);
 
         // Then
-        static::assertSame([
-            'keys' => [$key->publicJwk],
-        ], $document);
+        static::assertSame(
+            [
+                'keys' => [$key->publicJwk],
+            ],
+            $document,
+        );
         static::assertSame(['keys'], array_keys($document));
         static::assertSame('sig', $document['keys'][0]['use']);
         static::assertSame('RS256', $document['keys'][0]['alg']);
@@ -52,9 +55,12 @@ final class JwkSetResponseTest extends TestCase
         $response = new JwkSetResponse(new PublicKeySet([self::key()]), 300);
 
         // Then
-        static::assertSame([
-            'Cache-Control' => 'public, max-age=300',
-        ], $response->headers);
+        static::assertSame(
+            [
+                'Cache-Control' => 'public, max-age=300',
+            ],
+            $response->headers,
+        );
     }
 
     /**
@@ -80,9 +86,12 @@ final class JwkSetResponseTest extends TestCase
         $response = new JwkSetResponse(new PublicKeySet([]), 300);
 
         // Then
-        static::assertSame([
-            'Cache-Control' => 'no-store',
-        ], $response->headers);
+        static::assertSame(
+            [
+                'Cache-Control' => 'no-store',
+            ],
+            $response->headers,
+        );
     }
 
     #[Test]
@@ -92,9 +101,12 @@ final class JwkSetResponseTest extends TestCase
         $response = new JwkSetResponse(new PublicKeySet([self::key()]), 0);
 
         // Then
-        static::assertSame([
-            'Cache-Control' => 'public, max-age=0',
-        ], $response->headers);
+        static::assertSame(
+            [
+                'Cache-Control' => 'public, max-age=0',
+            ],
+            $response->headers,
+        );
     }
 
     #[Test]

@@ -18,8 +18,7 @@ final class QrCodeTest extends TestCase
     public function itDrawsAnSvgDocumentWithoutTheXmlDeclaration(): void
     {
         // When
-        $svg = new QrCode()
-            ->svg('otpauth://totp/ACME:alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=ACME');
+        $svg = new QrCode()->svg('otpauth://totp/ACME:alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=ACME');
 
         // Then
         static::assertTrue(str_starts_with($svg, '<svg '), $svg);

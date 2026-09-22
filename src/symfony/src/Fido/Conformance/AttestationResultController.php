@@ -46,8 +46,7 @@ final readonly class AttestationResultController
     {
         $response = $request->getContent();
         try {
-            $challenge = $this->ceremonies->credentialFromJson($response)
-                ->response->clientDataJSON->challenge;
+            $challenge = $this->ceremonies->credentialFromJson($response)->response->clientDataJSON->challenge;
         } catch (PasskeyCeremonyFailedException $exception) {
             return ServerResponse::failed($exception->getMessage());
         }

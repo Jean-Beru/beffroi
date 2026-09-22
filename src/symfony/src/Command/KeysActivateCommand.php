@@ -70,8 +70,7 @@ final readonly class KeysActivateCommand
                 'Algorithm' => $key->algorithm->name(),
             ],
             [
-                'Use' => $key->algorithm->keyUse()
-                    ->value,
+                'Use' => $key->algorithm->keyUse()->value,
             ],
             [
                 'Status' => $key->status->value,
@@ -83,7 +82,11 @@ final readonly class KeysActivateCommand
         if ($previous !== null) {
             // Read again: the repository may hand a fresh object on every read, and the rotation just dated this one.
             $retiring = $this->keys->find($tenant, $previous->kid) ?? $previous;
-            $io->note(sprintf('The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while what is bound to it may still arrive.', $retiring->kid, $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?'));
+            $io->note(sprintf(
+                'The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while what is bound to it may still arrive.',
+                $retiring->kid,
+                $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?',
+            ));
         }
         $io->success(sprintf('The key "%s" is the active %s key of "%s" from now on.', $key->kid, $key->algorithm->name(), $tenant->slug));
 

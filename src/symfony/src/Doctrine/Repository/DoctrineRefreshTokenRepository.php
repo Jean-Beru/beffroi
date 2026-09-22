@@ -27,10 +27,9 @@ final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository i
 
     public function findByTokenHash(string $tokenHash): ?RefreshToken
     {
-        $token = $this->repository()
-            ->findOneBy([
-                'tokenHash' => $tokenHash,
-            ]);
+        $token = $this->repository()->findOneBy([
+            'tokenHash' => $tokenHash,
+        ]);
 
         return $token !== null && ClientResolver::isResolved($token) ? $token : null;
     }
@@ -68,11 +67,10 @@ final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository i
      */
     private function resolved(array $criteria): array
     {
-        $tokens = $this->repository()
-            ->findBy($criteria, [
-                'issuedAt' => 'ASC',
-                'tokenHash' => 'ASC',
-            ]);
+        $tokens = $this->repository()->findBy($criteria, [
+            'issuedAt' => 'ASC',
+            'tokenHash' => 'ASC',
+        ]);
 
         return array_values(array_filter($tokens, ClientResolver::isResolved(...)));
     }

@@ -167,7 +167,10 @@ final class AuthenticationContextRequestTest extends TestCase
     public function theIndividualClaimRequestWinsOverAcrValues(): void
     {
         // When
-        $requested = AuthenticationContextRequest::of($this->request(acrValues: ['phrh'], claims: '{"id_token": {"acr": {"essential": true, "values": ["1"]}}}'));
+        $requested = AuthenticationContextRequest::of($this->request(
+            acrValues: ['phrh'],
+            claims: '{"id_token": {"acr": {"essential": true, "values": ["1"]}}}',
+        ));
 
         // Then
         static::assertSame(['1'], $requested->values);

@@ -36,8 +36,7 @@ final class TenantProvider implements ResetInterface
             return $this->tenant;
         }
         $configured = $this->factory->create();
-        $tenant = $this->manager()
-            ->find(Tenant::class, $configured->id);
+        $tenant = $this->manager()->find(Tenant::class, $configured->id);
         if ($tenant === null) {
             throw TenantNotSynchronizedException::missing($configured->slug);
         }
@@ -48,7 +47,12 @@ final class TenantProvider implements ResetInterface
             throw TenantNotSynchronizedException::differs($configured->slug, 'name', $tenant->name, $configured->name);
         }
         if (! $tenant->authenticationContextPolicy->equals($configured->authenticationContextPolicy)) {
-            throw TenantNotSynchronizedException::differs($configured->slug, 'authentication_classes', implode(' ', $tenant->authenticationContextPolicy->names()), implode(' ', $configured->authenticationContextPolicy->names()));
+            throw TenantNotSynchronizedException::differs(
+                $configured->slug,
+                'authentication_classes',
+                implode(' ', $tenant->authenticationContextPolicy->names()),
+                implode(' ', $configured->authenticationContextPolicy->names()),
+            );
         }
 
         return $this->tenant = $tenant;

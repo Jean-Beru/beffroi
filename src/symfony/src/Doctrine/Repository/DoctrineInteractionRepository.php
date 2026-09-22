@@ -24,10 +24,9 @@ final readonly class DoctrineInteractionRepository extends DoctrineRepository im
 
     public function find(string $id): ?Interaction
     {
-        $interaction = $this->repository()
-            ->findOneBy([
-                'id' => $id,
-            ]);
+        $interaction = $this->repository()->findOneBy([
+            'id' => $id,
+        ]);
 
         return $interaction !== null && ClientResolver::isResolved($interaction) ? $interaction : null;
     }

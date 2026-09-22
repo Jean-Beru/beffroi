@@ -99,10 +99,15 @@ final class RevocationHandlerTest extends TestCase
         $record = $this->accessTokens->find($token) ?? static::fail('The token was kept.');
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $token,
-            'token_type_hint' => 'access_token',
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+                'token_type_hint' => 'access_token',
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertNull($this->accessTokens->find($token));
@@ -135,10 +140,15 @@ final class RevocationHandlerTest extends TestCase
         $this->accessTokens->keep($ofAnotherGrant);
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => 'current',
-            'token_type_hint' => 'refresh_token',
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => 'current',
+                'token_type_hint' => 'refresh_token',
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertTrue($current->isRevoked());
@@ -161,10 +171,15 @@ final class RevocationHandlerTest extends TestCase
         $token = $this->accessToken($this->public);
 
         // When
-        $this->handler->handle($this->tenant, null, [
-            'client_id' => 'spa',
-            'token' => $token,
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            null,
+            [
+                'client_id' => 'spa',
+                'token' => $token,
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertNull($this->accessTokens->find($token));
@@ -185,9 +200,14 @@ final class RevocationHandlerTest extends TestCase
         $accessTokensBefore = $this->accessTokens->all();
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $value,
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $value,
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertSame($accessTokensBefore, $this->accessTokens->all());
@@ -224,9 +244,14 @@ final class RevocationHandlerTest extends TestCase
         $token = $this->accessToken($this->other);
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $token,
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertNotNull($this->accessTokens->find($token));
@@ -241,9 +266,14 @@ final class RevocationHandlerTest extends TestCase
         $this->refreshTokens->save($token);
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => 'theirs',
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => 'theirs',
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertFalse($token->isRevoked());
@@ -263,9 +293,14 @@ final class RevocationHandlerTest extends TestCase
         $this->accessTokens->keep(Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $token->family->grantId));
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => 'revoked',
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => 'revoked',
+            ],
+            $this->context,
+        );
 
         // Then
         static::assertEquals($this->clock->now()->modify('-1 hour'), $token->revokedAt);
@@ -288,9 +323,14 @@ final class RevocationHandlerTest extends TestCase
         $this->expectExceptionMessageIs('unsupported_token_type: A self-contained access token cannot be revoked; it expires on its own (RFC 7009 section 2.2.1).');
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $token,
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+            ],
+            $this->context,
+        );
     }
 
     /**
@@ -301,8 +341,14 @@ final class RevocationHandlerTest extends TestCase
     {
         // Given
         $store = static::createStub(AccessTokenRepositoryInterface::class);
-        $store->method('find')
-            ->willReturn(StoredAccessToken::fromAuthorization(str_repeat('a', 64), GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, $this->clock->now())), $this->clock->now(), $this->clock->now()->modify('+10 minutes')));
+        $store
+            ->method('find')
+            ->willReturn(StoredAccessToken::fromAuthorization(
+                str_repeat('a', 64),
+                GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, $this->clock->now())),
+                $this->clock->now(),
+                $this->clock->now()->modify('+10 minutes'),
+            ));
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
         $handler = $this->handler($clients, new FakePasswordHasher(), $store);
@@ -312,9 +358,14 @@ final class RevocationHandlerTest extends TestCase
         $this->expectExceptionMessageIs('unsupported_token_type: This provider does not take access tokens back; they expire on their own (RFC 7009 section 2.2.1).');
 
         // When
-        $handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => 'whatever',
-        ], $this->context);
+        $handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => 'whatever',
+            ],
+            $this->context,
+        );
     }
 
     /**
@@ -327,9 +378,14 @@ final class RevocationHandlerTest extends TestCase
         $this->expectException(InvalidClientException::class);
 
         // When
-        $this->handler->handle($this->tenant, self::basic('oidc-demo', 'wrong'), [
-            'token' => 'whatever',
-        ], $this->context);
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo', 'wrong'),
+            [
+                'token' => 'whatever',
+            ],
+            $this->context,
+        );
     }
 
     /**
@@ -351,7 +407,12 @@ final class RevocationHandlerTest extends TestCase
         return new RevocationHandler(
             new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher()),
             new Endpoints(),
-            new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $accessTokens, new PublicSubjectIdentifierResolver()),
+            new AccessTokenVerifier(
+                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                $clients,
+                $accessTokens,
+                new PublicSubjectIdentifierResolver(),
+            ),
             $accessTokens,
             $this->refreshTokens,
             $this->events,
@@ -360,14 +421,19 @@ final class RevocationHandlerTest extends TestCase
 
     private function accessToken(Client $client): string
     {
-        return $this->accessTokens->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, $this->clock->now())), $this->clock->now(), $this->clock->now()->modify('+10 minutes'));
+        return $this->accessTokens->issue(
+            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, $this->clock->now())),
+            $this->clock->now(),
+            $this->clock->now()->modify('+10 minutes'),
+        );
     }
 
     private function jwt(Client $client, DateTimeImmutable $issuedAt): string
     {
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
-            ->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, $issuedAt)), $issuedAt)
-            ->value;
+        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, $issuedAt)),
+            $issuedAt,
+        )->value;
     }
 
     private static function basic(string $clientId, string $secret = Clients::SECRET): string

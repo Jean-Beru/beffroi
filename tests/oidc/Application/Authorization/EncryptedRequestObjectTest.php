@@ -62,13 +62,17 @@ final class EncryptedRequestObjectTest extends TestCase
     public function anObjectEncryptedToThePublishedKeyIsReadLikeOneInClear(): void
     {
         // Given
-        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now(), [
-            'response_type' => 'code',
-            'redirect_uri' => 'https://jar.example/callback',
-            'scope' => 'openid profile',
-        ])), [
-            'cty' => 'JWT',
-        ]);
+        $object = RequestObjects::encryptedTo(
+            $this->encryption->publicJwk,
+            RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now(), [
+                'response_type' => 'code',
+                'redirect_uri' => 'https://jar.example/callback',
+                'scope' => 'openid profile',
+            ])),
+            [
+                'cty' => 'JWT',
+            ],
+        );
 
         // When
         $parameters = $this->resolver->resolve($this->tenant, [
@@ -77,12 +81,15 @@ final class EncryptedRequestObjectTest extends TestCase
         ]);
 
         // Then
-        static::assertSame([
-            'client_id' => 'jar-client',
-            'response_type' => 'code',
-            'redirect_uri' => 'https://jar.example/callback',
-            'scope' => 'openid profile',
-        ], $parameters);
+        static::assertSame(
+            [
+                'client_id' => 'jar-client',
+                'response_type' => 'code',
+                'redirect_uri' => 'https://jar.example/callback',
+                'scope' => 'openid profile',
+            ],
+            $parameters,
+        );
     }
 
     /**
@@ -94,17 +101,23 @@ final class EncryptedRequestObjectTest extends TestCase
     {
         // Given
         $other = new JWK([
-            ...Algorithms::es256()->generateKey()
-                ->all(),
+            ...Algorithms::es256()->generateKey()->all(),
             'kid' => ClientAssertions::KEY_ID,
         ]);
-        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now()), [], $other));
+        $object = RequestObjects::encryptedTo(
+            $this->encryption->publicJwk,
+            RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now()), [], $other),
+        );
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The signature of the request object verifies against no key the client publishes.');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The signature of the request object verifies against no key the client publishes.',
+        );
     }
 
     /**
@@ -115,10 +128,13 @@ final class EncryptedRequestObjectTest extends TestCase
     public function theClaimsOfTheClientThatRegisteredNoSignatureAreReadFromTheJwe(): void
     {
         // Given
-        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, JwtPayload::encode(RequestObjects::claims('unsigned-client', $this->tenant->issuer->value, $this->clock->now(), [
-            'response_mode' => 'form_post',
-            'scope' => 'openid',
-        ])));
+        $object = RequestObjects::encryptedTo(
+            $this->encryption->publicJwk,
+            JwtPayload::encode(RequestObjects::claims('unsigned-client', $this->tenant->issuer->value, $this->clock->now(), [
+                'response_mode' => 'form_post',
+                'scope' => 'openid',
+            ])),
+        );
 
         // When
         $parameters = $this->resolver->resolve($this->tenant, [
@@ -139,9 +155,12 @@ final class EncryptedRequestObjectTest extends TestCase
     public function theClaimsAreReadWhateverWhitespaceSurroundsThem(): void
     {
         // Given
-        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, "\n " . JwtPayload::encode(RequestObjects::claims('unsigned-client', $this->tenant->issuer->value, $this->clock->now(), [
-            'scope' => 'openid',
-        ])));
+        $object = RequestObjects::encryptedTo(
+            $this->encryption->publicJwk,
+            "\n " . JwtPayload::encode(RequestObjects::claims('unsigned-client', $this->tenant->issuer->value, $this->clock->now(), [
+                'scope' => 'openid',
+            ])),
+        );
 
         // When
         $parameters = $this->resolver->resolve($this->tenant, [
@@ -161,13 +180,20 @@ final class EncryptedRequestObjectTest extends TestCase
     public function theClaimsOfAClientThatRegisteredAnAlgorithmAreRefused(): void
     {
         // Given
-        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, JwtPayload::encode(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())));
+        $object = RequestObjects::encryptedTo(
+            $this->encryption->publicJwk,
+            JwtPayload::encode(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())),
+        );
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The request object is not signed with the algorithm the client registered in request_object_signing_alg (OIDC Registration section 2).');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The request object is not signed with the algorithm the client registered in request_object_signing_alg (OIDC Registration section 2).',
+        );
     }
 
     /**
@@ -178,15 +204,22 @@ final class EncryptedRequestObjectTest extends TestCase
     public function anObjectEncryptedToAKeyThatHasRetiredIsRefused(): void
     {
         // Given
-        $object = RequestObjects::encryptedTo($this->encryption->publicJwk, RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())));
+        $object = RequestObjects::encryptedTo(
+            $this->encryption->publicJwk,
+            RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())),
+        );
         $this->encryption->startRetiring($this->clock->now(), $this->clock->now());
         $this->encryption->retire($this->clock->now());
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The request object does not open with a key this provider publishes for encryption (RFC 9101 section 6.1).');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The request object does not open with a key this provider publishes for encryption (RFC 9101 section 6.1).',
+        );
     }
 
     /**
@@ -199,19 +232,24 @@ final class EncryptedRequestObjectTest extends TestCase
         // Given
         /** @var array<string, mixed> $elsewhere */
         $elsewhere = [
-            ...Algorithms::ecdhEsA256Kw()->generateKey()
-                ->toPublic()
-                ->all(),
+            ...Algorithms::ecdhEsA256Kw()->generateKey()->toPublic()->all(),
             'alg' => Algorithms::ecdhEsA256Kw()->name(),
             'kid' => 'a-key-of-somebody-else',
         ];
-        $object = RequestObjects::encryptedTo($elsewhere, RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())));
+        $object = RequestObjects::encryptedTo(
+            $elsewhere,
+            RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now())),
+        );
 
         // When / Then
-        $this->refuses([
-            'client_id' => 'jar-client',
-            'request' => $object,
-        ], 'invalid_request_object', 'The request object does not open with a key this provider publishes for encryption (RFC 9101 section 6.1).');
+        $this->refuses(
+            [
+                'client_id' => 'jar-client',
+                'request' => $object,
+            ],
+            'invalid_request_object',
+            'The request object does not open with a key this provider publishes for encryption (RFC 9101 section 6.1).',
+        );
     }
 
     /**

@@ -49,14 +49,34 @@ final class FakePasskeyRegistrar implements PasskeyRegistrarInterface
     /**
      * A record as the ceremony builds it (WebAuthn Level 3 §7.1, step 26), the handle of the options.
      */
-    public static function record(PublicKeyCredentialCreationOptions $options, string $credentialId = 'credential-id', bool $backupEligible = false, bool $backedUp = false): CredentialRecord
-    {
-        return CredentialRecord::create($credentialId, PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, ['usb'], 'none', EmptyTrustPath::create(), Uuid::v4(), 'cose-public-key', $options->user->id, 0, null, $backupEligible, $backedUp, false);
+    public static function record(
+        PublicKeyCredentialCreationOptions $options,
+        string $credentialId = 'credential-id',
+        bool $backupEligible = false,
+        bool $backedUp = false,
+    ): CredentialRecord {
+        return CredentialRecord::create(
+            $credentialId,
+            PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY,
+            ['usb'],
+            'none',
+            EmptyTrustPath::create(),
+            Uuid::v4(),
+            'cose-public-key',
+            $options->user->id,
+            0,
+            null,
+            $backupEligible,
+            $backedUp,
+            false,
+        );
     }
 
     public function creationOptions(User $user, PasskeyUserHandle $userHandle, array $existing): PublicKeyCredentialCreationOptions
     {
-        $this->excluded = array_map(static fn (PasskeyCredential $passkey): PublicKeyCredentialDescriptor => $passkey->record()->getPublicKeyCredentialDescriptor(), $existing);
+        $this->excluded = array_map(static fn (PasskeyCredential $passkey): PublicKeyCredentialDescriptor => $passkey
+            ->record()
+            ->getPublicKeyCredentialDescriptor(), $existing);
 
         return PublicKeyCredentialCreationOptions::create(
             PublicKeyCredentialRpEntity::create($user->tenant->name, 'id.acme.example'),

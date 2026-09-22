@@ -38,9 +38,13 @@ final readonly class PasskeyEnrolmentOptionsController
     {
         $session = $this->account->signedIn($request);
         if ($session === null) {
-            return new JsonResponse([
-                'error' => InteractionPages::LOGIN_REQUIRED,
-            ], Response::HTTP_UNAUTHORIZED, InteractionPages::HEADERS);
+            return new JsonResponse(
+                [
+                    'error' => InteractionPages::LOGIN_REQUIRED,
+                ],
+                Response::HTTP_UNAUTHORIZED,
+                InteractionPages::HEADERS,
+            );
         }
         $options = $this->enrolment->begin($session->user);
         $this->options->storeCreation($request->getSession(), $session->user->id, $options);

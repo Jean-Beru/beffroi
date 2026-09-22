@@ -225,7 +225,11 @@ final class PrivateKeyJwtTest extends TestCase
     public function itRefusesAnAssertionSignedByAnotherKey(): void
     {
         // Given
-        $assertion = ClientAssertions::signedWithKey(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt), [], self::strangerKey());
+        $assertion = ClientAssertions::signedWithKey(
+            ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt),
+            [],
+            self::strangerKey(),
+        );
 
         // When
         $this->failToAuthenticate($assertion);
@@ -248,10 +252,16 @@ final class PrivateKeyJwtTest extends TestCase
         $this->clients->save($client);
 
         // When
-        $authenticated = $authenticator->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($this->assertion([
-            'iss' => 'remote-client',
-            'sub' => 'remote-client',
-        ])), $this->context);
+        $authenticated = $authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            ClientAssertions::parameters($this->assertion([
+                'iss' => 'remote-client',
+                'sub' => 'remote-client',
+            ])),
+            $this->context,
+        );
 
         // Then
         static::assertSame($client, $authenticated->client);
@@ -323,8 +333,7 @@ final class PrivateKeyJwtTest extends TestCase
 
     private function authenticate(string $assertion): AuthenticatedClient
     {
-        return $this->authenticator()
-            ->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
+        return $this->authenticator()->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
     }
 
     private function failToAuthenticate(string $assertion, ?ClientAuthenticator $authenticator = null): OAuth2Exception
@@ -345,8 +354,7 @@ final class PrivateKeyJwtTest extends TestCase
     private function authenticateFailing(?string $header, array $parameters): OAuth2Exception
     {
         try {
-            $this->authenticator()
-                ->authenticate($this->tenant, self::ENDPOINT, $header, $parameters, $this->context);
+            $this->authenticator()->authenticate($this->tenant, self::ENDPOINT, $header, $parameters, $this->context);
         } catch (OAuth2Exception $exception) {
             return $exception;
         }
@@ -369,8 +377,7 @@ final class PrivateKeyJwtTest extends TestCase
     private static function strangerKey(): JWK
     {
         return new JWK([
-            ...Algorithms::es256()->generateKey()
-                ->all(),
+            ...Algorithms::es256()->generateKey()->all(),
             'kid' => ClientAssertions::KEY_ID,
         ]);
     }

@@ -49,8 +49,7 @@ final class EdgeClientCertificateResolverTest extends TestCase
         ]);
 
         // When
-        $certificate = new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        $certificate = new EdgeClientCertificateResolver()->ofRequest($request);
 
         // Then
         static::assertSame(self::X5T_S256, $certificate?->x5tS256());
@@ -65,13 +64,17 @@ final class EdgeClientCertificateResolverTest extends TestCase
     public function aRequestMadeWithoutACertificateHasNone(string $variable): void
     {
         // Given
-        $request = Request::create('/', server: $variable === '' ? [] : [
-            EdgeClientCertificateResolver::VARIABLE => $variable,
-        ]);
+        $request = Request::create(
+            '/',
+            server: $variable === ''
+                ? []
+                : [
+                    EdgeClientCertificateResolver::VARIABLE => $variable,
+                ],
+        );
 
         // When
-        $certificate = new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        $certificate = new EdgeClientCertificateResolver()->ofRequest($request);
 
         // Then
         static::assertNull($certificate);
@@ -102,11 +105,13 @@ final class EdgeClientCertificateResolverTest extends TestCase
 
         // Then
         $this->expectException(ForgedClientCertificateException::class);
-        $this->expectExceptionMessageIs(sprintf('The request carries a client certificate in the "%s" header, which nothing in front of this application sets.', $header));
+        $this->expectExceptionMessageIs(sprintf(
+            'The request carries a client certificate in the "%s" header, which nothing in front of this application sets.',
+            $header,
+        ));
 
         // When
-        new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        new EdgeClientCertificateResolver()->ofRequest($request);
     }
 
     /**
@@ -136,7 +141,6 @@ final class EdgeClientCertificateResolverTest extends TestCase
         $this->expectException(ForgedClientCertificateException::class);
 
         // When
-        new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        new EdgeClientCertificateResolver()->ofRequest($request);
     }
 }

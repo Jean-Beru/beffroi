@@ -41,10 +41,13 @@ final class ClaimsRequestType extends Type
         }
 
         try {
-            return json_encode([
-                'userinfo' => self::member($value->userinfo),
-                'id_token' => self::member($value->idToken),
-            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
+            return json_encode(
+                [
+                    'userinfo' => self::member($value->userinfo),
+                    'id_token' => self::member($value->idToken),
+                ],
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION,
+            );
         } catch (JsonException $exception) {
             throw ValueNotConvertible::new($value, self::NAME, $exception->getMessage(), $exception);
         }

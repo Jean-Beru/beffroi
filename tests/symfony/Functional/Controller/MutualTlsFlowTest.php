@@ -98,9 +98,12 @@ final class MutualTlsFlowTest extends BrowserTestCase
         $accessToken = $this->accessTokenOf('mtls-app', 'https://mtls.test/callback', Certificates::client());
 
         // Then
-        static::assertSame([
-            'x5t#S256' => Certificates::client()->x5tS256(),
-        ], self::claimsOf($accessToken)['cnf']);
+        static::assertSame(
+            [
+                'x5t#S256' => Certificates::client()->x5tS256(),
+            ],
+            self::claimsOf($accessToken)['cnf'],
+        );
     }
 
     /**

@@ -98,7 +98,17 @@ final class IntrospectionHandlerTest extends TestCase
         $this->handler = new IntrospectionHandler(
             new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher()),
             new Endpoints(),
-            new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users),
+            new AccessTokenInspector(
+                new AccessTokenVerifier(
+                    new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                    $clients,
+                    $this->tokens,
+                    new PublicSubjectIdentifierResolver(),
+                ),
+                $sessions,
+                $this->grants,
+                $users,
+            ),
             $this->jwts->signer,
             Algorithms::all(),
         );
@@ -115,32 +125,37 @@ final class IntrospectionHandlerTest extends TestCase
         $token = $this->opaqueToken($code);
 
         // When
-        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $token,
-            'token_type_hint' => 'access_token',
-        ], $this->context, false);
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+                'token_type_hint' => 'access_token',
+            ],
+            $this->context,
+            false,
+        );
 
         // Then
-        static::assertSame([
-            'active' => true,
-            'scope' => 'openid email',
-            'client_id' => 'oidc-demo',
-            'token_type' => 'Bearer',
-            'exp' => $this->clock->now()
-                ->modify('+10 minutes')
-                ->getTimestamp(),
-            'iat' => $this->clock->now()
-                ->getTimestamp(),
-            'sub' => 'alice-subject',
-            'aud' => 'oidc-demo',
-            'iss' => 'https://id.acme.example',
-            'auth_time' => $this->session->authenticatedAt()
-                ->getTimestamp(),
-            'acr' => '1',
-            'amr' => ['pwd'],
-            'sid' => $this->session->id->toRfc4122(),
-            'grant_id' => $code->grantId->toRfc4122(),
-        ], $response->members);
+        static::assertSame(
+            [
+                'active' => true,
+                'scope' => 'openid email',
+                'client_id' => 'oidc-demo',
+                'token_type' => 'Bearer',
+                'exp' => $this->clock->now()->modify('+10 minutes')->getTimestamp(),
+                'iat' => $this->clock->now()->getTimestamp(),
+                'sub' => 'alice-subject',
+                'aud' => 'oidc-demo',
+                'iss' => 'https://id.acme.example',
+                'auth_time' => $this->session->authenticatedAt()->getTimestamp(),
+                'acr' => '1',
+                'amr' => ['pwd'],
+                'sid' => $this->session->id->toRfc4122(),
+                'grant_id' => $code->grantId->toRfc4122(),
+            ],
+            $response->members,
+        );
         static::assertNull($response->jwt);
     }
 
@@ -153,17 +168,30 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $certificate = Certificates::client();
-        $token = $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($this->code($this->client, ['openid']), CertificateConfirmation::ofCertificate($certificate)), $this->clock->now(), $this->clock->now()->modify('+10 minutes'));
+        $token = $this->tokens->issue(
+            GrantedAuthorization::fromAuthorizationCode($this->code($this->client, ['openid']), CertificateConfirmation::ofCertificate($certificate)),
+            $this->clock->now(),
+            $this->clock->now()->modify('+10 minutes'),
+        );
 
         // When
-        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $token,
-        ], $this->context, false);
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+            ],
+            $this->context,
+            false,
+        );
 
         // Then
-        static::assertSame([
-            'x5t#S256' => $certificate->x5tS256(),
-        ], $response->members['cnf']);
+        static::assertSame(
+            [
+                'x5t#S256' => $certificate->x5tS256(),
+            ],
+            $response->members['cnf'],
+        );
     }
 
     /**
@@ -175,16 +203,23 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $code = $this->code($this->other, ['openid']);
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
-            ->issue(GrantedAuthorization::fromAuthorizationCode($code), $this->clock->now())
-            ->value;
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+            GrantedAuthorization::fromAuthorizationCode($code),
+            $this->clock->now(),
+        )->value;
 
         // When
-        $response = $this->handler->handle($this->tenant, null, [
-            'client_id' => 'other',
-            'client_secret' => Clients::SECRET,
-            'token' => $token,
-        ], $this->context, false);
+        $response = $this->handler->handle(
+            $this->tenant,
+            null,
+            [
+                'client_id' => 'other',
+                'client_secret' => Clients::SECRET,
+                'token' => $token,
+            ],
+            $this->context,
+            false,
+        );
 
         // Then
         static::assertTrue($response->isActive());
@@ -207,14 +242,23 @@ final class IntrospectionHandlerTest extends TestCase
         $value = $token($this);
 
         // When
-        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $value,
-        ], $this->context, false);
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $value,
+            ],
+            $this->context,
+            false,
+        );
 
         // Then
-        static::assertSame([
-            'active' => false,
-        ], $response->members);
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            $response->members,
+        );
     }
 
     /**
@@ -258,9 +302,15 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // When
         try {
-            $this->handler->handle($this->tenant, self::basic('oidc-demo', 'wrong'), [
-                'token' => 'whatever',
-            ], $this->context, false);
+            $this->handler->handle(
+                $this->tenant,
+                self::basic('oidc-demo', 'wrong'),
+                [
+                    'token' => 'whatever',
+                ],
+                $this->context,
+                false,
+            );
             static::fail('The caller should have been refused.');
         } catch (InvalidClientException $exception) {
             // Then
@@ -281,10 +331,16 @@ final class IntrospectionHandlerTest extends TestCase
         $this->expectExceptionMessageIs('invalid_client: The introspection endpoint requires client authentication (RFC 7662 section 2.1); a public client has none.');
 
         // When
-        $this->handler->handle($this->tenant, null, [
-            'client_id' => 'spa',
-            'token' => 'whatever',
-        ], $this->context, false);
+        $this->handler->handle(
+            $this->tenant,
+            null,
+            [
+                'client_id' => 'spa',
+                'token' => 'whatever',
+            ],
+            $this->context,
+            false,
+        );
     }
 
     /**
@@ -310,16 +366,25 @@ final class IntrospectionHandlerTest extends TestCase
     public static function provideMalformedRequests(): iterable
     {
         yield 'no token' => [[], 'The token parameter is missing.'];
-        yield 'empty token' => [[
-            'token' => '',
-        ], 'The token parameter is missing.'];
-        yield 'token repeated' => [[
-            'token' => ['a', 'b'],
-        ], 'The token parameter must be a single string.'];
-        yield 'hint repeated' => [[
-            'token' => 'a',
-            'token_type_hint' => ['access_token'],
-        ], 'The token_type_hint parameter must be a single string.'];
+        yield 'empty token' => [
+            [
+                'token' => '',
+            ],
+            'The token parameter is missing.',
+        ];
+        yield 'token repeated' => [
+            [
+                'token' => ['a', 'b'],
+            ],
+            'The token parameter must be a single string.',
+        ];
+        yield 'hint repeated' => [
+            [
+                'token' => 'a',
+                'token_type_hint' => ['access_token'],
+            ],
+            'The token_type_hint parameter must be a single string.',
+        ];
     }
 
     /**
@@ -335,15 +400,24 @@ final class IntrospectionHandlerTest extends TestCase
         $token = $this->opaqueToken($code);
 
         // When
-        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => $token,
-        ], $this->context, true);
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+            ],
+            $this->context,
+            true,
+        );
 
         // Then
         $jwt = $response->jwt ?? static::fail('The response is signed.');
-        $jws = new CompactSerializer()
-            ->unserialize($jwt);
-        static::assertTrue(new JWSVerifier(new AlgorithmManager([new RS256()]))->verifyWithKeySet($jws, JWKSet::createFromKeyData($this->jwts->keys->publicKeys($this->tenant)->toJwks()), 0));
+        $jws = new CompactSerializer()->unserialize($jwt);
+        static::assertTrue(new JWSVerifier(new AlgorithmManager([new RS256()]))->verifyWithKeySet(
+            $jws,
+            JWKSet::createFromKeyData($this->jwts->keys->publicKeys($this->tenant)->toJwks()),
+            0,
+        ));
         static::assertSame('token-introspection+jwt', $jws->getSignature(0)->getProtectedHeaderParameter('typ'));
         static::assertSame($this->jwts->key->kid, $jws->getSignature(0)->getProtectedHeaderParameter('kid'));
         $claims = Jwts::decode((string) $jws->getPayload());
@@ -361,15 +435,24 @@ final class IntrospectionHandlerTest extends TestCase
     public function anInactiveTokenIsSignedToo(): void
     {
         // When
-        $response = $this->handler->handle($this->tenant, self::basic('oidc-demo'), [
-            'token' => 'unknown',
-        ], $this->context, true);
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => 'unknown',
+            ],
+            $this->context,
+            true,
+        );
 
         // Then
         $jwt = $response->jwt ?? static::fail('The response is signed.');
-        static::assertSame([
-            'active' => false,
-        ], Jwts::decode(Jwts::rawPayload($jwt))['token_introspection']);
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            Jwts::decode(Jwts::rawPayload($jwt))['token_introspection'],
+        );
     }
 
     /**

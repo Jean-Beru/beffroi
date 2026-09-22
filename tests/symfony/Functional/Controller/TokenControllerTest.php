@@ -162,12 +162,17 @@ final class TokenControllerTest extends BrowserTestCase
 
     private function postWithAWrongSecret(): void
     {
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => 'whatever',
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:wrong-secret-of-at-least-32-characters'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => 'whatever',
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:wrong-secret-of-at-least-32-characters'),
+            ],
+        );
     }
 
     /**
@@ -179,22 +184,32 @@ final class TokenControllerTest extends BrowserTestCase
         $this->signIn(self::user('alice'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: self::demoCredentials(),
+        );
 
         return self::string(self::json($this->browser->getResponse())['refresh_token']);
     }
 
     private function refresh(string $refreshToken): void
     {
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $refreshToken,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $refreshToken,
+            ],
+            server: self::demoCredentials(),
+        );
     }
 
     /**

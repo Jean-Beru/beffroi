@@ -32,7 +32,9 @@ final class SecondFactorRequirementTest extends TestCase
     {
         $this->alice = Fixtures::user();
         $this->credentials = new InMemoryCredentialRepository();
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), Fixtures::now()));
+        $this->credentials->save(
+            new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), Fixtures::now()),
+        );
         $this->requirement = new SecondFactorRequirement($this->credentials);
     }
 

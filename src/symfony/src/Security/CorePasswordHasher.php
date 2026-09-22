@@ -95,7 +95,7 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
         }
         $validated = [];
         foreach ($parameters as $name => $value) {
-            if (! is_string($name) || (! is_int($value) && ! is_string($value))) {
+            if (! is_string($name) || ! is_int($value) && ! is_string($value)) {
                 return null;
             }
             $validated[$name] = $value;

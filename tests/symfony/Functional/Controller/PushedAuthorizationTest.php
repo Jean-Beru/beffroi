@@ -193,12 +193,18 @@ final class PushedAuthorizationTest extends BrowserTestCase
     public function theSameClientIsServedOnceItHasPushedItsRequest(): void
     {
         // Given
-        $this->browser->request('POST', '/par', self::pushedParameters([
-            'client_id' => 'fapi-app',
-            'redirect_uri' => 'https://fapi.test/callback',
-        ]), [], [
-            'HTTP_AUTHORIZATION' => self::basic('fapi-app', 'fapi-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/par',
+            self::pushedParameters([
+                'client_id' => 'fapi-app',
+                'redirect_uri' => 'https://fapi.test/callback',
+            ]),
+            [],
+            [
+                'HTTP_AUTHORIZATION' => self::basic('fapi-app', 'fapi-secret-of-at-least-32-characters-long'),
+            ],
+        );
         $requestUri = self::string(self::json($this->browser->getResponse())['request_uri'] ?? null);
 
         // When
@@ -238,9 +244,15 @@ final class PushedAuthorizationTest extends BrowserTestCase
     public function aClientThatDoesNotAuthenticateIsRefused(): void
     {
         // When
-        $this->browser->request('POST', '/par', self::pushedParameters(), [], [
-            'HTTP_AUTHORIZATION' => self::basic(self::CLIENT, 'not-the-secret'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/par',
+            self::pushedParameters(),
+            [],
+            [
+                'HTTP_AUTHORIZATION' => self::basic(self::CLIENT, 'not-the-secret'),
+            ],
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -269,9 +281,15 @@ final class PushedAuthorizationTest extends BrowserTestCase
      */
     private function push(array $parameters = []): void
     {
-        $this->browser->request('POST', '/par', self::pushedParameters($parameters), [], [
-            'HTTP_AUTHORIZATION' => self::basic(self::CLIENT, self::SECRET),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/par',
+            self::pushedParameters($parameters),
+            [],
+            [
+                'HTTP_AUTHORIZATION' => self::basic(self::CLIENT, self::SECRET),
+            ],
+        );
     }
 
     /**
@@ -299,9 +317,13 @@ final class PushedAuthorizationTest extends BrowserTestCase
      */
     private static function pushedParameters(array $parameters = []): array
     {
-        return self::authorizationParameters(self::CLIENT, $parameters + [
-            'redirect_uri' => self::REDIRECT_URI,
-        ]);
+        return self::authorizationParameters(
+            self::CLIENT,
+            $parameters
+            + [
+                'redirect_uri' => self::REDIRECT_URI,
+            ],
+        );
     }
 
     private static function basic(string $clientId, string $secret): string

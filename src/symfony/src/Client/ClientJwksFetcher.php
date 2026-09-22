@@ -69,7 +69,10 @@ final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
             ]);
             $status = $response->getStatusCode();
             if ($status >= 300 && $status < 400) {
-                throw new ClientKeysUnavailableException(sprintf('%s redirects, and no outbound request follows a redirect; publish the keys at the URL that is registered.', $jwksUri->value));
+                throw new ClientKeysUnavailableException(sprintf(
+                    '%s redirects, and no outbound request follows a redirect; publish the keys at the URL that is registered.',
+                    $jwksUri->value,
+                ));
             }
             if ($status < 200 || $status >= 300) {
                 throw new ClientKeysUnavailableException(sprintf('%s answered %d.', $jwksUri->value, $status));
@@ -78,7 +81,11 @@ final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
             foreach ($this->http->stream($response) as $chunk) {
                 $body .= $chunk->getContent();
                 if (strlen($body) > $this->maximumSize) {
-                    throw new ClientKeysUnavailableException(sprintf('%s answers more than %d bytes, which no JWK Set needs.', $jwksUri->value, $this->maximumSize));
+                    throw new ClientKeysUnavailableException(sprintf(
+                        '%s answers more than %d bytes, which no JWK Set needs.',
+                        $jwksUri->value,
+                        $this->maximumSize,
+                    ));
                 }
             }
 

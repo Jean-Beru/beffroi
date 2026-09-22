@@ -37,10 +37,14 @@ final class AuthenticationContextPolicyType extends JsonObjectType
     {
         $classes = [];
         foreach (is_array($data['classes'] ?? null) ? $data['classes'] : [] as $entry) {
-            $name = is_array($entry) ? ($entry['name'] ?? null) : null;
-            $predicate = is_array($entry) ? ($entry['predicate'] ?? null) : null;
+            $name = is_array($entry) ? $entry['name'] ?? null : null;
+            $predicate = is_array($entry) ? $entry['predicate'] ?? null : null;
             if (! is_string($name) || ! is_string($predicate) || AuthenticationPredicate::tryFrom($predicate) === null) {
-                throw ValueNotConvertible::new($data, self::NAME, 'An authentication context policy lists classes, each a name on a predicate of the provider.');
+                throw ValueNotConvertible::new(
+                    $data,
+                    self::NAME,
+                    'An authentication context policy lists classes, each a name on a predicate of the provider.',
+                );
             }
             $classes[] = new AuthenticationContextClass($name, AuthenticationPredicate::from($predicate));
         }

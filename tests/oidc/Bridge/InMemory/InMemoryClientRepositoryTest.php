@@ -127,7 +127,12 @@ final class InMemoryClientRepositoryTest extends TestCase
     {
         // Given
         $other = Fixtures::tenant('other', 'https://id.other.example');
-        $this->repository->save(Clients::confidential($other, new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'api', accessTokenFormat: AccessTokenFormat::Opaque));
+        $this->repository->save(Clients::confidential(
+            $other,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            clientId: 'api',
+            accessTokenFormat: AccessTokenFormat::Opaque,
+        ));
 
         // When / Then
         static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Opaque));

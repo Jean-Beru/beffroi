@@ -49,7 +49,16 @@ final class ProviderEndpointsTest extends TestCase
     public function itToleratesPlainHttpOnLoopback(): void
     {
         // When
-        $endpoints = new ProviderEndpoints('http://localhost:8000/authorize', 'HTTPS://op.localhost/token', 'http://OP.LOCALHOST/userinfo', 'http://127.0.0.1/jwks', 'http://[::1]/logout', 'https://op.localhost/introspect', 'https://op.localhost/revoke', 'https://op.localhost/par');
+        $endpoints = new ProviderEndpoints(
+            'http://localhost:8000/authorize',
+            'HTTPS://op.localhost/token',
+            'http://OP.LOCALHOST/userinfo',
+            'http://127.0.0.1/jwks',
+            'http://[::1]/logout',
+            'https://op.localhost/introspect',
+            'https://op.localhost/revoke',
+            'https://op.localhost/par',
+        );
 
         // Then
         static::assertSame('http://localhost:8000/authorize', $endpoints->authorization);
@@ -67,12 +76,22 @@ final class ProviderEndpointsTest extends TestCase
     public function itRefusesAnEndpointThatCarriesCredentialsInClearEvenOnLoopback(string $name, int $position): void
     {
         // Given
-        $urls = ['https://op.localhost/authorize', 'https://op.localhost/token', 'https://op.localhost/userinfo', 'https://op.localhost/jwks', 'https://op.localhost/logout', 'https://op.localhost/introspect', 'https://op.localhost/revoke', 'https://op.localhost/par'];
+        $urls = [
+            'https://op.localhost/authorize',
+            'https://op.localhost/token',
+            'https://op.localhost/userinfo',
+            'https://op.localhost/jwks',
+            'https://op.localhost/logout',
+            'https://op.localhost/introspect',
+            'https://op.localhost/revoke',
+            'https://op.localhost/par',
+        ];
         $urls[$position] = 'http://localhost/x';
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIsOrContains($name . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2), on a loopback host too');
+        $this->expectExceptionMessageIsOrContains($name
+        . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2), on a loopback host too');
 
         // When
         new ProviderEndpoints(...$urls);
@@ -102,7 +121,16 @@ final class ProviderEndpointsTest extends TestCase
         $this->expectExceptionMessageIsOrContains('The authorization endpoint "' . $url . '" ' . $reason);
 
         // When
-        new ProviderEndpoints($url, 'https://id.acme.example/token', 'https://id.acme.example/userinfo', 'https://id.acme.example/jwks', 'https://id.acme.example/logout', 'https://id.acme.example/introspect', 'https://id.acme.example/revoke', 'https://id.acme.example/par');
+        new ProviderEndpoints(
+            $url,
+            'https://id.acme.example/token',
+            'https://id.acme.example/userinfo',
+            'https://id.acme.example/jwks',
+            'https://id.acme.example/logout',
+            'https://id.acme.example/introspect',
+            'https://id.acme.example/revoke',
+            'https://id.acme.example/par',
+        );
     }
 
     /**

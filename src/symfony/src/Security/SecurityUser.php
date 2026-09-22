@@ -115,7 +115,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
         $username = $data['username'] ?? null;
         $enabled = $data['enabled'] ?? null;
         $password = $data['password'] ?? null;
-        if (! is_string($id) || ! Uuid::isValid($id) || ! is_string($username) || ! is_bool($enabled) || ($password !== null && ! is_string($password))) {
+        if (! is_string($id) || ! Uuid::isValid($id) || ! is_string($username) || ! is_bool($enabled) || $password !== null && ! is_string($password)) {
             throw new LogicException('The serialised user is not one this class wrote.');
         }
         $this->id = Uuid::fromString($id);

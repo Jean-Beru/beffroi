@@ -34,12 +34,16 @@ final readonly class FormPostResponseRenderer implements AuthorizationResponseRe
     {
         $response = new FormPostResponse($answer->redirectUri, $answer->parameters);
 
-        return $this->pages->render(self::TEMPLATE, [
-            'redirect_uri' => $response->redirectUri->value,
-            'parameters' => $response->parameters,
-            'script' => FormPostResponse::SCRIPT,
-        ], headers: [
-            'Content-Security-Policy' => $response->contentSecurityPolicy(),
-        ]);
+        return $this->pages->render(
+            self::TEMPLATE,
+            [
+                'redirect_uri' => $response->redirectUri->value,
+                'parameters' => $response->parameters,
+                'script' => FormPostResponse::SCRIPT,
+            ],
+            headers: [
+                'Content-Security-Policy' => $response->contentSecurityPolicy(),
+            ],
+        );
     }
 }

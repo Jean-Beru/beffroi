@@ -40,12 +40,33 @@ final class AuthenticationPredicateTest extends TestCase
         yield 'a password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now), [AuthenticationPredicate::SingleFactor]];
         yield 'a one-time password alone' => [AuthenticationProofs::of(new AuthenticationMethod('otp'), $now), [AuthenticationPredicate::SingleFactor]];
         yield 'a presence check alone' => [AuthenticationProofs::of(new AuthenticationMethod('user'), $now), [AuthenticationPredicate::SingleFactor]];
-        yield 'a password and a PIN, one kind' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('pin'), $now), [AuthenticationPredicate::SingleFactor]];
-        yield 'a password and a one-time password' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now), [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors]];
-        yield 'a password and a fingerprint' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('fpt'), $now), [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors]];
-        yield 'mfa asserted upstream' => [AuthenticationProofs::of(new AuthenticationMethod('mfa'), $now), [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors]];
-        yield 'a software key alone' => [AuthenticationProofs::of(new AuthenticationMethod('swk'), $now), [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::PhishingResistant]];
-        yield 'a hardware key alone' => [AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now), [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::PhishingResistant, AuthenticationPredicate::PhishingResistantHardware]];
-        yield 'a password and a hardware key' => [AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('hwk'), $now), AuthenticationPredicate::cases()];
+        yield 'a password and a PIN, one kind' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('pin'), $now),
+            [AuthenticationPredicate::SingleFactor],
+        ];
+        yield 'a password and a one-time password' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('otp'), $now),
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+        ];
+        yield 'a password and a fingerprint' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('fpt'), $now),
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+        ];
+        yield 'mfa asserted upstream' => [
+            AuthenticationProofs::of(new AuthenticationMethod('mfa'), $now),
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+        ];
+        yield 'a software key alone' => [
+            AuthenticationProofs::of(new AuthenticationMethod('swk'), $now),
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::PhishingResistant],
+        ];
+        yield 'a hardware key alone' => [
+            AuthenticationProofs::of(new AuthenticationMethod('hwk'), $now),
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::PhishingResistant, AuthenticationPredicate::PhishingResistantHardware],
+        ];
+        yield 'a password and a hardware key' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), $now)->with(new AuthenticationMethod('hwk'), $now),
+            AuthenticationPredicate::cases(),
+        ];
     }
 }

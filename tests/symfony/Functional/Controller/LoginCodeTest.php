@@ -240,14 +240,14 @@ final class LoginCodeTest extends PasskeyTestCase
         $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()));
 
         // Then
-        $authTime = $this->boundSession()
-            ->authenticatedAt()
-            ->getTimestamp();
-        static::assertSame([
-            'pwd' => $authTime,
-            'otp' => $authTime,
-        ], $this->securityToken()
-            ->getAuthenticationProofs());
+        $authTime = $this->boundSession()->authenticatedAt()->getTimestamp();
+        static::assertSame(
+            [
+                'pwd' => $authTime,
+                'otp' => $authTime,
+            ],
+            $this->securityToken()->getAuthenticationProofs(),
+        );
     }
 
     /**
@@ -293,14 +293,19 @@ final class LoginCodeTest extends PasskeyTestCase
         $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
 
         // When
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
 
         // Then
         $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']));
@@ -673,21 +678,29 @@ final class LoginCodeTest extends PasskeyTestCase
         $hasher = $hashedBackupCodes ? self::service('test.heidi.password_hasher', PasswordHasherInterface::class) : new FakePasswordHasher();
         $anHourAgo = new DateTimeImmutable('-1 hour');
         self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
-            ->save(new TotpCredential(Uuid::v7(), $user, $sealed, Totps::credential($user, $hasher)->backupCodes, intdiv($anHourAgo->getTimestamp(), TotpCredential::PERIOD), $anHourAgo));
+            ->save(
+                new TotpCredential(
+                    Uuid::v7(),
+                    $user,
+                    $sealed,
+                    Totps::credential($user, $hasher)->backupCodes,
+                    intdiv($anHourAgo->getTimestamp(), TotpCredential::PERIOD),
+                    $anHourAgo,
+                ),
+            );
 
         return $user;
     }
 
     private function codeAt(DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
+        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)
+            ->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
     private function submitLogin(string $interaction, string $username, string $password): void
     {
-        $form = $this->loginPage($interaction)
-            ->selectButton('Sign in')
-            ->form();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
         $form['_username'] = $username;
         $form['_password'] = $password;
         $this->browser->submit($form);
@@ -709,8 +722,7 @@ final class LoginCodeTest extends PasskeyTestCase
      */
     private function refusalShown(string $interaction): Crawler
     {
-        $refusals = $this->codePage($interaction)
-            ->filter('p[data-error]');
+        $refusals = $this->codePage($interaction)->filter('p[data-error]');
         static::assertCount(1, $refusals);
 
         return $refusals;
@@ -723,9 +735,7 @@ final class LoginCodeTest extends PasskeyTestCase
     private function submitCode(string $interaction, string $code, bool $fromThePage = true): void
     {
         if (! $fromThePage) {
-            $token = $this->loginPage($interaction)
-                ->filter('input[name="_csrf_token"]')
-                ->attr('value');
+            $token = $this->loginPage($interaction)->filter('input[name="_csrf_token"]')->attr('value');
             $this->browser->request('POST', '/login/code?interaction=' . $interaction, [
                 '_code' => $code,
                 '_csrf_token' => $token,
@@ -733,9 +743,7 @@ final class LoginCodeTest extends PasskeyTestCase
 
             return;
         }
-        $form = $this->codePage($interaction)
-            ->selectButton('Continue')
-            ->form();
+        $form = $this->codePage($interaction)->selectButton('Continue')->form();
         $form['_code'] = $code;
         $this->browser->submit($form);
     }
@@ -747,8 +755,10 @@ final class LoginCodeTest extends PasskeyTestCase
     {
         $this->httpSession(static function (SessionInterface $httpSession) use ($user): void {
             $provenAt = new DateTimeImmutable('-1 hour');
-            new PendingLoginStore()
-                ->hold($httpSession, new PendingLogin($user->id, [AuthenticationMethod::password()], $provenAt, $provenAt->modify('+5 minutes')));
+            new PendingLoginStore()->hold(
+                $httpSession,
+                new PendingLogin($user->id, [AuthenticationMethod::password()], $provenAt, $provenAt->modify('+5 minutes')),
+            );
         });
     }
 
@@ -764,6 +774,9 @@ final class LoginCodeTest extends PasskeyTestCase
         self::reload();
         $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
 
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($managed, $kind)[0] ?? static::fail('The credential is gone.');
+        return (
+            self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+                ->findByUser($managed, $kind)[0] ?? static::fail('The credential is gone.')
+        );
     }
 }

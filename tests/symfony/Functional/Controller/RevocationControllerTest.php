@@ -35,9 +35,14 @@ final class RevocationControllerTest extends BrowserTestCase
     public function anUnknownTokenIsAnsweredWithNothing(): void
     {
         // When
-        $this->browser->request('POST', '/revoke', [
-            'token' => 'unknown',
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => 'unknown',
+            ],
+            server: self::demoCredentials(),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -53,9 +58,14 @@ final class RevocationControllerTest extends BrowserTestCase
     public function aWrongSecretIsChallenged(): void
     {
         // When
-        $this->browser->request('POST', '/revoke', [
-            'token' => 'whatever',
-        ], server: self::demoCredentials('wrong-secret-of-at-least-32-characters'));
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => 'whatever',
+            ],
+            server: self::demoCredentials('wrong-secret-of-at-least-32-characters'),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -73,9 +83,14 @@ final class RevocationControllerTest extends BrowserTestCase
         $accessToken = $this->jwtAccessTokenOfTheDemoClient();
 
         // When
-        $this->browser->request('POST', '/revoke', [
-            'token' => $accessToken,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::demoCredentials(),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -92,17 +107,27 @@ final class RevocationControllerTest extends BrowserTestCase
         // Given
         $this->jwtAccessTokenOfTheDemoClient();
         $refreshToken = self::string(self::json($this->browser->getResponse())['refresh_token']);
-        $this->browser->request('POST', '/revoke', [
-            'token' => $refreshToken,
-            'token_type_hint' => 'refresh_token',
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $refreshToken,
+                'token_type_hint' => 'refresh_token',
+            ],
+            server: self::demoCredentials(),
+        );
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
 
         // When
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $refreshToken,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $refreshToken,
+            ],
+            server: self::demoCredentials(),
+        );
 
         // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
@@ -119,12 +144,17 @@ final class RevocationControllerTest extends BrowserTestCase
         $this->signIn(self::user('alice'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: self::demoCredentials(),
+        );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 

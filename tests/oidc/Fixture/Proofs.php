@@ -65,17 +65,28 @@ final class Proofs
      *                                        value leaving the claim out
      * @param array<string, mixed> $header what is written over the header
      */
-    public static function proof(string $method, string $url, DateTimeImmutable $now, ?string $accessToken = null, array $overrides = [], array $header = [], ?JWK $key = null): string
-    {
+    public static function proof(
+        string $method,
+        string $url,
+        DateTimeImmutable $now,
+        ?string $accessToken = null,
+        array $overrides = [],
+        array $header = [],
+        ?JWK $key = null,
+    ): string {
         $key ??= self::key();
         $claims = [
             'jti' => 'proof-' . $now->getTimestamp(),
             'htm' => $method,
             'htu' => $url,
             'iat' => $now->getTimestamp(),
-            ...($accessToken === null ? [] : [
-                'ath' => self::accessTokenHash($accessToken),
-            ]),
+            ...(
+                $accessToken === null
+                    ? []
+                    : [
+                        'ath' => self::accessTokenHash($accessToken),
+                    ]
+            ),
             ...$overrides,
         ];
         foreach ($claims as $name => $value) {
@@ -94,8 +105,7 @@ final class Proofs
             ])
             ->build();
 
-        return new CompactSerializer()
-            ->serialize($jws, 0);
+        return new CompactSerializer()->serialize($jws, 0);
     }
 
     /**
@@ -115,7 +125,12 @@ final class Proofs
         return new DpopProofVerifier(
             new JwtLibraryCompactJwtReader(),
             new JwtLibraryProofKeyVerifier(Algorithms::all()->manager()),
-            new DpopProofValidator(new InMemoryDpopProofReplayGuard(), $nonces ?? new NoDpopNonce(), new DateInterval('PT' . $maximumAge . 'S'), new DateInterval('PT' . $leeway . 'S')),
+            new DpopProofValidator(
+                new InMemoryDpopProofReplayGuard(),
+                $nonces ?? new NoDpopNonce(),
+                new DateInterval('PT' . $maximumAge . 'S'),
+                new DateInterval('PT' . $leeway . 'S'),
+            ),
             Algorithms::all(),
         );
     }

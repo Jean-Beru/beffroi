@@ -138,7 +138,11 @@ final class StepUpTest extends TestCase
         $totp = Totps::credential($this->alice, new FakePasswordHasher());
 
         // When
-        $stepUp = StepUp::towards($this->password, [AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::twoFactors()], [$passkey, $totp]);
+        $stepUp = StepUp::towards(
+            $this->password,
+            [AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::twoFactors()],
+            [$passkey, $totp],
+        );
 
         // Then
         static::assertNotNull($stepUp);
@@ -157,7 +161,15 @@ final class StepUpTest extends TestCase
         $synced = Fixtures::passkey($this->alice, backupEligible: true, backedUp: true);
 
         // When
-        $stepUp = StepUp::towards($this->password, [AuthenticationContextClass::phishingResistantHardware(), AuthenticationContextClass::twoFactors(), AuthenticationContextClass::phishingResistant()], [$synced]);
+        $stepUp = StepUp::towards(
+            $this->password,
+            [
+                AuthenticationContextClass::phishingResistantHardware(),
+                AuthenticationContextClass::twoFactors(),
+                AuthenticationContextClass::phishingResistant(),
+            ],
+            [$synced],
+        );
 
         // Then
         static::assertNotNull($stepUp);

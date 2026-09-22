@@ -23,9 +23,12 @@ final class JwksControllerTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertSame('application/json', $response->headers->get('Content-Type'));
-        static::assertSame([
-            'keys' => [],
-        ], self::json($response));
+        static::assertSame(
+            [
+                'keys' => [],
+            ],
+            self::json($response),
+        );
     }
 
     #[Test]

@@ -52,9 +52,9 @@ final readonly class TotpProvisioningSealer
     public function unseal(User $user, string $sealed): TotpProvisioning
     {
         $document = json_decode($this->sealer->unseal($user->tenant, $sealed), true, 3, JSON_THROW_ON_ERROR);
-        $secret = is_array($document) ? ($document['secret'] ?? null) : null;
-        $uri = is_array($document) ? ($document['uri'] ?? null) : null;
-        $backupCodes = is_array($document) ? ($document['backup_codes'] ?? null) : null;
+        $secret = is_array($document) ? $document['secret'] ?? null : null;
+        $uri = is_array($document) ? $document['uri'] ?? null : null;
+        $backupCodes = is_array($document) ? $document['backup_codes'] ?? null : null;
         if (! is_string($secret) || ! is_string($uri) || ! is_array($backupCodes)) {
             throw new InvalidArgumentException('The envelope holds no provisioning.');
         }

@@ -40,7 +40,10 @@ final class ClaimsRequestTest extends TestCase
         $claims = ClaimsRequest::fromJson(self::SPECIFICATION_EXAMPLE);
 
         // Then
-        static::assertSame(['given_name', 'nickname', 'email', 'email_verified', 'picture', 'http://example.info/claims/groups'], array_keys($claims->userinfo));
+        static::assertSame(
+            ['given_name', 'nickname', 'email', 'email_verified', 'picture', 'http://example.info/claims/groups'],
+            array_keys($claims->userinfo),
+        );
         static::assertEquals(new ClaimRequest(true), $claims->userinfo['given_name']);
         static::assertEquals(new ClaimRequest(), $claims->userinfo['nickname']);
         static::assertFalse($claims->userinfo['nickname']->essential);

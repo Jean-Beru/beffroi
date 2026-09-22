@@ -210,9 +210,7 @@ final class KmsOutageTest extends PasskeyTestCase
     {
         // Given
         $this->signIn(self::user('alice'));
-        $form = $this->twoFactorPage()
-            ->selectButton('Set up an authenticator app')
-            ->form();
+        $form = $this->twoFactorPage()->selectButton('Set up an authenticator app')->form();
         $this->kms->down = true;
 
         // When
@@ -237,8 +235,7 @@ final class KmsOutageTest extends PasskeyTestCase
         $this->signIn($alice);
         $crawler = $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
         $this->secret = new TotpSecret(Base32::decodeUpper(str_replace(' ', '', $crawler->filter('code[data-two-factor="key"]')->text())));
-        $form = $crawler->selectButton('Confirm')
-            ->form();
+        $form = $crawler->selectButton('Confirm')->form();
         $form['code'] = $this->codeAt(new DateTimeImmutable());
         $this->kms->down = true;
         $this->browser->submit($form);
@@ -266,21 +263,29 @@ final class KmsOutageTest extends PasskeyTestCase
         $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
         $anHourAgo = new DateTimeImmutable('-1 hour');
         self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
-            ->save(new TotpCredential(Uuid::v7(), $user, $sealed, Totps::credential($user, new FakePasswordHasher())->backupCodes, intdiv($anHourAgo->getTimestamp(), TotpCredential::PERIOD), $anHourAgo));
+            ->save(
+                new TotpCredential(
+                    Uuid::v7(),
+                    $user,
+                    $sealed,
+                    Totps::credential($user, new FakePasswordHasher())->backupCodes,
+                    intdiv($anHourAgo->getTimestamp(), TotpCredential::PERIOD),
+                    $anHourAgo,
+                ),
+            );
 
         return $user;
     }
 
     private function codeAt(DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
+        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)
+            ->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
     private function submitLogin(string $interaction, string $username): void
     {
-        $form = $this->loginPage($interaction)
-            ->selectButton('Sign in')
-            ->form();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
         $form['_username'] = $username;
         $form['_password'] = self::PASSWORD;
         $this->browser->submit($form);
@@ -291,22 +296,26 @@ final class KmsOutageTest extends PasskeyTestCase
         $crawler = $this->browser->request('GET', '/login/code', [
             'interaction' => $interaction,
         ]);
-        $form = $crawler->selectButton('Continue')
-            ->form();
+        $form = $crawler->selectButton('Continue')->form();
         $form['_code'] = $code;
         $this->browser->submit($form);
     }
 
     private function postCode(string $code): void
     {
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
     }
 
     private function twoFactorPage(): Crawler

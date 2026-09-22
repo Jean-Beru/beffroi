@@ -52,7 +52,9 @@ final readonly class PushedAuthorizationController
 
             return new Response(JwtPayload::encode($error->parameters()), $error->statusCode, [
                 'Content-Type' => TokenErrorResponse::CONTENT_TYPE,
-            ] + PushedAuthorizationResponse::HEADERS + $error->headers());
+            ]
+            + PushedAuthorizationResponse::HEADERS
+            + $error->headers());
         }
 
         return new Response(JwtPayload::encode($response->parameters()), PushedAuthorizationResponse::STATUS_CODE, [

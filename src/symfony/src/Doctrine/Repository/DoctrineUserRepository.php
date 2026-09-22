@@ -25,28 +25,25 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
 
     public function find(Uuid $id): ?User
     {
-        return $this->repository()
-            ->findOneBy([
-                'id' => $id,
-            ]);
+        return $this->repository()->findOneBy([
+            'id' => $id,
+        ]);
     }
 
     public function findBySubject(Tenant $tenant, Subject $subject): ?User
     {
-        return $this->repository()
-            ->findOneBy([
-                'tenant' => $tenant,
-                'subject' => $subject,
-            ]);
+        return $this->repository()->findOneBy([
+            'tenant' => $tenant,
+            'subject' => $subject,
+        ]);
     }
 
     public function findByUsername(Tenant $tenant, string $username): ?User
     {
-        return $this->repository()
-            ->findOneBy([
-                'tenant' => $tenant,
-                'username' => $username,
-            ]);
+        return $this->repository()->findOneBy([
+            'tenant' => $tenant,
+            'username' => $username,
+        ]);
     }
 
     public function save(User $user): void

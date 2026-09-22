@@ -25,8 +25,7 @@ final readonly class QrCode
 
     public function svg(#[SensitiveParameter] string $contents): string
     {
-        $svg = new Writer(new ImageRenderer(new RendererStyle(self::SIZE, 0), new SvgImageBackEnd()))
-            ->writeString($contents);
+        $svg = new Writer(new ImageRenderer(new RendererStyle(self::SIZE, 0), new SvgImageBackEnd()))->writeString($contents);
 
         return (string) preg_replace('/^<\?xml[^>]*\?>\s*/', '', $svg);
     }

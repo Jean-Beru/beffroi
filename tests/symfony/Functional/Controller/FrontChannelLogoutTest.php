@@ -49,10 +49,13 @@ final class FrontChannelLogoutTest extends BrowserTestCase
         $crawler = $this->logOut();
 
         // Then
-        static::assertSame([
-            'https://legacy.test/frontchannel-logout?app=1',
-            'https://opaque.test/frontchannel-logout?iss=https%3A%2F%2Fop.test&sid=' . $session->id->toRfc4122(),
-        ], self::framesOf($crawler));
+        static::assertSame(
+            [
+                'https://legacy.test/frontchannel-logout?app=1',
+                'https://opaque.test/frontchannel-logout?iss=https%3A%2F%2Fop.test&sid=' . $session->id->toRfc4122(),
+            ],
+            self::framesOf($crawler),
+        );
     }
 
     /**
@@ -95,7 +98,9 @@ final class FrontChannelLogoutTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertStringContainsString('no-store', self::string($response->headers->get('Cache-Control')));
         static::assertSame(
-            "default-src 'none'; frame-src https://legacy.test https://opaque.test; script-src '" . self::scriptHash() . "'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'",
+            "default-src 'none'; frame-src https://legacy.test https://opaque.test; script-src '"
+            . self::scriptHash()
+            . "'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'",
             $response->headers->get('Content-Security-Policy'),
         );
     }
@@ -205,8 +210,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
             $parameters['state'] = 'after-logout';
         }
 
-        return $this->browser->submit($this->browser->request('GET', '/logout', $parameters)->selectButton('Sign out')
-            ->form());
+        return $this->browser->submit($this->browser->request('GET', '/logout', $parameters)->selectButton('Sign out')->form());
     }
 
     /**
@@ -216,8 +220,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
      */
     private static function framesOf(Crawler $crawler): array
     {
-        $frames = $crawler->filter('iframe')
-            ->each(static fn (Crawler $frame): string => self::string($frame->attr('src')));
+        $frames = $crawler->filter('iframe')->each(static fn (Crawler $frame): string => self::string($frame->attr('src')));
         sort($frames);
 
         return $frames;

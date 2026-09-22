@@ -68,7 +68,10 @@ final class TenantKeyRotatorTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T14:00:00+00:00');
         $this->context = RequestContext::unknown($this->clock->now());
-        $this->rotator = $this->rotator([new FixedLifetimeArtifact(new DateInterval('PT10M')), new FixedLifetimeArtifact(new DateInterval(self::LONGEST_LIFETIME))]);
+        $this->rotator = $this->rotator([
+            new FixedLifetimeArtifact(new DateInterval('PT10M')),
+            new FixedLifetimeArtifact(new DateInterval(self::LONGEST_LIFETIME)),
+        ]);
     }
 
     #[Test]
@@ -170,7 +173,10 @@ final class TenantKeyRotatorTest extends TestCase
         static::assertTrue($activated->isActive());
         static::assertEquals($this->clock->now(), $activated->activatedAt);
         static::assertSame($activated, $this->repository->findActive($this->tenant, Algorithms::rs256()));
-        static::assertSame(Keys::otherPair()->privateJwk, new SealedKeyProvider($this->repository, Keys::sealer())->activeKey($this->tenant, Algorithms::rs256())->privateJwk);
+        static::assertSame(
+            Keys::otherPair()->privateJwk,
+            new SealedKeyProvider($this->repository, Keys::sealer())->activeKey($this->tenant, Algorithms::rs256())->privateJwk,
+        );
     }
 
     /**
@@ -555,7 +561,10 @@ final class TenantKeyRotatorTest extends TestCase
 
         // Then
         $this->expectException(RetirementNotDueException::class);
-        $this->expectExceptionMessageIs(sprintf('The key "%s" is not due for retirement before 2026-10-15T15:00:00+00:00: what it is bound to may still be alive.', $first->kid));
+        $this->expectExceptionMessageIs(sprintf(
+            'The key "%s" is not due for retirement before 2026-10-15T15:00:00+00:00: what it is bound to may still be alive.',
+            $first->kid,
+        ));
 
         // When
         $this->rotator->retire($this->tenant, $first->kid, $this->context);
@@ -652,7 +661,15 @@ final class TenantKeyRotatorTest extends TestCase
     public function aKeyOfAnotherAlgorithmRotatesTheSameWay(): void
     {
         // Given
-        $rotator = new TenantKeyRotator($this->repository, new JwtLibraryKeyPairGenerator(Algorithms::everyUse()), Keys::sealer(), $this->issuedJws(), new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
+        $rotator = new TenantKeyRotator(
+            $this->repository,
+            new JwtLibraryKeyPairGenerator(Algorithms::everyUse()),
+            Keys::sealer(),
+            $this->issuedJws(),
+            new DateInterval(self::STAGING_DELAY),
+            $this->clock,
+            $this->events,
+        );
         $rs256 = $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
         $first = $rotator->rotate($this->tenant, Algorithms::edDsa(), $this->context);
 
@@ -680,6 +697,14 @@ final class TenantKeyRotatorTest extends TestCase
      */
     private function rotator(array $issuedJws): TenantKeyRotator
     {
-        return new TenantKeyRotator($this->repository, new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]), Keys::sealer(), $issuedJws, new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
+        return new TenantKeyRotator(
+            $this->repository,
+            new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]),
+            Keys::sealer(),
+            $issuedJws,
+            new DateInterval(self::STAGING_DELAY),
+            $this->clock,
+            $this->events,
+        );
     }
 }

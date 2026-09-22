@@ -107,20 +107,23 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
         }
         $path = $this->path($key->tenant, $key->kid);
         $temporary = $path . '.' . bin2hex(random_bytes(8)) . '.tmp';
-        $json = json_encode([
-            'kid' => $key->kid,
-            'tenant_id' => $key->tenant->id->toRfc4122(),
-            'algorithm' => $key->algorithm->name(),
-            'public_jwk' => $key->publicJwk,
-            'sealed_private_jwk' => base64_encode($key->sealedPrivateJwk),
-            'status' => $key->status->value,
-            'created_at' => $key->createdAt->format(DateTimeInterface::RFC3339_EXTENDED),
-            'activation_due_at' => $key->activationDueAt->format(DateTimeInterface::RFC3339_EXTENDED),
-            'activated_at' => $key->activatedAt?->format(DateTimeInterface::RFC3339_EXTENDED),
-            'retiring_at' => $key->retiringAt?->format(DateTimeInterface::RFC3339_EXTENDED),
-            'retirement_due_at' => $key->retirementDueAt?->format(DateTimeInterface::RFC3339_EXTENDED),
-            'retired_at' => $key->retiredAt?->format(DateTimeInterface::RFC3339_EXTENDED),
-        ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $json = json_encode(
+            [
+                'kid' => $key->kid,
+                'tenant_id' => $key->tenant->id->toRfc4122(),
+                'algorithm' => $key->algorithm->name(),
+                'public_jwk' => $key->publicJwk,
+                'sealed_private_jwk' => base64_encode($key->sealedPrivateJwk),
+                'status' => $key->status->value,
+                'created_at' => $key->createdAt->format(DateTimeInterface::RFC3339_EXTENDED),
+                'activation_due_at' => $key->activationDueAt->format(DateTimeInterface::RFC3339_EXTENDED),
+                'activated_at' => $key->activatedAt?->format(DateTimeInterface::RFC3339_EXTENDED),
+                'retiring_at' => $key->retiringAt?->format(DateTimeInterface::RFC3339_EXTENDED),
+                'retirement_due_at' => $key->retirementDueAt?->format(DateTimeInterface::RFC3339_EXTENDED),
+                'retired_at' => $key->retiredAt?->format(DateTimeInterface::RFC3339_EXTENDED),
+            ],
+            JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
+        );
         if (@file_put_contents($temporary, $json, LOCK_EX) === false || ! @chmod($temporary, 0o600) || ! @rename($temporary, $path)) {
             @unlink($temporary);
             throw new RuntimeException(sprintf('The key "%s" cannot be written to "%s".', $key->kid, $path));
@@ -192,7 +195,15 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
         }
 
         try {
-            $key = new TenantKey($kid, $tenant, $algorithm, $members, $sealed, self::date($path, $document['created_at'] ?? null), self::date($path, $document['activation_due_at'] ?? null));
+            $key = new TenantKey(
+                $kid,
+                $tenant,
+                $algorithm,
+                $members,
+                $sealed,
+                self::date($path, $document['created_at'] ?? null),
+                self::date($path, $document['activation_due_at'] ?? null),
+            );
             if ($status !== KeyStatus::Staged) {
                 $key->activate(self::date($path, $document['activated_at'] ?? null));
             }

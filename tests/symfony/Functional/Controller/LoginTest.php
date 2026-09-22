@@ -80,7 +80,10 @@ final class LoginTest extends BrowserTestCase
         $session = $this->boundSession();
         static::assertTrue($session->user->id->equals($user->id));
         static::assertSame(['pwd'], $session->methodReferences());
-        static::assertGreaterThanOrEqual($before->setTime((int) $before->format('H'), (int) $before->format('i'), (int) $before->format('s')), $session->authenticatedAt());
+        static::assertGreaterThanOrEqual(
+            $before->setTime((int) $before->format('H'), (int) $before->format('i'), (int) $before->format('s')),
+            $session->authenticatedAt(),
+        );
         static::assertLessThanOrEqual(new DateTimeImmutable('+5 seconds'), $session->authenticatedAt());
         static::assertSame('127.0.0.1', $session->createdFrom->ipAddress);
         static::assertSame('Symfony BrowserKit', $session->createdFrom->userAgent);
@@ -102,12 +105,12 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // Then
-        static::assertSame([
-            'pwd' => $this->boundSession()
-                ->authenticatedAt()
-                ->getTimestamp(),
-        ], $this->securityToken()
-            ->getAuthenticationProofs());
+        static::assertSame(
+            [
+                'pwd' => $this->boundSession()->authenticatedAt()->getTimestamp(),
+            ],
+            $this->securityToken()->getAuthenticationProofs(),
+        );
     }
 
     #[Test]
@@ -121,7 +124,8 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // Then
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($this->boundSession()->user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
+        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($this->boundSession()->user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
         static::assertNotNull($credential->lastUsedAt);
     }
 
@@ -175,8 +179,7 @@ final class LoginTest extends BrowserTestCase
     {
         // Given
         $interaction = $this->authorize();
-        $this->browser->getCookieJar()
-            ->clear();
+        $this->browser->getCookieJar()->clear();
 
         // When
         $this->browser->request('GET', '/login', [
@@ -198,8 +201,7 @@ final class LoginTest extends BrowserTestCase
         self::userWithPassword('alice', self::PASSWORD);
         $interaction = $this->authorize();
         $token = $this->csrfTokenOfTheLoginPage($interaction);
-        $this->browser->getCookieJar()
-            ->clear();
+        $this->browser->getCookieJar()->clear();
 
         // When
         $this->postLogin($interaction, 'alice', self::PASSWORD, $token);
@@ -217,8 +219,7 @@ final class LoginTest extends BrowserTestCase
         self::userWithPassword('alice', self::PASSWORD);
         $interaction = $this->authorize();
         $token = $this->csrfTokenOfTheLoginPage($interaction);
-        $this->browser->getCookieJar()
-            ->clear();
+        $this->browser->getCookieJar()->clear();
 
         // When
         $this->postLogin($interaction, 'alice', self::PASSWORD, $token);
@@ -239,8 +240,7 @@ final class LoginTest extends BrowserTestCase
         // Given
         self::userWithPassword('alice', self::PASSWORD);
         $interaction = $this->authorize();
-        $this->browser->getCookieJar()
-            ->clear();
+        $this->browser->getCookieJar()->clear();
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
 
         // When
@@ -267,8 +267,7 @@ final class LoginTest extends BrowserTestCase
         // Given
         self::userWithPassword('alice', self::PASSWORD);
         $interaction = $this->authorize();
-        $this->browser->getCookieJar()
-            ->clear();
+        $this->browser->getCookieJar()->clear();
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
 
         // When
@@ -381,8 +380,11 @@ final class LoginTest extends BrowserTestCase
      */
     #[Test]
     #[DataProvider('provideUsersRefusedLikeAWrongPassword')]
-    public function anUnknownADisabledOrAPasswordlessUserIsRefusedLikeAWrongPassword(string $username, callable $user, AuthenticationFailureReason $reason): void
-    {
+    public function anUnknownADisabledOrAPasswordlessUserIsRefusedLikeAWrongPassword(
+        string $username,
+        callable $user,
+        AuthenticationFailureReason $reason,
+    ): void {
         // Given
         $user();
         $interaction = $this->authorize();
@@ -437,14 +439,17 @@ final class LoginTest extends BrowserTestCase
             static fn (): ?User => null,
             AuthenticationFailureReason::UnknownUser,
         ];
-        yield 'disabled' => ['bob', static function (): User {
-            $disabled = self::userWithPassword('bob', self::PASSWORD);
-            $disabled->disable(self::now());
-            self::service('test.heidi.users', UserRepositoryInterface::class)
-                ->save($disabled);
+        yield 'disabled' => [
+            'bob',
+            static function (): User {
+                $disabled = self::userWithPassword('bob', self::PASSWORD);
+                $disabled->disable(self::now());
+                self::service('test.heidi.users', UserRepositoryInterface::class)->save($disabled);
 
-            return $disabled;
-        }, AuthenticationFailureReason::DisabledUser];
+                return $disabled;
+            },
+            AuthenticationFailureReason::DisabledUser,
+        ];
         yield 'without a password' => [
             'carol',
             static fn (): User => self::user('carol', 'carol-subject'),
@@ -665,8 +670,7 @@ final class LoginTest extends BrowserTestCase
         // Given
         self::userWithPassword('alice', self::PASSWORD, PasswordAlgorithm::Bcrypt);
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
-        $this->browser->getCookieJar()
-            ->clear();
+        $this->browser->getCookieJar()->clear();
 
         // When
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
@@ -740,12 +744,12 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // Then
-        static::assertSame([
-            'pwd' => $this->boundSession()
-                ->authenticatedAt()
-                ->getTimestamp(),
-        ], $this->securityToken()
-            ->getAuthenticationProofs());
+        static::assertSame(
+            [
+                'pwd' => $this->boundSession()->authenticatedAt()->getTimestamp(),
+            ],
+            $this->securityToken()->getAuthenticationProofs(),
+        );
     }
 
     /**
@@ -821,7 +825,8 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'bob', self::PASSWORD);
 
         // Then
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($alice->id) ?? static::fail('The session of alice is gone.');
+        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($alice->id) ?? static::fail('The session of alice is gone.');
         static::assertTrue($ended->hasEnded());
         static::assertSame(SessionEnd::User, $ended->endedBy);
         $endings = self::events(AuthenticationSessionEnded::class);
@@ -885,9 +890,7 @@ final class LoginTest extends BrowserTestCase
 
     private function csrfTokenOfTheLoginPage(string $interaction): string
     {
-        $token = $this->loginPage($interaction)
-            ->filter('input[name="_csrf_token"]')
-            ->attr('value');
+        $token = $this->loginPage($interaction)->filter('input[name="_csrf_token"]')->attr('value');
         static::assertIsString($token);
 
         return $token;
@@ -898,9 +901,7 @@ final class LoginTest extends BrowserTestCase
      */
     private function submitLogin(string $interaction, string $username, string $password): void
     {
-        $form = $this->loginPage($interaction)
-            ->selectButton('Sign in')
-            ->form();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
         $form['_username'] = $username;
         $form['_password'] = $password;
         $this->browser->submit($form);
@@ -922,7 +923,10 @@ final class LoginTest extends BrowserTestCase
     {
         $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
 
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($managed, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
+        return (
+            self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+                ->findByUser($managed, PasswordCredential::class)[0] ?? static::fail('The credential is gone.')
+        );
     }
 
     /**
@@ -930,12 +934,14 @@ final class LoginTest extends BrowserTestCase
      */
     private function boundSession(): AuthenticationSession
     {
-        $id = $this->readHttpSession()
-            ->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
+        $id = $this->readHttpSession()->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
         static::assertIsString($id, 'The browser is bound to no session.');
         self::reload();
 
-        return self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find(Uuid::fromString($id)) ?? static::fail('The bound session is gone.');
+        return (
+            self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+                ->find(Uuid::fromString($id)) ?? static::fail('The bound session is gone.')
+        );
     }
 
     /**
@@ -943,8 +949,7 @@ final class LoginTest extends BrowserTestCase
      */
     private function securityToken(): TokenInterface
     {
-        $serialized = $this->readHttpSession()
-            ->get('_security_heidi_interaction');
+        $serialized = $this->readHttpSession()->get('_security_heidi_interaction');
         static::assertIsString($serialized, 'The firewall stored no token.');
         $token = unserialize($serialized);
         static::assertInstanceOf(TokenInterface::class, $token);

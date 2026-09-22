@@ -27,11 +27,16 @@ final class ResponseDocumentTest extends TestCase
     public function everyParameterOfTheAnswerBecomesAClaimBesideTheThreeOfTheSection(): void
     {
         // Given
-        $document = new ResponseDocument(new Issuer(self::ISSUER), 'oidc-demo', [
-            'code' => 'the-code',
-            'state' => 'state-of-the-client',
-            'iss' => self::ISSUER,
-        ], new DateTimeImmutable('2026-09-22T10:05:00+00:00'));
+        $document = new ResponseDocument(
+            new Issuer(self::ISSUER),
+            'oidc-demo',
+            [
+                'code' => 'the-code',
+                'state' => 'state-of-the-client',
+                'iss' => self::ISSUER,
+            ],
+            new DateTimeImmutable('2026-09-22T10:05:00+00:00'),
+        );
 
         // When
         $claims = $document->claims();
@@ -52,10 +57,15 @@ final class ResponseDocumentTest extends TestCase
     public function aRefusalIsTheSameDocument(): void
     {
         // Given
-        $document = new ResponseDocument(new Issuer(self::ISSUER), 'oidc-demo', [
-            'error' => 'invalid_request',
-            'state' => 'state-of-the-client',
-        ], new DateTimeImmutable('2026-09-22T10:05:00+00:00'));
+        $document = new ResponseDocument(
+            new Issuer(self::ISSUER),
+            'oidc-demo',
+            [
+                'error' => 'invalid_request',
+                'state' => 'state-of-the-client',
+            ],
+            new DateTimeImmutable('2026-09-22T10:05:00+00:00'),
+        );
 
         // When
         $claims = $document->claims();
@@ -72,9 +82,14 @@ final class ResponseDocumentTest extends TestCase
     public function theIssuerIsTheOneOfTheTenant(): void
     {
         // Given
-        $document = new ResponseDocument(new Issuer(self::ISSUER), 'oidc-demo', [
-            'iss' => 'https://elsewhere.example',
-        ], new DateTimeImmutable('2026-09-22T10:05:00+00:00'));
+        $document = new ResponseDocument(
+            new Issuer(self::ISSUER),
+            'oidc-demo',
+            [
+                'iss' => 'https://elsewhere.example',
+            ],
+            new DateTimeImmutable('2026-09-22T10:05:00+00:00'),
+        );
 
         // When
         $claims = $document->claims();

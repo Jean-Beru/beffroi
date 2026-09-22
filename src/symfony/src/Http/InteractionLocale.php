@@ -146,7 +146,7 @@ final readonly class InteractionLocale
             $length = strlen($subtag);
             if ($script === null && $region === null && $length === 4 && ctype_alpha($subtag)) {
                 $script = ucfirst(strtolower($subtag));
-            } elseif ($region === null && (($length === 2 && ctype_alpha($subtag)) || ($length === 3 && ctype_digit($subtag)))) {
+            } elseif ($region === null && ($length === 2 && ctype_alpha($subtag) || $length === 3 && ctype_digit($subtag))) {
                 $region = strtoupper($subtag);
             }
         }

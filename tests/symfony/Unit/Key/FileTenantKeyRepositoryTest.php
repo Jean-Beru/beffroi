@@ -47,8 +47,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
-        new Filesystem()
-            ->remove($this->directory);
+        new Filesystem()->remove($this->directory);
     }
 
     #[Test]
@@ -69,7 +68,15 @@ final class FileTenantKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $key = new TenantKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()->modify('+6 minutes'));
+        $key = new TenantKey(
+            Keys::pair()->kid,
+            $tenant,
+            Algorithms::rs256(),
+            Keys::pair()->publicJwk,
+            Keys::sealer()->seal($tenant, Keys::pair()->privateJwk),
+            Fixtures::now(),
+            Fixtures::now()->modify('+6 minutes'),
+        );
         $this->repository->save($key);
 
         // When
@@ -281,9 +288,17 @@ final class FileTenantKeyRepositoryTest extends TestCase
     public function aKeyWhoseKidCannotNameAFileIsNotSaved(): void
     {
         // Given
-        $key = new TenantKey('../escape', Fixtures::tenant(), Algorithms::rs256(), [
-            'kid' => '../escape',
-        ] + Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $key = new TenantKey(
+            '../escape',
+            Fixtures::tenant(),
+            Algorithms::rs256(),
+            [
+                'kid' => '../escape',
+            ] + Keys::pair()->publicJwk,
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now(),
+        );
 
         // Then
         $this->expectException(RuntimeException::class);
@@ -381,7 +396,17 @@ final class FileTenantKeyRepositoryTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $this->repository->save(new TenantKey(Keys::pair()->kid, $tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
+        $this->repository->save(
+            new TenantKey(
+                Keys::pair()->kid,
+                $tenant,
+                Algorithms::rs256(),
+                Keys::pair()->publicJwk,
+                Keys::sealer()->seal($tenant, Keys::pair()->privateJwk),
+                Fixtures::now(),
+                Fixtures::now(),
+            ),
+        );
 
         // When
         $files = glob($this->directory . '/*/*.json');
@@ -450,7 +475,8 @@ final class FileTenantKeyRepositoryTest extends TestCase
      */
     private static function document(array $overrides): array
     {
-        return $overrides + [
+        return $overrides
+        + [
             'kid' => Keys::pair()->kid,
             'tenant_id' => 'ignored: the tenant check comes after the shape check',
             'algorithm' => 'RS256',
@@ -468,9 +494,17 @@ final class FileTenantKeyRepositoryTest extends TestCase
 
     private static function key(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): TenantKey
     {
-        return new TenantKey($kid, $tenant, Algorithms::rs256(), [
-            'kid' => $kid,
-        ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now(), $createdAt ?? Fixtures::now());
+        return new TenantKey(
+            $kid,
+            $tenant,
+            Algorithms::rs256(),
+            [
+                'kid' => $kid,
+            ] + Keys::pair()->publicJwk,
+            'sealed',
+            $createdAt ?? Fixtures::now(),
+            $createdAt ?? Fixtures::now(),
+        );
     }
 
     private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): TenantKey

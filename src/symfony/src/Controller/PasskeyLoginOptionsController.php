@@ -43,9 +43,13 @@ final readonly class PasskeyLoginOptionsController
         $tenant = $this->tenants->provide();
         $interaction = $this->browser->pending($request, $tenant, $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER));
         if ($interaction === null) {
-            return new JsonResponse([
-                'error' => AuthorizationResponder::UNKNOWN_INTERACTION,
-            ], Response::HTTP_BAD_REQUEST, InteractionPages::HEADERS);
+            return new JsonResponse(
+                [
+                    'error' => AuthorizationResponder::UNKNOWN_INTERACTION,
+                ],
+                Response::HTTP_BAD_REQUEST,
+                InteractionPages::HEADERS,
+            );
         }
         $options = $this->authentication->requestOptions($tenant);
         $this->options->storeRequest($request->getSession(), $options);

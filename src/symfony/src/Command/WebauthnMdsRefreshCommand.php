@@ -62,7 +62,9 @@ final readonly class WebauthnMdsRefreshCommand
         SymfonyStyle $io,
         #[Option(description: 'The URL of a Metadata BLOB, repeatable; the FIDO Metadata Service unless given.')]
         array $url = [],
-        #[Option(description: 'The root certificate the chain of a blob must lead to: a PEM or DER file, or an https URL; the GlobalSign Root CA - R3 the FIDO Alliance signs under unless given.')]
+        #[Option(
+            description: 'The root certificate the chain of a blob must lead to: a PEM or DER file, or an https URL; the GlobalSign Root CA - R3 the FIDO Alliance signs under unless given.',
+        )]
         ?string $root = null,
     ): int {
         try {
@@ -86,7 +88,14 @@ final readonly class WebauthnMdsRefreshCommand
             }
             $name = self::name($source);
             $this->store->write($name, $blob->payload);
-            $io->success(sprintf('The blob of %s is stored as "%s": serial number %d, %d entries, next update due on %s.', $source, $name, $blob->content->no, count($blob->content->entries), $blob->content->nextUpdate));
+            $io->success(sprintf(
+                'The blob of %s is stored as "%s": serial number %d, %d entries, next update due on %s.',
+                $source,
+                $name,
+                $blob->content->no,
+                count($blob->content->entries),
+                $blob->content->nextUpdate,
+            ));
         }
 
         return $refused === 0 ? Command::SUCCESS : Command::FAILURE;
@@ -104,7 +113,10 @@ final readonly class WebauthnMdsRefreshCommand
             $status = $response->getStatusCode();
             if ($status >= 300 && $status < 400) {
                 $location = $response->getHeaders(false)['location'][0] ?? '?';
-                throw new MetadataBlobRefusedException(sprintf('the service redirects to %s, and no outbound request follows a redirect; name that URL instead', $location));
+                throw new MetadataBlobRefusedException(sprintf(
+                    'the service redirects to %s, and no outbound request follows a redirect; name that URL instead',
+                    $location,
+                ));
             }
             if ($status !== 200) {
                 throw new MetadataBlobRefusedException(sprintf('the service answered %d', $status));
