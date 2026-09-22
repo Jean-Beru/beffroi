@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
  * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
- * --logout-others).
+ * --logout-others, --resource-server, --dpop).
  */
 
 use Castor\Attribute\AsOption;
@@ -68,6 +68,10 @@ function demo(
         description: 'The last acceptance step of issue #61 (issue #64): the demo as a resource server behind the introspection endpoint, with an opaque access token and with an "at+jwt", the introspection response read as JSON and required signed (RFC 9701), and what revoking the token does to each',
     )]
     bool $resourceServer = false,
+    #[AsOption(
+        description: 'The two criteria of spike 5 judged at the client (issue #167): oidc-demo signs in as before on a provider serving PAR, request objects, JARM, DPoP and mTLS, then its resource server is handed a token bound by DPoP, on both shapes of access token, and refuses the same token to whoever holds it without the key',
+    )]
+    bool $dpop = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -154,6 +158,13 @@ function demo(
             exit(1);
         }
         demo_resource_server_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_OPAQUE_SECRET'], $env['OIDC_DEMO_SECRET'], $ca);
+    }
+    if ($dpop) {
+        if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
+            io()->error('OIDC_DEMO_OPAQUE_SECRET is empty: run "castor provision" first.');
+            exit(1);
+        }
+        demo_dpop_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $env['OIDC_DEMO_OPAQUE_SECRET'], $ca);
     }
     if ($logoutOthers) {
         if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
@@ -1024,6 +1035,260 @@ function demo_revoke(string $issuer, string $ca, string $clientId, string $secre
 }
 
 /**
+ * The DPoP side of the run, which lives under the autoloader of the monorepo: the key pair, the token
+ * request that binds the token to it, and the five ways that token is then presented (tests/demo/).
+ */
+const DEMO_DPOP_CLIENT = 'tests/demo/dpop-client.php';
+
+/**
+ * The two routes of the demonstration behind a token bound by DPoP, one per shape of access token
+ * (config/packages/security.yaml of oidc-demo).
+ */
+const DEMO_DPOP_PATH = '/api/me/dpop';
+
+const DEMO_DPOP_INTROSPECTED_PATH = '/api/me/dpop/introspected';
+
+/**
+ * The two criteria of spike 5 that are judged at the client and not by the conformance suite (issue #167).
+ *
+ * The first is that nothing of FAPI 2 reaches a client that did not ask for it: the provider serves PAR,
+ * request objects, JARM, DPoP and mTLS, and `oidc-demo` signs in as it always did, with no pushed request,
+ * no request object and no proof, and gets a bearer token bound to nothing. No patch, no option, no
+ * exception is written for it.
+ *
+ * The second is that a Symfony resource server verifies a token bound by DPoP. The run plays the client
+ * that binds one: it walks the browser through an authorization request of its own, exchanges the code
+ * with a proof made for the token endpoint (RFC 9449 §5), and presents what comes back to the two routes
+ * `oidc-demo` serves for it, once as the holder of the key and four times as whoever took the token off
+ * the wire would: the same proof again, a proof of another key, no proof at all, and as a bearer token.
+ * The binding is checked on both shapes of access token, the "cnf.jkt" of an "at+jwt" read by the resource
+ * server itself, and the "cnf" of an opaque token read from the introspection response (§7.1).
+ *
+ * That check is `RS-05` of the Symfony status document, written during this spike on the branch
+ * `security-dpop-resource-server`; the demonstration runs on it until it merges.
+ */
+function demo_dpop_check(string $dir, string $issuer, string $password, string $demoSecret, string $opaqueSecret, string $ca): void
+{
+    io()->section('A token bound to a key, and a client that asked for none');
+    $verified = [];
+
+    $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
+    $algorithms = $metadata['dpop_signing_alg_values_supported'] ?? [];
+    demo_expect(
+        $algorithms !== []
+        && isset($metadata['pushed_authorization_request_endpoint'], $metadata['mtls_endpoint_aliases'])
+        && ($metadata['request_parameter_supported'] ?? false) === true
+        && ($metadata['authorization_signing_alg_values_supported'] ?? []) !== [],
+        'the provider announces the pushed authorization request endpoint, request objects, JARM, DPoP and the mTLS aliases',
+    );
+    $verified[] = [
+        'What the provider serves',
+        sprintf(
+            'PAR, request objects, JARM, mTLS aliases, and DPoP with %s',
+            implode(' ', (array) $algorithms),
+        ),
+    ];
+
+    $introspection = (string) ($metadata['introspection_endpoint'] ?? '');
+    $tokenEndpoint = (string) ($metadata['token_endpoint'] ?? '');
+    demo_expect($introspection !== '' && $tokenEndpoint !== '', 'the document names the token endpoint and the introspection endpoint');
+
+    try {
+        // the client that asked for none of it, on the very provider that serves all of it
+        demo_write_env_local($dir . '/.env.local', [
+            'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
+            'OIDC_CLIENT_SECRET' => $demoSecret,
+            DEMO_INTROSPECTION_ENV => $introspection,
+        ]);
+        $cookies = [];
+        [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
+        demo_expect($status === 302, sprintf('/profile sends the browser to the authorization endpoint (got %d)', $status));
+        parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
+        demo_expect(
+            ! isset($authorization['request'], $authorization['request_uri'], $authorization['dpop_jkt'], $authorization['response_mode']),
+            'the authorization request of oidc-demo carries no request object, no pushed request, no key and no response mode',
+        );
+
+        $session = demo_sign_in($cookies, $issuer, $password, $ca);
+        $accessToken = $session['tokens']['access_token'];
+        demo_expect(
+            ! isset($accessToken['claims']['cnf']),
+            'the access token it gets is bound to nothing: a bearer token, accepted from whoever holds it (RFC 6750 §1)',
+        );
+        [$status, $body] = demo_api(DEMO_URL . '/api/me/offline', $accessToken['raw']);
+        demo_expect($status === 200 && ($body['sub'] ?? null) === ($accessToken['claims']['sub'] ?? null), sprintf(
+            'its resource server answers it as before, on a bearer token and nothing else (got %d %s)',
+            $status,
+            json_encode($body),
+        ));
+        $verified[] = [
+            'oidc-demo, unchanged',
+            sprintf(
+                'no request object, no pushed request, no proof; access token without cnf, /api/me/offline 200 for sub %s',
+                $body['sub'] ?? '?',
+            ),
+        ];
+        demo_logout($cookies, $issuer, $ca);
+
+        // the client that binds its token to a key, on both shapes of access token
+        foreach ([
+            [DEMO_CLIENT_ID,        $demoSecret,   DEMO_DPOP_PATH,              'at+jwt, the binding read by the resource server itself'],
+            [DEMO_OPAQUE_CLIENT_ID, $opaqueSecret, DEMO_DPOP_INTROSPECTED_PATH, 'opaque, the binding read from the introspection response'],
+        ] as [$clientId, $secret, $path, $shape]) {
+            demo_write_env_local($dir . '/.env.local', [
+                'OIDC_CLIENT_ID' => $clientId,
+                'OIDC_CLIENT_SECRET' => $secret,
+                DEMO_INTROSPECTION_ENV => $introspection,
+            ]);
+            $cookies = [];
+            $verifier = bin2hex(random_bytes(32));
+            $callback = demo_login_at($cookies, $issuer, $password, $ca, demo_dpop_authorization($issuer, $clientId, $verifier));
+            parse_str((string) parse_url($callback, \PHP_URL_QUERY), $callbackParameters);
+
+            $run = demo_dpop_client([
+                'token_endpoint' => $tokenEndpoint,
+                'cafile' => $ca,
+                'client_id' => $clientId,
+                'client_secret' => $secret,
+                'redirect_uri' => DEMO_URL . '/oidc/callback',
+                'code' => (string) ($callbackParameters['code'] ?? ''),
+                'code_verifier' => $verifier,
+                'api_url' => DEMO_URL . $path,
+            ]);
+
+            demo_expect(($run['token_type'] ?? null) === 'DPoP', sprintf(
+                'the token the provider issues on a request that carried a proof is a DPoP token, not a bearer one (RFC 9449 §5, got "%s")',
+                $run['token_type'] ?? '',
+            ));
+            $binding = demo_dpop_binding($issuer, $ca, $clientId, $secret, $run['access_token'], $introspection);
+            demo_expect($binding === $run['jkt'], sprintf(
+                'the token names the key of the proof in its cnf.jkt (RFC 9449 §6, got "%s" for "%s")',
+                $binding,
+                $run['jkt'],
+            ));
+
+            demo_expect($run['held']['status'] === 200 && ($run['held']['body']['sub'] ?? '') !== '', sprintf(
+                'the resource server answers the holder of the key, its proof checked against that cnf.jkt (got %d %s)',
+                $run['held']['status'],
+                json_encode($run['held']['body']),
+            ));
+            foreach ([
+                'replayed' => 'the same proof a second time, which is a proof taken off the wire (§11.1)',
+                'foreign_key' => 'a proof signed by another key, which is what someone holding the token alone can make',
+                'no_proof' => 'the token with no proof at all',
+                'as_bearer' => 'the token as a bearer token, which the scheme of a bound token is not (§7.1)',
+            ] as $attempt => $what) {
+                demo_expect($run[$attempt]['status'] === 401, sprintf(
+                    '%s is refused (got %d %s)',
+                    $what,
+                    $run[$attempt]['status'],
+                    json_encode($run[$attempt]['body']),
+                ));
+            }
+            demo_expect(
+                str_starts_with($run['no_proof']['challenge'], 'DPoP'),
+                sprintf('the challenge names the scheme the token is presented under (RFC 9449 §7.1, got "%s")', $run['no_proof']['challenge']),
+            );
+
+            $verified[] = [
+                sprintf('Bound by DPoP (%s)', $shape),
+                sprintf(
+                    'token_type DPoP, cnf.jkt %s…, %s 200 for sub %s',
+                    substr((string) $run['jkt'], 0, 12),
+                    $path,
+                    $run['held']['body']['sub'] ?? '?',
+                ),
+            ];
+            $verified[] = [
+                'Refused, same token',
+                sprintf(
+                    'proof replayed %d, other key %d, no proof %d, as a bearer %d; challenge "%s"',
+                    $run['replayed']['status'],
+                    $run['foreign_key']['status'],
+                    $run['no_proof']['status'],
+                    $run['as_bearer']['status'],
+                    $run['no_proof']['challenge'],
+                ),
+            ];
+        }
+
+        io()->table(['Step', 'Verified'], $verified);
+        io()->success('oidc-demo signed in as before on a provider serving all of FAPI 2, and its resource server accepted a DPoP-bound token from the holder of the key and from nobody else.');
+        io()->note('The demonstration runs on the Symfony branch "security-dpop-resource-server" (RS-05 of docs/specs/symfony-oauth-oidc-status.md) until it merges. A resource server that binds its tokens declares "dpop: true" on the "access_token" firewall; nothing of it reaches the firewalls that do not.');
+    } finally {
+        demo_write_env_local($dir . '/.env.local', [
+            'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
+            'OIDC_CLIENT_SECRET' => $demoSecret,
+        ]);
+    }
+}
+
+/**
+ * The authorization request of the run itself, the one a client binding its tokens sends: the parameters
+ * `oidc_login` would send, PKCE included, and nothing else. The code it comes back with is exchanged by
+ * the DPoP client and never by the demonstration, whose callback is only where the browser lands.
+ */
+function demo_dpop_authorization(string $issuer, string $clientId, string $verifier): string
+{
+    return $issuer
+    . '/authorize?'
+    . http_build_query([
+        'response_type' => 'code',
+        'client_id' => $clientId,
+        'redirect_uri' => DEMO_URL . '/oidc/callback',
+        'scope' => 'openid profile email',
+        'state' => bin2hex(random_bytes(16)),
+        'nonce' => bin2hex(random_bytes(16)),
+        'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='),
+        'code_challenge_method' => 'S256',
+    ]);
+}
+
+/**
+ * The DPoP client of tests/demo/, run under the autoloader of the monorepo, which castor does not load.
+ *
+ * @param array<string, string> $input
+ * @return array<string, mixed>
+ */
+function demo_dpop_client(array $input): array
+{
+    $process = new Process(['php', DEMO_DPOP_CLIENT], input: (string) json_encode($input));
+    $process->setTimeout(120.0);
+    $process->run();
+    demo_expect($process->isSuccessful(), sprintf('the DPoP client ran (exit %d): %s', $process->getExitCode() ?? -1, trim($process->getErrorOutput())));
+    $run = json_decode($process->getOutput(), true);
+    demo_expect(is_array($run), 'the DPoP client answered a JSON object: ' . $process->getOutput());
+
+    return $run;
+}
+
+/**
+ * What the provider says the token is bound to (RFC 7800 §3.1): the "cnf.jkt" of an "at+jwt", read from the
+ * token itself, and the one of an opaque token, read where a resource server reads it, at the introspection
+ * endpoint.
+ */
+function demo_dpop_binding(string $issuer, string $ca, string $clientId, string $secret, string $accessToken, string $introspection): string
+{
+    if (substr_count($accessToken, '.') === 2) {
+        return (string) (demo_jwt($accessToken)['claims']['cnf']['jkt'] ?? '');
+    }
+
+    $response = http_request('POST', $introspection, [
+        'cafile' => $ca,
+        'max_redirects' => 0,
+        'auth_basic' => $clientId . ':' . $secret,
+        'body' => [
+            'token' => $accessToken,
+            'token_type_hint' => 'access_token',
+        ],
+    ]);
+    $claims = (array) json_decode($response->getContent(false), true);
+    demo_expect(($claims['active'] ?? null) === true, 'the introspection endpoint describes the token to the client it was issued to');
+
+    return (string) ($claims['cnf']['jkt'] ?? '');
+}
+
+/**
  * The JWK Set max-age and the JWS lifetimes of the rotation run, seconds: written into apps/op/.env.local
  * for the time of the run (HEIDI_JWKS_MAX_AGE, HEIDI_ACCESS_TOKEN_TTL, HEIDI_ID_TOKEN_TTL, which
  * config/packages/heidi.yaml reads at runtime), so that the staging delay (max-age plus the 60 s cooldown,
@@ -1520,8 +1785,21 @@ function demo_authenticate(array &$cookies, string $issuer, string $password, st
     && ($authorization['code_challenge_method'] ?? null) === 'S256'
     && ($authorization['client_id'] ?? null) === $clientId, sprintf('the authorization request is response_type=code with PKCE S256, client_id=%s', $clientId));
 
+    return demo_login_at($cookies, $issuer, $password, $ca, $location);
+}
+
+/**
+ * The browser from an authorization request to the callback it is sent to, one request at a time: the OP
+ * parks the request and asks for a login, the login page carries the form, the form is posted, and the
+ * interaction resumes into the redirect the client registered. Returns that redirect, for the caller to
+ * see what is on it; the authorization request is the caller's, whether the demo built it or the run did.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_login_at(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
+{
     // the OP parks the request and asks for a login
-    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $authorization);
     demo_expect(
         $status === 302 && str_starts_with($location, $issuer . '/login?interaction='),
         sprintf('the OP asks for a login (got %d %s)', $status, $location),
