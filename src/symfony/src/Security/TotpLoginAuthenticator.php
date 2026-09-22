@@ -12,7 +12,6 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
 use Heidi\Core\Application\Totp\TotpAuthentication;
 use Heidi\Core\Port\UserRepositoryInterface;
-use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -59,14 +58,14 @@ final readonly class TotpLoginAuthenticator implements AuthenticatorInterface, I
 
     public function supports(Request $request): bool
     {
-        return $request->isMethod('POST') && $request->attributes->get('_route') === LoginCodeController::ROUTE;
+        return $request->isMethod('POST') && $request->attributes->getString('_route') === LoginCodeController::ROUTE;
     }
 
     public function authenticate(Request $request): Passport
     {
-        $code = $request->request->get(self::CODE_PARAMETER);
-        $token = $request->request->get(self::CSRF_TOKEN_PARAMETER);
-        if (! is_string($code) || $code === '') {
+        $code = $request->request->getString(self::CODE_PARAMETER);
+        $token = $request->request->getString(self::CSRF_TOKEN_PARAMETER);
+        if ($code === '') {
             throw new AuthenticationException('The login carries no code.');
         }
         $context = $this->contexts->fromRequest($request);
@@ -85,7 +84,7 @@ final readonly class TotpLoginAuthenticator implements AuthenticatorInterface, I
         return new Passport(
             new UserBadge($user->username),
             new TotpCredentials($login, $method),
-            [new CsrfTokenBadge(self::CSRF_TOKEN_ID, is_string($token) ? $token : null)],
+            [new CsrfTokenBadge(self::CSRF_TOKEN_ID, $token)],
         );
     }
 

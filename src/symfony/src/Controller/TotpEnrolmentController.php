@@ -10,7 +10,6 @@ use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
 use Heidi\Core\Application\Totp\TotpEnrolment;
 use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -57,9 +56,9 @@ final readonly class TotpEnrolmentController
         if ($provisioning === null) {
             return $this->page->render($user, self::NO_PROVISIONING, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
-        $code = $request->request->get(self::CODE_PARAMETER);
+        $code = $request->request->getString(self::CODE_PARAMETER);
         try {
-            $this->enrolment->complete($user, $provisioning, is_string($code) ? $code : '', $context);
+            $this->enrolment->complete($user, $provisioning, $code, $context);
         } catch (CredentialEnrolmentFailedException) {
             return $this->page->renderEnrolment($user, $provisioning, self::REFUSED, Response::HTTP_UNPROCESSABLE_ENTITY);
         }

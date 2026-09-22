@@ -12,7 +12,6 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Passkey\PasskeyEnrolment;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use function is_string;
 use function mb_strlen;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -62,14 +61,13 @@ final readonly class PasskeyEnrolmentController
             return $session;
         }
         $user = $session->user;
-        $name = $request->request->get(self::NAME_PARAMETER);
-        $name = is_string($name) ? trim($name) : '';
+        $name = trim($request->request->getString(self::NAME_PARAMETER));
         if ($name === '' || mb_strlen($name) > PasskeyCredential::NAME_MAX_LENGTH) {
             return $this->page->render($user, self::INVALID_NAME, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
-        $attestation = $request->request->get(self::ATTESTATION_PARAMETER);
+        $attestation = $request->request->getString(self::ATTESTATION_PARAMETER);
         $options = $this->options->takeCreation($request->getSession(), $user->id);
-        if (! is_string($attestation) || $attestation === '' || $options === null) {
+        if ($attestation === '' || $options === null) {
             return $this->page->render($user, self::NO_CEREMONY, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         try {

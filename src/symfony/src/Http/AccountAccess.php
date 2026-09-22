@@ -6,7 +6,6 @@ namespace Heidi\Bundle\Http;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Domain\Session\AuthenticationSession;
-use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Csrf\CsrfToken;
@@ -60,8 +59,8 @@ final readonly class AccountAccess
 
     private function tokenHolds(Request $request, string $csrfTokenId): bool
     {
-        $token = $request->request->get(self::TOKEN_PARAMETER);
+        $token = $request->request->getString(self::TOKEN_PARAMETER);
 
-        return is_string($token) && $this->csrf->isTokenValid(new CsrfToken($csrfTokenId, $token));
+        return $token !== '' && $this->csrf->isTokenValid(new CsrfToken($csrfTokenId, $token));
     }
 }

@@ -39,7 +39,7 @@ final readonly class LoginFailureListener
     public function onLoginFailure(LoginFailureEvent $event): void
     {
         $request = $event->getRequest();
-        $route = $request->attributes->get('_route');
+        $route = $request->attributes->getString('_route');
         $failure = match ($route) {
             'heidi_interaction_login' => self::passwordFailure($event->getException(), $event->getPassport()),
             PasskeyLoginController::ROUTE => self::passkeyFailure($event->getException(), $event->getPassport()),

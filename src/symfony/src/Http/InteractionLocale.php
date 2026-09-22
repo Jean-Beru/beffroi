@@ -15,7 +15,6 @@ use Heidi\Bundle\Plane\Plane;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use function implode;
 use function in_array;
-use function is_string;
 use function preg_split;
 use function str_starts_with;
 use function strlen;
@@ -81,8 +80,8 @@ final readonly class InteractionLocale
     public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        $route = $request->attributes->get('_route');
-        if (! $event->isMainRequest() || ! is_string($route) || ! str_starts_with($route, Plane::INTERACTION_ROUTE_PREFIX)) {
+        $route = $request->attributes->getString('_route');
+        if (! $event->isMainRequest() || ! str_starts_with($route, Plane::INTERACTION_ROUTE_PREFIX)) {
             return;
         }
         $request->attributes->set('_locale', $this->choose($request));

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Http\Tls;
 
 use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
-use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -44,8 +43,8 @@ final readonly class EdgeClientCertificateResolver implements ClientCertificateR
                 throw ForgedClientCertificateException::carriedBy($header);
             }
         }
-        $pem = $request->server->get(self::VARIABLE);
-        if (! is_string($pem) || $pem === '') {
+        $pem = $request->server->getString(self::VARIABLE);
+        if ($pem === '') {
             return null;
         }
 
