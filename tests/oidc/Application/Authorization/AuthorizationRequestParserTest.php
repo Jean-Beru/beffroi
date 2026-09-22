@@ -165,6 +165,66 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
+     * JARM §2.1: "jwt" names no delivery of its own, it names the signed mode the response type defaults
+     * to, which for "code" is "query.jwt"; what the request carries from there on is the mode that
+     * delivers, never the alias.
+     */
+    #[Test]
+    public function itResolvesTheJwtResponseModeToTheSignedQuery(): void
+    {
+        // Given
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo());
+        $parameters = self::parameters([
+            'response_mode' => 'jwt',
+        ]);
+
+        // When
+        $request = $parser->parse($parser->redirectTarget($this->tenant, $parameters), $parameters);
+
+        // Then
+        static::assertSame(ResponseMode::QueryJwt, $request->responseMode);
+    }
+
+    /**
+     * JARM §2.1: the posted form of a signed answer is asked for by name, and is a mode of its own.
+     */
+    #[Test]
+    public function itReadsTheSignedFormPostResponseMode(): void
+    {
+        // Given
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo());
+        $parameters = self::parameters([
+            'response_mode' => 'form_post.jwt',
+        ]);
+
+        // When
+        $request = $parser->parse($parser->redirectTarget($this->tenant, $parameters), $parameters);
+
+        // Then
+        static::assertSame(ResponseMode::FormPostJwt, $request->responseMode);
+    }
+
+    /**
+     * Issue #98: "jwt" is worth no more than the mode it names, so a deployment that wires no signed mode
+     * refuses it like any other it cannot render.
+     */
+    #[Test]
+    public function theJwtResponseModeIsRefusedWhereNoSignedModeIsWired(): void
+    {
+        // Given
+        $parameters = self::parameters([
+            'response_mode' => 'jwt',
+        ]);
+
+        // Then
+        $this->expectException(UnsupportedResponseModeException::class);
+        $this->expectExceptionMessageIs('unsupported_response_mode: The requested response mode is not supported.');
+
+        // When
+        $this->parser->parse($this->parser->redirectTarget($this->tenant, $parameters), $parameters);
+    }
+
+    /**
      * Issue #98: what the parser accepts is what the integration wired, never what the enumeration of the
      * module holds. A deployment that posts no response refuses the mode it cannot render.
      */

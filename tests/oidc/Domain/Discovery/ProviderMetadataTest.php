@@ -241,6 +241,36 @@ final class ProviderMetadataTest extends TestCase
     }
 
     /**
+     * JARM §2.1 and issue #98: "jwt" is announced because a signed mode is wired, and with it what such
+     * an answer is signed with (JARM §3); the alias comes last, after the modes that deliver.
+     */
+    #[Test]
+    public function aWiredSignedModeAnnouncesTheAliasAndWhatSignsIt(): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [ResponseMode::Query, ResponseMode::QueryJwt], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60)->toArray();
+
+        // Then
+        static::assertSame(['query', 'query.jwt', 'jwt'], $document['response_modes_supported']);
+        static::assertSame($document['id_token_signing_alg_values_supported'], $document['authorization_signing_alg_values_supported']);
+    }
+
+    /**
+     * A deployment that answers in "query" and "form_post" alone signs no answer, so it announces
+     * neither the alias nor what would sign one.
+     */
+    #[Test]
+    public function aDeploymentWithoutASignedModeAnnouncesNeitherTheAliasNorWhatSignsIt(): void
+    {
+        // When
+        $document = self::metadata()->toArray();
+
+        // Then
+        static::assertSame(['query', 'form_post'], $document['response_modes_supported']);
+        static::assertArrayNotHasKey('authorization_signing_alg_values_supported', $document);
+    }
+
+    /**
      * OIDC Registration §2 and decision 0006: "none" is announced beside the algorithms when a client of
      * the tenant registered it, and a deployment whose clients all sign their request objects does not
      * announce that it would read an unsigned one (issue #98).

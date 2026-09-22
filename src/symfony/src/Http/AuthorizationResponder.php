@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Http;
 
 use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
+use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Authorization\AuthorizationErrorResponse;
 use Heidi\Oidc\Domain\Authorization\RedirectTarget;
 use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
@@ -59,7 +60,7 @@ final readonly class AuthorizationResponder
         if ($decision instanceof Granted) {
             $this->browser->forget($request->getSession(), $decision->interaction);
 
-            return $this->renderers->render($decision->interaction->request->responseMode, $decision->response->redirectUri, $decision->response->parameters());
+            return $this->renderers->render($decision->interaction->request->responseMode, new AuthorizationAnswer($decision->interaction->request->client, $decision->response->redirectUri, $decision->response->parameters()));
         }
 
         throw new LogicException(sprintf('The decision "%s" is not one the authorization endpoint knows.', $decision::class));
@@ -76,7 +77,7 @@ final readonly class AuthorizationResponder
         if ($exception->redirectable) {
             $error = AuthorizationErrorResponse::fromException($target, $exception);
 
-            return $this->renderers->render($target->responseMode, $error->redirectUri, $error->parameters());
+            return $this->renderers->render($target->responseMode, new AuthorizationAnswer($target->client, $error->redirectUri, $error->parameters()));
         }
 
         return $this->pages->error($exception->statusCode, $exception->error, $exception->errorDescription);

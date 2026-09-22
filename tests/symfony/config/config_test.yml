@@ -100,7 +100,7 @@ doctrine:
 
 # A full configuration (architecture §5.1): one tenant, a KMS, files for the sealed keys, a JWK Set cached
 # for two minutes rather than the default five so that the tests see the value travel, the default
-# lifetimes and nine clients, one of which only starts an authorization request by pushing it (RFC 9126
+# lifetimes and ten clients, one of which only starts an authorization request by pushing it (RFC 9126
 # §6), two of which send their authorization requests in a JWT (RFC 9101 §4), one signing it with the key
 # it publishes and one registering that it signs nothing, the third one carrying the PKCE exception of decision 0008, the fourth one
 # registered for opaque access tokens, the last two recognised by the certificate they present (RFC 8705
@@ -209,6 +209,15 @@ heidi:
             token_endpoint_auth_method: client_secret_basic
             requires_consent: false
             request_object_signing_alg: none
+        # JARM §2.1 (issue #163): a client whose answers are a document the tenant signs, in the
+        # algorithm it registered rather than the default one, so that the two are told apart.
+        jarm-app:
+            name: 'Application that reads a signed answer'
+            secret: 'jarm-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://jarm.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            authorization_signed_response_alg: ES256
         opaque-app:
             name: 'Application with opaque tokens'
             secret: 'opaque-secret-of-at-least-32-characters-long'
