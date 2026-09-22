@@ -1,0 +1,103 @@
+<?php
+
+declare(strict_types=1);
+
+use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
+use Heidi\Bundle\Http\AuthorizationResponderInterface;
+use Heidi\Bundle\Profiler\KmsBackend;
+use Heidi\Bundle\Profiler\OpCollector;
+use Heidi\Bundle\Profiler\OpEndpointListener;
+use Heidi\Bundle\Profiler\OpProfile;
+use Heidi\Bundle\Profiler\ProfilingAccessTokenIssuer;
+use Heidi\Bundle\Profiler\ProfilingAuthenticationSessionRepository;
+use Heidi\Bundle\Profiler\ProfilingAuthorizationRequestReader;
+use Heidi\Bundle\Profiler\ProfilingAuthorizationResponder;
+use Heidi\Bundle\Profiler\ProfilingClientRepository;
+use Heidi\Bundle\Profiler\ProfilingConsentRepository;
+use Heidi\Bundle\Profiler\ProfilingDecryptionKeyProvider;
+use Heidi\Bundle\Profiler\ProfilingEventDispatcher;
+use Heidi\Bundle\Profiler\ProfilingIdTokenIssuer;
+use Heidi\Bundle\Profiler\ProfilingSigningKeyProvider;
+use Heidi\Bundle\Messenger\EventBusDispatcher;
+use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Heidi\Core\Port\DecryptionKeyProviderInterface;
+use Heidi\Core\Port\SigningKeyProviderInterface;
+use Heidi\Oidc\Port\AccessTokenIssuerInterface;
+use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Heidi\Oidc\Port\IdTokenIssuerInterface;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+
+/**
+ * The panel of the provider in the profiler and in the debug toolbar (issue #152), wired only when the
+ * kernel runs in debug: the application declares nothing, the panel is there because the bundle is.
+ *
+ * Every observer decorates a service that was already wired and adds nothing to what it does. Which
+ * client, which key, which session, which token: each of them is read where the provider itself reads
+ * it, so the panel says what the request did and never what a list kept beside it claims.
+ */
+return static function (ContainerConfigurator $container): void {
+    $services = $container->services();
+    $services->defaults()->autowire()->autoconfigure()->private();
+
+    $services->set(OpProfile::class)->tag('kernel.reset', [
+        'method' => 'reset',
+    ]);
+    $services->set(OpCollector::class)->tag('data_collector', [
+        'id' => OpCollector::NAME,
+        'template' => '@Heidi/profiler/panel.html.twig',
+        'priority' => 300,
+    ]);
+    $services->set(OpEndpointListener::class);
+
+    // what the request brought, and what the endpoint made of it
+    $services
+        ->set(ProfilingAuthorizationRequestReader::class)
+        ->decorate(AuthorizationRequestReaderInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingAuthorizationResponder::class)
+        ->decorate(AuthorizationResponderInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingClientRepository::class)
+        ->decorate(ClientRepositoryInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingConsentRepository::class)
+        ->decorate(ConsentRepositoryInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingAuthenticationSessionRepository::class)
+        ->decorate(AuthenticationSessionRepositoryInterface::class)
+        ->args([service('.inner')]);
+
+    // what left, and what opened the keys that wrote it
+    $services
+        ->set(ProfilingAccessTokenIssuer::class)
+        ->decorate(AccessTokenIssuerInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingIdTokenIssuer::class)
+        ->decorate(IdTokenIssuerInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingSigningKeyProvider::class)
+        ->decorate(SigningKeyProviderInterface::class)
+        ->args([service('.inner')]);
+    $services
+        ->set(ProfilingDecryptionKeyProvider::class)
+        ->decorate(DecryptionKeyProviderInterface::class)
+        ->args([service('.inner')]);
+
+    // the events the core announced on their way to the bus
+    $services
+        ->set(ProfilingEventDispatcher::class)
+        ->decorate(EventBusDispatcher::class)
+        ->args([service('.inner')]);
+
+    // the KMS is named by the scheme of its DSN, which the extension hands over; the rest of a DSN may
+    // carry a credential and never reaches the panel
+    $services->set(KmsBackend::class);
+};

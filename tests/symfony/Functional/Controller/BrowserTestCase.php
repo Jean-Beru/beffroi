@@ -74,8 +74,19 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     protected function setUp(): void
     {
-        $this->browser = self::browser($this->configureContainer());
+        $this->browser = self::browser($this->configureContainer(), static::kernelOptions());
         new Filesystem()->remove(self::keyStorage());
+    }
+
+    /**
+     * What the kernel behind the browser is booted with; nothing by default, which is a kernel that is
+     * not in debug, as every test runs on.
+     *
+     * @return array<string, mixed>
+     */
+    protected static function kernelOptions(): array
+    {
+        return [];
     }
 
     /**

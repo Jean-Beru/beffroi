@@ -13,3 +13,9 @@ host_route:
 heidi_fido_conformance:
     resource: '@HeidiBundle/config/routes/fido-conformance.php'
     prefix: /fido/conformance
+
+# The pages of the profiler, as an application imports them in development: the one test that boots a
+# kernel in debug reads the panel of the bundle through them.
+web_profiler:
+    resource: '@WebProfilerBundle/Resources/config/routing/profiler.php'
+    prefix: /_profiler

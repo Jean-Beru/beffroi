@@ -33,6 +33,7 @@ use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Messenger\NotificationRetryPolicy;
 use Heidi\Bundle\Plane\Plane;
+use Heidi\Bundle\Profiler\KmsBackend;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\RateLimitedAttempts;
@@ -724,11 +725,26 @@ final class HeidiBundle extends AbstractBundle
     }
 
     /**
+     * Whether the kernel runs in debug. A container built without a kernel, which is what a unit test of
+     * this extension builds, is not one.
+     */
+    private static function isDebug(ContainerBuilder $builder): bool
+    {
+        return $builder->hasParameter('kernel.debug') && $builder->getParameter('kernel.debug') === true;
+    }
+
+    /**
      * @param array<array-key, mixed> $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $container->import('../config/services.php');
+        // the panel of the provider is a debug tool and nothing else: it is wired when the kernel runs
+        // in debug, and a deployment cannot switch it on (issue #152)
+        $debug = self::isDebug($builder);
+        if ($debug) {
+            $container->import('../config/profiler.php');
+        }
 
         if (! $builder->hasParameter('env(HEIDI_PLANE)')) {
             $builder->setParameter('env(HEIDI_PLANE)', Plane::All->value);
@@ -755,6 +771,9 @@ final class HeidiBundle extends AbstractBundle
         $services->get(EnvelopeKeySealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(EnvelopeSecretSealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileTenantKeyRepository::class)->arg('$directory', self::string($keys, 'storage'));
+        if ($debug) {
+            $services->get(KmsBackend::class)->arg('$dsn', self::string($keys, 'kms'));
+        }
         $services->get(FileMetadataBlobStore::class)->arg('$directory', self::string($webauthn, 'metadata_storage'));
         $services->get(JwksHandler::class)->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
         $services->get(RouterEndpointLocator::class)->arg('$mutualTlsOrigin', is_string($mutualTls['origin'] ?? null) ? $mutualTls['origin'] : null);

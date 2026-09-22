@@ -24,7 +24,10 @@ use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Heidi\Bundle\EndSession\LogoutChannels;
 use Heidi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Heidi\Bundle\Http\AccountAccess;
+use Heidi\Bundle\Http\AuthorizationRequestReader;
+use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Heidi\Bundle\Http\AuthorizationResponder;
+use Heidi\Bundle\Http\AuthorizationResponderInterface;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
@@ -291,6 +294,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AuthorizationResponseRenderers::class)->args([tagged_iterator('heidi.response_mode')]);
     $services->alias(ServedResponseModesInterface::class, AuthorizationResponseRenderers::class);
     $services->set(AuthorizationResponder::class);
+    $services->alias(AuthorizationResponderInterface::class, AuthorizationResponder::class);
+    // the two resolvers of the authorization endpoint, in the order the protocol gives them (RFC 9126 §4, RFC 9101 §6.1)
+    $services->set(AuthorizationRequestReader::class);
+    $services->alias(AuthorizationRequestReaderInterface::class, AuthorizationRequestReader::class);
     $services->set(PasskeyOptionsStore::class);
     $services->set(PasskeysPage::class);
     // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
