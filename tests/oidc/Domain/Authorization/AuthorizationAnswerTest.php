@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Oidc\Tests\Domain\Authorization;
+
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
+use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\Clients;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * What the authorization endpoint hands to one client, whichever mode delivers it.
+ */
+final class AuthorizationAnswerTest extends TestCase
+{
+    /**
+     * JARM §2.1: a signed answer is one parameter, so neither "state" nor "iss" is written beside the
+     * document that already carries them.
+     */
+    #[Test]
+    public function aSignedAnswerCarriesTheDocumentAndNothingElse(): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant());
+        $answer = new AuthorizationAnswer($client, new RedirectUri('https://spa.example/callback'), [
+            'code' => 'the-code',
+            'state' => 'state-of-the-client',
+            'iss' => 'https://id.acme.example',
+        ]);
+
+        // When
+        $signed = $answer->signedWith('the.signed.document');
+
+        // Then
+        static::assertSame([
+            'response' => 'the.signed.document',
+        ], $signed->parameters);
+        static::assertSame($client, $signed->client);
+        static::assertSame($answer->redirectUri, $signed->redirectUri);
+    }
+
+    #[Test]
+    public function anAnswerWithoutAParameterIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An answer of the authorization endpoint carries at least one parameter.');
+
+        // When
+        new AuthorizationAnswer(Clients::public(Fixtures::tenant()), new RedirectUri('https://spa.example/callback'), []);
+    }
+}

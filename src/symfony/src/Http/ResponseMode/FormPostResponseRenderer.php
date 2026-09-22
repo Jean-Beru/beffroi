@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Http\ResponseMode;
 
 use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Authorization\FormPostResponse;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
-use Heidi\Oidc\Domain\Client\RedirectUri;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -30,9 +30,9 @@ final readonly class FormPostResponseRenderer implements AuthorizationResponseRe
         return ResponseMode::FormPost;
     }
 
-    public function render(RedirectUri $redirectUri, array $parameters): Response
+    public function render(AuthorizationAnswer $answer): Response
     {
-        $response = new FormPostResponse($redirectUri, $parameters);
+        $response = new FormPostResponse($answer->redirectUri, $answer->parameters);
 
         return $this->pages->render(self::TEMPLATE, [
             'redirect_uri' => $response->redirectUri->value,

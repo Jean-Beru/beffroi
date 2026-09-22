@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Key;
 
-use function array_shift;
 use DateInterval;
 use Heidi\Core\Application\Key\SigningKeyRotator;
 use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
@@ -13,10 +12,8 @@ use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Domain\Event\SigningKeyRetired;
 use Heidi\Core\Domain\Event\SigningKeyRotated;
 use Heidi\Core\Domain\Event\SigningKeyStaged;
-use Heidi\Core\Domain\Key\GeneratedKeyPair;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\RetirementReason;
-use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
 use Heidi\Core\Domain\Key\SigningKey;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -24,11 +21,11 @@ use Heidi\Core\Exception\KeyNotFoundException;
 use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Exception\RetirementNotDueException;
 use Heidi\Core\Port\IssuedJwsKindInterface;
-use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FixedLifetimeJwsKind;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
+use Heidi\Core\Tests\Fixture\PrecomputedKeyPairGenerator;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -684,24 +681,5 @@ final class SigningKeyRotatorTest extends TestCase
     private function rotator(array $issuedJws): SigningKeyRotator
     {
         return new SigningKeyRotator($this->repository, new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]), Keys::sealer(), $issuedJws, new DateInterval(self::STAGING_DELAY), $this->clock, $this->events);
-    }
-}
-
-/**
- * Hands out pre-generated pairs: generating RSA keys in every test would cost seconds for nothing.
- */
-final class PrecomputedKeyPairGenerator implements KeyPairGeneratorInterface
-{
-    /**
-     * @param list<GeneratedKeyPair> $pairs
-     */
-    public function __construct(
-        private array $pairs,
-    ) {
-    }
-
-    public function generate(SignatureAlgorithmInterface $algorithm): GeneratedKeyPair
-    {
-        return array_shift($this->pairs) ?? throw new LogicException('No more precomputed key pairs.');
     }
 }

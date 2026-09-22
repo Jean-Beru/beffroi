@@ -36,6 +36,8 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
 use Heidi\Bundle\Http\ResponseMode\FormPostResponseRenderer;
 use Heidi\Bundle\Http\ResponseMode\QueryResponseRenderer;
+use Heidi\Bundle\Http\ResponseMode\SignedFormPostResponseRenderer;
+use Heidi\Bundle\Http\ResponseMode\SignedQueryResponseRenderer;
 use Heidi\Bundle\Http\Tls\ClientCertificateResolverInterface;
 use Heidi\Bundle\Http\Tls\EdgeClientCertificateResolver;
 use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
@@ -132,6 +134,7 @@ use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
 use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
+use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
@@ -157,6 +160,7 @@ use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
+use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
@@ -260,6 +264,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(QueryResponseRenderer::class)
         ->tag('heidi.response_mode');
     $services->set(FormPostResponseRenderer::class)
+        ->tag('heidi.response_mode');
+    // JARM §2.1: the same two deliveries, of a document the tenant signs rather than of the parameters
+    $services->set(SignedQueryResponseRenderer::class)
+        ->tag('heidi.response_mode');
+    $services->set(SignedFormPostResponseRenderer::class)
         ->tag('heidi.response_mode');
     $services->set(AuthorizationResponseRenderers::class)
         ->args([tagged_iterator('heidi.response_mode')]);
@@ -566,6 +575,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PushedAuthorizationHandler::class);
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);
+    // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
+    $services->set(ResponseDocumentIssuer::class);
 
     // The module: token endpoint; the grants are tagged by hand, the issuers named by the format each one writes
     $services->set(JwtAccessTokenIssuer::class);
@@ -583,6 +594,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(IdTokenJwsKind::class)
         ->tag('heidi.issued_jws');
     $services->set(AccessTokenJwsKind::class)
+        ->tag('heidi.issued_jws');
+    $services->set(ResponseDocumentJwsKind::class)
         ->tag('heidi.issued_jws');
     $services->set(TokenIssuer::class);
     $services->set(RefreshTokenRevocation::class);

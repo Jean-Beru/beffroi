@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Http\ResponseMode;
 
+use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
-use Heidi\Oidc\Domain\Client\RedirectUri;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -18,8 +18,5 @@ interface AuthorizationResponseRendererInterface
 {
     public function mode(): ResponseMode;
 
-    /**
-     * @param non-empty-array<string, string> $parameters the response as the protocol names it, "iss" included (RFC 9207 §2)
-     */
-    public function render(RedirectUri $redirectUri, array $parameters): Response;
+    public function render(AuthorizationAnswer $answer): Response;
 }

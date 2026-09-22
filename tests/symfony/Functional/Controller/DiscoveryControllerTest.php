@@ -108,8 +108,9 @@ final class DiscoveryControllerTest extends BrowserTestCase
 
     /**
      * OIDC Discovery §3 "response_modes_supported", issue #98: the ways of answering wired into the
-     * authorization endpoint of the bundle, the default one and the posted form (Form Post Response Mode
-     * §2); the response types stay "code" alone, in every mode (decision 0006).
+     * authorization endpoint of the bundle, the default one, the posted form (Form Post Response Mode
+     * §2) and the two deliveries of a signed document (JARM §2.1), plus the "jwt" those two make
+     * meaningful; the response types stay "code" alone, in every mode (decision 0006).
      */
     #[Test]
     public function theMetadataAnnouncesTheResponseModesTheBundleWires(): void
@@ -119,8 +120,23 @@ final class DiscoveryControllerTest extends BrowserTestCase
 
         // Then
         $metadata = self::json($this->browser->getResponse());
-        static::assertSame(['query', 'form_post'], $metadata['response_modes_supported']);
+        static::assertSame(['query', 'form_post', 'query.jwt', 'form_post.jwt', 'jwt'], $metadata['response_modes_supported']);
         static::assertSame(['code'], $metadata['response_types_supported']);
+    }
+
+    /**
+     * JARM §3: a deployment that wires a signed mode says what it signs such an answer with, which is
+     * what it signs every other JWS with (issue #98).
+     */
+    #[Test]
+    public function theMetadataAnnouncesWhatASignedAnswerIsSignedWith(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $metadata = self::json($this->browser->getResponse());
+        static::assertSame($metadata['id_token_signing_alg_values_supported'], $metadata['authorization_signing_alg_values_supported']);
     }
 
     /**

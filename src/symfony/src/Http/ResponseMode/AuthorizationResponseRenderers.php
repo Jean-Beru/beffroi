@@ -6,8 +6,8 @@ namespace Heidi\Bundle\Http\ResponseMode;
 
 use function array_map;
 use function array_values;
+use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
-use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
 use LogicException;
 use function sprintf;
@@ -49,14 +49,12 @@ final readonly class AuthorizationResponseRenderers implements ServedResponseMod
     }
 
     /**
-     * @param non-empty-array<string, string> $parameters
-     *
      * @throws LogicException when no renderer answers in that mode, which the parser makes unreachable
      */
-    public function render(ResponseMode $mode, RedirectUri $redirectUri, array $parameters): Response
+    public function render(ResponseMode $mode, AuthorizationAnswer $answer): Response
     {
         $renderer = $this->renderers[$mode->value] ?? throw new LogicException(sprintf('No renderer answers in the "%s" response mode.', $mode->value));
 
-        return $renderer->render($redirectUri, $parameters);
+        return $renderer->render($answer);
     }
 }

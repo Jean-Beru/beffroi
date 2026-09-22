@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Http\ResponseMode;
 
 use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
-use Heidi\Oidc\Domain\Client\RedirectUri;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -25,8 +25,8 @@ final readonly class QueryResponseRenderer implements AuthorizationResponseRende
         return ResponseMode::Query;
     }
 
-    public function render(RedirectUri $redirectUri, array $parameters): Response
+    public function render(AuthorizationAnswer $answer): Response
     {
-        return $this->pages->redirect($redirectUri->withParameters($parameters));
+        return $this->pages->redirect($answer->redirectUri->withParameters($answer->parameters));
     }
 }
