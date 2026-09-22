@@ -13,6 +13,8 @@ use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\ResponseFormat;
+use Heidi\Oidc\Tests\Fixture\ClientEncryption;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -38,7 +40,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->jwts = new Jwts($this->tenant);
-        $this->issuer = new ResponseDocumentIssuer($this->jwts->signer, Algorithms::all(), new MockClock(Fixtures::now()));
+        $this->issuer = new ResponseDocumentIssuer($this->jwts->documents, new MockClock(Fixtures::now()));
     }
 
     /**
@@ -72,7 +74,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     public function theDocumentExpiresAfterTheLifetimeOfItsIssuer(): void
     {
         // Given
-        $issuer = new ResponseDocumentIssuer($this->jwts->signer, Algorithms::all(), new MockClock(Fixtures::now()), new DateInterval('PT2M'));
+        $issuer = new ResponseDocumentIssuer($this->jwts->documents, new MockClock(Fixtures::now()), new DateInterval('PT2M'));
         $document = $issuer->issue($this->answer());
 
         // When
@@ -110,7 +112,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], authorizationSignedResponseAlg: Algorithms::es256());
+        $client = new Client($this->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], authorizationResponse: ResponseFormat::signed(Algorithms::es256()));
 
         // When
         $document = $this->issuer->issue(new AuthorizationAnswer($client, new RedirectUri('https://spa.example/callback'), [
@@ -123,6 +125,29 @@ final class ResponseDocumentIssuerTest extends TestCase
             'alg' => 'ES256',
             'kid' => $es256Key->kid,
         ], $header);
+    }
+
+    /**
+     * JARM §3 and issue #165: a client that registered an encryption receives the signed document inside
+     * a JWE addressed to one of its keys, which is the same two steps as for an ID token.
+     */
+    #[Test]
+    public function theDocumentIsEncryptedForAClientThatRegisteredOne(): void
+    {
+        // Given
+        $client = Clients::encryptedFor($this->tenant, authorizationResponse: ResponseFormat::signed(null, ClientEncryption::registration()));
+
+        // When
+        $document = $this->issuer->issue(new AuthorizationAnswer($client, new RedirectUri('https://encrypted.example/callback'), [
+            'code' => 'the-code',
+        ]));
+
+        // Then
+        ['header' => $header, 'payload' => $signed] = ClientEncryption::open($document);
+        static::assertSame('JWT', $header['cty']);
+        static::assertSame(ClientEncryption::KEY_ID, $header['kid']);
+        ['claims' => $claims] = $this->jwts->verify($signed, 'encrypted-client', Fixtures::now(), self::MANDATORY);
+        static::assertSame('the-code', $claims['code']);
     }
 
     /**

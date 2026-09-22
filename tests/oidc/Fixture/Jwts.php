@@ -8,6 +8,7 @@ use function base64_decode;
 use DateTimeImmutable;
 use function explode;
 use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
@@ -19,6 +20,9 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
+use Heidi\Oidc\Application\Client\ClientDocumentIssuer;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
+use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use function is_array;
 use Jose\Component\Checker\AudienceChecker;
 use Jose\Component\Checker\ClaimCheckerManager;
@@ -49,6 +53,12 @@ final readonly class Jwts
 
     public JoseSignatureAlgorithms $algorithms;
 
+    /**
+     * What mints the three documents a client receives, signed and, for a client that registered one,
+     * encrypted to a key it publishes.
+     */
+    public ClientDocumentIssuer $documents;
+
     private InMemoryTenantKeyRepository $repository;
 
     public function __construct(
@@ -59,6 +69,21 @@ final readonly class Jwts
         $this->key = $this->activate(Algorithms::rs256(), Keys::pair());
         $this->keys = new SealedKeyProvider($this->repository, Keys::sealer());
         $this->signer = new JwtLibraryJwsSigner($this->keys, $this->algorithms);
+        $this->documents = $this->documentsFor();
+    }
+
+    /**
+     * The document issuer, reading the keys a client publishes through the fetcher given, or through the
+     * one every other fixture uses.
+     */
+    public function documentsFor(?ClientJwksFetcherInterface $fetcher = null): ClientDocumentIssuer
+    {
+        return new ClientDocumentIssuer(
+            $this->signer,
+            $this->algorithms,
+            Methods::keySetProvider($fetcher),
+            new JwtLibraryJweEncrypter(new JoseEncryptionAlgorithms(Algorithms::keyEncryption(), Algorithms::contentEncryption())->manager()),
+        );
     }
 
     /**

@@ -131,7 +131,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         $fromModule = ClientDefinition::fromArray('oidc-demo', [
             'redirect_uris' => ['https://demo.test/login/check'],
             'token_endpoint_auth_method' => 'none',
-        ], Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
+        ], Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
 
         // When
         $config = self::process(self::MINIMAL + [
@@ -147,7 +147,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         static::assertIsArray($config['clients']);
         static::assertSame(['oidc-demo'], array_keys($config['clients']));
         static::assertIsArray($config['clients']['oidc-demo']);
-        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader());
+        $fromTree = ClientDefinition::fromArray('oidc-demo', self::stringKeyed($config['clients']['oidc-demo']), Algorithms::all(), Methods::all(), new PkiFrameworkCertificateReader(), Algorithms::keyEncryption(), Algorithms::contentEncryption());
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
         static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, array_map(static fn ($scope) => (string) $scope, $fromTree->allowedScopes));

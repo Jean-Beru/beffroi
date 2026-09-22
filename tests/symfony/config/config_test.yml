@@ -218,6 +218,29 @@ heidi:
             token_endpoint_auth_method: client_secret_basic
             requires_consent: false
             authorization_signed_response_alg: ES256
+        # OIDC Core §3.1.3.7 and §5.3.2 (issue #165): a client the provider writes to in private. Its ID
+        # tokens are signed then encrypted to the key it publishes, and its UserInfo answer is a JWT the
+        # tenant signs and encrypts. The key is the EC key of RFC 7515 appendix A.3, whose private half
+        # the test suite holds.
+        encrypted-app:
+            name: 'Application written to in private'
+            secret: 'encrypted-secret-of-at-least-32-characters'
+            redirect_uris: ['https://encrypted.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            id_token_encrypted_response_alg: 'ECDH-ES+A256KW'
+            id_token_encrypted_response_enc: A256GCM
+            userinfo_signed_response_alg: RS256
+            userinfo_encrypted_response_alg: 'ECDH-ES+A256KW'
+            userinfo_encrypted_response_enc: A256GCM
+            jwks:
+                keys:
+                    - kty: EC
+                      crv: P-256
+                      kid: encrypted-app-key
+                      use: enc
+                      x: f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU
+                      y: x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0
         opaque-app:
             name: 'Application with opaque tokens'
             secret: 'opaque-secret-of-at-least-32-characters-long'

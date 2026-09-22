@@ -19,6 +19,7 @@ use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
 use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
+use Heidi\Oidc\Domain\Client\ResponseFormat;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Domain\Scope\Scope;
 
@@ -83,6 +84,30 @@ final class Clients
             [new RedirectUri('https://key.example/callback')],
             jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,
             jwksUri: $jwksUri,
+        );
+    }
+
+    /**
+     * A client that registered an encryption for what the provider hands it (OIDC Registration §2): it
+     * publishes the key the document is addressed to, and receives the shapes given, signed then
+     * encrypted. What it registers nothing for it receives as every other client does.
+     */
+    public static function encryptedFor(Tenant $tenant, ?ResponseFormat $idToken = null, ?ResponseFormat $userInfo = null, ?ResponseFormat $authorizationResponse = null, string $clientId = 'encrypted-client'): Client
+    {
+        return new Client(
+            $tenant,
+            $clientId,
+            'Client that is written to in private',
+            Methods::clientSecretBasic(),
+            new HashedClientSecret(new FakePasswordHasher()->hash(self::SECRET)),
+            [new RedirectUri('https://encrypted.example/callback')],
+            [],
+            [GrantType::AuthorizationCode, GrantType::RefreshToken],
+            [new Scope('openid'), new Scope('profile'), new Scope('email')],
+            jwks: ClientEncryption::publishedKeys(),
+            idToken: $idToken,
+            authorizationResponse: $authorizationResponse,
+            userInfo: $userInfo,
         );
     }
 

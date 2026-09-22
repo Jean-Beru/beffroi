@@ -577,7 +577,7 @@ final class EndSessionHandlerTest extends TestCase
     {
         // Given
         $jwts = new Jwts($this->tenant);
-        $issuer = new JwtIdTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
+        $issuer = new JwtIdTokenIssuer($jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
         $accessToken = new AccessToken('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $refreshToken = $this->refreshToken('current', $this->session);
         $authorization = $refreshed

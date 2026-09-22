@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Application\EndSession;
 
 use function array_keys;
+use function explode;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -13,6 +14,8 @@ use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\ResponseFormat;
+use Heidi\Oidc\Tests\Fixture\ClientEncryption;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -73,7 +76,7 @@ final class LogoutTokenIssuerTest extends TestCase
     {
         // Given
         $es256Key = $this->jwts->activate(Algorithms::es256());
-        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'), idTokenSignedResponseAlg: Algorithms::es256());
+        $client = new Client($this->session->tenant, 'spa', 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')], backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'), idToken: ResponseFormat::signed(Algorithms::es256()));
 
         // When
         $token = $this->issuer->issue($client, $this->session, Fixtures::now());
@@ -85,6 +88,25 @@ final class LogoutTokenIssuerTest extends TestCase
             'alg' => 'ES256',
             'kid' => $es256Key->kid,
         ], $header);
+    }
+
+    /**
+     * The logout token reads the algorithm of the ID token registration and nothing else of it: a client
+     * that registered an encryption for its ID tokens receives a logout token signed and in clear, because
+     * Back-Channel Logout 1.0 registers no shape of its own for it and the provider announces none.
+     */
+    #[Test]
+    public function theTokenIsNotEncryptedForAClientWhoseIdTokensAre(): void
+    {
+        // Given
+        $client = Clients::encryptedFor($this->session->tenant, idToken: ResponseFormat::signed(null, ClientEncryption::registration()));
+
+        // When
+        $token = $this->issuer->issue($client, $this->session, Fixtures::now());
+
+        // Then
+        static::assertCount(3, explode('.', $token));
+        static::assertSame('logout+jwt', $this->jwts->verify($token, 'encrypted-client', Fixtures::now(), self::MANDATORY)['header']['typ']);
     }
 
     /**
