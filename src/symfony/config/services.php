@@ -44,7 +44,7 @@ use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Bundle\Http\TotpProvisioningSealer;
 use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
-use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\KmsUnavailableListener;
 use Heidi\Bundle\MessageHandler\QueueLogoutTokenHandler;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
@@ -80,19 +80,26 @@ use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Application\Credential\CredentialRevocation;
 use Heidi\Core\Application\Identity\UserProvisioner;
-use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Application\Passkey\PasskeyAuthentication;
 use Heidi\Core\Application\Passkey\PasskeyEnrolment;
 use Heidi\Core\Application\Totp\ActiveTotp;
 use Heidi\Core\Application\Totp\TotpAuthentication;
 use Heidi\Core\Application\Totp\TotpCodeMatcher;
 use Heidi\Core\Application\Totp\TotpEnrolment;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\Es256;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\Ps256;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
+use Heidi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
@@ -111,10 +118,15 @@ use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Heidi\Core\Port\CodeAttemptLimiterInterface;
+use Heidi\Core\Port\ContentEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Port\DecryptionKeyProviderInterface;
 use Heidi\Core\Port\GeoLocatorInterface;
+use Heidi\Core\Port\JweDecrypterInterface;
 use Heidi\Core\Port\JwsSignerInterface;
 use Heidi\Core\Port\JwsVerifierInterface;
+use Heidi\Core\Port\KeyAlgorithmsInterface;
+use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\MetadataBlobStoreInterface;
@@ -122,10 +134,11 @@ use Heidi\Core\Port\PasskeyAuthenticatorInterface;
 use Heidi\Core\Port\PasskeyRegistrarInterface;
 use Heidi\Core\Port\PasswordAttemptLimiterInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
+use Heidi\Core\Port\PublicKeySetProviderInterface;
 use Heidi\Core\Port\SecretSealerInterface;
 use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use Heidi\Core\Port\TotpAlgorithmInterface;
 use Heidi\Core\Port\UserAgentParserInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
@@ -160,6 +173,8 @@ use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
+use Heidi\Oidc\Application\Key\PushedRequestJweKind;
+use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
@@ -382,10 +397,12 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(KeySealerInterface::class, EnvelopeKeySealer::class);
     $services->set(EnvelopeSecretSealer::class);
     $services->alias(SecretSealerInterface::class, EnvelopeSecretSealer::class);
-    $services->set(FileSigningKeyRepository::class);
-    $services->alias(SigningKeyRepositoryInterface::class, FileSigningKeyRepository::class);
+    $services->set(FileTenantKeyRepository::class);
+    $services->alias(TenantKeyRepositoryInterface::class, FileTenantKeyRepository::class);
     $services->set(SealedKeyProvider::class);
     $services->alias(SigningKeyProviderInterface::class, SealedKeyProvider::class);
+    $services->alias(DecryptionKeyProviderInterface::class, SealedKeyProvider::class);
+    $services->alias(PublicKeySetProviderInterface::class, SealedKeyProvider::class);
     // The algorithms the provider signs with: one class per algorithm, tagged; the first tagged one is
     // the default, the one an access token, a signed introspection response and a client that registered
     // none are signed with. A new algorithm is a class and a line here, and the discovery document, the
@@ -405,16 +422,40 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JoseSignatureAlgorithms::class)
         ->args([tagged_iterator('heidi.signature_algorithm')]);
     $services->alias(SignatureAlgorithmsInterface::class, JoseSignatureAlgorithms::class);
+    // The algorithms a client encrypts to the provider with, wired the same way: the "alg" that wraps or
+    // agrees on the content encryption key, and the "enc" that encrypts the payload. RFC 8725 §3.4 keeps
+    // RSA1_5 out, and a deployment nobody encrypts to drops these lines: it then generates no encryption
+    // key, publishes none and announces none, the document and the decrypter reading this one list.
+    $services->set(EcdhEsA256Kw::class)
+        ->tag('heidi.key_encryption_algorithm');
+    $services->set(RsaOaep256::class)
+        ->args([service(RsaKeyBits::class)])
+        ->tag('heidi.key_encryption_algorithm');
+    $services->set(A256Gcm::class)
+        ->tag('heidi.content_encryption_algorithm');
+    $services->set(JoseKeyEncryptionAlgorithms::class)
+        ->args([tagged_iterator('heidi.key_encryption_algorithm')]);
+    $services->alias(KeyEncryptionAlgorithmsInterface::class, JoseKeyEncryptionAlgorithms::class);
+    $services->set(JoseContentEncryptionAlgorithms::class)
+        ->args([tagged_iterator('heidi.content_encryption_algorithm')]);
+    $services->alias(ContentEncryptionAlgorithmsInterface::class, JoseContentEncryptionAlgorithms::class);
+    // What a key may be generated for, the two lists read as one: the key commands and the key files
+    // resolve an algorithm name against this, whatever the key is published for
+    $services->set(JoseKeyAlgorithms::class);
+    $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
     $services->set(JwtLibraryKeyPairGenerator::class);
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
     $services->set(JwtLibraryJwsSigner::class);
     $services->alias(JwsSignerInterface::class, JwtLibraryJwsSigner::class);
     $services->set(JwtLibraryJwsVerifier::class);
     $services->alias(JwsVerifierInterface::class, JwtLibraryJwsVerifier::class);
-    // the modules tag the kinds of JWS they issue, the rotation dates a retirement from them (architecture §3.3)
-    $services->set(SigningKeyRotator::class)
+    $services->set(JwtLibraryJweDecrypter::class);
+    $services->alias(JweDecrypterInterface::class, JwtLibraryJweDecrypter::class);
+    // the modules tag the kinds of artifact bound to a key, each naming the use it holds back; the
+    // rotation dates a retirement from the longest of those of the use of the key retiring (architecture §3.3)
+    $services->set(TenantKeyRotator::class)
         ->args([
-            '$issuedJws' => tagged_iterator('heidi.issued_jws'),
+            '$artifacts' => tagged_iterator('heidi.key_bound_artifact'),
         ]);
 
     // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
@@ -573,6 +614,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RequestObjectFetcher::class);
     $services->alias(RequestObjectFetcherInterface::class, RequestObjectFetcher::class);
     $services->set(PushedAuthorizationHandler::class);
+    // What a client may still be encrypting to a key of the tenant, which is what holds an encryption key
+    // back from retiring: each one reads its lifetime where that lifetime is set (architecture §3.3)
+    $services->set(RequestObjectJweKind::class)
+        ->tag('heidi.key_bound_artifact');
+    $services->set(PushedRequestJweKind::class)
+        ->tag('heidi.key_bound_artifact');
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
@@ -592,11 +639,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwtIdTokenIssuer::class);
     $services->alias(IdTokenIssuerInterface::class, JwtIdTokenIssuer::class);
     $services->set(IdTokenJwsKind::class)
-        ->tag('heidi.issued_jws');
+        ->tag('heidi.key_bound_artifact');
     $services->set(AccessTokenJwsKind::class)
-        ->tag('heidi.issued_jws');
+        ->tag('heidi.key_bound_artifact');
     $services->set(ResponseDocumentJwsKind::class)
-        ->tag('heidi.issued_jws');
+        ->tag('heidi.key_bound_artifact');
     $services->set(TokenIssuer::class);
     $services->set(RefreshTokenRevocation::class);
     $services->set(AuthorizationCodeGrant::class)

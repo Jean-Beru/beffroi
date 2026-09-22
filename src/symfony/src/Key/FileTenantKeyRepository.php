@@ -13,15 +13,15 @@ use DateTimeInterface;
 use function file_get_contents;
 use function file_put_contents;
 use function glob;
+use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
 use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\RuntimeException;
 use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\KeyAlgorithmsInterface;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use function is_array;
 use function is_dir;
 use function is_string;
@@ -42,10 +42,11 @@ use function unlink;
 use function usort;
 
 /**
- * The signing keys of a tenant as files (architecture §3.3), one JSON document per key under
- * "<storage>/<tenant slug>/<kid>.json", written through a sibling file renamed into place.
+ * The keys of a tenant as files (architecture §3.3), one JSON document per key under
+ * "<storage>/<tenant slug>/<kid>.json", written through a sibling file renamed into place. What the key
+ * is published for is what its algorithm says, so the document names the algorithm and nothing else.
  */
-final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInterface
+final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInterface
 {
     /**
      * An RFC 7638 thumbprint, base64url: nothing else may name a file.
@@ -54,11 +55,11 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
 
     public function __construct(
         private string $directory,
-        private SignatureAlgorithmsInterface $algorithms,
+        private KeyAlgorithmsInterface $algorithms,
     ) {
     }
 
-    public function find(Tenant $tenant, string $kid): ?SigningKey
+    public function find(Tenant $tenant, string $kid): ?TenantKey
     {
         if (preg_match(self::KID_PATTERN, $kid) !== 1) {
             return null;
@@ -72,7 +73,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         return $this->read($tenant, $path, $json);
     }
 
-    public function findActive(Tenant $tenant, SignatureAlgorithmInterface $algorithm): ?SigningKey
+    public function findActive(Tenant $tenant, KeyAlgorithmInterface $algorithm): ?TenantKey
     {
         foreach ($this->findAll($tenant) as $key) {
             if ($key->algorithm->name() === $algorithm->name() && $key->isActive()) {
@@ -95,7 +96,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         return $published;
     }
 
-    public function save(SigningKey $key): void
+    public function save(TenantKey $key): void
     {
         if (preg_match(self::KID_PATTERN, $key->kid) !== 1) {
             throw new RuntimeException(sprintf('The key identifier "%s" cannot name a file.', $key->kid));
@@ -122,7 +123,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         if (@file_put_contents($temporary, $json, LOCK_EX) === false || ! @chmod($temporary, 0o600) || ! @rename($temporary, $path)) {
             @unlink($temporary);
-            throw new RuntimeException(sprintf('The signing key "%s" cannot be written to "%s".', $key->kid, $path));
+            throw new RuntimeException(sprintf('The key "%s" cannot be written to "%s".', $key->kid, $path));
         }
     }
 
@@ -140,11 +141,11 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         foreach ($paths as $path) {
             $json = @file_get_contents($path);
             if ($json === false) {
-                throw new RuntimeException(sprintf('The signing key file "%s" cannot be read.', $path));
+                throw new RuntimeException(sprintf('The key file "%s" cannot be read.', $path));
             }
             $keys[] = $this->read($tenant, $path, $json);
         }
-        usort($keys, static fn (SigningKey $a, SigningKey $b): int => [$a->createdAt, $a->kid] <=> [$b->createdAt, $b->kid]);
+        usort($keys, static fn (TenantKey $a, TenantKey $b): int => [$a->createdAt, $a->kid] <=> [$b->createdAt, $b->kid]);
 
         return $keys;
     }
@@ -153,12 +154,12 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
      * A file that is not what this repository writes is a fault of the storage, not a missing key. The
      * transitions are replayed in order with their dates: the file holds facts, the key holds the rules.
      */
-    private function read(Tenant $tenant, string $path, string $json): SigningKey
+    private function read(Tenant $tenant, string $path, string $json): TenantKey
     {
         try {
             $document = json_decode($json, true, 4, JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
-            throw new RuntimeException(sprintf('The signing key file "%s" is not JSON.', $path), 0, $exception);
+            throw new RuntimeException(sprintf('The key file "%s" is not JSON.', $path), 0, $exception);
         }
         if (! is_array($document)) {
             throw self::corrupted($path);
@@ -170,7 +171,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
             try {
                 $algorithm = $this->algorithms->named($document['algorithm']);
             } catch (UnsupportedAlgorithmException $exception) {
-                throw new RuntimeException(sprintf('The signing key file "%s" is signed with an algorithm this provider is not wired with.', $path), 0, $exception);
+                throw new RuntimeException(sprintf('The key file "%s" names an algorithm this provider is not wired with.', $path), 0, $exception);
             }
         }
         $status = is_string($document['status'] ?? null) ? KeyStatus::tryFrom($document['status']) : null;
@@ -180,7 +181,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
             throw self::corrupted($path);
         }
         if ($tenantId !== $tenant->id->toRfc4122()) {
-            throw new RuntimeException(sprintf('The signing key file "%s" belongs to another tenant.', $path));
+            throw new RuntimeException(sprintf('The key file "%s" belongs to another tenant.', $path));
         }
         $members = [];
         foreach ($publicJwk as $member => $value) {
@@ -191,7 +192,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
         }
 
         try {
-            $key = new SigningKey($kid, $tenant, $algorithm, $members, $sealed, self::date($path, $document['created_at'] ?? null), self::date($path, $document['activation_due_at'] ?? null));
+            $key = new TenantKey($kid, $tenant, $algorithm, $members, $sealed, self::date($path, $document['created_at'] ?? null), self::date($path, $document['activation_due_at'] ?? null));
             if ($status !== KeyStatus::Staged) {
                 $key->activate(self::date($path, $document['activated_at'] ?? null));
             }
@@ -202,7 +203,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
                 $key->retire(self::date($path, $document['retired_at'] ?? null));
             }
         } catch (InvalidArgumentException $exception) {
-            throw new RuntimeException(sprintf('The signing key file "%s" does not describe a signing key.', $path), 0, $exception);
+            throw new RuntimeException(sprintf('The key file "%s" does not describe a key.', $path), 0, $exception);
         }
 
         return $key;
@@ -220,7 +221,7 @@ final readonly class FileSigningKeyRepository implements SigningKeyRepositoryInt
 
     private static function corrupted(string $path): RuntimeException
     {
-        return new RuntimeException(sprintf('The signing key file "%s" is not a signing key document.', $path));
+        return new RuntimeException(sprintf('The key file "%s" is not a key document.', $path));
     }
 
     private function tenantDirectory(Tenant $tenant): string

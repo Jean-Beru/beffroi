@@ -7,6 +7,8 @@ namespace Heidi\Oidc\Tests\Domain\Discovery;
 use function array_keys;
 use function array_map;
 use function array_slice;
+use Heidi\Core\Domain\Key\ContentEncryptionAlgorithmInterface;
+use Heidi\Core\Domain\Key\KeyEncryptionAlgorithmInterface;
 use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -70,6 +72,8 @@ final class ProviderMetadataTest extends TestCase
             'request_uri_parameter_supported' => true,
             'require_request_uri_registration' => true,
             'request_object_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+            'request_object_encryption_alg_values_supported' => ['ECDH-ES+A256KW', 'RSA-OAEP-256'],
+            'request_object_encryption_enc_values_supported' => ['A256GCM'],
             'code_challenge_methods_supported' => ['S256'],
             'revocation_endpoint' => 'https://id.acme.example/revoke',
             'revocation_endpoint_auth_methods_supported' => ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'none'],
@@ -89,6 +93,64 @@ final class ProviderMetadataTest extends TestCase
             'tls_client_certificate_bound_access_tokens' => false,
             'dpop_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
         ], $document);
+    }
+
+    /**
+     * OIDC Discovery §3 and issue #164: what a client may encrypt a request object with is what the
+     * wiring gave the provider, the key management algorithms and the content encryption ones.
+     */
+    #[Test]
+    public function itAnnouncesWhatARequestObjectMayBeEncryptedToItWith(): void
+    {
+        // When
+        $document = self::metadata()->toArray();
+
+        // Then
+        static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $document['request_object_encryption_alg_values_supported']);
+        static::assertSame(['A256GCM'], $document['request_object_encryption_enc_values_supported']);
+    }
+
+    /**
+     * An algorithm wired twice is announced once, as every other list of the document is.
+     */
+    #[Test]
+    public function anEncryptionAlgorithmWiredTwiceIsAnnouncedOnce(): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [Algorithms::ecdhEsA256Kw(), Algorithms::rsaOaep256(), Algorithms::ecdhEsA256Kw()], [Algorithms::a256Gcm(), Algorithms::a256Gcm()], 60)->toArray();
+
+        // Then
+        static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $document['request_object_encryption_alg_values_supported']);
+        static::assertSame(['A256GCM'], $document['request_object_encryption_enc_values_supported']);
+    }
+
+    /**
+     * A deployment nobody encrypts to wires neither an "alg" nor an "enc", and announces neither rather
+     * than two empty lists a client would read as a promise.
+     *
+     * @param list<KeyEncryptionAlgorithmInterface> $keyEncryption
+     * @param list<ContentEncryptionAlgorithmInterface> $contentEncryption
+     */
+    #[Test]
+    #[DataProvider('provideIncompleteEncryptionWirings')]
+    public function aProviderNobodyEncryptsToAnnouncesNeitherList(array $keyEncryption, array $contentEncryption): void
+    {
+        // When
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), $keyEncryption, $contentEncryption, 60)->toArray();
+
+        // Then
+        static::assertArrayNotHasKey('request_object_encryption_alg_values_supported', $document);
+        static::assertArrayNotHasKey('request_object_encryption_enc_values_supported', $document);
+    }
+
+    /**
+     * @return iterable<string, array{list<KeyEncryptionAlgorithmInterface>, list<ContentEncryptionAlgorithmInterface>}>
+     */
+    public static function provideIncompleteEncryptionWirings(): iterable
+    {
+        yield 'nothing wired' => [[], []];
+        yield 'an alg that would open nothing' => [Algorithms::keyEncryption()->all(), []];
+        yield 'an enc nothing unwraps a key for' => [[], Algorithms::contentEncryption()->all()];
     }
 
     #[Test]
@@ -140,7 +202,7 @@ final class ProviderMetadataTest extends TestCase
     public function openidAndSubComeFirstAndOnce(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [new Scope('email'), new Scope('openid'), new Scope('email')], ['email', 'sub', 'email'], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60);
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [new Scope('email'), new Scope('openid'), new Scope('email')], ['email', 'sub', 'email'], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60);
 
         // Then
         static::assertSame(['openid', 'email'], array_map(static fn (Scope $scope): string => $scope->value, $metadata->scopesSupported));
@@ -151,7 +213,7 @@ final class ProviderMetadataTest extends TestCase
     public function openidAndSubAreAnnouncedEvenWhenTheIntegrationListsNothing(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame(['openid'], $document['scopes_supported']);
@@ -177,7 +239,7 @@ final class ProviderMetadataTest extends TestCase
     public function theWellKnownLocationsOfAnIssuerWithAPathDiffer(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60);
+        $metadata = new ProviderMetadata(new Issuer('https://as.example:8443/tenants/acme'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60);
 
         // Then
         static::assertSame('https://as.example:8443/tenants/acme/.well-known/openid-configuration', $metadata->openIdConfigurationUrl());
@@ -192,7 +254,7 @@ final class ProviderMetadataTest extends TestCase
     public function aLifetimeOfZeroRevalidatesEveryTime(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 0);
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 0);
 
         // Then
         static::assertSame([
@@ -208,7 +270,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), -1);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], -1);
     }
 
     /**
@@ -218,7 +280,7 @@ final class ProviderMetadataTest extends TestCase
     public function theGrantTypesAndTheMethodsAreThoseGivenEachOnce(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), [GrantType::AuthorizationCode, GrantType::AuthorizationCode], [Methods::none(), Methods::none()], ['1', '1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), [GrantType::AuthorizationCode, GrantType::AuthorizationCode], [Methods::none(), Methods::none()], ['1', '1'], self::algorithms(), self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame(['authorization_code'], $document['grant_types_supported']);
@@ -234,7 +296,7 @@ final class ProviderMetadataTest extends TestCase
     public function theResponseModesAreThoseGivenEachOnce(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [ResponseMode::FormPost, ResponseMode::Query, ResponseMode::FormPost], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [ResponseMode::FormPost, ResponseMode::Query, ResponseMode::FormPost], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame(['form_post', 'query'], $document['response_modes_supported']);
@@ -248,7 +310,7 @@ final class ProviderMetadataTest extends TestCase
     public function aWiredSignedModeAnnouncesTheAliasAndWhatSignsIt(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [ResponseMode::Query, ResponseMode::QueryJwt], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [ResponseMode::Query, ResponseMode::QueryJwt], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame(['query', 'query.jwt', 'jwt'], $document['response_modes_supported']);
@@ -282,7 +344,7 @@ final class ProviderMetadataTest extends TestCase
     public function theRequestObjectAlgorithmsAnnouncedAreTheWiredOnesAndWhatAClientRegistered(bool $unsigned, array $expected): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, $unsigned, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, $unsigned, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame($expected, $document['request_object_signing_alg_values_supported']);
@@ -309,7 +371,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('A provider asserts at least one authentication context class (OIDC Discovery section 3).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), [], self::algorithms(), self::channels(), 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), [], self::algorithms(), self::channels(), [], [], 60);
     }
 
     /**
@@ -320,7 +382,7 @@ final class ProviderMetadataTest extends TestCase
     public function introspectionTakesTheAuthenticatingMethodsAmongThoseGiven(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), [GrantType::AuthorizationCode], [Methods::clientSecretPost(), Methods::none()], ['1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), [GrantType::AuthorizationCode], [Methods::clientSecretPost(), Methods::none()], ['1'], self::algorithms(), self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame(['client_secret_post'], $document['introspection_endpoint_auth_methods_supported']);
@@ -334,7 +396,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('An authorization endpoint answers in at least one response mode (RFC 8414 section 2).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], [], self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60);
     }
 
     #[Test]
@@ -345,7 +407,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('A provider serves at least one grant type (RFC 8414 section 2).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), [], self::methods(), ['1'], self::algorithms(), self::channels(), 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), [], self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60);
     }
 
     #[Test]
@@ -356,7 +418,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIs('A token endpoint takes at least one client authentication method (RFC 8414 section 2).');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), [], ['1'], self::algorithms(), self::channels(), 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), [], ['1'], self::algorithms(), self::channels(), [], [], 60);
     }
 
     #[Test]
@@ -367,7 +429,7 @@ final class ProviderMetadataTest extends TestCase
         $this->expectExceptionMessageIsOrContains('A supported claim has a name.');
 
         // When
-        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [''], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60);
+        new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [''], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60);
     }
 
     /**
@@ -380,7 +442,7 @@ final class ProviderMetadataTest extends TestCase
     public function itPassesTheChecksOfSymfonyOidcDiscovery(string $issuer): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke', $issuer . '/par'), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer($issuer), new ProviderEndpoints($issuer . '/authorize', $issuer . '/token', $issuer . '/userinfo', $issuer . '/jwks', $issuer . '/logout', $issuer . '/introspect', $issuer . '/revoke', $issuer . '/par'), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame($issuer, $document['issuer']);
@@ -421,7 +483,7 @@ final class ProviderMetadataTest extends TestCase
     public function anAlgorithmWiredTwiceIsAnnouncedOnce(): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], [Algorithms::rs256(), Algorithms::es256(), Algorithms::rs256()], self::channels(), 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], [Algorithms::rs256(), Algorithms::es256(), Algorithms::rs256()], self::channels(), [], [], 60)->toArray();
 
         // Then
         static::assertSame(['RS256', 'ES256'], $document['id_token_signing_alg_values_supported']);
@@ -431,7 +493,7 @@ final class ProviderMetadataTest extends TestCase
     public function aChannelWiredTwiceIsAnnouncedOnce(): void
     {
         // When
-        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), [LogoutChannel::BackChannel, LogoutChannel::BackChannel, LogoutChannel::FrontChannel], 60);
+        $metadata = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), [LogoutChannel::BackChannel, LogoutChannel::BackChannel, LogoutChannel::FrontChannel], [], [], 60);
 
         // Then
         static::assertSame([LogoutChannel::BackChannel, LogoutChannel::FrontChannel], $metadata->logoutChannelsSupported);
@@ -446,7 +508,7 @@ final class ProviderMetadataTest extends TestCase
     public function theLogoutChannelsAnnouncedAreTheOnesServed(LogoutChannels $served, bool $backChannel, bool $frontChannel): void
     {
         // When
-        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), $served->channels, 60)->toArray();
+        $document = new ProviderMetadata(new Issuer('https://id.acme.example'), self::endpoints(), null, false, false, [], [], self::responseModes(), self::grantTypes(), self::methods(), ['1'], self::algorithms(), $served->channels, [], [], 60)->toArray();
 
         // Then
         static::assertSame($backChannel, $document['backchannel_logout_supported']);
@@ -482,6 +544,8 @@ final class ProviderMetadataTest extends TestCase
             ['phrh', 'phr', '2', '1'],
             self::algorithms(),
             self::channels(),
+            self::keyEncryptionAlgorithms(),
+            self::contentEncryptionAlgorithms(),
             3600,
         );
     }
@@ -492,6 +556,22 @@ final class ProviderMetadataTest extends TestCase
     private static function algorithms(): array
     {
         return Algorithms::all()->all();
+    }
+
+    /**
+     * @return list<KeyEncryptionAlgorithmInterface>
+     */
+    private static function keyEncryptionAlgorithms(): array
+    {
+        return Algorithms::keyEncryption()->all();
+    }
+
+    /**
+     * @return list<ContentEncryptionAlgorithmInterface>
+     */
+    private static function contentEncryptionAlgorithms(): array
+    {
+        return Algorithms::contentEncryption()->all();
     }
 
     /**

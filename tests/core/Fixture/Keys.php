@@ -24,22 +24,33 @@ final class Keys
 
     private static ?GeneratedKeyPair $otherPair = null;
 
+    private static ?GeneratedKeyPair $encryptionPair = null;
+
     private static ?EnvelopeEncrypter $envelopes = null;
 
     private static ?EnvelopeKeySealer $sealer = null;
 
     public static function pair(): GeneratedKeyPair
     {
-        return self::$pair ??= new JwtLibraryKeyPairGenerator(Algorithms::all())->generate(Algorithms::rs256());
+        return self::$pair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::rs256());
     }
 
     public static function otherPair(): GeneratedKeyPair
     {
-        return self::$otherPair ??= new JwtLibraryKeyPairGenerator(Algorithms::all())->generate(Algorithms::rs256());
+        return self::$otherPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::rs256());
     }
 
     /**
-     * The one KMS of the suite, under which the signing keys and the secrets of the users are sealed alike.
+     * A pair a client encrypts to, over P-256: the other half of what a tenant publishes.
+     */
+    public static function encryptionPair(): GeneratedKeyPair
+    {
+        return self::$encryptionPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::ecdhEsA256Kw());
+    }
+
+    /**
+     * The one KMS of the suite, under which the keys of the tenants and the secrets of the users are
+     * sealed alike.
      */
     public static function envelopes(): EnvelopeEncrypter
     {

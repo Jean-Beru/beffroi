@@ -6,7 +6,7 @@ namespace Heidi\Core\Tests\Fixture;
 
 use function array_shift;
 use Heidi\Core\Domain\Key\GeneratedKeyPair;
-use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
+use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
 use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 
@@ -23,7 +23,7 @@ final class PrecomputedKeyPairGenerator implements KeyPairGeneratorInterface
     ) {
     }
 
-    public function generate(SignatureAlgorithmInterface $algorithm): GeneratedKeyPair
+    public function generate(KeyAlgorithmInterface $algorithm): GeneratedKeyPair
     {
         return array_shift($this->pairs) ?? throw new LogicException('No more precomputed key pairs.');
     }

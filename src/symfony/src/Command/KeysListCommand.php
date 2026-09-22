@@ -10,11 +10,11 @@ use DateTimeInterface;
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\ExceptionTrail;
 use Heidi\Core\Port\KeySealerInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use function implode;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -24,20 +24,20 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
 
 /**
- * The keys of the tenant with their state and every date of their life (architecture §3.3): the ones the
- * JWK Set publishes, and the retired ones on request. On request too, whether the KMS still opens the keys
- * that sign or will sign: a KMS that lost its master key leaves envelopes nothing can open, which the
- * first signature would be the one to find out.
+ * The keys of the tenant with what they are published for, their state and every date of their life
+ * (architecture §3.3): the ones the JWK Set publishes, and the retired ones on request. On request too,
+ * whether the KMS still opens the keys in use or about to be: a KMS that lost its master key leaves
+ * envelopes nothing can open, which the first signature, or the first JWE, would be the one to find out.
  */
 #[AsCommand(
     name: 'heidi:keys:list',
-    description: 'List the signing keys of the tenant with their status and dates: the published ones, or every key with --all; --check opens the keys that sign or will sign with the KMS and fails on one it cannot open.',
+    description: 'List the keys of the tenant with their use, status and dates: the published ones, or every key with --all; --check opens the keys in use, or about to be, with the KMS and fails on one it cannot open.',
 )]
 final readonly class KeysListCommand
 {
     public function __construct(
         private TenantProvider $tenants,
-        private SigningKeyRepositoryInterface $keys,
+        private TenantKeyRepositoryInterface $keys,
         private KeySealerInterface $sealer,
     ) {
     }
@@ -46,7 +46,7 @@ final readonly class KeysListCommand
         SymfonyStyle $io,
         #[Option(description: 'Include the retired keys, out of the JWK Set for good.')]
         bool $all = false,
-        #[Option(description: 'Open the active and the staged keys with the KMS and say whether each one opens; a retiring key is never opened again. Fails when one does not open.')]
+        #[Option(description: 'Open the active and the staged keys with the KMS and say whether each one opens; a retiring key is opened only to read what was encrypted to it. Fails when one does not open.')]
         bool $check = false,
     ): int {
         try {
@@ -59,7 +59,7 @@ final readonly class KeysListCommand
 
         $keys = $all ? $this->keys->findAll($tenant) : $this->keys->findPublished($tenant);
         if ($keys === []) {
-            $io->warning(sprintf('The tenant "%s" has no %s key: nothing can be signed. Run "heidi:keys:rotate".', $tenant->slug, $all ? 'signing' : 'published'));
+            $io->warning(sprintf('The tenant "%s" has no %skey: nothing can be signed. Run "heidi:keys:rotate".', $tenant->slug, $all ? '' : 'published '));
 
             return Command::SUCCESS;
         }
@@ -80,7 +80,7 @@ final readonly class KeysListCommand
         }
         if ($dead !== []) {
             $io->error([
-                sprintf('The KMS cannot open the key%s %s of "%s": nothing signs with %s.', count($dead) === 1 ? '' : 's', implode(', ', $dead), $tenant->slug, count($dead) === 1 ? 'it' : 'them'),
+                sprintf('The KMS cannot open the key%s %s of "%s": nothing is done with %s.', count($dead) === 1 ? '' : 's', implode(', ', $dead), $tenant->slug, count($dead) === 1 ? 'it' : 'them'),
                 'If the KMS is not reachable, start it and run this command again. If the KMS lost the master key (Vault in dev mode and LocalStack forget everything when they restart), the envelopes sealed under it are dead: "heidi:keys:rotate --now" publishes a key sealed under the key it has now and signs with it at once, the dead key retires with its window, its public half still verifying what it signed. Nothing is deleted.',
             ]);
 
@@ -94,7 +94,7 @@ final readonly class KeysListCommand
      * Why the KMS does not open the key, or null when it does: the message of the sealer and of what it
      * wraps (the bridge names the KMS it failed to reach or the key it does not know), never the material.
      */
-    private function failureToOpen(Tenant $tenant, SigningKey $key): ?string
+    private function failureToOpen(Tenant $tenant, TenantKey $key): ?string
     {
         try {
             $this->sealer->unseal($tenant, $key->sealedPrivateJwk);
@@ -110,7 +110,7 @@ final readonly class KeysListCommand
      *
      * @return list<array<string, string>>
      */
-    private static function describe(SigningKey $key): array
+    private static function describe(TenantKey $key): array
     {
         $rows = [
             [
@@ -118,6 +118,10 @@ final readonly class KeysListCommand
             ],
             [
                 'Algorithm' => $key->algorithm->name(),
+            ],
+            [
+                'Use' => $key->algorithm->keyUse()
+                    ->value,
             ],
             [
                 'Status' => $key->status->value,

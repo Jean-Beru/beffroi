@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Application\Key;
 
 use DateInterval;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
+use Heidi\Core\Application\Key\TenantKeyRotator;
+use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -15,28 +16,40 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\Keys;
 use Heidi\Core\Tests\Fixture\PrecomputedKeyPairGenerator;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
+use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
+use Heidi\Oidc\Application\Key\PushedRequestJweKind;
+use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
+use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRequestRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Jwts;
+use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Tests\Fixture\Proofs;
+use Heidi\Oidc\Tests\Fixture\RequestObjects;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.3: the kinds of JWS the module issues, as the rotation of the core reads them to date
- * the retirement of a key.
+ * Architecture §3.3: the kinds of artifact the module binds to a key of the tenant, as the rotation of the
+ * core reads them to date the retirement of a key. A JWS the module issues holds back a key that signs; a
+ * JWE a client may still be sending holds back a key it is encrypted to.
  */
-final class IssuedJwsKindsTest extends TestCase
+final class KeyBoundArtifactsTest extends TestCase
 {
     private Tenant $tenant;
 
@@ -109,8 +122,8 @@ final class IssuedJwsKindsTest extends TestCase
         // Given
         $this->clients->save(Clients::public($this->tenant));
         $clock = new MockClock(Fixtures::now());
-        $rotator = new SigningKeyRotator(
-            new InMemorySigningKeyRepository(),
+        $rotator = new TenantKeyRotator(
+            new InMemoryTenantKeyRepository(),
             new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]),
             Keys::sealer(),
             [
@@ -144,6 +157,88 @@ final class IssuedJwsKindsTest extends TestCase
 
         // When / Then
         static::assertNull($kind->longestLifetime($this->tenant));
+    }
+
+    /**
+     * Issue #164: an encryption key stays openable while a client may still be sending a request object
+     * encrypted to it, which is how long the provider lets such an object stand.
+     */
+    #[Test]
+    public function theRequestObjectLivesAsLongAsTheProviderLetsOneStand(): void
+    {
+        // Given
+        $kind = new RequestObjectJweKind(new RequestObjectValidator(new DateInterval('PT10M'), new DateInterval('PT30S')));
+
+        // When / Then
+        static::assertEquals(new DateInterval('PT10M'), $kind->longestLifetime($this->tenant));
+    }
+
+    /**
+     * RFC 9126 §2: so does a request the client pushes, for as long as the endpoint says.
+     */
+    #[Test]
+    public function thePushedRequestLivesAsLongAsTheEndpointSays(): void
+    {
+        // Given
+        $kind = new PushedRequestJweKind($this->pushedRequests(new DateInterval('PT90S')));
+
+        // When / Then
+        static::assertEquals(new DateInterval('PT90S'), $kind->longestLifetime($this->tenant));
+    }
+
+    /**
+     * The acceptance of issue #164: the two uses do not share a window. An encryption key retires on what
+     * a client may still be encrypting to it, and never on the lifetime of a token it never signed; the
+     * key that signs retires on the tokens, and never on the request objects.
+     */
+    #[Test]
+    public function eachUseIsHeldBackByTheArtifactsOfItsOwnUse(): void
+    {
+        // Given
+        $this->clients->save(Clients::public($this->tenant));
+        $clock = new MockClock(Fixtures::now());
+        $repository = new InMemoryTenantKeyRepository();
+        $rotator = new TenantKeyRotator(
+            $repository,
+            new JwtLibraryKeyPairGenerator(Algorithms::everyUse()),
+            Keys::sealer(),
+            [
+                new IdTokenJwsKind(new JwtIdTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all(), new DateInterval('PT2M'))),
+                new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT2M')), $this->clients),
+                new RequestObjectJweKind(new RequestObjectValidator(new DateInterval('PT10M'), new DateInterval('PT30S'))),
+                new PushedRequestJweKind($this->pushedRequests(new DateInterval('PT90S'))),
+            ],
+            new DateInterval('PT6M'),
+            $clock,
+            new RecordingEventDispatcher(),
+        );
+        $context = RequestContext::unknown($clock->now());
+        $signing = $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
+        $encryption = $rotator->rotate($this->tenant, Algorithms::ecdhEsA256Kw(), $context);
+
+        // When
+        $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
+        $rotator->rotate($this->tenant, Algorithms::ecdhEsA256Kw(), $context);
+
+        // Then
+        static::assertEquals($clock->now()->add(new DateInterval('PT2M')), $signing->retirementDueAt);
+        static::assertEquals($clock->now()->add(new DateInterval('PT10M')), $encryption->retirementDueAt);
+    }
+
+    private function pushedRequests(DateInterval $lifetime): PushedAuthorizationHandler
+    {
+        $clock = new MockClock(Fixtures::now());
+
+        return new PushedAuthorizationHandler(
+            new ClientAuthenticator($this->clients, Methods::all(new FakePasswordHasher()), $clock, new RecordingEventDispatcher()),
+            Proofs::verifier(),
+            new Endpoints(),
+            new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
+            RequestObjects::resolver($this->clients, $clock),
+            new InMemoryPushedAuthorizationRequestRepository(),
+            $clock,
+            $lifetime,
+        );
     }
 
     private function documents(DateInterval $lifetime): ResponseDocumentIssuer

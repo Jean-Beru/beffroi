@@ -94,7 +94,7 @@ final class EnvelopeSecretSealerTest extends TestCase
      * signing key is not a secret, and a secret is not a signing key.
      */
     #[Test]
-    public function theEnvelopeOfASigningKeyDoesNotOpenAsASecret(): void
+    public function theEnvelopeOfATenantKeyDoesNotOpenAsASecret(): void
     {
         // Given
         $sealedKey = Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk);
@@ -124,7 +124,7 @@ final class EnvelopeSecretSealerTest extends TestCase
     }
 
     #[Test]
-    public function theEnvelopeOfASecretDoesNotOpenAsASigningKey(): void
+    public function theEnvelopeOfASecretDoesNotOpenAsATenantKey(): void
     {
         // Given
         $sealedSecret = Totps::sealer()->seal($this->tenant, Totps::SEED);

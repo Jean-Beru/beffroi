@@ -8,14 +8,14 @@ use function explode;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Event\SigningKeyRotated;
-use Heidi\Core\Domain\Event\SigningKeyStaged;
+use Heidi\Core\Domain\Event\TenantKeyRotated;
+use Heidi\Core\Domain\Event\TenantKeyStaged;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use function json_decode;
@@ -240,9 +240,30 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('RS256', self::displayed($tester, 'Algorithm'));
         static::assertSame('active', self::displayed($tester, 'Status'));
         static::assertStringNotContainsString('is now retiring', $tester->getDisplay());
-        $key = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)->find(self::tenant(), $kid) ?? static::fail('The key is not stored.');
+        $key = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), $kid) ?? static::fail('The key is not stored.');
         static::assertTrue($key->isActive());
         static::assertSame($kid, self::service('test.heidi.key_provider', SigningKeyProviderInterface::class)->activeKey(self::tenant(), Algorithms::rs256())->key->kid);
+    }
+
+    /**
+     * Issue #164: what "castor provision" runs to give the tenant the other half of its JWK Set, a key a
+     * client encrypts to. The same command, the same custody, "use": "enc".
+     */
+    #[Test]
+    public function aGeneratedEncryptionKeyIsActiveAndPublishedForEncryption(): void
+    {
+        // When
+        $tester = self::console('heidi:keys:generate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $key = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), self::displayed($tester, 'Key identifier')) ?? static::fail('The key is not stored.');
+        static::assertSame('ECDH-ES+A256KW', self::displayed($tester, 'Algorithm'));
+        static::assertSame('enc', self::displayed($tester, 'Use'));
+        static::assertTrue($key->isActive());
+        static::assertSame('enc', $key->publicJwk['use']);
     }
 
     /**
@@ -271,9 +292,9 @@ final class ProvisioningTest extends ConsoleTestCase
         // Then
         $events = self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events;
         static::assertCount(2, $events);
-        static::assertInstanceOf(SigningKeyStaged::class, $events[0]);
+        static::assertInstanceOf(TenantKeyStaged::class, $events[0]);
         static::assertSame($kid, $events[0]->staged->kid);
-        static::assertInstanceOf(SigningKeyRotated::class, $events[1]);
+        static::assertInstanceOf(TenantKeyRotated::class, $events[1]);
         static::assertSame($kid, $events[1]->activated->kid);
         static::assertNull($events[1]->retiring);
         static::assertNull($events[1]->context->ipAddress);
@@ -304,7 +325,7 @@ final class ProvisioningTest extends ConsoleTestCase
         $second = self::displayed($tester, 'Key identifier');
         static::assertNotSame($first, $second);
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $first), self::flattened($tester));
-        $keys = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class);
+        $keys = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class);
         static::assertSame(KeyStatus::Retiring, $keys->find(self::tenant(), $first)?->status);
         static::assertSame(KeyStatus::Active, $keys->find(self::tenant(), $second)?->status);
     }
@@ -321,8 +342,8 @@ final class ProvisioningTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retiring\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+Retiring since\s+2026-\S+\s+Retirement due at\s+2026-\S+/', $first), self::flattened($tester));
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+active\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+-/', $second), self::flattened($tester));
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+Retiring since\s+2026-\S+\s+Retirement due at\s+2026-\S+/', $first), self::flattened($tester));
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+active\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+-/', $second), self::flattened($tester));
     }
 
     #[Test]

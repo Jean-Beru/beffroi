@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Bridge\JwtLibrary;
 
 use function array_map;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
+use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
+use Heidi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\UnsupportedAlgorithmException;
@@ -53,7 +54,7 @@ final class SignatureAlgorithmsTest extends TestCase
     public function anAlgorithmGeneratesAKeyOfItsOwnKind(SignatureAlgorithmInterface $algorithm, array $expected): void
     {
         // Given
-        $generator = new JwtLibraryKeyPairGenerator(Algorithms::all());
+        $generator = new JwtLibraryKeyPairGenerator(Algorithms::everyUse());
 
         // When
         $pair = $generator->generate($algorithm);
@@ -206,10 +207,10 @@ final class SignatureAlgorithmsTest extends TestCase
         // Given
         $unwired = new FakeSignatureAlgorithm();
         $algorithms = new JoseSignatureAlgorithms([$unwired]);
-        $repository = new InMemorySigningKeyRepository();
-        $pair = new JwtLibraryKeyPairGenerator($algorithms)
+        $repository = new InMemoryTenantKeyRepository();
+        $pair = new JwtLibraryKeyPairGenerator(new JoseKeyAlgorithms($algorithms, Algorithms::noKeyEncryption()))
             ->generate($unwired);
-        $key = new SigningKey($pair->kid, $this->tenant, $unwired, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $key = new TenantKey($pair->kid, $this->tenant, $unwired, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
         $key->activate(Fixtures::now());
         $repository->save($key);
         $keys = new SealedKeyProvider($repository, Keys::sealer());
@@ -256,9 +257,9 @@ final class SignatureAlgorithmsTest extends TestCase
 
     private function provider(SignatureAlgorithmInterface $algorithm): SealedKeyProvider
     {
-        $repository = new InMemorySigningKeyRepository();
-        $pair = $algorithm === Algorithms::rs256() ? Keys::pair() : new JwtLibraryKeyPairGenerator(Algorithms::all())->generate($algorithm);
-        $key = new SigningKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $repository = new InMemoryTenantKeyRepository();
+        $pair = $algorithm === Algorithms::rs256() ? Keys::pair() : new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate($algorithm);
+        $key = new TenantKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
         $key->activate(Fixtures::now());
         $repository->save($key);
 

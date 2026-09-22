@@ -11,7 +11,7 @@ use Heidi\Bundle\Security\SecurityUser;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Port\PasswordHasherInterface;
@@ -221,7 +221,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function aRotatedKeyIsSealedAndStored(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+        $rotator = self::service('test.heidi.key_rotator', TenantKeyRotator::class);
 
         // When
         $key = $rotator->rotate(self::tenant(), Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
@@ -239,7 +239,7 @@ final class BundleBootTest extends DatabaseTestCase
     {
         // Given
         $tenant = self::tenant();
-        $key = self::service('test.heidi.key_rotator', SigningKeyRotator::class)->rotate($tenant, Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
+        $key = self::service('test.heidi.key_rotator', TenantKeyRotator::class)->rotate($tenant, Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
 
         // When
         $published = json_decode(self::service('test.heidi.jwks', JwksHandler::class)->handle($tenant)->toJson(), true, 8, JSON_THROW_ON_ERROR);

@@ -118,7 +118,7 @@ final class EnvelopeKeySealerTest extends TestCase
 
         // Then
         $this->expectException(KmsUnavailableException::class);
-        $this->expectExceptionMessageIs('The signing key of tenant "globex" could not be sealed under the KMS key "signing-keys-globex".');
+        $this->expectExceptionMessageIs('The key of tenant "globex" could not be sealed under the KMS key "signing-keys-globex".');
 
         // When
         $sealer->seal(Fixtures::tenant('globex', 'https://id.globex.example'), Keys::pair()->privateJwk);
@@ -165,7 +165,7 @@ final class EnvelopeKeySealerTest extends TestCase
             static::fail('The key should not have been opened.');
         } catch (KmsUnavailableException $exception) {
             // Then
-            static::assertSame('The sealed signing key could not be opened.', $exception->getMessage());
+            static::assertSame('The sealed key could not be opened.', $exception->getMessage());
             static::assertSame($whatTheKmsThrew, $exception->getPrevious());
         }
     }
@@ -178,7 +178,7 @@ final class EnvelopeKeySealerTest extends TestCase
 
         // Then
         $this->expectException(KmsUnavailableException::class);
-        $this->expectExceptionMessageIs('The signing key of tenant "acme" could not be sealed under the KMS key "signing-keys".');
+        $this->expectExceptionMessageIs('The key of tenant "acme" could not be sealed under the KMS key "signing-keys".');
 
         // When
         $sealer->seal($this->tenant, Keys::pair()->privateJwk);
@@ -192,7 +192,7 @@ final class EnvelopeKeySealerTest extends TestCase
 
         // Then
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageIs('The sealed signing key could not be opened.');
+        $this->expectExceptionMessageIs('The sealed key could not be opened.');
 
         // When
         $sealer->unseal($this->tenant, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk));

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Bridge\InMemory;
 
 use DateTimeImmutable;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -14,21 +14,21 @@ use Heidi\Core\Tests\Fixture\Keys;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-final class InMemorySigningKeyRepositoryTest extends TestCase
+final class InMemoryTenantKeyRepositoryTest extends TestCase
 {
     private Tenant $acme;
 
     private Tenant $other;
 
-    private InMemorySigningKeyRepository $repository;
+    private InMemoryTenantKeyRepository $repository;
 
-    private SigningKey $otherKey;
+    private TenantKey $otherKey;
 
     protected function setUp(): void
     {
         $this->acme = Fixtures::tenant();
         $this->other = Fixtures::tenant('other', 'https://id.other.example');
-        $this->repository = new InMemorySigningKeyRepository();
+        $this->repository = new InMemoryTenantKeyRepository();
         $this->otherKey = self::activeKey($this->other, Keys::pair()->kid);
         $this->repository->save($this->otherKey);
     }
@@ -95,7 +95,7 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
     public function aStagedKeyIsPublishedButNotActive(): void
     {
         // Given
-        $key = new SigningKey(Keys::pair()->kid, $this->acme, Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $key = new TenantKey(Keys::pair()->kid, $this->acme, Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
         $this->repository->save($key);
 
         // When / Then
@@ -118,14 +118,14 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
     }
 
     /**
-     * SigningKeyRepositoryInterface::findPublished(): in creation order, whatever the order of the writes.
+     * TenantKeyRepositoryInterface::findPublished(): in creation order, whatever the order of the writes.
      */
     #[Test]
     public function thePublishedKeysComeInCreationOrder(): void
     {
         // Given
         $newest = self::activeKey($this->acme, Keys::pair()->kid, Fixtures::now());
-        $oldest = new SigningKey(Keys::otherPair()->kid, $this->acme, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $oldest = new TenantKey(Keys::otherPair()->kid, $this->acme, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
         $this->repository->save($newest);
         $this->repository->save($oldest);
 
@@ -133,9 +133,9 @@ final class InMemorySigningKeyRepositoryTest extends TestCase
         static::assertSame([$oldest, $newest], $this->repository->findPublished($this->acme));
     }
 
-    private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): SigningKey
+    private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): TenantKey
     {
-        $key = new SigningKey($kid, $tenant, Algorithms::rs256(), [
+        $key = new TenantKey($kid, $tenant, Algorithms::rs256(), [
             'kid' => $kid,
         ] + Keys::pair()->publicJwk, 'sealed', $createdAt ?? Fixtures::now(), $createdAt ?? Fixtures::now());
         $key->activate($createdAt ?? Fixtures::now());

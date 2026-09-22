@@ -262,10 +262,10 @@ services:
         alias: security.password_hasher_factory
         public: true
     test.heidi.key_rotator:
-        alias: Heidi\Core\Application\Key\SigningKeyRotator
+        alias: Heidi\Core\Application\Key\TenantKeyRotator
         public: true
     test.heidi.keys:
-        alias: Heidi\Core\Port\SigningKeyRepositoryInterface
+        alias: Heidi\Core\Port\TenantKeyRepositoryInterface
         public: true
     # The KMS the sealers share, for the tests that take it down between two requests (KmsOutage).
     test.heidi.kms:
@@ -300,6 +300,15 @@ services:
         public: true
     test.heidi.key_provider:
         alias: Heidi\Core\Port\SigningKeyProviderInterface
+        public: true
+    test.heidi.public_keys:
+        alias: Heidi\Core\Port\PublicKeySetProviderInterface
+        public: true
+    test.heidi.decryption_keys:
+        alias: Heidi\Core\Port\DecryptionKeyProviderInterface
+        public: true
+    test.heidi.jwe_decrypter:
+        alias: Heidi\Core\Port\JweDecrypterInterface
         public: true
     test.heidi.jwks:
         alias: Heidi\Oidc\Application\Discovery\JwksHandler

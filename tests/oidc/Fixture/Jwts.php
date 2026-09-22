@@ -7,14 +7,14 @@ namespace Heidi\Oidc\Tests\Fixture;
 use function base64_decode;
 use DateTimeImmutable;
 use function explode;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
+use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Domain\Key\GeneratedKeyPair;
-use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -41,7 +41,7 @@ use Symfony\Component\Clock\MockClock;
  */
 final readonly class Jwts
 {
-    public SigningKey $key;
+    public TenantKey $key;
 
     public SealedKeyProvider $keys;
 
@@ -49,13 +49,13 @@ final readonly class Jwts
 
     public JoseSignatureAlgorithms $algorithms;
 
-    private InMemorySigningKeyRepository $repository;
+    private InMemoryTenantKeyRepository $repository;
 
     public function __construct(
         public Tenant $tenant,
     ) {
         $this->algorithms = Algorithms::all();
-        $this->repository = new InMemorySigningKeyRepository();
+        $this->repository = new InMemoryTenantKeyRepository();
         $this->key = $this->activate(Algorithms::rs256(), Keys::pair());
         $this->keys = new SealedKeyProvider($this->repository, Keys::sealer());
         $this->signer = new JwtLibraryJwsSigner($this->keys, $this->algorithms);
@@ -64,11 +64,11 @@ final readonly class Jwts
     /**
      * An active key of that algorithm for the tenant, published in its JWK Set beside the others.
      */
-    public function activate(SignatureAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair = null): SigningKey
+    public function activate(KeyAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair = null): TenantKey
     {
-        $pair ??= new JwtLibraryKeyPairGenerator($this->algorithms)
+        $pair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())
             ->generate($algorithm);
-        $key = new SigningKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        $key = new TenantKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
         $key->activate(Fixtures::now());
         $this->repository->save($key);
 

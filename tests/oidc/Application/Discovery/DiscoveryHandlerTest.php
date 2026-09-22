@@ -32,7 +32,7 @@ final class DiscoveryHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), self::grants());
+        $this->handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
     }
 
     /**
@@ -58,7 +58,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function anAlgorithmTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), new JoseSignatureAlgorithms([new FakeSignatureAlgorithm()]), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), new JoseSignatureAlgorithms([new FakeSignatureAlgorithm()]), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -75,7 +75,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aMethodTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), new ClientAuthenticationMethods([new FakeClientAuthenticationMethod()]), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), new ClientAuthenticationMethods([new FakeClientAuthenticationMethod()]), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -193,7 +193,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), self::grants(), $lifetime);
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants(), $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -224,7 +224,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), self::grants(), -1);
+        new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants(), -1);
     }
 
     /**
@@ -245,6 +245,39 @@ final class DiscoveryHandlerTest extends TestCase
     }
 
     /**
+     * Issue #164, and the rule of issue #98 once more: what a request object may be encrypted to this
+     * provider with is read from the two registries the wiring fills, never from a list kept beside them.
+     */
+    #[Test]
+    public function theDocumentAnnouncesTheEncryptionAlgorithmsWired(): void
+    {
+        // When
+        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $document['request_object_encryption_alg_values_supported']);
+        static::assertSame(['A256GCM'], $document['request_object_encryption_enc_values_supported']);
+    }
+
+    /**
+     * A deployment that wires none announces none: the document says what the provider does and nothing
+     * else (decision 0006).
+     */
+    #[Test]
+    public function aProviderWiredWithNoEncryptionAnnouncesNone(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::noKeyEncryption(), Algorithms::noContentEncryption(), self::grants());
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertArrayNotHasKey('request_object_encryption_alg_values_supported', $document);
+        static::assertArrayNotHasKey('request_object_encryption_enc_values_supported', $document);
+    }
+
+    /**
      * RFC 8705 §5: the aliases are the endpoints of the tenant, located a second time by the integration
      * on the host whose listener asks for a client certificate. What is announced there is derived from
      * the endpoints and not kept beside them: the paths are the same and only the origin differs.
@@ -253,7 +286,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theAliasesAreTheEndpointsOnTheHostThatAsksForACertificate(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator('https://mtls.as.example'), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator('https://mtls.as.example'), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant('acme', 'https://as.example/acme'))->toArray();
@@ -303,7 +336,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderWiredWithoutMutualTlsSaysItBindsNothing(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), new ClientAuthenticationMethods([Methods::clientSecretBasic()]), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), new ClientAuthenticationMethods([Methods::clientSecretBasic()]), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -320,7 +353,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), [new FakeGrant(GrantType::AuthorizationCode)]);
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), [new FakeGrant(GrantType::AuthorizationCode)]);
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -352,7 +385,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatPostsNoResponseAnnouncesTheDefaultModeAlone(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryOnly(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -384,7 +417,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatLoadsNoLogoutPageAnnouncesTheBackChannelAlone(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::backChannelOnly(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::backChannelOnly(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -402,7 +435,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function aProviderThatTellsNobodyAnnouncesNoChannel(): void
     {
         // Given
-        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::none(), Algorithms::all(), self::grants());
+        $handler = new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::none(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), self::grants());
 
         // When
         $document = $handler->handle(Fixtures::tenant())->toArray();
@@ -420,7 +453,7 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
 
         // When
-        new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), []);
+        new DiscoveryHandler(self::locator(), self::locator(), new StandardClaimsProvider(), Logins::passwordAndPasskey(), ServedModes::queryAndFormPost(), Methods::all(), PushedRequests::requiredOfNobody(), RequestObjectSignings::everyClientSignsThem(), ServedChannels::both(), Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption(), []);
     }
 
     /**

@@ -10,16 +10,18 @@ use DateTimeInterface;
 use Heidi\Bundle\Message\AdvanceKeyLifecycle;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Core\Domain\Event\SigningKeyRetired;
-use Heidi\Core\Domain\Event\SigningKeyRotated;
-use Heidi\Core\Domain\Event\SigningKeyStaged;
+use Heidi\Core\Domain\Event\TenantKeyRetired;
+use Heidi\Core\Domain\Event\TenantKeyRotated;
+use Heidi\Core\Domain\Event\TenantKeyStaged;
 use Heidi\Core\Domain\Key\KeyStatus;
+use Heidi\Core\Domain\Key\KeyUse;
 use Heidi\Core\Domain\Key\RetirementReason;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
+use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Oidc\Application\Discovery\JwksHandler;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
@@ -80,6 +82,104 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
+     * Issue #164: the same commands for a key a client encrypts to. Naming a JWE key management algorithm
+     * gives a key published with "use": "enc", and the key that signs is left alone.
+     */
+    #[Test]
+    public function anOperatorNamesAnAlgorithmTheKeyIsEncryptedToWith(): void
+    {
+        // Given
+        $signing = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+
+        // When
+        $tester = self::console('heidi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('enc', self::displayed($tester, 'Use'));
+        static::assertSame('active', self::displayed($tester, 'Status'));
+        static::assertSame(KeyStatus::Active, self::key($signing)->status);
+    }
+
+    /**
+     * The acceptance of issue #164: the JWK Set publishes the encryption key beside the signing keys, each
+     * one saying what it is published for (RFC 7517 §4.2).
+     */
+    #[Test]
+    public function theJwkSetPublishesTheEncryptionKeyBesideTheSigningOne(): void
+    {
+        // Given
+        $signing = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $encryption = self::displayed(self::console('heidi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+
+        // When
+        $published = self::service('test.heidi.jwks', JwksHandler::class)->handle(self::tenant())->keys;
+
+        // Then
+        static::assertSame([$signing, $encryption], array_map(static fn (TenantKey $key): string => $key->kid, $published->keys));
+        static::assertSame('sig', $published->find($signing)?->publicJwk['use']);
+        static::assertSame('enc', $published->find($encryption)?->publicJwk['use']);
+        static::assertSame([$encryption], array_map(static fn (TenantKey $key): string => $key->kid, $published->forUse(KeyUse::Encryption)->keys));
+    }
+
+    /**
+     * The four states of spike 2 are the four states of an encryption key: staged by a second rotation,
+     * activated by hand, and the one it takes over from starts retiring.
+     */
+    #[Test]
+    public function aStagedEncryptionKeyIsActivatedByTheSameCommand(): void
+    {
+        // Given
+        $first = self::displayed(self::console('heidi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+        $staged = self::displayed(self::console('heidi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+
+        // When
+        $tester = self::console('heidi:keys:activate', [
+            'kid' => $staged,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(KeyStatus::Active, self::key($staged)->status);
+        static::assertSame(KeyStatus::Retiring, self::key($first)->status);
+    }
+
+    /**
+     * And retired out of the JWK Set, which is what makes a JWE encrypted to it refused from then on.
+     */
+    #[Test]
+    public function aRetiringEncryptionKeyIsRetiredByTheSameCommand(): void
+    {
+        // Given
+        $first = self::displayed(self::console('heidi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+        self::console('heidi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+            '--now' => true,
+        ]);
+
+        // When
+        $tester = self::console('heidi:keys:retire', [
+            'kid' => $first,
+            '--force' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(KeyStatus::Retired, self::key($first)->status);
+        static::assertNotContains($first, self::publishedKids());
+    }
+
+    /**
      * Decision 0006: an algorithm the provider is not wired with is refused, and the message says which
      * ones it signs with.
      */
@@ -113,8 +213,8 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $staged = self::displayed($tester, 'Key identifier');
         static::assertSame('staged', self::displayed($tester, 'Status'));
         $list = self::flattened(self::console('heidi:keys:list'));
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+active\s+/', $active), $list);
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+staged\s+/', $staged), $list);
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+active\s+/', $active), $list);
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+staged\s+/', $staged), $list);
         static::assertSame(KeyStatus::Active, self::key($active)->status);
     }
 
@@ -191,7 +291,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString(sprintf('The key "%s" was active and is retired at once', $compromised), self::flattened($tester));
         static::assertSame(KeyStatus::Retired, self::key($compromised)->status);
         static::assertSame([self::displayed($tester, 'Key identifier')], self::publishedKids());
-        [$retired] = self::events(SigningKeyRetired::class);
+        [$retired] = self::events(TenantKeyRetired::class);
         static::assertSame(RetirementReason::Compromised, $retired->reason);
     }
 
@@ -286,7 +386,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('retired', self::displayed($tester, 'Status'));
         static::assertStringContainsString('before its retirement date', self::flattened($tester));
         static::assertSame(KeyStatus::Retired, self::key($retiring)->status);
-        static::assertSame(RetirementReason::Forced, self::events(SigningKeyRetired::class)[0]->reason);
+        static::assertSame(RetirementReason::Forced, self::events(TenantKeyRetired::class)[0]->reason);
     }
 
     /**
@@ -387,7 +487,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
 
         // Then
         static::assertStringNotContainsString($retired->kid, $published);
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retired\s+Created at\s+\S+\s+Activated at\s+\S+\s+Retiring since\s+\S+\s+Retirement due at\s+\S+\s+Retired at\s+2026-\S+/', $retired->kid), $all);
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retired\s+Created at\s+\S+\s+Activated at\s+\S+\s+Retiring since\s+\S+\s+Retirement due at\s+\S+\s+Retired at\s+2026-\S+/', $retired->kid), $all);
     }
 
     /**
@@ -427,7 +527,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertStringStartsWith('no: The sealed signing key could not be opened.', self::displayed($tester, 'Opens with the KMS'));
+        static::assertStringStartsWith('no: The sealed key could not be opened.', self::displayed($tester, 'Opens with the KMS'));
         static::assertStringContainsString(sprintf('The KMS cannot open the key %s of "default"', $dead->kid), self::flattened($tester));
         static::assertStringContainsString('"heidi:keys:rotate --now" publishes a key sealed under the key it has now', self::flattened($tester));
         static::assertSame(KeyStatus::Staged, self::key($dead->kid)->status);
@@ -449,7 +549,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertSame(1, preg_match(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retiring\s+(.*?)Key identifier/', $retiring), self::flattened($tester), $matches), self::flattened($tester));
+        static::assertSame(1, preg_match(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+(.*?)Key identifier/', $retiring), self::flattened($tester), $matches), self::flattened($tester));
         static::assertStringNotContainsString('Opens with the KMS', $matches[1]);
         static::assertMatchesRegularExpression('/Status\s+active\s+Created at\s+\S+\s+Activated at\s+\S+\s+Opens with the KMS\s+yes/', self::flattened($tester));
     }
@@ -519,7 +619,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         self::tick();
 
         // Then
-        [, $rotated] = self::events(SigningKeyRotated::class);
+        [, $rotated] = self::events(TenantKeyRotated::class);
         static::assertNull($rotated->context->ipAddress);
         static::assertStringStartsWith('heidi-scheduler/heidi (', $rotated->context->userAgent ?? '');
     }
@@ -540,7 +640,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         self::tick();
 
         // Then
-        static::assertSame([], self::events(SigningKeyRotated::class));
+        static::assertSame([], self::events(TenantKeyRotated::class));
     }
 
     /**
@@ -570,7 +670,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         self::console('heidi:keys:rotate');
 
         // Then
-        [$staged] = self::events(SigningKeyStaged::class);
+        [$staged] = self::events(TenantKeyStaged::class);
         static::assertNull($staged->context->ipAddress);
         static::assertMatchesRegularExpression('/^heidi-console\/heidi:keys:rotate \([^@]+@.+\)$/', $staged->context->userAgent ?? '');
     }
@@ -601,7 +701,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
      * A key written as the files would hold it a day after its rotation: retiring since yesterday, due
      * yesterday too, what no command of this kernel can write in the present.
      */
-    private static function keyPastItsRetirementDate(): SigningKey
+    private static function keyPastItsRetirementDate(): TenantKey
     {
         $yesterday = self::currentSecond()->modify('-1 day');
         $key = self::stagedKeyDated($yesterday->modify('-1 hour'), $yesterday->modify('-1 hour'));
@@ -617,13 +717,13 @@ final class KeyLifecycleTest extends ConsoleTestCase
      * A staged key sealed under a sodium master key this kernel does not have: what the files hold once the
      * KMS lost its key, or once the DSN names another backend.
      */
-    private static function stagedKeySealedUnderAnotherMasterKey(): SigningKey
+    private static function stagedKeySealedUnderAnotherMasterKey(): TenantKey
     {
         $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
         $sealer = new EnvelopeKeySealer(new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
             'signing' => random_bytes(32),
         ]))), 'signing');
-        $key = new SigningKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealer->seal(self::tenant(), $pair->privateJwk), self::currentSecond(), self::currentSecond()->modify(self::STAGING_DELAY));
+        $key = new TenantKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealer->seal(self::tenant(), $pair->privateJwk), self::currentSecond(), self::currentSecond()->modify(self::STAGING_DELAY));
         self::keys()
             ->save($key);
 
@@ -634,18 +734,18 @@ final class KeyLifecycleTest extends ConsoleTestCase
      * A staged key with the dates given, sealed by the KMS of this kernel and saved: how the files look
      * once the staging delay elapsed, without waiting for it.
      */
-    private static function stagedKeyDated(DateTimeImmutable $createdAt, DateTimeImmutable $activationDueAt): SigningKey
+    private static function stagedKeyDated(DateTimeImmutable $createdAt, DateTimeImmutable $activationDueAt): TenantKey
     {
         $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
         $sealed = self::service('test.heidi.key_sealer', KeySealerInterface::class)->seal(self::tenant(), $pair->privateJwk);
-        $key = new SigningKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
+        $key = new TenantKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
         self::keys()
             ->save($key);
 
         return $key;
     }
 
-    private static function key(string $kid): SigningKey
+    private static function key(string $kid): TenantKey
     {
         return self::keys()
             ->find(self::tenant(), $kid) ?? static::fail(sprintf('The key "%s" is not stored.', $kid));
@@ -656,12 +756,12 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     private static function publishedKids(): array
     {
-        return array_map(static fn (SigningKey $key): string => $key->kid, self::keys()->findPublished(self::tenant()));
+        return array_map(static fn (TenantKey $key): string => $key->kid, self::keys()->findPublished(self::tenant()));
     }
 
-    private static function keys(): SigningKeyRepositoryInterface
+    private static function keys(): TenantKeyRepositoryInterface
     {
-        return self::service('test.heidi.keys', SigningKeyRepositoryInterface::class);
+        return self::service('test.heidi.keys', TenantKeyRepositoryInterface::class);
     }
 
     /**

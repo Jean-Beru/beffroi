@@ -6,10 +6,10 @@ namespace Heidi\Bundle\Tests\Unit;
 
 use DateInterval;
 use Heidi\Bundle\HeidiBundle;
-use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Application\Key\SigningKeyRotator;
+use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Token\AccessTokenIssuer;
@@ -79,7 +79,7 @@ final class HeidiBundleExtensionTest extends TestCase
         static::assertSame('Tenant A', $factory->getArgument('$name'));
         static::assertSame('sodium://?keys[k]=AAAA', $container->getDefinition('heidi.kms')->getArgument(0));
         static::assertSame('k', $container->getDefinition(EnvelopeKeySealer::class)->getArgument('$kmsKeyId'));
-        static::assertSame('/var/lib/heidi/keys', $container->getDefinition(FileSigningKeyRepository::class)->getArgument('$directory'));
+        static::assertSame('/var/lib/heidi/keys', $container->getDefinition(FileTenantKeyRepository::class)->getArgument('$directory'));
     }
 
     /**
@@ -99,7 +99,7 @@ final class HeidiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(SigningKeyRotator::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition(TenantKeyRotator::class)->getArgument('$stagingDelay');
         static::assertInstanceOf(Definition::class, $delay);
         $factory = $delay->getFactory();
         static::assertIsArray($factory);
@@ -122,7 +122,7 @@ final class HeidiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(SigningKeyRotator::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition(TenantKeyRotator::class)->getArgument('$stagingDelay');
         static::assertInstanceOf(Definition::class, $delay);
         static::assertSame([30, 120], $delay->getArguments());
     }

@@ -9,13 +9,14 @@ use function array_map;
 use function base64_decode;
 use DateInterval;
 use function explode;
-use Heidi\Bundle\Key\FileSigningKeyRepository;
+use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Key\SigningKey;
+use Heidi\Core\Application\Key\TenantKeyRotator;
+use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Port\JwsSignerInterface;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
+use Heidi\Core\Port\PublicKeySetProviderInterface;
 use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -39,6 +40,8 @@ final class SealedKeyProviderTest extends DatabaseTestCase
 
     private SigningKeyProviderInterface $provider;
 
+    private PublicKeySetProviderInterface $published;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,7 +51,8 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         new Filesystem()
             ->remove($this->directory);
         $this->provider = self::service('test.heidi.key_provider', SigningKeyProviderInterface::class);
-        self::service('test.heidi.key_rotator', SigningKeyRotator::class)
+        $this->published = self::service('test.heidi.public_keys', PublicKeySetProviderInterface::class);
+        self::service('test.heidi.key_rotator', TenantKeyRotator::class)
             ->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
@@ -108,10 +112,10 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         $rotated = $this->rotateFromAnotherProcess();
 
         // When
-        $published = $this->provider->publicKeys(self::tenant());
+        $published = $this->published->publicKeys(self::tenant());
 
         // Then
-        static::assertSame([$previous->kid, $rotated->kid], array_map(static fn (SigningKey $key): string => $key->kid, $published->keys));
+        static::assertSame([$previous->kid, $rotated->kid], array_map(static fn (TenantKey $key): string => $key->kid, $published->keys));
     }
 
     /**
@@ -139,10 +143,10 @@ final class SealedKeyProviderTest extends DatabaseTestCase
      * A rotation as a console command does it: a repository of its own on the same files, a rotator of
      * its own, nothing shared with the provider under test but the directory.
      */
-    private function rotateFromAnotherProcess(): SigningKey
+    private function rotateFromAnotherProcess(): TenantKey
     {
-        $rotator = new SigningKeyRotator(
-            new FileSigningKeyRepository($this->directory, Algorithms::all()),
+        $rotator = new TenantKeyRotator(
+            new FileTenantKeyRepository($this->directory, Algorithms::all()),
             self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class),
             self::service('test.heidi.key_sealer', KeySealerInterface::class),
             [],
