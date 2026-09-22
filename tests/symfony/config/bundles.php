@@ -7,6 +7,7 @@ use Heidi\Bundle\HeidiBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
+use Symfony\Bundle\WebProfilerBundle\WebProfilerBundle;
 
 return [
     FrameworkBundle::class => [
@@ -22,6 +23,11 @@ return [
         'all' => true,
     ],
     HeidiBundle::class => [
+        'all' => true,
+    ],
+    // the panel of the bundle is rendered by the layout of this one; the profiler follows kernel.debug,
+    // so the bundle is inert in every test but the one that asks for a kernel in debug
+    WebProfilerBundle::class => [
         'all' => true,
     ],
 ];

@@ -50,14 +50,16 @@ abstract class DatabaseTestCase extends WebTestCase
      * test replaces a service for the life of the browser.
      *
      * @param (Closure(ContainerInterface): void)|null $configureContainer
+     * @param array<string, mixed> $options what the kernel behind the browser is booted with
      */
-    protected static function browser(?Closure $configureContainer = null): KernelBrowser
+    protected static function browser(?Closure $configureContainer = null, array $options = []): KernelBrowser
     {
         self::ensureKernelShutdown();
         $browser = self::createClient(
             $configureContainer === null
-                ? []
+                ? $options
                 : [
+                    ...$options,
                     'configure_container' => $configureContainer,
                 ],
         );

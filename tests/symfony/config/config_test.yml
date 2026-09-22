@@ -1,5 +1,10 @@
 framework:
     secret: 'test'
+    # The panel of the bundle is wired by kernel.debug, and the profiler that shows it follows it here:
+    # every test runs on a kernel that is not in debug, the one test of the panel asks for one that is.
+    profiler:
+        enabled: '%kernel.debug%'
+        collect: true
     test: true
     http_method_override: false
     handle_all_throwables: true

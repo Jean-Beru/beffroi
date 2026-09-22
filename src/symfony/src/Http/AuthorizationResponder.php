@@ -28,7 +28,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * otherwise. How the answer reaches the client is the response mode of the request, a refusal as well as
  * a code (OIDC Core §3.1.2.6); the renderer of that mode shapes it, this class never does.
  */
-final readonly class AuthorizationResponder
+final readonly class AuthorizationResponder implements AuthorizationResponderInterface
 {
     public const string INTERACTION_EXPIRED = 'interaction_expired';
 

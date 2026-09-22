@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Controller;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\AuthorizationResponder;
+use Heidi\Bundle\Http\AuthorizationResponderInterface;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
@@ -36,7 +37,7 @@ final readonly class LoginCodeController
         private BrowserSession $browser,
         private PendingLoginStore $pendingLogins,
         private RequestContextFactory $contexts,
-        private AuthorizationResponder $responder,
+        private AuthorizationResponderInterface $responder,
         private InteractionPages $pages,
         private AuthenticationUtils $authentication,
         private InteractionLocale $locale,

@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Profiler;
+
+use Heidi\Core\Domain\Key\UnsealedKey;
+use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Port\DecryptionKeyProviderInterface;
+
+/**
+ * Which key of the tenant opened a JWE a client encrypted to the provider, and which KMS opened that key
+ * in turn. What the panel keeps is the "kid" the JOSE header of the JWE already named.
+ */
+final readonly class ProfilingDecryptionKeyProvider implements DecryptionKeyProviderInterface
+{
+    public function __construct(
+        private DecryptionKeyProviderInterface $keys,
+        private OpProfile $profile,
+        private KmsBackend $kms,
+    ) {
+    }
+
+    public function decryptionKey(Tenant $tenant, string $kid): UnsealedKey
+    {
+        $unsealed = $this->keys->decryptionKey($tenant, $kid);
+        $this->profile->record(OpenedKey::observe($unsealed, 'opens an envelope a client sealed', $this->kms));
+
+        return $unsealed;
+    }
+}

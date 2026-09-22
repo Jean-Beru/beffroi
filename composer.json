@@ -65,6 +65,7 @@
         "symfony/css-selector": "8.2.*",
         "symfony/hashicorp-vault-key-management": "8.2.*",
         "symfony/phpunit-bridge": "8.2.*",
+        "symfony/web-profiler-bundle": "8.2.*",
         "symfony/yaml": "8.2.*"
     },
     "replace": {
