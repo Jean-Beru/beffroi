@@ -159,23 +159,6 @@
                 }
             ]
         },
-        "oidcc-ensure-request-object-with-redirect-uri": {
-            "browser": [
-                {
-                    "comment": "The redirect_uri outside the request object is unregistered: the OP shows its error page before it looks at the request object it does not support.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Expect the error page",
-                            "match": "{HEIDI_ISSUER}/authorize*",
-                            "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
         "oidcc-rp-initiated-logout-no-params": {
             "browser": [
                 {
