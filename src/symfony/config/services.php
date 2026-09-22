@@ -146,6 +146,7 @@ use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Heidi\Oidc\Application\Authorization\RequestObjectReader;
 use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
 use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
@@ -624,6 +625,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AuthorizationRequestParser::class);
     $services->set(PushedAuthorizationRequestResolver::class);
     $services->set(RequestObjectValidator::class);
+    // What arrived: the object in clear, or the object inside the JWE a client encrypted to a key of the
+    // tenant (RFC 9101 §6.1)
+    $services->set(RequestObjectReader::class);
     $services->set(RequestObjectResolver::class);
     $services->set(RequestObjectFetcher::class);
     $services->alias(RequestObjectFetcherInterface::class, RequestObjectFetcher::class);

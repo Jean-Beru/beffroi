@@ -175,6 +175,16 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
+     * The key the tenant publishes for encryption (RFC 7517 §4.2), which is what a client encrypts a
+     * request object to. Called again, it is a rotation, as it is for a signing key.
+     */
+    protected static function encryptionKey(): TenantKey
+    {
+        return self::rotator()
+            ->rotate(self::tenant(), Algorithms::ecdhEsA256Kw(), self::context());
+    }
+
+    /**
      * A key published before it signs: the first half of a rotation.
      */
     protected static function stagedKey(): TenantKey
