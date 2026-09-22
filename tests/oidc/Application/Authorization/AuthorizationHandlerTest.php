@@ -350,7 +350,7 @@ final class AuthorizationHandlerTest extends TestCase
         $issued = $this->events->of(AuthorizationCodeIssued::class);
         static::assertCount(1, $issued);
         static::assertCount(1, $this->events->events);
-        static::assertSame($this->granted($decision)->code, $issued[0]->code);
+        static::assertSame($this->granted($decision)->code->codeHash, $issued[0]->codeHash);
         static::assertSame($this->context, $issued[0]->context);
         static::assertSame($this->tenant, $issued[0]->tenant);
         static::assertEquals($this->clock->now(), $issued[0]->occurredAt);
@@ -761,7 +761,8 @@ final class AuthorizationHandlerTest extends TestCase
         // Then
         $events = $this->events->of(ConsentGranted::class);
         static::assertCount(1, $events);
-        static::assertSame($this->granted($decision)->interaction->consent, $events[0]->consent);
+        $consentOfTheGrant = $this->granted($decision)->interaction->consent ?? static::fail('The grant carries the consent that was recorded.');
+        static::assertSame($consentOfTheGrant->id, $events[0]->consentId);
         static::assertNull($events[0]->supersedes);
         static::assertSame($context, $events[0]->context);
         static::assertSame($this->tenant, $events[0]->tenant);
@@ -851,7 +852,7 @@ final class AuthorizationHandlerTest extends TestCase
         $this->handler->grantConsent($consent->interaction, $consent->session, $this->context);
 
         // Then
-        static::assertSame($previous, $this->events->of(ConsentGranted::class)[0]->supersedes);
+        static::assertSame($previous->id, $this->events->of(ConsentGranted::class)[0]->supersedes);
     }
 
     /**

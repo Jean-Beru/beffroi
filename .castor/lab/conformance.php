@@ -18,9 +18,11 @@ use Symfony\Component\Console\Input\InputOption;
 
 /**
  * The certification plans the OP answers (tests/conformance/README.md), by the short name "--plan" takes:
- * the name of each in the suite and the variants it is created with (the modules carry their own). One
- * configuration serves them all: the file whose {PLACEHOLDERS} the task fills from apps/op/.env.local,
- * and the values that must be there for the plans to make sense. An entry with "module" is not a plan
+ * the name of each in the suite and the variants it is created with (the modules carry their own). A plan
+ * the suite has to be created twice with, once per set of variants, is two entries here and two runs:
+ * the alias of the configuration is exclusive, so a run is a plan with its variants and nothing else.
+ * One configuration serves them all: the file whose {PLACEHOLDERS} the task fills from
+ * apps/op/.env.local, and the values that must be there for the plans to make sense. An entry with "module" is not a plan
  * of the suite but one module run on its own, the suite having no plan for a single module; "before_start"
  * names what the task does between its creation and its start, in place of a human. "known" names the
  * modules the OP is known not to answer yet, each with its reason and the issue that closes it: their
@@ -42,6 +44,43 @@ const CONFORMANCE_BACK_CHANNEL_CLIENT = [
     'client_id' => 'conformance-back-channel-logout',
     'client_secret' => '{CONFORMANCE_BACK_CHANNEL_LOGOUT_SECRET}',
 ];
+
+/**
+ * The clients of the FAPI 2 plans, in the order the suite names them: "client" and "client2", the second
+ * one being what a module that presents an authorization code or a request URI issued to another client
+ * uses. Two per pair, because a client authenticates with the one method it registered (RFC 6749 §2.3.1)
+ * and the two pairs do not authenticate the same way. "castor provision" generates their keys into
+ * var/conformance/ and publishes the public half to the provider
+ * (apps/op/config/packages/heidi.yaml).
+ */
+const CONFORMANCE_FAPI_PRIVATE_KEY_JWT_CLIENTS = ['conformance-fapi-private-key-jwt', 'conformance-fapi-private-key-jwt-second'];
+
+const CONFORMANCE_FAPI_MTLS_CLIENTS = ['conformance-fapi-mtls', 'conformance-fapi-mtls-second'];
+
+/**
+ * Where "castor provision" left the key material of those clients, relative to the checkout.
+ */
+const CONFORMANCE_FAPI_DIRECTORY = 'var/conformance';
+
+/**
+ * What the FAPI clients ask for, in the order a module that reorders them will read it back: more than
+ * one scope, so that the order can be changed, and the claims of the development user behind them.
+ */
+const CONFORMANCE_FAPI_SCOPE = 'openid profile email offline_access';
+
+/**
+ * The JWS algorithm the FAPI clients sign a DPoP proof with. ES256 is what their keys are
+ * (var/conformance/), and RS256 is what the profile refuses.
+ */
+const CONFORMANCE_FAPI_DPOP_ALGORITHM = 'ES256';
+
+/**
+ * The resource a FAPI module calls with the access token it obtained: the UserInfo endpoint of the
+ * provider, which is the protected resource an OpenID Provider serves (OIDC Core §5.3). Under the
+ * ordinary origin for a token bound to a key, under the mTLS origin for one bound to a certificate
+ * (RFC 8705 §5), since a bound token is presented on the connection it was bound on.
+ */
+const CONFORMANCE_FAPI_RESOURCE_PATH = '/userinfo';
 
 const CONFORMANCE_PLANS = [
     'basic' => [
@@ -96,6 +135,71 @@ const CONFORMANCE_PLANS = [
         ],
         'client' => CONFORMANCE_BACK_CHANNEL_CLIENT,
     ],
+    // The four runs of FAPI 2 (issue #166), the judge of spike 5: two profiles, and each of them once
+    // per pair the profile lets an authorization server choose between, because a plan created with
+    // variants is a run of its own and the alias of the configuration makes runs exclusive. The pair is
+    // always read the same way round: "private_key_jwt" proves a key and DPoP binds the token to a key,
+    // "mtls" proves a certificate and the same certificate binds the token, and nothing here mixes the
+    // two. The clients are named per pair, and the sender constraining of the variant is what says
+    // whether the suite presents a certificate and on which host it calls the resource.
+    'fapi2-security-dpop' => [
+        'name' => 'fapi2-security-profile-final-test-plan',
+        'variant' => [
+            'client_auth_type' => 'private_key_jwt',
+            'sender_constrain' => 'dpop',
+            'openid' => 'openid_connect',
+            'fapi_profile' => 'plain_fapi',
+            'authorization_request_type' => 'simple',
+        ],
+        'fapi' => [
+            'clients' => CONFORMANCE_FAPI_PRIVATE_KEY_JWT_CLIENTS,
+        ],
+    ],
+    'fapi2-security-mtls' => [
+        'name' => 'fapi2-security-profile-final-test-plan',
+        'variant' => [
+            'client_auth_type' => 'mtls',
+            'sender_constrain' => 'mtls',
+            'openid' => 'openid_connect',
+            'fapi_profile' => 'plain_fapi',
+            'authorization_request_type' => 'simple',
+        ],
+        'fapi' => [
+            'clients' => CONFORMANCE_FAPI_MTLS_CLIENTS,
+        ],
+    ],
+    // The same two pairs, with the request signed and the answer signed: what Message Signing adds to
+    // the Security Profile (FAPI 2.0 Message Signing §5.3.1, JARM).
+    'fapi2-signing-dpop' => [
+        'name' => 'fapi2-message-signing-final-test-plan',
+        'variant' => [
+            'client_auth_type' => 'private_key_jwt',
+            'sender_constrain' => 'dpop',
+            'openid' => 'openid_connect',
+            'fapi_profile' => 'plain_fapi',
+            'authorization_request_type' => 'simple',
+            'fapi_request_method' => 'signed_non_repudiation',
+            'fapi_response_mode' => 'jarm',
+        ],
+        'fapi' => [
+            'clients' => CONFORMANCE_FAPI_PRIVATE_KEY_JWT_CLIENTS,
+        ],
+    ],
+    'fapi2-signing-mtls' => [
+        'name' => 'fapi2-message-signing-final-test-plan',
+        'variant' => [
+            'client_auth_type' => 'mtls',
+            'sender_constrain' => 'mtls',
+            'openid' => 'openid_connect',
+            'fapi_profile' => 'plain_fapi',
+            'authorization_request_type' => 'simple',
+            'fapi_request_method' => 'signed_non_repudiation',
+            'fapi_response_mode' => 'jarm',
+        ],
+        'fapi' => [
+            'clients' => CONFORMANCE_FAPI_MTLS_CLIENTS,
+        ],
+    ],
     // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
     // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
     // new key with the old one still there. The other plans of the suite are for response types and
@@ -121,6 +225,9 @@ const CONFORMANCE_CONFIGURATION = 'tests/conformance/configuration.json';
 
 const CONFORMANCE_REQUIRED_VALUES = [
     'HEIDI_ISSUER',
+    // The host whose listener asks for a client certificate, where the FAPI runs that bind their tokens
+    // to one call the token, the PAR and the resource endpoints (RFC 8705 §5).
+    'HEIDI_MTLS_ORIGIN',
     'HEIDI_DEV_USER_PASSWORD',
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -155,11 +262,11 @@ const CONFORMANCE_OP_TIMEOUT = 180;
  * @param array<string> $module
  */
 #[AsTask(
-    description: 'Run the OpenID certification plans the OP answers (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP, and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
+    description: 'Run the certification plans the OP answers (Basic OP, Config OP, Form Post OP, the three logout profiles, the four runs of FAPI 2 and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
 )]
 function conformance(
     #[AsOption(
-        description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout or rotate-keys (repeatable); every plan by default',
+        description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls or rotate-keys (repeatable); every plan by default',
         mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
     )]
     array $plan = [],
@@ -211,7 +318,7 @@ function conformance(
                 ],
             ];
         } else {
-            $configuration = conformance_configuration($env, $definition['client'] ?? []);
+            $configuration = conformance_configuration($env, $definition);
             $created = conformance_request(
                 $suite,
                 'POST',
@@ -415,20 +522,28 @@ function conformance_wait_for_op(string $issuer): void
  * The plan configuration with its placeholders filled: {NAME} is the value of NAME in the environment of
  * the application, {HEIDI_DEV_USERNAME} the development user. The file itself carries no secret. A plan
  * that names a client of its own has the "client" of the file replaced before the placeholders are
- * filled, so that its secret comes from the environment like every other.
+ * filled, so that its secret comes from the environment like every other; a FAPI plan replaces the
+ * clients and what goes with them, which is not in the file at all but in var/conformance/.
  *
  * @param array<string, string> $env
- * @param array<string, string> $client the client of the plan, the one of the file when empty
+ * @param array<string, mixed> $definition the plan, as CONFORMANCE_PLANS declares it
  */
-function conformance_configuration(array $env, array $client = []): string
+function conformance_configuration(array $env, array $definition): string
 {
     $template = file_get_contents(getcwd() . '/' . CONFORMANCE_CONFIGURATION);
     if ($template === false) {
         throw new RuntimeException(sprintf('Cannot read %s.', CONFORMANCE_CONFIGURATION));
     }
-    if ($client !== []) {
+    $client = $definition['client'] ?? [];
+    $fapi = $definition['fapi'] ?? [];
+    if ($client !== [] || $fapi !== []) {
         $decoded = json_decode($template, true, 32, \JSON_THROW_ON_ERROR);
-        $decoded['client'] = $client;
+        if ($client !== []) {
+            $decoded['client'] = $client;
+        }
+        if ($fapi !== []) {
+            $decoded = conformance_fapi_sections($decoded, $fapi['clients'], (string) $definition['variant']['sender_constrain']);
+        }
         $template = json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT);
     }
     $values = [
@@ -445,6 +560,103 @@ function conformance_configuration(array $env, array $client = []): string
     json_decode($configuration, flags: \JSON_THROW_ON_ERROR);
 
     return $configuration;
+}
+
+/**
+ * The sections a FAPI 2 plan needs in place of those the six OpenID Connect plans use: two clients that
+ * prove a key or a certificate instead of a shared secret, what each one presents at the handshake when
+ * the tokens are bound to a certificate, and the resource a module calls with the token it obtained. The
+ * client that authenticates with a shared secret in the file has no place in a FAPI run, so it goes.
+ *
+ * @param array<string, mixed> $configuration
+ * @param list<string> $clients the two clients of the run, "client" and "client2"
+ * @param string $senderConstrain what the tokens of the run are bound to, "dpop" or "mtls"
+ *
+ * @return array<string, mixed>
+ */
+function conformance_fapi_sections(array $configuration, array $clients, string $senderConstrain): array
+{
+    unset($configuration['client_secret_post']);
+    $certificates = $senderConstrain === 'mtls';
+    foreach (['client', 'client2'] as $index => $section) {
+        $configuration[$section] = conformance_fapi_client($clients[$index], $certificates);
+        if ($certificates) {
+            $configuration[$index === 0 ? 'mtls' : 'mtls2'] = conformance_fapi_certificate($clients[$index]);
+        }
+    }
+    // A token bound to a certificate is presented on a connection that carries that certificate, so the
+    // resource is called on the host whose listener asks for one (RFC 8705 §5); a token bound to a key
+    // is presented anywhere, and the ordinary host of the provider is where the other plans call too.
+    $configuration['resource'] = [
+        'resourceUrl' => ($certificates ? '{HEIDI_MTLS_ORIGIN}' : '{HEIDI_ISSUER}') . CONFORMANCE_FAPI_RESOURCE_PATH,
+    ];
+
+    return $configuration;
+}
+
+/**
+ * One client of a FAPI run: its identifier, the whole of the key "castor provision" generated for it,
+ * private half included, since the suite is the client here, and what it asks for. A run that binds its
+ * tokens to a key names the algorithm the proofs are signed with; one that binds them to a certificate
+ * presents that certificate instead, and the key is still what signs a request object.
+ *
+ * @return array<string, mixed>
+ */
+function conformance_fapi_client(string $clientId, bool $certificates): array
+{
+    $client = [
+        'client_id' => $clientId,
+        'jwks' => conformance_fapi_material($clientId, 'jwks.json', static fn (string $contents): array => json_decode(
+            $contents,
+            true,
+            8,
+            \JSON_THROW_ON_ERROR,
+        )),
+        'scope' => CONFORMANCE_FAPI_SCOPE,
+    ];
+    if (! $certificates) {
+        $client['dpop_signing_alg'] = CONFORMANCE_FAPI_DPOP_ALGORITHM;
+    }
+
+    return $client;
+}
+
+/**
+ * The certificate one client of a FAPI run presents at the handshake, with its key: the self-signed pair
+ * of var/conformance/, which the provider authenticates against the "x5c" the client publishes (RFC 8705
+ * §2.2). There is no chain and no authority, so the suite is given none.
+ *
+ * @return array<string, string>
+ */
+function conformance_fapi_certificate(string $clientId): array
+{
+    return [
+        'cert' => conformance_fapi_material($clientId, 'crt', static fn (string $contents): string => $contents),
+        'key' => conformance_fapi_material($clientId, 'key', static fn (string $contents): string => $contents),
+    ];
+}
+
+/**
+ * One file of var/conformance/, read as what it is. A file that is not there is a stack that was never
+ * provisioned, or one provisioned before the FAPI clients existed: the task says so rather than creating
+ * a plan the suite would fail on.
+ *
+ * @template T
+ *
+ * @param callable(string): T $read
+ *
+ * @return T
+ */
+function conformance_fapi_material(string $clientId, string $extension, callable $read): mixed
+{
+    $path = sprintf('%s/%s/%s.%s', getcwd(), CONFORMANCE_FAPI_DIRECTORY, $clientId, $extension);
+    $contents = is_file($path) ? file_get_contents($path) : false;
+    if ($contents === false) {
+        io()->error(sprintf('%s holds nothing for the client "%s": run "castor provision" first.', CONFORMANCE_FAPI_DIRECTORY, $clientId));
+        exit(1);
+    }
+
+    return $read($contents);
 }
 
 /**

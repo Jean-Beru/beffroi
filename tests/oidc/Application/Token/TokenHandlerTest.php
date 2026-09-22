@@ -26,7 +26,7 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokensIssued;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\ConfirmationInterface;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidDpopProofException;
@@ -394,7 +394,7 @@ final class TokenHandlerTest extends TestCase
 
         // Then
         static::assertSame('DPoP', $response->parameters()['token_type']);
-        static::assertEquals(Proofs::thumbprintOf(Proofs::key()), $this->issuedAuthorization()->confirmation);
+        static::assertEquals(Proofs::thumbprintOf(Proofs::key()), $this->issuedConfirmation());
     }
 
     /**
@@ -412,7 +412,7 @@ final class TokenHandlerTest extends TestCase
 
         // Then
         static::assertSame('Bearer', $response->parameters()['token_type']);
-        static::assertNull($this->issuedAuthorization()->confirmation);
+        static::assertNull($this->issuedConfirmation());
     }
 
     /**
@@ -527,11 +527,14 @@ final class TokenHandlerTest extends TestCase
         return Proofs::proof('POST', Endpoints::of($this->tenant)->token, $this->clock->now(), null, [], [], $key);
     }
 
-    private function issuedAuthorization(): GrantedAuthorization
+    /**
+     * What the tokens that left are bound to, as the event that announced them says.
+     */
+    private function issuedConfirmation(): ?ConfirmationInterface
     {
         $issued = $this->events->of(TokensIssued::class);
 
-        return $issued === [] ? static::fail('No token was issued.') : $issued[0]->authorization;
+        return $issued === [] ? static::fail('No token was issued.') : $issued[0]->confirmation;
     }
 
     private static function basic(string $clientId, string $secret): string

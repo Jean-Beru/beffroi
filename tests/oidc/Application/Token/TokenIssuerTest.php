@@ -112,10 +112,10 @@ final class TokenIssuerTest extends TestCase
         static::assertEquals(Fixtures::now(), $events[0]->occurredAt);
         static::assertSame($this->session->tenant, $events[0]->tenant);
         static::assertSame($this->context, $events[0]->context);
-        static::assertSame($authorization, $events[0]->authorization);
+        static::assertSame($authorization->grantId, $events[0]->grantId);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $events[0]->accessTokenExpiresAt);
         static::assertTrue($events[0]->idTokenIssued);
-        static::assertSame($refreshToken->token, $events[0]->refreshToken);
+        static::assertSame($refreshToken->token->tokenHash, $events[0]->refreshTokenHash);
     }
 
     /**
@@ -149,7 +149,7 @@ final class TokenIssuerTest extends TestCase
         static::assertNull($issued->refreshToken);
         static::assertSame([], $this->refreshTokens->all());
         static::assertSame(0, $this->refreshTokens->saves);
-        static::assertNull($this->events->of(TokensIssued::class)[0]->refreshToken);
+        static::assertNull($this->events->of(TokensIssued::class)[0]->refreshTokenHash);
     }
 
     /**

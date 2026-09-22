@@ -226,8 +226,8 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         static::assertCount(1, $this->events->events);
         $event = $this->events->of(TokensIssued::class)[0];
-        static::assertSame($issued->authorization, $event->authorization);
-        static::assertSame($issued->refreshToken?->token, $event->refreshToken);
+        static::assertSame($issued->authorization->grantId, $event->grantId);
+        static::assertSame($issued->refreshToken?->token->tokenHash, $event->refreshTokenHash);
         static::assertSame($this->context, $event->context);
     }
 
@@ -578,9 +578,9 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(1, $replays);
-        static::assertSame($code, $replays[0]->code);
-        static::assertSame($this->client, $replays[0]->presentedBy);
-        static::assertSame([$successor], $replays[0]->revoked);
+        static::assertSame($code->codeHash, $replays[0]->codeHash);
+        static::assertSame($this->client->clientId, $replays[0]->presentedBy);
+        static::assertSame([$successor->tokenHash], $replays[0]->revokedTokenHashes);
         static::assertEquals($this->clock->now(), $replays[0]->occurredAt);
         static::assertSame($this->tenant, $replays[0]->tenant);
         static::assertSame($this->context, $replays[0]->context);
@@ -603,8 +603,8 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(2, $replays);
-        static::assertSame($this->publicClient, $replays[1]->presentedBy);
-        static::assertSame([], $replays[1]->revoked, 'already revoked five seconds ago');
+        static::assertSame($this->publicClient->clientId, $replays[1]->presentedBy);
+        static::assertSame([], $replays[1]->revokedTokenHashes, 'already revoked five seconds ago');
         static::assertEquals($this->clock->now()->modify('-5 seconds'), $successor->revokedAt);
         static::assertSame(4, $this->refreshTokens->saves);
     }
@@ -641,7 +641,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(1, $replays);
-        static::assertSame([], $replays[0]->revoked);
+        static::assertSame([], $replays[0]->revokedTokenHashes);
         static::assertSame([], $this->refreshTokens->all());
     }
 

@@ -65,7 +65,7 @@ final class BackChannelLogoutTest extends TestCase
 
         // Then
         static::assertSame(['first', 'second', 'third'], array_map(
-            static fn (LogoutTokenIssued $event): string => $event->client->clientId,
+            static fn (LogoutTokenIssued $event): string => $event->clientId,
             $this->events->of(LogoutTokenIssued::class),
         ));
     }
@@ -86,7 +86,7 @@ final class BackChannelLogoutTest extends TestCase
 
         // Then
         static::assertSame(['listening'], array_map(
-            static fn (LogoutTokenIssued $event): string => $event->client->clientId,
+            static fn (LogoutTokenIssued $event): string => $event->clientId,
             $this->events->of(LogoutTokenIssued::class),
         ));
     }
@@ -164,7 +164,7 @@ final class BackChannelLogoutTest extends TestCase
         // Then
         [$event] = $this->events->of(LogoutTokenIssued::class);
         static::assertSame('https://first.example/logout', $event->logoutUri->value);
-        static::assertSame($this->session->id, $event->session->id);
+        static::assertSame($this->session->id, $event->sessionId);
         static::assertSame(Fixtures::now()->getTimestamp(), $event->occurredAt->getTimestamp());
         static::assertStringStartsWith('eyJ', $event->token);
     }

@@ -74,7 +74,7 @@ final class BackChannelLogoutTest extends BrowserTestCase
 
         // Then
         [$issued] = self::logoutTokens();
-        static::assertSame('oidc-demo', $issued->client->clientId);
+        static::assertSame('oidc-demo', $issued->clientId);
         static::assertSame('https://demo.test/backchannel-logout', $issued->logoutUri->value);
         $claims = self::claimsOf($issued->token);
         static::assertSame('https://op.test', $claims['iss']);
@@ -154,7 +154,7 @@ final class BackChannelLogoutTest extends BrowserTestCase
      */
     private static function clientsTold(): array
     {
-        $told = array_map(static fn (LogoutTokenIssued $event): string => $event->client->clientId, self::logoutTokens());
+        $told = array_map(static fn (LogoutTokenIssued $event): string => $event->clientId, self::logoutTokens());
         sort($told);
 
         return $told;

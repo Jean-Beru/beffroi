@@ -190,12 +190,12 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertCount(2, $this->events->events);
         $rotations = $this->events->of(RefreshTokenRotated::class);
         static::assertCount(1, $rotations);
-        static::assertSame($token, $rotations[0]->previous);
-        static::assertSame($successor, $rotations[0]->next);
+        static::assertSame($token->tokenHash, $rotations[0]->previousTokenHash);
+        static::assertSame($successor->tokenHash, $rotations[0]->nextTokenHash);
         static::assertEquals($this->clock->now(), $rotations[0]->occurredAt);
         static::assertSame($this->tenant, $rotations[0]->tenant);
         static::assertSame($this->context, $rotations[0]->context);
-        static::assertSame($successor, $this->events->of(TokensIssued::class)[0]->refreshToken);
+        static::assertSame($successor->tokenHash, $this->events->of(TokensIssued::class)[0]->refreshTokenHash);
     }
 
     /**
@@ -494,8 +494,8 @@ final class RefreshTokenGrantTest extends TestCase
         // Then
         $detections = $this->events->of(RefreshTokenReuseDetected::class);
         static::assertCount(1, $detections);
-        static::assertSame($first, $detections[0]->presented);
-        static::assertSame([$first, $second->token, $third->token], $detections[0]->revoked);
+        static::assertSame($first->tokenHash, $detections[0]->presentedTokenHash);
+        static::assertSame([$first->tokenHash, $second->token->tokenHash, $third->token->tokenHash], $detections[0]->revokedTokenHashes);
         static::assertEquals($this->clock->now(), $detections[0]->occurredAt);
         static::assertSame($this->tenant, $detections[0]->tenant);
         static::assertSame($this->context, $detections[0]->context);

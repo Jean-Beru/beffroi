@@ -79,13 +79,18 @@ final class Clients
      * A client that signs its assertions with a key of its own (OIDC Core §9, "private_key_jwt"),
      * publishing its JWK Set inline or behind a "jwks_uri".
      */
-    public static function withKeys(Tenant $tenant, string $clientId = 'key-client', ?ClientJwks $jwks = null, ?ClientUri $jwksUri = null): Client
-    {
+    public static function withKeys(
+        Tenant $tenant,
+        string $clientId = 'key-client',
+        ?ClientJwks $jwks = null,
+        ?ClientUri $jwksUri = null,
+        ?ClientAuthenticationMethodInterface $method = null,
+    ): Client {
         return new Client(
             $tenant,
             $clientId,
             'Client with a key',
-            Methods::privateKeyJwt(),
+            $method ?? Methods::privateKeyJwt(),
             null,
             [new RedirectUri('https://key.example/callback')],
             jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,

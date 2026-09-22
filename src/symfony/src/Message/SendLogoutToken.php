@@ -32,10 +32,10 @@ final readonly class SendLogoutToken implements Notification
     {
         return new self(
             $issued->tenant,
-            $issued->client->clientId,
+            $issued->clientId,
             $issued->logoutUri->value,
             $issued->token,
-            $issued->session->id,
+            $issued->sessionId,
             $issued->context,
         );
     }
