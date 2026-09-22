@@ -165,6 +165,35 @@ const DEV_FAPI_CLIENTS = [
  */
 const DEV_KEY_ALGORITHMS = ['ES256', 'ECDH-ES+A256KW'];
 
+/**
+ * Where the key material of the rungs of the ladder of demonstration clients lives (issue #201), beside
+ * the one of the conformance clients and under the same rule: what a development stack generates is not
+ * committed, the provider is given the public half through apps/op/.env.local, and "castor demo" hands
+ * the private half to the demonstration.
+ */
+const DEV_DEMO_DIRECTORY = 'var/demo';
+
+/**
+ * The two rungs of the ladder that prove a key instead of sharing a secret. The first one signs what it
+ * sends, which is all "private_key_jwt" asks of it; the second one is the FAPI 2 rung, which also
+ * receives what the provider encrypted to it, so its set carries a second key. One kind of key per rung,
+ * published together, the "use" of each saying which is which (RFC 7517 §4.2).
+ *
+ * The signing key is a P-256 one, ES256 being what the FAPI profile asks for; the encryption key is an
+ * RSA one, RSA-OAEP-256 being the algorithm of the two the provider is wired with that the demonstration
+ * can read without a package its lock file cannot install (issue #201).
+ */
+const DEV_DEMO_CLIENTS = [
+    'demo-key' => [
+        'env' => 'DEMO_KEY_JWKS',
+        'encryption' => false,
+    ],
+    'demo-fapi' => [
+        'env' => 'DEMO_FAPI_JWKS',
+        'encryption' => true,
+    ],
+];
+
 const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -174,6 +203,7 @@ const DEV_CLIENT_SECRETS = [
     'OIDC_DEMO_SECRET',
     'OIDC_DEMO_OPAQUE_SECRET',
     'OIDC_DEMO_SECOND_SECRET',
+    'DEMO_FORM_POST_SECRET',
 ];
 
 #[AsTask(
@@ -389,7 +419,7 @@ function provision_env_local(?string $kms): array
     // public half of what var/conformance/ holds whole, so the key material is the source and the
     // variable follows it. A key generated again there is published again here, and a variable edited
     // by hand is put back to what the suite will actually sign with.
-    $published = provision_fapi_clients($path);
+    $published = [...provision_fapi_clients($path), ...provision_demo_clients($path)];
 
     if ($lines === [] && $published === []) {
         io()->note(sprintf('%s carries every development value already.', DEV_ENV_LOCAL));
@@ -709,6 +739,158 @@ function provision_fapi_clients(string $path): array
 }
 
 /**
+ * The key material of the rungs of the ladder that prove a key (issue #201), in var/demo/ and published
+ * to the provider as the public half of each set (apps/op/config/packages/heidi.yaml reads the variables
+ * of DEV_DEMO_CLIENTS). Idempotent like its counterpart above: a set that is there is kept, so that a
+ * rung the provider knows by its key survives a second "castor provision".
+ *
+ * @param string $path apps/op/.env.local
+ *
+ * @return list<string> the rungs whose variable this run wrote or put back
+ */
+function provision_demo_clients(string $path): array
+{
+    $directory = getcwd() . '/' . DEV_DEMO_DIRECTORY;
+    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
+        io()->error(sprintf('Cannot create %s.', $directory));
+        exit(1);
+    }
+    $published = [];
+    foreach (DEV_DEMO_CLIENTS as $clientId => $definition) {
+        $keys = provision_demo_keys($directory, $clientId, $definition['encryption']);
+        $public = array_map(static function (array $key): array {
+            unset($key['d']);
+
+            return $key;
+        }, $keys);
+        $set = json_encode(
+            [
+                'keys' => $public,
+            ],
+            \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES,
+        );
+        if (provision_env_local_set($path, $definition['env'], base64_encode($set))) {
+            $published[] = $clientId;
+        }
+    }
+    if ($published !== []) {
+        io()->text(sprintf('Published the public JWK Set of %s into %s.', implode(', ', $published), DEV_ENV_LOCAL));
+    }
+
+    return $published;
+}
+
+/**
+ * The keys of one rung, private halves included, read back from var/demo/<client>.jwks.json or generated
+ * there: the one it signs with, and the one the provider encrypts to when the rung asks for it.
+ *
+ * @return list<array<string, mixed>>
+ */
+function provision_demo_keys(string $directory, string $clientId, bool $encryption): array
+{
+    $file = sprintf('%s/%s.jwks.json', $directory, $clientId);
+    $kept = provision_demo_valid_keys($file, $encryption ? 2 : 1);
+    if ($kept !== null) {
+        return $kept;
+    }
+
+    $keys = [provision_fapi_jwk(provision_p256_key())];
+    if ($encryption) {
+        $keys[] = provision_demo_rsa_jwk();
+    }
+    $written = json_encode(
+        [
+            'keys' => $keys,
+        ],
+        \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT,
+    );
+    file_put_contents($file, $written . "\n");
+    chmod($file, 0o600);
+    io()->text(sprintf('Generated %d key(s) of %s, kid %s.', count($keys), $clientId, implode(', ', array_column($keys, 'kid'))));
+
+    return $keys;
+}
+
+/**
+ * The JWK of a fresh RSA key, RFC 7518 §6.3: the modulus, the exponents and the factors of the private
+ * half, each the big-endian integer padded to nothing, and the identifier of RFC 7638, the thumbprint of
+ * the three members of the public key in lexicographic order.
+ *
+ * @return array<string, mixed>
+ */
+function provision_demo_rsa_jwk(): array
+{
+    $key = openssl_pkey_new([
+        'private_key_bits' => 2048,
+        'private_key_type' => \OPENSSL_KEYTYPE_RSA,
+    ]);
+    $details = $key === false ? false : openssl_pkey_get_details($key);
+    $rsa = is_array($details) && is_array($details['rsa'] ?? null) ? $details['rsa'] : null;
+    if ($rsa === null) {
+        io()->error(sprintf('Cannot generate an RSA key: %s', openssl_error_string() ?: 'no reason given by OpenSSL'));
+        exit(1);
+    }
+    $members = [
+        'n' => 'n',
+        'e' => 'e',
+        'd' => 'd',
+        'p' => 'p',
+        'q' => 'q',
+        'dp' => 'dmp1',
+        'dq' => 'dmq1',
+        'qi' => 'iqmp',
+    ];
+    $jwk = [
+        'kty' => 'RSA',
+    ];
+    foreach ($members as $member => $name) {
+        $jwk[$member] = provision_base64url((string) $rsa[$name]);
+    }
+    $jwk['use'] = 'enc';
+    $jwk['alg'] = 'RSA-OAEP-256';
+    $jwk['kid'] = provision_base64url(hash(
+        'sha256',
+        json_encode(
+            [
+                'e' => $jwk['e'],
+                'kty' => $jwk['kty'],
+                'n' => $jwk['n'],
+            ],
+            \JSON_THROW_ON_ERROR,
+        ),
+        true,
+    ));
+
+    return $jwk;
+}
+
+/**
+ * The keys already there, when the file holds the expected number of private JWK; null when anything of
+ * that is missing, in which case they are all generated over.
+ *
+ * @return list<array<string, mixed>>|null
+ */
+function provision_demo_valid_keys(string $file, int $expected): ?array
+{
+    if (! is_file($file)) {
+        return null;
+    }
+    $set = json_decode((string) file_get_contents($file), true);
+    $keys = is_array($set) && is_array($set['keys'] ?? null) ? array_values($set['keys']) : [];
+    if (count($keys) !== $expected) {
+        return null;
+    }
+    foreach ($keys as $key) {
+        if (! is_array($key) || ! is_string($key['d'] ?? null) || ! is_string($key['kid'] ?? null)) {
+            return null;
+        }
+    }
+
+    /** @var list<array<string, mixed>> $keys */
+    return $keys;
+}
+
+/**
  * The key of one client of the FAPI 2 plans, private half included, read back from
  * var/conformance/<client>.jwks.json or generated there. A client that authenticates with a certificate
  * carries it in the "x5c" of that key (RFC 7517 §4.7) and has its PEM beside, which is what the suite
@@ -779,11 +961,12 @@ function provision_fapi_valid_key(string $file, ?string $certificateFile, ?strin
 /**
  * The JWK of a P-256 key, RFC 7518 §6.2: the two coordinates and the private one, each the big-endian
  * integer of the field padded to its length, and the identifier of RFC 7638, the thumbprint of the four
- * members of the public key in lexicographic order.
+ * members of the public key in lexicographic order. What the key is for is said on it (RFC 7517 §4.2,
+ * §4.4), a signature unless the caller asks for the encryption side.
  *
  * @return array<string, mixed>
  */
-function provision_fapi_jwk(OpenSSLAsymmetricKey $key): array
+function provision_fapi_jwk(OpenSSLAsymmetricKey $key, string $use = 'sig', string $algorithm = 'ES256'): array
 {
     $details = openssl_pkey_get_details($key);
     $coordinates = is_array($details) && is_array($details['ec'] ?? null) ? $details['ec'] : null;
@@ -798,8 +981,8 @@ function provision_fapi_jwk(OpenSSLAsymmetricKey $key): array
         'x' => $coordinate('x'),
         'y' => $coordinate('y'),
         'd' => $coordinate('d'),
-        'use' => 'sig',
-        'alg' => 'ES256',
+        'use' => $use,
+        'alg' => $algorithm,
     ];
     $jwk['kid'] = provision_base64url(hash(
         'sha256',
