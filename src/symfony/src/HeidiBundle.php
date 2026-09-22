@@ -30,10 +30,11 @@ use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\Dpop\CachedDpopNonce;
 use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Key\FileTenantKeyRepository;
+use Heidi\Bundle\Key\KmsClientPass;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Messenger\NotificationRetryPolicy;
 use Heidi\Bundle\Plane\Plane;
-use Heidi\Bundle\Profiler\KmsBackend;
+use Heidi\Bundle\Profiler\KmsClient;
 use Heidi\Bundle\Routing\RouterEndpointLocator;
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\RateLimitedAttempts;
@@ -75,7 +76,6 @@ use Symfony\Component\DependencyInjection\Kernel\AbstractBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
-use Symfony\Component\KeyManagement\EncrypterInterface;
 use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 
 /**
@@ -248,7 +248,7 @@ final class HeidiBundle extends AbstractBundle
             ->isRequired()
             ->children()
             ->scalarNode('kms')
-            ->info('DSN of the KMS that seals the private keys ("sodium://..." locally, a Vault or cloud scheme in production); the KMS keeps, it never signs.')
+            ->info('Name of the KMS client that seals the private keys, an entry of "key_management.clients" of the framework configuration (a DSN there, or the members of a composite client); the KMS keeps, it never signs.')
             ->isRequired()
             ->cannotBeEmpty()
             ->end()
@@ -648,6 +648,18 @@ final class HeidiBundle extends AbstractBundle
     ];
 
     /**
+     * The one pass of the bundle: the KMS client it seals with is named in its own configuration and
+     * registered in the framework's, so nothing but a pass can tell a name that answers from one that
+     * does not.
+     */
+    public function build(ContainerBuilder $container): void
+    {
+        parent::build($container);
+
+        $container->addCompilerPass(new KmsClientPass());
+    }
+
+    /**
      * Doctrine gets the mappings, the types and the migrations of the bundle (architecture §5.3); the
      * security component gets the hasher of its users (§5.4); the rate limiter gets the limiter of the
      * attempts at a code (§3.4), a rule of the core the application does not tune. The firewall is the
@@ -770,17 +782,17 @@ final class HeidiBundle extends AbstractBundle
             is_string($tenant['name'] ?? null) ? $tenant['name'] : null,
         )->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'));
 
-        // the DSN is an argument, not a parameter: it may carry key material
-        $services
-            ->set('heidi.kms', EncrypterInterface::class)
-            ->factory([service('key_management.factory'), 'fromString'])
-            ->args([self::string($keys, 'kms')]);
+        // the client is named here and built there: the KMS clients live in "key_management.clients" of
+        // the framework configuration, which is also where a client made of several providers and a data
+        // key store are declared, and where a DSN that may carry key material already belongs. What the
+        // bundle holds is a name, and an alias to the client that name points at.
+        $services->alias('heidi.kms', 'key_management.' . self::string($keys, 'kms'));
         $services->set('heidi.kms.envelopes', EnvelopeEncrypter::class)->args([service('heidi.kms')]);
         $services->get(EnvelopeKeySealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(EnvelopeSecretSealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileTenantKeyRepository::class)->arg('$directory', self::string($keys, 'storage'));
         if ($debug) {
-            $services->get(KmsBackend::class)->arg('$dsn', self::string($keys, 'kms'));
+            $services->get(KmsClient::class)->arg('$name', self::string($keys, 'kms'));
         }
         $services->get(FileMetadataBlobStore::class)->arg('$directory', self::string($webauthn, 'metadata_storage'));
         $services->get(JwksHandler::class)->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
