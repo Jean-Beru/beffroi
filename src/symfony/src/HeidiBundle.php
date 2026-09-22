@@ -22,10 +22,12 @@ use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
 use Heidi\Bundle\Doctrine\Type\GeoLocationType;
 use Heidi\Bundle\Doctrine\Type\IssuerType;
+use Heidi\Bundle\Doctrine\Type\KeyConfirmationType;
 use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
+use Heidi\Bundle\Dpop\CachedDpopNonce;
 use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Key\FileSigningKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
@@ -46,6 +48,7 @@ use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientKeySetProvider;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
+use Heidi\Oidc\Application\Dpop\DpopProofValidator;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -53,9 +56,11 @@ use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Bridge\Null\NoDpopNonce;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
 use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Port\DpopNonceInterface;
 use function is_array;
 use function is_float;
 use function is_int;
@@ -147,6 +152,24 @@ final class HeidiBundle extends AbstractBundle
      * Bytes a "request_uri" may answer; a request object carries the parameters of one request.
      */
     public const int DEFAULT_REQUEST_OBJECT_MAX_SIZE = 65536;
+
+    /**
+     * RFC 9449 §11.1: how long a proof stands, from its "iat". A proof is made for one request that is
+     * being sent; what the window has to cover is the time that request spends on the wire, and every
+     * second beyond it is a second a proof taken off that wire may be sent again.
+     */
+    public const int DEFAULT_DPOP_PROOF_MAX_AGE = 60;
+
+    /**
+     * What is allowed of the clock of a client, both ways.
+     */
+    public const int DEFAULT_DPOP_LEEWAY = 5;
+
+    /**
+     * Seconds a nonce this provider issues is accepted (RFC 9449 §8), for a deployment that asks for
+     * one; a client is handed a fresh one whenever it presents none or one this window has passed.
+     */
+    public const int DEFAULT_DPOP_NONCE_TTL = 300;
 
     /**
      * Restated from the module: the configuration tree cannot tell an absent list from an empty one.
@@ -366,6 +389,36 @@ final class HeidiBundle extends AbstractBundle
             ->end()
             ->end()
             ->end()
+            ->arrayNode('dpop')
+            ->info('How a proof of possession is read (RFC 9449 §4.3). What a proof may be signed with is the wiring, the same algorithms the provider signs with, and what the document announces in "dpop_signing_alg_values_supported"; nothing here weakens a proof, and a client that sends none is not concerned.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->integerNode('proof_max_age')
+            ->info('Seconds a proof stands, from its "iat" (RFC 9449 §4.3). A proof is a signature over one request being sent; a long window is a window a proof taken off the wire may be sent again in.')
+            ->defaultValue(self::DEFAULT_DPOP_PROOF_MAX_AGE)
+            ->min(1)
+            ->end()
+            ->integerNode('leeway')
+            ->info('Seconds allowed of the clock of a client, both ways.')
+            ->defaultValue(self::DEFAULT_DPOP_LEEWAY)
+            ->min(0)
+            ->end()
+            ->arrayNode('nonce')
+            ->info('Whether this provider asks a proof to carry a nonce of its own (RFC 9449 §8), which is the server\'s to decide: the "iat" of a proof is what its client says, a nonce is what the provider knows. A client that speaks DPoP handles the refusal that hands it one; one that does not is not concerned either way.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->booleanNode('required')
+            ->defaultFalse()
+            ->end()
+            ->integerNode('ttl')
+            ->info('Seconds a nonce is accepted once issued.')
+            ->defaultValue(self::DEFAULT_DPOP_NONCE_TTL)
+            ->min(1)
+            ->end()
+            ->end()
+            ->end()
+            ->end()
+            ->end()
             ->arrayNode('clients')
             ->info('The clients of the tenant, keyed by client identifier. A secret is hashed when the client is loaded and never kept in clear, unless the method it registered has to compute a MAC with it (client_secret_jwt).')
             ->useAttributeAsKey('client_id')
@@ -500,6 +553,7 @@ final class HeidiBundle extends AbstractBundle
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
         ConfirmationType::NAME => ConfirmationType::class,
+        KeyConfirmationType::NAME => KeyConfirmationType::class,
         BytesType::NAME => BytesType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
@@ -563,8 +617,9 @@ final class HeidiBundle extends AbstractBundle
             ]);
         }
         if ($builder->hasExtension('framework')) {
-            // the keys of the clients and the assertions already seen live in pools of their own, so that
-            // a deployment can point them at a shared store without touching the rest of its cache
+            // the keys of the clients, the assertions already seen and what DPoP remembers of a proof
+            // live in pools of their own, so that a deployment can point them at a shared store
+            // without touching the rest of its cache
             $builder->prependExtensionConfig('framework', [
                 'cache' => [
                     'pools' => [
@@ -572,6 +627,9 @@ final class HeidiBundle extends AbstractBundle
                             'adapter' => 'cache.app',
                         ],
                         'heidi.client_assertions' => [
+                            'adapter' => 'cache.app',
+                        ],
+                        'heidi.dpop' => [
                             'adapter' => 'cache.app',
                         ],
                     ],
@@ -666,6 +724,16 @@ final class HeidiBundle extends AbstractBundle
             ->arg('$maximumSize', self::integer($clientAuthentication, 'jwks_max_size'));
         $services->get(ClientJwksCache::class)
             ->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
+
+        $dpop = self::section($config, 'dpop');
+        $nonces = self::section($dpop, 'nonce');
+        $services->get(DpopProofValidator::class)
+            ->arg('$maximumAge', self::seconds($dpop, 'proof_max_age'))
+            ->arg('$leeway', self::seconds($dpop, 'leeway'));
+        $services->get(CachedDpopNonce::class)
+            ->arg('$lifetime', self::seconds($nonces, 'ttl'));
+        // what the provider asks of a proof is a class it is wired with, never a flag read at every request
+        $services->alias(DpopNonceInterface::class, ($nonces['required'] ?? false) === true ? CachedDpopNonce::class : NoDpopNonce::class);
 
         $requestObjects = self::section($config, 'request_objects');
         $services->get(RequestObjectValidator::class)

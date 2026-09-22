@@ -18,6 +18,7 @@ use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Exception\OAuth2Exception;
@@ -33,6 +34,11 @@ use function str_repeat;
 final class AuthorizationRequestParserTest extends TestCase
 {
     private const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+
+    /**
+     * RFC 7638 §3.1: the base64url of a SHA-256, the shape of a key thumbprint.
+     */
+    private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
 
     /**
      * The shape of a signed compact JWS (RFC 7515 §7.1); the interaction verifies it, the parser does not.
@@ -725,6 +731,64 @@ final class AuthorizationRequestParserTest extends TestCase
         $parameters = self::parameters($overrides);
 
         return $this->parser->parse($this->parser->redirectTarget($this->tenant, $parameters), $parameters);
+    }
+
+    /**
+     * RFC 9449 §10: the client names the key it will exchange the code with, and the code is reserved
+     * for it.
+     */
+    #[Test]
+    public function itReadsTheKeyTheRequestReservesItsCodeFor(): void
+    {
+        // When
+        $request = $this->parse([
+            'dpop_jkt' => self::THUMBPRINT,
+        ]);
+
+        // Then
+        static::assertEquals(new KeyConfirmation(self::THUMBPRINT), $request->dpopKey);
+    }
+
+    #[Test]
+    public function aRequestThatReservesNothingNamesNoKey(): void
+    {
+        // When
+        $request = $this->parse([]);
+
+        // Then
+        static::assertNull($request->dpopKey);
+    }
+
+    /**
+     * RFC 9449 §10 and RFC 7638 §3.1: a "dpop_jkt" is a JWK thumbprint, and a value that is not one
+     * names no key this provider could ever bind a token to.
+     */
+    #[Test]
+    #[DataProvider('provideThumbprintsThatAreNotOnes')]
+    public function aKeyThatIsNotNamedByAThumbprintIsRefused(string $thumbprint): void
+    {
+        // When
+        try {
+            $this->parse([
+                'dpop_jkt' => $thumbprint,
+            ]);
+            static::fail('A dpop_jkt that is not a thumbprint should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            // Then
+            static::assertSame('invalid_request: The dpop_jkt parameter is the JWK thumbprint of a key, the base64url of a SHA-256 (RFC 9449 section 10).', $exception->getMessage());
+            static::assertTrue($exception->redirectable, 'the client and the redirect URI are known by then, so the refusal goes back to the client');
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideThumbprintsThatAreNotOnes(): iterable
+    {
+        yield 'too short' => ['NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9X'];
+        yield 'too long' => [self::THUMBPRINT . 'a'];
+        yield 'not base64url' => ['NzbLsXh8uDCcd+6MNwXF4W/7noWXFZAfHkxZsRGC9Xs'];
+        yield 'padded' => ['NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9X='];
     }
 
     /**

@@ -14,6 +14,8 @@ use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\ConfirmationInterface;
+use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
@@ -43,6 +45,7 @@ final class Tokens
         ?ClaimsRequest $claims = null,
         bool $pkce = true,
         ?Uuid $grantId = null,
+        ?KeyConfirmation $dpopKey = null,
     ): AuthorizationCode {
         return new AuthorizationCode(
             AuthorizationCode::hash($code),
@@ -53,6 +56,7 @@ final class Tokens
             array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
             $nonce,
             $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
+            $dpopKey,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
@@ -110,6 +114,7 @@ final class Tokens
         ?RefreshTokenFamily $family = null,
         array $scopes = ['openid'],
         ?ClaimsRequest $claims = null,
+        ?ConfirmationInterface $confirmation = null,
     ): RefreshToken {
         $family ??= self::family($issuedAt);
 
@@ -123,6 +128,7 @@ final class Tokens
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
             $issuedAt->modify('+30 days') < $family->expiresAt ? $issuedAt->modify('+30 days') : $family->expiresAt,
+            $confirmation,
         );
     }
 }

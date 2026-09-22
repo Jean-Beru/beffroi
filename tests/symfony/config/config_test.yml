@@ -168,6 +168,13 @@ heidi:
             tls_client_auth_san_dns: 'client.example.com'
             requires_consent: false
             access_token_format: opaque
+        # A client with no credentials at all, binding its tokens to a key of its own (RFC 9449): the
+        # case binding proves the most for, and the one the FAPI 2 plan runs with "sender_constrain=dpop".
+        dpop-app:
+            name: 'Application that binds its tokens to a key'
+            redirect_uris: ['https://dpop.test/callback']
+            token_endpoint_auth_method: none
+            requires_consent: false
         fapi-app:
             name: 'Application that only pushes its requests'
             secret: 'fapi-secret-of-at-least-32-characters-long'

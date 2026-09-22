@@ -32,6 +32,11 @@
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="rotatedAt" type="datetime_immutable" column="rotated_at" nullable="true"/>
+        <field name="confirmation" type="heidi_confirmation" column="cnf" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
         <entity-listeners>
             <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">

@@ -16,7 +16,7 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
-use Heidi\Oidc\Domain\Token\Confirmation;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Exception\ClientKeysUnavailableException;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\OAuth2Exception;
@@ -133,7 +133,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
         $authenticated = $this->authenticate($certificate);
 
         // Then
-        static::assertEquals(Confirmation::ofCertificate($certificate), $authenticated->confirmation);
+        static::assertEquals(CertificateConfirmation::ofCertificate($certificate), $authenticated->confirmation);
     }
 
     /**

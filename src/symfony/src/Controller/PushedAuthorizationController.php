@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Controller;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\Http\DpopProofHeader;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
 use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
@@ -44,6 +45,7 @@ final readonly class PushedAuthorizationController
                 RequestParameters::ofForm($request),
                 $this->contexts->fromRequest($request),
                 $this->certificates->ofRequest($request),
+                DpopProofHeader::ofRequest($request),
             );
         } catch (OAuth2Exception $exception) {
             $error = TokenErrorResponse::fromException($exception);

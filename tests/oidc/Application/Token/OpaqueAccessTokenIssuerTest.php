@@ -10,7 +10,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Token\Confirmation;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -70,14 +70,14 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     {
         // Given
         $certificate = Certificates::client();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()), Confirmation::ofCertificate($certificate));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()), CertificateConfirmation::ofCertificate($certificate));
 
         // When
         $token = $this->issuer->issue($authorization, Fixtures::now());
 
         // Then
         $record = $this->tokens->find($token->value) ?? static::fail('The record was kept.');
-        static::assertEquals(Confirmation::ofCertificate($certificate), $record->confirmation);
+        static::assertEquals(CertificateConfirmation::ofCertificate($certificate), $record->confirmation);
     }
 
     #[Test]

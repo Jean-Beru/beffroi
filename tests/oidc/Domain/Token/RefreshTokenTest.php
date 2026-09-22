@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Domain\Token;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
@@ -14,6 +15,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
@@ -28,6 +30,13 @@ use function strlen;
 
 final class RefreshTokenTest extends TestCase
 {
+    /**
+     * RFC 7638 §3.1: the base64url of a SHA-256, the shape of a key thumbprint.
+     */
+    private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
+
+    private const string OTHER_THUMBPRINT = '5bPRpDFfR6QNNOFrxJLPHlbCcFEHFwWVtOJQCg8h2hM';
+
     private AuthenticationSession $session;
 
     private Client $client;
@@ -189,6 +198,65 @@ final class RefreshTokenTest extends TestCase
         static::assertEquals($authorization->authentication->authenticatedAt, $token->authentication->authenticatedAt);
         static::assertSame($authorization->authentication->methods, $token->authentication->methods);
         static::assertSame($authorization->authentication->contextClass, $token->authentication->contextClass);
+    }
+
+    /**
+     * RFC 9449 §5: what the request that got it proved stays on the token of a public client, which has
+     * no credentials to be asked for again.
+     */
+    #[Test]
+    public function aTokenOfAPublicClientKeepsWhatTheRequestProved(): void
+    {
+        // Given
+        $key = new KeyConfirmation(self::THUMBPRINT);
+        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family), null, $key);
+
+        // When
+        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+
+        // Then
+        static::assertEquals($key, $token->confirmation);
+    }
+
+    /**
+     * RFC 8705 §4: a confidential client is asked for its credentials at every refresh, and that is the
+     * binding; keeping another one beside it would be a second rule saying the same thing.
+     */
+    #[Test]
+    public function aTokenOfAConfidentialClientKeepsNone(): void
+    {
+        // Given
+        $client = Clients::confidential($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $client, $this->session, Fixtures::now(), $this->family), null, new KeyConfirmation(self::THUMBPRINT));
+
+        // When
+        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+
+        // Then
+        static::assertNull($token->confirmation);
+    }
+
+    #[Test]
+    #[DataProvider('provideRefreshes')]
+    public function itIsRefreshedByWhatProvesWhatItIsBoundTo(?string $bound, ?string $proven, bool $refreshed): void
+    {
+        // Given
+        $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), $this->family, confirmation: $bound === null ? null : new KeyConfirmation($bound));
+
+        // When / Then
+        static::assertSame($refreshed, $token->isRefreshedBy($proven === null ? null : new KeyConfirmation($proven)));
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string|null, bool}>
+     */
+    public static function provideRefreshes(): iterable
+    {
+        yield 'bound, and the key proved again' => [self::THUMBPRINT, self::THUMBPRINT, true];
+        yield 'bound, and another key proved' => [self::THUMBPRINT, self::OTHER_THUMBPRINT, false];
+        yield 'bound, and nothing proved' => [self::THUMBPRINT, null, false];
+        yield 'bound to nothing' => [null, null, true];
+        yield 'bound to nothing, and a key proved' => [null, self::THUMBPRINT, true];
     }
 
     /**

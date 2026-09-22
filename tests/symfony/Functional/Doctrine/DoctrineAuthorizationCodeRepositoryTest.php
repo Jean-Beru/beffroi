@@ -216,6 +216,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             [new Scope('openid'), new Scope('email')],
             'n-0S6_WzA2Mj',
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            null,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             self::now()->modify('+1 minute'),

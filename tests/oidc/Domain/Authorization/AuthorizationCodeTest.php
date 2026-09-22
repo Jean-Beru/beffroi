@@ -126,7 +126,7 @@ final class AuthorizationCodeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthorizationCode(AuthorizationCode::hash(''), Uuid::v7(), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'), Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
+        new AuthorizationCode(AuthorizationCode::hash(''), Uuid::v7(), $client, $this->session, $client->redirectUris[0], [new Scope('openid')], null, new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256), null, null, new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'), Fixtures::now(), Fixtures::now()->modify('+60 seconds'));
     }
 
     #[Test]
@@ -300,6 +300,7 @@ final class AuthorizationCodeTest extends TestCase
             $scopes,
             'n-0S6_WzA2Mj',
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            null,
             null,
             AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
             $issuedAt,
