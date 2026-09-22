@@ -67,7 +67,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: "iss" and "sub" name the client, "aud" names the endpoint, "exp", "iat" and "jti" are
+     * RFC 7523 §3: "iss" and "sub" name the client, "aud" names the issuer of the provider, "exp", "iat" and "jti" are
      * all there, and the signature verifies against a key the client publishes.
      */
     #[Test]
@@ -91,29 +91,43 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * OIDC Core §9 names the token endpoint as the audience, RFC 7523 §3 an identifier of the
-     * authorization server; both are in use, and both are taken.
+     * FAPI 2.0 Security Profile §5.2.2: the endpoint the request was sent to is not an audience, although
+     * OIDC Core §9 names it, because an assertion made for one endpoint would then be an assertion for
+     * every other one of the same provider.
      */
     #[Test]
-    public function itTakesTheIssuerAsTheAudienceToo(): void
+    public function itRefusesTheEndpointAsTheAudience(): void
     {
-        // Given
-        $assertion = $this->assertion([
-            'aud' => $this->tenant->issuer->value,
-        ]);
-
         // When
-        $client = $this->authenticate($assertion);
+        $this->failToAuthenticate($this->assertion([
+            'aud' => self::ENDPOINT,
+        ]));
 
         // Then
-        static::assertSame($this->client, $client->client);
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
     }
 
     /**
-     * RFC 7523 §3: an audience that is neither is not this provider's.
+     * RFC 7519 §4.1.3 lets "aud" be a list; one that names the issuer among other audiences is an
+     * assertion made for more than this provider, and it is refused whole.
      */
     #[Test]
-    public function itRefusesAnAudienceThatIsNeitherTheEndpointNorTheIssuer(): void
+    public function itRefusesAnAudienceThatNamesMoreThanTheIssuer(): void
+    {
+        // When
+        $this->failToAuthenticate($this->assertion([
+            'aud' => [$this->tenant->issuer->value, self::ENDPOINT],
+        ]));
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * RFC 7523 §3: an audience that is not this provider's is not taken.
+     */
+    #[Test]
+    public function itRefusesAnAudienceOfAnotherProvider(): void
     {
         // When
         $this->failToAuthenticate($this->assertion([
@@ -149,7 +163,7 @@ final class PrivateKeyJwtTest extends TestCase
     public function itRefusesAnAssertionWithoutAnExpiry(): void
     {
         // Given
-        $claims = ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt);
+        $claims = ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
         unset($claims['exp']);
 
         // When
@@ -193,7 +207,7 @@ final class PrivateKeyJwtTest extends TestCase
     public function itRefusesAnAssertionWithoutAnIdentifier(): void
     {
         // Given
-        $claims = ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt);
+        $claims = ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
         unset($claims['jti']);
 
         // When
@@ -226,7 +240,7 @@ final class PrivateKeyJwtTest extends TestCase
     {
         // Given
         $assertion = ClientAssertions::signedWithKey(
-            ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt),
+            ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
             [],
             self::strangerKey(),
         );
@@ -316,7 +330,12 @@ final class PrivateKeyJwtTest extends TestCase
      */
     private function assertion(array $overrides = []): string
     {
-        return ClientAssertions::signedWithKey(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt, $overrides));
+        return ClientAssertions::signedWithKey(ClientAssertions::claims(
+            $this->client->clientId,
+            $this->tenant->issuer->value,
+            $this->context->receivedAt,
+            $overrides,
+        ));
     }
 
     private function authenticator(): ClientAuthenticator

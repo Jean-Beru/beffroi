@@ -944,7 +944,61 @@
         "fapi2-security-profile-final-par-attempt-reuse-request_uri": {
             "browser": [
                 {
-                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "comment": "The first visit with the request URI: the ordinary sign-in and consent, which completes the authorization.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{HEIDI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{HEIDI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Allow",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=allow]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "*/test/a/heidi/callback*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "comment": "The second visit with the same request URI: a request URI is used once (RFC 9126 §2.2), the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
                     "match": "{HEIDI_ISSUER}/authorize*",
                     "tasks": [
                         {
@@ -1097,7 +1151,61 @@
         "fapi2-message-signing-final-par-attempt-reuse-request_uri": {
             "browser": [
                 {
-                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "comment": "The first visit with the request URI: the ordinary sign-in and consent, which completes the authorization.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{HEIDI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{HEIDI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Allow",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=allow]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "*/test/a/heidi/callback*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "comment": "The second visit with the same request URI: a request URI is used once (RFC 9126 §2.2), the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
                     "match": "{HEIDI_ISSUER}/authorize*",
                     "tasks": [
                         {

@@ -161,9 +161,12 @@ final class HeidiBundle extends AbstractBundle
     public const int DEFAULT_DPOP_PROOF_MAX_AGE = 60;
 
     /**
-     * What is allowed of the clock of a client, both ways.
+     * What is allowed of the clock of a client, both ways. Thirty seconds and not five: a client whose
+     * clock runs ahead makes a proof dated after the request that carries it, and the conformance suite
+     * of FAPI 2 makes one ten seconds ahead and expects it taken (RFC 9449 §11.1 leaves the window to
+     * the provider). What the window does not widen is the age of a proof, which "proof_max_age" bounds.
      */
-    public const int DEFAULT_DPOP_LEEWAY = 5;
+    public const int DEFAULT_DPOP_LEEWAY = 30;
 
     /**
      * Seconds a nonce this provider issues is accepted (RFC 9449 §8), for a deployment that asks for
