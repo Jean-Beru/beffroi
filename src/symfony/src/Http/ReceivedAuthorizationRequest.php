@@ -16,11 +16,14 @@ final readonly class ReceivedAuthorizationRequest
      * @param array<string, mixed> $parameters what the endpoint judges, whichever way the request came in
      * @param bool $pushed whether a record of the pushed authorization request endpoint carried it
      * @param bool $carriedByObject whether a request object carried it
+     * @param string|null $requestUriHash the record it came from (RFC 9126 §4), null when it was not
+     *                                    pushed; the reference is spent when the request is granted
      */
     public function __construct(
         public array $parameters,
         public bool $pushed,
         public bool $carriedByObject,
+        public ?string $requestUriHash = null,
     ) {
     }
 }

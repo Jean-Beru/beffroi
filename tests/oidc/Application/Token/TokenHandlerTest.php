@@ -174,10 +174,12 @@ final class TokenHandlerTest extends TestCase
         // Then
         $parameters = $response->parameters();
         static::assertSame('id:post-client:alice-subject:-:' . $this->clock->now()->getTimestamp(), $parameters['id_token']);
-        static::assertArrayHasKey('refresh_token', $parameters);
-        static::assertNotSame('the-token', $parameters['refresh_token']);
-        static::assertTrue($token->isRotated());
-        static::assertCount(1, $this->events->of(RefreshTokenRotated::class));
+        // RFC 6749 §6, FAPI 2.0 Security Profile §5.3.2.1-9: the client authenticated, which is what
+        // tells its refresh token from a copy of itself, so the token stands and no new one is handed
+        // out; the client keeps the one it has.
+        static::assertArrayNotHasKey('refresh_token', $parameters);
+        static::assertFalse($token->isRotated());
+        static::assertCount(0, $this->events->of(RefreshTokenRotated::class));
     }
 
     /**

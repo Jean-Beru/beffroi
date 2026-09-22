@@ -25,6 +25,12 @@
             <join-column name="consent_id" referenced-column-name="id" nullable="true" on-delete="SET NULL"/>
         </many-to-one>
         <field name="completedAt" type="datetime_immutable" column="completed_at" nullable="true"/>
+        <!-- The pushed authorization request this interaction was started from (RFC 9126 §4), null when the request was not pushed: the reference is spent when the interaction grants, not when it is read. -->
+        <field name="requestUriHash" type="string" column="request_uri_hash" length="64" nullable="true">
+            <options>
+                <option name="fixed">true</option>
+            </options>
+        </field>
         <entity-listeners>
             <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>

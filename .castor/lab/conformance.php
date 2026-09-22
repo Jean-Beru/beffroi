@@ -58,6 +58,24 @@ const CONFORMANCE_FAPI_PRIVATE_KEY_JWT_CLIENTS = ['conformance-fapi-private-key-
 const CONFORMANCE_FAPI_MTLS_CLIENTS = ['conformance-fapi-mtls', 'conformance-fapi-mtls-second'];
 
 /**
+ * Message Signing runs with clients of its own: a client of those runs is registered to start every
+ * authorization request with a request object it signed (OIDC Registration,
+ * require_signed_request_object), which the unsigned requests of the Security Profile plan could not be.
+ */
+const CONFORMANCE_FAPI_SIGNING_PRIVATE_KEY_JWT_CLIENTS = ['conformance-fapi-signing-private-key-jwt', 'conformance-fapi-signing-private-key-jwt-second'];
+
+const CONFORMANCE_FAPI_SIGNING_MTLS_CLIENTS = ['conformance-fapi-signing-mtls', 'conformance-fapi-signing-mtls-second'];
+
+/**
+ * The modules that need the user to have consented to nothing. A consent is remembered, which is what
+ * makes the provider ask once and not at every authorization; a module that has to see the user refuse
+ * needs the page where refusing happens, and an earlier module of the same plan has already granted it.
+ * The consent is taken back before those modules and before no other, because taking it back before
+ * every one of them would add a console call per module for nothing.
+ */
+const CONFORMANCE_MODULES_NEEDING_A_FRESH_CONSENT = ['fapi2-security-profile-final-user-rejects-authentication'];
+
+/**
  * Where "castor provision" left the key material of those clients, relative to the checkout.
  */
 const CONFORMANCE_FAPI_DIRECTORY = 'var/conformance';
@@ -182,7 +200,7 @@ const CONFORMANCE_PLANS = [
             'fapi_response_mode' => 'jarm',
         ],
         'fapi' => [
-            'clients' => CONFORMANCE_FAPI_PRIVATE_KEY_JWT_CLIENTS,
+            'clients' => CONFORMANCE_FAPI_SIGNING_PRIVATE_KEY_JWT_CLIENTS,
         ],
     ],
     'fapi2-signing-mtls' => [
@@ -197,7 +215,7 @@ const CONFORMANCE_PLANS = [
             'fapi_response_mode' => 'jarm',
         ],
         'fapi' => [
-            'clients' => CONFORMANCE_FAPI_MTLS_CLIENTS,
+            'clients' => CONFORMANCE_FAPI_SIGNING_MTLS_CLIENTS,
         ],
     ],
     // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
@@ -365,6 +383,7 @@ function conformance(
         foreach ($modules as $index => $moduleDefinition) {
             $name = (string) $moduleDefinition['testModule'];
             io()->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
+            conformance_forget_consents($name, $definition['fapi']['clients'] ?? []);
             $started = microtime(true);
             $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, $definition['before_start'] ?? null);
             if ($planUrl === null) {
@@ -670,6 +689,22 @@ function conformance_fapi_material(string $clientId, string $extension, callable
  * @param array{testModule: string, variant?: array<string, string>} $definition
  * @return array{result: string, url: string, findings: array<string>}
  */
+/**
+ * Takes back what the development user granted the clients of a run, for the modules that need to see
+ * them ask again (CONFORMANCE_MODULES_NEEDING_A_FRESH_CONSENT).
+ *
+ * @param list<string> $clients
+ */
+function conformance_forget_consents(string $module, array $clients): void
+{
+    if (! in_array($module, CONFORMANCE_MODULES_NEEDING_A_FRESH_CONSENT, true)) {
+        return;
+    }
+    foreach ($clients as $clientId) {
+        op_console(['heidi:user:revoke-consent', DEV_USERNAME, $clientId], context()->withQuiet());
+    }
+}
+
 function conformance_run_module(string $suite, ?string $planId, array $definition, string $configuration = '', ?string $beforeStart = null): array
 {
     $query = [

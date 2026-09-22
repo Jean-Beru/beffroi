@@ -22,6 +22,8 @@
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="usedAt" type="datetime_immutable" column="used_at" nullable="true"/>
+        <!-- Whether the push carried a request object the client signed (RFC 9101 §6.1): once the record answers for the request, the authorization endpoint can no longer see it. -->
+        <field name="carriedBySignedObject" type="boolean" column="carried_by_signed_object"/>
         <entity-listeners>
             <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>

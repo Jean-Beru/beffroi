@@ -75,7 +75,10 @@ final class RefreshTokenGrantTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
-        $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        // A public client: rotation is what tells its refresh token from a copy of itself, where a
+        // confidential client is told by its authentication and its token stands (RFC 9700 §4.13.2,
+        // FAPI 2.0 Security Profile §5.3.2.1-9).
+        $this->client = Clients::public($this->tenant);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
         $this->context = Fixtures::context($this->clock->now());
@@ -172,7 +175,7 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertSame($token->scopes, $issued->authorization->scopes);
         static::assertNull($issued->authorization->nonce);
         static::assertEquals($token->authentication->authenticatedAt, $issued->authorization->authentication->authenticatedAt);
-        static::assertSame('id:oidc-demo:alice-subject:-:' . $this->clock->now()->getTimestamp(), $issued->idToken);
+        static::assertSame('id:spa:alice-subject:-:' . $this->clock->now()->getTimestamp(), $issued->idToken);
         static::assertSame('openid profile', $issued->toResponse()->parameters()['scope']);
     }
 
@@ -421,7 +424,7 @@ final class RefreshTokenGrantTest extends TestCase
             static fn (self $test): string => 'unknown',
         ];
         yield 'issued to another client, rotated' => [static function (self $test): string {
-            $foreign = $test->token('foreign', client: Clients::public($test->tenant));
+            $foreign = $test->token('foreign', client: Clients::confidential($test->tenant, new FakePasswordHasher()->hash(Clients::SECRET)));
             $foreign->rotate($test->clock->now());
             $test->refreshTokens->save($foreign);
 

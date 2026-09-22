@@ -96,6 +96,55 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
+     * RFC 9449 §4.3 compares URLs, and RFC 3986 §6.2.2 and §6.2.3 say what two URLs being the same
+     * means: the scheme and the host are case insensitive, and a port that is the default of its scheme
+     * is the same URL as no port at all. A provider that compared bytes would refuse a client that
+     * wrote its own address in a shape the specification calls identical.
+     */
+    #[Test]
+    #[DataProvider('provideEquivalentUrls')]
+    public function aUrlIsComparedAsRfc3986SaysUrlsAreCompared(string $htu): void
+    {
+        // Given
+        $proof = Proofs::proof('POST', $htu, $this->now());
+
+        // When
+        $key = $this->verifier->verify($proof, 'POST', self::ENDPOINT, $this->now());
+
+        // Then
+        static::assertNotNull($key);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideEquivalentUrls(): iterable
+    {
+        yield 'the scheme in capitals' => ['HTTPS://id.acme.example/token'];
+        yield 'the host in capitals' => ['https://ID.ACME.EXAMPLE/token'];
+        yield 'the default port of the scheme' => ['https://id.acme.example:443/token'];
+        yield 'the default port and the host in capitals' => ['HTTPS://ID.Acme.Example:443/token'];
+    }
+
+    /**
+     * RFC 3986 §6.2.2.1: the path is case sensitive, and a provider that lowercased it would take a
+     * proof made for another endpoint.
+     */
+    #[Test]
+    public function theCaseOfThePathIsPartOfWhatAProofNames(): void
+    {
+        // Given
+        $proof = Proofs::proof('POST', 'https://id.acme.example/TOKEN', $this->now());
+
+        // Then
+        $this->expectException(InvalidDpopProofException::class);
+        $this->expectExceptionMessageIs('invalid_dpop_proof: The htu of the DPoP proof is not the endpoint this provider publishes for this request (RFC 9449 section 4.3).');
+
+        // When
+        $this->verifier->verify($proof, 'POST', self::ENDPOINT, $this->now());
+    }
+
+    /**
      * RFC 9449 §11.1: a proof is used once. Whoever takes one off the wire and sends it again is
      * refused, however fresh it still is.
      */
