@@ -12,13 +12,13 @@ use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
+use Heidi\Oidc\Exception\InvalidRequestObjectException;
+use Heidi\Oidc\Exception\InvalidRequestUriException;
 use Heidi\Oidc\Exception\InvalidScopeException;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Exception\LoginRequiredException;
 use Heidi\Oidc\Exception\MissingBearerTokenException;
 use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Exception\RequestNotSupportedException;
-use Heidi\Oidc\Exception\RequestUriNotSupportedException;
 use Heidi\Oidc\Exception\UnauthorizedClientException;
 use Heidi\Oidc\Exception\UnsupportedGrantTypeException;
 use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
@@ -214,11 +214,32 @@ final class OAuth2ExceptionTest extends TestCase
     public static function provideErrorsOfTheAuthorizationEndpointAlone(): iterable
     {
         yield 'unsupported_response_type' => ['unsupported_response_type', new UnsupportedResponseTypeException('Only the code response type is supported.')];
-        yield 'request_not_supported' => ['request_not_supported', new RequestNotSupportedException('Request objects are not supported.')];
-        yield 'request_uri_not_supported' => ['request_uri_not_supported', new RequestUriNotSupportedException('Request URIs are not supported.')];
         yield 'login_required' => ['login_required', new LoginRequiredException('The end user is not authenticated.')];
         yield 'consent_required' => ['consent_required', new ConsentRequiredException('No consent covers the request.')];
         yield 'access_denied' => ['access_denied', new AccessDeniedException('The end user denied the request.')];
+    }
+
+    /**
+     * OIDC Core §3.1.2.6, RFC 9101 §6.3: a request the provider could not read is never redirected,
+     * because what names the destination is inside what it could not read.
+     */
+    #[Test]
+    #[DataProvider('provideErrorsOfARequestObject')]
+    public function theErrorsOfARequestObjectAreA400AndAreNeverRedirectable(string $error, OAuth2Exception $exception): void
+    {
+        // When / Then
+        static::assertSame($error, $exception->error);
+        static::assertSame(400, $exception->statusCode);
+        static::assertFalse($exception->redirectable);
+    }
+
+    /**
+     * @return iterable<string, array{string, OAuth2Exception}>
+     */
+    public static function provideErrorsOfARequestObject(): iterable
+    {
+        yield 'invalid_request_object' => ['invalid_request_object', new InvalidRequestObjectException('The request object has expired.')];
+        yield 'invalid_request_uri' => ['invalid_request_uri', new InvalidRequestUriException('The request_uri parameter names no URL this client registered.')];
     }
 
     /**

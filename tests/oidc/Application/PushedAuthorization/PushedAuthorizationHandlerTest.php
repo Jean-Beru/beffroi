@@ -30,6 +30,7 @@ use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Tests\Fixture\RequestObjects;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -126,6 +127,63 @@ final class PushedAuthorizationHandlerTest extends TestCase
             'client_id' => 'oidc-demo',
         ], $this->storedRequest($response)
             ->parameters);
+    }
+
+    /**
+     * RFC 9101 §6.1 and RFC 9126 §3: a pushed request may itself be a request object, which FAPI 2.0
+     * Message Signing asks of one. It is verified here, once, and what the record keeps is the request
+     * it carried, so that the authorization endpoint reads parameters like any other.
+     */
+    #[Test]
+    public function itReadsARequestObjectAPushedRequestCarries(): void
+    {
+        // Given
+        $this->clients->save(Clients::sendingRequestObjects($this->tenant, clientId: 'jar-client'));
+        $object = RequestObjects::signed(RequestObjects::claims('jar-client', $this->tenant->issuer->value, $this->clock->now(), [
+            'response_type' => 'code',
+            'redirect_uri' => 'https://jar.example/callback',
+            'scope' => 'openid profile',
+            'code_challenge' => self::CHALLENGE,
+            'code_challenge_method' => 'S256',
+        ]));
+
+        // When
+        $response = $this->pushWith(self::basic('jar-client', Clients::SECRET), [
+            'request' => $object,
+            'redirect_uri' => null,
+            'scope' => null,
+            'response_type' => null,
+            'code_challenge' => null,
+            'code_challenge_method' => null,
+        ]);
+
+        // Then
+        static::assertSame([
+            'client_id' => 'jar-client',
+            'response_type' => 'code',
+            'redirect_uri' => 'https://jar.example/callback',
+            'scope' => 'openid profile',
+            'code_challenge' => self::CHALLENGE,
+            'code_challenge_method' => 'S256',
+        ], $this->storedRequest($response)
+            ->parameters);
+    }
+
+    /**
+     * RFC 9126 §2.1: a "request_uri" is not one of the parameters a pushed request carries, the
+     * reference being what the endpoint answers and not what it reads.
+     */
+    #[Test]
+    public function aRequestObjectByReferenceIsNotPushed(): void
+    {
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIsOrContains('not one of those a pushed authorization request carries');
+
+        // When
+        $this->push([
+            'request_uri' => 'https://jar.example/request.jwt',
+        ]);
     }
 
     /**
@@ -309,6 +367,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
             new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher()),
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
+            RequestObjects::resolver($this->clients, $this->clock),
             $requests,
             $this->clock,
             $lifetime ?? new DateInterval('PT60S'),

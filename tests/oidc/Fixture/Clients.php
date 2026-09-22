@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
@@ -16,6 +17,8 @@ use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
+use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Domain\Scope\Scope;
 
@@ -80,6 +83,31 @@ final class Clients
             [new RedirectUri('https://key.example/callback')],
             jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,
             jwksUri: $jwksUri,
+        );
+    }
+
+    /**
+     * A client that sends its authorization requests in a JWT (RFC 9101 §4): it publishes the keys the
+     * signature is verified against and registers, or not, the algorithm it signs with and the URLs its
+     * objects are published at.
+     *
+     * @param list<ClientUri> $requestUris
+     */
+    public static function sendingRequestObjects(Tenant $tenant, ?RequestObjectSigningInterface $signing = null, array $requestUris = [], string $clientId = 'jar-client'): Client
+    {
+        return new Client(
+            $tenant,
+            $clientId,
+            'Client that signs its requests',
+            Methods::clientSecretBasic(),
+            new HashedClientSecret(new FakePasswordHasher()->hash(self::SECRET)),
+            [new RedirectUri('https://jar.example/callback')],
+            [],
+            [GrantType::AuthorizationCode],
+            [new Scope('openid'), new Scope('profile')],
+            jwks: ClientAssertions::publishedKeys(),
+            requestObjectSigning: $signing ?? new AnyRegisteredAlgorithm(),
+            requestUris: $requestUris,
         );
     }
 

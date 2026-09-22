@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
 use Heidi\Bundle\Client\ClientJwksFetcher;
+use Heidi\Bundle\Client\RequestObjectFetcher;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
@@ -127,6 +128,8 @@ use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
+use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
@@ -166,9 +169,9 @@ use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionKeyVerifier;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
@@ -176,27 +179,29 @@ use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\CertificateReaderInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
-use Heidi\Oidc\Port\ClientAssertionKeyVerifierInterface;
-use Heidi\Oidc\Port\ClientAssertionReaderInterface;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
 use Heidi\Oidc\Port\ClientAssertionSecretVerifierInterface;
 use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
 use Heidi\Oidc\Port\ClientJwksCacheInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Heidi\Oidc\Port\JwtKeyVerifierInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Heidi\Oidc\Port\RequestObjectFetcherInterface;
 use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
+use Heidi\Oidc\Port\UnsignedRequestObjectsInterface;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Signature\Algorithm\HS256;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -453,6 +458,7 @@ return static function (ContainerConfigurator $container): void {
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
     // require, read where they are declared and nowhere else (issue #98)
     $services->alias(PushedAuthorizationRequirementInterface::class, ConfigurationClientRepository::class);
+    $services->alias(UnsignedRequestObjectsInterface::class, ConfigurationClientRepository::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).
@@ -485,13 +491,13 @@ return static function (ContainerConfigurator $container): void {
     // what reads a client assertion and what verifies it (RFC 7523 §2.2): against the keys the client
     // publishes, with the algorithms the provider is wired with, or against the secret it registered,
     // with HS256 and nothing else (RFC 8725 §3.1)
-    $services->set(JwtLibraryClientAssertionReader::class);
-    $services->alias(ClientAssertionReaderInterface::class, JwtLibraryClientAssertionReader::class);
+    $services->set(JwtLibraryCompactJwtReader::class);
+    $services->alias(CompactJwtReaderInterface::class, JwtLibraryCompactJwtReader::class);
     $services->set('heidi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)
         ->factory([service(JoseSignatureAlgorithms::class), 'manager']);
-    $services->set(JwtLibraryClientAssertionKeyVerifier::class)
+    $services->set(JwtLibraryJwtKeyVerifier::class)
         ->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
-    $services->alias(ClientAssertionKeyVerifierInterface::class, JwtLibraryClientAssertionKeyVerifier::class);
+    $services->alias(JwtKeyVerifierInterface::class, JwtLibraryJwtKeyVerifier::class);
     $services->set('heidi.oidc.client_assertion.mac_algorithms', AlgorithmManager::class)
         ->args([[inline_service(HS256::class)]]);
     $services->set(JwtLibraryClientAssertionSecretVerifier::class)
@@ -520,9 +526,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(StandardClaimsProvider::class);
     $services->alias(ClaimsProviderInterface::class, StandardClaimsProvider::class);
 
-    // The module: authorization endpoint, and the pushed request the browser may come back with
+    // The module: authorization endpoint, the pushed request the browser may come back with, and the
+    // request object a client signs (RFC 9101), read with the very reader and verifier a client
+    // assertion is read with, against the keys the client publishes
     $services->set(AuthorizationRequestParser::class);
     $services->set(PushedAuthorizationRequestResolver::class);
+    $services->set(RequestObjectValidator::class);
+    $services->set(RequestObjectResolver::class);
+    $services->set(RequestObjectFetcher::class);
+    $services->alias(RequestObjectFetcherInterface::class, RequestObjectFetcher::class);
     $services->set(PushedAuthorizationHandler::class);
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);

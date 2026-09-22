@@ -19,6 +19,7 @@ use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidRequestException;
+use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Exception\UnsupportedResponseModeException;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -436,36 +437,34 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * A repeated "request" or "request_uri" is still the unsupported feature it names.
+     * RFC 9101 §6.1: a request object is read by the resolver an endpoint calls before the parser, and
+     * the parser is given the parameters it carried. One reaching the parser is an endpoint wired
+     * without that resolver, which is a fault of the integration and not a request to refuse.
      */
     #[Test]
-    #[DataProvider('provideUnsupportedRequestParameters')]
-    public function aRepeatedRequestObjectParameterIsStillUnsupported(string $name, string $error): void
+    #[DataProvider('provideRequestObjectParameters')]
+    public function aRequestObjectReachingTheParserIsAFaultOfTheIntegration(string $name): void
     {
         // Given
         $parameters = self::parameters([
-            $name => [self::ID_TOKEN],
+            $name => self::ID_TOKEN,
         ]);
-        $target = $this->parser->redirectTarget($this->tenant, $parameters);
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIsOrContains('was wired without the resolver');
 
         // When
-        try {
-            $this->parser->parse($target, $parameters);
-            static::fail(sprintf('A repeated %s should have been rejected.', $name));
-        } catch (OAuth2Exception $exception) {
-            // Then
-            static::assertSame($error, $exception->error);
-            static::assertTrue($exception->redirectable);
-        }
+        $this->parser->redirectTarget($this->tenant, $parameters);
     }
 
     /**
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string}>
      */
-    public static function provideUnsupportedRequestParameters(): iterable
+    public static function provideRequestObjectParameters(): iterable
     {
-        yield 'request' => ['request', 'request_not_supported'];
-        yield 'request_uri' => ['request_uri', 'request_uri_not_supported'];
+        yield 'request' => ['request'];
+        yield 'request_uri' => ['request_uri'];
     }
 
     /**
@@ -536,16 +535,6 @@ final class AuthorizationRequestParserTest extends TestCase
      */
     public static function provideRequestsSentBackToTheClient(): iterable
     {
-        yield 'request object by value (OIDC Core §6.1)' => [[
-            'request' => self::ID_TOKEN,
-        ], 'request_not_supported', 'Request objects are not supported.'];
-        yield 'request object by reference (OIDC Core §6.2)' => [[
-            'request_uri' => 'https://client.example/request.jwt',
-        ], 'request_uri_not_supported', 'Request URIs are not supported.'];
-        yield 'request object by value wins over a wrong response_type' => [[
-            'request' => self::ID_TOKEN,
-            'response_type' => 'token',
-        ], 'request_not_supported', 'Request objects are not supported.'];
         yield 'no response_type (RFC 6749 §4.1.1)' => [[
             'response_type' => null,
         ], 'invalid_request', 'The response_type parameter is missing.'];
