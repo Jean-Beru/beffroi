@@ -40,6 +40,37 @@ const DEMO_SECOND_URL = 'http://demo.localhost:8003';
 
 const DEMO_SECOND_CLIENT_ID = 'oidc-demo-second';
 
+/**
+ * The rungs of the ladder of demonstration clients that need something of the OP beyond an issuer and a
+ * client identifier (issue #201): the secret of the rung that authenticates with one, and the keys of
+ * the two that prove one, which "castor provision" generated into var/demo/ and published to the
+ * provider as their public half. What the demonstration needs is the private half, handed to it in its
+ * own .env.local, base64 of the JWK so that a dotenv line stays a dotenv line.
+ *
+ * The key of a rung is read from the set by what it says it is for (RFC 7517 §4.2): "sig" is what the
+ * client signs its assertions and its request objects with, "enc" the one the provider encrypts to.
+ */
+const DEMO_LADDER_SECRETS = [
+    'OIDC_DEMO_SECRET' => 'DEMO_BASIC_SECRET',
+    'OIDC_DEMO_OPAQUE_SECRET' => 'DEMO_OPAQUE_SECRET',
+    'DEMO_FORM_POST_SECRET' => 'DEMO_FORM_POST_SECRET',
+];
+
+const DEMO_LADDER_KEYS = [
+    'demo-key' => [
+        'sig' => 'DEMO_KEY_JWK',
+    ],
+    'demo-fapi' => [
+        'sig' => 'DEMO_FAPI_JWK',
+        'enc' => 'DEMO_FAPI_ENCRYPTION_JWK',
+    ],
+];
+
+/**
+ * Where "castor provision" left the key material of those rungs, private half included.
+ */
+const DEMO_LADDER_DIRECTORY = 'var/demo';
+
 #[AsTask(
     description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first',
 )]
@@ -113,6 +144,8 @@ function demo(
         'OIDC_PROVIDER_URI' => $env['HEIDI_ISSUER'],
         'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
         'OIDC_CLIENT_SECRET' => $env['OIDC_DEMO_SECRET'],
+        // the rungs keep secrets of their own, which the walks above never swap (demo_ladder_values)
+        ...demo_ladder_values($env),
     ]);
     // The OP serves a certificate of Caddy's internal CA, which the PHP of the host does not know unless
     // the CA was installed on the machine: the demo runs with a php.ini of its own that trusts it, which
@@ -173,6 +206,41 @@ function demo(
         }
         demo_logout_others_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECOND_SECRET'], $ca);
     }
+}
+
+/**
+ * What the rungs of the ladder need of the OP, read where "castor provision" left it: the secret of the
+ * rung that shares one, and the private keys of the two that prove one, base64 of the JWK. A rung whose
+ * material is not there yet is left out rather than written empty, so that a demonstration configured
+ * before the provisioning says which rung is missing instead of failing to boot.
+ *
+ * @param array<string, string> $env apps/op/.env of the monorepo, .env.local merged over it
+ *
+ * @return array<string, string>
+ */
+function demo_ladder_values(array $env): array
+{
+    $values = [];
+    foreach (DEMO_LADDER_SECRETS as $name => $variable) {
+        if (($env[$name] ?? '') !== '') {
+            $values[$variable] = $env[$name];
+        }
+    }
+    foreach (DEMO_LADDER_KEYS as $clientId => $variables) {
+        $file = sprintf('%s/%s/%s.jwks.json', getcwd(), DEMO_LADDER_DIRECTORY, $clientId);
+        if (! is_file($file)) {
+            continue;
+        }
+        $set = json_decode((string) file_get_contents($file), true);
+        foreach (is_array($set) && is_array($set['keys'] ?? null) ? $set['keys'] : [] as $key) {
+            $use = is_array($key) ? (string) ($key['use'] ?? '') : '';
+            if (isset($variables[$use])) {
+                $values[$variables[$use]] = base64_encode((string) json_encode($key, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES));
+            }
+        }
+    }
+
+    return $values;
 }
 
 /**
