@@ -14,7 +14,7 @@ final readonly class OpenedKey
 {
     public static function observe(UnsealedKey $unsealed, string $purpose, KmsBackend $kms): Observation
     {
-        return new Observation('Key', [
+        return new Observation('Keys', 'Key', [
             'kid' => $unsealed->key->kid,
             'algorithm' => $unsealed->key->algorithm->name(),
             'use' => $unsealed->key->algorithm->keyUse()->value,

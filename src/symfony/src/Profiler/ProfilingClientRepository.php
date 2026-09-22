@@ -46,7 +46,7 @@ final readonly class ProfilingClientRepository implements ClientRepositoryInterf
 
     private static function observe(Client $client): Observation
     {
-        return new Observation('Client', [
+        return new Observation('Client', 'Client', [
             'client_id' => $client->clientId,
             'name' => $client->name,
             'authentication method' => $client->authenticationMethod->name(),

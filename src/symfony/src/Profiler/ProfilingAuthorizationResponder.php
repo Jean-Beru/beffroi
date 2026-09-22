@@ -50,7 +50,7 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
 
     public function failure(Request $request, RedirectTarget $target, OAuth2Exception $exception, ?Interaction $interaction = null): Response
     {
-        $this->profile->record(new Observation('Decision', [
+        $this->profile->record(new Observation('Decision', 'Decision', [
             'outcome' => $exception->redirectable ? 'refused, and the client is told' : 'refused, and the user is shown a page',
             'error' => $exception->error,
             'description' => $exception->errorDescription,
@@ -62,7 +62,7 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
 
     public function unresumable(Request $request, Interaction $interaction, InteractionExpiredException|InteractionCompletedException $exception): Response
     {
-        $this->profile->record(new Observation('Decision', [
+        $this->profile->record(new Observation('Decision', 'Decision', [
             'outcome' => 'the interaction cannot be resumed',
             'interaction' => $interaction->id,
         ]));
@@ -72,7 +72,7 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
 
     public function unknownInteraction(): Response
     {
-        $this->profile->record(new Observation('Decision', [
+        $this->profile->record(new Observation('Decision', 'Decision', [
             'outcome' => 'a page was reached without an interaction this browser began',
         ]));
 
@@ -84,7 +84,7 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
         if ($decision instanceof LoginRequired) {
             $stepUp = $decision->stepUp;
 
-            return new Observation('Decision', [
+            return new Observation('Decision', 'Decision', [
                 'outcome' => 'the user authenticates',
                 'why' => $decision->requirement->value,
                 'classes still short of' => $stepUp === null
@@ -97,14 +97,14 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
             ]);
         }
         if ($decision instanceof ConsentRequired) {
-            return new Observation('Decision', [
+            return new Observation('Decision', 'Decision', [
                 'outcome' => 'the user is asked to consent',
                 'why' => $decision->requirement->value,
                 'scopes asked for' => implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $decision->scopes)),
             ]);
         }
         if ($decision instanceof Granted) {
-            return new Observation('Decision', [
+            return new Observation('Decision', 'Decision', [
                 'outcome' => 'granted',
                 'response mode' => $decision->interaction->request->responseMode->value,
                 'parameters sent back' => implode(' ', array_keys($decision->response->parameters())),
@@ -113,7 +113,7 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
 
         $parts = explode('\\', $decision::class);
 
-        return new Observation('Decision', [
+        return new Observation('Decision', 'Decision', [
             'outcome' => implode('', array_slice($parts, -1)),
         ]);
     }

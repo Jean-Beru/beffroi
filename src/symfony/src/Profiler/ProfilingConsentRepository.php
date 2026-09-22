@@ -44,7 +44,7 @@ final readonly class ProfilingConsentRepository implements ConsentRepositoryInte
 
     private static function observe(Consent $consent, string $state): Observation
     {
-        return new Observation('Consent', [
+        return new Observation('Client', 'Consent', [
             'client_id' => $consent->clientId,
             'state' => $state,
             'scopes consented' => implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $consent->scopes)),

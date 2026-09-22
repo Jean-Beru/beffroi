@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Profiler;
 
 use function array_diff;
-use function array_key_exists;
 use function array_keys;
 use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Heidi\Bundle\Http\ReceivedAuthorizationRequest;
 use Heidi\Bundle\Http\RequestParameters;
 use Heidi\Core\Domain\Tenant\Tenant;
 use function implode;
-use function is_scalar;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -24,21 +22,17 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * "client_id" is the one parameter both sides carry (RFC 9101 §5), and it is said to be so.
  *
- * A value that is not a scalar is named and not printed: what a client puts under "claims" is a
- * structure. A parameter whose value is an assertion, a token, a proof or a secret is said to be there
- * and never written down, whether the endpoint reads it or not.
+ * The two sets are shown side by side, the query as the browser carried it and the request as the
+ * provider read it, because a request that was pushed or signed makes them differ and that difference
+ * is what a browser stops showing. A parameter whose value is an assertion, a token, a verifier or a
+ * secret is said to be there and never written down, whether the endpoint reads it or not.
  */
 final readonly class ProfilingAuthorizationRequestReader implements AuthorizationRequestReaderInterface
 {
-    /**
-     * Parameters a request carries whose value is an assertion, a token or a proof; the panel says they
-     * are there and never what they are.
-     */
-    private const array WITHHELD = ['request', 'id_token_hint', 'code_verifier', 'client_secret', 'client_assertion'];
-
     public function __construct(
         private AuthorizationRequestReaderInterface $reader,
         private OpProfile $profile,
+        private PanelValues $values,
     ) {
     }
 
@@ -46,9 +40,10 @@ final readonly class ProfilingAuthorizationRequestReader implements Authorizatio
     {
         $query = RequestParameters::ofBrowserRequest($request);
         $received = $this->reader->read($tenant, $request);
-        $this->profile->record(new Observation('Authorization request', [
+        $this->profile->record(new Observation('Request', 'Authorization request', [
             'how it came in' => self::howItCameIn($received),
-            'parameters read' => self::parameters($received->parameters),
+            'the query the browser carried' => $this->values->all($query),
+            'the request as the provider read it' => $this->values->all($received->parameters),
             'parameters of the query that were dropped' => self::dropped($query, $received),
         ]));
 
@@ -66,41 +61,6 @@ final readonly class ProfilingAuthorizationRequestReader implements Authorizatio
         return $received->carriedByObject
             ? 'carried by a request object, the query kept nothing but client_id (OIDC Core section 6.1)'
             : 'in the query of the browser';
-    }
-
-    /**
-     * @param array<string, mixed> $parameters
-     */
-    private static function parameters(array $parameters): string
-    {
-        $written = [];
-        foreach ($parameters as $name => $value) {
-            $written[] = $name . '=' . self::value($name, $value);
-        }
-
-        return $written === [] ? 'none' : implode("\n", $written);
-    }
-
-    private static function value(string $name, mixed $value): string
-    {
-        if (array_key_exists($name, self::withheld())) {
-            return '(present, withheld)';
-        }
-
-        return is_scalar($value) ? (string) $value : '(a structure, withheld)';
-    }
-
-    /**
-     * @return array<string, true>
-     */
-    private static function withheld(): array
-    {
-        $names = [];
-        foreach (self::WITHHELD as $name) {
-            $names[$name] = true;
-        }
-
-        return $names;
     }
 
     /**
