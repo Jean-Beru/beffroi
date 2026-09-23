@@ -1,0 +1,105 @@
+name: "Auto-switch default branch"
+
+# A maintenance branch is created, and the default branch follows it: what is
+# cloned, what a pull request targets and what the release commands resolve is
+# the newest version, never an older one.
+#
+# Changing the default branch needs the "administration" permission, which the
+# GITHUB_TOKEN of Actions cannot be granted. It runs on ORGANIZATION_ADMIN_TOKEN,
+# the token the release already uses for the same reason, and does nothing at
+# all when that secret is missing.
+#
+# The branch name is read as A.B, vA.B, A.B.x or vA.B.x. Every value taken from
+# the event goes through the environment, never through an expression expanded
+# into a shell script.
+
+on:
+  create:
+
+jobs:
+  switch:
+    name: "Switch the default branch"
+    runs-on: ubuntu-latest
+
+    # Tags create a reference too, and none of them is a maintenance branch.
+    if: "github.event.ref_type == 'branch'"
+
+    permissions:
+      contents: "read"
+
+    env:
+      GH_TOKEN: ${{ secrets.ORGANIZATION_ADMIN_TOKEN }}
+
+    steps:
+      - name: "Is the token there"
+        id: "token"
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "ORGANIZATION_ADMIN_TOKEN is not set, nothing to do." >> "${GITHUB_STEP_SUMMARY}"
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: "Read the version out of the branch name"
+        id: "version"
+        if: "steps.token.outputs.available == 'true'"
+        env:
+          CREATED_REF: ${{ github.event.ref }}
+        run: |
+          version="${CREATED_REF#v}"
+          version="${version%.x}"
+
+          if [[ ! "${version}" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+            echo "The branch \"${CREATED_REF}\" is not a version, nothing to do." >> "${GITHUB_STEP_SUMMARY}"
+            echo "valid=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          {
+            echo "valid=true"
+            echo "major=${BASH_REMATCH[1]}"
+            echo "minor=${BASH_REMATCH[2]}"
+            echo "branch=${CREATED_REF}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: "Decide whether to switch"
+        id: "decide"
+        if: "steps.version.outputs.valid == 'true'"
+        env:
+          NEW_MAJOR: ${{ steps.version.outputs.major }}
+          NEW_MINOR: ${{ steps.version.outputs.minor }}
+        run: |
+          current=$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq .defaultBranchRef.name)
+          echo "Current default branch: ${current}"
+
+          current_version="${current#v}"
+          current_version="${current_version%.x}"
+
+          # Before the first release the default branch is "main", which is no version at
+          # all. The first maintenance branch takes over from it; afterwards only a newer
+          # version does.
+          if [[ ! "${current_version}" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+            echo "switch=true" >> "${GITHUB_OUTPUT}"
+            echo "\"${current}\" is not a version, the new branch takes over." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          current_major="${BASH_REMATCH[1]}"
+          current_minor="${BASH_REMATCH[2]}"
+
+          if [ "${NEW_MAJOR}" -gt "${current_major}" ] || { [ "${NEW_MAJOR}" -eq "${current_major}" ] && [ "${NEW_MINOR}" -gt "${current_minor}" ]; }; then
+            echo "switch=true" >> "${GITHUB_OUTPUT}"
+            echo "${NEW_MAJOR}.${NEW_MINOR} is newer than ${current_major}.${current_minor}, switching." >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "switch=false" >> "${GITHUB_OUTPUT}"
+            echo "${NEW_MAJOR}.${NEW_MINOR} is not newer than ${current_major}.${current_minor}, nothing to do." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: "Switch the default branch"
+        if: "steps.decide.outputs.switch == 'true'"
+        env:
+          NEW_BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}" -f default_branch="${NEW_BRANCH}"
+          echo "Default branch is now ${NEW_BRANCH}." >> "${GITHUB_STEP_SUMMARY}"
