@@ -6,11 +6,11 @@ project_url: "https://github.com/heidi/framework"
 
 splits:
   - prefix: "src/core"
-    target: "https://${GH_TOKEN}@github.com/Spomky-Labs/heidi-core.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/heidi-core.git"
   - prefix: "src/oidc"
-    target: "https://${GH_TOKEN}@github.com/Spomky-Labs/heidi-oidc.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/heidi-oidc.git"
   - prefix: "src/symfony"
-    target: "https://${GH_TOKEN}@github.com/Spomky-Labs/heidi-symfony-bundle.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/heidi-symfony-bundle.git"
 
 origins:
   - ^\d+\.\d+\.x$

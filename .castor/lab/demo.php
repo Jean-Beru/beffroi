@@ -1138,7 +1138,7 @@ const DEMO_LADDER_RUNGS = [
         // (RFC 7523 §3, FAPI 2.0 §5.2.2). The walk asserts the refusal rather than quieting it, and the
         // day the decision of the issue lands, this line is deleted and the rung is green or red for
         // real.
-        'known' => 'https://github.com/Spomky-Labs/heidi/issues/204',
+        'known' => 'https://github.com/beffroi-php/heidi/issues/204',
     ],
     'fapi' => [
         'client' => 'demo-fapi',

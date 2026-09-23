@@ -25,7 +25,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 - **Before the pull request.** `castor prepare-pr`, then `castor phpunit`, `castor phpstan`, `castor deptrac`. Infection runs on the diff in CI; run `castor infect --diff` yourself when the change is a rule rather than plumbing.
 - **Opening it.** `gh pr create --head <branch>` always: another session can move the current branch of a shared checkout under you.
 - **Status.** A long-running issue keeps **one** status comment, edited in place. Never a new comment per update.
-- **The documentation pull request** goes to `Spomky-Labs/heidi-design`, branch `docs/<issue>-<slug>`: the journal row of the spike, and whatever page the change makes false (`docs/11-architecture.md` first). Its rules are that repository's `CLAUDE.md`; the one that bites most often is that a page states the present state and never how it got there.
+- **The documentation pull request** goes to `beffroi-php/heidi-design`, branch `docs/<issue>-<slug>`: the journal row of the spike, and whatever page the change makes false (`docs/11-architecture.md` first). Its rules are that repository's `CLAUDE.md`; the one that bites most often is that a page states the present state and never how it got there.
 - **What the spike cannot absorb** becomes an issue tied to the spike that makes it necessary, naming the pattern to reproduce. It is not built ahead, and it is not left unwritten.
 
 ## Closing a spike
