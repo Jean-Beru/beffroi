@@ -268,8 +268,8 @@ function infect(
     int $minCoveredMsi = 0,
     #[AsOption(description: 'Mutate only the lines added or modified since --base, committed or not')]
     bool $diff = false,
-    #[AsOption(description: 'The branch or commit the diff of --diff is taken from; Infection narrows it to the merge base with HEAD')]
-    string $base = 'origin/main',
+    #[AsOption(description: 'The branch or commit the diff of --diff is taken from; Infection narrows it to the merge base with HEAD. The default is the maintenance branch the clone points at, which a clone sets and "git remote set-head origin -a" restores')]
+    string $base = 'origin/HEAD',
     #[AsOption(description: 'Mutant processes run in parallel; "max" is the number of cores minus one')]
     string $threads = 'max',
     #[AsOption(

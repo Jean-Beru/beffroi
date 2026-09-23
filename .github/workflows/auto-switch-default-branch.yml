@@ -76,8 +76,8 @@ jobs:
           current_version="${current#v}"
           current_version="${current_version%.x}"
 
-          # Before the first release the default branch is "main", which is no version at
-          # all. The first maintenance branch takes over from it; afterwards only a newer
+          # A repository with no maintenance branch yet has a default branch that is no
+          # version at all. The first one takes over from it; afterwards only a newer
           # version does.
           if [[ ! "${current_version}" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
             echo "switch=true" >> "${GITHUB_OUTPUT}"

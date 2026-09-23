@@ -89,10 +89,10 @@ castor deptrac          # package graph and layers
 castor lint
 castor check-licenses
 castor prepare-pr       # mago-lint-fix, rector-fix, mago-format-fix, phpstan-baseline, deptrac, lint
-castor infect --diff    # mutation testing of the lines changed since origin/main; escaped mutants are listed in .ci-tools/infection.txt
+castor infect --diff    # mutation testing of the lines changed since origin/HEAD; escaped mutants are listed in .ci-tools/infection.txt
 ```
 
-CI runs the same tasks on PHP 8.5. Mutation testing (Infection) runs on every pull request and every push to `main` and release branches, on the lines the change adds or modifies; `castor infect` without `--diff` mutates the whole source and takes hours. The conformance plans run on pushes to `main` and release branches only (and by hand, `workflow_dispatch`), not on pull requests: they take the better part of an hour, and `castor conformance` runs them on the development stack before a merge that touches them.
+CI runs the same tasks on PHP 8.5. Mutation testing (Infection) runs on every pull request and every push to a maintenance branch, on the lines the change adds or modifies; `castor infect` without `--diff` mutates the whole source and takes hours. The conformance plans run on pushes to a maintenance branch only (and by hand, `workflow_dispatch`), not on pull requests: they take the better part of an hour, and `castor conformance` runs them on the development stack before a merge that touches them.
 
 ## Conventions in one screen
 
