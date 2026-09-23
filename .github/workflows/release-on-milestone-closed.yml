@@ -16,6 +16,13 @@ name: "Automatic Releases"
 # The checkout must be unshallow for the same reason: "switch-default-branch-
 # to-next-minor" resolves the newest release branch locally, and the default
 # shallow clone only contains the ref that triggered the workflow.
+#
+# The repository keeps the read-only default for GITHUB_TOKEN; the release job
+# asks for the three writes it uses and no other workflow gets them. "release"
+# and "switch-default-branch-to-next-minor" do not run on GITHUB_TOKEN at all,
+# they need ORGANIZATION_ADMIN_TOKEN. What no permission can grant is the
+# opening of the merge-up pull request: "Allow GitHub Actions to create and
+# approve pull requests" is a repository setting.
 
 on:
   milestone:
@@ -26,6 +33,8 @@ jobs:
   version:
     name: "Is the milestone a version"
     runs-on: ubuntu-latest
+
+    permissions: {}
 
     outputs:
       release: ${{ steps.title.outputs.release }}
@@ -50,6 +59,11 @@ jobs:
 
     needs: "version"
     if: "needs.version.outputs.release == 'true'"
+
+    permissions:
+      contents: "write"
+      pull-requests: "write"
+      issues: "write"
 
     steps:
       - name: "Checkout"
