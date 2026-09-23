@@ -1,8 +1,9 @@
 # Split configuration for jderusse/gitsplit. Each directory below is mirrored, read only, into
 # its own package repository. A mirror carries the maintained branches and the release tags
 # listed under origins, and nothing else; the monorepo is where the work happens.
-cache_url: "/cache/gitsplit"
-project_url: "https://github.com/beffroi-php/heidi"
+#
+# The tag pattern is the one laminas/automatic-releases writes when a version milestone is
+# closed: the milestone title itself, without a "v".
 
 splits:
   - prefix: "src/core"
@@ -14,4 +15,4 @@ splits:
 
 origins:
   - ^\d+\.\d+\.x$
-  - ^v\d+\.\d+\.\d+$
+  - ^\d+\.\d+\.\d+$

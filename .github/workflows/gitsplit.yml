@@ -1,0 +1,37 @@
+name: gitsplit
+
+# gitsplit walks every branch and tag matching the "origins" patterns of
+# .gitsplit.yml, so the checkout must be unshallow: fetch-depth: 0.
+#
+# It also reads a single .gitsplit.yml, the one in the working copy, and
+# applies it to all of those references. Checking out the ref that triggered
+# the run keeps that config in step with the branch being pushed, instead of
+# whatever the default branch happens to declare at that moment.
+#
+# The container is not given the repository credentials: it pushes with
+# GITSPLIT_TOKEN, which must reach the three target repositories.
+
+on:
+  push:
+    tags:
+      - '*'
+    branches:
+      - '*.*.x'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  gitsplit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Split repositories"
+        run: docker run --rm -t -e GH_TOKEN -v /cache/gitsplit:/cache/gitsplit -v ${{ github.workspace }}:/srv jderusse/gitsplit gitsplit
+        env:
+          GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
