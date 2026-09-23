@@ -3,7 +3,7 @@
 Requirements: PHP 8.4 or later (8.5 is what CI runs), Composer 2, Docker with Compose, [Castor](https://castor.jolicode.com/).
 
 ```bash
-git clone git@github.com:Spomky-Labs/heidi.git
+git clone git@github.com:beffroi-php/heidi.git
 cd heidi
 composer install                   # the monorepo: packages and tests
 (cd apps/op && composer install)   # the application; heidi/* are path repositories to ../../src

@@ -13,7 +13,7 @@ An identity provider for the Symfony ecosystem. OAuth 2.0 and OpenID Connect fir
 
 ## Status
 
-Spike 1 (2026-09-14 to 2026-09-27): a conformant OpenID Provider, proven by the Basic OP profile of the OpenID conformance suite, with a Symfony application logging in through the core `oidc_login` authenticator without a patch. Work is tracked in the [issues](https://github.com/Spomky-Labs/heidi/issues) and the [milestones](https://github.com/Spomky-Labs/heidi/milestones).
+Spike 1 (2026-09-14 to 2026-09-27): a conformant OpenID Provider, proven by the Basic OP profile of the OpenID conformance suite, with a Symfony application logging in through the core `oidc_login` authenticator without a patch. Work is tracked in the [issues](https://github.com/beffroi-php/heidi/issues) and the [milestones](https://github.com/beffroi-php/heidi/milestones).
 
 ## Packages
 

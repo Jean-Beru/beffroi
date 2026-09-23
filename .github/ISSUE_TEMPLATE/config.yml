@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/Spomky-Labs/heidi/security/advisories/new
+    url: https://github.com/beffroi-php/heidi/security/advisories/new
     about: Report privately. Never open a public issue for a vulnerability.
