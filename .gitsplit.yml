@@ -1,8 +1,8 @@
-# Split configuration for jderusse/gitsplit. The read-only package repositories are created
-# at the go / no-go of 2026-10-01; until then this file documents which directory becomes
-# which package.
+# Split configuration for jderusse/gitsplit. Each directory below is mirrored, read only, into
+# its own package repository. A mirror carries the maintained branches and the release tags
+# listed under origins, and nothing else; the monorepo is where the work happens.
 cache_url: "/cache/gitsplit"
-project_url: "https://github.com/heidi/framework"
+project_url: "https://github.com/beffroi-php/heidi"
 
 splits:
   - prefix: "src/core"
