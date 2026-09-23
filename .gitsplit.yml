@@ -4,6 +4,12 @@
 #
 # The tag pattern is the one laminas/automatic-releases writes when a version milestone is
 # closed: the milestone title itself, without a "v".
+#
+# There is no cache_url, and there must not be one while the monorepo is private. With a cache
+# url, gitsplit keeps a persistent cache repository and updates it from origin before every
+# run; the container holds no credential for origin and the run dies on "could not read
+# Username for https://github.com". Without one it builds a temporary repository from the
+# objects of the working copy, and the fetch of origin is a warning it walks past.
 
 splits:
   - prefix: "src/core"

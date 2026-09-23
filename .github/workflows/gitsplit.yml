@@ -9,7 +9,9 @@ name: gitsplit
 # whatever the default branch happens to declare at that moment.
 #
 # The container is not given the repository credentials: it pushes with
-# GITSPLIT_TOKEN, which must reach the three target repositories.
+# GITSPLIT_TOKEN, which must reach the three target repositories. It never
+# reads origin either, which is why .gitsplit.yml declares no cache url; the
+# cache volume below is mounted and left unused, as in jwt-framework.
 
 on:
   push:
