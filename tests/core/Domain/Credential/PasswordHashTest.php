@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Domain\Credential;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
@@ -19,13 +20,13 @@ final class PasswordHashTest extends TestCase
     public function itAlwaysNamesItsAlgorithmAndMayCarryParameters(): void
     {
         // When
-        $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'base64digest', [
+        $hash = new PasswordHash(new Pbkdf2Sha256(), 'base64digest', [
             'salt' => 'base64salt',
             'iterations' => 27500,
         ]);
 
         // Then
-        static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $hash->algorithm);
+        static::assertSame(Pbkdf2Sha256::NAME, $hash->algorithm->name());
         static::assertSame(27500, $hash->parameters['iterations']);
     }
 
@@ -36,6 +37,6 @@ final class PasswordHashTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new PasswordHash(PasswordAlgorithm::Argon2id, '');
+        new PasswordHash(new Argon2id(), '');
     }
 }

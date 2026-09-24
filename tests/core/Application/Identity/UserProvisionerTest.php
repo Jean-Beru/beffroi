@@ -9,7 +9,7 @@ use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
@@ -242,7 +242,7 @@ final class UserProvisionerTest extends TestCase
         // Then
         static::assertSame($credential, $this->credentials->findByUser($user, PasswordCredential::class)[0]);
         static::assertSame($user, $credential->user);
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $credential->hash->algorithm->name());
         static::assertTrue($this->hasher->verify($credential->hash, 'correct horse battery staple'));
         static::assertEquals($this->clock->now(), $credential->createdAt);
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);

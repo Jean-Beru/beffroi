@@ -7,7 +7,7 @@ namespace Heidi\Oidc\Tests\Bridge\Configuration;
 use function array_column;
 use function array_map;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -291,7 +291,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
 
         // Then
         static::assertInstanceOf(HashedClientSecret::class, $demo->secret);
-        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secret->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $demo->secret->hash->algorithm->name());
         static::assertTrue($hasher->verify($demo->secret->hash, Clients::SECRET));
         static::assertFalse($hasher->verify($demo->secret->hash, 'not ' . Clients::SECRET));
     }

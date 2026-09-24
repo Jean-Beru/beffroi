@@ -6,7 +6,7 @@ namespace Heidi\Core\Tests\Fixture;
 
 use function hash;
 use function hash_equals;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Port\PasswordHasherInterface;
 use SensitiveParameter;
@@ -31,7 +31,7 @@ final class FakePasswordHasher implements PasswordHasherInterface
     {
         ++$this->hashed;
 
-        return new PasswordHash(PasswordAlgorithm::Argon2id, 'fake:' . hash('sha256', $plainPassword));
+        return new PasswordHash(new Argon2id(), 'fake:' . hash('sha256', $plainPassword));
     }
 
     public function verify(PasswordHash $hash, #[SensitiveParameter] string $plainPassword): bool

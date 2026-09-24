@@ -12,7 +12,7 @@ use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -125,7 +125,7 @@ final class BundleBootTest extends DatabaseTestCase
 
         // Then
         static::assertInstanceOf(HashedClientSecret::class, $demo->secret);
-        static::assertSame(PasswordAlgorithm::Argon2id, $demo->secret->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $demo->secret->hash->algorithm->name());
         static::assertTrue($hasher->verify($demo->secret->hash, 'demo-secret-of-at-least-32-characters-long'));
     }
 
@@ -192,8 +192,8 @@ final class BundleBootTest extends DatabaseTestCase
         $encoded = $hasher->hash('correct horse battery staple');
 
         // Then
-        $hash = CorePasswordHasher::decode($encoded) ?? static::fail('The hash is one of the core.');
-        static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
+        $hash = self::service('test.heidi.core_password_hasher', CorePasswordHasher::class)->decode($encoded) ?? static::fail('The hash is one of the core.');
+        static::assertSame(Argon2id::NAME, $hash->algorithm->name());
         static::assertTrue($core->verify($hash, 'correct horse battery staple'));
         static::assertTrue($hasher->verify($encoded, 'correct horse battery staple'));
     }

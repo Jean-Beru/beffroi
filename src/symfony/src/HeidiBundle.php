@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle;
 
+use function is_a;
 use function array_column;
 use DateInterval;
 use function dirname;
@@ -15,6 +16,9 @@ use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Heidi\Bundle\Doctrine\Type\BackupCodesType;
 use Heidi\Bundle\Doctrine\Type\BytesType;
+use Heidi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
+use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
+use Heidi\Core\Port\PasswordAlgorithmsInterface;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Doctrine\Type\ConfirmationType;
@@ -642,6 +646,7 @@ final class HeidiBundle extends AbstractBundle
         ConfirmationType::NAME => ConfirmationType::class,
         KeyConfirmationType::NAME => KeyConfirmationType::class,
         BytesType::NAME => BytesType::class,
+        PasswordAlgorithmType::NAME => PasswordAlgorithmType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
         BackupCodesType::NAME => BackupCodesType::class,
@@ -652,6 +657,29 @@ final class HeidiBundle extends AbstractBundle
      * registered in the framework's, so nothing but a pass can tell a name that answers from one that
      * does not.
      */
+    /**
+     * The types that read a password algorithm back are told what the deployment is wired with, as soon
+     * as the container can answer. It goes to the class and not to an instance: Doctrine builds its types
+     * itself, when a connection is first made, so no instance of one exists while the bundles boot.
+     * A deployment has one wiring, and a kernel booted after another hands over the same one.
+     */
+    public function boot(): void
+    {
+        $container = $this->container;
+        if ($container === null || ! $container->has('heidi.password_algorithms')) {
+            return;
+        }
+        $algorithms = $container->get('heidi.password_algorithms');
+        if (! $algorithms instanceof PasswordAlgorithmsInterface) {
+            return;
+        }
+        foreach (self::DBAL_TYPES as $class) {
+            if (is_a($class, NeedsPasswordAlgorithmsInterface::class, true)) {
+                $class::resolveWith($algorithms);
+            }
+        }
+    }
+
     public function build(ContainerBuilder $container): void
     {
         parent::build($container);

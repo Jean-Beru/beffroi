@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Command;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
@@ -33,7 +33,7 @@ final class CredentialsTest extends ConsoleTestCase
     {
         // Given
         $user = self::user('alice');
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         $passkey = self::passkey($user);
         $passkey->markUsed(self::now()->modify('+1 hour'));
         $passkey->revoke(self::now()->modify('+2 hours'));
@@ -155,7 +155,7 @@ final class CredentialsTest extends ConsoleTestCase
     {
         // Given
         $user = self::user('alice');
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         self::credentials()->save($password);
 
         // When

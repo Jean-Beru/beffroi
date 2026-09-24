@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Domain\Credential;
 
 use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -116,6 +116,6 @@ final class BackupCodeTest extends TestCase
 
     private static function hash(): PasswordHash
     {
-        return new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$code');
+        return new PasswordHash(new Argon2id(), '$argon2id$code');
     }
 }

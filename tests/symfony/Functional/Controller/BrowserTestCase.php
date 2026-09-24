@@ -13,7 +13,9 @@ use function hash;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\User;
@@ -121,15 +123,15 @@ abstract class BrowserTestCase extends DatabaseTestCase
      * A user who can sign in on the form: the password hashed by the hasher of the core, or by bcrypt
      * when the test wants a hash the policy of the core will want to replace.
      */
-    protected static function userWithPassword(string $username, string $password, PasswordAlgorithm $algorithm = PasswordAlgorithm::Argon2id): User
+    protected static function userWithPassword(string $username, string $password, PasswordAlgorithmInterface $algorithm = new Argon2id()): User
     {
         $user = self::user($username, $username . '-subject');
-        $hash = match ($algorithm) {
-            PasswordAlgorithm::Argon2id => self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->hash($password),
-            PasswordAlgorithm::Bcrypt => new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash($password, PASSWORD_BCRYPT, [
+        $hash = match ($algorithm->name()) {
+            Argon2id::NAME => self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->hash($password),
+            Bcrypt::NAME => new PasswordHash(new Bcrypt(), password_hash($password, PASSWORD_BCRYPT, [
                 'cost' => 4,
             ])),
-            default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->value)),
+            default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->name())),
         };
         self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
 

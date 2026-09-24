@@ -117,8 +117,14 @@ use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
 use Heidi\Core\Bridge\Null\NullGeoLocator;
 use Heidi\Core\Bridge\Null\NullUserAgentParser;
 use Heidi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
+use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
 use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
 use Heidi\Core\Bridge\Webauthn\StoredMetadata;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
@@ -141,6 +147,7 @@ use Heidi\Core\Port\MetadataBlobStoreInterface;
 use Heidi\Core\Port\PasskeyAuthenticatorInterface;
 use Heidi\Core\Port\PasskeyRegistrarInterface;
 use Heidi\Core\Port\PasswordAttemptLimiterInterface;
+use Heidi\Core\Port\PasswordAlgorithmsInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\PublicKeySetProviderInterface;
 use Heidi\Core\Port\SecretSealerInterface;
@@ -459,8 +466,21 @@ return static function (ContainerConfigurator $container): void {
     ]);
 
     // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
+    // The algorithms a hash may have been made with, in the order they are wired: the first one is what a
+    // new hash is made with, the others are what an import may bring. A new one is a class and a line here.
+    $services->set(Argon2id::class)->tag('heidi.password_algorithm');
+    $services->set(Argon2i::class)->tag('heidi.password_algorithm');
+    $services->set(Bcrypt::class)->tag('heidi.password_algorithm');
+    $services->set(Pbkdf2Sha256::class)->tag('heidi.password_algorithm');
+    $services->set(Pbkdf2Sha512::class)->tag('heidi.password_algorithm');
+    $services->set(WiredPasswordAlgorithms::class)->args([tagged_iterator('heidi.password_algorithm')]);
+    $services->alias(PasswordAlgorithmsInterface::class, WiredPasswordAlgorithms::class);
+    // Public on purpose: the DBAL types that read a hash back cannot be injected into, and the bundle
+    // hands them the wiring when it boots (HeidiBundle::boot()).
+    $services->alias('heidi.password_algorithms', PasswordAlgorithmsInterface::class)->public();
+
     $services->set(NativePasswordHasher::class)->tag('heidi.password_hasher');
-    $services->set(PasswordHasherRegistry::class)->args([tagged_iterator('heidi.password_hasher')]);
+    $services->set(PasswordHasherRegistry::class)->args([tagged_iterator('heidi.password_hasher'), service(PasswordAlgorithmsInterface::class)]);
     $services->alias(PasswordHasherInterface::class, PasswordHasherRegistry::class);
     // the hash a refused password is verified against when none of the user could be, computed once per process
     $services->set(DecoyHash::class);

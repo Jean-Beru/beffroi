@@ -6,7 +6,7 @@ namespace Heidi\Bundle\Tests\Unit\Security;
 
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\SecurityUser;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -31,7 +31,7 @@ final class SecurityUserTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $hash = new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
+        $hash = new PasswordHash(new Argon2id(), '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
         $credential = new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now());
 
         // When
@@ -170,7 +170,7 @@ final class SecurityUserTest extends TestCase
         // Given
         $user = Fixtures::user();
         $adapter = new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, self::hash(), Fixtures::now()));
-        $changed = new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$b3RoZXI');
+        $changed = new PasswordHash(new Argon2id(), '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$b3RoZXI');
 
         // When / Then
         static::assertFalse($adapter->isEqualTo(new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $changed, Fixtures::now()))));
@@ -202,7 +202,7 @@ final class SecurityUserTest extends TestCase
 
     private static function hash(): PasswordHash
     {
-        return new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
+        return new PasswordHash(new Argon2id(), '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
     }
 
     private static function adapterOfAlice(): SecurityUser

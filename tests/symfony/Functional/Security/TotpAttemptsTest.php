@@ -10,7 +10,7 @@ use Heidi\Core\Application\Authentication\AuthenticationFailedException;
 use Heidi\Core\Application\Totp\TotpAuthentication;
 use Heidi\Core\Application\Totp\TotpEnrolment;
 use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\TotpCredential;
 use Heidi\Core\Domain\Credential\TotpSecret;
 use Heidi\Core\Domain\Event\AuthenticationFailureReason;
@@ -83,7 +83,7 @@ final class TotpAttemptsTest extends DatabaseTestCase
             self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $totp->sealedSecret),
         );
         static::assertSame(intdiv($aStepAgo->getTimestamp(), TotpCredential::PERIOD), $totp->lastAcceptedStep);
-        static::assertSame(PasswordAlgorithm::Argon2id, $totp->backupCodes[0]->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $totp->backupCodes[0]->hash->algorithm->name());
         static::assertTrue(
             self::service('test.heidi.password_hasher', PasswordHasherInterface::class)
                 ->verify($totp->backupCodes[0]->hash, BackupCode::normalize($provisioning->backupCodes[0])),

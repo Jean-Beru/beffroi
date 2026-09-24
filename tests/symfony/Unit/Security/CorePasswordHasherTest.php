@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit\Security;
 
+use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
+use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use const PASSWORD_BCRYPT;
 use function password_hash;
@@ -24,24 +29,24 @@ final class CorePasswordHasherTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->hasher = new CorePasswordHasher(new PasswordHasherRegistry([new NativePasswordHasher()]));
+        $this->hasher = self::hasher();
     }
 
     #[Test]
     public function aHashOfTheCoreGoesThroughTheStringOfTheComponentWithoutLoss(): void
     {
         // Given
-        $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'ZGlnZXN0', [
+        $hash = new PasswordHash(new Pbkdf2Sha256(), 'ZGlnZXN0', [
             'salt' => 'c2FsdA',
             'iterations' => 27500,
         ]);
 
         // When
-        $decoded = CorePasswordHasher::decode(CorePasswordHasher::encode($hash));
+        $decoded = self::hasher()->decode(CorePasswordHasher::encode($hash));
 
         // Then
         static::assertNotNull($decoded);
-        static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $decoded->algorithm);
+        static::assertSame(Pbkdf2Sha256::NAME, $decoded->algorithm->name());
         static::assertSame('ZGlnZXN0', $decoded->encoded);
         static::assertSame(
             [
@@ -59,9 +64,9 @@ final class CorePasswordHasherTest extends TestCase
         $encoded = $this->hasher->hash('correct horse battery staple');
 
         // Then
-        $hash = CorePasswordHasher::decode($encoded);
+        $hash = self::hasher()->decode($encoded);
         static::assertNotNull($hash);
-        static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
+        static::assertSame(Argon2id::NAME, $hash->algorithm->name());
         static::assertFalse($this->hasher->needsRehash($encoded));
     }
 
@@ -83,7 +88,7 @@ final class CorePasswordHasherTest extends TestCase
     public function aHashOfAnotherAlgorithmIsVerifiedAndNeedsARehash(): void
     {
         // Given
-        $encoded = CorePasswordHasher::encode(new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('correct horse battery staple', PASSWORD_BCRYPT, [
+        $encoded = CorePasswordHasher::encode(new PasswordHash(new Bcrypt(), password_hash('correct horse battery staple', PASSWORD_BCRYPT, [
             'cost' => 4,
         ])));
 
@@ -102,7 +107,7 @@ final class CorePasswordHasherTest extends TestCase
     public function aStringThatIsNotAHashOfTheCoreVerifiesNothing(string $encoded): void
     {
         // When / Then
-        static::assertNull(CorePasswordHasher::decode($encoded));
+        static::assertNull(self::hasher()->decode($encoded));
         static::assertFalse($this->hasher->verify($encoded, 'correct horse battery staple'));
         static::assertFalse($this->hasher->needsRehash($encoded));
     }
@@ -131,12 +136,28 @@ final class CorePasswordHasherTest extends TestCase
     public function aHashNoHasherHandlesIsAWrongPassword(): void
     {
         // Given
-        $encoded = CorePasswordHasher::encode(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha512, 'ZGlnZXN0', [
+        $encoded = CorePasswordHasher::encode(new PasswordHash(new Pbkdf2Sha512(), 'ZGlnZXN0', [
             'salt' => 'c2FsdA',
         ]));
 
         // When / Then
         static::assertFalse($this->hasher->verify($encoded, 'correct horse battery staple'));
         static::assertFalse($this->hasher->needsRehash($encoded));
+    }
+
+    /**
+     * The wiring of the suite: what the provider accounts for, argon2id first.
+     */
+    private static function hasher(): CorePasswordHasher
+    {
+        return new CorePasswordHasher(
+            new PasswordHasherRegistry([new NativePasswordHasher()], self::algorithms()),
+            self::algorithms(),
+        );
+    }
+
+    private static function algorithms(): WiredPasswordAlgorithms
+    {
+        return new WiredPasswordAlgorithms([new Argon2id(), new Argon2i(), new Bcrypt(), new Pbkdf2Sha256(), new Pbkdf2Sha512()]);
     }
 }

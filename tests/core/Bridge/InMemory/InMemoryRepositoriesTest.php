@@ -7,7 +7,7 @@ namespace Heidi\Core\Tests\Bridge\InMemory;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\Subject;
@@ -97,14 +97,14 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryCredentialRepository();
-        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now());
         $repository->save($password);
         $repository->save(Fixtures::passkey($this->alice));
         $repository->save(
             new PasswordCredential(
                 Uuid::v7(),
                 Fixtures::user(username: 'bob', subject: 'bob-subject'),
-                new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'),
+                new PasswordHash(new Argon2id(), '$argon2id$y'),
                 Fixtures::now(),
             ),
         );
@@ -119,14 +119,14 @@ final class InMemoryRepositoriesTest extends TestCase
         // Given
         $repository = new InMemoryCredentialRepository();
         $passkey = Fixtures::passkey($this->alice, createdAt: Fixtures::now()->modify('-1 day'));
-        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now());
         $repository->save($password);
         $repository->save($passkey);
         $repository->save(
             new PasswordCredential(
                 Uuid::v7(),
                 Fixtures::user(username: 'bob', subject: 'bob-subject'),
-                new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'),
+                new PasswordHash(new Argon2id(), '$argon2id$y'),
                 Fixtures::now(),
             ),
         );
@@ -166,7 +166,7 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryCredentialRepository();
-        $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now()));
+        $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now()));
 
         // When / Then
         static::assertNull($repository->findByExternalId($this->tenant, PasswordCredential::class, '$argon2id$x'));

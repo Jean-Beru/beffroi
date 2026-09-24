@@ -17,7 +17,8 @@ use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Event\AuthenticationFailed;
@@ -334,7 +335,7 @@ final class PasswordAuthenticatorTest extends TestCase
             new PasswordCredential(
                 Uuid::v7(),
                 $carol,
-                new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)),
+                new PasswordHash(new Bcrypt(), password_hash('carol pass', PASSWORD_BCRYPT)),
                 Fixtures::now(),
             ),
         );
@@ -344,7 +345,7 @@ final class PasswordAuthenticatorTest extends TestCase
 
         // Then
         $credential = $this->credentials->findByUser($carol, PasswordCredential::class)[0];
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential?->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $credential?->hash->algorithm->name());
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);
         static::assertTrue(new NativePasswordHasher()->verify($credential->hash, 'carol pass'));
     }
@@ -359,7 +360,7 @@ final class PasswordAuthenticatorTest extends TestCase
             new PasswordCredential(
                 Uuid::v7(),
                 $carol,
-                new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)),
+                new PasswordHash(new Bcrypt(), password_hash('carol pass', PASSWORD_BCRYPT)),
                 Fixtures::now(),
             ),
         );

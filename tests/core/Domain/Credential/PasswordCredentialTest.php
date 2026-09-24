@@ -6,7 +6,8 @@ namespace Heidi\Core\Tests\Domain\Credential;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -24,7 +25,7 @@ final class PasswordCredentialTest extends TestCase
         $user = Fixtures::user();
 
         // When
-        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Bcrypt(), '$2y$old'), Fixtures::now());
 
         // Then
         static::assertSame($user->tenant, $credential->tenant);
@@ -36,7 +37,7 @@ final class PasswordCredentialTest extends TestCase
     public function itNamesItsKindAndHasNoLabel(): void
     {
         // Given
-        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(new Bcrypt(), '$2y$old'), Fixtures::now());
 
         // When / Then
         static::assertSame('password', $credential->kind());
@@ -50,7 +51,7 @@ final class PasswordCredentialTest extends TestCase
     public function anAuthenticationWithItMayProveAPassword(): void
     {
         // Given
-        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(new Bcrypt(), '$2y$old'), Fixtures::now());
 
         // When / Then
         static::assertSame(['pwd'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $credential->provableMethods()));
@@ -60,7 +61,7 @@ final class PasswordCredentialTest extends TestCase
     public function itRecordsWhenItWasUsed(): void
     {
         // Given
-        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(new Bcrypt(), '$2y$old'), Fixtures::now());
         $used = new DateTimeImmutable('2026-09-16T08:00:00+00:00');
 
         // When
@@ -74,16 +75,16 @@ final class PasswordCredentialTest extends TestCase
     public function aRehashReplacesTheHashAndDatesItWithoutTouchingTheLastUse(): void
     {
         // Given
-        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), Fixtures::now());
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(new Bcrypt(), '$2y$old'), Fixtures::now());
         $used = new DateTimeImmutable('2026-09-16T08:00:00+00:00');
         $credential->markUsed($used);
         $rehashed = new DateTimeImmutable('2026-09-16T08:00:01+00:00');
 
         // When
-        $credential->rehash(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$new'), $rehashed);
+        $credential->rehash(new PasswordHash(new Argon2id(), '$argon2id$new'), $rehashed);
 
         // Then
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $credential->hash->algorithm->name());
         static::assertSame($rehashed, $credential->hashChangedAt);
         static::assertSame($used, $credential->lastUsedAt);
     }
@@ -92,13 +93,13 @@ final class PasswordCredentialTest extends TestCase
     public function aPasswordChangeReplacesTheHashAndDatesItWithoutTouchingTheLastUse(): void
     {
         // Given
-        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$old'), Fixtures::now());
+        $credential = new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(new Argon2id(), '$argon2id$old'), Fixtures::now());
         $used = new DateTimeImmutable('2026-09-16T08:00:00+00:00');
         $credential->markUsed($used);
         $changed = new DateTimeImmutable('2026-09-17T08:00:00+00:00');
 
         // When
-        $credential->changePassword(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$new'), $changed);
+        $credential->changePassword(new PasswordHash(new Argon2id(), '$argon2id$new'), $changed);
 
         // Then
         static::assertSame('$argon2id$new', $credential->hash->encoded);

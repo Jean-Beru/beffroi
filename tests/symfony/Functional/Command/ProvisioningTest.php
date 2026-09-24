@@ -6,7 +6,7 @@ namespace Heidi\Bundle\Tests\Functional\Command;
 
 use function explode;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Event\TenantKeyRotated;
 use Heidi\Core\Domain\Event\TenantKeyStaged;
@@ -752,7 +752,7 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
             ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $credential->hash->algorithm->name());
         static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD));
         static::assertFalse(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD . "\n"));
     }
