@@ -13,6 +13,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -199,7 +200,10 @@ final class InteractionLocaleTest extends TestCase
     {
         $now = new DateTimeImmutable('2026-09-15T10:00:00+00:00');
         $tenant = new Tenant(Uuid::v7(), 'default', new Issuer('https://op.test'), 'OP', $now);
-        $client = new Client($tenant, 'native-app', 'Native', Methods::none(), null, [new RedirectUri('http://127.0.0.1/callback')]);
+        $client = new Client(
+            $tenant,
+            new ClientRegistration('native-app', 'Native', Methods::none(), false, [new RedirectUri('http://127.0.0.1/callback')]),
+        );
         $request = new AuthorizationRequest(
             $client,
             new RedirectUri('http://127.0.0.1/callback'),

@@ -14,6 +14,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
@@ -75,9 +76,9 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertSame(AuthorizationCode::hash($code), $found->codeHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
-        static::assertSame('oidc-demo', $found->client->clientId);
+        static::assertSame('oidc-demo', $found->client->registration->clientId);
         static::assertTrue($found->session->id->equals($session->id));
-        static::assertSame((string) $client->redirectUris[0], (string) $found->redirectUri);
+        static::assertSame((string) $client->registration->redirectUris[0], (string) $found->redirectUri);
         static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes->all);
         static::assertSame('n-0S6_WzA2Mj', $found->nonce);
         static::assertSame(self::CHALLENGE, $found->codeChallenge?->value);
@@ -126,7 +127,10 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     public function aCodeOfAnUnregisteredClientIsNotFound(): void
     {
         // Given
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+        );
         $code = AuthorizationCode::generate();
         self::codes()->save(self::code($code, $ghost, self::session(self::user()), null));
         self::reload();
@@ -151,7 +155,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         self::reload();
 
         // When
-        $clients = array_map(static fn (Client $client): string => $client->clientId, self::loggedInClients()->ofSession($session->id));
+        $clients = array_map(static fn (Client $client): string => $client->registration->clientId, self::loggedInClients()->ofSession($session->id));
 
         // Then
         sort($clients);
@@ -183,7 +187,10 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+        );
         self::used($session, $ghost, 'of-the-ghost');
         self::reload();
 
@@ -213,7 +220,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             Uuid::v7(),
             $client,
             $session,
-            $client->redirectUris[0],
+            $client->registration->redirectUris[0],
             new Scopes([new Scope('openid'), new Scope('email')]),
             'n-0S6_WzA2Mj',
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),

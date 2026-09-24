@@ -12,6 +12,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\ResponseFormat;
 use Heidi\Oidc\Tests\Fixture\ClientEncryption;
@@ -117,12 +118,14 @@ final class ResponseDocumentIssuerTest extends TestCase
         $es256Key = $this->jwts->activate(Algorithms::es256());
         $client = new Client(
             $this->tenant,
-            'spa',
-            'Single page application',
-            Methods::none(),
-            null,
-            [new RedirectUri('https://spa.example/callback')],
-            authorizationResponse: ResponseFormat::signed(Algorithms::es256()),
+            new ClientRegistration(
+                'spa',
+                'Single page application',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://spa.example/callback')],
+                authorizationResponse: ResponseFormat::signed(Algorithms::es256()),
+            ),
         );
 
         // When

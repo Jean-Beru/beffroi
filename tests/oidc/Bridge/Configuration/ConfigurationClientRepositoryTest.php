@@ -105,10 +105,10 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'key-client');
 
         // Then
-        static::assertSame('private_key_jwt', $client->authenticationMethod->name());
-        static::assertInstanceOf(ClientJwks::class, $client->jwks);
-        static::assertSame(['one'], array_column($client->jwks->keys, 'kid'));
-        static::assertNull($client->jwksUri);
+        static::assertSame('private_key_jwt', $client->registration->authenticationMethod->name());
+        static::assertInstanceOf(ClientJwks::class, $client->registration->jwks);
+        static::assertSame(['one'], array_column($client->registration->jwks->keys, 'kid'));
+        static::assertNull($client->registration->jwksUri);
     }
 
     /**
@@ -130,8 +130,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'key-client');
 
         // Then
-        static::assertSame('https://key.example/jwks', $client->jwksUri?->value);
-        static::assertNull($client->jwks);
+        static::assertSame('https://key.example/jwks', $client->registration->jwksUri?->value);
+        static::assertNull($client->registration->jwks);
     }
 
     /**
@@ -155,7 +155,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'mtls-client');
 
         // Then
-        static::assertSame($name, $client->certificateIdentity?->name());
+        static::assertSame($name, $client->registration->certificateIdentity?->name());
     }
 
     /**
@@ -178,8 +178,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'mtls-client');
 
         // Then
-        static::assertInstanceOf(SubjectDistinguishedName::class, $client->certificateIdentity);
-        static::assertSame('c=FR,o=Heidi Test,cn=heidi mtls client', $client->certificateIdentity->distinguishedName);
+        static::assertInstanceOf(SubjectDistinguishedName::class, $client->registration->certificateIdentity);
+        static::assertSame('c=FR,o=Heidi Test,cn=heidi mtls client', $client->registration->certificateIdentity->distinguishedName);
     }
 
     /**
@@ -242,7 +242,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'demo');
 
         // Then
-        static::assertSame('client_secret_basic', $client->authenticationMethod->name());
+        static::assertSame('client_secret_basic', $client->registration->authenticationMethod->name());
     }
 
     /**
@@ -261,16 +261,16 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $demo = self::find($repository, $this->tenant, 'oidc-demo');
 
         // Then
-        static::assertSame('oidc-demo', $demo->clientId);
-        static::assertSame('oidc-demo', $demo->name);
+        static::assertSame('oidc-demo', $demo->registration->clientId);
+        static::assertSame('oidc-demo', $demo->registration->name);
         static::assertTrue($demo->belongsTo($this->tenant));
-        static::assertSame('client_secret_basic', $demo->authenticationMethod->name());
-        static::assertFalse($demo->requiresConsent);
-        static::assertTrue($demo->requiresPkce);
-        static::assertTrue($demo->hasRedirectUri('https://demo.localhost/login/check'));
-        static::assertTrue($demo->hasPostLogoutRedirectUri('https://demo.localhost/'));
-        static::assertSame([GrantType::AuthorizationCode, GrantType::RefreshToken], $demo->grantTypes);
-        static::assertSame(['openid', 'profile', 'email'], $demo->allowedScopes->values());
+        static::assertSame('client_secret_basic', $demo->registration->authenticationMethod->name());
+        static::assertFalse($demo->registration->requiresConsent);
+        static::assertTrue($demo->registration->requiresPkce);
+        static::assertTrue($demo->registration->hasRedirectUri('https://demo.localhost/login/check'));
+        static::assertTrue($demo->registration->hasPostLogoutRedirectUri('https://demo.localhost/'));
+        static::assertSame([GrantType::AuthorizationCode, GrantType::RefreshToken], $demo->registration->grantTypes);
+        static::assertSame(['openid', 'profile', 'email'], $demo->registration->allowedScopes->values());
     }
 
     /**
@@ -310,13 +310,13 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $suite = self::find($repository, $this->tenant, 'suite-second');
 
         // Then
-        static::assertSame('Conformance suite, second client', $suite->name);
-        static::assertSame('client_secret_post', $suite->authenticationMethod->name());
-        static::assertTrue($suite->requiresConsent);
-        static::assertTrue($suite->hasRedirectUri('https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'));
-        static::assertFalse($suite->hasPostLogoutRedirectUri('https://localhost:8443/'));
-        static::assertSame([GrantType::AuthorizationCode], $suite->grantTypes);
-        static::assertSame(['openid', 'email'], $suite->allowedScopes->values());
+        static::assertSame('Conformance suite, second client', $suite->registration->name);
+        static::assertSame('client_secret_post', $suite->registration->authenticationMethod->name());
+        static::assertTrue($suite->registration->requiresConsent);
+        static::assertTrue($suite->registration->hasRedirectUri('https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'));
+        static::assertFalse($suite->registration->hasPostLogoutRedirectUri('https://localhost:8443/'));
+        static::assertSame([GrantType::AuthorizationCode], $suite->registration->grantTypes);
+        static::assertSame(['openid', 'email'], $suite->registration->allowedScopes->values());
     }
 
     #[Test]
@@ -449,7 +449,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'spa');
 
         // Then
-        static::assertTrue($client->isPublic());
+        static::assertTrue($client->registration->isPublic());
         static::assertNull($client->secret);
     }
 
@@ -471,7 +471,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'legacy');
 
         // Then
-        static::assertFalse($client->requiresPkce);
+        static::assertFalse($client->registration->requiresPkce);
     }
 
     /**
@@ -494,8 +494,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $fapi = self::find($repository, $this->tenant, 'fapi');
 
         // Then
-        static::assertTrue($fapi->requiresPushedAuthorizationRequests);
-        static::assertFalse(self::find($repository, $this->tenant, 'demo')->requiresPushedAuthorizationRequests);
+        static::assertTrue($fapi->registration->requiresPushedAuthorizationRequests);
+        static::assertFalse(self::find($repository, $this->tenant, 'demo')->registration->requiresPushedAuthorizationRequests);
     }
 
     /**
@@ -579,8 +579,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'demo');
 
         // Then
-        static::assertSame('https://demo.localhost/backchannel-logout', (string) $client->backChannelLogoutUri);
-        static::assertTrue($client->backChannelLogoutSessionRequired);
+        static::assertSame('https://demo.localhost/backchannel-logout', (string) $client->registration->backChannelLogoutUri);
+        static::assertTrue($client->registration->backChannelLogoutSessionRequired);
     }
 
     /**
@@ -598,8 +598,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'demo');
 
         // Then
-        static::assertNull($client->backChannelLogoutUri);
-        static::assertFalse($client->backChannelLogoutSessionRequired);
+        static::assertNull($client->registration->backChannelLogoutUri);
+        static::assertFalse($client->registration->backChannelLogoutSessionRequired);
     }
 
     /**
@@ -622,8 +622,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'demo');
 
         // Then
-        static::assertSame('https://demo.localhost/frontchannel-logout', (string) $client->frontChannelLogoutUri);
-        static::assertTrue($client->frontChannelLogoutSessionRequired);
+        static::assertSame('https://demo.localhost/frontchannel-logout', (string) $client->registration->frontChannelLogoutUri);
+        static::assertTrue($client->registration->frontChannelLogoutSessionRequired);
     }
 
     /**
@@ -641,8 +641,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'demo');
 
         // Then
-        static::assertNull($client->frontChannelLogoutUri);
-        static::assertFalse($client->frontChannelLogoutSessionRequired);
+        static::assertNull($client->registration->frontChannelLogoutUri);
+        static::assertFalse($client->registration->frontChannelLogoutSessionRequired);
     }
 
     /**
@@ -697,12 +697,12 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'key-client');
 
         // Then
-        static::assertSame('ES256', $client->idToken->signature?->name());
-        static::assertSame('ECDH-ES+A256KW', $client->idToken->encryption?->algorithm->name());
-        static::assertSame('A256GCM', $client->idToken->encryption?->method->name());
-        static::assertTrue($client->userInfo->isSigned);
-        static::assertFalse($client->userInfo->isEncrypted());
-        static::assertTrue($client->authorizationResponse->isEncrypted());
+        static::assertSame('ES256', $client->registration->idToken->signature?->name());
+        static::assertSame('ECDH-ES+A256KW', $client->registration->idToken->encryption?->algorithm->name());
+        static::assertSame('A256GCM', $client->registration->idToken->encryption?->method->name());
+        static::assertTrue($client->registration->userInfo->isSigned);
+        static::assertFalse($client->registration->userInfo->isEncrypted());
+        static::assertTrue($client->registration->authorizationResponse->isEncrypted());
     }
 
     /**
@@ -721,10 +721,10 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'oidc-demo');
 
         // Then
-        static::assertSame('RS256', $client->idToken->signature?->name());
-        static::assertFalse($client->idToken->isEncrypted());
-        static::assertTrue($client->userInfo->isPlain());
-        static::assertFalse($client->authorizationResponse->isEncrypted());
+        static::assertSame('RS256', $client->registration->idToken->signature?->name());
+        static::assertFalse($client->registration->idToken->isEncrypted());
+        static::assertTrue($client->registration->userInfo->isPlain());
+        static::assertFalse($client->registration->authorizationResponse->isEncrypted());
     }
 
     /**
@@ -1312,9 +1312,9 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $client = self::find($repository, $this->tenant, 'jar');
 
         // Then
-        static::assertTrue($client->requestObjectSigning->accepts('ES256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
-        static::assertFalse($client->requestObjectSigning->accepts('PS256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
-        static::assertSame('https://key.example/request.jwt', $client->registeredRequestUri('https://key.example/request.jwt')?->value);
+        static::assertTrue($client->registration->requestObjectSigning->accepts('ES256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
+        static::assertFalse($client->registration->requestObjectSigning->accepts('PS256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
+        static::assertSame('https://key.example/request.jwt', $client->registration->registeredRequestUri('https://key.example/request.jwt')?->value);
     }
 
     /**

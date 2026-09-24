@@ -9,6 +9,7 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
@@ -51,7 +52,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertTrue($code->grantId->equals($found->grantId));
         static::assertSame('oidc-demo', $found->clientId);
-        static::assertSame('oidc-demo', $found->client->clientId);
+        static::assertSame('oidc-demo', $found->client->registration->clientId);
         static::assertTrue($found->session->id->equals($session->id));
         static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes->all);
         static::assertEquals($claims, $found->claimsRequest);
@@ -155,7 +156,10 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+        );
         $grant = Uuid::v7();
         $orphan = self::tokens()
             ->issue(

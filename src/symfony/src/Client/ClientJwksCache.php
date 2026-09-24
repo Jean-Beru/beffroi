@@ -68,6 +68,6 @@ final readonly class ClientJwksCache implements ClientJwksCacheInterface
      */
     private static function key(Client $client): string
     {
-        return 'heidi.client_keys.' . hash('xxh128', sprintf('%s|%s', $client->tenant->id->toRfc4122(), $client->clientId));
+        return 'heidi.client_keys.' . hash('xxh128', sprintf('%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId));
     }
 }

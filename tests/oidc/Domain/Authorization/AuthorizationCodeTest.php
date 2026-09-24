@@ -92,7 +92,7 @@ final class AuthorizationCodeTest extends TestCase
         // Then
         static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', $code->codeHash);
         static::assertSame($this->client, $code->client);
-        static::assertSame($this->client->clientId, $code->clientId);
+        static::assertSame($this->client->registration->clientId, $code->clientId);
         static::assertSame($this->client->tenant, $code->tenant);
         static::assertSame($this->session, $code->session);
         static::assertSame('https://spa.example/callback', (string) $code->redirectUri);
@@ -132,7 +132,7 @@ final class AuthorizationCodeTest extends TestCase
             Uuid::v7(),
             $client,
             $this->session,
-            $client->redirectUris[0],
+            $client->registration->redirectUris[0],
             new Scopes([new Scope('openid')]),
             null,
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
@@ -315,7 +315,7 @@ final class AuthorizationCodeTest extends TestCase
             Uuid::v7(),
             $this->client,
             $this->session,
-            $this->client->redirectUris[0],
+            $this->client->registration->redirectUris[0],
             new Scopes($scopes),
             'n-0S6_WzA2Mj',
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),

@@ -45,6 +45,6 @@ final readonly class ClientAssertionReplayGuard implements ClientAssertionReplay
      */
     private static function key(Client $client, string $jti): string
     {
-        return 'heidi.client_assertions.' . hash('xxh128', sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->clientId, $jti));
+        return 'heidi.client_assertions.' . hash('xxh128', sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId, $jti));
     }
 }

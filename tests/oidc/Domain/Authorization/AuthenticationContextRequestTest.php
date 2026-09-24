@@ -298,7 +298,7 @@ final class AuthenticationContextRequestTest extends TestCase
     {
         return new AuthorizationRequest(
             $this->client,
-            $this->client->redirectUris[0],
+            $this->client->registration->redirectUris[0],
             new Scopes([Scope::openid()]),
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
             acrValues: $acrValues,

@@ -190,8 +190,8 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::contentEncryption(),
         );
         static::assertEquals($fromModule, $fromTree);
-        static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
-        static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, $fromTree->allowedScopes->values());
+        static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->registration->grantTypes));
+        static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, $fromTree->registration->allowedScopes->values());
     }
 
     /**

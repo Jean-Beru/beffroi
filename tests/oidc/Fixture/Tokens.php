@@ -55,7 +55,7 @@ final class Tokens
             $grantId ?? Uuid::v7(),
             $client,
             $session,
-            $client->redirectUris[0],
+            $client->registration->redirectUris[0],
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $nonce,
             $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,

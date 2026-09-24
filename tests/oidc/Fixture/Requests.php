@@ -39,7 +39,7 @@ final class Requests
     ): AuthorizationRequest {
         return new AuthorizationRequest(
             $client,
-            $client->redirectUris[0],
+            $client->registration->redirectUris[0],
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
             $state,

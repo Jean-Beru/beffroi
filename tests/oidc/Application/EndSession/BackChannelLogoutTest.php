@@ -174,7 +174,7 @@ final class BackChannelLogoutTest extends TestCase
      */
     private function signedIn(Client $client, string $code = 'code-of-the-client'): void
     {
-        $grant = Tokens::code($code . '-' . $client->clientId, $client, $this->session, Fixtures::now());
+        $grant = Tokens::code($code . '-' . $client->registration->clientId, $client, $this->session, Fixtures::now());
         $grant->consume(Fixtures::now());
         $this->grants->save($grant);
     }

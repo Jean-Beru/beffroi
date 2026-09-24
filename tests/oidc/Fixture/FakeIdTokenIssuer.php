@@ -25,6 +25,12 @@ final class FakeIdTokenIssuer implements IdTokenIssuerInterface
     {
         $this->issued[] = [$authorization, $accessToken];
 
-        return sprintf('id:%s:%s:%s:%d', $authorization->client->clientId, $authorization->user->subject, $authorization->nonce ?? '-', $now->getTimestamp());
+        return sprintf(
+            'id:%s:%s:%s:%d',
+            $authorization->client->registration->clientId,
+            $authorization->user->subject,
+            $authorization->nonce ?? '-',
+            $now->getTimestamp(),
+        );
     }
 }

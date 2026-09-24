@@ -56,7 +56,7 @@ final class ClientKeySetProviderTest extends TestCase
         $keys = $this->provider($fetcher)->keysOf($client, ClientAssertions::KEY_ID);
 
         // Then
-        static::assertSame($client->jwks, $keys);
+        static::assertSame($client->registration->jwks, $keys);
         static::assertSame([], $fetcher->fetched);
     }
 
