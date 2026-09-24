@@ -17,6 +17,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
+use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\Token\TokenRequest;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
@@ -25,7 +26,6 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Event\AuthorizationCodeReplayed;
@@ -37,6 +37,7 @@ use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -91,7 +92,7 @@ final class AuthorizationCodeGrantTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://mobile.example/callback')],
-                grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                grantTypes: [Grants::authorizationCode(), Grants::refreshToken()],
                 allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
             ),
         );
@@ -110,7 +111,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     public function itHandlesTheAuthorizationCodeGrantType(): void
     {
         // When / Then
-        static::assertSame(GrantType::AuthorizationCode, $this->grant->grantType());
+        static::assertTrue($this->grant->grantType()->equals(Grants::authorizationCode()));
     }
 
     /**
@@ -146,7 +147,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         static::assertSame($this->client, $issued->authorization->client);
         static::assertSame($this->session, $issued->authorization->session);
-        static::assertSame(GrantType::AuthorizationCode, $issued->authorization->grantType);
+        static::assertTrue($issued->authorization->grantType->equals(Grants::authorizationCode()));
         static::assertSame($code->scopes, $issued->authorization->scopes);
         static::assertSame('n-0S6_WzA2Mj', $issued->authorization->nonce);
     }
@@ -923,8 +924,11 @@ final class AuthorizationCodeGrantTest extends TestCase
         static::assertEquals($this->clock->now()->modify('+7 days'), $refreshToken->token->expiresAt, 'capped by the family');
     }
 
-    private function grant(?DateInterval $familyLifetime = null, bool $refreshTokenWithoutOfflineAccess = true): AuthorizationCodeGrant
-    {
+    private function grant(
+        ?DateInterval $familyLifetime = null,
+        bool $refreshTokenWithoutOfflineAccess = true,
+        ?ServedGrants $served = null,
+    ): AuthorizationCodeGrant {
         $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events);
 
         return new AuthorizationCodeGrant(
@@ -934,6 +938,7 @@ final class AuthorizationCodeGrantTest extends TestCase
             $issuer,
             $this->clock,
             $this->events,
+            $served ?? Grants::served(),
             $familyLifetime ?? new DateInterval('P90D'),
             $refreshTokenWithoutOfflineAccess,
         );

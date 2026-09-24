@@ -13,6 +13,7 @@ use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -78,7 +79,7 @@ final class AccessTokenIssuerTest extends TestCase
     public function aClientWithoutAFormatGetsAJwt(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             Clients::public($this->session->tenant),
             $this->session,
@@ -128,6 +129,6 @@ final class AccessTokenIssuerTest extends TestCase
     {
         $client = Clients::confidential($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET), accessTokenFormat: $format);
 
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now()));
+        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, Fixtures::now()));
     }
 }

@@ -211,7 +211,6 @@ use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDpop;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTlsEndpoints;
 use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
-use Heidi\Oidc\Application\Discovery\ServedGrantTypes;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Dpop\DpopProofValidator;
 use Heidi\Oidc\Application\Dpop\DpopProofVerifier;
@@ -241,6 +240,7 @@ use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
+use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
@@ -270,6 +270,7 @@ use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\ServedAccessTokenFormatsInterface;
+use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
@@ -712,11 +713,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ResponseDocumentJwsKind::class)->tag('heidi.key_bound_artifact');
     $services->set(TokenIssuer::class);
     $services->set(RefreshTokenRevocation::class);
+    // one class per grant, tagged, and what is tagged is what the token endpoint serves, what a client
+    // may register and what the discovery document announces, never an enumeration kept beside them
+    // (issue #173). A grant names itself and declares what it makes of a refresh token by the interfaces
+    // it implements; the list is read when a question is asked of it, because a grant reads it too.
     $services->set(AuthorizationCodeGrant::class)->tag('heidi.oidc.grant');
     $services->set(RefreshTokenGrant::class)->tag('heidi.oidc.grant');
-    $services->set(TokenHandler::class)->args([
-        '$grants' => tagged_iterator('heidi.oidc.grant'),
-    ]);
+    $services->set(ServedGrants::class)->args([tagged_iterator('heidi.oidc.grant')]);
+    $services->alias(ServedGrantsInterface::class, ServedGrants::class);
+    $services->set(TokenHandler::class);
     $services->set(CertificateConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
     $services->set(KeyConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
     $services->set(Confirmations::class)->args([tagged_iterator('heidi.oidc.confirmation_kind')]);
@@ -737,7 +742,6 @@ return static function (ContainerConfigurator $container): void {
     // its own members, in the order the document publishes them, and a capability that arrives is a class
     // here and nothing edited elsewhere (architecture §4.8).
     $services->set(AnnouncedAlgorithms::class);
-    $services->set(ServedGrantTypes::class)->args([tagged_iterator('heidi.oidc.grant')]);
     $services->set(ProviderIdentity::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedScopes::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedResponses::class)->tag('heidi.oidc.metadata');

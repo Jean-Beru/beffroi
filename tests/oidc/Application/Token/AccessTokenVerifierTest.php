@@ -23,6 +23,7 @@ use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use const JSON_THROW_ON_ERROR;
@@ -91,7 +92,7 @@ final class AccessTokenVerifierTest extends TestCase
             claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'),
         );
         $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode($code),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         );
         $clients = new InMemoryClientRepository();

@@ -14,6 +14,7 @@ use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -45,7 +46,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     public function itMintsAnOpaqueValueForTenMinutesAndKeepsItsRecord(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -77,6 +78,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
         // Given
         $certificate = Certificates::client();
         $authorization = GrantedAuthorization::fromAuthorizationCode(
+            Grants::authorizationCode(),
             Tokens::code('the-code', $this->client, $this->session, Fixtures::now()),
             CertificateConfirmation::ofCertificate($certificate),
         );
@@ -94,7 +96,12 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     {
         // Given
         $issuer = new OpaqueAccessTokenIssuer($this->tokens, new DateInterval('PT1H'));
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
 
         // When
         $token = $issuer->issue($authorization, Fixtures::now());

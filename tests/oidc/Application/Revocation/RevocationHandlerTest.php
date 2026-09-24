@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Revocation;
 
+use Heidi\Oidc\Tests\Fixture\Grants;
 use function base64_encode;
 use DateTimeImmutable;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
@@ -347,7 +348,12 @@ final class RevocationHandlerTest extends TestCase
             ->method('find')
             ->willReturn(StoredAccessToken::fromAuthorization(
                 str_repeat('a', 64),
-                GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, $this->clock->now())),
+                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                    'the-code',
+                    $this->client,
+                    $this->session,
+                    $this->clock->now(),
+                )),
                 $this->clock->now(),
                 $this->clock->now()->modify('+10 minutes'),
             ));
@@ -424,7 +430,7 @@ final class RevocationHandlerTest extends TestCase
     private function accessToken(Client $client): string
     {
         return $this->accessTokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, $this->clock->now())),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $this->clock->now())),
             $this->clock->now(),
             $this->clock->now()->modify('+10 minutes'),
         );
@@ -433,7 +439,7 @@ final class RevocationHandlerTest extends TestCase
     private function jwt(Client $client, DateTimeImmutable $issuedAt): string
     {
         return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, $issuedAt)),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $issuedAt)),
             $issuedAt,
         )->value;
     }

@@ -13,10 +13,10 @@ use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
+use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
@@ -29,6 +29,9 @@ final class Clients
 {
     public const string SECRET = 'a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3e7f2a6b0c4d8e1f5a9b3c7d0e4f8a2b6';
 
+    /**
+     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow and its renewal unless the test says otherwise
+     */
     public static function confidential(
         Tenant $tenant,
         PasswordHash $secretHash,
@@ -36,6 +39,7 @@ final class Clients
         string $clientId = 'oidc-demo',
         bool $requiresPkce = true,
         AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt,
+        ?array $grantTypes = null,
     ): Client {
         return new Client(
             $tenant,
@@ -46,7 +50,7 @@ final class Clients
                 true,
                 [new RedirectUri('https://demo.localhost/login/check')],
                 [new RedirectUri('https://demo.localhost/')],
-                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                $grantTypes ?? [Grants::authorizationCode(), Grants::refreshToken()],
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
                 requiresPkce: $requiresPkce,
                 accessTokenFormat: $accessTokenFormat,
@@ -70,7 +74,7 @@ final class Clients
                 true,
                 [new RedirectUri('https://fapi.localhost/login/check')],
                 [],
-                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                [Grants::authorizationCode(), Grants::refreshToken()],
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
                 requiresPushedAuthorizationRequests: true,
             ),
@@ -132,7 +136,7 @@ final class Clients
                 true,
                 [new RedirectUri('https://encrypted.example/callback')],
                 [],
-                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                [Grants::authorizationCode(), Grants::refreshToken()],
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
                 jwks: ClientEncryption::publishedKeys(),
                 idToken: $idToken,
@@ -165,7 +169,7 @@ final class Clients
                 true,
                 [new RedirectUri('https://jar.example/callback')],
                 [],
-                [GrantType::AuthorizationCode],
+                [Grants::authorizationCode()],
                 new Scopes([new Scope('openid'), new Scope('profile')]),
                 jwks: ClientAssertions::publishedKeys(),
                 requestObjectSigning: $signing ?? new AnyRegisteredAlgorithm(),
@@ -213,7 +217,7 @@ final class Clients
                 false,
                 [new RedirectUri('https://mtls.example/callback')],
                 [],
-                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                [Grants::authorizationCode(), Grants::refreshToken()],
                 null,
                 accessTokenFormat: $accessTokenFormat,
                 certificateIdentity: $identity ?? new SubjectDistinguishedName(Certificates::SUBJECT_DN),
@@ -235,7 +239,7 @@ final class Clients
                 false,
                 [new RedirectUri('https://self-signed.example/callback')],
                 [],
-                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                [Grants::authorizationCode(), Grants::refreshToken()],
                 null,
                 jwks: $jwks ?? Certificates::publishedIn(Certificates::selfSigned()),
             ),

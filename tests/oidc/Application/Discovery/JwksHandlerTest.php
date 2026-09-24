@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Discovery;
 
+use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_column;
 use function array_map;
 use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
@@ -143,7 +144,7 @@ final class JwksHandlerTest extends TestCase
     {
         // Given
         $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'the-code',
                 Clients::public($this->jwts->tenant),
                 Fixtures::session(Fixtures::user($this->jwts->tenant)),

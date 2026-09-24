@@ -15,6 +15,7 @@ use Heidi\Oidc\Domain\Token\IssuedRefreshToken;
 use Heidi\Oidc\Domain\Token\IssuedTokens;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -33,7 +34,7 @@ final class IssuedTokensTest extends TestCase
     {
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
-        $this->authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+        $this->authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -137,6 +138,7 @@ final class IssuedTokensTest extends TestCase
     {
         // Given
         $narrowed = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
             new Scopes([new Scope('profile')]),
         );

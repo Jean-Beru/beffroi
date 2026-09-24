@@ -41,6 +41,7 @@ use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use function http_build_query;
@@ -597,8 +598,13 @@ final class EndSessionHandlerTest extends TestCase
         $accessToken = new AccessToken('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $refreshToken = $this->refreshToken('current', $this->session);
         $authorization = $refreshed
-            ? GrantedAuthorization::fromRefreshToken($refreshToken, null)
-            : GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+            ? GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $refreshToken, null)
+            : GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'the-code',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+            ));
         $idToken = $issuer->issue($authorization, $accessToken, Fixtures::now());
         $this->clock->sleep($secondsLater);
         $clients = new InMemoryClientRepository();

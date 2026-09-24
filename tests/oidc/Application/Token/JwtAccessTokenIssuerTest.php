@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_keys;
 use DateInterval;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -54,7 +55,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
     public function itMintsACompactJwsForTenMinutes(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
 
         // When
         $token = $this->issuer->issue($authorization, Fixtures::now());
@@ -73,7 +79,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
     public function theHeaderNamesTheTypeAndTheActiveKey(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
         $token = $this->issuer->issue($authorization, Fixtures::now());
 
         // When
@@ -100,7 +111,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
-        $authorization = GrantedAuthorization::fromAuthorizationCode($code);
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
         $token = $this->issuer->issue($authorization, Fixtures::now());
 
         // When
@@ -130,7 +141,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
     public function twoTokensNeverShareAJti(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
 
         // When
         $first = $this->issuer->issue($authorization, Fixtures::now());
@@ -162,7 +178,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
             Fixtures::context(),
             Fixtures::now()->modify('+12 hours'),
         );
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $session,
+            Fixtures::now(),
+        ));
         $token = $this->issuer->issue($authorization, Fixtures::now());
 
         // When
@@ -181,6 +202,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
             new Scopes([new Scope('profile')]),
         );
@@ -200,7 +222,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
     public function theLifetimeIsConfigurable(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
         $issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M'));
 
         // When
@@ -218,7 +245,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
     public function aTokenIsRefusedOncePastItsLifetime(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
         $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M'))->issue(
             $authorization,
             Fixtures::now(),
@@ -238,7 +270,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
     public function theAudienceIsTheClient(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
         $token = $this->issuer->issue($authorization, Fixtures::now());
 
         // Then
@@ -259,7 +296,13 @@ final class JwtAccessTokenIssuerTest extends TestCase
         // Given
         $asked = ClaimsRequest::fromJson('{"userinfo":{"email":{"essential":true},"name":null},"id_token":{"picture":null}}');
         $token = $this->issuer->issue(
-            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $asked)),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'the-code',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+                claims: $asked,
+            )),
             Fixtures::now(),
         );
 
@@ -286,6 +329,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         // Given
         $certificate = Certificates::client();
         $authorization = GrantedAuthorization::fromAuthorizationCode(
+            Grants::authorizationCode(),
             Tokens::code('the-code', $this->client, $this->session, Fixtures::now()),
             CertificateConfirmation::ofCertificate($certificate),
         );
@@ -310,7 +354,12 @@ final class JwtAccessTokenIssuerTest extends TestCase
     public function aTokenOfAClientThatProvedNoKeyCarriesNoConfirmation(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
 
         // When
         $claims = $this->jwts->verify($this->issuer->issue($authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];
@@ -328,7 +377,13 @@ final class JwtAccessTokenIssuerTest extends TestCase
         // Given
         $idTokenOnly = ClaimsRequest::fromJson('{"id_token":{"picture":null}}');
         $token = $this->issuer->issue(
-            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $idTokenOnly)),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'the-code',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+                claims: $idTokenOnly,
+            )),
             Fixtures::now(),
         );
 

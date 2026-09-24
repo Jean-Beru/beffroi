@@ -22,6 +22,7 @@ use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -174,6 +175,7 @@ final class RefreshTokenTest extends TestCase
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
             new Scopes([new Scope('openid')]),
         );
@@ -198,6 +200,7 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
             new Scopes([new Scope('openid')]),
         );
@@ -228,6 +231,7 @@ final class RefreshTokenTest extends TestCase
         // Given
         $key = new KeyConfirmation(self::THUMBPRINT);
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family),
             null,
             $key,
@@ -256,6 +260,7 @@ final class RefreshTokenTest extends TestCase
         // Given
         $client = Clients::confidential($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $client, $this->session, Fixtures::now(), $this->family),
             null,
             new KeyConfirmation(self::THUMBPRINT),
@@ -313,6 +318,7 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
             new Scopes([new Scope('openid')]),
         );
