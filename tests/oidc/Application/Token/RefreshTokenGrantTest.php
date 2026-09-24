@@ -19,7 +19,6 @@ use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\Token\TokenRequest;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Event\RefreshTokenReuseDetected;
 use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokensIssued;
@@ -36,6 +35,7 @@ use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -93,7 +93,7 @@ final class RefreshTokenGrantTest extends TestCase
     public function itHandlesTheRefreshTokenGrantType(): void
     {
         // When / Then
-        static::assertSame(GrantType::RefreshToken, $this->grant->grantType());
+        static::assertTrue($this->grant->grantType()->equals(Grants::refreshToken()));
     }
 
     /**
@@ -171,7 +171,7 @@ final class RefreshTokenGrantTest extends TestCase
         $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
-        static::assertSame(GrantType::RefreshToken, $issued->authorization->grantType);
+        static::assertTrue($issued->authorization->grantType->equals(Grants::refreshToken()));
         static::assertSame($token->scopes, $issued->authorization->scopes);
         static::assertNull($issued->authorization->nonce);
         static::assertEquals($token->authentication->authenticatedAt, $issued->authorization->authentication->authenticatedAt);

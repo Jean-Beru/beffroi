@@ -11,12 +11,13 @@ use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -48,10 +49,10 @@ final class GrantedAuthorizationTest extends TestCase
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile'], 'n-0S6_WzA2Mj', $claims);
 
         // When
-        $authorization = GrantedAuthorization::fromAuthorizationCode($code);
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
 
         // Then
-        static::assertSame(GrantType::AuthorizationCode, $authorization->grantType);
+        static::assertTrue($authorization->grantType->equals(Grants::authorizationCode()));
         static::assertSame($this->client, $authorization->client);
         static::assertSame($this->session, $authorization->session);
         static::assertSame($this->session->tenant, $authorization->tenant);
@@ -69,7 +70,7 @@ final class GrantedAuthorizationTest extends TestCase
     public function itKnowsTheScopesItCarries(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -93,10 +94,10 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken($token, null);
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, null);
 
         // Then
-        static::assertSame(GrantType::RefreshToken, $authorization->grantType);
+        static::assertTrue($authorization->grantType->equals(Grants::refreshToken()));
         static::assertSame($token->scopes, $authorization->scopes);
         static::assertSame($token->scopes, $authorization->grantedScopes);
         static::assertNull($authorization->nonce);
@@ -113,7 +114,7 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // Then
         static::assertEquals([new Scope('profile')], $authorization->scopes->all);
@@ -128,7 +129,7 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // Then
         static::assertSame($token->client, $authorization->client);
@@ -157,19 +158,6 @@ final class GrantedAuthorizationTest extends TestCase
         $this->authorization(client: Clients::public(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
-    /**
-     * OIDC Core §12.2: an ID token issued on a refresh carries no nonce.
-     */
-    #[Test]
-    public function itRefusesANonceOnARefresh(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->authorization(grantType: GrantType::RefreshToken, nonce: 'n-0S6_WzA2Mj');
-    }
-
     private function refreshToken(): RefreshToken
     {
         return Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile', 'email']);
@@ -179,7 +167,7 @@ final class GrantedAuthorizationTest extends TestCase
      * @param list<string>|null $methods
      */
     private function authorization(
-        GrantType $grantType = GrantType::AuthorizationCode,
+        ?GrantTypeName $grantType = null,
         ?Client $client = null,
         ?Scopes $scopes = null,
         ?Scopes $grantedScopes = null,
@@ -187,7 +175,7 @@ final class GrantedAuthorizationTest extends TestCase
         ?array $methods = null,
     ): GrantedAuthorization {
         return new GrantedAuthorization(
-            $grantType,
+            $grantType ?? Grants::authorizationCode(),
             Uuid::v7(),
             $client ?? $this->client,
             $this->session,

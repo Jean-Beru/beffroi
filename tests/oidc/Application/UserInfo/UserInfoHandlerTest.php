@@ -45,6 +45,7 @@ use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\ClientEncryption;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Proofs;
 use Heidi\Oidc\Tests\Fixture\Tokens;
@@ -439,7 +440,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $code = $this->code(['openid', 'email']);
-        $token = $this->accessTokens->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now())->value;
+        $token = $this->accessTokens->issue(GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
         $code->revoke(Fixtures::now());
 
         // Then
@@ -480,7 +481,13 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $token = $this->accessTokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(Tokens::code('never-stored', $this->client, $this->session, Fixtures::now(), ['openid'])),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'never-stored',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+                ['openid'],
+            )),
             Fixtures::now(),
         )->value;
 
@@ -763,7 +770,11 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function keyBoundToken(string $shape): string
     {
-        $authorization = GrantedAuthorization::fromAuthorizationCode($this->code(['openid', 'email']), Proofs::thumbprintOf(Proofs::key()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(
+            Grants::authorizationCode(),
+            $this->code(['openid', 'email']),
+            Proofs::thumbprintOf(Proofs::key()),
+        );
         if ($shape === 'jwt') {
             return $this->accessTokens->issue($authorization, Fixtures::now())->value;
         }
@@ -784,7 +795,11 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function boundToken(string $shape, ClientCertificate $certificate): string
     {
-        $authorization = GrantedAuthorization::fromAuthorizationCode($this->code(['openid', 'email']), CertificateConfirmation::ofCertificate($certificate));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(
+            Grants::authorizationCode(),
+            $this->code(['openid', 'email']),
+            CertificateConfirmation::ofCertificate($certificate),
+        );
         if ($shape === 'jwt') {
             return $this->accessTokens->issue($authorization, Fixtures::now())->value;
         }
@@ -805,7 +820,7 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function authorization(array $scopes, ?string $claims = null): GrantedAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode($this->code($scopes, $claims));
+        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $this->code($scopes, $claims));
     }
 
     /**
@@ -839,6 +854,7 @@ final class UserInfoHandlerTest extends TestCase
         $family = Tokens::family(Fixtures::now(), grantId: $this->code($granted)->grantId);
 
         return GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $family, $granted),
             $scopes,
         );

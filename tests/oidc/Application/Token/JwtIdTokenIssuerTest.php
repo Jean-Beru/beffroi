@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_keys;
 use function base64_encode;
 use DateInterval;
@@ -195,7 +196,11 @@ final class JwtIdTokenIssuerTest extends TestCase
             Fixtures::context(),
             Fixtures::now()->modify('+12 hours'),
         );
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $session, Fixtures::now()), null);
+        $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
+            Tokens::refreshToken('previous', $this->client, $session, Fixtures::now()),
+            null,
+        );
         $later = Fixtures::now()->modify('+20 days');
         $idToken = $this->issuer->issue($authorization, $this->accessToken, $later);
 
@@ -285,7 +290,13 @@ final class JwtIdTokenIssuerTest extends TestCase
 
         // When
         $issuer->issue(
-            GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), claims: $claims)),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'the-code',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+                claims: $claims,
+            )),
             $this->accessToken,
             Fixtures::now(),
         );
@@ -333,7 +344,7 @@ final class JwtIdTokenIssuerTest extends TestCase
             }
         };
         $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -421,6 +432,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
             new Scopes([new Scope('openid')]),
         );
@@ -453,7 +465,13 @@ final class JwtIdTokenIssuerTest extends TestCase
                 idToken: ResponseFormat::signed(Algorithms::es256()),
             ),
         );
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $client,
+            $this->session,
+            Fixtures::now(),
+            ['openid'],
+        ));
 
         // When
         $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
@@ -489,7 +507,13 @@ final class JwtIdTokenIssuerTest extends TestCase
                 idToken: ResponseFormat::signed(Algorithms::edDsa()),
             ),
         );
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $client,
+            $this->session,
+            Fixtures::now(),
+            ['openid'],
+        ));
 
         // When
         $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
@@ -514,7 +538,13 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $client = Clients::encryptedFor($this->session->tenant, idToken: ResponseFormat::signed(null, ClientEncryption::registration()));
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $client,
+            $this->session,
+            Fixtures::now(),
+            ['openid'],
+        ));
 
         // When
         $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
@@ -539,7 +569,13 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $client = Clients::encryptedFor($this->session->tenant, idToken: ResponseFormat::signed(null, ClientEncryption::registration()));
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $client, $this->session, Fixtures::now(), ['openid']));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $client,
+            $this->session,
+            Fixtures::now(),
+            ['openid'],
+        ));
 
         // When
         $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
@@ -551,7 +587,13 @@ final class JwtIdTokenIssuerTest extends TestCase
 
     private function authorizationFromCode(): GrantedAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'profile'],
+        ));
     }
 
     /**
@@ -565,7 +607,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         $user->updateProfile(new Profile(givenName: 'Alice'), Fixtures::now());
         $claims = ClaimsRequest::fromJson('{"id_token":{"email":null,"email_verified":{"essential":true},"family_name":null},"userinfo":{"given_name":null}}');
 
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             Fixtures::session($user),

@@ -6,9 +6,9 @@ namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
-use Heidi\Oidc\Application\Discovery\ServedGrantTypes;
-use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -22,7 +22,7 @@ final class AnnouncedGrantsTest extends TestCase
     public function theyAreTheGrantsTheTokenEndpointServes(): void
     {
         // Given
-        $announced = new AnnouncedGrants(new ServedGrantTypes([new FakeGrant(GrantType::AuthorizationCode), new FakeGrant(GrantType::RefreshToken)]));
+        $announced = new AnnouncedGrants(Grants::served());
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -37,18 +37,19 @@ final class AnnouncedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 8414 §2: a grant wired twice is announced once.
+     * RFC 6749 §4.5, RFC 8414 §2: a grant nobody wrote a line of this provider for is announced because
+     * it is wired, under the name it gives itself.
      */
     #[Test]
-    public function aGrantWiredTwiceIsAnnouncedOnce(): void
+    public function aGrantTheProviderGainsIsAnnouncedByBeingWired(): void
     {
         // Given
-        $announced = new AnnouncedGrants(new ServedGrantTypes([new FakeGrant(GrantType::AuthorizationCode), new FakeGrant(GrantType::AuthorizationCode)]));
+        $announced = new AnnouncedGrants(new ServedGrants([new FakeGrant(Grants::invented())]));
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
 
         // Then
-        static::assertSame(['authorization_code'], $members['grant_types_supported']);
+        static::assertSame(['urn:example:params:oauth:grant-type:invented'], $members['grant_types_supported']);
     }
 }

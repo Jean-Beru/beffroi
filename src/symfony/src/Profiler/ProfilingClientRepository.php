@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Profiler;
 
-use function array_map;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Application\Token\GrantNames;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use function implode;
 
@@ -46,7 +45,7 @@ final readonly class ProfilingClientRepository implements ClientRepositoryInterf
             'pushed authorization request' => $client->registration->requiresPushedAuthorizationRequests ? 'required' : 'not required',
             'PKCE' => $client->registration->requiresPkce ? 'required' : 'not required',
             'consent' => $client->registration->requiresConsent ? 'asked' : 'not asked',
-            'grant types' => implode(', ', array_map(static fn (GrantType $grant): string => $grant->value, $client->registration->grantTypes)),
+            'grant types' => implode(', ', GrantNames::of($client->registration->grantTypes)),
             'allowed scopes' => (string) $client->registration->allowedScopes,
             'access token' => $client->registration->accessTokenFormat->value,
             'ID token' => RegisteredShape::of($client->registration->idToken),

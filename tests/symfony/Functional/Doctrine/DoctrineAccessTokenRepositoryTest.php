@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
@@ -45,7 +46,11 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         ]);
         $code = Tokens::code('the-code', $client, $session, self::now(), ['openid', 'email'], claims: $claims);
         $value = self::tokens()
-            ->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));
+            ->issue(
+                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+                self::now()->modify('+1 minute'),
+                self::now()->modify('+11 minutes'),
+            );
         self::reload();
 
         // When
@@ -80,7 +85,12 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         // Given
         $session = self::session(self::user());
         $code = Tokens::code('the-code', self::client(), $session, self::now());
-        $value = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode($code, $confirmation), self::now(), self::now()->modify('+10 minutes'));
+        $value = self::tokens()
+            ->issue(
+                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code, $confirmation),
+                self::now(),
+                self::now()->modify('+10 minutes'),
+            );
         self::reload();
 
         // When
@@ -147,9 +157,17 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $session = self::session(self::user());
         $code = Tokens::code('the-code', self::client(), $session, self::now());
         $second = self::tokens()
-            ->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+2 minutes'), self::now()->modify('+12 minutes'));
+            ->issue(
+                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+                self::now()->modify('+2 minutes'),
+                self::now()->modify('+12 minutes'),
+            );
         $first = self::tokens()
-            ->issue(GrantedAuthorization::fromAuthorizationCode($code), self::now()->modify('+1 minute'), self::now()->modify('+11 minutes'));
+            ->issue(
+                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+                self::now()->modify('+1 minute'),
+                self::now()->modify('+11 minutes'),
+            );
         $other = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
 
@@ -205,13 +223,19 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $grant = Uuid::v7();
         $orphan = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Tokens::code('ghost-code', $ghost, $session, self::now(), grantId: $grant)),
+                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                    'ghost-code',
+                    $ghost,
+                    $session,
+                    self::now(),
+                    grantId: $grant,
+                )),
                 self::now(),
                 self::now()->modify('+10 minutes'),
             );
         $kept = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                     'the-code',
                     self::client(),
                     $session,
@@ -239,7 +263,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 
     private static function authorization(AuthenticationSession $session): GrantedAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('a-code', self::client(), $session, self::now()));
+        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('a-code', self::client(), $session, self::now()));
     }
 
     private static function tokens(): AccessTokenRepositoryInterface

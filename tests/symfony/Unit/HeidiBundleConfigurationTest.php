@@ -7,14 +7,15 @@ namespace Heidi\Bundle\Tests\Unit;
 use Heidi\Bundle\Configuration\ClientsSection;
 use Heidi\Bundle\Configuration\TenantSection;
 use Heidi\Bundle\Configuration\TokensSection;
-use function array_map;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
+use Heidi\Oidc\Application\Token\GrantNames;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -161,6 +162,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             ],
             Algorithms::all(),
             Methods::all(),
+            Grants::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
@@ -188,12 +190,13 @@ final class HeidiBundleConfigurationTest extends TestCase
             self::stringKeyed($config['clients']['oidc-demo']),
             Algorithms::all(),
             Methods::all(),
+            Grants::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
         );
         static::assertEquals($fromModule, $fromTree);
-        static::assertSame(ClientsSection::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->registration->grantTypes));
+        static::assertSame(ClientDefinition::DEFAULT_GRANT_TYPES, GrantNames::of($fromTree->registration->grantTypes));
         static::assertSame(ClientsSection::DEFAULT_ALLOWED_SCOPES, $fromTree->registration->allowedScopes->values());
     }
 
@@ -303,17 +306,6 @@ final class HeidiBundleConfigurationTest extends TestCase
                     ],
                 ],
             'insecure_redirect_uris',
-        ];
-        yield 'an unknown grant type' => [
-            self::MINIMAL
-                + [
-                    'clients' => [
-                        'app' => [
-                            'grant_types' => ['implicit'],
-                        ],
-                    ],
-                ],
-            'implicit',
         ];
         yield 'a consent flag that is not a boolean' => [
             self::MINIMAL

@@ -13,7 +13,6 @@ use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
 use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
@@ -21,6 +20,7 @@ use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -55,9 +55,9 @@ final class ClientRegistrationTest extends TestCase
         $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
 
         // When / Then
-        static::assertTrue($client->registration->allowsGrant(GrantType::AuthorizationCode));
-        static::assertTrue($client->registration->allowsGrant(GrantType::RefreshToken));
-        static::assertFalse(Clients::public(Fixtures::tenant())->registration->allowsGrant(GrantType::RefreshToken));
+        static::assertTrue($client->registration->allowsGrant(Grants::authorizationCode()));
+        static::assertTrue($client->registration->allowsGrant(Grants::refreshToken()));
+        static::assertFalse(Clients::public(Fixtures::tenant())->registration->allowsGrant(Grants::refreshToken()));
     }
 
     #[Test]
@@ -142,7 +142,7 @@ final class ClientRegistrationTest extends TestCase
         // Then
         static::assertTrue($client->registration->isPublic());
         static::assertNull($client->secret);
-        static::assertSame([GrantType::AuthorizationCode], $client->registration->grantTypes);
+        static::assertEquals([Grants::authorizationCode()], $client->registration->grantTypes);
         static::assertSame([Scope::openid()->value], $client->registration->allowedScopes->values());
     }
 
@@ -215,14 +215,14 @@ final class ClientRegistrationTest extends TestCase
             false,
             [new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb2')],
             [new RedirectUri('https://rp.example/'), new RedirectUri('https://rp.example/')],
-            [GrantType::AuthorizationCode, GrantType::AuthorizationCode],
+            [Grants::authorizationCode(), Grants::authorizationCode()],
             new Scopes([new Scope('openid'), new Scope('openid'), new Scope('email')]),
         );
 
         // Then
         static::assertCount(2, $client->redirectUris);
         static::assertCount(1, $client->postLogoutRedirectUris);
-        static::assertSame([GrantType::AuthorizationCode], $client->grantTypes);
+        static::assertEquals([Grants::authorizationCode()], $client->grantTypes);
         static::assertSame(['openid', 'email'], $client->allowedScopes->values());
     }
 
@@ -289,10 +289,6 @@ final class ClientRegistrationTest extends TestCase
             static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, $uris, [], []),
             'at least one grant type',
         ];
-        yield 'refresh_token alone' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, $uris, [], [GrantType::RefreshToken]),
-            'requires authorization_code',
-        ];
         yield 'no scope' => [
             static fn (): ClientRegistration => new ClientRegistration(
                 'demo',
@@ -301,7 +297,7 @@ final class ClientRegistrationTest extends TestCase
                 false,
                 $uris,
                 [],
-                [GrantType::AuthorizationCode],
+                [Grants::authorizationCode()],
                 new Scopes([]),
             ),
             'at least one scope',

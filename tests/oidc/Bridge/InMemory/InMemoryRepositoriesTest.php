@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Bridge\InMemory;
 
+use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_keys;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -426,7 +427,7 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryAccessTokenRepository();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code(
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -455,7 +456,12 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryAccessTokenRepository();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
+        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
 
         // When
         $first = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));

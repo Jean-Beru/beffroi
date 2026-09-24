@@ -8,21 +8,21 @@ use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\GrantInterface;
 use Heidi\Oidc\Application\Token\TokenRequest;
-use Heidi\Oidc\Domain\Client\GrantType;
+use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
 /**
- * A grant that names its type and grants nothing, for what reads the grants wired (the discovery document).
+ * A grant that names its type and grants nothing, for what reads the grants the provider is wired with.
  */
 final readonly class FakeGrant implements GrantInterface
 {
     public function __construct(
-        private GrantType $grantType,
+        private GrantTypeName $grantType,
     ) {
     }
 
-    public function grantType(): GrantType
+    public function grantType(): GrantTypeName
     {
         return $this->grantType;
     }

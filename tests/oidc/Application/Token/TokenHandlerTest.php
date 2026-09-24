@@ -15,6 +15,7 @@ use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
+use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
@@ -27,7 +28,6 @@ use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
-use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidDpopProofException;
 use Heidi\Oidc\Exception\InvalidGrantException;
@@ -38,11 +38,14 @@ use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Proofs;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use Jose\Component\Core\JWK;
+use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -104,9 +107,10 @@ final class TokenHandlerTest extends TestCase
             $issuer,
             $this->clock,
             $this->events,
+            Grants::served(),
         );
         $refreshGrant = new RefreshTokenGrant($this->refreshTokens, new RefreshTokenRevocation($this->refreshTokens), $issuer, $this->clock, $this->events);
-        $this->handler = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), [$this->codeGrant, $refreshGrant]);
+        $this->handler = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), new ServedGrants([$this->codeGrant, $refreshGrant]));
     }
 
     /**
@@ -310,7 +314,7 @@ final class TokenHandlerTest extends TestCase
     public function itRefusesAGrantTypeTheHandlerWasNotGiven(): void
     {
         // Given
-        $codeOnly = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), [$this->codeGrant]);
+        $codeOnly = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), new ServedGrants([$this->codeGrant]));
 
         // Then
         $this->expectException(UnsupportedGrantTypeException::class);
@@ -364,14 +368,38 @@ final class TokenHandlerTest extends TestCase
         static::assertFalse($token->isRotated());
     }
 
+    /**
+     * RFC 6749 §4.5: a grant the provider gains is served because it is wired and under the name it
+     * gives itself; nothing of this endpoint, of the registration or of the document knows that name,
+     * and the request reaches the grant all the same.
+     */
     #[Test]
-    public function itRefusesTwoGrantsForTheSameType(): void
+    public function itServesAGrantItKnowsNothingAbout(): void
     {
+        // Given
+        $client = Clients::confidential(
+            $this->tenant,
+            $this->hasher->hash(Clients::SECRET),
+            Methods::clientSecretBasic($this->hasher),
+            'invented-client',
+            grantTypes: [Grants::invented()],
+        );
+        $this->clients->save($client);
+        $handler = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), new ServedGrants([new FakeGrant(Grants::invented())]));
+
         // Then
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The fake grant grants nothing.');
 
         // When
-        new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), [$this->codeGrant, $this->codeGrant]);
+        $handler->handle(
+            $this->tenant,
+            self::basic('invented-client', Clients::SECRET),
+            [
+                'grant_type' => 'urn:example:params:oauth:grant-type:invented',
+            ],
+            $this->context,
+        );
     }
 
     /**

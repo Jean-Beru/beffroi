@@ -12,6 +12,7 @@ use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
@@ -19,12 +20,13 @@ use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientJwks;
-use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\FakeGrant;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -269,8 +271,41 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($demo->registration->requiresPkce);
         static::assertTrue($demo->registration->hasRedirectUri('https://demo.localhost/login/check'));
         static::assertTrue($demo->registration->hasPostLogoutRedirectUri('https://demo.localhost/'));
-        static::assertSame([GrantType::AuthorizationCode, GrantType::RefreshToken], $demo->registration->grantTypes);
+        static::assertEquals([Grants::authorizationCode(), Grants::refreshToken()], $demo->registration->grantTypes);
         static::assertSame(['openid', 'profile', 'email'], $demo->registration->allowedScopes->values());
+    }
+
+    /**
+     * RFC 6749 §4.5, RFC 7591 §2: a client registers the grants the provider serves, whatever their
+     * names, and a grant the provider gains needs no line here to be registrable.
+     */
+    #[Test]
+    public function aClientRegistersAGrantNothingHereKnowsTheNameOf(): void
+    {
+        // Given
+        $repository = new ConfigurationClientRepository(
+            $this->tenant->slug,
+            [
+                'invented-client' => [
+                    'redirect_uris' => ['https://demo.localhost/login/check'],
+                    'token_endpoint_auth_method' => 'none',
+                    'grant_types' => ['urn:example:params:oauth:grant-type:invented'],
+                ],
+            ],
+            new FakePasswordHasher(),
+            Algorithms::all(),
+            Methods::all(),
+            new ServedGrants([new FakeGrant(Grants::invented())]),
+            new PkiFrameworkCertificateReader(),
+            Algorithms::keyEncryption(),
+            Algorithms::contentEncryption(),
+        );
+
+        // When
+        $client = self::find($repository, $this->tenant, 'invented-client');
+
+        // Then
+        static::assertTrue($client->registration->allowsGrant(Grants::invented()));
     }
 
     /**
@@ -315,7 +350,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($suite->registration->requiresConsent);
         static::assertTrue($suite->registration->hasRedirectUri('https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'));
         static::assertFalse($suite->registration->hasPostLogoutRedirectUri('https://localhost:8443/'));
-        static::assertSame([GrantType::AuthorizationCode], $suite->registration->grantTypes);
+        static::assertEquals([Grants::authorizationCode()], $suite->registration->grantTypes);
         static::assertSame(['openid', 'email'], $suite->registration->allowedScopes->values());
     }
 
@@ -667,6 +702,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             new FakePasswordHasher(),
             Algorithms::all(),
             Methods::all(),
+            Grants::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
@@ -999,14 +1035,14 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 ],
             'at least one grant type',
         ];
-        yield 'refresh_token alone' => [
+        yield 'a grant that spends a refresh token, alone' => [
             $base
                 + [
                     'grant_types' => ['refresh_token'],
                 ],
-            'requires authorization_code',
+            'cannot spend with "refresh_token" a refresh token it has no way to obtain: register it for one of: authorization_code',
         ];
-        yield 'unknown grant' => [
+        yield 'a grant nothing is wired with' => [
             $base
                 + [
                     'grant_types' => ['implicit'],
@@ -1156,6 +1192,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 self::SPA,
                 Algorithms::all(),
                 Methods::all(),
+                Grants::served(),
                 new PkiFrameworkCertificateReader(),
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
@@ -1167,6 +1204,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 self::DEMO,
                 Algorithms::all(),
                 Methods::all(),
+                Grants::served(),
                 new PkiFrameworkCertificateReader(),
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
@@ -1186,6 +1224,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             self::SPA,
             Algorithms::all(),
             Methods::all(),
+            Grants::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
@@ -1281,6 +1320,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             $hasher ?? new FakePasswordHasher(),
             Algorithms::all(),
             Methods::all(),
+            Grants::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Introspection;
 
+use Heidi\Oidc\Tests\Fixture\Grants;
 use function base64_encode;
 use DateTimeImmutable;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
@@ -169,7 +170,11 @@ final class IntrospectionHandlerTest extends TestCase
         // Given
         $certificate = Certificates::client();
         $token = $this->tokens->issue(
-            GrantedAuthorization::fromAuthorizationCode($this->code($this->client, ['openid']), CertificateConfirmation::ofCertificate($certificate)),
+            GrantedAuthorization::fromAuthorizationCode(
+                Grants::authorizationCode(),
+                $this->code($this->client, ['openid']),
+                CertificateConfirmation::ofCertificate($certificate),
+            ),
             $this->clock->now(),
             $this->clock->now()->modify('+10 minutes'),
         );
@@ -204,7 +209,7 @@ final class IntrospectionHandlerTest extends TestCase
         // Given
         $code = $this->code($this->other, ['openid']);
         $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode($code),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $this->clock->now(),
         )->value;
 
@@ -470,7 +475,11 @@ final class IntrospectionHandlerTest extends TestCase
     {
         $issuedAt ??= $this->clock->now();
 
-        return $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($code), $issuedAt, $issuedAt->modify('+10 minutes'));
+        return $this->tokens->issue(
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            $issuedAt,
+            $issuedAt->modify('+10 minutes'),
+        );
     }
 
     private static function basic(string $clientId, string $secret = Clients::SECRET): string

@@ -22,6 +22,7 @@ use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use Heidi\Oidc\Tests\Fixture\UnserializableClientJwksFetcher;
@@ -81,7 +82,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a refresh token revoked' => [TokenRevoked::ofRefreshToken($now, $previous, $client, [$accessToken], $context)];
         yield 'the tokens of a grant issued' => [TokensIssued::of(
             $now,
-            GrantedAuthorization::fromAuthorizationCode($code),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $now->modify('+10 minutes'),
             true,
             $next,

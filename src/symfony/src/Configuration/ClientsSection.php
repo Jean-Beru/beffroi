@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Configuration;
 
+use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
-use Heidi\Oidc\Domain\Client\GrantType;
 use function array_column;
 use function is_array;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
@@ -18,11 +18,6 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  */
 final readonly class ClientsSection extends ConfigurationSection
 {
-    /**
-     * Restated from the module: the configuration tree cannot tell an absent list from an empty one.
-     */
-    public const array DEFAULT_GRANT_TYPES = [GrantType::AuthorizationCode->value, GrantType::RefreshToken->value];
-
     public const array DEFAULT_ALLOWED_SCOPES = ['openid', 'profile', 'email'];
 
     public function name(): string
@@ -58,9 +53,9 @@ final readonly class ClientsSection extends ConfigurationSection
             ->end()
             ->end()
             ->arrayNode('grant_types')
-            ->defaultValue(self::DEFAULT_GRANT_TYPES)
-            ->enumPrototype()
-            ->values(array_column(GrantType::cases(), 'value'))
+            ->info('What this client may ask for at the token endpoint (RFC 7591 §2), among the grants the provider is wired with; left out, it takes the browser flow and its renewal. A name nothing serves fails at boot.')
+            ->defaultValue(ClientDefinition::DEFAULT_GRANT_TYPES)
+            ->scalarPrototype()
             ->end()
             ->end()
             ->arrayNode('allowed_scopes')

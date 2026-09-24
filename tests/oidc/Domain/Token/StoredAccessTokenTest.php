@@ -19,6 +19,7 @@ use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -80,6 +81,7 @@ final class StoredAccessTokenTest extends TestCase
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'email']);
         $authorization = GrantedAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
             Tokens::refreshToken(
                 'previous',
                 $this->client,

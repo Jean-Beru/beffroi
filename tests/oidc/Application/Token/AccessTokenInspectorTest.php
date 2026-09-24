@@ -25,6 +25,7 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -263,7 +264,11 @@ final class AccessTokenInspectorTest extends TestCase
 
     private function tokenOf(AuthorizationCode $code): string
     {
-        return $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        return $this->tokens->issue(
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
     }
 
     /**
@@ -277,7 +282,7 @@ final class AccessTokenInspectorTest extends TestCase
         }
 
         return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode($code),
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         )->value;
     }

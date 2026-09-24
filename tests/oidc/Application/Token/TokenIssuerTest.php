@@ -20,6 +20,7 @@ use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -161,7 +162,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+1 day'));
@@ -182,7 +183,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+1 day'));
@@ -204,7 +205,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
         $now = Fixtures::now()->modify('+1 day');
 
         // When
@@ -223,7 +224,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+85 days'));
@@ -240,7 +241,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $this->issuer->refreshToken($token->family, $authorization, Fixtures::now());
@@ -254,7 +255,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
+        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
         $shortLived = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, $this->events, new DateInterval('PT1H'));
 
         // When
@@ -266,12 +267,18 @@ final class TokenIssuerTest extends TestCase
 
     private function authorizationFromCode(): GrantedAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'profile'],
+        ));
     }
 
     private function authorizationNarrowedToProfile(): GrantedAuthorization
     {
-        return GrantedAuthorization::fromRefreshToken($this->previousRefreshToken(), new Scopes([new Scope('profile')]));
+        return GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $this->previousRefreshToken(), new Scopes([new Scope('profile')]));
     }
 
     private function previousRefreshToken(): RefreshToken

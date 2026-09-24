@@ -30,11 +30,10 @@ use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
 use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
-use Heidi\Oidc\Application\Discovery\ServedGrantTypes;
+use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Token\GrantInterface;
-use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
@@ -83,10 +82,10 @@ final class ProviderDocument
         $signing ??= Algorithms::all();
         $keyEncryption ??= Algorithms::keyEncryption();
         $contentEncryption ??= Algorithms::contentEncryption();
-        $grants ??= [new FakeGrant(GrantType::AuthorizationCode), new FakeGrant(GrantType::RefreshToken)];
+        $grants ??= [new FakeRefreshTokenIssuingGrant(Grants::authorizationCode()), new FakeRefreshTokenSpendingGrant(Grants::refreshToken())];
 
         $algorithms = new AnnouncedAlgorithms($signing, $keyEncryption, $contentEncryption);
-        $grantTypes = new ServedGrantTypes($grants);
+        $grantTypes = new ServedGrants($grants);
 
         return new DiscoveryHandler([
             new ProviderIdentity($endpoints),
