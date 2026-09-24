@@ -122,6 +122,7 @@ use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
 use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
 use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
@@ -149,6 +150,7 @@ use Heidi\Core\Port\PasskeyRegistrarInterface;
 use Heidi\Core\Port\PasswordAttemptLimiterInterface;
 use Heidi\Core\Port\PasswordAlgorithmsInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
+use Heidi\Core\Port\UuidGeneratorInterface;
 use Heidi\Core\Port\PublicKeySetProviderInterface;
 use Heidi\Core\Port\SecretSealerInterface;
 use Heidi\Core\Port\SignatureAlgorithmsInterface;
@@ -514,6 +516,10 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(GeoLocatorInterface::class, NullGeoLocator::class);
     $services->set(NullUserAgentParser::class);
     $services->alias(UserAgentParserInterface::class, NullUserAgentParser::class);
+
+    // Where the identifiers of the core come from, as its clock is given to it and not read
+    $services->set(SymfonyUuidGenerator::class);
+    $services->alias(UuidGeneratorInterface::class, SymfonyUuidGenerator::class);
 
     // The core: use cases
     $services->set(PasswordAuthenticator::class);

@@ -6,6 +6,7 @@ namespace Heidi\Core\Tests\Application\Authentication;
 
 use function array_map;
 use DateInterval;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
 use Heidi\Core\Application\Authentication\AuthenticationRefusal;
@@ -80,7 +81,7 @@ final class PasswordAuthenticatorTest extends TestCase
             $this->credentials,
             $hasher,
             new DecoyHash($hasher),
-            new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
             $this->attempts,
             new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
             new AuthenticationRefusal($this->clock, $this->events),
@@ -441,7 +442,7 @@ final class PasswordAuthenticatorTest extends TestCase
             $this->credentials,
             $hasher,
             new DecoyHash($hasher),
-            new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
             new FakeAttemptLimiter($allowedAttempts),
             new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
             new AuthenticationRefusal($this->clock, $this->events),

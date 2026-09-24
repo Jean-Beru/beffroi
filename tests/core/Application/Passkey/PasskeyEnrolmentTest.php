@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Passkey;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Application\Passkey\PasskeyEnrolment;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
@@ -45,7 +46,7 @@ final class PasskeyEnrolmentTest extends TestCase
         $this->registrar = new FakePasskeyRegistrar();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
-        $this->enrolment = new PasskeyEnrolment($this->credentials, $this->registrar, $this->clock, $this->events);
+        $this->enrolment = new PasskeyEnrolment($this->credentials, new SymfonyUuidGenerator(), $this->registrar, $this->clock, $this->events);
     }
 
     #[Test]

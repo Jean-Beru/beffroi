@@ -7,9 +7,7 @@ namespace Heidi\Core\Tests\Domain\Session;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationPredicate;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -25,10 +23,10 @@ final class AuthenticationContextClassTest extends TestCase
     {
         // Given
         $class = new AuthenticationContextClass('urn:okta:loa:2fa:any', AuthenticationPredicate::TwoFactors);
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod('otp'), Fixtures::now());
+        $methods = [AuthenticationMethod::password(), new AuthenticationMethod('otp')];
 
         // When / Then
-        static::assertTrue($class->isSatisfiedBy($proofs));
+        static::assertTrue($class->isSatisfiedBy($methods));
     }
 
     #[Test]
@@ -38,7 +36,7 @@ final class AuthenticationContextClassTest extends TestCase
         $class = new AuthenticationContextClass('urn:okta:loa:2fa:any', AuthenticationPredicate::TwoFactors);
 
         // When / Then
-        static::assertFalse($class->isSatisfiedBy(AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())));
+        static::assertFalse($class->isSatisfiedBy([AuthenticationMethod::password()]));
     }
 
     /**
