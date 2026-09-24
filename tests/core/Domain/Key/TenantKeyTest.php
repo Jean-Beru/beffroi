@@ -437,7 +437,7 @@ final class TenantKeyTest extends TestCase
         $retired = self::retiredKey();
 
         // When
-        $set = new PublicKeySet([$staged, $retired]);
+        $set = PublicKeySet::published([$staged, $retired]);
 
         // Then
         static::assertFalse($set->isEmpty());
@@ -455,7 +455,7 @@ final class TenantKeyTest extends TestCase
     {
         // Given
         $active = self::activeKey();
-        $set = new PublicKeySet([$active, self::retiredKey()]);
+        $set = PublicKeySet::published([$active, self::retiredKey()]);
 
         // When / Then
         static::assertSame($active, $set->find($active->kid));
@@ -466,7 +466,7 @@ final class TenantKeyTest extends TestCase
     {
         // Given
         $retired = self::retiredKey();
-        $set = new PublicKeySet([self::key(), $retired]);
+        $set = PublicKeySet::published([self::key(), $retired]);
 
         // When / Then
         static::assertNull($set->find($retired->kid));
@@ -545,5 +545,23 @@ final class TenantKeyTest extends TestCase
         $key->retire(Fixtures::now());
 
         return $key;
+    }
+
+    /**
+     * A set says what it is given: a key that has retired is refused rather than quietly dropped, so
+     * that nobody serves a JWK Set shorter than they think.
+     */
+    #[Test]
+    public function aRetiredKeyIsRefusedByTheSetRatherThanDropped(): void
+    {
+        // Given
+        $retired = self::retiredKey();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('has retired and is not published');
+
+        // When
+        new PublicKeySet([$retired]);
     }
 }

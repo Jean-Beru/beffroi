@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Passkey;
 
 use DateInterval;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
 use Heidi\Core\Application\Authentication\AuthenticationRefusal;
@@ -67,7 +68,7 @@ final class PasskeyAuthenticationTest extends TestCase
             $this->credentials,
             new ActiveCredentials($this->credentials),
             $this->ceremony,
-            new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
             new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,

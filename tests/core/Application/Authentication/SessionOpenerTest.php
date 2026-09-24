@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Authentication;
 
 use DateInterval;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Domain\Event\UserAuthenticated;
@@ -43,7 +44,7 @@ final class SessionOpenerTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T09:00:00+00:00');
         $this->context = Fixtures::context($this->clock->now()->modify('-1 second'), '198.51.100.7');
-        $this->opener = new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H'));
+        $this->opener = new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H'));
     }
 
     #[Test]
@@ -99,7 +100,7 @@ final class SessionOpenerTest extends TestCase
     public function theDefaultLifetimeIsTwelveHours(): void
     {
         // Given
-        $opener = new SessionOpener($this->sessions, $this->clock, $this->events);
+        $opener = new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events);
 
         // When
         $session = $opener->open($this->tenant, $this->alice, [AuthenticationMethod::password()], $this->context);

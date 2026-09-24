@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Identity;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Application\Identity\UserAlreadyExistsException;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
@@ -46,7 +47,7 @@ final class UserProvisionerTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new NativePasswordHasher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->provisioner = new UserProvisioner($this->users, $this->credentials, $this->hasher, $this->clock);
+        $this->provisioner = new UserProvisioner($this->users, $this->credentials, $this->hasher, new SymfonyUuidGenerator(), $this->clock);
     }
 
     #[Test]
