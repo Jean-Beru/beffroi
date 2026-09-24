@@ -63,7 +63,7 @@ final class InteractionTest extends TestCase
 
         // Then
         static::assertSame($request, $interaction->request);
-        static::assertSame($this->client->clientId, $interaction->clientId);
+        static::assertSame($this->client->registration->clientId, $interaction->clientId);
         static::assertSame('fr', $interaction->locale);
     }
 

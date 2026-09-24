@@ -24,6 +24,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -84,13 +85,15 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->publicClient = Clients::public($this->tenant);
         $this->offlineClient = new Client(
             $this->tenant,
-            'mobile',
-            'Mobile application',
-            Methods::none(),
-            null,
-            [new RedirectUri('https://mobile.example/callback')],
-            grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
+            new ClientRegistration(
+                'mobile',
+                'Mobile application',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://mobile.example/callback')],
+                grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
+            ),
         );
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
@@ -337,12 +340,15 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Given
         $codeOnly = new Client(
             $this->tenant,
-            'code-only',
-            'Code only',
-            Methods::clientSecretBasic(),
+            new ClientRegistration(
+                'code-only',
+                'Code only',
+                Methods::clientSecretBasic(),
+                true,
+                [new RedirectUri('https://demo.localhost/login/check')],
+                allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
+            ),
             new HashedClientSecret(new FakePasswordHasher()->hash(Clients::SECRET)),
-            [new RedirectUri('https://demo.localhost/login/check')],
-            allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
         );
         $this->code('the-code', $codeOnly, ['openid', 'offline_access']);
 
@@ -580,7 +586,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(1, $replays);
         static::assertSame($code->codeHash, $replays[0]->codeHash);
-        static::assertSame($this->client->clientId, $replays[0]->presentedBy);
+        static::assertSame($this->client->registration->clientId, $replays[0]->presentedBy);
         static::assertSame([$successor->tokenHash], $replays[0]->revokedTokenHashes);
         static::assertEquals($this->clock->now(), $replays[0]->occurredAt);
         static::assertSame($this->tenant, $replays[0]->tenant);
@@ -604,7 +610,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         $replays = $this->events->of(AuthorizationCodeReplayed::class);
         static::assertCount(2, $replays);
-        static::assertSame($this->publicClient->clientId, $replays[1]->presentedBy);
+        static::assertSame($this->publicClient->registration->clientId, $replays[1]->presentedBy);
         static::assertSame([], $replays[1]->revokedTokenHashes, 'already revoked five seconds ago');
         static::assertEquals($this->clock->now()->modify('-5 seconds'), $successor->revokedAt);
         static::assertSame(4, $this->refreshTokens->saves);

@@ -32,7 +32,7 @@ final class FakeAccessTokenIssuer implements AccessTokenIssuerInterface
         $this->issued[] = $authorization;
 
         return new AccessToken(
-            sprintf('at:%s:%s:%d', $authorization->client->clientId, $authorization->user->subject, $now->getTimestamp()),
+            sprintf('at:%s:%s:%d', $authorization->client->registration->clientId, $authorization->user->subject, $now->getTimestamp()),
             $now,
             $now->add($this->lifetime),
         );

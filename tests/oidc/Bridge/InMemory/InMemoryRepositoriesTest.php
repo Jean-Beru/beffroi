@@ -582,7 +582,7 @@ final class InMemoryRepositoriesTest extends TestCase
             Uuid::v7(),
             $this->client,
             $this->session,
-            $this->client->redirectUris[0],
+            $this->client->registration->redirectUris[0],
             new Scopes([Scope::openid()]),
             null,
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),

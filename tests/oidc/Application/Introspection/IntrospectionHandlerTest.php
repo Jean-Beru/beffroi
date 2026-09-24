@@ -460,7 +460,7 @@ final class IntrospectionHandlerTest extends TestCase
      */
     private function code(Client $client, array $scopes = ['openid']): AuthorizationCode
     {
-        $code = Tokens::code('the-code-of-' . $client->clientId, $client, $this->session, $this->clock->now(), $scopes);
+        $code = Tokens::code('the-code-of-' . $client->registration->clientId, $client, $this->session, $this->clock->now(), $scopes);
         $this->grants->save($code);
 
         return $code;

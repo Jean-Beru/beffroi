@@ -153,7 +153,7 @@ final class EndSessionRequestParserTest extends TestCase
         $request = $this->parser->parse($this->tenant, $parameters);
 
         // Then
-        static::assertSame($expectedClientId, $request->client?->clientId);
+        static::assertSame($expectedClientId, $request->client?->registration->clientId);
     }
 
     /**

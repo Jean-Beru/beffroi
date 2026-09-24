@@ -34,7 +34,7 @@ final readonly class DoctrineConsentRepository extends DoctrineRepository implem
             ->orderBy('c.grantedAt', 'DESC')
             ->addOrderBy('c.id', 'DESC')
             ->setParameter('user', $user->id, UuidType::NAME)
-            ->setParameter('clientId', $client->clientId)
+            ->setParameter('clientId', $client->registration->clientId)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

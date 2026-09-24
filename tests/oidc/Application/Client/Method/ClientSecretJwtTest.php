@@ -85,7 +85,7 @@ final class ClientSecretJwtTest extends TestCase
     {
         // Given
         $assertion = ClientAssertions::signedWithSecret(
-            ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
+            ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
             'not ' . Clients::SECRET,
         );
 
@@ -126,7 +126,7 @@ final class ClientSecretJwtTest extends TestCase
         // Given
         $keyClient = Clients::withKeys($this->tenant);
         $assertion = ClientAssertions::signedWithSecret(
-            ClientAssertions::claims($keyClient->clientId, self::ENDPOINT, $this->context->receivedAt),
+            ClientAssertions::claims($keyClient->registration->clientId, self::ENDPOINT, $this->context->receivedAt),
             Clients::SECRET,
         );
 
@@ -135,7 +135,7 @@ final class ClientSecretJwtTest extends TestCase
 
         // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
-        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $keyClient->clientId);
+        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $keyClient->registration->clientId);
     }
 
     /**
@@ -144,7 +144,7 @@ final class ClientSecretJwtTest extends TestCase
     private function assertion(array $overrides = []): string
     {
         return ClientAssertions::signedWithSecret(
-            ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt, $overrides),
+            ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt, $overrides),
             Clients::SECRET,
         );
     }
@@ -176,7 +176,7 @@ final class ClientSecretJwtTest extends TestCase
         $events = $this->events->of(ClientAuthenticationFailed::class);
         $last = $events[count($events) - 1];
         static::assertSame($reason, $last->reason);
-        static::assertSame($clientId ?? $this->client->clientId, $last->clientId);
+        static::assertSame($clientId ?? $this->client->registration->clientId, $last->clientId);
         static::assertSame('client_secret_jwt', $last->method);
     }
 }

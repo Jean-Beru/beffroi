@@ -654,7 +654,7 @@ final class EndSessionHandlerTest extends TestCase
 
     private function request(?IdTokenHint $hint, ?string $state = null): EndSessionRequest
     {
-        return new EndSessionRequest($this->tenant, $this->client, $hint, $this->client->postLogoutRedirectUris[0], $state);
+        return new EndSessionRequest($this->tenant, $this->client, $hint, $this->client->registration->postLogoutRedirectUris[0], $state);
     }
 
     private function hint(AuthenticationSession $session): IdTokenHint

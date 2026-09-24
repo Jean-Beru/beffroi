@@ -139,7 +139,7 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('odd client', $secret), [], $this->context);
 
         // Then
-        static::assertSame('odd client', $client->client->clientId);
+        static::assertSame('odd client', $client->client->registration->clientId);
     }
 
     /**
@@ -173,7 +173,7 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, 'Basic ' . base64_encode('colon-client:' . $secret), [], $this->context);
 
         // Then
-        static::assertSame('colon-client', $client->client->clientId);
+        static::assertSame('colon-client', $client->client->registration->clientId);
     }
 
     /**

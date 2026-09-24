@@ -12,6 +12,7 @@ use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\ClientUri;
@@ -38,16 +39,19 @@ final class Clients
     ): Client {
         return new Client(
             $tenant,
-            $clientId,
-            'OIDC demo',
-            $method ?? Methods::clientSecretBasic(),
+            new ClientRegistration(
+                $clientId,
+                'OIDC demo',
+                $method ?? Methods::clientSecretBasic(),
+                true,
+                [new RedirectUri('https://demo.localhost/login/check')],
+                [new RedirectUri('https://demo.localhost/')],
+                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
+                requiresPkce: $requiresPkce,
+                accessTokenFormat: $accessTokenFormat,
+            ),
             new HashedClientSecret($secretHash),
-            [new RedirectUri('https://demo.localhost/login/check')],
-            [new RedirectUri('https://demo.localhost/')],
-            [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
-            requiresPkce: $requiresPkce,
-            accessTokenFormat: $accessTokenFormat,
         );
     }
 
@@ -59,21 +63,27 @@ final class Clients
     {
         return new Client(
             $tenant,
-            $clientId,
-            'FAPI demo',
-            Methods::clientSecretBasic(),
+            new ClientRegistration(
+                $clientId,
+                'FAPI demo',
+                Methods::clientSecretBasic(),
+                true,
+                [new RedirectUri('https://fapi.localhost/login/check')],
+                [],
+                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
+                requiresPushedAuthorizationRequests: true,
+            ),
             new HashedClientSecret($secretHash),
-            [new RedirectUri('https://fapi.localhost/login/check')],
-            [],
-            [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
-            requiresPushedAuthorizationRequests: true,
         );
     }
 
     public static function public(Tenant $tenant, string $clientId = 'spa'): Client
     {
-        return new Client($tenant, $clientId, 'Single page application', Methods::none(), null, [new RedirectUri('https://spa.example/callback')]);
+        return new Client(
+            $tenant,
+            new ClientRegistration($clientId, 'Single page application', Methods::none(), false, [new RedirectUri('https://spa.example/callback')]),
+        );
     }
 
     /**
@@ -89,13 +99,15 @@ final class Clients
     ): Client {
         return new Client(
             $tenant,
-            $clientId,
-            'Client with a key',
-            $method ?? Methods::privateKeyJwt(),
-            null,
-            [new RedirectUri('https://key.example/callback')],
-            jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,
-            jwksUri: $jwksUri,
+            new ClientRegistration(
+                $clientId,
+                'Client with a key',
+                $method ?? Methods::privateKeyJwt(),
+                false,
+                [new RedirectUri('https://key.example/callback')],
+                jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,
+                jwksUri: $jwksUri,
+            ),
         );
     }
 
@@ -113,18 +125,21 @@ final class Clients
     ): Client {
         return new Client(
             $tenant,
-            $clientId,
-            'Client that is written to in private',
-            Methods::clientSecretBasic(),
+            new ClientRegistration(
+                $clientId,
+                'Client that is written to in private',
+                Methods::clientSecretBasic(),
+                true,
+                [new RedirectUri('https://encrypted.example/callback')],
+                [],
+                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
+                jwks: ClientEncryption::publishedKeys(),
+                idToken: $idToken,
+                authorizationResponse: $authorizationResponse,
+                userInfo: $userInfo,
+            ),
             new HashedClientSecret(new FakePasswordHasher()->hash(self::SECRET)),
-            [new RedirectUri('https://encrypted.example/callback')],
-            [],
-            [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
-            jwks: ClientEncryption::publishedKeys(),
-            idToken: $idToken,
-            authorizationResponse: $authorizationResponse,
-            userInfo: $userInfo,
         );
     }
 
@@ -143,17 +158,20 @@ final class Clients
     ): Client {
         return new Client(
             $tenant,
-            $clientId,
-            'Client that signs its requests',
-            Methods::clientSecretBasic(),
+            new ClientRegistration(
+                $clientId,
+                'Client that signs its requests',
+                Methods::clientSecretBasic(),
+                true,
+                [new RedirectUri('https://jar.example/callback')],
+                [],
+                [GrantType::AuthorizationCode],
+                new Scopes([new Scope('openid'), new Scope('profile')]),
+                jwks: ClientAssertions::publishedKeys(),
+                requestObjectSigning: $signing ?? new AnyRegisteredAlgorithm(),
+                requestUris: $requestUris,
+            ),
             new HashedClientSecret(new FakePasswordHasher()->hash(self::SECRET)),
-            [new RedirectUri('https://jar.example/callback')],
-            [],
-            [GrantType::AuthorizationCode],
-            new Scopes([new Scope('openid'), new Scope('profile')]),
-            jwks: ClientAssertions::publishedKeys(),
-            requestObjectSigning: $signing ?? new AnyRegisteredAlgorithm(),
-            requestUris: $requestUris,
         );
     }
 
@@ -165,11 +183,14 @@ final class Clients
     {
         return new Client(
             $tenant,
-            $clientId,
-            'Client with a shared secret',
-            Methods::clientSecretJwt(),
+            new ClientRegistration(
+                $clientId,
+                'Client with a shared secret',
+                Methods::clientSecretJwt(),
+                true,
+                [new RedirectUri('https://mac.example/callback')],
+            ),
             new SharedClientSecret($secret),
-            [new RedirectUri('https://mac.example/callback')],
         );
     }
 
@@ -185,16 +206,18 @@ final class Clients
     ): Client {
         return new Client(
             $tenant,
-            $clientId,
-            'Client with a certificate',
-            Methods::tlsClientAuth(),
-            null,
-            [new RedirectUri('https://mtls.example/callback')],
-            [],
-            [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            null,
-            accessTokenFormat: $accessTokenFormat,
-            certificateIdentity: $identity ?? new SubjectDistinguishedName(Certificates::SUBJECT_DN),
+            new ClientRegistration(
+                $clientId,
+                'Client with a certificate',
+                Methods::tlsClientAuth(),
+                false,
+                [new RedirectUri('https://mtls.example/callback')],
+                [],
+                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                null,
+                accessTokenFormat: $accessTokenFormat,
+                certificateIdentity: $identity ?? new SubjectDistinguishedName(Certificates::SUBJECT_DN),
+            ),
         );
     }
 
@@ -205,15 +228,17 @@ final class Clients
     {
         return new Client(
             $tenant,
-            $clientId,
-            'Client with a self-signed certificate',
-            Methods::selfSignedTlsClientAuth(),
-            null,
-            [new RedirectUri('https://self-signed.example/callback')],
-            [],
-            [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            null,
-            jwks: $jwks ?? Certificates::publishedIn(Certificates::selfSigned()),
+            new ClientRegistration(
+                $clientId,
+                'Client with a self-signed certificate',
+                Methods::selfSignedTlsClientAuth(),
+                false,
+                [new RedirectUri('https://self-signed.example/callback')],
+                [],
+                [GrantType::AuthorizationCode, GrantType::RefreshToken],
+                null,
+                jwks: $jwks ?? Certificates::publishedIn(Certificates::selfSigned()),
+            ),
         );
     }
 
@@ -229,13 +254,15 @@ final class Clients
     ): Client {
         return new Client(
             $tenant,
-            $clientId,
-            'Single page application',
-            Methods::none(),
-            null,
-            [new RedirectUri('https://spa.example/callback')],
-            frontChannelLogoutUri: new ClientUri($logoutUri),
-            frontChannelLogoutSessionRequired: $sessionRequired,
+            new ClientRegistration(
+                $clientId,
+                'Single page application',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://spa.example/callback')],
+                frontChannelLogoutUri: new ClientUri($logoutUri),
+                frontChannelLogoutSessionRequired: $sessionRequired,
+            ),
         );
     }
 
@@ -246,12 +273,14 @@ final class Clients
     {
         return new Client(
             $tenant,
-            $clientId,
-            'Single page application',
-            Methods::none(),
-            null,
-            [new RedirectUri('https://spa.example/callback')],
-            backChannelLogoutUri: new ClientUri($logoutUri),
+            new ClientRegistration(
+                $clientId,
+                'Single page application',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://spa.example/callback')],
+                backChannelLogoutUri: new ClientUri($logoutUri),
+            ),
         );
     }
 }

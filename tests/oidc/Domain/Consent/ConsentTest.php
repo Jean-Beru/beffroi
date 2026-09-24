@@ -47,7 +47,7 @@ final class ConsentTest extends TestCase
     {
         // When / Then
         static::assertSame($this->user->tenant, $this->consent->tenant);
-        static::assertSame($this->client->clientId, $this->consent->clientId);
+        static::assertSame($this->client->registration->clientId, $this->consent->clientId);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $this->consent->scopes->all);
     }
 

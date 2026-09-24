@@ -163,7 +163,7 @@ final class PrivateKeyJwtTest extends TestCase
     public function itRefusesAnAssertionWithoutAnExpiry(): void
     {
         // Given
-        $claims = ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
         unset($claims['exp']);
 
         // When
@@ -207,7 +207,7 @@ final class PrivateKeyJwtTest extends TestCase
     public function itRefusesAnAssertionWithoutAnIdentifier(): void
     {
         // Given
-        $claims = ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
         unset($claims['jti']);
 
         // When
@@ -240,7 +240,7 @@ final class PrivateKeyJwtTest extends TestCase
     {
         // Given
         $assertion = ClientAssertions::signedWithKey(
-            ClientAssertions::claims($this->client->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
+            ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
             [],
             self::strangerKey(),
         );
@@ -315,14 +315,14 @@ final class PrivateKeyJwtTest extends TestCase
     {
         // When
         $exception = $this->authenticateFailing(null, [
-            'client_id' => $this->client->clientId,
+            'client_id' => $this->client->registration->clientId,
             'client_secret' => Clients::SECRET,
         ]);
 
         // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         static::assertSame('Client authentication failed.', $exception->errorDescription);
-        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $this->client->clientId, 'client_secret_post');
+        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $this->client->registration->clientId, 'client_secret_post');
     }
 
     /**
@@ -331,7 +331,7 @@ final class PrivateKeyJwtTest extends TestCase
     private function assertion(array $overrides = []): string
     {
         return ClientAssertions::signedWithKey(ClientAssertions::claims(
-            $this->client->clientId,
+            $this->client->registration->clientId,
             $this->tenant->issuer->value,
             $this->context->receivedAt,
             $overrides,
@@ -385,7 +385,7 @@ final class PrivateKeyJwtTest extends TestCase
         $events = $this->events->of(ClientAuthenticationFailed::class);
         $last = $events[count($events) - 1];
         static::assertSame($reason, $last->reason);
-        static::assertSame($clientId ?? $this->client->clientId, $last->clientId);
+        static::assertSame($clientId ?? $this->client->registration->clientId, $last->clientId);
         static::assertSame($method, $last->method);
     }
 

@@ -17,9 +17,9 @@
 {% endblock %}
 
 {% block content %}
-    <p>{{ 'login.prompt'|trans({client: client.name}) }}</p>
+    <p>{{ 'login.prompt'|trans({client: client.registration.name}) }}</p>
     {% if step_up is not null %}
-        <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|map(class => class.value)|join(' ') }}">{{ 'login.step_up'|trans({client: client.name}) }}</p>
+        <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|map(class => class.value)|join(' ') }}">{{ 'login.step_up'|trans({client: client.registration.name}) }}</p>
         {% for kind in step_up.kinds %}
             <p data-step-up="{{ kind }}">{{ ('login.step_up.' ~ kind)|trans }}</p>
         {% endfor %}

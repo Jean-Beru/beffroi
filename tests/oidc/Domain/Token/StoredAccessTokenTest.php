@@ -58,7 +58,7 @@ final class StoredAccessTokenTest extends TestCase
         static::assertSame(OpaqueTokenValue::hash('the-token'), $token->tokenHash);
         static::assertSame($grant, $token->grantId);
         static::assertSame($this->client, $token->client);
-        static::assertSame($this->client->clientId, $token->clientId);
+        static::assertSame($this->client->registration->clientId, $token->clientId);
         static::assertSame($this->client->tenant, $token->tenant);
         static::assertSame($this->session, $token->session);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes->all);

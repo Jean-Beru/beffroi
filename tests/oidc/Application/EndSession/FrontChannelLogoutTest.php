@@ -101,7 +101,7 @@ final class FrontChannelLogoutTest extends TestCase
      */
     private function signedIn(Client $client): void
     {
-        $grant = Tokens::code('code-of-' . $client->clientId, $client, $this->session, Fixtures::now());
+        $grant = Tokens::code('code-of-' . $client->registration->clientId, $client, $this->session, Fixtures::now());
         $grant->consume(Fixtures::now());
         $this->grants->save($grant);
     }

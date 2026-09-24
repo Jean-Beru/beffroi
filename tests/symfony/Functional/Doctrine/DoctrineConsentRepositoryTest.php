@@ -35,7 +35,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
-        static::assertSame('oidc-demo', $found->client->clientId);
+        static::assertSame('oidc-demo', $found->client->registration->clientId);
         static::assertTrue($found->isFor($user, $client));
         static::assertEquals([new Scope('openid'), new Scope('profile')], $found->scopes->all);
         static::assertEquals(self::now(), $found->grantedAt);

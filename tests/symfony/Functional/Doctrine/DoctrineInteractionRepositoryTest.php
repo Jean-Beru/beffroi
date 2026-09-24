@@ -14,6 +14,7 @@ use Heidi\Oidc\Domain\Authorization\Display;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
@@ -46,7 +47,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         ]);
         $request = new AuthorizationRequest(
             $client,
-            $client->redirectUris[0],
+            $client->registration->redirectUris[0],
             new Scopes([new Scope('openid'), new Scope('profile')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
             'af0ifjsldkj',
@@ -79,9 +80,9 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertNull($found->consent);
         static::assertNull($found->completedAt);
         $parked = $found->request;
-        static::assertSame('oidc-demo', $parked->client->clientId);
+        static::assertSame('oidc-demo', $parked->client->registration->clientId);
         static::assertTrue($parked->client->belongsTo($found->tenant));
-        static::assertSame((string) $client->redirectUris[0], (string) $parked->redirectUri);
+        static::assertSame((string) $client->registration->redirectUris[0], (string) $parked->redirectUri);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $parked->scopes->all);
         static::assertSame(self::CHALLENGE, $parked->codeChallenge?->value);
         static::assertSame('S256', $parked->codeChallenge->method->value);
@@ -105,7 +106,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         $client = self::client('native-app');
         $request = new AuthorizationRequest(
             $client,
-            $client->redirectUris[0],
+            $client->registration->redirectUris[0],
             new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
@@ -119,7 +120,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         // Then
         $parked = $found->request;
         static::assertNull($found->locale);
-        static::assertSame('native-app', $parked->client->clientId);
+        static::assertSame('native-app', $parked->client->registration->clientId);
         static::assertNull($parked->state);
         static::assertNull($parked->nonce);
         static::assertSame([], $parked->prompts);
@@ -143,7 +144,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         self::service('test.heidi.consents', ConsentRepositoryInterface::class)->save($consent);
         $request = new AuthorizationRequest(
             $client,
-            $client->redirectUris[0],
+            $client->registration->redirectUris[0],
             new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
@@ -162,7 +163,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->session?->id->equals($session->id));
         static::assertTrue($found->session->user->id->equals($user->id));
         static::assertTrue($found->consent?->id->equals($consent->id));
-        static::assertSame('oidc-demo', $found->consent->client->clientId);
+        static::assertSame('oidc-demo', $found->consent->client->registration->clientId);
         static::assertEquals(self::now()->modify('+3 minutes'), $found->completedAt);
         static::assertTrue($found->isCompleted());
     }
@@ -175,10 +176,13 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     public function anInteractionOfAnUnregisteredClientIsNotFound(): void
     {
         // Given
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+        );
         $request = new AuthorizationRequest(
             $ghost,
-            $ghost->redirectUris[0],
+            $ghost->registration->redirectUris[0],
             new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );

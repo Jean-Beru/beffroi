@@ -42,7 +42,7 @@ final class EndSessionRequestTest extends TestCase
     public function itRedirectsWhereTheClientAskedWithTheState(): void
     {
         // Given
-        $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, $this->client->postLogoutRedirectUris[0], 'af0ifjsldkj');
+        $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, $this->client->registration->postLogoutRedirectUris[0], 'af0ifjsldkj');
 
         // When
         $redirect = $request->redirect() ?? static::fail('The request has a redirect.');
@@ -136,7 +136,12 @@ final class EndSessionRequestTest extends TestCase
             ),
         ];
         yield 'redirect registered for the authorization response only' => [
-            static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, $test->client->redirectUris[0]),
+            static fn (self $test): EndSessionRequest => new EndSessionRequest(
+                $test->tenant,
+                $test->client,
+                $test->hint,
+                $test->client->registration->redirectUris[0],
+            ),
         ];
         yield 'empty state' => [
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, null, ''),

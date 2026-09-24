@@ -46,18 +46,18 @@ final readonly class ProfilingClientRepository implements ClientRepositoryInterf
     private static function observe(Client $client): Observation
     {
         return new Observation('Client', 'Client', [
-            'client_id' => $client->clientId,
-            'name' => $client->name,
-            'authentication method' => $client->authenticationMethod->name(),
-            'pushed authorization request' => $client->requiresPushedAuthorizationRequests ? 'required' : 'not required',
-            'PKCE' => $client->requiresPkce ? 'required' : 'not required',
-            'consent' => $client->requiresConsent ? 'asked' : 'not asked',
-            'grant types' => implode(', ', array_map(static fn (GrantType $grant): string => $grant->value, $client->grantTypes)),
-            'allowed scopes' => (string) $client->allowedScopes,
-            'access token' => $client->accessTokenFormat->value,
-            'ID token' => RegisteredShape::of($client->idToken),
-            'UserInfo' => RegisteredShape::of($client->userInfo),
-            'authorization response' => RegisteredShape::of($client->authorizationResponse),
+            'client_id' => $client->registration->clientId,
+            'name' => $client->registration->name,
+            'authentication method' => $client->registration->authenticationMethod->name(),
+            'pushed authorization request' => $client->registration->requiresPushedAuthorizationRequests ? 'required' : 'not required',
+            'PKCE' => $client->registration->requiresPkce ? 'required' : 'not required',
+            'consent' => $client->registration->requiresConsent ? 'asked' : 'not asked',
+            'grant types' => implode(', ', array_map(static fn (GrantType $grant): string => $grant->value, $client->registration->grantTypes)),
+            'allowed scopes' => (string) $client->registration->allowedScopes,
+            'access token' => $client->registration->accessTokenFormat->value,
+            'ID token' => RegisteredShape::of($client->registration->idToken),
+            'UserInfo' => RegisteredShape::of($client->registration->userInfo),
+            'authorization response' => RegisteredShape::of($client->registration->authorizationResponse),
         ]);
     }
 }

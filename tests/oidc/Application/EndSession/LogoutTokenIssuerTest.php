@@ -12,6 +12,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\ResponseFormat;
@@ -81,13 +82,15 @@ final class LogoutTokenIssuerTest extends TestCase
         $es256Key = $this->jwts->activate(Algorithms::es256());
         $client = new Client(
             $this->session->tenant,
-            'spa',
-            'Single page application',
-            Methods::none(),
-            null,
-            [new RedirectUri('https://spa.example/callback')],
-            backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'),
-            idToken: ResponseFormat::signed(Algorithms::es256()),
+            new ClientRegistration(
+                'spa',
+                'Single page application',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://spa.example/callback')],
+                backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'),
+                idToken: ResponseFormat::signed(Algorithms::es256()),
+            ),
         );
 
         // When

@@ -33,6 +33,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Event\AuthorizationCodeIssued;
@@ -104,13 +105,15 @@ final class AuthorizationHandlerTest extends TestCase
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->firstParty = new Client(
             $this->tenant,
-            'portal',
-            'Portal',
-            Methods::none(),
-            null,
-            [new RedirectUri('https://portal.acme.example/callback')],
-            allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
-            requiresConsent: false,
+            new ClientRegistration(
+                'portal',
+                'Portal',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://portal.acme.example/callback')],
+                allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
+                requiresConsent: false,
+            ),
         );
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->context = Fixtures::context($this->clock->now());
@@ -1356,13 +1359,15 @@ final class AuthorizationHandlerTest extends TestCase
         $tenant = Fixtures::tenant();
         $client = new Client(
             $tenant,
-            'portal',
-            'Portal',
-            Methods::none(),
-            null,
-            [new RedirectUri('https://portal.acme.example/callback')],
-            allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
-            requiresConsent: false,
+            new ClientRegistration(
+                'portal',
+                'Portal',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://portal.acme.example/callback')],
+                allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
+                requiresConsent: false,
+            ),
         );
         yield 'essential, the claims parameter' => [Requests::authorization(
             $client,

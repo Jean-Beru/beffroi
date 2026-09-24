@@ -1254,7 +1254,7 @@ final class AuthorizationRequestParserTest extends TestCase
         );
 
         // Then
-        static::assertSame('fapi-demo', $target->client->clientId);
+        static::assertSame('fapi-demo', $target->client->registration->clientId);
     }
 
     /**
@@ -1268,7 +1268,7 @@ final class AuthorizationRequestParserTest extends TestCase
         $target = $this->parser->redirectTarget($this->tenant, self::parameters([]));
 
         // Then
-        static::assertSame('oidc-demo', $target->client->clientId);
+        static::assertSame('oidc-demo', $target->client->registration->clientId);
     }
 
     /**

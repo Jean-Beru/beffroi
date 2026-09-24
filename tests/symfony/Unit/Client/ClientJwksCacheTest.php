@@ -88,6 +88,6 @@ final class ClientJwksCacheTest extends TestCase
 
     private static function keyOf(Client $client): string
     {
-        return 'heidi.client_keys.' . hash('xxh128', $client->tenant->id->toRfc4122() . '|' . $client->clientId);
+        return 'heidi.client_keys.' . hash('xxh128', $client->tenant->id->toRfc4122() . '|' . $client->registration->clientId);
     }
 }

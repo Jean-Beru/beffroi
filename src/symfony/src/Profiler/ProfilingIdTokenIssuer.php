@@ -37,8 +37,8 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
         $idToken = $this->issuer->issue($authorization, $accessToken, $now);
         $requested = $authorization->claimsRequest->idToken ?? [];
         $this->profile->record(new Observation('Tokens', 'ID token', [
-            'aud' => $authorization->client->clientId,
-            'shape' => RegisteredShape::of($authorization->client->idToken),
+            'aud' => $authorization->client->registration->clientId,
+            'shape' => RegisteredShape::of($authorization->client->registration->idToken),
             'nonce' => $authorization->nonce === null ? 'none' : 'carried back',
             'acr' => $authorization->authentication->contextClass,
             'amr' => implode(' ', $authorization->authentication->methods),

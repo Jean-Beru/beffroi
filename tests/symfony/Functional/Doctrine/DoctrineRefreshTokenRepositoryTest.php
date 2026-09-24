@@ -13,6 +13,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\RefreshToken;
@@ -49,7 +50,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertSame(RefreshToken::hash($token), $found->tokenHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
-        static::assertSame('oidc-demo', $found->client->clientId);
+        static::assertSame('oidc-demo', $found->client->registration->clientId);
         static::assertTrue($found->session->id->equals($session->id));
         static::assertTrue($found->family->id->equals($family->id));
         static::assertSame($family->authorizationCodeHash, $found->family->authorizationCodeHash);
@@ -217,7 +218,10 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     {
         $session = self::session(self::user());
         $family = self::family();
-        $ghost = new Client(self::tenant(), 'ghost', 'Removed client', Methods::none(), null, [new RedirectUri('https://ghost.example/callback')]);
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+        );
         $orphan = self::token(RefreshToken::generate(), $ghost, $session, $family, null, self::now()->modify('+1 minute'));
         $kept = self::token(RefreshToken::generate(), self::client(), $session, $family, null, self::now()->modify('+2 minutes'));
         self::tokens()->save($orphan);
