@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Command;
 
 use DateTimeInterface;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Domain\Key\TenantKey;
@@ -35,7 +33,8 @@ final readonly class KeysRotateCommand
     public const string NAME = 'heidi:keys:rotate';
 
     public function __construct(
-        private TenantProvider $tenants,
+        private ConfiguredTenant $tenant,
+        private RetiringKey $retiring,
         private TenantKeyRepositoryInterface $keys,
         private TenantKeyRotator $rotator,
         private RequestContextFactory $contexts,
@@ -46,9 +45,7 @@ final readonly class KeysRotateCommand
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Option(
-            description: 'The algorithm the key pair is generated for, among those the provider is wired with: a JWS algorithm for a key that signs, a JWE key management one for a key clients encrypt to. The default signature algorithm when none is named.',
-        )]
+        #[Option(description: KeysGenerateCommand::ALGORITHM_OPTION)]
         ?string $algorithm = null,
         #[Option(
             description: 'Activate the key at once, without the staging delay: a relying party whose JWK Set copy is younger than 60 s refuses the new tokens, or encrypts to the old key, until it is that old (oidc_login refetches once then); for an operator who knows every relying party is cold.',
@@ -57,11 +54,8 @@ final readonly class KeysRotateCommand
         #[Option(description: 'The active key is compromised: the new key takes over at once and the compromised one leaves the JWK Set with no window.')]
         bool $compromised = false,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
 
@@ -91,13 +85,7 @@ final readonly class KeysRotateCommand
         } elseif ($now) {
             $key = $this->rotator->rotate($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
-            // Read again: the repository may hand a fresh object on every read, and the rotation just dated this one.
-            $retiring = $this->keys->find($tenant, $previous->kid) ?? $previous;
-            $io->note(sprintf(
-                'The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while what is bound to it may still arrive.',
-                $retiring->kid,
-                $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?',
-            ));
+            $this->retiring->told($io, $tenant, $previous);
         } else {
             $key = $this->rotator->stage($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);

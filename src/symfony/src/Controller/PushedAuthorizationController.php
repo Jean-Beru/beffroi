@@ -6,13 +6,12 @@ namespace Heidi\Bundle\Controller;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\DpopProofHeader;
+use Heidi\Bundle\Http\ProtocolAnswer;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
 use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationResponse;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Domain\Token\TokenErrorResponse;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -48,17 +47,14 @@ final readonly class PushedAuthorizationController
                 DpopProofHeader::ofRequest($request),
             );
         } catch (OAuth2Exception $exception) {
-            $error = TokenErrorResponse::fromException($exception);
-
-            return new Response(JwtPayload::encode($error->parameters()), $error->statusCode, [
-                'Content-Type' => TokenErrorResponse::CONTENT_TYPE,
-            ]
-            + PushedAuthorizationResponse::HEADERS
-            + $error->headers());
+            return ProtocolAnswer::error($exception, PushedAuthorizationResponse::HEADERS);
         }
 
-        return new Response(JwtPayload::encode($response->parameters()), PushedAuthorizationResponse::STATUS_CODE, [
-            'Content-Type' => PushedAuthorizationResponse::CONTENT_TYPE,
-        ] + PushedAuthorizationResponse::HEADERS);
+        return ProtocolAnswer::json(
+            $response->parameters(),
+            PushedAuthorizationResponse::STATUS_CODE,
+            PushedAuthorizationResponse::CONTENT_TYPE,
+            PushedAuthorizationResponse::HEADERS,
+        );
     }
 }

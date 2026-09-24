@@ -8,35 +8,24 @@ use DateTimeImmutable;
 use function hash;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
-use Psr\Cache\CacheItemPoolInterface;
+use Heidi\Bundle\Cache\SeenOnce;
 use function sprintf;
 
 /**
- * The "jti" of the client assertions already seen, kept in a pool of the application until the assertion
- * they belong to expires (RFC 7523 §3, §4), so that an assertion authenticates once and does so across
- * the workers of a deployment. A pool tells a hit from a miss and not an insertion from a replacement:
- * two identical assertions racing on the same millisecond could both be taken, which is a narrower
- * window than the one a replay needs and is what a shared pool gives; a store that can add atomically
- * would close it.
+ * The "jti" of the client assertions already seen (RFC 7523 §3, §4), so that an assertion authenticates
+ * once. What makes a "jti" unique is all this says; remembering it once is SeenOnce's, with the caveat
+ * that goes with a pool.
  */
 final readonly class ClientAssertionReplayGuard implements ClientAssertionReplayGuardInterface
 {
     public function __construct(
-        private CacheItemPoolInterface $cache,
+        private SeenOnce $seen,
     ) {
     }
 
     public function remember(Client $client, string $jti, DateTimeImmutable $expiresAt): bool
     {
-        $item = $this->cache->getItem(self::key($client, $jti));
-        if ($item->isHit()) {
-            return false;
-        }
-        $item->set($expiresAt->getTimestamp());
-        $item->expiresAt($expiresAt);
-        $this->cache->save($item);
-
-        return true;
+        return $this->seen->remember(self::key($client, $jti), $expiresAt);
     }
 
     /**

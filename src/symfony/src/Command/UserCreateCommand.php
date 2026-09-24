@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Command;
 
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Application\Identity\UserAlreadyExistsException;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Domain\Identity\EmailAddress;
@@ -28,7 +26,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final readonly class UserCreateCommand
 {
     public function __construct(
-        private TenantProvider $tenants,
+        private ConfiguredTenant $tenant,
         private UserProvisioner $provisioner,
     ) {
     }
@@ -44,11 +42,8 @@ final readonly class UserCreateCommand
         #[Option(description: 'The "sub" the clients know the user by, when importing an identity; generated otherwise.')]
         ?string $subject = null,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
 

@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Command;
 
 use function hash_equals;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Domain\Credential\PlainPassword;
 use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\UserRepositoryInterface;
 use function is_string;
 use function preg_replace;
 use function sprintf;
@@ -23,7 +20,6 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use function trim;
 
 /**
  * The password of a user (architecture §5.5), asked on the terminal or read from the standard input;
@@ -36,8 +32,8 @@ use function trim;
 final readonly class UserSetPasswordCommand
 {
     public function __construct(
-        private TenantProvider $tenants,
-        private UserRepositoryInterface $users,
+        private ConfiguredTenant $tenant,
+        private NamedUser $namedUsers,
         private UserProvisioner $provisioner,
     ) {
     }
@@ -50,18 +46,13 @@ final readonly class UserSetPasswordCommand
         #[Option(description: 'Read the password from the standard input, up to the end of the first line, instead of asking.')]
         bool $passwordStdin = false,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
 
-        $user = $this->users->findByUsername($tenant, trim($username));
+        $user = $this->namedUsers->orTold($io, $tenant, $username);
         if ($user === null) {
-            $io->error(sprintf('There is no user named "%s" in the tenant "%s".', trim($username), $tenant->slug));
-
             return Command::FAILURE;
         }
 

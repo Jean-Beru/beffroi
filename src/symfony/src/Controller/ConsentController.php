@@ -9,6 +9,7 @@ use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\AuthorizationResponderInterface;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
+use Heidi\Bundle\Http\FormToken;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
@@ -24,8 +25,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * The consent page of an interaction (architecture §4.3, §5.2): GET shows it, POST carries "allow" or
@@ -47,7 +46,7 @@ final readonly class ConsentController
         private RequestContextFactory $contexts,
         private AuthorizationResponderInterface $responder,
         private InteractionPages $pages,
-        private CsrfTokenManagerInterface $csrf,
+        private FormToken $formTokens,
         private InteractionLocale $locale,
     ) {
     }
@@ -64,9 +63,9 @@ final readonly class ConsentController
         }
         $this->locale->resume($request, $interaction);
         if ($request->isMethod('POST')) {
-            $token = $parameters['_token'] ?? null;
-            if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-                return $this->pages->error(Response::HTTP_FORBIDDEN, InteractionPages::INVALID_CSRF_TOKEN);
+            $refusal = $this->formTokens->refusal($parameters[FormToken::PARAMETER] ?? null, self::CSRF_TOKEN_ID);
+            if ($refusal !== null) {
+                return $refusal;
             }
         }
         try {

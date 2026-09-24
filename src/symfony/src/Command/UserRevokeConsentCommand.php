@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Command;
 
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Psr\Clock\ClockInterface;
@@ -14,7 +12,6 @@ use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Heidi\Core\Port\UserRepositoryInterface;
 
 /**
  * Takes back what a user agreed to let a client obtain (architecture §4.3). A consent is remembered so
@@ -31,8 +28,8 @@ final readonly class UserRevokeConsentCommand
     public const string NAME = 'heidi:user:revoke-consent';
 
     public function __construct(
-        private TenantProvider $tenants,
-        private UserRepositoryInterface $users,
+        private ConfiguredTenant $tenant,
+        private NamedUser $namedUsers,
         private ClientRepositoryInterface $clients,
         private ConsentRepositoryInterface $consents,
         private ClockInterface $clock,
@@ -46,18 +43,13 @@ final readonly class UserRevokeConsentCommand
         #[Argument(description: 'The identifier of the client the consent was given to.')]
         string $clientId,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
-        $user = $this->users->findByUsername($tenant, $username);
+        $user = $this->namedUsers->orTold($io, $tenant, $username);
         if ($user === null) {
-            $io->error(sprintf('No user "%s" is registered with this tenant.', $username));
-
-            return Command::INVALID;
+            return Command::FAILURE;
         }
         $client = $this->clients->findByClientId($tenant, $clientId);
         if ($client === null) {

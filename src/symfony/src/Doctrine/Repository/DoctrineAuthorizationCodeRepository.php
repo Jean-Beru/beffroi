@@ -8,7 +8,7 @@ use function array_values;
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
@@ -26,9 +26,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements AuthorizationCodeRepositoryInterface, LoggedInClientsInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, AuthorizationCode::class);
+        parent::__construct($managers, AuthorizationCode::class);
     }
 
     public function findByCodeHash(string $codeHash): ?AuthorizationCode

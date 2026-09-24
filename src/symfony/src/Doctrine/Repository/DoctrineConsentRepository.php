@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Doctrine\Repository;
 
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Oidc\Domain\Client\Client;
@@ -19,9 +19,9 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
  */
 final readonly class DoctrineConsentRepository extends DoctrineRepository implements ConsentRepositoryInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, Consent::class);
+        parent::__construct($managers, Consent::class);
     }
 
     public function findActive(User $user, Client $client): ?Consent

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Doctrine\Repository;
 
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
@@ -17,9 +17,9 @@ use Heidi\Oidc\Port\InteractionRepositoryInterface;
  */
 final readonly class DoctrineInteractionRepository extends DoctrineRepository implements InteractionRepositoryInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, Interaction::class);
+        parent::__construct($managers, Interaction::class);
     }
 
     public function find(string $id): ?Interaction

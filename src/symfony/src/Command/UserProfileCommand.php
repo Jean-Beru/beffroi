@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Command;
 
 use function array_filter;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\UserRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -32,8 +29,8 @@ use function trim;
 final readonly class UserProfileCommand
 {
     public function __construct(
-        private TenantProvider $tenants,
-        private UserRepositoryInterface $users,
+        private ConfiguredTenant $tenant,
+        private NamedUser $namedUsers,
         private UserProvisioner $provisioner,
     ) {
     }
@@ -85,18 +82,13 @@ final readonly class UserProfileCommand
         #[Option(description: 'Country name ("address.country").')]
         ?string $country = null,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
 
-        $user = $this->users->findByUsername($tenant, trim($username));
+        $user = $this->namedUsers->orTold($io, $tenant, $username);
         if ($user === null) {
-            $io->error(sprintf('There is no user named "%s" in the tenant "%s".', trim($username), $tenant->slug));
-
             return Command::FAILURE;
         }
         $said = array_filter(

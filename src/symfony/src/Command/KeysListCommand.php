@@ -7,8 +7,6 @@ namespace Heidi\Bundle\Command;
 use function count;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Domain\Key\KeyStatus;
 use Heidi\Core\Domain\Key\TenantKey;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -36,7 +34,7 @@ use Throwable;
 final readonly class KeysListCommand
 {
     public function __construct(
-        private TenantProvider $tenants,
+        private ConfiguredTenant $tenant,
         private TenantKeyRepositoryInterface $keys,
         private KeySealerInterface $sealer,
     ) {
@@ -51,11 +49,8 @@ final readonly class KeysListCommand
         )]
         bool $check = false,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
 

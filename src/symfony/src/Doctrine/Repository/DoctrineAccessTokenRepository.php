@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Doctrine\Repository;
 use function array_filter;
 use function array_values;
 use DateTimeImmutable;
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
@@ -30,9 +30,9 @@ final readonly class DoctrineAccessTokenRepository extends DoctrineRepository im
     CanRevokeAccessTokensByGrantInterface,
     CanRevokeAccessTokensBySessionInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, StoredAccessToken::class);
+        parent::__construct($managers, StoredAccessToken::class);
     }
 
     public function issue(GrantedAuthorization $authorization, DateTimeImmutable $now, DateTimeImmutable $expiresAt): string

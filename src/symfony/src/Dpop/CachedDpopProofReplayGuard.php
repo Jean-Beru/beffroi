@@ -8,35 +8,24 @@ use DateTimeImmutable;
 use function hash;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
-use Psr\Cache\CacheItemPoolInterface;
+use Heidi\Bundle\Cache\SeenOnce;
 use function sprintf;
 
 /**
- * The "jti" of the proofs already seen, kept in a pool of the application until the proof they belong to
- * stops being accepted (RFC 9449 §11.1), so that a proof taken off the wire cannot be sent again, on
- * this worker or on another. A pool tells a hit from a miss and not an insertion from a replacement:
- * two identical proofs racing on the same millisecond could both be taken, which is a narrower window
- * than the one a replay needs and is what a shared pool gives; a store that can add atomically would
- * close it.
+ * The "jti" of the proofs already seen (RFC 9449 §11.1), so that a proof taken off the wire cannot be
+ * sent again. What makes a "jti" unique is all this says; remembering it once is SeenOnce's, with the
+ * caveat that goes with a pool.
  */
 final readonly class CachedDpopProofReplayGuard implements DpopProofReplayGuardInterface
 {
     public function __construct(
-        private CacheItemPoolInterface $cache,
+        private SeenOnce $seen,
     ) {
     }
 
     public function remember(KeyConfirmation $key, string $jti, DateTimeImmutable $expiresAt): bool
     {
-        $item = $this->cache->getItem(self::key($key, $jti));
-        if ($item->isHit()) {
-            return false;
-        }
-        $item->set($expiresAt->getTimestamp());
-        $item->expiresAt($expiresAt);
-        $this->cache->save($item);
-
-        return true;
+        return $this->seen->remember(self::key($key, $jti), $expiresAt);
     }
 
     /**

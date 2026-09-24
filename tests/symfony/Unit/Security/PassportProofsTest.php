@@ -8,7 +8,10 @@ use function array_map;
 use Heidi\Bundle\Security\PasskeyCredentials;
 use Heidi\Bundle\Security\PasskeyLogin;
 use Heidi\Bundle\Security\PassportProofs;
+use Heidi\Bundle\Security\DatedPasswordCredential;
 use Heidi\Bundle\Security\PasswordLogin;
+use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Bundle\Security\ProvingLoginInterface;
 use Heidi\Bundle\Security\TotpCredentials;
 use Heidi\Bundle\Security\TotpLogin;
@@ -36,7 +39,11 @@ final class PassportProofsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->proofs = self::proofsOf([new PasswordLogin(), new PasskeyLogin(), new TotpLogin()]);
+        $this->proofs = self::proofsOf([
+            self::passwordLogin(),
+            new PasskeyLogin(new InMemoryCredentialRepository(), new RecordingEventDispatcher()),
+            new TotpLogin(self::passwords()),
+        ]);
     }
 
     #[Test]
@@ -121,7 +128,7 @@ final class PassportProofsTest extends TestCase
     public function aFirewallThatOffersOneLoginAnnouncesThatOneOnly(): void
     {
         // Given
-        $proofs = self::proofsOf([new PasswordLogin()]);
+        $proofs = self::proofsOf([self::passwordLogin()]);
 
         // When
         $methods = $proofs->provableMethods();
@@ -142,6 +149,16 @@ final class PassportProofsTest extends TestCase
 
         // When
         $proofs->provableMethods();
+    }
+
+    private static function passwords(): DatedPasswordCredential
+    {
+        return new DatedPasswordCredential(new InMemoryCredentialRepository());
+    }
+
+    private static function passwordLogin(): PasswordLogin
+    {
+        return new PasswordLogin(self::passwords());
     }
 
     /**

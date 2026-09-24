@@ -7,9 +7,8 @@ namespace Heidi\Bundle\Doctrine\Repository;
 use function array_filter;
 use function array_merge;
 use function array_values;
-use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Core\Domain\Credential\Credential;
 use Heidi\Core\Domain\Credential\ExternallyIdentifiedCredentialInterface;
 use Heidi\Core\Domain\Identity\User;
@@ -18,7 +17,6 @@ use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use function is_a;
 use function is_subclass_of;
-use LogicException;
 use function sort;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
@@ -38,7 +36,7 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
     private ?array $kinds = null;
 
     public function __construct(
-        private readonly ManagerRegistry $registry,
+        private readonly EntityManagers $managers,
     ) {
     }
 
@@ -56,7 +54,8 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
             if (! is_a($class, $kind, true)) {
                 continue;
             }
-            $credentials = array_merge($credentials, $this->manager($class)
+            $credentials = array_merge($credentials, $this->managers
+                ->forClass($class)
                 ->getRepository($class)
                 ->findBy([
                     'user' => $user,
@@ -73,7 +72,7 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
     public function find(Uuid $id): ?Credential
     {
         foreach ($this->kinds() as $class) {
-            $credential = $this->manager($class)->find($class, $id);
+            $credential = $this->managers->forClass($class)->find($class, $id);
             if ($credential !== null) {
                 return $credential;
             }
@@ -95,7 +94,8 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
             throw new InvalidArgumentException(sprintf('A credential of kind "%s" is not presented by an identifier.', $kind));
         }
 
-        return $this->manager($kind)
+        return $this->managers
+            ->forClass($kind)
             ->getRepository($kind)
             ->findOneBy([
                 'tenant' => $tenant,
@@ -105,7 +105,7 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
 
     public function save(Credential $credential): void
     {
-        $manager = $this->manager($credential::class);
+        $manager = $this->managers->forClass($credential::class);
         $manager->persist($credential);
         $manager->flush();
     }
@@ -124,7 +124,7 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
             return $this->kinds;
         }
         $kinds = [];
-        foreach ($this->registry->getManagers() as $manager) {
+        foreach ($this->managers->all() as $manager) {
             foreach ($manager->getMetadataFactory()->getAllMetadata() as $metadata) {
                 if ($metadata instanceof OrmClassMetadata && $metadata->isMappedSuperclass) {
                     continue;
@@ -138,18 +138,5 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
         sort($kinds);
 
         return $this->kinds = $kinds;
-    }
-
-    /**
-     * @param class-string<Credential> $class
-     */
-    private function manager(string $class): EntityManagerInterface
-    {
-        $manager = $this->registry->getManagerForClass($class);
-        if (! $manager instanceof EntityManagerInterface) {
-            throw new LogicException(sprintf('No entity manager maps "%s".', $class));
-        }
-
-        return $manager;
     }
 }

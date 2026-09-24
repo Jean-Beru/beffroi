@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Http\Decision;
+
+use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * The user has to authenticate: the browser goes to the login page of this interaction, which resumes
+ * it once the login is done (OIDC Core §3.1.2.1).
+ */
+final readonly class LoginRequiredRenderer implements DecisionRendererInterface
+{
+    public const string ROUTE = 'heidi_interaction_login';
+
+    public function __construct(
+        private InteractionPage $page,
+    ) {
+    }
+
+    public function decision(): string
+    {
+        return 'login';
+    }
+
+    public function render(Request $request, AuthorizationDecision $decision): Response
+    {
+        return $this->page->of($request, $decision->interaction, self::ROUTE);
+    }
+}

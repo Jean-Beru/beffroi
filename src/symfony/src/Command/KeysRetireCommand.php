@@ -6,8 +6,6 @@ namespace Heidi\Bundle\Command;
 
 use function count;
 use DateTimeInterface;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Domain\Key\TenantKey;
@@ -35,7 +33,7 @@ final readonly class KeysRetireCommand
     public const string NAME = 'heidi:keys:retire';
 
     public function __construct(
-        private TenantProvider $tenants,
+        private ConfiguredTenant $tenant,
         private TenantKeyRotator $rotator,
         private RequestContextFactory $contexts,
     ) {
@@ -58,11 +56,8 @@ final readonly class KeysRetireCommand
             return Command::INVALID;
         }
 
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
         $context = $this->contexts->fromConsole(self::NAME);

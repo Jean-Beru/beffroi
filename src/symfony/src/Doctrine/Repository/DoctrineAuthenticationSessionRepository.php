@@ -6,7 +6,7 @@ namespace Heidi\Bundle\Doctrine\Repository;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
@@ -21,9 +21,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRepository implements AuthenticationSessionRepositoryInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, AuthenticationSession::class);
+        parent::__construct($managers, AuthenticationSession::class);
     }
 
     public function find(Uuid $id): ?AuthenticationSession

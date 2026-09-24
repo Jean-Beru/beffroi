@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Doctrine;
 
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Domain\Tenant\Tenant;
 use function implode;
-use LogicException;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -23,7 +20,7 @@ final class TenantProvider implements ResetInterface
 
     public function __construct(
         private readonly TenantFactory $factory,
-        private readonly ManagerRegistry $registry,
+        private readonly EntityManagers $managers,
     ) {
     }
 
@@ -36,7 +33,7 @@ final class TenantProvider implements ResetInterface
             return $this->tenant;
         }
         $configured = $this->factory->create();
-        $tenant = $this->manager()->find(Tenant::class, $configured->id);
+        $tenant = $this->managers->forClass(Tenant::class)->find(Tenant::class, $configured->id);
         if ($tenant === null) {
             throw TenantNotSynchronizedException::missing($configured->slug);
         }
@@ -66,15 +63,5 @@ final class TenantProvider implements ResetInterface
     public function onClear(): void
     {
         $this->reset();
-    }
-
-    private function manager(): EntityManagerInterface
-    {
-        $manager = $this->registry->getManagerForClass(Tenant::class);
-        if (! $manager instanceof EntityManagerInterface) {
-            throw new LogicException('No entity manager maps the tenant.');
-        }
-
-        return $manager;
     }
 }

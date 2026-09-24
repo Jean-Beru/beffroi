@@ -4,22 +4,14 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Profiler;
 
-use function array_keys;
-use function array_map;
-use function array_slice;
-use function explode;
 use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
+use Heidi\Bundle\Profiler\Decision\DecisionObservations;
 use Heidi\Oidc\Domain\Authorization\RedirectTarget;
 use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\ConsentRequired;
-use Heidi\Oidc\Domain\Interaction\Granted;
 use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Interaction\LoginRequired;
 use Heidi\Oidc\Exception\InteractionCompletedException;
 use Heidi\Oidc\Exception\InteractionExpiredException;
 use Heidi\Oidc\Exception\OAuth2Exception;
-use function implode;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -37,12 +29,13 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
     public function __construct(
         private AuthorizationResponderInterface $responder,
         private OpProfile $profile,
+        private DecisionObservations $observations,
     ) {
     }
 
     public function respond(Request $request, AuthorizationDecision $decision): Response
     {
-        $this->profile->record(self::observe($decision));
+        $this->profile->record($this->observations->of($decision));
 
         return $this->responder->respond($request, $decision);
     }
@@ -76,44 +69,5 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
         ]));
 
         return $this->responder->unknownInteraction();
-    }
-
-    private static function observe(AuthorizationDecision $decision): Observation
-    {
-        if ($decision instanceof LoginRequired) {
-            $stepUp = $decision->stepUp;
-
-            return new Observation('Decision', 'Decision', [
-                'outcome' => 'the user authenticates',
-                'why' => $decision->requirement->value,
-                'classes still short of' => $stepUp === null
-                    ? 'none'
-                    : implode(
-                        ' ',
-                        array_map(static fn (AuthenticationContextClass $class): string => $class->value, $stepUp->classes),
-                    ),
-                'credentials that would reach one' => $stepUp === null ? 'none' : implode(' ', $stepUp->kinds()),
-            ]);
-        }
-        if ($decision instanceof ConsentRequired) {
-            return new Observation('Decision', 'Decision', [
-                'outcome' => 'the user is asked to consent',
-                'why' => $decision->requirement->value,
-                'scopes asked for' => (string) $decision->scopes,
-            ]);
-        }
-        if ($decision instanceof Granted) {
-            return new Observation('Decision', 'Decision', [
-                'outcome' => 'granted',
-                'response mode' => $decision->interaction->request->responseMode->value,
-                'parameters sent back' => implode(' ', array_keys($decision->response->parameters())),
-            ]);
-        }
-
-        $parts = explode('\\', $decision::class);
-
-        return new Observation('Decision', 'Decision', [
-            'outcome' => implode('', array_slice($parts, -1)),
-        ]);
     }
 }

@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Command;
 
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Credential\CredentialRevocation;
 use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
 use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -32,8 +29,8 @@ final readonly class UserRevokeCredentialCommand
     public const string NAME = 'heidi:user:revoke-credential';
 
     public function __construct(
-        private TenantProvider $tenants,
-        private UserRepositoryInterface $users,
+        private ConfiguredTenant $tenant,
+        private NamedUser $namedUsers,
         private CredentialRepositoryInterface $credentials,
         private CredentialRevocation $revocation,
         private RequestContextFactory $contexts,
@@ -47,11 +44,8 @@ final readonly class UserRevokeCredentialCommand
         #[Argument(description: 'The identifier of the credential, as "heidi:user:show" lists it.')]
         string $id,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
         if (! Uuid::isValid(trim($id))) {
@@ -60,10 +54,8 @@ final readonly class UserRevokeCredentialCommand
             return Command::INVALID;
         }
 
-        $user = $this->users->findByUsername($tenant, trim($username));
+        $user = $this->namedUsers->orTold($io, $tenant, $username);
         if ($user === null) {
-            $io->error(sprintf('There is no user named "%s" in the tenant "%s".', trim($username), $tenant->slug));
-
             return Command::FAILURE;
         }
         $credential = $this->credentials->find(Uuid::fromString(trim($id)));

@@ -11,12 +11,9 @@ use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
-use Heidi\Core\Domain\Event\PasskeyUsed;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
@@ -31,17 +28,19 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  */
 final readonly class LoginSuccessListener
 {
+    /**
+     * @param iterable<DatesItsCredentialInterface> $logins the logins that date what they proved
+     */
     public function __construct(
         private TenantProvider $tenants,
         private BrowserSession $browser,
         private AuthenticationSessionRepositoryInterface $sessions,
-        private CredentialRepositoryInterface $credentials,
         private SessionOpener $opener,
         private SessionTerminator $terminator,
         private RequestContextFactory $contexts,
-        private EventDispatcherInterface $events,
         private PassportProofs $proofs,
         private SecondFactorGate $gate,
+        private iterable $logins,
     ) {
     }
 
@@ -87,26 +86,16 @@ final readonly class LoginSuccessListener
     }
 
     /**
-     * The credential that proved the login is dated; a passkey also records its sign count and its backup
-     * state (WebAuthn Level 3 §7.2, step 26) and is announced, a count that did not grow told, not refused.
-     * After a code, the password of the first step is dated here, the TOTP having been dated by the core.
+     * Each login dates what it proved and announces what its kind announces; the first that recognises
+     * the passport answers, they being mutually exclusive. A login that records nothing implements
+     * nothing, and nothing here knows which is which.
      */
     private function recordUse(Passport $passport, SecurityUser $user, DateTimeImmutable $now, RequestContext $context): void
     {
-        $passkey = $passport->getBadge(PasskeyCredentials::class);
-        if ($passkey instanceof PasskeyCredentials) {
-            $credential = $passkey->assertion->credential;
-            $signCountRegressed = $credential->signCountRegresses($passkey->assertion->authenticatorData);
-            $credential->recordUse($passkey->assertion->authenticatorData, $now);
-            $this->credentials->save($credential);
-            $this->events->dispatch(new PasskeyUsed($credential, $now, $context, $signCountRegressed));
-
-            return;
-        }
-        $credential = $user->passwordCredential();
-        if ($credential !== null) {
-            $credential->markUsed($now);
-            $this->credentials->save($credential);
+        foreach ($this->logins as $login) {
+            if ($login->recordUse($passport, $user, $now, $context)) {
+                return;
+            }
         }
     }
 }

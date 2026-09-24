@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use Heidi\Bundle\Cache\SeenOnce;
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
 use Heidi\Bundle\Client\ClientJwksFetcher;
 use Heidi\Bundle\Client\RequestObjectFetcher;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
@@ -25,6 +27,12 @@ use Heidi\Bundle\EndSession\LogoutChannels;
 use Heidi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\AuthorizationRequestReader;
+use Heidi\Bundle\Http\Decision\ConsentRequiredRenderer;
+use Heidi\Bundle\Http\Decision\DecisionRenderers;
+use Heidi\Bundle\Http\Decision\GrantedRenderer;
+use Heidi\Bundle\Http\Decision\InteractionPage;
+use Heidi\Bundle\Http\Decision\LoginRequiredRenderer;
+use Heidi\Bundle\Http\FormToken;
 use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\AuthorizationResponderInterface;
@@ -68,6 +76,7 @@ use Heidi\Bundle\Security\PasskeyLogin;
 use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
 use Heidi\Bundle\Security\PassportProofs;
 use Heidi\Bundle\Security\PasswordAttemptListener;
+use Heidi\Bundle\Security\DatedPasswordCredential;
 use Heidi\Bundle\Security\PasswordLogin;
 use Heidi\Bundle\Security\RateLimitedAttempts;
 use Heidi\Bundle\Security\RefusalCost;
@@ -319,6 +328,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
     // what every page of the account asks first: the session of this browser, and the form token when it posts
+    $services->set(FormToken::class);
     $services->set(AccountAccess::class);
     $services->set(InteractionLocale::class)->args([
         '$enabledLocales' => '%kernel.enabled_locales%',
@@ -334,6 +344,14 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SignedFormPostResponseRenderer::class)->tag('heidi.response_mode');
     $services->set(AuthorizationResponseRenderers::class)->args([tagged_iterator('heidi.response_mode')]);
     $services->alias(ServedResponseModesInterface::class, AuthorizationResponseRenderers::class);
+
+    // One way of answering per decision of the authorization endpoint (architecture §4.3): a decision
+    // the provider gains is a renderer beside these and a line here, and nothing reads a class name
+    $services->set(InteractionPage::class);
+    $services->set(LoginRequiredRenderer::class)->tag('heidi.authorization_decision');
+    $services->set(ConsentRequiredRenderer::class)->tag('heidi.authorization_decision');
+    $services->set(GrantedRenderer::class)->tag('heidi.authorization_decision');
+    $services->set(DecisionRenderers::class)->args([tagged_iterator('heidi.authorization_decision')]);
     $services->set(AuthorizationResponder::class);
     $services->alias(AuthorizationResponderInterface::class, AuthorizationResponder::class);
     // the two resolvers of the authorization endpoint, in the order the protocol gives them (RFC 9126 §4, RFC 9101 §6.1)
@@ -381,16 +399,19 @@ return static function (ContainerConfigurator $container): void {
     $services->set(CorePasswordHasher::class);
     $services->set(UserChecker::class);
     $services->set(InteractionLoginHandler::class);
-    $services->set(LoginSuccessListener::class);
-    $services->set(LoginFailureListener::class);
+    $services->set(LoginSuccessListener::class)->args(['$logins' => tagged_iterator('heidi.login')]);
+    $services->set(LoginFailureListener::class)->args(['$logins' => tagged_iterator('heidi.login.refusal')]);
     $services->set(PasskeyLoginAuthenticator::class);
     // a password of a user who holds a second factor is held until the code, verified by the second authenticator of the firewall
     $services->set(SecondFactorGate::class);
     $services->set(TotpLoginAuthenticator::class);
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010):
     // one class per login, and what is tagged is what the provider announces
-    $services->set(PasswordLogin::class)->tag('heidi.login');
-    $services->set(PasskeyLogin::class)->tag('heidi.login');
+    // "heidi.login" is every login; "heidi.login.refusal" is those whose refusals the listener
+    // announces, the second step announcing its own through the core
+    $services->set(DatedPasswordCredential::class);
+    $services->set(PasswordLogin::class)->tag('heidi.login')->tag('heidi.login.refusal');
+    $services->set(PasskeyLogin::class)->tag('heidi.login')->tag('heidi.login.refusal');
     $services->set(TotpLogin::class)->tag('heidi.login');
     $services->set(PassportProofs::class)->args([tagged_iterator('heidi.login')]);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
@@ -407,6 +428,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(KmsUnavailableListener::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
+    $services->set(EntityManagers::class);
     $services->set(TenantProvider::class)->tag('kernel.reset', [
         'method' => 'reset',
     ])->tag('doctrine.event_listener', [
@@ -624,7 +646,7 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->alias(ClientJwksCacheInterface::class, ClientJwksCache::class);
     $services->set(ClientAssertionReplayGuard::class)->args([
-        '$cache' => service('heidi.client_assertions'),
+        inline_service(SeenOnce::class)->args([service('heidi.client_assertions')]),
     ]);
     $services->alias(ClientAssertionReplayGuardInterface::class, ClientAssertionReplayGuard::class);
 
@@ -635,7 +657,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwtLibraryProofKeyVerifier::class)->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
     $services->alias(ProofKeyVerifierInterface::class, JwtLibraryProofKeyVerifier::class);
     $services->set(CachedDpopProofReplayGuard::class)->args([
-        '$cache' => service('heidi.dpop'),
+        inline_service(SeenOnce::class)->args([service('heidi.dpop')]),
     ]);
     $services->alias(DpopProofReplayGuardInterface::class, CachedDpopProofReplayGuard::class);
     $services->set(NoDpopNonce::class);

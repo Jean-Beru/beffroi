@@ -4,23 +4,18 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Http;
 
+use Heidi\Bundle\Http\Decision\DecisionRenderers;
 use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Authorization\AuthorizationErrorResponse;
 use Heidi\Oidc\Domain\Authorization\RedirectTarget;
 use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\ConsentRequired;
-use Heidi\Oidc\Domain\Interaction\Granted;
 use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Interaction\LoginRequired;
 use Heidi\Oidc\Exception\InteractionCompletedException;
 use Heidi\Oidc\Exception\InteractionExpiredException;
 use Heidi\Oidc\Exception\OAuth2Exception;
-use LogicException;
-use function sprintf;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * Turns a decision of the AuthorizationHandler into where the browser goes (architecture §4.3, §5.2),
@@ -44,29 +39,14 @@ final readonly class AuthorizationResponder implements AuthorizationResponderInt
     public function __construct(
         private InteractionPages $pages,
         private BrowserSession $browser,
-        private UrlGeneratorInterface $router,
         private AuthorizationResponseRenderers $renderers,
+        private DecisionRenderers $decisions,
     ) {
     }
 
     public function respond(Request $request, AuthorizationDecision $decision): Response
     {
-        if ($decision instanceof LoginRequired) {
-            return $this->toPage($request, $decision->interaction, 'heidi_interaction_login');
-        }
-        if ($decision instanceof ConsentRequired) {
-            return $this->toPage($request, $decision->interaction, 'heidi_interaction_consent');
-        }
-        if ($decision instanceof Granted) {
-            $this->browser->forget($request->getSession(), $decision->interaction);
-
-            return $this->renderers->render(
-                $decision->interaction->request->responseMode,
-                new AuthorizationAnswer($decision->interaction->request->client, $decision->response->redirectUri, $decision->response->parameters()),
-            );
-        }
-
-        throw new LogicException(sprintf('The decision "%s" is not one the authorization endpoint knows.', $decision::class));
+        return $this->decisions->render($request, $decision);
     }
 
     /**
@@ -105,14 +85,5 @@ final readonly class AuthorizationResponder implements AuthorizationResponderInt
     public function unknownInteraction(): Response
     {
         return $this->pages->error(Response::HTTP_BAD_REQUEST, self::UNKNOWN_INTERACTION);
-    }
-
-    private function toPage(Request $request, Interaction $interaction, string $route): Response
-    {
-        $this->browser->begin($request->getSession(), $interaction);
-
-        return $this->pages->redirect($this->router->generate($route, [
-            self::INTERACTION_PARAMETER => $interaction->id,
-        ]));
     }
 }

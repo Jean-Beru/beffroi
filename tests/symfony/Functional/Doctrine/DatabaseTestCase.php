@@ -11,6 +11,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
@@ -118,6 +119,11 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function registry(): ManagerRegistry
     {
         return self::service('doctrine', ManagerRegistry::class);
+    }
+
+    protected static function managers(): EntityManagers
+    {
+        return new EntityManagers(self::registry());
     }
 
     /**

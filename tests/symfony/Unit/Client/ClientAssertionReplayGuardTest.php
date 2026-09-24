@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Unit\Client;
 
 use DateTimeImmutable;
+use Heidi\Bundle\Cache\SeenOnce;
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -24,7 +25,7 @@ final class ClientAssertionReplayGuardTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->guard = new ClientAssertionReplayGuard(new ArrayAdapter());
+        $this->guard = new ClientAssertionReplayGuard(new SeenOnce(new ArrayAdapter()));
         // the pool expires an item against the wall clock, so the assertion expires ahead of it
         $this->expiresAt = new DateTimeImmutable('+1 hour');
     }
