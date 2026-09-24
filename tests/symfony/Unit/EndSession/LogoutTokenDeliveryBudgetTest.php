@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit\EndSession;
 
+use Heidi\Bundle\Configuration\BackChannelLogoutSection;
 use DateInterval;
 use Heidi\Bundle\EndSession\LogoutTokenDeliveryBudget;
-use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Messenger\NotificationRetryPolicy;
 use PHPUnit\Framework\Attributes\Test;
@@ -29,12 +29,12 @@ final class LogoutTokenDeliveryBudgetTest extends TestCase
         // Given
         $budget = new LogoutTokenDeliveryBudget(
             new NotificationRetryPolicy(
-                HeidiBundle::DEFAULT_BACK_CHANNEL_LOGOUT_RETRIES,
-                HeidiBundle::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_DELAY,
-                HeidiBundle::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER,
-                HeidiBundle::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY,
+                BackChannelLogoutSection::DEFAULT_BACK_CHANNEL_LOGOUT_RETRIES,
+                BackChannelLogoutSection::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_DELAY,
+                BackChannelLogoutSection::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER,
+                BackChannelLogoutSection::DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY,
             ),
-            $this->sender(HeidiBundle::DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT),
+            $this->sender(BackChannelLogoutSection::DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT),
         );
 
         // When / Then

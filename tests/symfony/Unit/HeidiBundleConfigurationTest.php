@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit;
 
+use Heidi\Bundle\Configuration\ClientsSection;
+use Heidi\Bundle\Configuration\TenantSection;
+use Heidi\Bundle\Configuration\TokensSection;
 use function array_map;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Tenant\TenantFactory;
@@ -57,7 +60,7 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'issuer' => 'https://op.test',
                 'slug' => 'default',
                 'name' => null,
-                'authentication_classes' => HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
+                'authentication_classes' => TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
             ],
             $config['tenant'],
         );
@@ -104,7 +107,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             'default',
             null,
             new MockClock('2026-09-20T12:00:00+00:00'),
-            HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
+            TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
         );
 
         // When / Then
@@ -190,8 +193,8 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::contentEncryption(),
         );
         static::assertEquals($fromModule, $fromTree);
-        static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->registration->grantTypes));
-        static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, $fromTree->registration->allowedScopes->values());
+        static::assertSame(ClientsSection::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->registration->grantTypes));
+        static::assertSame(ClientsSection::DEFAULT_ALLOWED_SCOPES, $fromTree->registration->allowedScopes->values());
     }
 
     /**
@@ -246,7 +249,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             self::MINIMAL
                 + [
                     'tokens' => [
-                        'authorization_code_ttl' => HeidiBundle::MAX_AUTHORIZATION_CODE_TTL + 1,
+                        'authorization_code_ttl' => TokensSection::MAX_AUTHORIZATION_CODE_TTL + 1,
                     ],
                 ],
             'authorization_code_ttl',
