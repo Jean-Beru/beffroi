@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 /*
  * The quality tools, what the CI runs on every push (.github/workflows/ci.yml): each one in the phpqa image
- * when Docker is available.
+ * when Docker is available, save the check of the generated configuration of the application, which boots
+ * the application itself and runs where its own Composer install was made.
  */
 
 use Castor\Attribute\AsOption;
@@ -252,6 +253,110 @@ function deptrac(): void
         '--report-skipped',
         '--fail-on-uncovered',
     ]);
+}
+
+/*
+ * The generated configuration of the application, both files committed: "apps/op/config/reference.php", the
+ * array shapes an editor completes a "heidi.*" key with, and "apps/op/config/schema.json", the JSON schema a
+ * language server validates the YAML against. The kernel writes them when it compiles its container in debug
+ * (FrameworkBundle, PhpConfigReferenceDumpPass and JsonSchemaConfigDumpPass), from the configuration trees of
+ * the bundles the application has installed, and nothing else writes them: a node added, renamed or re-worded
+ * in "HeidiBundle::configure()" leaves them behind until someone boots the application. A member that exists
+ * and is not in the reference is a member nobody discovers; a member the reference still carries and the
+ * container refuses is worse, since the file says otherwise.
+ */
+const GENERATED_CONFIGURATION = [
+    'apps/op/config/reference.php',
+    'apps/op/config/schema.json',
+];
+
+#[AsTask(
+    description: 'Check that the generated configuration reference and schema of the application still say what the configuration trees of its bundles declare',
+)]
+function config_reference(): void
+{
+    io()->title('Checking the generated configuration reference and schema');
+
+    $onDisk = generated_configuration();
+    regenerate_generated_configuration();
+    $regenerated = generated_configuration();
+
+    $behind = [];
+    foreach (GENERATED_CONFIGURATION as $file) {
+        if ($regenerated[$file] === $onDisk[$file]) {
+            continue;
+        }
+
+        $behind[] = $file;
+        // The check reports, it does not fix, the rule the formatter already follows here: the file goes back
+        // to what it held, and what the kernel would have written is shown instead.
+        $written = sprintf('%s/%s', sys_get_temp_dir(), basename($file));
+        file_put_contents($written, $regenerated[$file]);
+        file_put_contents(getcwd() . '/' . $file, $onDisk[$file]);
+        run(['git', '--no-pager', 'diff', '--no-index', '--', $file, $written], context: context()->withAllowFailure());
+        unlink($written);
+    }
+
+    if ($behind === []) {
+        io()->success('The reference and the schema are what the bundles of the application declare.');
+
+        return;
+    }
+
+    io()->error(sprintf(
+        'Behind the configuration trees they are generated from: %s. Run "castor config-reference-fix" and commit the result.',
+        implode(', ', $behind),
+    ));
+    exit(1);
+}
+
+#[AsTask(
+    description: 'Regenerate the configuration reference and schema of the application from the configuration trees of its bundles',
+)]
+function config_reference_fix(): void
+{
+    regenerate_generated_configuration();
+    io()->success('The reference and the schema are written again; commit them with the change that moved the trees.');
+}
+
+/**
+ * The content of the two generated files, by path.
+ *
+ * @return array<string, string>
+ */
+function generated_configuration(): array
+{
+    $contents = [];
+    foreach (GENERATED_CONFIGURATION as $file) {
+        $path = getcwd() . '/' . $file;
+        $content = is_file($path) ? file_get_contents($path) : false;
+        $contents[$file] = $content === false ? '' : $content;
+    }
+
+    return $contents;
+}
+
+/**
+ * Boots the application the way a developer does, on the host and outside the stack: "cache:clear" compiles
+ * the container whatever the state of the cache, and compiling it in debug is what writes the two files.
+ * Not in the QA image like the other tasks of this file: the application is installed by its own Composer
+ * install, and it runs with the PHP that made it.
+ */
+function regenerate_generated_configuration(): void
+{
+    if (! is_file(getcwd() . '/apps/op/vendor/autoload.php')) {
+        io()->error('The application is not installed: run "(cd apps/op && composer install)" first.');
+        exit(1);
+    }
+
+    // The static binary of Castor carries its own runtime and reports no PHP_BINARY, so the PHP of the PATH
+    // is what boots the application there; a Castor running on a PHP names it.
+    $php = \PHP_BINARY === '' ? 'php' : \PHP_BINARY;
+
+    run([$php, 'apps/op/bin/console', 'cache:clear'], context: context()->withEnvironment([
+        'APP_ENV' => 'dev',
+        'APP_DEBUG' => '1',
+    ]));
 }
 
 #[AsTask(description: 'Run PHP parallel linter')]
