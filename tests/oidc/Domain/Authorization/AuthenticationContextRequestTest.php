@@ -11,6 +11,7 @@ use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationContextRequest;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -298,7 +299,7 @@ final class AuthenticationContextRequestTest extends TestCase
         return new AuthorizationRequest(
             $this->client,
             $this->client->redirectUris[0],
-            [Scope::openid()],
+            new Scopes([Scope::openid()]),
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
             acrValues: $acrValues,
             claims: $claims === null ? null : ClaimsRequest::fromJson($claims),

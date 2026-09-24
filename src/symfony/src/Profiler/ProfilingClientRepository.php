@@ -9,7 +9,6 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use function implode;
 
@@ -54,7 +53,7 @@ final readonly class ProfilingClientRepository implements ClientRepositoryInterf
             'PKCE' => $client->requiresPkce ? 'required' : 'not required',
             'consent' => $client->requiresConsent ? 'asked' : 'not asked',
             'grant types' => implode(', ', array_map(static fn (GrantType $grant): string => $grant->value, $client->grantTypes)),
-            'allowed scopes' => implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $client->allowedScopes)),
+            'allowed scopes' => (string) $client->allowedScopes,
             'access token' => $client->accessTokenFormat->value,
             'ID token' => RegisteredShape::of($client->idToken),
             'UserInfo' => RegisteredShape::of($client->userInfo),

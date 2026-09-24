@@ -91,7 +91,7 @@ final class AuthorizationRequestParserTest extends TestCase
         // Then
         static::assertSame($this->client, $request->client);
         static::assertSame('https://demo.localhost/login/check', (string) $request->redirectUri);
-        static::assertEquals([Scope::openid(), new Scope('profile')], $request->scopes);
+        static::assertEquals([Scope::openid(), new Scope('profile')], $request->scopes->all);
         static::assertSame(self::CHALLENGE, $request->codeChallenge?->value);
         static::assertSame('S256', $request->codeChallenge->method->value);
         static::assertSame('af0ifjsldkj', $request->state);
@@ -318,7 +318,7 @@ final class AuthorizationRequestParserTest extends TestCase
         ]);
 
         // Then
-        static::assertEquals([new Scope('email'), Scope::openid(), new Scope('profile')], $request->scopes);
+        static::assertEquals([new Scope('email'), Scope::openid(), new Scope('profile')], $request->scopes->all);
     }
 
     /**

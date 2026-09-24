@@ -9,6 +9,7 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Client\Client;
@@ -160,7 +161,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+1 day'));
@@ -181,7 +182,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+1 day'));
@@ -203,7 +204,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
         $now = Fixtures::now()->modify('+1 day');
 
         // When
@@ -222,7 +223,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+85 days'));
@@ -239,7 +240,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
 
         // When
         $this->issuer->refreshToken($token->family, $authorization, Fixtures::now());
@@ -253,7 +254,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
         $shortLived = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, $this->events, new DateInterval('PT1H'));
 
         // When
@@ -270,7 +271,7 @@ final class TokenIssuerTest extends TestCase
 
     private function authorizationNarrowedToProfile(): GrantedAuthorization
     {
-        return GrantedAuthorization::fromRefreshToken($this->previousRefreshToken(), [new Scope('profile')]);
+        return GrantedAuthorization::fromRefreshToken($this->previousRefreshToken(), new Scopes([new Scope('profile')]));
     }
 
     private function previousRefreshToken(): RefreshToken

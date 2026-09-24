@@ -9,6 +9,7 @@ use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
@@ -354,7 +355,7 @@ final class InteractionTest extends TestCase
                 Uuid::v7(),
                 Fixtures::user($test->user->tenant, 'bob', 'bob-subject'),
                 $test->client,
-                [new Scope('openid'), new Scope('profile')],
+                new Scopes([new Scope('openid'), new Scope('profile')]),
                 Fixtures::now(),
             ),
         ];
@@ -363,7 +364,7 @@ final class InteractionTest extends TestCase
                 Uuid::v7(),
                 $test->user,
                 Clients::public($test->user->tenant),
-                [new Scope('openid'), new Scope('profile')],
+                new Scopes([new Scope('openid'), new Scope('profile')]),
                 Fixtures::now(),
             ),
         ];
@@ -380,7 +381,7 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $interaction->consent(new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid')], Fixtures::now()), Fixtures::now());
+        $interaction->consent(new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([new Scope('openid')]), Fixtures::now()), Fixtures::now());
     }
 
     #[Test]
@@ -476,6 +477,6 @@ final class InteractionTest extends TestCase
 
     private function consent(): Consent
     {
-        return new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now());
+        return new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([new Scope('openid'), new Scope('profile')]), Fixtures::now());
     }
 }

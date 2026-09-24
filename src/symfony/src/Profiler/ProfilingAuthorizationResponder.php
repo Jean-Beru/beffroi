@@ -16,7 +16,6 @@ use Heidi\Oidc\Domain\Interaction\ConsentRequired;
 use Heidi\Oidc\Domain\Interaction\Granted;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\Interaction\LoginRequired;
-use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InteractionCompletedException;
 use Heidi\Oidc\Exception\InteractionExpiredException;
 use Heidi\Oidc\Exception\OAuth2Exception;
@@ -100,7 +99,7 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
             return new Observation('Decision', 'Decision', [
                 'outcome' => 'the user is asked to consent',
                 'why' => $decision->requirement->value,
-                'scopes asked for' => implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $decision->scopes)),
+                'scopes asked for' => (string) $decision->scopes,
             ]);
         }
         if ($decision instanceof Granted) {

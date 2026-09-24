@@ -9,6 +9,7 @@ use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -111,7 +112,7 @@ final class RefreshTokenTest extends TestCase
         static::assertSame($this->client->clientId, $token->clientId);
         static::assertSame($this->client->tenant, $token->tenant);
         static::assertSame($this->session, $token->session);
-        static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes->all);
         static::assertSame($claims, $token->claimsRequest);
         static::assertEquals($issuedAt, $token->authentication->authenticatedAt);
         static::assertSame(['pwd', 'otp', 'mfa'], $token->authentication->methods);
@@ -140,8 +141,8 @@ final class RefreshTokenTest extends TestCase
         $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile']);
 
         // When / Then
-        static::assertTrue($token->hasScope(new Scope('profile')));
-        static::assertFalse($token->hasScope(new Scope('email')));
+        static::assertTrue($token->scopes->has(new Scope('profile')));
+        static::assertFalse($token->scopes->has(new Scope('email')));
     }
 
     /**
@@ -155,7 +156,7 @@ final class RefreshTokenTest extends TestCase
         $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile']);
 
         // When / Then
-        static::assertSame($covered, $token->covers($requested));
+        static::assertSame($covered, $token->scopes->covers(new Scopes($requested)));
     }
 
     /**
@@ -164,7 +165,6 @@ final class RefreshTokenTest extends TestCase
     public static function provideRequestedScopes(): iterable
     {
         yield 'all scopes in another order' => [[new Scope('profile'), new Scope('openid')], true];
-        yield 'nothing' => [[], true];
         yield 'a scope it does not carry' => [[new Scope('openid'), new Scope('email')], false];
     }
 
@@ -175,7 +175,7 @@ final class RefreshTokenTest extends TestCase
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
         $authorization = GrantedAuthorization::fromRefreshToken(
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
         );
 
         // When
@@ -199,7 +199,7 @@ final class RefreshTokenTest extends TestCase
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
         );
 
         // When
@@ -314,7 +314,7 @@ final class RefreshTokenTest extends TestCase
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
         );
         $late = Fixtures::now()->modify('+80 days');
 
@@ -489,16 +489,6 @@ final class RefreshTokenTest extends TestCase
         $this->token(client: Clients::public(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
-    #[Test]
-    public function itRefusesAnEmptyScopeList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->token(scopes: []);
-    }
-
     /**
      * RFC 8176: a session always has at least one proof, so a token always has at least one method.
      */
@@ -533,13 +523,12 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * @param list<Scope>|null $scopes
      * @param list<string>|null $methods
      */
     private function token(
         ?string $tokenHash = null,
         ?Client $client = null,
-        ?array $scopes = null,
+        ?Scopes $scopes = null,
         ?array $methods = null,
         ?DateTimeImmutable $issuedAt = null,
         ?DateTimeImmutable $expiresAt = null,
@@ -549,7 +538,7 @@ final class RefreshTokenTest extends TestCase
             $this->family,
             $client ?? $this->client,
             $this->session,
-            $scopes ?? [Scope::openid()],
+            $scopes ?? new Scopes([Scope::openid()]),
             null,
             new AuthenticationSnapshot(
                 $this->session->authenticatedAt(),

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Fixture;
 
 use function array_map;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
@@ -39,7 +40,7 @@ final class Requests
         return new AuthorizationRequest(
             $client,
             $client->redirectUris[0],
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
             $state,
             $nonce,

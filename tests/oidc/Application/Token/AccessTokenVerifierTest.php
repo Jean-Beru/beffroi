@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
-use function array_map;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
@@ -101,10 +100,10 @@ final class AccessTokenVerifierTest extends TestCase
         // Then
         static::assertSame($this->client, $token->client);
         static::assertSame('alice-subject', (string) $token->subject);
-        static::assertSame(['openid', 'email'], array_map(strval(...), $token->scopes));
-        static::assertTrue($token->hasScope(Scope::openid()));
-        static::assertTrue($token->hasScope(new Scope('email')));
-        static::assertFalse($token->hasScope(new Scope('profile')));
+        static::assertSame(['openid', 'email'], $token->scopes?->values());
+        static::assertTrue($token->scopes->has(Scope::openid()));
+        static::assertTrue($token->scopes->has(new Scope('email')));
+        static::assertFalse($token->scopes->has(new Scope('profile')));
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
         static::assertTrue($code->grantId->equals($token->grantId));
         static::assertTrue($session->id->equals($token->sessionId));
@@ -140,7 +139,7 @@ final class AccessTokenVerifierTest extends TestCase
         // Then
         static::assertSame($this->client, $token->client);
         static::assertSame('alice-subject', (string) $token->subject);
-        static::assertSame(['openid', 'email'], array_map(strval(...), $token->scopes));
+        static::assertSame(['openid', 'email'], $token->scopes?->values());
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
         static::assertTrue($record->grantId->equals($token->grantId));
         static::assertTrue($session->id->equals($token->sessionId));
@@ -269,7 +268,7 @@ final class AccessTokenVerifierTest extends TestCase
         // Then
         static::assertSame($this->client, $token->client);
         static::assertSame('alice-subject', (string) $token->subject);
-        static::assertSame($expectedScopes, implode(' ', $token->scopes));
+        static::assertSame($expectedScopes, (string) $token->scopes);
         static::assertSame($expectedClaims, $token->userinfoClaims);
         static::assertSame($expectedExpiry, $token->expiresAt->getTimestamp());
     }

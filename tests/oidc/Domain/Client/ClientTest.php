@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Client;
 
-use function array_map;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
@@ -94,10 +94,10 @@ final class ClientTest extends TestCase
         $client = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
 
         // When / Then
-        static::assertSame(['openid', 'profile', 'email'], array_map(strval(...), $client->allowedScopes));
-        static::assertTrue($client->allowsScope(Scope::openid()));
-        static::assertTrue($client->allowsScope(new Scope('email')));
-        static::assertFalse($client->allowsScope(new Scope('offline_access')));
+        static::assertSame(['openid', 'profile', 'email'], $client->allowedScopes->values());
+        static::assertTrue($client->allowedScopes->has(Scope::openid()));
+        static::assertTrue($client->allowedScopes->has(new Scope('email')));
+        static::assertFalse($client->allowedScopes->has(new Scope('offline_access')));
     }
 
     #[Test]
@@ -171,7 +171,7 @@ final class ClientTest extends TestCase
         static::assertTrue($client->isPublic());
         static::assertNull($client->secret);
         static::assertSame([GrantType::AuthorizationCode], $client->grantTypes);
-        static::assertEquals([Scope::openid()], $client->allowedScopes);
+        static::assertSame([Scope::openid()->value], $client->allowedScopes->values());
     }
 
     /**
@@ -262,14 +262,14 @@ final class ClientTest extends TestCase
             [new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb2')],
             [new RedirectUri('https://rp.example/'), new RedirectUri('https://rp.example/')],
             [GrantType::AuthorizationCode, GrantType::AuthorizationCode],
-            [new Scope('openid'), new Scope('openid'), new Scope('email')],
+            new Scopes([new Scope('openid'), new Scope('openid'), new Scope('email')]),
         );
 
         // Then
         static::assertCount(2, $client->redirectUris);
         static::assertCount(1, $client->postLogoutRedirectUris);
         static::assertSame([GrantType::AuthorizationCode], $client->grantTypes);
-        static::assertSame(['openid', 'email'], array_map(strval(...), $client->allowedScopes));
+        static::assertSame(['openid', 'email'], $client->allowedScopes->values());
     }
 
     /**
@@ -340,7 +340,17 @@ final class ClientTest extends TestCase
             'requires authorization_code',
         ];
         yield 'no scope' => [
-            static fn (Tenant $tenant): Client => new Client($tenant, 'demo', 'Name', Methods::none(), null, $uris, [], [GrantType::AuthorizationCode], []),
+            static fn (Tenant $tenant): Client => new Client(
+                $tenant,
+                'demo',
+                'Name',
+                Methods::none(),
+                null,
+                $uris,
+                [],
+                [GrantType::AuthorizationCode],
+                new Scopes([]),
+            ),
             'at least one scope',
         ];
     }

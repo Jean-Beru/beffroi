@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -46,7 +47,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         $request = new AuthorizationRequest(
             $client,
             $client->redirectUris[0],
-            [new Scope('openid'), new Scope('profile')],
+            new Scopes([new Scope('openid'), new Scope('profile')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
             'af0ifjsldkj',
             'n-0S6_WzA2Mj',
@@ -81,7 +82,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertSame('oidc-demo', $parked->client->clientId);
         static::assertTrue($parked->client->belongsTo($found->tenant));
         static::assertSame((string) $client->redirectUris[0], (string) $parked->redirectUri);
-        static::assertEquals([new Scope('openid'), new Scope('profile')], $parked->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('profile')], $parked->scopes->all);
         static::assertSame(self::CHALLENGE, $parked->codeChallenge?->value);
         static::assertSame('S256', $parked->codeChallenge->method->value);
         static::assertSame('af0ifjsldkj', $parked->state);
@@ -105,7 +106,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         $request = new AuthorizationRequest(
             $client,
             $client->redirectUris[0],
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
         $id = Interaction::generateId();
@@ -138,12 +139,12 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         $user = self::user();
         $session = self::session($user);
         $client = self::client();
-        $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid')], self::now());
+        $consent = new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
         self::service('test.heidi.consents', ConsentRepositoryInterface::class)->save($consent);
         $request = new AuthorizationRequest(
             $client,
             $client->redirectUris[0],
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
         $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, 'en', self::now(), self::now()->modify('+10 minutes'));
@@ -178,7 +179,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         $request = new AuthorizationRequest(
             $ghost,
             $ghost->redirectUris[0],
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
         $id = Interaction::generateId();

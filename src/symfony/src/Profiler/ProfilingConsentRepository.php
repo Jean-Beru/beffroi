@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Profiler;
 
-use function array_map;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
-use function implode;
 use const DATE_ATOM;
 
 /**
@@ -47,7 +44,7 @@ final readonly class ProfilingConsentRepository implements ConsentRepositoryInte
         return new Observation('Client', 'Consent', [
             'client_id' => $consent->clientId,
             'state' => $state,
-            'scopes consented' => implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $consent->scopes)),
+            'scopes consented' => (string) $consent->scopes,
             'granted at' => $consent->grantedAt->format(DATE_ATOM),
         ]);
     }

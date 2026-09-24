@@ -14,6 +14,7 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
@@ -300,7 +301,7 @@ final class UserInfoHandlerTest extends TestCase
     public function itServesSubAloneForOpenidAlone(): void
     {
         // Given
-        $refreshed = $this->refreshed(['openid', 'email'], [Scope::openid()]);
+        $refreshed = $this->refreshed(['openid', 'email'], new Scopes([Scope::openid()]));
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
 
         // When
@@ -410,7 +411,7 @@ final class UserInfoHandlerTest extends TestCase
     public function itRefusesATokenWithoutOpenidScope(): void
     {
         // Given
-        $refreshed = $this->refreshed(['openid', 'email'], [new Scope('email')]);
+        $refreshed = $this->refreshed(['openid', 'email'], new Scopes([new Scope('email')]));
         $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
 
         // When
@@ -830,9 +831,8 @@ final class UserInfoHandlerTest extends TestCase
      * The authorization of a refresh, whose tokens descend from the same grant as the code.
      *
      * @param list<string> $granted
-     * @param list<Scope>|null $scopes
      */
-    private function refreshed(array $granted, ?array $scopes): GrantedAuthorization
+    private function refreshed(array $granted, ?Scopes $scopes): GrantedAuthorization
     {
         $family = Tokens::family(Fixtures::now(), grantId: $this->code($granted)->grantId);
 

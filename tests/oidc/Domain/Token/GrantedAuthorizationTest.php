@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Domain\Token;
 
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -77,8 +78,8 @@ final class GrantedAuthorizationTest extends TestCase
         ));
 
         // When / Then
-        static::assertTrue($authorization->hasScope(new Scope('profile')));
-        static::assertFalse($authorization->hasScope(new Scope('email')));
+        static::assertTrue($authorization->scopes->has(new Scope('profile')));
+        static::assertFalse($authorization->scopes->has(new Scope('email')));
     }
 
     /**
@@ -112,12 +113,12 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
 
         // Then
-        static::assertEquals([new Scope('profile')], $authorization->scopes);
+        static::assertEquals([new Scope('profile')], $authorization->scopes->all);
         static::assertSame($token->scopes, $authorization->grantedScopes);
-        static::assertFalse($authorization->hasScope(Scope::openid()));
+        static::assertFalse($authorization->scopes->has(Scope::openid()));
     }
 
     #[Test]
@@ -127,7 +128,7 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = GrantedAuthorization::fromRefreshToken($token, new Scopes([new Scope('profile')]));
 
         // Then
         static::assertSame($token->client, $authorization->client);
@@ -143,27 +144,7 @@ final class GrantedAuthorizationTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $this->authorization(scopes: [Scope::openid(), new Scope('email')], grantedScopes: [Scope::openid()]);
-    }
-
-    #[Test]
-    public function itRefusesAnEmptyScopeList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->authorization(scopes: [], grantedScopes: [Scope::openid()]);
-    }
-
-    #[Test]
-    public function itRefusesAnEmptyGrantedScopeList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->authorization(scopes: [Scope::openid()], grantedScopes: []);
+        $this->authorization(scopes: new Scopes([Scope::openid(), new Scope('email')]), grantedScopes: new Scopes([Scope::openid()]));
     }
 
     #[Test]
@@ -195,15 +176,13 @@ final class GrantedAuthorizationTest extends TestCase
     }
 
     /**
-     * @param list<Scope>|null $scopes
-     * @param list<Scope>|null $grantedScopes
      * @param list<string>|null $methods
      */
     private function authorization(
         GrantType $grantType = GrantType::AuthorizationCode,
         ?Client $client = null,
-        ?array $scopes = null,
-        ?array $grantedScopes = null,
+        ?Scopes $scopes = null,
+        ?Scopes $grantedScopes = null,
         ?string $nonce = null,
         ?array $methods = null,
     ): GrantedAuthorization {
@@ -212,8 +191,8 @@ final class GrantedAuthorizationTest extends TestCase
             Uuid::v7(),
             $client ?? $this->client,
             $this->session,
-            $scopes ?? [Scope::openid()],
-            $grantedScopes ?? [Scope::openid()],
+            $scopes ?? new Scopes([Scope::openid()]),
+            $grantedScopes ?? new Scopes([Scope::openid()]),
             $nonce,
             null,
             new AuthenticationSnapshot(

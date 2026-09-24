@@ -27,6 +27,7 @@ use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
@@ -161,7 +162,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
         $request = new AuthorizationRequest(
             self::client('native-app'),
             new RedirectUri('http://127.0.0.1/callback'),
-            [Scope::openid(), new Scope('profile')],
+            new Scopes([Scope::openid(), new Scope('profile')]),
             new CodeChallenge(self::codeChallenge(), CodeChallengeMethod::S256),
             'state-of-the-client',
             'nonce-of-the-client',

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Domain\Discovery;
 
 use function array_keys;
-use function array_map;
 use function array_slice;
 use Heidi\Core\Domain\Key\ContentEncryptionAlgorithmInterface;
 use Heidi\Core\Domain\Key\KeyEncryptionAlgorithmInterface;
 use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\GrantType;
@@ -165,7 +165,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             [ResponseMode::Query, ResponseMode::QueryJwt],
             self::grantTypes(),
@@ -197,7 +197,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -233,7 +233,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -322,7 +322,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [new Scope('email'), new Scope('openid'), new Scope('email')],
+            new Scopes([new Scope('email'), new Scope('openid'), new Scope('email')]),
             ['email', 'sub', 'email'],
             self::responseModes(),
             self::grantTypes(),
@@ -336,7 +336,7 @@ final class ProviderMetadataTest extends TestCase
         );
 
         // Then
-        static::assertSame(['openid', 'email'], array_map(static fn (Scope $scope): string => $scope->value, $metadata->scopesSupported));
+        static::assertSame(['openid', 'email'], $metadata->scopesSupported->values());
         static::assertSame(['sub', 'email'], $metadata->claimsSupported);
     }
 
@@ -350,7 +350,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -393,7 +393,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -425,7 +425,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -461,7 +461,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -488,7 +488,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             [GrantType::AuthorizationCode, GrantType::AuthorizationCode],
@@ -521,7 +521,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             [ResponseMode::FormPost, ResponseMode::Query, ResponseMode::FormPost],
             self::grantTypes(),
@@ -552,7 +552,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             [ResponseMode::Query, ResponseMode::QueryJwt],
             self::grantTypes(),
@@ -603,7 +603,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             $unsigned,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -647,7 +647,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -675,7 +675,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             [GrantType::AuthorizationCode],
@@ -706,7 +706,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             [],
             self::grantTypes(),
@@ -734,7 +734,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             [],
@@ -762,7 +762,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -790,7 +790,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [''],
             self::responseModes(),
             self::grantTypes(),
@@ -829,7 +829,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -895,7 +895,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -922,7 +922,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -954,7 +954,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [],
+            new Scopes([Scope::openid()]),
             [],
             self::responseModes(),
             self::grantTypes(),
@@ -993,7 +993,7 @@ final class ProviderMetadataTest extends TestCase
             null,
             false,
             false,
-            [new Scope('openid'), new Scope('profile'), new Scope('email'), new Scope('offline_access')],
+            new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email'), new Scope('offline_access')]),
             ['name', 'email', 'email_verified'],
             self::responseModes(),
             self::grantTypes(),

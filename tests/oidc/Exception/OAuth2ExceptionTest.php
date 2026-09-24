@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Exception;
 
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\AccessDeniedException;
 use Heidi\Oidc\Exception\ConsentRequiredException;
@@ -296,23 +297,13 @@ final class OAuth2ExceptionTest extends TestCase
     public function anInsufficientScopeIsA403NamingTheScopesRequired(): void
     {
         // When
-        $exception = new InsufficientScopeException('The token does not open this resource.', [Scope::openid()]);
+        $exception = new InsufficientScopeException('The token does not open this resource.', new Scopes([Scope::openid()]));
 
         // Then
         static::assertSame('insufficient_scope', $exception->error);
         static::assertSame(403, $exception->statusCode);
         static::assertFalse($exception->redirectable);
-        static::assertSame('openid', implode(' ', $exception->scopes));
-    }
-
-    #[Test]
-    public function anInsufficientScopeNamesAtLeastOneScope(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        new InsufficientScopeException('The token does not open this resource.', []);
+        static::assertSame('openid', (string) $exception->scopes);
     }
 
     /**

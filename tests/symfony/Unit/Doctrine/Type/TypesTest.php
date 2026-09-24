@@ -53,6 +53,7 @@ use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -101,7 +102,7 @@ final class TypesTest extends TestCase
             new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256),
             'S256:E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
         ];
-        yield 'scopes' => [ScopesType::class, [new Scope('openid'), new Scope('profile')], 'openid profile'];
+        yield 'scopes' => [ScopesType::class, new Scopes([new Scope('openid'), new Scope('profile')]), 'openid profile'];
         yield 'proofs' => [
             AuthenticationProofsType::class,
             AuthenticationProofs::of(AuthenticationMethod::password(), new DateTimeImmutable('@1789000000'))->with(
@@ -342,10 +343,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function anEmptyScopeStringReadsAsNoScope(): void
+    public function anEmptyScopeStringReadsAsNoScopeAtAll(): void
     {
         // When / Then
-        static::assertSame([], self::type(ScopesType::class)->convertToPHPValue('', new SQLitePlatform()));
+        static::assertNull(self::type(ScopesType::class)->convertToPHPValue('', new SQLitePlatform()));
     }
 
     /**
