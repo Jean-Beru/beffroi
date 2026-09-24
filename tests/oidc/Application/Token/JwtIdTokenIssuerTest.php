@@ -118,6 +118,44 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
+     * Front-Channel Logout 1.0 §3 and Back-Channel Logout 1.0 §2.1: an OP that announces
+     * frontchannel_logout_session_supported or backchannel_logout_session_supported puts "sid" in the ID
+     * tokens it issues, and this one announces both as soon as it serves the channel (architecture §4.8).
+     * What a client registers for itself, frontchannel_logout_session_required and
+     * backchannel_logout_session_required, governs its logout URI (Front-Channel Logout 1.0 §2) and its
+     * logout token (Back-Channel Logout 1.0 §2.2), never its ID token.
+     *
+     * @param callable(self): Client $client
+     */
+    #[Test]
+    #[DataProvider('provideClientsOfEveryLogoutRegistration')]
+    public function theSessionIsNamedInTheIdTokenOfEveryClient(callable $client): void
+    {
+        // Given
+        $this->client = $client($this);
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): Client}>
+     */
+    public static function provideClientsOfEveryLogoutRegistration(): iterable
+    {
+        yield 'no logout channel at all' => [static fn (self $test): Client => Clients::public($test->session->tenant)];
+        yield 'a front-channel URI that needs the session' => [
+            static fn (self $test): Client => Clients::withFrontChannelLogout($test->session->tenant, sessionRequired: true),
+        ];
+        yield 'a front-channel URI that does not' => [static fn (self $test): Client => Clients::withFrontChannelLogout($test->session->tenant)];
+        yield 'a back-channel URI' => [static fn (self $test): Client => Clients::withBackChannelLogout($test->session->tenant)];
+    }
+
+    /**
      * OIDC Core §3.1.3.6: "at_hash", cross-checked with an independent computation and with the value
      * of appendix A.3.
      */
