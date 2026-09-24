@@ -19,7 +19,7 @@ Inside each pure-PHP package: `Domain`, `Port`, `Application`, `Bridge`. Deptrac
 
 One issue, one worktree, one branch, one pull request here, one documentation pull request in the parent repository.
 
-- **Worktree.** `git worktree add` under the session scratchpad, branched from `origin/main`. The shared checkout at `~/Projects/idp/code` belongs to whoever is using it; never move its branch.
+- **Worktree.** `git worktree add` under the session scratchpad, branched from `origin/HEAD`, the maintenance branch the clone points at. The shared checkout at `~/Projects/idp/code` belongs to whoever is using it; never move its branch.
 - **Branch.** `feat|fix|test|refactor|ci|chore/<issue>-<slug>`, for instance `feat/162-dpop`.
 - **Commit.** `type(scope): what it does, lowercase, no final period (issue #N)`. Scopes: `core`, `oidc`, `symfony`, `app`, `conformance`. English, here as everywhere in the code.
 - **Before the pull request.** `castor prepare-pr`, then `castor phpunit`, `castor phpstan`, `castor deptrac`. Infection runs on the diff in CI; run `castor infect --diff` yourself when the change is a rule rather than plumbing.
@@ -32,7 +32,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 
 **The conclusion is written on the end date, whatever the outcome, and a spike is not closed until every line below is done.** A green run that nobody wrote down is not a result, and a spike that stops without a conclusion is the failure mode decision 0005 exists to prevent.
 
-1. **Re-run the judge, on `main`, after the merge.** The six certification plans in `--strict` (`castor conformance`), plus whatever else judges this spike. A pull request run proves nothing about the plans: the conformance job does not run on pull requests, so a regression only shows up once merged.
+1. **Re-run the judge, on the maintenance branch, after the merge.** The six certification plans in `--strict` (`castor conformance`), plus whatever else judges this spike. A pull request run proves nothing about the plans: the conformance job does not run on pull requests, so a regression only shows up once merged.
 2. **Name every red.** A module that stays red is listed in the `known` list of `CONFORMANCE_PLANS` with its reason and the issue that closes it, once the gap is written down, never to quiet a surprise. The run then fails the day it passes, so the line is deleted rather than carried.
 3. **Write the conclusion** in the spike README, in the parent repository, in its established shape: **the answer, yes or no**, then one line per success criterion with the number or the run that proves it, then what the spike cost and taught, then what it leaves open, each open item naming its issue.
 4. **Leave nothing unattached.** Everything the spike found and did not build is an issue on the spike that will need it, and the ones left over from the previous spike have moved on or been closed.
@@ -91,7 +91,7 @@ castor mago-analyze       # Mago, the analyzer: informative only, it is not PHPS
 castor rector / castor rector-fix
 castor deptrac / castor lint / castor check-licenses
 castor prepare-pr         # mago-lint-fix, rector-fix, mago-format-fix, phpstan-baseline, deptrac, lint
-castor infect --diff      # mutation testing of the lines changed since origin/main (--base to change), what CI runs on every PR and push; --reuse-coverage skips the PHPUnit run when .ci-tools/coverage is fresh
+castor infect --diff      # mutation testing of the lines changed since origin/HEAD (--base to change), what CI runs on every PR and push; --reuse-coverage skips the PHPUnit run when .ci-tools/coverage is fresh
 castor infect             # the whole source (core and oidc): hours, deliberate only
 ```
 

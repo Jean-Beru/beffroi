@@ -14,4 +14,4 @@ Anything in this repository: the identity core, the OAuth 2.0 / OpenID Connect m
 
 ## Supported versions
 
-Until the first tagged release, `main` only.
+Until the first tagged release, the default branch only.

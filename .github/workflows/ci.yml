@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches:
-      - 'main'
       - '*.*.x'
     tags: ['*']
   pull_request: ~
@@ -150,9 +149,10 @@ jobs:
   conformance:
     name: "4️⃣ OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs)"
     needs: [tests]
-    # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image. On main
-    # only (and by hand): the ten runs take the better part of an hour, and a pull request has the bundle
-    # suite; "castor conformance" runs the plans on the development stack before a merge that touches them.
+    # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image. On a
+    # maintenance branch only (and by hand): the ten runs take the better part of an hour, and a pull request
+    # has the bundle suite; "castor conformance" runs the plans on the development stack before a merge that
+    # touches them.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -195,7 +195,7 @@ jobs:
     # Every run mutates only the lines added or modified: a pull request against its base branch, a push against
     # the commit before it (the pull request just merged). The whole source takes hours with the functional tests
     # covering most of it; "castor infect" without --diff stays a local, deliberate run.
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || endsWith(github.ref, '.x')) && github.event.before != '0000000000000000000000000000000000000000')
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && endsWith(github.ref, '.x') && github.event.before != '0000000000000000000000000000000000000000')
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
