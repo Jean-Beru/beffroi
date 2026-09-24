@@ -8,6 +8,7 @@ use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
+use Heidi\Bundle\Http\FormToken;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
@@ -23,8 +24,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * The end session endpoint (RP-Initiated Logout §2), GET or POST. An error is a page, never a
@@ -54,7 +53,7 @@ final readonly class EndSessionController
         private BrowserSession $browser,
         private RequestContextFactory $contexts,
         private InteractionPages $pages,
-        private CsrfTokenManagerInterface $csrf,
+        private FormToken $formTokens,
         private InteractionLocale $locale,
         private FrontChannelLogoutRenderer $frontChannel,
     ) {
@@ -78,9 +77,9 @@ final readonly class EndSessionController
         if ($answer === null) {
             $decision = $this->handler->begin($endSessionRequest, $session, $context);
         } else {
-            $token = $parameters['_token'] ?? null;
-            if (! is_string($token) || ! $this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-                return $this->pages->error(Response::HTTP_FORBIDDEN, InteractionPages::INVALID_CSRF_TOKEN);
+            $refusal = $this->formTokens->refusal($parameters[FormToken::PARAMETER] ?? null, self::CSRF_TOKEN_ID);
+            if ($refusal !== null) {
+                return $refusal;
             }
             if ($answer !== self::CONFIRM_YES) {
                 return $this->pages->render('logged_out.html.twig', [

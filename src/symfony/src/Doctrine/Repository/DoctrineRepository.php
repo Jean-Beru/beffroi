@@ -7,13 +7,11 @@ namespace Heidi\Bundle\Doctrine\Repository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\QueryBuilder;
-use Doctrine\Persistence\ManagerRegistry;
-use LogicException;
-use function sprintf;
+use Heidi\Bundle\Doctrine\EntityManagers;
 
 /**
- * What the Doctrine implementations of the ports share. The manager is taken from the registry at every
- * call, never held; composition rather than ServiceEntityRepository, whose find() the ports cannot narrow.
+ * What the Doctrine implementations of the ports share. The manager is asked for at every call, never
+ * held; composition rather than ServiceEntityRepository, whose find() the ports cannot narrow.
  *
  * @template T of object
  */
@@ -23,19 +21,14 @@ abstract readonly class DoctrineRepository
      * @param class-string<T> $class
      */
     public function __construct(
-        private ManagerRegistry $registry,
+        private EntityManagers $managers,
         private string $class,
     ) {
     }
 
     protected function manager(): EntityManagerInterface
     {
-        $manager = $this->registry->getManagerForClass($this->class);
-        if (! $manager instanceof EntityManagerInterface) {
-            throw new LogicException(sprintf('No entity manager maps "%s".', $this->class));
-        }
-
-        return $manager;
+        return $this->managers->forClass($this->class);
     }
 
     /**

@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Controller;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\Http\ProtocolAnswer;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
 use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Domain\Token\TokenErrorResponse;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use function in_array;
 use Symfony\Component\HttpFoundation\Request;
@@ -47,15 +46,9 @@ final readonly class IntrospectionController
                 $this->certificates->ofRequest($request),
             );
         } catch (OAuth2Exception $exception) {
-            $error = TokenErrorResponse::fromException($exception);
-
-            return new Response(JwtPayload::encode($error->parameters()), $error->statusCode, [
-                'Content-Type' => TokenErrorResponse::CONTENT_TYPE,
-            ] + $error->headers());
+            return ProtocolAnswer::error($exception);
         }
 
-        return new Response($response->body(), Response::HTTP_OK, [
-            'Content-Type' => $response->contentType(),
-        ] + IntrospectionResponse::HEADERS);
+        return ProtocolAnswer::document($response->body(), Response::HTTP_OK, $response->contentType(), IntrospectionResponse::HEADERS);
     }
 }

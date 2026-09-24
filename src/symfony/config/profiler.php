@@ -13,6 +13,10 @@ use Heidi\Bundle\Profiler\PanelValues;
 use Heidi\Bundle\Profiler\ProfilingAccessTokenIssuer;
 use Heidi\Bundle\Profiler\ProfilingAuthenticationSessionRepository;
 use Heidi\Bundle\Profiler\ProfilingAuthorizationRequestReader;
+use Heidi\Bundle\Profiler\Decision\ConsentRequiredObservation;
+use Heidi\Bundle\Profiler\Decision\DecisionObservations;
+use Heidi\Bundle\Profiler\Decision\GrantedObservation;
+use Heidi\Bundle\Profiler\Decision\LoginRequiredObservation;
 use Heidi\Bundle\Profiler\ProfilingAuthorizationResponder;
 use Heidi\Bundle\Profiler\ProfilingClientRepository;
 use Heidi\Bundle\Profiler\ProfilingCompactJwtReader;
@@ -34,6 +38,7 @@ use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
 /**
@@ -68,6 +73,11 @@ return static function (ContainerConfigurator $container): void {
         ->set(ProfilingAuthorizationRequestReader::class)
         ->decorate(AuthorizationRequestReaderInterface::class)
         ->args([service('.inner')]);
+    // what the panel says about a decision, one class per decision, as the renderers of the decisions are
+    $services->set(LoginRequiredObservation::class)->tag('heidi.profiler.authorization_decision');
+    $services->set(ConsentRequiredObservation::class)->tag('heidi.profiler.authorization_decision');
+    $services->set(GrantedObservation::class)->tag('heidi.profiler.authorization_decision');
+    $services->set(DecisionObservations::class)->args([tagged_iterator('heidi.profiler.authorization_decision')]);
     $services
         ->set(ProfilingAuthorizationResponder::class)
         ->decorate(AuthorizationResponderInterface::class)

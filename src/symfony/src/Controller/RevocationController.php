@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Controller;
 
 use Heidi\Bundle\Doctrine\TenantProvider;
+use Heidi\Bundle\Http\ProtocolAnswer;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
 use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Domain\Token\TokenErrorResponse;
 use Heidi\Oidc\Domain\Token\TokenResponse;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
@@ -45,11 +44,7 @@ final readonly class RevocationController
                 $this->certificates->ofRequest($request),
             );
         } catch (OAuth2Exception $exception) {
-            $error = TokenErrorResponse::fromException($exception);
-
-            return new Response(JwtPayload::encode($error->parameters()), $error->statusCode, [
-                'Content-Type' => TokenErrorResponse::CONTENT_TYPE,
-            ] + $error->headers());
+            return ProtocolAnswer::error($exception);
         }
 
         return new Response('', Response::HTTP_OK, TokenResponse::HEADERS);

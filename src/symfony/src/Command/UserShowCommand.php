@@ -7,20 +7,16 @@ namespace Heidi\Bundle\Command;
 use function array_filter;
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Domain\Credential\Credential;
 use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
 use function implode;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use function trim;
 
 /**
  * A user as the provider knows them (architecture §5.5): the identity, the standard claims that are set,
@@ -34,8 +30,8 @@ use function trim;
 final readonly class UserShowCommand
 {
     public function __construct(
-        private TenantProvider $tenants,
-        private UserRepositoryInterface $users,
+        private ConfiguredTenant $tenant,
+        private NamedUser $namedUsers,
         private CredentialRepositoryInterface $credentials,
     ) {
     }
@@ -45,17 +41,12 @@ final readonly class UserShowCommand
         #[Argument(description: 'The username of the user.')]
         string $username,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
-        $user = $this->users->findByUsername($tenant, trim($username));
+        $user = $this->namedUsers->orTold($io, $tenant, $username);
         if ($user === null) {
-            $io->error(sprintf('There is no user named "%s" in the tenant "%s".', trim($username), $tenant->slug));
-
             return Command::FAILURE;
         }
 

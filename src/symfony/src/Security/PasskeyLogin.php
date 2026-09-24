@@ -4,16 +4,31 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Security;
 
+use DateTimeImmutable;
+use Heidi\Core\Domain\Event\PasskeyUsed;
+use Heidi\Bundle\Controller\PasskeyLoginController;
+use Heidi\Core\Domain\Event\AuthenticationFailureReason;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\RequestContext;
+use Heidi\Core\Port\CredentialRepositoryInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+use Throwable;
 
 /**
  * The passkey login of the firewall (architecture §5.4): what the flags of the assertion say
  * (PasskeyCredential::methods(), WebAuthn Level 3 §6.1), read from the badge the authenticator put on
  * the passport after the ceremony.
  */
-final readonly class PasskeyLogin implements ProvingLoginInterface
+final readonly class PasskeyLogin implements AnnouncesItsRefusalInterface, DatesItsCredentialInterface
 {
+    public function __construct(
+        private CredentialRepositoryInterface $credentials,
+        private EventDispatcherInterface $events,
+    ) {
+    }
+
     public function proofs(Passport $passport): ?array
     {
         $badge = $passport->getBadge(PasskeyCredentials::class);
@@ -40,5 +55,55 @@ final readonly class PasskeyLogin implements ProvingLoginInterface
             new AuthenticationMethod(AuthenticationMethod::USER_PRESENCE),
             new AuthenticationMethod(AuthenticationMethod::MULTIPLE_FACTORS),
         ];
+    }
+
+    /**
+     * WebAuthn Level 3 §7.2, step 26: the key is dated with its sign count and its backup state, and the
+     * use is announced, a count that did not grow told rather than refused.
+     */
+    public function recordUse(Passport $passport, SecurityUser $user, DateTimeImmutable $now, RequestContext $context): bool
+    {
+        $badge = $passport->getBadge(PasskeyCredentials::class);
+        if (! $badge instanceof PasskeyCredentials) {
+            return false;
+        }
+        $credential = $badge->assertion->credential;
+        $signCountRegressed = $credential->signCountRegresses($badge->assertion->authenticatorData);
+        $credential->recordUse($badge->assertion->authenticatorData, $now);
+        $this->credentials->save($credential);
+        $this->events->dispatch(new PasskeyUsed($credential, $now, $context, $signCountRegressed));
+
+        return true;
+    }
+
+    public function route(): string
+    {
+        return PasskeyLoginController::ROUTE;
+    }
+
+    /**
+     * What the authenticator of the bundle refused, with the reason it gave, or the account the checker
+     * refused after the signature; nothing was typed, so the identifier is null. A request without a
+     * pending ceremony, without an assertion or without its form token is not an attempt on an account.
+     */
+    public function refusal(AuthenticationException $exception, ?Passport $passport): ?LoginFailure
+    {
+        for ($cause = $exception; $cause instanceof Throwable; $cause = $cause->getPrevious()) {
+            if ($cause instanceof PasskeyLoginException) {
+                return new LoginFailure($cause->method, $cause->reason, null, $cause->user);
+            }
+        }
+        $badge = $passport?->getBadge(PasskeyCredentials::class);
+        if (! $badge instanceof PasskeyCredentials || AuthenticationFailureCause::of($exception) !== AuthenticationFailureReason::DisabledUser) {
+            return null;
+        }
+        $credential = $badge->assertion->credential;
+
+        return new LoginFailure(
+            $credential->methods($badge->assertion->authenticatorData)[0],
+            AuthenticationFailureReason::DisabledUser,
+            null,
+            $credential->user,
+        );
     }
 }

@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Doctrine\Repository;
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
 use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
@@ -22,9 +22,9 @@ use function sprintf;
  */
 final readonly class DoctrinePushedAuthorizationRequestRepository extends DoctrineRepository implements PushedAuthorizationRequestRepositoryInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, PushedAuthorizationRequest::class);
+        parent::__construct($managers, PushedAuthorizationRequest::class);
     }
 
     public function findByRequestUriHash(string $requestUriHash): ?PushedAuthorizationRequest

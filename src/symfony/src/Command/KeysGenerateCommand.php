@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Command;
 
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Exception\UnsupportedAlgorithmException;
@@ -33,7 +31,7 @@ final readonly class KeysGenerateCommand
     public const string NAME = 'heidi:keys:generate';
 
     public function __construct(
-        private TenantProvider $tenants,
+        private ConfiguredTenant $tenant,
         private TenantKeyRepositoryInterface $keys,
         private TenantKeyRotator $rotator,
         private RequestContextFactory $contexts,
@@ -42,18 +40,19 @@ final readonly class KeysGenerateCommand
     ) {
     }
 
+    /**
+     * What both this command and "heidi:keys:rotate" offer, said once: the wiring is the one source of
+     * truth over the algorithms, so the option describes it the same way wherever it is offered.
+     */
+    public const string ALGORITHM_OPTION = 'The algorithm the key pair is generated for, among those the provider is wired with: a JWS algorithm for a key that signs, a JWE key management one for a key clients encrypt to. The default signature algorithm when none is named.';
+
     public function __invoke(
         SymfonyStyle $io,
-        #[Option(
-            description: 'The algorithm the key pair is generated for, among those the provider is wired with: a JWS algorithm for a key that signs, a JWE key management one for a key clients encrypt to. The default signature algorithm when none is named.',
-        )]
+        #[Option(description: self::ALGORITHM_OPTION)]
         ?string $algorithm = null,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
 

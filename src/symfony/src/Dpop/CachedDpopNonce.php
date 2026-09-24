@@ -7,15 +7,15 @@ namespace Heidi\Bundle\Dpop;
 use DateInterval;
 use DateTimeImmutable;
 use function hash;
-use Heidi\Oidc\Domain\Token\Base64Url;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Exception\UseDpopNonceException;
 use Heidi\Oidc\Port\DpopNonceInterface;
 use Psr\Cache\CacheItemPoolInterface;
-use function random_bytes;
 
 /**
- * A provider that asks a proof to carry a nonce of its own (RFC 9449 §8): 256 bits from the random
- * source of the system, kept in a pool the workers share until it expires. A proof carrying one was
+ * A provider that asks a proof to carry a nonce of its own (RFC 9449 §8): a value drawn the way this
+ * provider draws every value it hands out and recognises later, kept in a pool the workers share until
+ * it expires. A proof carrying one was
  * made after the provider issued it, which is what a nonce is for: the "iat" of a proof is what its
  * client says, the nonce is what the provider knows.
  *
@@ -47,7 +47,7 @@ final readonly class CachedDpopNonce implements DpopNonceInterface
 
     private function issue(DateTimeImmutable $now): string
     {
-        $nonce = Base64Url::encode(random_bytes(32));
+        $nonce = DrawnSecret::draw();
         $item = $this->cache->getItem(self::key($nonce));
         $item->set($now->getTimestamp());
         $item->expiresAt($now->add($this->lifetime));

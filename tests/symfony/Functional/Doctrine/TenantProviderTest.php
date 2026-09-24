@@ -109,7 +109,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function aMissingRowRefusesToServe(): void
     {
         // Given
-        $provider = new TenantProvider(self::factory('https://op.test', 'default', null), self::registry());
+        $provider = new TenantProvider(self::factory('https://op.test', 'default', null), self::managers());
         self::entityManager()->createQuery('DELETE FROM Heidi\Core\Domain\Tenant\Tenant t')->execute();
 
         // Then
@@ -124,7 +124,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function aRowThatDisagreesWithTheConfigurationRefusesToServe(): void
     {
         // Given
-        $provider = new TenantProvider(self::factory('https://other.test', 'default', null), self::registry());
+        $provider = new TenantProvider(self::factory('https://other.test', 'default', null), self::managers());
 
         // Then
         $this->expectException(TenantNotSynchronizedException::class);
@@ -138,7 +138,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function aRenamedTenantRefusesToServeUntilSynchronised(): void
     {
         // Given
-        $provider = new TenantProvider(self::factory('https://op.test', 'default', 'Renamed'), self::registry());
+        $provider = new TenantProvider(self::factory('https://op.test', 'default', 'Renamed'), self::managers());
 
         // Then
         $this->expectException(TenantNotSynchronizedException::class);
@@ -153,10 +153,10 @@ final class TenantProviderTest extends DatabaseTestCase
     {
         // Given
         $factory = self::factory('https://op.test', 'default', 'Renamed');
-        $provider = new TenantProvider($factory, self::registry());
+        $provider = new TenantProvider($factory, self::managers());
 
         // When
-        $synchronized = new TenantSynchronizer($factory, self::registry())->synchronize();
+        $synchronized = new TenantSynchronizer($factory, self::managers())->synchronize();
         self::reload();
 
         // Then
@@ -172,7 +172,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function theSynchroniserRefusesToMoveTheIssuer(): void
     {
         // Given
-        $synchronizer = new TenantSynchronizer(self::factory('https://moved.test', 'default', null), self::registry());
+        $synchronizer = new TenantSynchronizer(self::factory('https://moved.test', 'default', null), self::managers());
 
         // Then
         $this->expectException(TenantNotSynchronizedException::class);
@@ -186,7 +186,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function anotherSlugIsAnotherTenant(): void
     {
         // When
-        $other = new TenantSynchronizer(self::factory('https://other.test', 'other', null), self::registry())->synchronize();
+        $other = new TenantSynchronizer(self::factory('https://other.test', 'other', null), self::managers())->synchronize();
         self::reload();
 
         // Then
@@ -204,7 +204,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function aTenantWithAnotherPolicyRefusesToServeUntilSynchronised(): void
     {
         // Given
-        $provider = new TenantProvider(self::factory('https://op.test', 'default', null, self::OKTA_CLASSES), self::registry());
+        $provider = new TenantProvider(self::factory('https://op.test', 'default', null, self::OKTA_CLASSES), self::managers());
 
         // Then
         $this->expectException(TenantNotSynchronizedException::class);
@@ -219,10 +219,10 @@ final class TenantProviderTest extends DatabaseTestCase
     {
         // Given
         $factory = self::factory('https://op.test', 'default', null, self::OKTA_CLASSES);
-        $provider = new TenantProvider($factory, self::registry());
+        $provider = new TenantProvider($factory, self::managers());
 
         // When
-        $synchronized = new TenantSynchronizer($factory, self::registry())->synchronize();
+        $synchronized = new TenantSynchronizer($factory, self::managers())->synchronize();
         self::reload();
 
         // Then
@@ -240,7 +240,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function aTenantThatConfiguresNothingSpeaksTheDefaultPolicy(): void
     {
         // When
-        $tenant = new TenantProvider(self::factory('https://op.test', 'default', null), self::registry())->provide();
+        $tenant = new TenantProvider(self::factory('https://op.test', 'default', null), self::managers())->provide();
 
         // Then
         static::assertTrue(AuthenticationContextPolicy::default()->equals($tenant->authenticationContextPolicy));

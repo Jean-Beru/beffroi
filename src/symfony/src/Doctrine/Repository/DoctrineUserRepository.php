@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Doctrine\Repository;
 
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -18,9 +18,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineUserRepository extends DoctrineRepository implements UserRepositoryInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, User::class);
+        parent::__construct($managers, User::class);
     }
 
     public function find(Uuid $id): ?User

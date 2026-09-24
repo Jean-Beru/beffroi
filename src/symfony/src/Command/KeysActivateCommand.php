@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Command;
 
 use DateTimeInterface;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Exception\KeyNotFoundException;
@@ -31,7 +29,8 @@ final readonly class KeysActivateCommand
     public const string NAME = 'heidi:keys:activate';
 
     public function __construct(
-        private TenantProvider $tenants,
+        private ConfiguredTenant $tenant,
+        private RetiringKey $retiring,
         private TenantKeyRepositoryInterface $keys,
         private TenantKeyRotator $rotator,
         private RequestContextFactory $contexts,
@@ -43,11 +42,8 @@ final readonly class KeysActivateCommand
         #[Argument(description: 'The identifier ("kid") of the staged key, as heidi:keys:list shows it.')]
         string $kid,
     ): int {
-        try {
-            $tenant = $this->tenants->provide();
-        } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
-
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
             return Command::FAILURE;
         }
 
@@ -80,13 +76,7 @@ final readonly class KeysActivateCommand
             ],
         );
         if ($previous !== null) {
-            // Read again: the repository may hand a fresh object on every read, and the rotation just dated this one.
-            $retiring = $this->keys->find($tenant, $previous->kid) ?? $previous;
-            $io->note(sprintf(
-                'The key "%s" was active and is now retiring: it stays in the JWK Set until %s, while what is bound to it may still arrive.',
-                $retiring->kid,
-                $retiring->retirementDueAt?->format(DateTimeInterface::RFC3339) ?? '?',
-            ));
+            $this->retiring->told($io, $tenant, $previous);
         }
         $io->success(sprintf('The key "%s" is the active %s key of "%s" from now on.', $key->kid, $key->algorithm->name(), $tenant->slug));
 

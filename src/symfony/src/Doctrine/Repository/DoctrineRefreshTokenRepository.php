@@ -6,7 +6,7 @@ namespace Heidi\Bundle\Doctrine\Repository;
 
 use function array_filter;
 use function array_values;
-use Doctrine\Persistence\ManagerRegistry;
+use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
@@ -20,9 +20,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository implements RefreshTokenRepositoryInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(EntityManagers $managers)
     {
-        parent::__construct($registry, RefreshToken::class);
+        parent::__construct($managers, RefreshToken::class);
     }
 
     public function findByTokenHash(string $tokenHash): ?RefreshToken

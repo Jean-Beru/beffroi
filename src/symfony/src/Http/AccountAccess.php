@@ -8,8 +8,6 @@ use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * What every page of the account asks before anything else (architecture §5.2): the session of the core
@@ -20,12 +18,10 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
  */
 final readonly class AccountAccess
 {
-    public const string TOKEN_PARAMETER = '_token';
-
     public function __construct(
         private TenantProvider $tenants,
         private BrowserSession $browser,
-        private CsrfTokenManagerInterface $csrf,
+        private FormToken $formTokens,
         private InteractionPages $pages,
     ) {
     }
@@ -41,8 +37,11 @@ final readonly class AccountAccess
         if ($session === null) {
             return $this->pages->error(Response::HTTP_UNAUTHORIZED, InteractionPages::LOGIN_REQUIRED);
         }
-        if ($csrfTokenId !== null && ! $this->tokenHolds($request, $csrfTokenId)) {
-            return $this->pages->error(Response::HTTP_FORBIDDEN, InteractionPages::INVALID_CSRF_TOKEN);
+        $refusal = $csrfTokenId === null
+            ? null
+            : $this->formTokens->refusal($request->request->getString(FormToken::PARAMETER), $csrfTokenId);
+        if ($refusal !== null) {
+            return $refusal;
         }
 
         return $session;
@@ -55,12 +54,5 @@ final readonly class AccountAccess
     public function signedIn(Request $request): ?AuthenticationSession
     {
         return $this->browser->authenticationSession($request, $this->tenants->provide());
-    }
-
-    private function tokenHolds(Request $request, string $csrfTokenId): bool
-    {
-        $token = $request->request->getString(self::TOKEN_PARAMETER);
-
-        return $token !== '' && $this->csrf->isTokenValid(new CsrfToken($csrfTokenId, $token));
     }
 }
