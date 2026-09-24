@@ -25,11 +25,14 @@ use Symfony\Component\Console\Input\InputOption;
  * apps/op/.env.local, and the values that must be there for the plans to make sense. An entry with "module" is not a plan
  * of the suite but one module run on its own, the suite having no plan for a single module; "before_start"
  * names what the task does between its creation and its start, in place of a human. "known" names the
- * modules a run does not get past, each with its reason and the issue that closes it, whether the gap is
- * the provider's or a check of the suite behind the specifications the provider follows: their result is
- * reported as KNOWN and accepted, so that a gap we decided to leave open does not keep the CI red for
- * weeks, and the run fails the day one of them passes, so that the line is deleted rather than carried.
- * A module is listed there once the gap is written down, never to quiet a surprise.
+ * modules a run does not get past, whether the gap is the provider's or a check of the suite behind the
+ * specifications the provider follows. A gap is written down whole: the result the module is known to end
+ * in, the findings that result is made of, and the reason with the issue that closes it. Its result is
+ * reported as KNOWN and accepted only when the run is exactly that gap, so that a gap we decided to leave
+ * open does not keep the CI red for weeks; a failure where a warning was written down, a finding beside
+ * the ones written down, or the module passing, is not that gap: the run fails on it, so that a
+ * regression stays visible and the line is deleted rather than carried. A module is listed there once the
+ * gap is written down, never to quiet a surprise.
  */
 /**
  * A client per logout channel, in place of the "client" of the configuration: the suite certifies one
@@ -114,7 +117,14 @@ const CONFORMANCE_FAPI_RESOURCE_PATH = '/userinfo';
  * the logout endpoint what tells it the hint describes the session in front of it (architecture §4.9).
  */
 const CONFORMANCE_FAPI_KNOWN_MODULES = [
-    'fapi2-security-profile-final-test-claims-parameter-identity-claims' => 'the ID token carries "sid", a claim Front-Channel Logout 1.0 §3 defines and the suite does not know; heidi#210',
+    'fapi2-security-profile-final-test-claims-parameter-identity-claims' => [
+        'result' => 'WARNING',
+        // The condition that warns, by the name the log gives it. The sentence it writes after the name is
+        // the suite's own wording and is not matched: what is known is which check warns, not how it words
+        // it. A second condition warning on the same module is a finding beside this one and fails the run.
+        'findings' => ['WARNING CheckForUnexpectedClaimsInIdToken:'],
+        'reason' => 'the ID token carries "sid", a claim Front-Channel Logout 1.0 §3 defines and the suite does not know; heidi#210',
+    ],
 ];
 
 const CONFORMANCE_PLANS = [
@@ -413,22 +423,32 @@ function conformance(
             $elapsed = microtime(true) - $started;
             $known = $definition['known'][$name] ?? null;
             $result = $run['result'];
-            if ($known !== null && ! in_array($result, CONFORMANCE_UNCONDITIONALLY_ACCEPTED, true)) {
+            $beyond = $known === null ? [] : conformance_beyond_known($known, $run);
+            if ($known !== null && $beyond === []) {
                 $result = 'KNOWN';
             }
             $rows[] = [$definition['name'], $name, $result, sprintf('%ds', (int) $elapsed), $run['url']];
             $verdict[$result] = ($verdict[$result] ?? 0) + 1;
             io()->text(sprintf(
                 '  %s in %ds: %s',
-                $result === 'KNOWN' ? sprintf('%s, known (%s)', $run['result'], $known) : $result,
+                $result === 'KNOWN' ? sprintf('%s, known (%s)', $run['result'], $known['reason']) : $result,
                 (int) $elapsed,
                 $run['url'],
             ));
             foreach ($run['findings'] as $finding) {
                 io()->text('    ' . $finding);
             }
-            if ($known !== null && $result !== 'KNOWN') {
-                $stale[] = sprintf('%s: %s (listed as known: %s)', $definition['name'], $name, $known);
+            if ($beyond !== []) {
+                // The module is listed as known and this run is not that gap. Said here, module by module,
+                // because the summary only counts results: what a reader needs is which line was written
+                // down and what came instead.
+                io()->warning([
+                    sprintf('%s is listed as known (%s), and this run is not that gap:', $name, $known['reason']),
+                    ...$beyond,
+                ]);
+            }
+            if ($known !== null && in_array($result, CONFORMANCE_UNCONDITIONALLY_ACCEPTED, true)) {
+                $stale[] = sprintf('%s: %s (listed as known: %s)', $definition['name'], $name, $known['reason']);
             }
         }
     }
@@ -474,6 +494,30 @@ function conformance(
             ? 'Every module passed.'
             : sprintf('Every module passed but %d left to a gap named in CONFORMANCE_PLANS.', $known),
     );
+}
+
+/**
+ * What a module reported that the gap written down does not account for: a result other than the one it is
+ * known to end in, and every finding beside the ones that result is made of. Empty when the run is exactly
+ * that gap, which is the only case where its result is accepted. A finding is recognised by the condition
+ * that raised it, which the log names before its message.
+ *
+ * @param array{result: string, findings: list<string>, reason: string} $known
+ * @param array{result: string, url: string, findings: array<string>} $run
+ * @return list<string>
+ */
+function conformance_beyond_known(array $known, array $run): array
+{
+    $beyond = $run['result'] === $known['result']
+        ? []
+        : [sprintf('it ended in %s, where %s is what is written down', $run['result'], $known['result'])];
+    foreach ($run['findings'] as $finding) {
+        if (! array_any($known['findings'], static fn (string $expected): bool => str_starts_with($finding, $expected))) {
+            $beyond[] = $finding;
+        }
+    }
+
+    return $beyond;
 }
 
 /**
