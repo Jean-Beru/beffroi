@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Domain\Authorization;
 
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
@@ -35,7 +36,7 @@ final class AuthorizationRequestTest extends TestCase
         $this->request = new AuthorizationRequest(
             $this->client,
             $this->redirectUri,
-            [Scope::openid(), new Scope('profile')],
+            new Scopes([Scope::openid(), new Scope('profile')]),
             new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256),
             'af0ifjsldkj',
             'n-0S6_WzA2Mj',
@@ -47,8 +48,8 @@ final class AuthorizationRequestTest extends TestCase
     public function itKnowsTheScopesItAsksFor(): void
     {
         // When / Then
-        static::assertTrue($this->request->hasScope(new Scope('profile')));
-        static::assertFalse($this->request->hasScope(new Scope('email')));
+        static::assertTrue($this->request->scopes->has(new Scope('profile')));
+        static::assertFalse($this->request->scopes->has(new Scope('email')));
     }
 
     #[Test]

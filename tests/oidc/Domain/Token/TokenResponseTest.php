@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Token;
 
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\TokenErrorResponse;
 use Heidi\Oidc\Domain\Token\TokenResponse;
@@ -23,7 +24,7 @@ final class TokenResponseTest extends TestCase
     public function itWritesTheMembersOfRfc6749Section51InOrder(): void
     {
         // When
-        $response = new TokenResponse('at.value', 600, 'rt.value', 'id.value', [Scope::openid(), new Scope('profile')]);
+        $response = new TokenResponse('at.value', 600, 'rt.value', 'id.value', new Scopes([Scope::openid(), new Scope('profile')]));
 
         // Then
         static::assertSame(
@@ -43,7 +44,7 @@ final class TokenResponseTest extends TestCase
     public function itOmitsTheTokensThatWereNotIssued(): void
     {
         // When
-        $response = new TokenResponse('at.value', 600, null, null, [Scope::openid()]);
+        $response = new TokenResponse('at.value', 600, null, null, new Scopes([Scope::openid()]));
 
         // Then
         static::assertSame(
@@ -64,7 +65,7 @@ final class TokenResponseTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new TokenResponse('', 600, null, null, [Scope::openid()]);
+        new TokenResponse('', 600, null, null, new Scopes([Scope::openid()]));
     }
 
     #[Test]
@@ -76,7 +77,7 @@ final class TokenResponseTest extends TestCase
         $this->expectExceptionMessageIsOrContains('absent or non-empty');
 
         // When
-        new TokenResponse('at.value', 600, $refreshToken, $idToken, [Scope::openid()]);
+        new TokenResponse('at.value', 600, $refreshToken, $idToken, new Scopes([Scope::openid()]));
     }
 
     /**
@@ -86,16 +87,6 @@ final class TokenResponseTest extends TestCase
     {
         yield 'empty refresh token' => ['', null];
         yield 'empty ID token' => [null, ''];
-    }
-
-    #[Test]
-    public function itRefusesAnEmptyScopeList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        new TokenResponse('at.value', 600, null, null, []);
     }
 
     /**

@@ -8,7 +8,6 @@ use function array_keys;
 use function array_map;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use function implode;
 use function sprintf;
@@ -62,7 +61,7 @@ final readonly class ProfilingInteractionRepository implements InteractionReposi
             'client_id' => $interaction->clientId,
             'redirect_uri' => $request->redirectUri->value,
             'response mode' => $request->responseMode->value,
-            'scopes requested' => implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $request->scopes)),
+            'scopes requested' => (string) $request->scopes,
             'PKCE' => $challenge === null ? 'none: the client is exempt (decision 0008)' : $challenge->method->value,
             'state' => $request->state === null ? 'none' : 'carried',
             'nonce' => $request->nonce === null ? 'none' : 'carried',

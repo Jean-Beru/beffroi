@@ -18,6 +18,7 @@ use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
@@ -262,7 +263,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         $provider = new class() implements ClaimsProviderInterface {
             public int $calls = 0;
 
-            public function claims(User $user, array $scopes, array $requested): array
+            public function claims(User $user, ?Scopes $scopes, array $requested): array
             {
                 ++$this->calls;
 
@@ -310,7 +311,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $provider = new class() implements ClaimsProviderInterface {
-            public function claims(User $user, array $scopes, array $requested): array
+            public function claims(User $user, ?Scopes $scopes, array $requested): array
             {
                 return [
                     'sub' => 'mallory',
@@ -420,7 +421,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
         );
         $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
 

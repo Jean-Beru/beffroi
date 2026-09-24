@@ -191,7 +191,7 @@ final class HeidiBundleConfigurationTest extends TestCase
         );
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(HeidiBundle::DEFAULT_GRANT_TYPES, array_map(static fn ($grant) => $grant->value, $fromTree->grantTypes));
-        static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, array_map(static fn ($scope) => (string) $scope, $fromTree->allowedScopes));
+        static::assertSame(HeidiBundle::DEFAULT_ALLOWED_SCOPES, $fromTree->allowedScopes->values());
     }
 
     /**

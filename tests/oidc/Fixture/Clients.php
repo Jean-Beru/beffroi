@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
@@ -44,7 +45,7 @@ final class Clients
             [new RedirectUri('https://demo.localhost/login/check')],
             [new RedirectUri('https://demo.localhost/')],
             [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            [new Scope('openid'), new Scope('profile'), new Scope('email')],
+            new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
             requiresPkce: $requiresPkce,
             accessTokenFormat: $accessTokenFormat,
         );
@@ -65,7 +66,7 @@ final class Clients
             [new RedirectUri('https://fapi.localhost/login/check')],
             [],
             [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            [new Scope('openid'), new Scope('profile'), new Scope('email')],
+            new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
             requiresPushedAuthorizationRequests: true,
         );
     }
@@ -119,7 +120,7 @@ final class Clients
             [new RedirectUri('https://encrypted.example/callback')],
             [],
             [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            [new Scope('openid'), new Scope('profile'), new Scope('email')],
+            new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
             jwks: ClientEncryption::publishedKeys(),
             idToken: $idToken,
             authorizationResponse: $authorizationResponse,
@@ -149,7 +150,7 @@ final class Clients
             [new RedirectUri('https://jar.example/callback')],
             [],
             [GrantType::AuthorizationCode],
-            [new Scope('openid'), new Scope('profile')],
+            new Scopes([new Scope('openid'), new Scope('profile')]),
             jwks: ClientAssertions::publishedKeys(),
             requestObjectSigning: $signing ?? new AnyRegisteredAlgorithm(),
             requestUris: $requestUris,

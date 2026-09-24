@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\UserInfo;
 
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
 use Heidi\Oidc\Domain\UserInfo\UserInfoResponse;
@@ -139,10 +140,10 @@ final class UserInfoResponseTest extends TestCase
     public function anInsufficientScopeIsA403NamingTheScopes(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(new InsufficientScopeException('The token opens nothing here.', [
+        $response = UserInfoErrorResponse::fromException(new InsufficientScopeException('The token opens nothing here.', new Scopes([
             Scope::openid(),
             new Scope('profile'),
-        ]));
+        ])));
 
         // Then
         static::assertSame(403, $response->statusCode);

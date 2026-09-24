@@ -21,6 +21,7 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Core\Tests\Fixture\Totps;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
@@ -108,7 +109,7 @@ final class AuthorizationHandlerTest extends TestCase
             Methods::none(),
             null,
             [new RedirectUri('https://portal.acme.example/callback')],
-            allowedScopes: [Scope::openid(), new Scope('profile')],
+            allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
             requiresConsent: false,
         );
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
@@ -229,8 +230,10 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // Given
         $session = $this->session();
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, Clients::public($this->tenant), [Scope::openid(), new Scope('profile')], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
+        $this->consents->save(
+            new Consent(Uuid::v7(), $this->alice, Clients::public($this->tenant), new Scopes([Scope::openid(), new Scope('profile')]), Fixtures::now()),
+        );
 
         // When
         $decision = $this->handler->begin($this->request(['openid', 'profile']), $session, $this->context);
@@ -238,7 +241,7 @@ final class AuthorizationHandlerTest extends TestCase
         // Then
         $consent = $this->consentRequired($decision, ConsentRequirement::NotGranted);
         static::assertSame($session, $consent->session);
-        static::assertEquals([Scope::openid(), new Scope('profile')], $consent->scopes);
+        static::assertEquals([Scope::openid(), new Scope('profile')], $consent->scopes->all);
     }
 
     #[Test]
@@ -267,7 +270,13 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // Given
         $session = $this->session();
-        $consent = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile'), new Scope('email')], Fixtures::now());
+        $consent = new Consent(
+            Uuid::v7(),
+            $this->alice,
+            $this->client,
+            new Scopes([Scope::openid(), new Scope('profile'), new Scope('email')]),
+            Fixtures::now(),
+        );
         $this->consents->save($consent);
 
         // When
@@ -290,7 +299,7 @@ final class AuthorizationHandlerTest extends TestCase
     {
         // Given
         $session = $this->session();
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('profile')]), Fixtures::now()));
         $request = $this->request(['openid', 'profile']);
 
         // When
@@ -322,7 +331,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function theUserAgentGoesBackWithCodeStateAndIssuer(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(), $this->session(), $this->context);
@@ -346,7 +355,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function theCodeIssuedIsAnnouncedOnceWithTheRequestContext(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(), $this->session(), $this->context);
@@ -460,7 +469,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itGrantsSilentlyWhenPromptIsNoneAndNothingIsMissing(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(prompts: [Prompt::None]), $this->session(), $this->context);
@@ -476,7 +485,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itRequiresAReauthenticationWhenPromptIsLogin(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(prompts: [Prompt::Login]), $this->session(), $this->context);
@@ -492,7 +501,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aLoginDuringTheInteractionSatisfiesPromptLogin(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
         $session = $this->session();
         $login = $this->loginRequired(
             $this->handler->begin($this->request(prompts: [Prompt::Login]), $session, $this->context),
@@ -516,7 +525,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aSessionEstablishedTheSecondTheInteractionBeganSatisfiesPromptLogin(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(prompts: [Prompt::Login]), $this->session($this->clock->now()), $this->context);
@@ -547,7 +556,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itRequiresAReauthenticationWhenTheLastOneIsOlderThanMaxAge(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(maxAge: 7199), $this->session(), $this->context);
@@ -561,7 +570,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itGrantsWhenTheLastAuthenticationIsWithinMaxAge(int $maxAge): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(maxAge: $maxAge), $this->session(), $this->context);
@@ -587,7 +596,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aLoginDuringTheInteractionSatisfiesMaxAge(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
         $login = $this->loginRequired($this->handler->begin($this->request(maxAge: 0), null, $this->context), LoginRequirement::NoSession);
         $this->clock->sleep(5);
         $session = $this->session($this->clock->now());
@@ -607,7 +616,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itGrantsWhenTheSessionIsTheUserOfTheIdTokenHint(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(idTokenHint: self::ALICE_HINT), $this->session(), $this->context);
@@ -623,7 +632,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itRequiresALoginWhenTheSessionIsNotTheUserOfTheIdTokenHint(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(idTokenHint: self::BOB_HINT), $this->session(), $this->context);
@@ -803,7 +812,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aNewConsentAddsTheScopesOfTheRequestToThePreviousOnes(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('email')]), Fixtures::now()));
         $consent = $this->consentRequired(
             $this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context),
             ConsentRequirement::NotGranted,
@@ -814,7 +823,7 @@ final class AuthorizationHandlerTest extends TestCase
 
         // Then
         $recorded = $this->granted($decision)->interaction->consent ?? static::fail('The consent should have been recorded.');
-        static::assertEquals([Scope::openid(), new Scope('email'), new Scope('profile')], $recorded->scopes);
+        static::assertEquals([Scope::openid(), new Scope('email'), new Scope('profile')], $recorded->scopes->all);
     }
 
     /**
@@ -824,7 +833,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aNewConsentRevokesThePreviousOne(): void
     {
         // Given
-        $previous = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now());
+        $previous = new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('email')]), Fixtures::now());
         $this->consents->save($previous);
         $consent = $this->consentRequired(
             $this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context),
@@ -846,7 +855,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aNewConsentIsAnnouncedWithTheOneItSupersedes(): void
     {
         // Given
-        $previous = new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('email')], Fixtures::now());
+        $previous = new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('email')]), Fixtures::now());
         $this->consents->save($previous);
         $consent = $this->consentRequired(
             $this->handler->begin($this->request(['openid', 'profile']), $this->session(), $this->context),
@@ -867,7 +876,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itAsksAgainWhenPromptIsConsent(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('profile')]), Fixtures::now()));
 
         // When
         $decision = $this->handler->begin($this->request(prompts: [Prompt::Consent]), $this->session(), $this->context);
@@ -880,7 +889,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aResumeWithoutAnAnswerAsksAgainWhenPromptIsConsent(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('profile')]), Fixtures::now()));
         $session = $this->session();
         $consent = $this->consentRequired(
             $this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context),
@@ -901,7 +910,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function theConsentGivenDuringTheInteractionSatisfiesPromptConsent(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid(), new Scope('profile')], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('profile')]), Fixtures::now()));
         $session = $this->session();
         $consent = $this->consentRequired(
             $this->handler->begin($this->request(prompts: [Prompt::Consent]), $session, $this->context),
@@ -1004,7 +1013,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function itDoesNotResumeACompletedInteraction(callable $resume): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
         $session = $this->session();
         $granted = $this->granted($this->handler->begin($this->request(), $session, $this->context));
         $ended = $this->session();
@@ -1024,7 +1033,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function aCompletedInteractionIssuesNoSecondCode(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
         $session = $this->session();
         $granted = $this->granted($this->handler->begin($this->request(), $session, $this->context));
 
@@ -1235,7 +1244,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function anEssentialAcrTheProviderCannotAssertFailsWhateverTheSessionAndThePrompt(): void
     {
         // Given
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, [Scope::openid()], Fixtures::now()));
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
 
         // Then
         $this->expectException(UnmetAuthenticationRequirementsException::class);
@@ -1352,7 +1361,7 @@ final class AuthorizationHandlerTest extends TestCase
             Methods::none(),
             null,
             [new RedirectUri('https://portal.acme.example/callback')],
-            allowedScopes: [Scope::openid(), new Scope('profile')],
+            allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
             requiresConsent: false,
         );
         yield 'essential, the claims parameter' => [Requests::authorization(

@@ -214,7 +214,7 @@ final class RefreshTokenGrantTest extends TestCase
         $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(scope: 'email profile email'), $this->context);
 
         // Then
-        static::assertEquals([new Scope('email'), new Scope('profile')], $issued->authorization->scopes);
+        static::assertEquals([new Scope('email'), new Scope('profile')], $issued->authorization->scopes->all);
         static::assertSame($token->scopes, $issued->authorization->grantedScopes);
         static::assertSame('email profile', $issued->toResponse()->parameters()['scope']);
     }

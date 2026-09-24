@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Bridge\InMemory;
 
 use function array_keys;
-use function array_map;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
@@ -444,7 +444,7 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertSame($this->client, $record->client);
         static::assertSame($this->session, $record->session);
         static::assertTrue($authorization->grantId->equals($record->grantId));
-        static::assertSame(['openid', 'email'], array_map(strval(...), $record->scopes));
+        static::assertSame(['openid', 'email'], $record->scopes->values());
         static::assertEquals(Fixtures::now(), $record->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $record->expiresAt);
         static::assertNull($repository->find(OpaqueTokenValue::hash($value)), 'the hash is not the value');
@@ -559,7 +559,7 @@ final class InMemoryRepositoriesTest extends TestCase
 
     private function consent(User $user, Client $client, string $grantedAt): Consent
     {
-        return new Consent(Uuid::v7(), $user, $client, [Scope::openid()], Fixtures::now()->modify($grantedAt));
+        return new Consent(Uuid::v7(), $user, $client, new Scopes([Scope::openid()]), Fixtures::now()->modify($grantedAt));
     }
 
     private function pushedRequest(RequestUri $requestUri): PushedAuthorizationRequest
@@ -583,7 +583,7 @@ final class InMemoryRepositoriesTest extends TestCase
             $this->client,
             $this->session,
             $this->client->redirectUris[0],
-            [Scope::openid()],
+            new Scopes([Scope::openid()]),
             null,
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
             null,

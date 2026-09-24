@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Bridge\Configuration;
 
 use function array_column;
-use function array_map;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -271,7 +270,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($demo->hasRedirectUri('https://demo.localhost/login/check'));
         static::assertTrue($demo->hasPostLogoutRedirectUri('https://demo.localhost/'));
         static::assertSame([GrantType::AuthorizationCode, GrantType::RefreshToken], $demo->grantTypes);
-        static::assertSame(['openid', 'profile', 'email'], array_map(strval(...), $demo->allowedScopes));
+        static::assertSame(['openid', 'profile', 'email'], $demo->allowedScopes->values());
     }
 
     /**
@@ -317,7 +316,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($suite->hasRedirectUri('https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'));
         static::assertFalse($suite->hasPostLogoutRedirectUri('https://localhost:8443/'));
         static::assertSame([GrantType::AuthorizationCode], $suite->grantTypes);
-        static::assertSame(['openid', 'email'], array_map(strval(...), $suite->allowedScopes));
+        static::assertSame(['openid', 'email'], $suite->allowedScopes->values());
     }
 
     #[Test]

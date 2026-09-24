@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -60,7 +61,7 @@ final class StoredAccessTokenTest extends TestCase
         static::assertSame($this->client->clientId, $token->clientId);
         static::assertSame($this->client->tenant, $token->tenant);
         static::assertSame($this->session, $token->session);
-        static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes->all);
         static::assertSame($claims, $token->claimsRequest);
         static::assertEquals($issuedAt, $token->authentication->authenticatedAt);
         static::assertSame(['pwd', 'otp', 'mfa'], $token->authentication->methods);
@@ -87,7 +88,7 @@ final class StoredAccessTokenTest extends TestCase
                 Tokens::family(Fixtures::now(), grantId: $code->grantId),
                 ['openid', 'email'],
             ),
-            [new Scope('email')],
+            new Scopes([new Scope('email')]),
         );
 
         // When
@@ -99,7 +100,7 @@ final class StoredAccessTokenTest extends TestCase
         );
 
         // Then
-        static::assertEquals([new Scope('email')], $token->scopes);
+        static::assertEquals([new Scope('email')], $token->scopes->all);
         static::assertTrue($code->grantId->equals($token->grantId));
         static::assertSame($this->session, $token->session);
         static::assertEquals($this->session->authenticatedAt(), $token->authentication->authenticatedAt);
@@ -123,8 +124,8 @@ final class StoredAccessTokenTest extends TestCase
         $token = Tokens::storedAccessToken('the-token', $this->client, $this->session, Fixtures::now(), scopes: ['openid', 'email']);
 
         // When / Then
-        static::assertTrue($token->hasScope(new Scope('email')));
-        static::assertFalse($token->hasScope(new Scope('profile')));
+        static::assertTrue($token->scopes->has(new Scope('email')));
+        static::assertFalse($token->scopes->has(new Scope('profile')));
     }
 
     #[Test]
@@ -147,16 +148,6 @@ final class StoredAccessTokenTest extends TestCase
         $this->token(client: Clients::public(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
-    #[Test]
-    public function itRefusesAnEmptyScopeList(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        $this->token(scopes: []);
-    }
-
     /**
      * RFC 8176: a session always has at least one proof, so a token always has at least one method.
      */
@@ -171,13 +162,12 @@ final class StoredAccessTokenTest extends TestCase
     }
 
     /**
-     * @param list<Scope>|null $scopes
      * @param list<string>|null $methods
      */
     private function token(
         ?string $tokenHash = null,
         ?Client $client = null,
-        ?array $scopes = null,
+        ?Scopes $scopes = null,
         ?array $methods = null,
         ?DateTimeImmutable $expiresAt = null,
     ): StoredAccessToken {
@@ -186,7 +176,7 @@ final class StoredAccessTokenTest extends TestCase
             Uuid::v7(),
             $client ?? $this->client,
             $this->session,
-            $scopes ?? [Scope::openid()],
+            $scopes ?? new Scopes([Scope::openid()]),
             null,
             new AuthenticationSnapshot(Fixtures::now(), $methods ?? ['pwd'], '1'),
             Fixtures::now(),

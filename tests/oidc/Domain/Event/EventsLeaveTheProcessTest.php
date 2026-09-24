@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Domain\Event;
 use Heidi\Core\Domain\Event\DomainEventInterface;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Consent\Consent;
@@ -61,7 +62,11 @@ final class EventsLeaveTheProcessTest extends TestCase
 
         yield 'an authorization code issued' => [AuthorizationCodeIssued::of($code, $context)];
         yield 'an authorization code replayed' => [AuthorizationCodeReplayed::of($now, $code, $client, [$previous], $context)];
-        yield 'a consent granted' => [ConsentGranted::of(new Consent(Uuid::v7(), $session->user, $client, [Scope::openid()], $now), null, $context)];
+        yield 'a consent granted' => [ConsentGranted::of(
+            new Consent(Uuid::v7(), $session->user, $client, new Scopes([Scope::openid()]), $now),
+            null,
+            $context,
+        )];
         yield 'a logout token issued' => [LogoutTokenIssued::of(
             $client,
             new ClientUri('https://key.example/backchannel-logout'),

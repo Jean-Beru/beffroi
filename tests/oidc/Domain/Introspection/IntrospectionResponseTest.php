@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -58,7 +59,7 @@ final class IntrospectionResponseTest extends TestCase
             new Subject('alice-subject'),
             $session,
             $grant,
-            [Scope::openid(), new Scope('email')],
+            new Scopes([Scope::openid(), new Scope('email')]),
             ['name'],
             new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2'),
             new DateTimeImmutable('@1789466400'),

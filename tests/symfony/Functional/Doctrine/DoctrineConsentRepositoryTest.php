@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
@@ -22,7 +23,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         // Given
         $user = self::user();
         $client = self::client();
-        $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid'), new Scope('profile')], self::now());
+        $consent = new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid'), new Scope('profile')]), self::now());
         self::consents()->save($consent);
         self::reload();
 
@@ -36,7 +37,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         static::assertSame('oidc-demo', $found->clientId);
         static::assertSame('oidc-demo', $found->client->clientId);
         static::assertTrue($found->isFor($user, $client));
-        static::assertEquals([new Scope('openid'), new Scope('profile')], $found->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('profile')], $found->scopes->all);
         static::assertEquals(self::now(), $found->grantedAt);
         static::assertNull($found->revokedAt);
         static::assertTrue($found->isActive());
@@ -48,14 +49,15 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         // Given
         $alice = self::user();
         $demo = self::client();
-        $superseded = new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid')], self::now()->modify('-1 day'));
+        $superseded = new Consent(Uuid::v7(), $alice, $demo, new Scopes([new Scope('openid')]), self::now()->modify('-1 day'));
         $superseded->revoke(self::now());
         self::consents()->save($superseded);
-        $latest = new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid'), new Scope('email')], self::now());
+        $latest = new Consent(Uuid::v7(), $alice, $demo, new Scopes([new Scope('openid'), new Scope('email')]), self::now());
         self::consents()->save($latest);
-        self::consents()->save(new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid'), new Scope('profile')], self::now()->modify('-1 hour')));
-        self::consents()->save(new Consent(Uuid::v7(), self::user('bob', 'bob-subject'), $demo, [new Scope('openid')], self::now()->modify('+1 hour')));
-        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client('native-app'), [new Scope('openid')], self::now()->modify('+1 hour')));
+        self::consents()->save(new Consent(Uuid::v7(), $alice, $demo, new Scopes([new Scope('openid'), new Scope('profile')]), self::now()->modify('-1 hour')));
+        self::consents()
+            ->save(new Consent(Uuid::v7(), self::user('bob', 'bob-subject'), $demo, new Scopes([new Scope('openid')]), self::now()->modify('+1 hour')));
+        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client('native-app'), new Scopes([new Scope('openid')]), self::now()->modify('+1 hour')));
         self::reload();
 
         // When
@@ -70,7 +72,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
     {
         // Given
         $demo = self::client();
-        self::consents()->save(new Consent(Uuid::v7(), self::user(), $demo, [new Scope('openid')], self::now()));
+        self::consents()->save(new Consent(Uuid::v7(), self::user(), $demo, new Scopes([new Scope('openid')]), self::now()));
         self::reload();
 
         // When / Then
@@ -83,7 +85,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         // Given
         $user = self::user();
         $client = self::client();
-        $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid')], self::now());
+        $consent = new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
         self::consents()->save($consent);
         $consent->revoke(self::now()->modify('+1 hour'));
         self::consents()->save($consent);

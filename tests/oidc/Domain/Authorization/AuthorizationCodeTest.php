@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
@@ -95,7 +96,7 @@ final class AuthorizationCodeTest extends TestCase
         static::assertSame($this->client->tenant, $code->tenant);
         static::assertSame($this->session, $code->session);
         static::assertSame('https://spa.example/callback', (string) $code->redirectUri);
-        static::assertEquals([new Scope('openid')], $code->scopes);
+        static::assertEquals([new Scope('openid')], $code->scopes->all);
         static::assertSame('n-0S6_WzA2Mj', $code->nonce);
         static::assertSame(Requests::CHALLENGE, $code->codeChallenge?->value);
         static::assertNull($code->claimsRequest);
@@ -132,7 +133,7 @@ final class AuthorizationCodeTest extends TestCase
             $client,
             $this->session,
             $client->redirectUris[0],
-            [new Scope('openid')],
+            new Scopes([new Scope('openid')]),
             null,
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
             null,
@@ -315,7 +316,7 @@ final class AuthorizationCodeTest extends TestCase
             $this->client,
             $this->session,
             $this->client->redirectUris[0],
-            $scopes,
+            new Scopes($scopes),
             'n-0S6_WzA2Mj',
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
             null,

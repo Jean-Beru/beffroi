@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -33,6 +34,8 @@ final class Tokens
      * A code issued now for sixty seconds, for the first redirect URI of the client, bound to
      * Requests::CHALLENGE unless the request carried no challenge, with the authentication of the session.
      *
+     */
+    /**
      * @param list<string> $scopes
      */
     public static function code(
@@ -53,7 +56,7 @@ final class Tokens
             $client,
             $session,
             $client->redirectUris[0],
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $nonce,
             $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
             $dpopKey,
@@ -68,6 +71,8 @@ final class Tokens
      * The record of an opaque access token issued now for ten minutes, under the hash of the value given,
      * with the authentication of the session.
      *
+     */
+    /**
      * @param list<string> $scopes
      */
     public static function storedAccessToken(
@@ -84,7 +89,7 @@ final class Tokens
             $grantId ?? Uuid::v7(),
             $client,
             $session,
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
@@ -104,6 +109,8 @@ final class Tokens
      * A refresh token issued now for thirty days, in the family given or a fresh one, with the
      * authentication of the session.
      *
+     */
+    /**
      * @param list<string> $scopes
      */
     public static function refreshToken(
@@ -123,7 +130,7 @@ final class Tokens
             $family,
             $client,
             $session,
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,

@@ -53,7 +53,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         static::assertSame('oidc-demo', $found->clientId);
         static::assertSame('oidc-demo', $found->client->clientId);
         static::assertTrue($found->session->id->equals($session->id));
-        static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes->all);
         static::assertEquals($claims, $found->claimsRequest);
         static::assertEquals(self::now(), $found->authentication->authenticatedAt);
         static::assertSame(['pwd'], $found->authentication->methods);

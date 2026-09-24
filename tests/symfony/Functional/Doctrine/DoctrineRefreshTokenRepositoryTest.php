@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
@@ -54,7 +55,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertSame($family->authorizationCodeHash, $found->family->authorizationCodeHash);
         static::assertEquals($family->startedAt, $found->family->startedAt);
         static::assertEquals($family->expiresAt, $found->family->expiresAt);
-        static::assertEquals([new Scope('openid'), new Scope('offline_access')], $found->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('offline_access')], $found->scopes->all);
         static::assertEquals($claims, $found->claimsRequest);
         static::assertEquals(self::now(), $found->authentication->authenticatedAt);
         static::assertSame(['pwd'], $found->authentication->methods);
@@ -255,7 +256,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
             $family,
             $client,
             $session,
-            [new Scope('openid'), new Scope('offline_access')],
+            new Scopes([new Scope('openid'), new Scope('offline_access')]),
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,

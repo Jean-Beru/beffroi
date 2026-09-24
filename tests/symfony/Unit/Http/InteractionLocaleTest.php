@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
@@ -202,7 +203,7 @@ final class InteractionLocaleTest extends TestCase
         $request = new AuthorizationRequest(
             $client,
             new RedirectUri('http://127.0.0.1/callback'),
-            [Scope::openid()],
+            new Scopes([Scope::openid()]),
             new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256),
             'state',
             'nonce',

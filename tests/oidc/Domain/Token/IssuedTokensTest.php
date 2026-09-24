@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Domain\Token;
 
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\AccessToken;
@@ -137,7 +138,7 @@ final class IssuedTokensTest extends TestCase
         // Given
         $narrowed = GrantedAuthorization::fromRefreshToken(
             Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
-            [new Scope('profile')],
+            new Scopes([new Scope('profile')]),
         );
         $issued = new IssuedTokens($narrowed, $this->accessToken, null, null);
 

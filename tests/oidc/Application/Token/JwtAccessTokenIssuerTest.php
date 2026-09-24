@@ -11,6 +11,7 @@ use Heidi\Core\Domain\Session\AuthenticationProofs;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -181,7 +182,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         // Given
         $authorization = GrantedAuthorization::fromRefreshToken(
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
-            [new Scope('profile')],
+            new Scopes([new Scope('profile')]),
         );
         $token = $this->issuer->issue($authorization, Fixtures::now());
 

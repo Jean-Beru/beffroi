@@ -13,6 +13,7 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
@@ -89,7 +90,7 @@ final class AuthorizationCodeGrantTest extends TestCase
             null,
             [new RedirectUri('https://mobile.example/callback')],
             grantTypes: [GrantType::AuthorizationCode, GrantType::RefreshToken],
-            allowedScopes: [Scope::openid(), new Scope('offline_access')],
+            allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
         );
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
@@ -341,7 +342,7 @@ final class AuthorizationCodeGrantTest extends TestCase
             Methods::clientSecretBasic(),
             new HashedClientSecret(new FakePasswordHasher()->hash(Clients::SECRET)),
             [new RedirectUri('https://demo.localhost/login/check')],
-            allowedScopes: [Scope::openid(), new Scope('offline_access')],
+            allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
         );
         $this->code('the-code', $codeOnly, ['openid', 'offline_access']);
 

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Profiler;
 
-use function array_map;
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\AccessToken;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidJwtException;
@@ -45,8 +43,8 @@ final readonly class ProfilingAccessTokenIssuer implements AccessTokenIssuerInte
             'jti' => $this->jtiOf($token),
             'aud' => $authorization->client->clientId,
             'exp' => $token->expiresAt->format(DATE_ATOM),
-            'scopes of this response' => self::list($authorization->scopes),
-            'scopes granted' => self::list($authorization->grantedScopes),
+            'scopes of this response' => (string) $authorization->scopes,
+            'scopes granted' => (string) $authorization->grantedScopes,
             'binding' => $confirmation === null ? 'bearer' : sprintf('cnf.%s %s', $confirmation->member(), $confirmation->value()),
             'acr' => $authorization->authentication->contextClass,
             'amr' => implode(' ', $authorization->authentication->methods),
@@ -63,13 +61,5 @@ final readonly class ProfilingAccessTokenIssuer implements AccessTokenIssuerInte
         } catch (InvalidJwtException) {
             return 'none: the token carries no claims';
         }
-    }
-
-    /**
-     * @param list<Scope> $scopes
-     */
-    private static function list(array $scopes): string
-    {
-        return implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $scopes));
     }
 }

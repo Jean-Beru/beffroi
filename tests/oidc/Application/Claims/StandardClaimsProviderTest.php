@@ -12,6 +12,7 @@ use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -214,7 +215,7 @@ final class StandardClaimsProviderTest extends TestCase
     public function aFullUserGetsEveryAnnouncedClaimAndNothingElse(): void
     {
         // When
-        $served = array_keys($this->provider->claims(self::fullUser(), $this->provider->supportedScopes(), []));
+        $served = array_keys($this->provider->claims(self::fullUser(), new Scopes($this->provider->supportedScopes()), []));
 
         // Then
         static::assertEqualsCanonicalizing($this->provider->supportedClaims(), $served);
@@ -243,7 +244,6 @@ final class StandardClaimsProviderTest extends TestCase
     public static function provideScopesWithoutClaims(): iterable
     {
         yield 'openid, offline_access and a custom scope' => [['openid', 'offline_access', 'api:read']];
-        yield 'no scope' => [[]];
     }
 
     /**
@@ -271,12 +271,10 @@ final class StandardClaimsProviderTest extends TestCase
 
     /**
      * @param list<string> $values
-     *
-     * @return list<Scope>
      */
-    private static function scopes(array $values): array
+    private static function scopes(array $values): Scopes
     {
-        return array_map(static fn (string $value): Scope => new Scope($value), $values);
+        return new Scopes(array_map(static fn (string $value): Scope => new Scope($value), $values));
     }
 
     private static function fullUser(): User

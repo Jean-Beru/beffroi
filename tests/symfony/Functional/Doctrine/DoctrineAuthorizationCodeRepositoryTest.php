@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
 use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
@@ -77,7 +78,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertSame('oidc-demo', $found->client->clientId);
         static::assertTrue($found->session->id->equals($session->id));
         static::assertSame((string) $client->redirectUris[0], (string) $found->redirectUri);
-        static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('email')], $found->scopes->all);
         static::assertSame('n-0S6_WzA2Mj', $found->nonce);
         static::assertSame(self::CHALLENGE, $found->codeChallenge?->value);
         static::assertTrue($found->codeChallenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
@@ -213,7 +214,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             $client,
             $session,
             $client->redirectUris[0],
-            [new Scope('openid'), new Scope('email')],
+            new Scopes([new Scope('openid'), new Scope('email')]),
             'n-0S6_WzA2Mj',
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
             null,
