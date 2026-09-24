@@ -17,6 +17,7 @@ use Heidi\Oidc\Exception\MissingBearerTokenException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -32,6 +33,7 @@ final readonly class UserInfoController
         private UserInfoHandler $handler,
         private RequestContextFactory $contexts,
         private PresentedClientCertificate $certificates,
+        private ServedTokenSchemesInterface $schemes,
     ) {
     }
 
@@ -49,7 +51,7 @@ final readonly class UserInfoController
                 DpopProofHeader::ofRequest($request),
             );
         } catch (OAuth2Exception|MissingBearerTokenException $exception) {
-            $error = UserInfoErrorResponse::fromException($exception);
+            $error = UserInfoErrorResponse::fromException($exception, $this->schemes->servedTokenSchemes());
             $parameters = $error->parameters();
             if ($parameters === []) {
                 return new Response('', $error->statusCode, $error->headers());

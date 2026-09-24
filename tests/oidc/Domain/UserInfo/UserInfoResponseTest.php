@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Domain\UserInfo;
 
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Tests\Fixture\Bindings;
 use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
 use Heidi\Oidc\Domain\UserInfo\UserInfoResponse;
 use Heidi\Oidc\Exception\InsufficientScopeException;
@@ -82,7 +83,7 @@ final class UserInfoResponseTest extends TestCase
     public function anInvalidTokenIsA401WithTheErrorInTheChallenge(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(new InvalidTokenException('The access token expired.'));
+        $response = UserInfoErrorResponse::fromException(new InvalidTokenException('The access token expired.'), Bindings::schemes());
 
         // Then
         static::assertSame(401, $response->statusCode);
@@ -106,7 +107,7 @@ final class UserInfoResponseTest extends TestCase
     public function anErrorIsNotCached(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(new InvalidTokenException('The access token expired.'));
+        $response = UserInfoErrorResponse::fromException(new InvalidTokenException('The access token expired.'), Bindings::schemes());
 
         // Then
         static::assertSame(
@@ -126,7 +127,7 @@ final class UserInfoResponseTest extends TestCase
     public function anInvalidRequestIsA400(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(new InvalidRequestException('The access token is sent by more than one method.'));
+        $response = UserInfoErrorResponse::fromException(new InvalidRequestException('The access token is sent by more than one method.'), Bindings::schemes());
 
         // Then
         static::assertSame(400, $response->statusCode);
@@ -143,7 +144,7 @@ final class UserInfoResponseTest extends TestCase
         $response = UserInfoErrorResponse::fromException(new InsufficientScopeException('The token opens nothing here.', new Scopes([
             Scope::openid(),
             new Scope('profile'),
-        ])));
+        ])), Bindings::schemes());
 
         // Then
         static::assertSame(403, $response->statusCode);
@@ -169,7 +170,7 @@ final class UserInfoResponseTest extends TestCase
     public function aRequestWithoutTokenGetsTheBareChallenge(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(new MissingBearerTokenException());
+        $response = UserInfoErrorResponse::fromException(new MissingBearerTokenException(), Bindings::schemes());
 
         // Then
         static::assertSame(401, $response->statusCode);

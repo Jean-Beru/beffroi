@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Domain\Token;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Token\PresentedAccessToken;
+use Heidi\Oidc\Tests\Fixture\Bindings;
 use Heidi\Oidc\Domain\Token\TokenResponse;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,7 +35,7 @@ final class PresentedAccessTokenTest extends TestCase
     public function itReadsTheTokenFromTheHeaderOrTheBody(?string $header, array $parameters, string $expected, string $scheme = TokenResponse::BEARER): void
     {
         // When
-        $token = PresentedAccessToken::fromRequest($header, $parameters);
+        $token = PresentedAccessToken::fromRequest($header, $parameters, Bindings::schemes());
 
         // Then
         static::assertNotNull($token);
@@ -90,7 +91,7 @@ final class PresentedAccessTokenTest extends TestCase
     public function itFindsNoTokenWhenNoneIsSent(?string $header, array $parameters): void
     {
         // When / Then
-        static::assertNull(PresentedAccessToken::fromRequest($header, $parameters));
+        static::assertNull(PresentedAccessToken::fromRequest($header, $parameters, Bindings::schemes()));
     }
 
     /**
@@ -130,7 +131,7 @@ final class PresentedAccessTokenTest extends TestCase
     {
         // When
         try {
-            PresentedAccessToken::fromRequest($header, $parameters);
+            PresentedAccessToken::fromRequest($header, $parameters, Bindings::schemes());
             static::fail('The request should have been refused.');
         } catch (InvalidRequestException $exception) {
             // Then
