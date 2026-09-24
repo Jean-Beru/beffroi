@@ -226,6 +226,7 @@ use Heidi\Oidc\Application\Token\AccessTokenIssuer;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Heidi\Oidc\Application\Token\Confirmations;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
@@ -254,7 +255,12 @@ use Heidi\Oidc\Port\ClientAssertionSecretVerifierInterface;
 use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
 use Heidi\Oidc\Port\ClientJwksCacheInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
+use Heidi\Oidc\Domain\Token\CertificateConfirmationKind;
+use Heidi\Oidc\Domain\Token\KeyConfirmationKind;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Heidi\Oidc\Port\ConfirmationReaderInterface;
+use Heidi\Oidc\Port\ServedTokenSchemesInterface;
+use Heidi\Oidc\Port\ServedAccessTokenFormatsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
@@ -566,6 +572,7 @@ return static function (ContainerConfigurator $container): void {
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
     // require, read where they are declared and nowhere else (issue #98)
     $services->alias(PushedAuthorizationRequirementInterface::class, ConfigurationClientRepository::class);
+    $services->alias(ServedAccessTokenFormatsInterface::class, ConfigurationClientRepository::class);
     $services->alias(UnsignedRequestObjectsInterface::class, ConfigurationClientRepository::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
@@ -688,6 +695,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TokenHandler::class)->args([
         '$grants' => tagged_iterator('heidi.oidc.grant'),
     ]);
+    $services->set(CertificateConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
+    $services->set(KeyConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
+    $services->set(Confirmations::class)->args([tagged_iterator('heidi.oidc.confirmation_kind')]);
+    $services->alias(ConfirmationReaderInterface::class, Confirmations::class);
+    $services->alias(ServedTokenSchemesInterface::class, Confirmations::class);
+    $services->alias('heidi.confirmations', ConfirmationReaderInterface::class)->public();
+
     $services->set(JwtAccessTokenVerifier::class)->tag('heidi.oidc.access_token_shape');
     $services->set(OpaqueAccessTokenVerifier::class)->tag('heidi.oidc.access_token_shape');
     $services->set(AccessTokenVerifier::class)->args([tagged_iterator('heidi.oidc.access_token_shape')]);

@@ -12,7 +12,10 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
+use Heidi\Oidc\Domain\Token\ConfirmationInterface;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
@@ -21,6 +24,7 @@ use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
@@ -61,6 +65,44 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         static::assertSame('1', $found->authentication->contextClass);
         static::assertEquals(self::now()->modify('+1 minute'), $found->issuedAt);
         static::assertEquals(self::now()->modify('+11 minutes'), $found->expiresAt);
+    }
+
+    /**
+     * RFC 7800 §3.1: what a token is bound to is stored as the members of a "cnf" and read back by the
+     * kinds the provider is wired with, which the bundle hands to the type when it boots.
+     *
+     * @param non-empty-string $thumbprint
+     */
+    #[Test]
+    #[DataProvider('provideBindings')]
+    public function aBoundTokenComesBackBoundToTheSameThing(ConfirmationInterface $confirmation, string $thumbprint): void
+    {
+        // Given
+        $session = self::session(self::user());
+        $code = Tokens::code('the-code', self::client(), $session, self::now());
+        $value = self::tokens()->issue(GrantedAuthorization::fromAuthorizationCode($code, $confirmation), self::now(), self::now()->modify('+10 minutes'));
+        self::reload();
+
+        // When
+        $found = self::tokens()->find($value) ?? static::fail('The token was not stored.');
+
+        // Then
+        static::assertNotNull($found->confirmation);
+        static::assertSame($confirmation->member(), $found->confirmation->member());
+        static::assertSame($thumbprint, $found->confirmation->value());
+        static::assertTrue($found->confirmation->matches($confirmation));
+    }
+
+    /**
+     * @return iterable<string, array{ConfirmationInterface, non-empty-string}>
+     */
+    public static function provideBindings(): iterable
+    {
+        $thumbprint = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
+
+        yield 'the certificate of the handshake' => [new CertificateConfirmation($thumbprint), $thumbprint];
+
+        yield 'the key of a proof' => [new KeyConfirmation($thumbprint), $thumbprint];
     }
 
     #[Test]

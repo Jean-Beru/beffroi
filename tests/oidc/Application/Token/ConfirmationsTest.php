@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Token;
+namespace Heidi\Oidc\Tests\Application\Token;
 
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
+use Heidi\Oidc\Domain\Token\CertificateConfirmationKind;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
-use Heidi\Oidc\Domain\Token\Confirmations;
+use Heidi\Oidc\Application\Token\Confirmations;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
+use Heidi\Oidc\Domain\Token\KeyConfirmationKind;
 use Heidi\Oidc\Domain\Token\TokenResponse;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\Bindings;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -79,7 +82,7 @@ final class ConfirmationsTest extends TestCase
     public function itReadsBackTheClaimItWrote(ConfirmationInterface $written): void
     {
         // When
-        $read = Confirmations::fromClaims($written->toClaims());
+        $read = Bindings::wired()->fromClaims($written->toClaims());
 
         // Then
         static::assertEquals($written, $read);
@@ -89,7 +92,7 @@ final class ConfirmationsTest extends TestCase
     public function claimsWithoutAConfirmationAreABearerToken(): void
     {
         // When
-        $confirmation = Confirmations::fromClaims([
+        $confirmation = Bindings::wired()->fromClaims([
             'sub' => 'alice',
         ]);
 
@@ -106,7 +109,7 @@ final class ConfirmationsTest extends TestCase
         $this->expectExceptionMessageIsOrContains($description);
 
         // When
-        Confirmations::fromClaims([
+        Bindings::wired()->fromClaims([
             'cnf' => $cnf,
         ]);
     }
@@ -123,7 +126,7 @@ final class ConfirmationsTest extends TestCase
         $this->expectExceptionMessageIsOrContains('bound to one thing');
 
         // When
-        Confirmations::fromMembers([
+        Bindings::wired()->fromMembers([
             'x5t#S256' => self::THUMBPRINT,
             'jkt' => self::THUMBPRINT,
         ]);
@@ -168,6 +171,63 @@ final class ConfirmationsTest extends TestCase
             false,
         ];
         yield 'the same thumbprint of another kind' => [new KeyConfirmation(self::THUMBPRINT), new CertificateConfirmation(self::THUMBPRINT), false];
+    }
+
+    /**
+     * Issue #98: what a resource reads a token under is derived from what the provider binds tokens
+     * with, never listed beside it. A token bound to nothing is a bearer token, so that scheme is there
+     * whatever is wired, and a kind that adds no scheme of its own adds none.
+     */
+    #[Test]
+    public function theSchemesAResourceServesAreThoseOfTheWiredBindings(): void
+    {
+        // When
+        $schemes = Bindings::wired()->servedTokenSchemes();
+
+        // Then
+        static::assertSame([TokenResponse::BEARER, KeyConfirmation::SCHEME], $schemes);
+    }
+
+    /**
+     * A deployment wired for the certificate of the handshake alone reads bearer tokens and nothing
+     * else: the binding is what the transport proves, and the token is presented as it always was.
+     */
+    #[Test]
+    public function aDeploymentThatBindsToCertificatesAloneServesBearerTokensOnly(): void
+    {
+        // Given
+        $confirmations = new Confirmations([new CertificateConfirmationKind()]);
+
+        // When
+        $schemes = $confirmations->servedTokenSchemes();
+
+        // Then
+        static::assertSame([TokenResponse::BEARER], $schemes);
+    }
+
+    /**
+     * Which of two kinds answers for a member is not something a deployment should have to guess.
+     */
+    #[Test]
+    public function twoKindsAnsweringForOneMemberAreRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('Two confirmation kinds answer for the "jkt" member of a "cnf".');
+
+        // When
+        new Confirmations([new KeyConfirmationKind(), new KeyConfirmationKind()]);
+    }
+
+    #[Test]
+    public function aProviderThatBindsNothingIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A provider binds its tokens with at least one kind of confirmation.');
+
+        // When
+        new Confirmations([]);
     }
 
     /**

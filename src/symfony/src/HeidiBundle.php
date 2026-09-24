@@ -22,6 +22,8 @@ use Heidi\Core\Port\PasswordAlgorithmsInterface;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Doctrine\Type\ConfirmationType;
+use Heidi\Bundle\Doctrine\Type\NeedsConfirmationReaderInterface;
+use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
 use Heidi\Bundle\Doctrine\Type\GeoLocationType;
@@ -653,33 +655,35 @@ final class HeidiBundle extends AbstractBundle
     ];
 
     /**
-     * The one pass of the bundle: the KMS client it seals with is named in its own configuration and
-     * registered in the framework's, so nothing but a pass can tell a name that answers from one that
-     * does not.
-     */
-    /**
-     * The types that read a password algorithm back are told what the deployment is wired with, as soon
-     * as the container can answer. It goes to the class and not to an instance: Doctrine builds its types
-     * itself, when a connection is first made, so no instance of one exists while the bundles boot.
-     * A deployment has one wiring, and a kernel booted after another hands over the same one.
+     * The types that read a wiring back are told what the deployment is wired with, as soon as the
+     * container can answer: which algorithm a stored password hash names, which kind of confirmation a
+     * stored "cnf" names. It goes to the class and not to an instance: Doctrine builds its types itself,
+     * when a connection is first made, so no instance of one exists while the bundles boot. A deployment
+     * has one wiring, and a kernel booted after another hands over the same one.
      */
     public function boot(): void
     {
         $container = $this->container;
-        if ($container === null || ! $container->has('heidi.password_algorithms')) {
+        if ($container === null) {
             return;
         }
-        $algorithms = $container->get('heidi.password_algorithms');
-        if (! $algorithms instanceof PasswordAlgorithmsInterface) {
-            return;
-        }
+        $algorithms = $container->has('heidi.password_algorithms') ? $container->get('heidi.password_algorithms') : null;
+        $confirmations = $container->has('heidi.confirmations') ? $container->get('heidi.confirmations') : null;
         foreach (self::DBAL_TYPES as $class) {
-            if (is_a($class, NeedsPasswordAlgorithmsInterface::class, true)) {
+            if ($algorithms instanceof PasswordAlgorithmsInterface && is_a($class, NeedsPasswordAlgorithmsInterface::class, true)) {
                 $class::resolveWith($algorithms);
+            }
+            if ($confirmations instanceof ConfirmationReaderInterface && is_a($class, NeedsConfirmationReaderInterface::class, true)) {
+                $class::resolveWith($confirmations);
             }
         }
     }
 
+    /**
+     * The one pass of the bundle: the KMS client it seals with is named in its own configuration and
+     * registered in the framework's, so nothing but a pass can tell a name that answers from one that
+     * does not.
+     */
     public function build(ContainerBuilder $container): void
     {
         parent::build($container);

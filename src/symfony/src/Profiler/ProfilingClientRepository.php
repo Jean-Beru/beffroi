@@ -6,7 +6,6 @@ namespace Heidi\Bundle\Profiler;
 
 use function array_map;
 use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
@@ -36,11 +35,6 @@ final readonly class ProfilingClientRepository implements ClientRepositoryInterf
         }
 
         return $client;
-    }
-
-    public function issuesAccessTokensIn(Tenant $tenant, AccessTokenFormat $format): bool
-    {
-        return $this->clients->issuesAccessTokensIn($tenant, $format);
     }
 
     private static function observe(Client $client): Observation

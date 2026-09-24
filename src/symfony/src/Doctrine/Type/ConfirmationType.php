@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Doctrine\Type;
 
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
-use Heidi\Oidc\Domain\Token\Confirmations;
+use Heidi\Oidc\Port\ConfirmationReaderInterface;
+use LogicException;
 
 /**
  * What an opaque access token is bound to (RFC 8705 §3), stored as the "cnf" of RFC 7800 §3.1 is
@@ -14,9 +15,16 @@ use Heidi\Oidc\Domain\Token\Confirmations;
  *
  * @extends JsonObjectType<ConfirmationInterface>
  */
-final class ConfirmationType extends JsonObjectType
+final class ConfirmationType extends JsonObjectType implements NeedsConfirmationReaderInterface
 {
     public const string NAME = 'heidi_confirmation';
+
+    private static ?ConfirmationReaderInterface $confirmations = null;
+
+    public static function resolveWith(ConfirmationReaderInterface $confirmations): void
+    {
+        self::$confirmations = $confirmations;
+    }
 
     protected function encode(object $value): array
     {
@@ -27,7 +35,10 @@ final class ConfirmationType extends JsonObjectType
 
     protected function decode(array $data): object
     {
-        return Confirmations::fromMembers($data);
+        $confirmations =
+            self::$confirmations ?? throw new LogicException('The confirmation kinds have not been handed to the DBAL type; the bundle does it when it boots.');
+
+        return $confirmations->fromMembers($data);
     }
 
     protected function expects(): string

@@ -18,6 +18,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
+use Heidi\Oidc\Tests\Fixture\Bindings;
 use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
@@ -329,7 +330,7 @@ final class UserInfoHandlerTest extends TestCase
             static::fail('The request should have been refused.');
         } catch (MissingBearerTokenException $exception) {
             // Then
-            static::assertSame('Bearer, DPoP', UserInfoErrorResponse::fromException($exception)->challenge());
+            static::assertSame('Bearer, DPoP', UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge());
         }
     }
 
@@ -375,7 +376,7 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'Bearer error="invalid_token", error_description="The access token expired."',
-                UserInfoErrorResponse::fromException($exception)->challenge(),
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
             );
         }
     }
@@ -423,7 +424,7 @@ final class UserInfoHandlerTest extends TestCase
             static::assertSame(403, $exception->statusCode);
             static::assertSame(
                 'Bearer error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid"',
-                UserInfoErrorResponse::fromException($exception)->challenge(),
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
             );
         }
     }
@@ -670,6 +671,7 @@ final class UserInfoHandlerTest extends TestCase
             new Endpoints(),
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
+            Bindings::wired(),
         );
     }
 
@@ -733,7 +735,7 @@ final class UserInfoHandlerTest extends TestCase
             static::assertSame('DPoP', $exception->challengeScheme());
             static::assertSame(
                 'DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1)."',
-                UserInfoErrorResponse::fromException($exception)->challenge(),
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
             );
         }
     }
