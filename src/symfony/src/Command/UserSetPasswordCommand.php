@@ -8,6 +8,7 @@ use function hash_equals;
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Core\Application\Identity\UserProvisioner;
+use Heidi\Core\Domain\Credential\PlainPassword;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Port\UserRepositoryInterface;
 use function is_string;
@@ -75,7 +76,7 @@ final readonly class UserSetPasswordCommand
         }
 
         try {
-            $this->provisioner->setPassword($user, $password);
+            $this->provisioner->setPassword($user, new PlainPassword($password));
         } catch (InvalidArgumentException $exception) {
             $io->error($exception->getMessage());
 

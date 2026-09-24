@@ -129,4 +129,28 @@ final class IssuerTest extends TestCase
         // When / Then
         static::assertFalse(new Issuer('https://id.acme.example')->equals(new Issuer('https://id.acme.example/acme')));
     }
+
+    /**
+     * RFC 6454 §3.2: the scheme, the host and the port, without the path. What a WebAuthn ceremony
+     * accepts as an origin, what RFC 8414 §3 hangs its path under, and what a router builds an absolute
+     * URL from, all read here so that the three cannot disagree.
+     */
+    #[Test]
+    #[DataProvider('provideOrigins')]
+    public function theOriginIsTheIssuerWithoutItsPath(string $issuer, string $origin): void
+    {
+        // When / Then
+        static::assertSame($origin, new Issuer($issuer)->origin());
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideOrigins(): iterable
+    {
+        yield 'a host alone' => ['https://id.acme.example', 'https://id.acme.example'];
+        yield 'a host and a path' => ['https://acme.example/id', 'https://acme.example'];
+        yield 'a host, a port and a path' => ['https://acme.example:8443/tenants/acme', 'https://acme.example:8443'];
+        yield 'a loopback host with a port' => ['http://127.0.0.1:8080', 'http://127.0.0.1:8080'];
+    }
 }

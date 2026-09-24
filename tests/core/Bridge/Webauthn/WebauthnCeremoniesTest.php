@@ -36,24 +36,23 @@ final class WebauthnCeremoniesTest extends TestCase
 {
     #[Test]
     #[DataProvider('provideIssuers')]
-    public function theRelyingPartyIsTheHostOfTheIssuerAndTheOriginTheIssuerWithoutItsPath(string $issuer, string $relyingPartyId, string $origin): void
+    public function theRelyingPartyIsTheHostOfTheIssuer(string $issuer, string $relyingPartyId): void
     {
         // Given
         $tenant = Fixtures::tenant(issuer: $issuer);
 
         // When / Then
         static::assertSame($relyingPartyId, WebauthnCeremonies::relyingPartyId($tenant));
-        static::assertSame($origin, WebauthnCeremonies::origin($tenant));
     }
 
     /**
-     * @return iterable<string, array{string, string, string}>
+     * @return iterable<string, array{string, string}>
      */
     public static function provideIssuers(): iterable
     {
-        yield 'a host' => ['https://id.acme.example', 'id.acme.example', 'https://id.acme.example'];
-        yield 'a host and a path' => ['https://acme.example/id', 'acme.example', 'https://acme.example'];
-        yield 'a loopback host with a port' => ['http://127.0.0.1:8080', '127.0.0.1', 'http://127.0.0.1:8080'];
+        yield 'a host' => ['https://id.acme.example', 'id.acme.example'];
+        yield 'a host and a path' => ['https://acme.example/id', 'acme.example'];
+        yield 'a loopback host with a port' => ['http://127.0.0.1:8080', '127.0.0.1'];
     }
 
     #[Test]

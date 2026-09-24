@@ -12,8 +12,6 @@ use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use LogicException;
 use function rtrim;
 use function sprintf;
-use function strlen;
-use function substr;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -43,7 +41,7 @@ final readonly class RouterEndpointLocator implements EndpointLocatorInterface, 
     public function locate(Tenant $tenant): ProviderEndpoints
     {
         $issuer = $tenant->issuer->value;
-        $origin = substr($issuer, 0, strlen($issuer) - strlen($tenant->issuer->path));
+        $origin = $tenant->issuer->origin();
         $discovery = $origin . $this->path('heidi_protocol_discovery');
         $expected = $issuer . ProviderMetadata::OPENID_CONFIGURATION_PATH;
         if ($discovery !== $expected) {
