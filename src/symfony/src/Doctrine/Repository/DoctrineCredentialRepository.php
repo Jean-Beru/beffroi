@@ -8,6 +8,7 @@ use function array_filter;
 use function array_merge;
 use function array_values;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
 use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Core\Domain\Credential\Credential;
 use Heidi\Core\Domain\Credential\ExternallyIdentifiedCredentialInterface;
@@ -110,7 +111,10 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
     }
 
     /**
-     * The entities mapped under Credential, in a fixed order.
+     * The entities mapped under Credential, in a fixed order: what has a table of its own, and so a kind
+     * a user may hold. A mapped superclass is not one (RevocableCredential is where a kind that can be
+     * revoked takes its revocation from, not a kind), and asking its repository for rows would name a
+     * table nothing ever created.
      *
      * @return list<class-string<Credential>>
      */
@@ -122,6 +126,9 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
         $kinds = [];
         foreach ($this->registry->getManagers() as $manager) {
             foreach ($manager->getMetadataFactory()->getAllMetadata() as $metadata) {
+                if ($metadata instanceof OrmClassMetadata && $metadata->isMappedSuperclass) {
+                    continue;
+                }
                 $class = $metadata->getName();
                 if (is_subclass_of($class, Credential::class)) {
                     $kinds[] = $class;
