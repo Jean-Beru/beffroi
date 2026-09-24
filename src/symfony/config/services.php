@@ -226,8 +226,10 @@ use Heidi\Oidc\Application\Token\AccessTokenIssuer;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenHandler;
@@ -686,7 +688,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TokenHandler::class)->args([
         '$grants' => tagged_iterator('heidi.oidc.grant'),
     ]);
-    $services->set(AccessTokenVerifier::class);
+    $services->set(JwtAccessTokenVerifier::class)->tag('heidi.oidc.access_token_shape');
+    $services->set(OpaqueAccessTokenVerifier::class)->tag('heidi.oidc.access_token_shape');
+    $services->set(AccessTokenVerifier::class)->args([tagged_iterator('heidi.oidc.access_token_shape')]);
     $services->set(AccessTokenInspector::class);
 
     // The module: UserInfo, introspection and revocation, discovery, logout

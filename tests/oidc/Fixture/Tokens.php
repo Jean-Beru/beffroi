@@ -17,7 +17,7 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
-use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
@@ -85,7 +85,7 @@ final class Tokens
         ?ClaimsRequest $claims = null,
     ): StoredAccessToken {
         return new StoredAccessToken(
-            OpaqueTokenValue::hash($value),
+            DrawnSecret::digestOf($value),
             $grantId ?? Uuid::v7(),
             $client,
             $session,

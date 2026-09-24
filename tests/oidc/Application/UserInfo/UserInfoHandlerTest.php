@@ -18,7 +18,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
+use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
@@ -655,7 +655,7 @@ final class UserInfoHandlerTest extends TestCase
 
         return new UserInfoHandler(
             new AccessTokenInspector(
-                new AccessTokenVerifier(
+                AccessTokenShapes::verifier(
                     new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                     $clients,
                     $this->storedTokens,

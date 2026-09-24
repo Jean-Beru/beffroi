@@ -20,7 +20,7 @@ use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
+use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
@@ -99,7 +99,7 @@ final class IntrospectionHandlerTest extends TestCase
             new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher()),
             new Endpoints(),
             new AccessTokenInspector(
-                new AccessTokenVerifier(
+                AccessTokenShapes::verifier(
                     new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                     $clients,
                     $this->tokens,

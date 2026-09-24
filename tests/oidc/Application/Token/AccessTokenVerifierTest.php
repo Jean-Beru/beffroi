@@ -11,11 +11,13 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
+use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidTokenException;
@@ -50,6 +52,12 @@ final class AccessTokenVerifierTest extends TestCase
 
     private AccessTokenVerifier $verifier;
 
+    /**
+     * An opaque token of this provider is one it drew (architecture §4.6); a value of another shape was
+     * not issued here, which the verifier says without reading any store.
+     */
+    private string $opaque;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -58,7 +66,8 @@ final class AccessTokenVerifierTest extends TestCase
         $clients->save($this->client);
         $this->jws = new FakeJwsVerifier();
         $this->storedTokens = new InMemoryAccessTokenRepository();
-        $this->verifier = new AccessTokenVerifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+        $this->opaque = DrawnSecret::draw();
+        $this->verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
     }
 
     /**
@@ -87,7 +96,7 @@ final class AccessTokenVerifierTest extends TestCase
         );
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $verifier = new AccessTokenVerifier(
+        $verifier = AccessTokenShapes::verifier(
             new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()),
             $clients,
             $this->storedTokens,
@@ -124,7 +133,7 @@ final class AccessTokenVerifierTest extends TestCase
         // Given
         $session = Fixtures::session(Fixtures::user($this->tenant));
         $record = Tokens::storedAccessToken(
-            'the-opaque-token',
+            $this->opaque,
             $this->client,
             $session,
             Fixtures::now(),
@@ -134,7 +143,7 @@ final class AccessTokenVerifierTest extends TestCase
         $this->storedTokens->keep($record);
 
         // When
-        $token = $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now()->modify('+9 minutes'));
+        $token = $this->verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
 
         // Then
         static::assertSame($this->client, $token->client);
@@ -158,14 +167,14 @@ final class AccessTokenVerifierTest extends TestCase
     {
         // Given
         $this->storedTokens->keep(Tokens::storedAccessToken(
-            'the-opaque-token',
+            $this->opaque,
             $this->client,
             Fixtures::session(Fixtures::user($this->tenant)),
             Fixtures::now(),
         ));
 
         // When
-        $token = $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now());
+        $token = $this->verifier->verify($this->tenant, $this->opaque, Fixtures::now());
 
         // Then
         static::assertSame([], $token->userinfoClaims);
@@ -185,7 +194,7 @@ final class AccessTokenVerifierTest extends TestCase
 
         // When
         try {
-            $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now());
+            $this->verifier->verify($this->tenant, $this->opaque, Fixtures::now());
             static::fail('The token should have been refused.');
         } catch (InvalidTokenException $exception) {
             // Then
@@ -212,7 +221,7 @@ final class AccessTokenVerifierTest extends TestCase
         yield 'a record of another tenant' => [static function (self $test): void {
             $other = Fixtures::tenant('other', 'https://id.other.example');
             $test->storedTokens->keep(Tokens::storedAccessToken(
-                'the-opaque-token',
+                $test->opaque,
                 Clients::public($other),
                 Fixtures::session(Fixtures::user($other)),
                 Fixtures::now(),
@@ -229,7 +238,7 @@ final class AccessTokenVerifierTest extends TestCase
     {
         // Given
         $this->storedTokens->keep(Tokens::storedAccessToken(
-            'the-opaque-token',
+            $this->opaque,
             $this->client,
             Fixtures::session(Fixtures::user($this->tenant)),
             Fixtures::now(),
@@ -237,7 +246,7 @@ final class AccessTokenVerifierTest extends TestCase
 
         // When
         try {
-            $this->verifier->verify($this->tenant, 'the-opaque-token', Fixtures::now()->modify('+10 minutes'));
+            $this->verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+10 minutes'));
             static::fail('The token should have been refused.');
         } catch (InvalidTokenException $exception) {
             // Then
@@ -669,5 +678,33 @@ final class AccessTokenVerifierTest extends TestCase
         unset($claims[$claim]);
 
         return json_encode($claims, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Architecture §4.6 and decision 0006: a value of a shape this provider never writes is refused
+     * before any store is read. The shapes recognise what they write, so nothing here reads a token to
+     * guess its kind, and a value that is neither a compact JWS nor one drawn here is none of ours.
+     */
+    #[Test]
+    #[DataProvider('provideValuesOfNoShape')]
+    public function aValueOfAShapeTheProviderNeverWritesIsNotOne(string $value): void
+    {
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIsOrContains('not an access token issued by this provider');
+
+        // When
+        $this->verifier->verify($this->tenant, $value, Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideValuesOfNoShape(): iterable
+    {
+        yield 'nothing' => [''];
+        yield 'a word' => ['the-opaque-token'];
+        yield 'a drawn value with something appended' => [DrawnSecret::draw() . 'x'];
+        yield 'the digest of a value, which is not the value' => [DrawnSecret::digestOf(DrawnSecret::draw())];
     }
 }

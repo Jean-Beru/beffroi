@@ -13,7 +13,7 @@ use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
@@ -48,7 +48,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $found = self::tokens()->find($value) ?? static::fail('The token was not stored.');
 
         // Then
-        static::assertSame(OpaqueTokenValue::hash($value), $found->tokenHash);
+        static::assertSame(DrawnSecret::digestOf($value), $found->tokenHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertTrue($code->grantId->equals($found->grantId));
         static::assertSame('oidc-demo', $found->clientId);
@@ -72,7 +72,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 
         // When / Then
         static::assertNotNull(self::tokens()->find($value));
-        static::assertNull(self::tokens()->find(OpaqueTokenValue::hash($value)));
+        static::assertNull(self::tokens()->find(DrawnSecret::digestOf($value)));
         static::assertNull(self::tokens()->find('unknown'));
     }
 
@@ -116,7 +116,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         self::reload();
 
         // Then
-        static::assertSame([OpaqueTokenValue::hash($first), OpaqueTokenValue::hash($second)], self::hashes($revoked));
+        static::assertSame([DrawnSecret::digestOf($first), DrawnSecret::digestOf($second)], self::hashes($revoked));
         static::assertNull(self::tokens()->find($first));
         static::assertNull(self::tokens()->find($second));
         static::assertNotNull(self::tokens()->find($other));
@@ -142,7 +142,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         self::reload();
 
         // Then
-        static::assertSame([OpaqueTokenValue::hash($here)], self::hashes($revoked));
+        static::assertSame([DrawnSecret::digestOf($here)], self::hashes($revoked));
         static::assertNull(self::tokens()->find($here));
         static::assertNotNull(self::tokens()->find($elsewhere));
     }
@@ -187,7 +187,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 
         // Then
         static::assertNull($found);
-        static::assertSame([OpaqueTokenValue::hash($kept)], self::hashes($revoked));
+        static::assertSame([DrawnSecret::digestOf($kept)], self::hashes($revoked));
         static::assertEquals(
             0,
             self::entityManager()->getConnection()->fetchOne('SELECT COUNT(*) FROM heidi_access_token'),
