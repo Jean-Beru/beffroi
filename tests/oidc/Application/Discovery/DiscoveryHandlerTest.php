@@ -4,204 +4,216 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Discovery;
 
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\FakeSignatureAlgorithm;
+use function array_keys;
+use function array_slice;
+use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
-use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
-use Heidi\Oidc\Domain\Client\GrantType;
 use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Endpoints;
-use Heidi\Oidc\Tests\Fixture\FakeClientAuthenticationMethod;
-use Heidi\Oidc\Tests\Fixture\FakeGrant;
-use Heidi\Oidc\Tests\Fixture\Logins;
-use Heidi\Oidc\Tests\Fixture\Methods;
-use Heidi\Oidc\Tests\Fixture\PushedRequests;
-use Heidi\Oidc\Tests\Fixture\RequestObjectSignings;
-use Heidi\Oidc\Tests\Fixture\ServedChannels;
-use Heidi\Oidc\Tests\Fixture\ServedModes;
+use Heidi\Oidc\Port\MetadataContributorInterface;
+use Heidi\Oidc\Tests\Fixture\ProviderDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class DiscoveryHandlerTest extends TestCase
 {
-    private DiscoveryHandler $handler;
-
-    protected function setUp(): void
-    {
-        $this->handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
-    }
-
     /**
-     * OIDC Discovery §3 and RFC 8414 §2: what the document announces as signing algorithms is what the
-     * wiring gave the provider, in that order, never an enumeration kept beside it (issue #98).
+     * OIDC Discovery §3: the members, in the order the section lists them, then those of RFC 8414 §2
+     * ("code_challenge_methods_supported", the revocation and introspection endpoints with their
+     * authentication methods, RFC 7009 §2.1 and RFC 7662 §2.1, and the algorithms of a signed
+     * introspection response, RFC 9701 §6), "authorization_response_iss_parameter_supported"
+     * (RFC 9207 §3), "end_session_endpoint" (RP-Initiated Logout §2.1) and the four members of the two
+     * logout specifications (Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3), and what
+     * RFC 8705 §3.3 asks of a provider that binds an access token to a certificate.
+     *
+     * Only what the deployment is wired with: "code", "query" and "form_post", "S256", "public",
+     * the algorithms the provider signs with, the client authentication methods it takes, those of them
+     * that authenticate the caller at introspection, the "acr" values its policy can prove, no request
+     * object left unsigned. Nothing else, and nothing twice.
      */
     #[Test]
-    public function theSigningAlgorithmsAnnouncedAreThoseWired(): void
+    public function itDescribesWhatTheProviderDoesAndNothingElse(): void
     {
         // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA'], $document['id_token_signing_alg_values_supported']);
-        static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA'], $document['introspection_signing_alg_values_supported']);
-    }
-
-    /**
-     * Open by addition: an algorithm no line of the module knows about is announced because it is wired,
-     * and for no other reason.
-     */
-    #[Test]
-    public function anAlgorithmTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
-    {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            new JoseSignatureAlgorithms([new FakeSignatureAlgorithm()]),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertSame(['ES256UNWIRED'], $document['id_token_signing_alg_values_supported']);
-    }
-
-    /**
-     * Open by addition: a client authentication method no line of the module knows about is announced
-     * because it is wired, and for no other reason (issue #98).
-     */
-    #[Test]
-    public function aMethodTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
-    {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            new ClientAuthenticationMethods([new FakeClientAuthenticationMethod()]),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertSame(['smoke_signal'], $document['token_endpoint_auth_methods_supported']);
-        static::assertSame(['SM256'], $document['token_endpoint_auth_signing_alg_values_supported']);
-    }
-
-    /**
-     * OIDC Discovery §3: "issuer" is the tenant's, the endpoints are where the integration serves this tenant.
-     */
-    #[Test]
-    public function theDocumentNamesTheIssuerAndTheEndpointsOfTheTenant(): void
-    {
-        // When
-        $document = $this->handler->handle(Fixtures::tenant('acme', 'https://as.example/acme'))->toArray();
-
-        // Then
-        static::assertSame('https://as.example/acme', $document['issuer']);
-        static::assertSame('https://as.example/acme/authorize', $document['authorization_endpoint']);
-        static::assertSame('https://as.example/acme/token', $document['token_endpoint']);
-        static::assertSame('https://as.example/acme/userinfo', $document['userinfo_endpoint']);
-        static::assertSame('https://as.example/acme/jwks', $document['jwks_uri']);
-        static::assertSame('https://as.example/acme/logout', $document['end_session_endpoint']);
-        static::assertSame('https://as.example/acme/introspect', $document['introspection_endpoint']);
-        static::assertSame('https://as.example/acme/revoke', $document['revocation_endpoint']);
-    }
-
-    /**
-     * OIDC Discovery §3: "scopes_supported" is "openid", what the claims provider serves and
-     * "offline_access" (OIDC Core §11); "claims_supported" is "sub" and what the claims provider may supply.
-     */
-    #[Test]
-    public function theDocumentAnnouncesTheScopesAndClaimsOfTheClaimsProvider(): void
-    {
-        // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertSame(['openid', 'profile', 'email', 'address', 'phone', 'offline_access'], $document['scopes_supported']);
-        static::assertSame(['sub', ...new StandardClaimsProvider()->supportedClaims()], $document['claims_supported']);
-    }
-
-    /**
-     * RFC 8414 §3: the metadata location follows the issuer of the tenant.
-     */
-    #[Test]
-    public function theDocumentKnowsItsWellKnownLocation(): void
-    {
-        // When
-        $metadata = $this->handler->handle(Fixtures::tenant('acme', 'https://as.example/acme'));
-
-        // Then
-        static::assertSame('https://as.example/.well-known/oauth-authorization-server/acme', $metadata->authorizationServerMetadataUrl());
-    }
-
-    /**
-     * The cache lifetime is one hour by default.
-     */
-    #[Test]
-    public function theDocumentIsCachedForOneHourByDefault(): void
-    {
-        // When
-        $metadata = $this->handler->handle(Fixtures::tenant());
+        $document = ProviderDocument::of();
 
         // Then
         static::assertSame(
             [
-                'Cache-Control' => 'public, max-age=3600',
+                'issuer' => 'https://id.acme.example',
+                'authorization_endpoint' => 'https://id.acme.example/authorize',
+                'token_endpoint' => 'https://id.acme.example/token',
+                'userinfo_endpoint' => 'https://id.acme.example/userinfo',
+                'jwks_uri' => 'https://id.acme.example/jwks',
+                'scopes_supported' => ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'],
+                'response_types_supported' => ['code'],
+                'response_modes_supported' => ['query', 'form_post'],
+                'grant_types_supported' => ['authorization_code', 'refresh_token'],
+                'acr_values_supported' => ['phrh', 'phr', '2', '1'],
+                'subject_types_supported' => ['public'],
+                'id_token_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+                'id_token_encryption_alg_values_supported' => ['ECDH-ES+A256KW', 'RSA-OAEP-256'],
+                'id_token_encryption_enc_values_supported' => ['A256GCM'],
+                'userinfo_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+                'userinfo_encryption_alg_values_supported' => ['ECDH-ES+A256KW', 'RSA-OAEP-256'],
+                'userinfo_encryption_enc_values_supported' => ['A256GCM'],
+                'token_endpoint_auth_methods_supported' => [
+                    'client_secret_basic',
+                    'client_secret_post',
+                    'private_key_jwt',
+                    'client_secret_jwt',
+                    'tls_client_auth',
+                    'self_signed_tls_client_auth',
+                    'none',
+                ],
+                'token_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
+                'claims_supported' => [
+                    'sub',
+                    'name',
+                    'family_name',
+                    'given_name',
+                    'middle_name',
+                    'nickname',
+                    'preferred_username',
+                    'profile',
+                    'picture',
+                    'website',
+                    'gender',
+                    'birthdate',
+                    'zoneinfo',
+                    'locale',
+                    'updated_at',
+                    'email',
+                    'email_verified',
+                    'address',
+                    'phone_number',
+                    'phone_number_verified',
+                ],
+                'claims_parameter_supported' => true,
+                'request_parameter_supported' => true,
+                'request_uri_parameter_supported' => true,
+                'require_request_uri_registration' => true,
+                'request_object_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+                'request_object_encryption_alg_values_supported' => ['ECDH-ES+A256KW', 'RSA-OAEP-256'],
+                'request_object_encryption_enc_values_supported' => ['A256GCM'],
+                'code_challenge_methods_supported' => ['S256'],
+                'revocation_endpoint' => 'https://id.acme.example/revoke',
+                'revocation_endpoint_auth_methods_supported' => [
+                    'client_secret_basic',
+                    'client_secret_post',
+                    'private_key_jwt',
+                    'client_secret_jwt',
+                    'tls_client_auth',
+                    'self_signed_tls_client_auth',
+                    'none',
+                ],
+                'revocation_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
+                'pushed_authorization_request_endpoint' => 'https://id.acme.example/par',
+                'require_pushed_authorization_requests' => false,
+                'introspection_endpoint' => 'https://id.acme.example/introspect',
+                'introspection_endpoint_auth_methods_supported' => [
+                    'client_secret_basic',
+                    'client_secret_post',
+                    'private_key_jwt',
+                    'client_secret_jwt',
+                    'tls_client_auth',
+                    'self_signed_tls_client_auth',
+                ],
+                'introspection_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
+                'introspection_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+                'authorization_response_iss_parameter_supported' => true,
+                'end_session_endpoint' => 'https://id.acme.example/logout',
+                'backchannel_logout_supported' => true,
+                'backchannel_logout_session_supported' => true,
+                'frontchannel_logout_supported' => true,
+                'frontchannel_logout_session_supported' => true,
+                'tls_client_certificate_bound_access_tokens' => true,
+                'dpop_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
             ],
-            $metadata->headers,
+            $document,
         );
     }
 
     /**
-     * The endpoints are asked for the tenant served, not for another one.
+     * OIDC Discovery §3: the document opens on who the provider is and where it answers, because that is
+     * the order the capabilities are wired in.
+     */
+    #[Test]
+    public function theIssuerAndTheEndpointsComeFirst(): void
+    {
+        // When
+        $members = array_keys(ProviderDocument::of());
+
+        // Then
+        static::assertSame(['issuer', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri'], array_slice($members, 0, 5));
+    }
+
+    /**
+     * A member is announced by one capability. Two capabilities claiming the same one would leave the
+     * deployment guessing which value a client reads, so the document is refused instead.
+     */
+    #[Test]
+    public function twoCapabilitiesAnnouncingTheSameMemberAreRefused(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler([
+            self::contributor([
+                'code_challenge_methods_supported' => ['S256'],
+            ]),
+            self::contributor([
+                'code_challenge_methods_supported' => ['plain'],
+            ]),
+        ]);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('Two capabilities of this provider both announce "code_challenge_methods_supported".');
+
+        // When
+        $handler->handle(Fixtures::tenant());
+    }
+
+    /**
+     * A capability the deployment does not serve contributes nothing, and the document simply does not
+     * carry its members: a client reads a member that is not there as "not served".
+     */
+    #[Test]
+    public function aCapabilityTheDeploymentDoesNotServeAddsNothing(): void
+    {
+        // Given
+        $handler = new DiscoveryHandler([
+            self::contributor([
+                'authorization_response_iss_parameter_supported' => true,
+            ]),
+            self::contributor([]),
+        ]);
+
+        // When
+        $document = $handler->handle(Fixtures::tenant())->toArray();
+
+        // Then
+        static::assertSame(
+            [
+                'authorization_response_iss_parameter_supported' => true,
+            ],
+            $document,
+        );
+    }
+
+    /**
+     * OIDC Discovery §3: "issuer" is the tenant's and the endpoints are where the integration serves
+     * this tenant, so the same wiring answers for every tenant it hosts.
      */
     #[Test]
     public function eachTenantGetsItsOwnIssuerAndEndpoints(): void
     {
+        // Given
+        $handler = ProviderDocument::handler();
+
         // When
-        $acme = $this->handler->handle(Fixtures::tenant('acme', 'https://id.acme.example'))->toArray();
-        $globex = $this->handler->handle(Fixtures::tenant('globex', 'https://id.globex.example'))->toArray();
+        $acme = $handler->handle(Fixtures::tenant('acme', 'https://id.acme.example'))->toArray();
+        $globex = $handler->handle(Fixtures::tenant('globex', 'https://id.globex.example'))->toArray();
 
         // Then
         static::assertSame('https://id.acme.example', $acme['issuer']);
@@ -211,12 +223,14 @@ final class DiscoveryHandlerTest extends TestCase
     }
 
     /**
-     * The document differs from one tenant to the next by its issuer and endpoints only.
+     * The document differs from one tenant to the next by its locations only: what the provider is wired
+     * with is the same for everyone it hosts.
      */
     #[Test]
     public function theDocumentsOfTwoTenantsDifferByTheirLocationsOnly(): void
     {
         // Given
+        $handler = ProviderDocument::handler();
         $locations = [
             'issuer',
             'authorization_endpoint',
@@ -230,14 +244,42 @@ final class DiscoveryHandlerTest extends TestCase
         ];
 
         // When
-        $acme = $this->handler->handle(Fixtures::tenant('acme', 'https://id.acme.example'))->toArray();
-        $globex = $this->handler->handle(Fixtures::tenant('globex', 'https://id.globex.example'))->toArray();
+        $acme = $handler->handle(Fixtures::tenant('acme', 'https://id.acme.example'))->toArray();
+        $globex = $handler->handle(Fixtures::tenant('globex', 'https://id.globex.example'))->toArray();
 
         // Then
         foreach ($locations as $location) {
             unset($acme[$location], $globex[$location]);
         }
         static::assertSame($acme, $globex);
+    }
+
+    /**
+     * RFC 8414 §3: the metadata location follows the issuer of the tenant.
+     */
+    #[Test]
+    public function theDocumentKnowsItsWellKnownLocation(): void
+    {
+        // When
+        $metadata = ProviderDocument::handler()->handle(Fixtures::tenant('acme', 'https://as.example/acme'));
+
+        // Then
+        static::assertSame('https://as.example/.well-known/oauth-authorization-server/acme', $metadata->authorizationServerMetadataUrl());
+    }
+
+    #[Test]
+    public function theDocumentIsCachedForOneHourByDefault(): void
+    {
+        // When
+        $metadata = ProviderDocument::handler()->handle(Fixtures::tenant());
+
+        // Then
+        static::assertSame(
+            [
+                'Cache-Control' => 'public, max-age=3600',
+            ],
+            $metadata->headers,
+        );
     }
 
     /**
@@ -248,22 +290,7 @@ final class DiscoveryHandlerTest extends TestCase
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
     {
         // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-            $lifetime,
-        );
+        $handler = ProviderDocument::handler(maxAge: $lifetime);
 
         // When
         $metadata = $handler->handle(Fixtures::tenant());
@@ -297,391 +324,83 @@ final class DiscoveryHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('number of seconds');
 
         // When
-        new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-            -1,
-        );
+        new DiscoveryHandler([], -1);
     }
 
     /**
-     * OIDC Discovery §3, RFC 8414 §2: "grant_types_supported" is what the token endpoint serves, the grants
-     * tagged into it, and "token_endpoint_auth_methods_supported" what the client authenticator implements.
+     * Issue #165: the same wired lists answer for every kind of document at once, because the provider
+     * opens and mints them all with them. A deployment that wires encryption announces it for the
+     * request object a client encrypts to it and for the two documents it encrypts to a client.
      */
     #[Test]
-    public function theDocumentAnnouncesTheGrantsWiredAndTheMethodsImplemented(): void
+    public function itAnnouncesTheSameEncryptionForEveryKindOfDocument(): void
     {
         // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+        $document = ProviderDocument::of();
 
         // Then
-        static::assertSame(['authorization_code', 'refresh_token'], $document['grant_types_supported']);
-        static::assertSame(
-            ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'tls_client_auth', 'self_signed_tls_client_auth', 'none'],
-            $document['token_endpoint_auth_methods_supported'],
-        );
-        static::assertSame(
-            ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'tls_client_auth', 'self_signed_tls_client_auth', 'none'],
-            $document['revocation_endpoint_auth_methods_supported'],
-        );
-        static::assertSame(
-            ['client_secret_basic', 'client_secret_post', 'private_key_jwt', 'client_secret_jwt', 'tls_client_auth', 'self_signed_tls_client_auth'],
-            $document['introspection_endpoint_auth_methods_supported'],
-        );
+        foreach (['id_token_encryption', 'userinfo_encryption', 'request_object_encryption'] as $member) {
+            static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $document[$member . '_alg_values_supported'], $member);
+            static::assertSame(['A256GCM'], $document[$member . '_enc_values_supported'], $member);
+        }
     }
 
     /**
-     * Issue #164, and the rule of issue #98 once more: what a request object may be encrypted to this
-     * provider with is read from the two registries the wiring fills, never from a list kept beside them.
+     * What Symfony's OidcDiscovery checks before it uses a document: the "issuer" equals the configured
+     * one, and every endpoint it reads is over HTTPS, the token endpoint even on loopback. The document
+     * of a loopback issuer in development passes those checks too.
      */
     #[Test]
-    public function theDocumentAnnouncesTheEncryptionAlgorithmsWired(): void
+    #[DataProvider('provideIssuers')]
+    public function itPassesTheChecksOfSymfonyOidcDiscovery(string $issuer): void
     {
         // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
+        $document = ProviderDocument::handler()->handle(Fixtures::tenant('acme', $issuer))->toArray();
 
         // Then
-        static::assertSame(['ECDH-ES+A256KW', 'RSA-OAEP-256'], $document['request_object_encryption_alg_values_supported']);
-        static::assertSame(['A256GCM'], $document['request_object_encryption_enc_values_supported']);
+        static::assertSame($issuer, $document['issuer']);
+        foreach ([
+            'authorization_endpoint',
+            'token_endpoint',
+            'userinfo_endpoint',
+            'jwks_uri',
+            'end_session_endpoint',
+            'introspection_endpoint',
+            'revocation_endpoint',
+        ] as $endpoint) {
+            static::assertIsString($document[$endpoint]);
+            static::assertStringStartsWith('https://', $document[$endpoint]);
+        }
+        static::assertTrue($document['authorization_response_iss_parameter_supported']);
     }
 
     /**
-     * A deployment that wires none announces none: the document says what the provider does and nothing
-     * else (decision 0006).
+     * @return iterable<string, array{string}>
      */
-    #[Test]
-    public function aProviderWiredWithNoEncryptionAnnouncesNone(): void
+    public static function provideIssuers(): iterable
     {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::noKeyEncryption(),
-            Algorithms::noContentEncryption(),
-            self::grants(),
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertArrayNotHasKey('request_object_encryption_alg_values_supported', $document);
-        static::assertArrayNotHasKey('request_object_encryption_enc_values_supported', $document);
+        yield 'public host' => ['https://id.acme.example'];
+        yield 'loopback host' => ['https://op.localhost'];
     }
 
     /**
-     * RFC 8705 §5: the aliases are the endpoints of the tenant, located a second time by the integration
-     * on the host whose listener asks for a client certificate. What is announced there is derived from
-     * the endpoints and not kept beside them: the paths are the same and only the origin differs.
+     * @param array<string, mixed> $members
      */
-    #[Test]
-    public function theAliasesAreTheEndpointsOnTheHostThatAsksForACertificate(): void
+    private static function contributor(array $members): MetadataContributorInterface
     {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator('https://mtls.as.example'),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
+        return new readonly class($members) implements MetadataContributorInterface {
+            /**
+             * @param array<string, mixed> $members
+             */
+            public function __construct(
+                private array $members,
+            ) {
+            }
 
-        // When
-        $document = $handler->handle(Fixtures::tenant('acme', 'https://as.example/acme'))->toArray();
-
-        // Then
-        static::assertSame(
-            [
-                'token_endpoint' => 'https://mtls.as.example/token',
-                'userinfo_endpoint' => 'https://mtls.as.example/userinfo',
-                'introspection_endpoint' => 'https://mtls.as.example/introspect',
-                'revocation_endpoint' => 'https://mtls.as.example/revoke',
-                'pushed_authorization_request_endpoint' => 'https://mtls.as.example/par',
-            ],
-            $document['mtls_endpoint_aliases'],
-        );
-    }
-
-    /**
-     * RFC 8705 §5: a deployment that serves no such host announces no alias at all, rather than aliases
-     * naming the ordinary endpoints.
-     */
-    #[Test]
-    public function aDeploymentWithoutSuchAHostAnnouncesNoAlias(): void
-    {
-        // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertArrayNotHasKey('mtls_endpoint_aliases', $document);
-    }
-
-    /**
-     * RFC 8705 §3.3: whether the provider binds an access token to a certificate is whether a method
-     * that proves one is wired, and nothing else (issue #98).
-     */
-    #[Test]
-    public function itBindsTokensToCertificatesBecauseASuchMethodIsWired(): void
-    {
-        // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertTrue($document['tls_client_certificate_bound_access_tokens']);
-    }
-
-    /**
-     * A provider wired with no mutual-TLS method says so, rather than leaving the member out.
-     */
-    #[Test]
-    public function aProviderWiredWithoutMutualTlsSaysItBindsNothing(): void
-    {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            new ClientAuthenticationMethods([Methods::clientSecretBasic()]),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertFalse($document['tls_client_certificate_bound_access_tokens']);
-    }
-
-    /**
-     * A deployment that serves the authorization code grant only says so, and "offline_access" with it
-     * (OIDC Core §11: the scope asks for a refresh token).
-     */
-    #[Test]
-    public function aProviderWithoutTheRefreshTokenGrantAnnouncesNeitherItNorOfflineAccess(): void
-    {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            [new FakeGrant(GrantType::AuthorizationCode)],
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertSame(['authorization_code'], $document['grant_types_supported']);
-        static::assertSame(['openid', 'profile', 'email', 'address', 'phone'], $document['scopes_supported']);
-    }
-
-    /**
-     * Issue #98: what the document announces is what the integration wired, here the two ways of
-     * answering the authorization endpoint the bundle serves (Form Post Response Mode §2).
-     */
-    #[Test]
-    public function theDocumentAnnouncesTheResponseModesTheIntegrationWired(): void
-    {
-        // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertSame(['query', 'form_post'], $document['response_modes_supported']);
-    }
-
-    /**
-     * A deployment that wired no way of posting a response announces none: the document follows the
-     * endpoint, never an enumeration of the module.
-     */
-    #[Test]
-    public function aProviderThatPostsNoResponseAnnouncesTheDefaultModeAlone(): void
-    {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryOnly(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertSame(['query'], $document['response_modes_supported']);
-    }
-
-    /**
-     * Issue #98 again, on the two ways of telling a client that a session ended (Back-Channel Logout 1.0
-     * §3, Front-Channel Logout 1.0 §3): the bundle wires both, so the document announces both.
-     */
-    #[Test]
-    public function theDocumentAnnouncesTheLogoutChannelsTheIntegrationWired(): void
-    {
-        // When
-        $document = $this->handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertTrue($document['backchannel_logout_supported']);
-        static::assertTrue($document['frontchannel_logout_supported']);
-    }
-
-    /**
-     * A deployment that wires no logout page announces no front channel, and still announces the one it
-     * serves.
-     */
-    #[Test]
-    public function aProviderThatLoadsNoLogoutPageAnnouncesTheBackChannelAlone(): void
-    {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::backChannelOnly(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertTrue($document['backchannel_logout_supported']);
-        static::assertFalse($document['frontchannel_logout_supported']);
-    }
-
-    /**
-     * A deployment that tells no client anything announces neither, rather than promising a channel
-     * nothing serves.
-     */
-    #[Test]
-    public function aProviderThatTellsNobodyAnnouncesNoChannel(): void
-    {
-        // Given
-        $handler = new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::none(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            self::grants(),
-        );
-
-        // When
-        $document = $handler->handle(Fixtures::tenant())->toArray();
-
-        // Then
-        static::assertFalse($document['backchannel_logout_supported']);
-        static::assertFalse($document['frontchannel_logout_supported']);
-    }
-
-    #[Test]
-    public function aTokenEndpointWithoutAGrantIsRefusedAtConstruction(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('The token endpoint serves at least one grant.');
-
-        // When
-        new DiscoveryHandler(
-            self::locator(),
-            self::locator(),
-            new StandardClaimsProvider(),
-            Logins::passwordAndPasskey(),
-            ServedModes::queryAndFormPost(),
-            Methods::all(),
-            PushedRequests::requiredOfNobody(),
-            RequestObjectSignings::everyClientSignsThem(),
-            ServedChannels::both(),
-            Algorithms::all(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            [],
-        );
-    }
-
-    /**
-     * @return list<FakeGrant> the two grants of the token endpoint, as the bundle tags them
-     */
-    private static function grants(): array
-    {
-        return [new FakeGrant(GrantType::AuthorizationCode), new FakeGrant(GrantType::RefreshToken)];
-    }
-
-    /**
-     * The endpoints under the issuer of the tenant, at the default paths of architecture §5.2, and no
-     * host asking for a client certificate unless a test wires one.
-     */
-    private static function locator(?string $mutualTlsOrigin = null): Endpoints
-    {
-        return new Endpoints($mutualTlsOrigin);
+            public function metadata(Tenant $tenant): array
+            {
+                return $this->members;
+            }
+        };
     }
 }
