@@ -181,6 +181,28 @@ use Heidi\Oidc\Application\Client\Method\PrivateKeyJwt;
 use Heidi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
 use Heidi\Oidc\Application\Client\Method\TlsClientAuth;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
+use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIdToken;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClientAuthentication;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClaims;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedRequestObjects;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedPkce;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedRevocation;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedPushedAuthorization;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIntrospection;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIssuerParameter;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedLogout;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTls;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDpop;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTlsEndpoints;
+use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
+use Heidi\Oidc\Application\Discovery\ServedGrantTypes;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Dpop\DpopProofValidator;
 use Heidi\Oidc\Application\Dpop\DpopProofVerifier;
@@ -671,8 +693,33 @@ return static function (ContainerConfigurator $container): void {
     $services->set(UserInfoHandler::class);
     $services->set(IntrospectionHandler::class);
     $services->set(RevocationHandler::class);
+    // What the provider announces is what it is wired with: each specification it implements contributes
+    // its own members, in the order the document publishes them, and a capability that arrives is a class
+    // here and nothing edited elsewhere (architecture §4.8).
+    $services->set(AnnouncedAlgorithms::class);
+    $services->set(ServedGrantTypes::class)->args([tagged_iterator('heidi.oidc.grant')]);
+    $services->set(ProviderIdentity::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedScopes::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedResponses::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedGrants::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedAuthenticationContext::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedIdToken::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedUserInfo::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedClientAuthentication::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedClaims::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedRequestObjects::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedPkce::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedRevocation::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedPushedAuthorization::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedIntrospection::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedIssuerParameter::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedLogout::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedMutualTls::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedDpop::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedSignedAuthorizationResponse::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedMutualTlsEndpoints::class)->tag('heidi.oidc.metadata');
     $services->set(DiscoveryHandler::class)->args([
-        '$grants' => tagged_iterator('heidi.oidc.grant'),
+        '$contributors' => tagged_iterator('heidi.oidc.metadata'),
     ]);
     $services->set(JwksHandler::class);
     $services->set(EndSessionRequestParser::class);

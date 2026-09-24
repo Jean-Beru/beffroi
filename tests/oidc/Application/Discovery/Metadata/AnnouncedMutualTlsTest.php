@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTls;
+use Heidi\Oidc\Tests\Fixture\Methods;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * RFC 8705 §3.3: whether the provider binds an access token to a certificate is whether a method that
+ * proves one is wired, and nothing else (issue #98). A provider that binds none says so rather than
+ * leaving the member out: a client that reads nothing there would have to guess.
+ */
+final class AnnouncedMutualTlsTest extends TestCase
+{
+    #[Test]
+    #[DataProvider('provideWirings')]
+    public function itBindsTokensToCertificatesWhereSuchAMethodIsWired(ClientAuthenticationMethods $methods, bool $bound): void
+    {
+        // Given
+        $announced = new AnnouncedMutualTls($methods);
+
+        // When
+        $members = $announced->metadata(Fixtures::tenant());
+
+        // Then
+        static::assertSame(
+            [
+                'tls_client_certificate_bound_access_tokens' => $bound,
+            ],
+            $members,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{ClientAuthenticationMethods, bool}>
+     */
+    public static function provideWirings(): iterable
+    {
+        yield 'a deployment wired with mutual TLS' => [Methods::all(), true];
+        yield 'a deployment wired without it' => [new ClientAuthenticationMethods([Methods::clientSecretBasic()]), false];
+    }
+}
