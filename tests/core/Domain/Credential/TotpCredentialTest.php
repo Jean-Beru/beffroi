@@ -232,7 +232,7 @@ final class TotpCredentialTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('A revoked TOTP credential never authenticates again.');
+        $this->expectExceptionMessageIs('A revoked totp never authenticates again.');
 
         // When
         $totp->recordUse(1, Fixtures::now());
@@ -293,7 +293,7 @@ final class TotpCredentialTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('A revoked TOTP credential never authenticates again.');
+        $this->expectExceptionMessageIs('A revoked totp never authenticates again.');
 
         // When
         $totp->spendBackupCode(0, Fixtures::now());

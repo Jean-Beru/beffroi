@@ -11,6 +11,7 @@ use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
+use Heidi\Core\Domain\Credential\PlainPassword;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Profile;
@@ -20,7 +21,6 @@ use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function str_repeat;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\UuidV4;
@@ -237,7 +237,7 @@ final class UserProvisionerTest extends TestCase
         $user = $this->provisioner->create($this->tenant, 'alice');
 
         // When
-        $credential = $this->provisioner->setPassword($user, 'correct horse battery staple');
+        $credential = $this->provisioner->setPassword($user, new PlainPassword('correct horse battery staple'));
 
         // Then
         static::assertSame($credential, $this->credentials->findByUser($user, PasswordCredential::class)[0]);
@@ -253,11 +253,11 @@ final class UserProvisionerTest extends TestCase
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $first = $this->provisioner->setPassword($user, 'correct horse battery staple');
+        $first = $this->provisioner->setPassword($user, new PlainPassword('correct horse battery staple'));
         $this->clock->modify('+1 day');
 
         // When
-        $second = $this->provisioner->setPassword($user, 'another password');
+        $second = $this->provisioner->setPassword($user, new PlainPassword('another password'));
 
         // Then
         static::assertSame($first, $second);
@@ -269,45 +269,19 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * NIST SP 800-63B §5.1.1.2, counted in characters: eight of them, however many bytes they take.
+     * The bounds are the PlainPassword's (tested there); what this one keeps is that a refused password
+     * leaves the stored one alone.
      */
-    #[Test]
-    public function aPasswordOfEightMultibyteCharactersIsLongEnough(): void
-    {
-        // Given
-        $user = $this->provisioner->create($this->tenant, 'alice');
-
-        // When
-        $this->provisioner->setPassword($user, 'éééééééé');
-
-        // Then
-        static::assertCount(1, $this->credentials->findByUser($user, PasswordCredential::class));
-    }
-
-    #[Test]
-    public function aPasswordOfSevenCharactersIsRefused(): void
-    {
-        // Given
-        $user = $this->provisioner->create($this->tenant, 'alice');
-
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('A password is at least 8 characters long.');
-
-        // When
-        $this->provisioner->setPassword($user, 'seven77');
-    }
-
     #[Test]
     public function aRefusedPasswordLeavesTheCurrentOneInPlace(): void
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $this->provisioner->setPassword($user, 'éééééééé');
+        $this->provisioner->setPassword($user, new PlainPassword('éééééééé'));
 
         // When
         try {
-            $this->provisioner->setPassword($user, 'seven77');
+            $this->provisioner->setPassword($user, new PlainPassword('seven77'));
         } catch (InvalidArgumentException) {
         }
 
@@ -316,32 +290,5 @@ final class UserProvisionerTest extends TestCase
             $this->credentials->findByUser($user, PasswordCredential::class)[0]->hash ?? static::fail('The credential is gone.'),
             'éééééééé',
         ));
-    }
-
-    #[Test]
-    public function aPasswordOf4096BytesIsAccepted(): void
-    {
-        // Given
-        $user = $this->provisioner->create($this->tenant, 'alice');
-
-        // When
-        $credential = $this->provisioner->setPassword($user, str_repeat('a', UserProvisioner::MAXIMUM_PASSWORD_BYTES));
-
-        // Then
-        static::assertTrue($this->hasher->verify($credential->hash, str_repeat('a', 4096)));
-    }
-
-    #[Test]
-    public function aPasswordOf4097BytesIsRefused(): void
-    {
-        // Given
-        $user = $this->provisioner->create($this->tenant, 'alice');
-
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('A password is at most 4096 bytes long.');
-
-        // When
-        $this->provisioner->setPassword($user, str_repeat('a', 4097));
     }
 }
