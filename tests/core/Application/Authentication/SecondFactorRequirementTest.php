@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Authentication;
 
+use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Domain\Credential\PasswordAlgorithm;
@@ -35,7 +36,7 @@ final class SecondFactorRequirementTest extends TestCase
         $this->credentials->save(
             new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), Fixtures::now()),
         );
-        $this->requirement = new SecondFactorRequirement($this->credentials);
+        $this->requirement = new SecondFactorRequirement(new ActiveCredentials($this->credentials));
     }
 
     #[Test]

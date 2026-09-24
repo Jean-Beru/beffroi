@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Bridge\JwtLibrary;
 
-use function array_keys;
 use function base64_decode;
 use function explode;
 use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
@@ -12,6 +11,7 @@ use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Domain\Key\TenantKey;
+use Heidi\Core\Domain\Key\UnsealedKey;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
 use Heidi\Core\Exception\KeyNotFoundException;
@@ -412,7 +412,12 @@ final class JwtLibraryTest extends TestCase
         static::assertSame($next, $opened->key);
         $kept = new ReflectionProperty($this->provider, 'opened')->getValue($this->provider);
         static::assertIsArray($kept);
-        static::assertSame([Keys::otherPair()->kid], array_keys($kept));
+        $kids = [];
+        foreach ($kept as $key) {
+            static::assertInstanceOf(UnsealedKey::class, $key);
+            $kids[] = $key->key->kid;
+        }
+        static::assertSame([Keys::otherPair()->kid], $kids);
     }
 
     #[Test]

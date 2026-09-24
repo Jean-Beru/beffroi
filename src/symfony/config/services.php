@@ -78,11 +78,13 @@ use Heidi\Bundle\Security\UserChecker;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
 use Heidi\Core\Application\Authentication\DecoyHash;
+use Heidi\Core\Application\Authentication\AuthenticationRefusal;
 use Heidi\Core\Application\Authentication\LoginCompletion;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
+use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Credential\CredentialRevocation;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Application\Key\TenantKeyRotator;
@@ -502,8 +504,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpEnrolment::class);
     $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
+    $services->set(ActiveCredentials::class);
     $services->set(SessionOpener::class);
     $services->set(SessionTerminator::class);
+    $services->set(AuthenticationRefusal::class);
     $services->set(UserProvisioner::class);
 
     // The module: clients

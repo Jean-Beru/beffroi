@@ -169,7 +169,7 @@ final class EnvelopeSecretSealerTest extends TestCase
 
         // Then
         $this->expectException(KmsUnavailableException::class);
-        $this->expectExceptionMessageIs('A secret of tenant "globex" could not be sealed under the KMS key "secrets-globex".');
+        $this->expectExceptionMessageIs('The secret of tenant "globex" could not be sealed under the KMS key "secrets-globex".');
 
         // When
         $sealer->seal(Fixtures::tenant('globex', 'https://id.globex.example'), Totps::SEED);
@@ -232,7 +232,7 @@ final class EnvelopeSecretSealerTest extends TestCase
             static::fail('The secret should not have been sealed.');
         } catch (KmsUnavailableException $exception) {
             // Then
-            static::assertSame('A secret of tenant "acme" could not be sealed under the KMS key "signing-keys".', $exception->getMessage());
+            static::assertSame('The secret of tenant "acme" could not be sealed under the KMS key "signing-keys".', $exception->getMessage());
             static::assertSame($whatTheKmsThrew, $exception->getPrevious());
         }
     }

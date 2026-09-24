@@ -76,11 +76,13 @@ final readonly class KeysRotateCommand
         $previous = $this->keys->findActive($tenant, $rotatedFor);
         $context = $this->contexts->fromConsole(self::NAME);
         if ($previous === null) {
-            $key = $this->rotator->rotate($tenant, $rotatedFor, $context, $compromised);
+            $key = $compromised
+                ? $this->rotator->rotateAfterCompromise($tenant, $rotatedFor, $context)
+                : $this->rotator->rotate($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
             $io->note(sprintf('The tenant had no active %s key: nothing to wait for, the key is active at once.', $rotatedFor->name()));
         } elseif ($compromised) {
-            $key = $this->rotator->rotate($tenant, $rotatedFor, $context, compromised: true);
+            $key = $this->rotator->rotateAfterCompromise($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
             $io->warning(sprintf(
                 'The key "%s" was active and is retired at once: it leaves the JWK Set and nothing bound to it is honoured from now on.',

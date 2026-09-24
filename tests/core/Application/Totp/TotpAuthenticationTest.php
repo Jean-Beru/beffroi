@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Totp;
 
 use function array_filter;
+use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
+use Heidi\Core\Application\Authentication\AuthenticationRefusal;
 use Heidi\Core\Application\Totp\ActiveTotp;
 use Heidi\Core\Application\Totp\TotpAuthentication;
 use Heidi\Core\Application\Totp\TotpCodeMatcher;
@@ -70,11 +72,12 @@ final class TotpAuthenticationTest extends TestCase
         $credentials->save($this->totp);
         $this->authentication = new TotpAuthentication(
             $credentials,
-            new ActiveTotp($credentials),
+            new ActiveTotp(new ActiveCredentials($credentials)),
             new TotpCodeMatcher(Totps::algorithm()),
             Totps::sealer(),
             $this->hasher,
             $this->attempts,
+            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,
         );
@@ -114,11 +117,12 @@ final class TotpAuthenticationTest extends TestCase
         $credentials->expects(static::once())->method('save')->with($this->totp);
         $authentication = new TotpAuthentication(
             $credentials,
-            new ActiveTotp($credentials),
+            new ActiveTotp(new ActiveCredentials($credentials)),
             new TotpCodeMatcher(Totps::algorithm()),
             Totps::sealer(),
             $this->hasher,
             $this->attempts,
+            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,
         );
@@ -501,11 +505,12 @@ final class TotpAuthenticationTest extends TestCase
     {
         return new TotpAuthentication(
             $this->credentials,
-            new ActiveTotp($this->credentials),
+            new ActiveTotp(new ActiveCredentials($this->credentials)),
             new TotpCodeMatcher(Totps::algorithm()),
             $sealer,
             $this->hasher,
             $this->attempts,
+            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,
         );

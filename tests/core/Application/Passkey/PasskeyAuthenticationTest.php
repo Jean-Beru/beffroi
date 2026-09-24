@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Passkey;
 
 use DateInterval;
+use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
+use Heidi\Core\Application\Authentication\AuthenticationRefusal;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Passkey\PasskeyAuthentication;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
@@ -63,8 +65,10 @@ final class PasskeyAuthenticationTest extends TestCase
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
         $this->authentication = new PasskeyAuthentication(
             $this->credentials,
+            new ActiveCredentials($this->credentials),
             $this->ceremony,
             new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,
         );

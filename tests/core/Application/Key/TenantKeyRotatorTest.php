@@ -435,7 +435,7 @@ final class TenantKeyRotatorTest extends TestCase
         $first = $this->firstRotation();
 
         // When
-        $second = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context, compromised: true);
+        $second = $this->rotator->rotateAfterCompromise($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertSame(KeyStatus::Retired, $first->status);
@@ -452,7 +452,7 @@ final class TenantKeyRotatorTest extends TestCase
         $first = $this->firstRotation();
 
         // When
-        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context, compromised: true);
+        $this->rotator->rotateAfterCompromise($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         [$event] = $this->events->of(TenantKeyRetired::class);
@@ -466,7 +466,7 @@ final class TenantKeyRotatorTest extends TestCase
     public function aRotationForACompromiseWithoutAnActiveKeyActivatesAKey(): void
     {
         // When
-        $key = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context, compromised: true);
+        $key = $this->rotator->rotateAfterCompromise($this->tenant, Algorithms::rs256(), $this->context);
 
         // Then
         static::assertTrue($key->isActive());

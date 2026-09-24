@@ -6,7 +6,9 @@ namespace Heidi\Core\Tests\Application\Authentication;
 
 use function array_map;
 use DateInterval;
+use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
+use Heidi\Core\Application\Authentication\AuthenticationRefusal;
 use Heidi\Core\Application\Authentication\DecoyHash;
 use Heidi\Core\Application\Authentication\PasswordAuthenticator;
 use Heidi\Core\Application\Authentication\SecondFactorRequirement;
@@ -79,7 +81,8 @@ final class PasswordAuthenticatorTest extends TestCase
             new DecoyHash($hasher),
             new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
             $this->attempts,
-            new SecondFactorRequirement($this->credentials),
+            new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
+            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,
         );
@@ -439,7 +442,8 @@ final class PasswordAuthenticatorTest extends TestCase
             new DecoyHash($hasher),
             new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
             new FakeAttemptLimiter($allowedAttempts),
-            new SecondFactorRequirement($this->credentials),
+            new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
+            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,
         );

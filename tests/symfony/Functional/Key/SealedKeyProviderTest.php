@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Key;
 
-use function array_keys;
 use function array_map;
 use function base64_decode;
 use DateInterval;
@@ -13,6 +12,7 @@ use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Domain\Key\TenantKey;
+use Heidi\Core\Domain\Key\UnsealedKey;
 use Heidi\Core\Port\JwsSignerInterface;
 use Heidi\Core\Port\KeyPairGeneratorInterface;
 use Heidi\Core\Port\KeySealerInterface;
@@ -132,7 +132,12 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         // Then
         $opened = new ReflectionProperty($this->provider, 'opened')->getValue($this->provider);
         static::assertIsArray($opened);
-        static::assertSame([$rotated->kid], array_keys($opened));
+        $kids = [];
+        foreach ($opened as $key) {
+            static::assertInstanceOf(UnsealedKey::class, $key);
+            $kids[] = $key->key->kid;
+        }
+        static::assertSame([$rotated->kid], $kids);
     }
 
     /**

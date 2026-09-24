@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Application\Authentication;
 
 use DateInterval;
+use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Authentication\AuthenticationFailedException;
+use Heidi\Core\Application\Authentication\AuthenticationRefusal;
 use Heidi\Core\Application\Authentication\LoginCompletion;
 use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Totp\ActiveTotp;
@@ -83,17 +85,18 @@ final class LoginCompletionTest extends TestCase
             $users,
             new TotpAuthentication(
                 $credentials,
-                new ActiveTotp($credentials),
+                new ActiveTotp(new ActiveCredentials($credentials)),
                 new TotpCodeMatcher(Totps::algorithm()),
                 Totps::sealer(),
                 $hasher,
                 $this->attempts,
+                new AuthenticationRefusal($this->clock, $this->events),
                 $this->clock,
                 $this->events,
             ),
             new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')),
+            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
-            $this->events,
         );
     }
 

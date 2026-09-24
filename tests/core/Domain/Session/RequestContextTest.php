@@ -13,6 +13,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function mb_strlen;
 use function str_repeat;
 
 final class RequestContextTest extends TestCase
@@ -38,7 +39,6 @@ final class RequestContextTest extends TestCase
         // Then
         static::assertNull($context->ipAddress);
         static::assertNull($context->userAgent);
-        static::assertSame(0, $context->userAgentLength());
     }
 
     #[Test]
@@ -83,13 +83,13 @@ final class RequestContextTest extends TestCase
 
     #[Test]
     #[DataProvider('provideUserAgentLengths')]
-    public function itBoundsTheUserAgentAndCountsItInCharacters(string $userAgent, int $length): void
+    public function itBoundsTheUserAgentInCharactersAndNotInBytes(string $userAgent, int $length): void
     {
         // When
         $context = new RequestContext(Fixtures::now(), null, $userAgent);
 
         // Then
-        static::assertSame($length, $context->userAgentLength());
+        static::assertSame($length, mb_strlen($context->userAgent ?? ''));
     }
 
     /**
