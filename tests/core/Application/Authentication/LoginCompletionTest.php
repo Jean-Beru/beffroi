@@ -16,7 +16,7 @@ use Heidi\Core\Application\Totp\TotpCodeMatcher;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Event\AuthenticationFailed;
@@ -67,7 +67,7 @@ final class LoginCompletionTest extends TestCase
         $users->save($this->alice);
         $hasher = new FakePasswordHasher();
         $credentials = new InMemoryCredentialRepository();
-        $credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), Fixtures::now()));
+        $credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$alice'), Fixtures::now()));
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->events = new RecordingEventDispatcher();
         $this->attempts = new FakeAttemptLimiter(5);

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Security;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\ExceptionInterface;
+use Heidi\Core\Exception\UnsupportedAlgorithmException;
+use Heidi\Core\Port\PasswordAlgorithmsInterface;
 use Heidi\Core\Port\PasswordHasherInterface as CoreHasher;
 use function is_array;
 use function is_int;
@@ -27,6 +29,7 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
 {
     public function __construct(
         private CoreHasher $hasher,
+        private PasswordAlgorithmsInterface $algorithms,
     ) {
     }
 
@@ -41,7 +44,7 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
 
     public function verify(string $hashedPassword, #[SensitiveParameter] string $plainPassword): bool
     {
-        $hash = self::decode($hashedPassword);
+        $hash = $this->decode($hashedPassword);
         if ($hash === null) {
             return false;
         }
@@ -54,7 +57,7 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
 
     public function needsRehash(string $hashedPassword): bool
     {
-        $hash = self::decode($hashedPassword);
+        $hash = $this->decode($hashedPassword);
         if ($hash === null) {
             return false;
         }
@@ -68,16 +71,17 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
     public static function encode(PasswordHash $hash): string
     {
         return json_encode([
-            'algorithm' => $hash->algorithm->value,
+            'algorithm' => $hash->algorithm->name(),
             'encoded' => $hash->encoded,
             'parameters' => $hash->parameters,
         ], JSON_THROW_ON_ERROR);
     }
 
     /**
-     * Null when the string is not one encode() wrote; no algorithm is guessed.
+     * Null when the string is not one encode() wrote: no algorithm is guessed, and a name nothing wired
+     * accounts for reads as no hash at all rather than as a hash of something else.
      */
-    public static function decode(string $encoded): ?PasswordHash
+    public function decode(string $encoded): ?PasswordHash
     {
         try {
             $decoded = json_decode($encoded, true, 3, JSON_THROW_ON_ERROR);
@@ -87,7 +91,8 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
         if (! is_array($decoded)) {
             return null;
         }
-        $algorithm = is_string($decoded['algorithm'] ?? null) ? PasswordAlgorithm::tryFrom($decoded['algorithm']) : null;
+        $named = $decoded['algorithm'] ?? null;
+        $algorithm = is_string($named) ? $this->algorithm($named) : null;
         $hash = $decoded['encoded'] ?? null;
         $parameters = $decoded['parameters'] ?? [];
         if ($algorithm === null || ! is_string($hash) || $hash === '' || ! is_array($parameters)) {
@@ -102,5 +107,14 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
         }
 
         return new PasswordHash($algorithm, $hash, $validated);
+    }
+
+    private function algorithm(string $name): ?PasswordAlgorithmInterface
+    {
+        try {
+            return $this->algorithms->named($name);
+        } catch (UnsupportedAlgorithmException) {
+            return null;
+        }
     }
 }

@@ -12,9 +12,12 @@ use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
 use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\InvalidArgumentException;
+use Heidi\Core\Exception\UnsupportedAlgorithmException;
+use Heidi\Core\Port\PasswordAlgorithmsInterface;
+use LogicException;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -28,9 +31,16 @@ use JsonException;
  * The backup codes of a TOTP as a JSON list, in their order: each one the hash of the code, typed by its
  * algorithm like a password hash with the parameters of an import, and the Unix timestamp it was spent at.
  */
-final class BackupCodesType extends Type
+final class BackupCodesType extends Type implements NeedsPasswordAlgorithmsInterface
 {
     public const string NAME = 'heidi_backup_codes';
+
+    private static ?PasswordAlgorithmsInterface $algorithms = null;
+
+    public static function resolveWith(PasswordAlgorithmsInterface $algorithms): void
+    {
+        self::$algorithms = $algorithms;
+    }
 
     public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
     {
@@ -51,7 +61,7 @@ final class BackupCodesType extends Type
                 throw InvalidType::new($value, self::NAME, ['null', 'list<' . BackupCode::class . '>']);
             }
             $entries[] = [
-                'algorithm' => $code->hash->algorithm->value,
+                'algorithm' => $code->hash->algorithm->name(),
                 'encoded' => $code->hash->encoded,
                 'parameters' => $code->hash->parameters,
                 'used_at' => $code->usedAt?->getTimestamp(),
@@ -89,9 +99,26 @@ final class BackupCodesType extends Type
         return array_map(fn (mixed $entry): BackupCode => $this->entry($value, $entry), $decoded);
     }
 
+    /**
+     * The class the wiring holds for that name; a name nothing accounts for is a row this deployment
+     * cannot read.
+     */
+    private function algorithm(string $document, string $name): PasswordAlgorithmInterface
+    {
+        $algorithms =
+            self::$algorithms ?? throw new LogicException('The password algorithms have not been handed to the DBAL type; the bundle does it when it boots.');
+
+        try {
+            return $algorithms->named($name);
+        } catch (UnsupportedAlgorithmException $exception) {
+            throw ValueNotConvertible::new($document, self::NAME, $exception->getMessage(), $exception);
+        }
+    }
+
     private function entry(string $document, mixed $entry): BackupCode
     {
-        $algorithm = is_array($entry) && is_string($entry['algorithm'] ?? null) ? PasswordAlgorithm::tryFrom($entry['algorithm']) : null;
+        $named = is_array($entry) && is_string($entry['algorithm'] ?? null) ? $entry['algorithm'] : null;
+        $algorithm = $named === null ? null : $this->algorithm($document, $named);
         $encoded = is_array($entry) ? $entry['encoded'] ?? null : null;
         $parameters = is_array($entry) ? $entry['parameters'] ?? [] : null;
         $usedAt = is_array($entry) ? $entry['used_at'] ?? null : null;

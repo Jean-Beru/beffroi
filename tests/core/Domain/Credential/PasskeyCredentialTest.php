@@ -9,7 +9,7 @@ use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -42,7 +42,7 @@ final class PasskeyCredentialTest extends TestCase
         // Given
         $user = Fixtures::user();
         $handle = PasskeyUserHandle::generate();
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now());
 
         // When
         $key = Fixtures::passkey($user, 'YubiKey 5', 'credential-one', $handle);

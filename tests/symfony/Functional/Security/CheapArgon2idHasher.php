@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Security;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\LogicException;
 use Heidi\Core\Port\AlgorithmPasswordHasherInterface;
@@ -35,14 +36,14 @@ final readonly class CheapArgon2idHasher implements AlgorithmPasswordHasherInter
         'threads' => 1,
     ];
 
-    public function supports(PasswordAlgorithm $algorithm): bool
+    public function supports(PasswordAlgorithmInterface $algorithm): bool
     {
-        return $algorithm === PasswordAlgorithm::Argon2id;
+        return $algorithm->name() === Argon2id::NAME;
     }
 
     public function hash(#[SensitiveParameter] string $plainPassword): PasswordHash
     {
-        return new PasswordHash(PasswordAlgorithm::Argon2id, password_hash($plainPassword, PASSWORD_ARGON2ID, self::OPTIONS));
+        return new PasswordHash(new Argon2id(), password_hash($plainPassword, PASSWORD_ARGON2ID, self::OPTIONS));
     }
 
     public function verify(PasswordHash $hash, #[SensitiveParameter] string $plainPassword): bool
@@ -59,10 +60,10 @@ final readonly class CheapArgon2idHasher implements AlgorithmPasswordHasherInter
         return password_needs_rehash($hash->encoded, PASSWORD_ARGON2ID, self::OPTIONS);
     }
 
-    private function assertSupported(PasswordAlgorithm $algorithm): void
+    private function assertSupported(PasswordAlgorithmInterface $algorithm): void
     {
         if (! $this->supports($algorithm)) {
-            throw new LogicException(sprintf('The cheap hasher handles argon2id hashes only, not "%s"; route them through the registry.', $algorithm->value));
+            throw new LogicException(sprintf('The cheap hasher handles argon2id hashes only, not "%s"; route them through the registry.', $algorithm->name()));
         }
     }
 }

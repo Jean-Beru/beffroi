@@ -41,6 +41,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
         private EventDispatcherInterface $events,
         private RequestStack $requests,
         private RequestContextFactory $contexts,
+        private CorePasswordHasher $hasher,
     ) {
     }
 
@@ -93,7 +94,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
         if ($credential === null) {
             return;
         }
-        $hash = CorePasswordHasher::decode($newHashedPassword) ?? throw new LogicException(sprintf(
+        $hash = $this->hasher->decode($newHashedPassword) ?? throw new LogicException(sprintf(
             'The hash to upgrade to was not produced by "%s"; the firewall of the interaction pages uses another password hasher than the one the bundle configures.',
             CorePasswordHasher::class,
         ));

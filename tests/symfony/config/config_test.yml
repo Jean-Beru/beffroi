@@ -302,6 +302,9 @@ services:
     test.heidi.password_hasher:
         alias: Heidi\Core\Port\PasswordHasherInterface
         public: true
+    test.heidi.core_password_hasher:
+        alias: Heidi\Bundle\Security\CorePasswordHasher
+        public: true
     test.heidi.password_hasher_factory:
         alias: security.password_hasher_factory
         public: true

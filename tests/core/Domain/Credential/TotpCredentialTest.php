@@ -9,7 +9,7 @@ use function array_map;
 use function array_slice;
 use function array_values;
 use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Credential\TotpCredential;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -141,7 +141,7 @@ final class TotpCredentialTest extends TestCase
             Uuid::v7(),
             Fixtures::user(),
             '',
-            array_map(static fn (string $code): BackupCode => new BackupCode(new PasswordHash(PasswordAlgorithm::Argon2id, $code)), Totps::BACKUP_CODES),
+            array_map(static fn (string $code): BackupCode => new BackupCode(new PasswordHash(new Argon2id(), $code)), Totps::BACKUP_CODES),
             0,
             Fixtures::now(),
         );

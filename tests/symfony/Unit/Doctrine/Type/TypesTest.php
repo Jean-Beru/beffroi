@@ -10,6 +10,11 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\DBAL\Types\Type;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
+use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
+use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
@@ -27,7 +32,8 @@ use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Core\Domain\Credential\BackupCode;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
@@ -60,12 +66,30 @@ use function str_repeat;
 final class TypesTest extends TestCase
 {
     /**
+     * The types that read a password algorithm back are told what the deployment is wired with, as the
+     * bundle tells them when it boots; without a kernel here, the test is the deployment.
+     */
+    public static function setUpBeforeClass(): void
+    {
+        $algorithms = new WiredPasswordAlgorithms([
+            new Argon2id(),
+            new Argon2i(),
+            new Bcrypt(),
+            new Pbkdf2Sha256(),
+            new Pbkdf2Sha512(),
+        ]);
+        PasswordAlgorithmType::resolveWith($algorithms);
+        BackupCodesType::resolveWith($algorithms);
+    }
+
+    /**
      * @return iterable<string, array{class-string<Type>, object|list<Scope>|list<BackupCode>, string}>
      */
     public static function provideValues(): iterable
     {
         yield 'issuer' => [IssuerType::class, new Issuer('https://op.example/tenant'), 'https://op.example/tenant'];
         yield 'subject' => [SubjectType::class, new Subject('alice-subject'), 'alice-subject'];
+        yield 'password algorithm' => [PasswordAlgorithmType::class, new Argon2id(), 'argon2id'];
         yield 'email address' => [EmailAddressType::class, new EmailAddress('alice@example.com'), 'alice@example.com'];
         yield 'redirect URI' => [
             RedirectUriType::class,
@@ -129,8 +153,8 @@ final class TypesTest extends TestCase
         ];
         yield 'backup codes' => [
             BackupCodesType::class,
-            [new BackupCode(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$one')), new BackupCode(new PasswordHash(
-                    PasswordAlgorithm::Pbkdf2Sha256,
+            [new BackupCode(new PasswordHash(new Argon2id(), '$argon2id$one')), new BackupCode(new PasswordHash(
+                    new Pbkdf2Sha256(),
                     'two',
                     [
                         'salt' => 'c2FsdA',
@@ -247,6 +271,7 @@ final class TypesTest extends TestCase
         yield 'an issuer with a fragment' => [IssuerType::class, 'https://op.example/#x'];
         yield 'an issuer that is not a string' => [IssuerType::class, 12];
         yield 'a subject with a space' => [SubjectType::class, 'alice example'];
+        yield 'a password algorithm nothing accounts for' => [PasswordAlgorithmType::class, 'scrypt'];
         yield 'a malformed email address' => [EmailAddressType::class, 'alice'];
         yield 'a redirect URI in plain HTTP' => [RedirectUriType::class, 'http://demo.example/login/check'];
         yield 'a code challenge without a method' => [CodeChallengeType::class, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
@@ -389,10 +414,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresSeventeenTypes(): void
+    public function theBundleDeclaresEighteenTypes(): void
     {
         // When / Then
-        static::assertCount(17, HeidiBundle::DBAL_TYPES);
+        static::assertCount(18, HeidiBundle::DBAL_TYPES);
     }
 
     /**

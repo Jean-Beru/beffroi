@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Core\Tests\Bridge\Password;
 
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\LogicException;
@@ -28,7 +30,7 @@ final class NativePasswordHasherTest extends TestCase
         $hash = $hasher->hash('correct horse battery staple');
 
         // Then
-        static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
+        static::assertSame(Argon2id::NAME, $hash->algorithm->name());
         static::assertTrue(str_starts_with($hash->encoded, '$argon2id$'));
         static::assertFalse($hasher->needsRehash($hash));
     }
@@ -60,7 +62,7 @@ final class NativePasswordHasherTest extends TestCase
     {
         // Given
         $hasher = new NativePasswordHasher();
-        $legacy = new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('secret', PASSWORD_BCRYPT));
+        $legacy = new PasswordHash(new Bcrypt(), password_hash('secret', PASSWORD_BCRYPT));
 
         // When / Then
         static::assertTrue($hasher->verify($legacy, 'secret'));
@@ -71,7 +73,7 @@ final class NativePasswordHasherTest extends TestCase
     {
         // Given
         $hasher = new NativePasswordHasher();
-        $legacy = new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('secret', PASSWORD_BCRYPT));
+        $legacy = new PasswordHash(new Bcrypt(), password_hash('secret', PASSWORD_BCRYPT));
 
         // When / Then
         static::assertTrue($hasher->needsRehash($legacy));
@@ -118,7 +120,7 @@ final class NativePasswordHasherTest extends TestCase
         $hasher = new NativePasswordHasher();
 
         // When / Then
-        static::assertFalse($hasher->supports(PasswordAlgorithm::Pbkdf2Sha256));
+        static::assertFalse($hasher->supports(new Pbkdf2Sha256()));
     }
 
     #[Test]
@@ -131,6 +133,6 @@ final class NativePasswordHasherTest extends TestCase
         $this->expectException(LogicException::class);
 
         // When
-        $hasher->verify(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'digest'), 'secret');
+        $hasher->verify(new PasswordHash(new Pbkdf2Sha256(), 'digest'), 'secret');
     }
 }

@@ -7,7 +7,8 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 use DateTimeImmutable;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Event\AuthenticationFailed;
 use Heidi\Core\Domain\Event\AuthenticationFailureReason;
@@ -628,7 +629,7 @@ final class LoginTest extends BrowserTestCase
     public function aHashWeakerThanThePolicyIsRehashedOnLogin(): void
     {
         // Given
-        $user = self::userWithPassword('alice', self::PASSWORD, PasswordAlgorithm::Bcrypt);
+        $user = self::userWithPassword('alice', self::PASSWORD, new Bcrypt());
         $interaction = $this->authorize();
 
         // When
@@ -637,7 +638,7 @@ final class LoginTest extends BrowserTestCase
         // Then
         static::assertCount(1, self::sessionsOf('alice'));
         $credential = $this->credentialOf($user);
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $credential->hash->algorithm->name());
         static::assertNotNull($credential->lastUsedAt);
     }
 
@@ -648,7 +649,7 @@ final class LoginTest extends BrowserTestCase
     public function aRehashOnLoginIsAnnounced(): void
     {
         // Given
-        $user = self::userWithPassword('alice', self::PASSWORD, PasswordAlgorithm::Bcrypt);
+        $user = self::userWithPassword('alice', self::PASSWORD, new Bcrypt());
         $interaction = $this->authorize();
 
         // When
@@ -668,7 +669,7 @@ final class LoginTest extends BrowserTestCase
     public function theRehashedPasswordOpensTheSessionNextTime(): void
     {
         // Given
-        self::userWithPassword('alice', self::PASSWORD, PasswordAlgorithm::Bcrypt);
+        self::userWithPassword('alice', self::PASSWORD, new Bcrypt());
         $this->submitLogin($this->authorize(), 'alice', self::PASSWORD);
         $this->browser->getCookieJar()->clear();
 

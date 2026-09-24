@@ -7,7 +7,13 @@ namespace Heidi\Core\Tests\Bridge\Password;
 use function hash_equals;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
+use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
+use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Heidi\Core\Exception\LogicException;
@@ -22,13 +28,13 @@ final class PasswordHasherRegistryTest extends TestCase
     public function itHashesWithTheDefaultAlgorithm(): void
     {
         // Given
-        $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()]);
+        $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()], self::algorithms());
 
         // When
         $hash = $registry->hash('secret');
 
         // Then
-        static::assertSame(PasswordAlgorithm::Argon2id, $hash->algorithm);
+        static::assertSame(Argon2id::NAME, $hash->algorithm->name());
         static::assertTrue($registry->verify($hash, 'secret'));
         static::assertFalse($registry->needsRehash($hash));
     }
@@ -37,8 +43,8 @@ final class PasswordHasherRegistryTest extends TestCase
     public function itVerifiesWithTheHasherOfTheAlgorithm(): void
     {
         // Given
-        $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()]);
-        $imported = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'secret-digest');
+        $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()], self::algorithms());
+        $imported = new PasswordHash(new Pbkdf2Sha256(), 'secret-digest');
 
         // When / Then
         static::assertTrue($registry->verify($imported, 'secret'));
@@ -53,23 +59,23 @@ final class PasswordHasherRegistryTest extends TestCase
     public function aHashOfAnotherAlgorithmThanTheDefaultAlwaysNeedsARehash(): void
     {
         // Given
-        $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()]);
+        $registry = new PasswordHasherRegistry([new NativePasswordHasher(), new FakePbkdf2Hasher()], self::algorithms());
 
         // When / Then
-        static::assertTrue($registry->needsRehash(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'secret-digest')));
+        static::assertTrue($registry->needsRehash(new PasswordHash(new Pbkdf2Sha256(), 'secret-digest')));
     }
 
     #[Test]
     public function itRefusesToVerifyAnAlgorithmNoHasherHandles(): void
     {
         // Given
-        $registry = new PasswordHasherRegistry([new NativePasswordHasher()]);
+        $registry = new PasswordHasherRegistry([new NativePasswordHasher()], self::algorithms());
 
         // Then
         $this->expectException(LogicException::class);
 
         // When
-        $registry->verify(new PasswordHash(PasswordAlgorithm::Pbkdf2Sha512, 'digest'), 'secret');
+        $registry->verify(new PasswordHash(new Pbkdf2Sha512(), 'digest'), 'secret');
     }
 
     #[Test]
@@ -79,7 +85,15 @@ final class PasswordHasherRegistryTest extends TestCase
         $this->expectException(LogicException::class);
 
         // When
-        new PasswordHasherRegistry([new FakePbkdf2Hasher()]);
+        new PasswordHasherRegistry([new FakePbkdf2Hasher()], self::algorithms());
+    }
+
+    /**
+     * The wiring of the suite: argon2id first, so it is what a new hash is made with.
+     */
+    private static function algorithms(): WiredPasswordAlgorithms
+    {
+        return new WiredPasswordAlgorithms([new Argon2id(), new Argon2i(), new Bcrypt(), new Pbkdf2Sha256()]);
     }
 
     #[Test]
@@ -89,7 +103,7 @@ final class PasswordHasherRegistryTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new PasswordHasherRegistry([]);
+        new PasswordHasherRegistry([], self::algorithms());
     }
 }
 
@@ -98,14 +112,14 @@ final class PasswordHasherRegistryTest extends TestCase
  */
 final class FakePbkdf2Hasher implements AlgorithmPasswordHasherInterface
 {
-    public function supports(PasswordAlgorithm $algorithm): bool
+    public function supports(PasswordAlgorithmInterface $algorithm): bool
     {
-        return $algorithm === PasswordAlgorithm::Pbkdf2Sha256;
+        return $algorithm->name() === Pbkdf2Sha256::NAME;
     }
 
     public function hash(#[SensitiveParameter] string $plainPassword): PasswordHash
     {
-        return new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, $plainPassword . '-digest');
+        return new PasswordHash(new Pbkdf2Sha256(), $plainPassword . '-digest');
     }
 
     public function verify(PasswordHash $hash, #[SensitiveParameter] string $plainPassword): bool

@@ -9,7 +9,9 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
+use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Credential\TotpCredential;
@@ -40,7 +42,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'base64digest', [
+        $hash = new PasswordHash(new Pbkdf2Sha256(), 'base64digest', [
             'salt' => 'c2FsdA',
             'iterations' => 27500,
         ]);
@@ -56,7 +58,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->id->equals($credential->id));
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
-        static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $found->hash->algorithm);
+        static::assertSame(Pbkdf2Sha256::NAME, $found->hash->algorithm->name());
         static::assertSame('base64digest', $found->hash->encoded);
         static::assertSame(
             [
@@ -75,7 +77,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         $passkey = self::passkey($user, createdAt: self::now()->modify('-1 day'));
         self::credentials()->save($password);
         self::credentials()->save($passkey);
@@ -164,7 +166,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         $passkey = self::passkey($user);
         self::credentials()->save($password);
         self::credentials()->save($passkey);
@@ -227,9 +229,9 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), self::now());
+        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Bcrypt(), '$2y$old'), self::now());
         self::credentials()->save($credential);
-        $credential->rehash(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$new'), self::now()->modify('+1 hour'));
+        $credential->rehash(new PasswordHash(new Argon2id(), '$argon2id$new'), self::now()->modify('+1 hour'));
         self::credentials()->save($credential);
         self::reload();
 
@@ -237,7 +239,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         $found = self::credentials()->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential was not stored.');
 
         // Then
-        static::assertSame(PasswordAlgorithm::Argon2id, $found->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $found->hash->algorithm->name());
         static::assertSame('$argon2id$new', $found->hash->encoded);
         static::assertSame([], $found->hash->parameters);
         static::assertEquals(self::now()->modify('+1 hour'), $found->hashChangedAt);
@@ -248,8 +250,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $bob = self::user('bob', 'bob-subject');
-        self::credentials()
-            ->save(new PasswordCredential(Uuid::v7(), self::user(), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now()));
+        self::credentials()->save(new PasswordCredential(Uuid::v7(), self::user(), new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now()));
         self::reload();
 
         // When / Then
