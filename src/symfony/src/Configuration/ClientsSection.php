@@ -1,0 +1,201 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Configuration;
+
+use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Domain\Client\AccessTokenFormat;
+use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
+use Heidi\Oidc\Domain\Client\GrantType;
+use function array_column;
+use function is_array;
+use Symfony\Component\Config\Definition\Builder\NodeBuilder;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
+
+/**
+ * The clients of the tenant, as a deployment declares them (architecture §5.1). They belong to the tenant this deployment declares, which is why the repository is told its slug.
+ */
+final readonly class ClientsSection extends ConfigurationSection
+{
+    /**
+     * Restated from the module: the configuration tree cannot tell an absent list from an empty one.
+     */
+    public const array DEFAULT_GRANT_TYPES = [GrantType::AuthorizationCode->value, GrantType::RefreshToken->value];
+
+    public const array DEFAULT_ALLOWED_SCOPES = ['openid', 'profile', 'email'];
+
+    public function name(): string
+    {
+        return 'clients';
+    }
+
+    public function describe(NodeBuilder $children): void
+    {
+        $children
+            ->arrayNode('clients')
+            ->info('The clients of the tenant, keyed by client identifier. A secret is hashed when the client is loaded and never kept in clear, unless the method it registered has to compute a MAC with it (client_secret_jwt).')
+            ->useAttributeAsKey('client_id')
+            ->normalizeKeys(false)
+            ->arrayPrototype()
+            ->children()
+            ->scalarNode('name')
+            ->info('Shown on the consent page; the client identifier when absent.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('secret')
+            ->info('At least 32 visible ASCII characters, generated, never chosen; absent for a public client.')
+            ->defaultNull()
+            ->end()
+            ->arrayNode('redirect_uris')
+            ->info('Compared byte for byte with the redirect_uri of a request (RFC 6749 §3.1.2.3); HTTPS, or plain HTTP on a loopback host.')
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->arrayNode('post_logout_redirect_uris')
+            ->info('Compared byte for byte with the post_logout_redirect_uri of a logout request (RP-Initiated Logout §3).')
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->arrayNode('grant_types')
+            ->defaultValue(self::DEFAULT_GRANT_TYPES)
+            ->enumPrototype()
+            ->values(array_column(GrantType::cases(), 'value'))
+            ->end()
+            ->end()
+            ->arrayNode('allowed_scopes')
+            ->defaultValue(self::DEFAULT_ALLOWED_SCOPES)
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->scalarNode('token_endpoint_auth_method')
+            ->info('How this client authenticates at the endpoints that authenticate a client (OIDC Core §9), among the methods the provider is wired with; left out, it takes the first wired one. A name nothing authenticates with fails at boot.')
+            ->defaultNull()
+            ->end()
+            ->booleanNode('requires_consent')
+            ->info('Consent is the rule; a first-party application is the named exception.')
+            ->defaultTrue()
+            ->end()
+            ->booleanNode('requires_pkce')
+            ->info('PKCE S256 is the rule; a confidential client that cannot send a code_challenge is the named exception of decision 0008, refused for a public client. A challenge the client sends is verified all the same.')
+            ->defaultTrue()
+            ->end()
+            ->booleanNode('require_pushed_authorization_requests')
+            ->info('The only way this client starts an authorization request is by pushing it (RFC 9126 §6), which is what FAPI 2.0 asks of one; an ordinary request from it is refused on a page before its redirect URI is even read. Per client, nothing global: the document announces the requirement when every registered client carries it.')
+            ->defaultFalse()
+            ->end()
+            ->booleanNode('require_sender_constrained_tokens')
+            ->info('The tokens of this client are bound to what the request proves it holds, or the request is refused (FAPI 2.0 Security Profile §5.3.1): a token request that proves neither a certificate (RFC 8705 §3) nor a key (RFC 9449 §5) is answered with an error rather than with bearer tokens. Per client, nothing global.')
+            ->defaultFalse()
+            ->end()
+            ->booleanNode('require_signed_request_object')
+            ->info('An authorization request of this client is only read from a request object it signed (OIDC Registration, require_signed_request_object; FAPI 2.0 Message Signing §5.3.1), whether the object arrives in the query, behind a request_uri, or inside the record it pushed. An unsigned one is refused on a page before its redirect URI is read, exactly as a request that was not pushed is.')
+            ->defaultFalse()
+            ->end()
+            ->scalarNode('id_token_signed_response_alg')
+            ->info('The JWS algorithm the ID tokens and the logout tokens of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, the provider signs them with its default. A name nothing signs under fails at boot.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('id_token_encrypted_response_alg')
+            ->info('The JWE key management algorithm the ID tokens of this client are encrypted to one of its keys with, once signed (OIDC Core §3.1.3.7), among those the provider is wired with. It comes with id_token_encrypted_response_enc, never alone, and the client publishes a key it can be addressed to; left out, the ID token travels signed and in clear, which is what every client does today.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('id_token_encrypted_response_enc')
+            ->info('The JWE content encryption algorithm the payload of that ID token is encrypted with (OIDC Core §3.1.3.7), among those the provider is wired with. OIDC Registration §2 defaults it to a value this provider is not wired with, so it is named or it is refused at boot.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('userinfo_signed_response_alg')
+            ->info('The JWS algorithm the UserInfo answer of this client is signed with (OIDC Core §5.3.2), among those the provider is wired with; the answer is then served as "application/jwt" and carries an "iss" and an "aud" beside the claims. Left out, the answer is the plain JSON, which is what every client that asks for nothing receives.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('userinfo_encrypted_response_alg')
+            ->info('The JWE key management algorithm the UserInfo answer of this client is encrypted to one of its keys with (OIDC Core §5.3.2), among those the provider is wired with. It comes with userinfo_encrypted_response_enc, never alone. Without userinfo_signed_response_alg, what is encrypted is the plain JSON of the claims, §5.3.2 allowing an answer to be encrypted without being signed.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('userinfo_encrypted_response_enc')
+            ->info('The JWE content encryption algorithm the payload of that UserInfo answer is encrypted with (OIDC Core §5.3.2), among those the provider is wired with.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('authorization_signed_response_alg')
+            ->info('The JWS algorithm the signed authorization responses of this client are signed with (JARM §3), among those the provider is wired with; left out, the provider signs them with its default. It applies to the answers this client asks for with response_mode=jwt, query.jwt or form_post.jwt, a refusal as well as a code.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('authorization_encrypted_response_alg')
+            ->info('The JWE key management algorithm the signed authorization responses of this client are encrypted to one of its keys with, once signed (JARM §3), among those the provider is wired with. It comes with authorization_encrypted_response_enc, never alone.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('authorization_encrypted_response_enc')
+            ->info('The JWE content encryption algorithm the payload of that authorization response is encrypted with (JARM §3), among those the provider is wired with.')
+            ->defaultNull()
+            ->end()
+            ->enumNode('access_token_format')
+            ->info('The shape of the access tokens: "jwt" (RFC 9068, verified offline against the JWK Set) or "opaque" (a reference the resource server introspects, RFC 7662, revocable at once). Per client, nothing global.')
+            ->values(array_column(AccessTokenFormat::cases(), 'value'))
+            ->defaultValue(AccessTokenFormat::Jwt->value)
+            ->end()
+            ->scalarNode('backchannel_logout_uri')
+            ->info('Where the provider posts a logout token when a session this client signed in ends (Back-Channel Logout 1.0 §2.2); HTTPS, or plain HTTP on a loopback host. Absent for a client the provider does not tell.')
+            ->defaultNull()
+            ->end()
+            ->booleanNode('backchannel_logout_session_required')
+            ->info('The client reads the "sid" of the logout token to know which session ended (Back-Channel Logout 1.0 §2.2); it needs a backchannel_logout_uri. The provider sends "sid" either way.')
+            ->defaultFalse()
+            ->end()
+            ->scalarNode('frontchannel_logout_uri')
+            ->info('Loaded in a frame of the logout page when a session this client signed in ends (Front-Channel Logout 1.0 §3); HTTPS, or plain HTTP on a loopback host. Absent for a client the page does not load. It reaches the client only if the browser sends that client its cookies.')
+            ->defaultNull()
+            ->end()
+            ->booleanNode('frontchannel_logout_session_required')
+            ->info('The client reads "iss" and "sid" on its logout URI to know which session ended (Front-Channel Logout 1.0 §2); it needs a frontchannel_logout_uri. The two parameters are added for this client only, §2 making them conditional.')
+            ->defaultFalse()
+            ->end()
+            ->variableNode('jwks')
+            ->info('The JWK Set of the client, inline (RFC 7591 §2): public keys only, and exclusive with jwks_uri. A client that authenticates with private_key_jwt publishes one of the two.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('jwks_uri')
+            ->info('Where the JWK Set of the client is read back from (RFC 7591 §2); HTTPS, or plain HTTP on a loopback host, no redirect followed. Exclusive with jwks.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('request_object_signing_alg')
+            ->info('The JWS algorithm the request objects of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, any of them verifies one. The value "none" is the named exception of decision 0006: the objects of that client carry no signature and are read all the same, which no FAPI client registers. A client that names an algorithm publishes its keys in jwks or behind a jwks_uri.')
+            ->defaultNull()
+            ->end()
+            ->arrayNode('request_uris')
+            ->info('The URLs a request object of this client is read back from (OIDC Registration §2), compared byte for byte with the request_uri of a request; one that is not registered is refused before any request leaves the process, which is what require_request_uri_registration announces.')
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->scalarNode(CertificateIdentities::SUBJECT_DN)
+            ->info('The subject distinguished name of the certificate this client presents (RFC 8705 §2.1.2), in the string form of RFC 4514; it is written back at boot the way the provider writes the name it reads out of a certificate, so a name as "openssl x509 -noout -subject -nameopt RFC2253" prints it is registered as it is. One of the five keys below, and one only, for a client that authenticates with tls_client_auth.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_DNS)
+            ->info('The dNSName entry of the subject alternative name extension this client is recognised by (RFC 8705 §2.1.2), compared without regard to case (RFC 4343 §1).')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_URI)
+            ->info('The uniformResourceIdentifier entry this client is recognised by (RFC 8705 §2.1.2), compared as the text it is.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_IP)
+            ->info('The iPAddress entry this client is recognised by (RFC 8705 §2.1.2), in dotted decimal or colon-delimited hexadecimal; it is compared as the octets it stands for, not as the text.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode(CertificateIdentities::SAN_EMAIL)
+            ->info('The rfc822Name entry this client is recognised by (RFC 8705 §2.1.2), compared as it is written (RFC 5321 §2.4).')
+            ->defaultNull()
+            ->end()
+            ->end()
+            ->end()
+            ->end();
+    }
+
+    public function load(array $config, ServicesConfigurator $services, bool $debug): void
+    {
+        $services->get(ConfigurationClientRepository::class)->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))->arg(
+            '$definitions',
+            is_array($config['clients'] ?? null) ? $config['clients'] : [],
+        );
+    }
+}

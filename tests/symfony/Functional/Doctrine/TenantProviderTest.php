@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Bundle\Configuration\TenantSection;
 use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
-use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
 use Heidi\Core\Domain\Session\AuthenticationPredicate;
@@ -258,7 +258,7 @@ final class TenantProviderTest extends DatabaseTestCase
         string $issuer,
         string $slug,
         ?string $name,
-        array $authenticationClasses = HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
+        array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
     ): TenantFactory {
         return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses);
     }

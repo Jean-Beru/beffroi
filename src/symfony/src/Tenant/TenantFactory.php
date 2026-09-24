@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tenant;
 
-use Heidi\Bundle\HeidiBundle;
+use Heidi\Bundle\Configuration\TenantSection;
 use Heidi\Core\Domain\Session\AuthenticationContextClass;
 use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
 use Heidi\Core\Domain\Session\AuthenticationPredicate;
@@ -33,7 +33,7 @@ final readonly class TenantFactory
         private string $slug,
         private ?string $name,
         private ClockInterface $clock,
-        private array $authenticationClasses = HeidiBundle::DEFAULT_AUTHENTICATION_CLASSES,
+        private array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
     ) {
     }
 
