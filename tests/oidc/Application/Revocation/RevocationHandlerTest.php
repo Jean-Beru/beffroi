@@ -17,7 +17,7 @@ use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
+use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
@@ -409,7 +409,7 @@ final class RevocationHandlerTest extends TestCase
         return new RevocationHandler(
             new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher()),
             new Endpoints(),
-            new AccessTokenVerifier(
+            AccessTokenShapes::verifier(
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 $clients,
                 $accessTokens,

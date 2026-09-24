@@ -15,7 +15,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -55,7 +55,7 @@ final class StoredAccessTokenTest extends TestCase
         $token = Tokens::storedAccessToken('the-token', $this->client, $this->session, $issuedAt, $grant, ['openid', 'profile'], $claims);
 
         // Then
-        static::assertSame(OpaqueTokenValue::hash('the-token'), $token->tokenHash);
+        static::assertSame(DrawnSecret::digestOf('the-token'), $token->tokenHash);
         static::assertSame($grant, $token->grantId);
         static::assertSame($this->client, $token->client);
         static::assertSame($this->client->registration->clientId, $token->clientId);
@@ -93,7 +93,7 @@ final class StoredAccessTokenTest extends TestCase
 
         // When
         $token = StoredAccessToken::fromAuthorization(
-            OpaqueTokenValue::hash('the-token'),
+            DrawnSecret::digestOf('the-token'),
             $authorization,
             Fixtures::now(),
             Fixtures::now()->modify('+10 minutes'),
@@ -135,7 +135,7 @@ final class StoredAccessTokenTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $this->token(tokenHash: OpaqueTokenValue::draw());
+        $this->token(tokenHash: DrawnSecret::draw());
     }
 
     #[Test]
@@ -172,7 +172,7 @@ final class StoredAccessTokenTest extends TestCase
         ?DateTimeImmutable $expiresAt = null,
     ): StoredAccessToken {
         return new StoredAccessToken(
-            $tokenHash ?? OpaqueTokenValue::hash('the-token'),
+            $tokenHash ?? DrawnSecret::digestOf('the-token'),
             Uuid::v7(),
             $client ?? $this->client,
             $this->session,

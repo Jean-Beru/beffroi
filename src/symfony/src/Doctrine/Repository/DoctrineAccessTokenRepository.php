@@ -10,7 +10,7 @@ use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
@@ -37,8 +37,8 @@ final readonly class DoctrineAccessTokenRepository extends DoctrineRepository im
 
     public function issue(GrantedAuthorization $authorization, DateTimeImmutable $now, DateTimeImmutable $expiresAt): string
     {
-        $value = OpaqueTokenValue::draw();
-        $this->store(StoredAccessToken::fromAuthorization(OpaqueTokenValue::hash($value), $authorization, $now, $expiresAt));
+        $value = DrawnSecret::draw();
+        $this->store(StoredAccessToken::fromAuthorization(DrawnSecret::digestOf($value), $authorization, $now, $expiresAt));
 
         return $value;
     }
@@ -46,7 +46,7 @@ final readonly class DoctrineAccessTokenRepository extends DoctrineRepository im
     public function find(string $token): ?StoredAccessToken
     {
         $record = $this->repository()->findOneBy([
-            'tokenHash' => OpaqueTokenValue::hash($token),
+            'tokenHash' => DrawnSecret::digestOf($token),
         ]);
 
         return $record !== null && ClientResolver::isResolved($record) ? $record : null;

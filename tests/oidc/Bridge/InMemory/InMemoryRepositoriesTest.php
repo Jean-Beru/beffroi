@@ -26,7 +26,7 @@ use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
 use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -440,14 +440,14 @@ final class InMemoryRepositoriesTest extends TestCase
         // Then
         static::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $value);
         $record = $repository->find($value) ?? static::fail('The token was kept.');
-        static::assertSame(OpaqueTokenValue::hash($value), $record->tokenHash);
+        static::assertSame(DrawnSecret::digestOf($value), $record->tokenHash);
         static::assertSame($this->client, $record->client);
         static::assertSame($this->session, $record->session);
         static::assertTrue($authorization->grantId->equals($record->grantId));
         static::assertSame(['openid', 'email'], $record->scopes->values());
         static::assertEquals(Fixtures::now(), $record->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $record->expiresAt);
-        static::assertNull($repository->find(OpaqueTokenValue::hash($value)), 'the hash is not the value');
+        static::assertNull($repository->find(DrawnSecret::digestOf($value)), 'the hash is not the value');
     }
 
     #[Test]

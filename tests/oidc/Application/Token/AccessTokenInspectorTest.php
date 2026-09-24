@@ -15,7 +15,7 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
+use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
@@ -72,7 +72,7 @@ final class AccessTokenInspectorTest extends TestCase
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
         $this->inspector = new AccessTokenInspector(
-            new AccessTokenVerifier(
+            AccessTokenShapes::verifier(
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 $clients,
                 $this->tokens,
@@ -155,7 +155,7 @@ final class AccessTokenInspectorTest extends TestCase
     {
         // Given
         $inspector = new AccessTokenInspector(
-            new AccessTokenVerifier(
+            AccessTokenShapes::verifier(
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 new InMemoryClientRepository(),
                 $this->tokens,
@@ -234,7 +234,7 @@ final class AccessTokenInspectorTest extends TestCase
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
         $inspector = new AccessTokenInspector(
-            new AccessTokenVerifier(
+            AccessTokenShapes::verifier(
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 $clients,
                 $this->tokens,
