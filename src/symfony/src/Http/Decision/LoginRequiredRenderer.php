@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Http\Decision;
 
+use Heidi\Bundle\Controller\LoginController;
 use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class LoginRequiredRenderer implements DecisionRendererInterface
 {
-    public const string ROUTE = 'heidi_interaction_login';
+    public const string ROUTE = LoginController::ROUTE;
 
     public function __construct(
         private InteractionPage $page,

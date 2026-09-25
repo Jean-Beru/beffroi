@@ -29,6 +29,6 @@ final readonly class PasskeyLoginController
     #[Route('/login/passkey', name: self::ROUTE, methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
-        return $this->pages->redirectToPage('heidi_interaction_login', $request);
+        return $this->pages->redirectToPage(LoginController::ROUTE, $request);
     }
 }

@@ -7,7 +7,7 @@
     <entity name="Heidi\Oidc\Domain\Token\RefreshToken" table="heidi_refresh_token">
         <indexes>
             <index name="heidi_refresh_token_family" columns="family_id"/>
-            <index name="heidi_refresh_token_code" columns="family_authorization_code_hash"/>
+            <index name="heidi_refresh_token_granting_record" columns="family_granting_record_hash"/>
         </indexes>
         <id name="tokenHash" type="string" column="token_hash" length="64">
             <options>

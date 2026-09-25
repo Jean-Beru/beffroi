@@ -6,7 +6,7 @@
     <!-- The lineage of refresh tokens descending from one code (architecture §4.6), carried by each of its tokens. -->
     <embeddable name="Heidi\Oidc\Domain\Token\RefreshTokenFamily">
         <field name="id" type="uuid" column="id"/>
-        <field name="authorizationCodeHash" type="string" column="authorization_code_hash" length="64">
+        <field name="grantingRecordHash" type="string" column="granting_record_hash" length="64">
             <options>
                 <option name="fixed">true</option>
             </options>

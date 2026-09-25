@@ -29,6 +29,11 @@ final readonly class Grants
         return new GrantTypeName('client_credentials');
     }
 
+    public static function deviceCode(): GrantTypeName
+    {
+        return new GrantTypeName('urn:ietf:params:oauth:grant-type:device_code');
+    }
+
     /**
      * A grant nobody wrote a line of production code for, named by an absolute URI as an extension
      * grant is (RFC 6749 §4.5, RFC 6755).
@@ -60,6 +65,19 @@ final readonly class Grants
             new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
             new FakeRefreshTokenSpendingGrant(self::refreshToken()),
             new FakeClientActingGrant(self::clientCredentials()),
+        ]);
+    }
+
+    /**
+     * The same wiring with a grant whose user is asked on another device beside them (RFC 8628 §3.3), for
+     * the endpoint where such a flow starts.
+     */
+    public static function servedWithDeviceCode(): ServedGrants
+    {
+        return new ServedGrants([
+            new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
+            new FakeRefreshTokenSpendingGrant(self::refreshToken()),
+            new FakeUserOnAnotherDeviceGrant(self::deviceCode()),
         ]);
     }
 }

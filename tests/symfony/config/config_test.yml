@@ -64,7 +64,7 @@ security:
             id: Heidi\Bundle\Security\IdentityUserProvider
     firewalls:
         heidi_protocol:
-            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par)$
+            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization)$
             security: false
         heidi_interaction:
             lazy: true
@@ -295,6 +295,24 @@ heidi:
             allowed_scopes: ['invoices.read', 'invoices.write']
             access_token_format: opaque
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # RFC 8628 §3.1 (issue #219): a client with no browser. It registers no redirect URI, there being
+        # nothing of anybody's to send anywhere, and the refresh token grant beside the device one, a
+        # television not being asked to pair again every ten minutes. "appliance-public-app" is the same
+        # client without a secret, which is what a television actually is.
+        appliance-app:
+            name: 'Appliance with no keyboard'
+            secret: 'appliance-secret-of-at-least-32-character'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:device_code', 'refresh_token']
+            allowed_scopes: ['openid', 'profile', 'offline_access']
+            requires_consent: false
+            resources: ['https://cal.example.com/']
+        appliance-public-app:
+            name: 'Public appliance with no keyboard'
+            token_endpoint_auth_method: none
+            grant_types: ['urn:ietf:params:oauth:grant-type:device_code']
+            allowed_scopes: ['openid', 'profile']
+            requires_consent: false
         # a shape no class of the module knows, wired below: what a deployment adds is two classes and
         # two tags, and the name it registers here is read from that wiring (issue #239)
         invented-app:
@@ -458,6 +476,9 @@ services:
         public: true
     test.heidi.pushed_authorization_requests:
         alias: Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface
+        public: true
+    test.heidi.device_authorization_requests:
+        alias: Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface
         public: true
     test.heidi.logged_in_clients:
         alias: Heidi\Oidc\Port\LoggedInClientsInterface

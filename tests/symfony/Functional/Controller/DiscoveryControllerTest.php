@@ -104,6 +104,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
                 'introspection_endpoint' => 'https://mtls.op.test/introspect',
                 'revocation_endpoint' => 'https://mtls.op.test/revoke',
                 'pushed_authorization_request_endpoint' => 'https://mtls.op.test/par',
+                'device_authorization_endpoint' => 'https://mtls.op.test/device_authorization',
             ],
             $metadata['mtls_endpoint_aliases'],
         );

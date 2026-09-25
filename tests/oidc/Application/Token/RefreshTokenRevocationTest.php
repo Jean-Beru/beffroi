@@ -137,7 +137,7 @@ final class RefreshTokenRevocationTest extends TestCase
     public function itRevokesTheTokensDescendingFromACode(): void
     {
         // When
-        $revoked = $this->revocation->revokeByAuthorizationCode($this->family->authorizationCodeHash, $this->clock->now());
+        $revoked = $this->revocation->revokeByAuthorizationCode($this->family->grantingRecordHash, $this->clock->now());
 
         // Then
         static::assertSame([$this->first, $this->second], $revoked);

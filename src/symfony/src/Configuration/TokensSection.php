@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Configuration;
 
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Heidi\Oidc\Application\Token\DeviceCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
@@ -29,6 +31,18 @@ final readonly class TokensSection extends ConfigurationSection
      * made a bound; a reference the provider holds is a request nobody has consented to yet.
      */
     public const int MAX_REQUEST_URI_TTL = 600;
+
+    /**
+     * RFC 8628 §3.2: a code a user reads off a screen and types elsewhere needs minutes, and thirty of them
+     * are as long as a code of thirty-four bits may be guessed at (§5.1), whatever the rate.
+     */
+    public const int MAX_DEVICE_CODE_TTL = 1800;
+
+    /**
+     * RFC 8628 §3.5: an interval a client is asked to respect is one it can respect; a minute between two
+     * polls would make the flow slower than the code lives.
+     */
+    public const int MAX_DEVICE_CODE_INTERVAL = 30;
 
     public function name(): string
     {
@@ -62,6 +76,18 @@ final readonly class TokensSection extends ConfigurationSection
             ->defaultValue(60)
             ->min(1)
             ->max(self::MAX_REQUEST_URI_TTL)
+            ->end()
+            ->integerNode('device_code_ttl')
+            ->info('Seconds a device code and the user code beside it live (RFC 8628 §3.2); ten minutes is what a user needs to read a code off one screen and type it on another.')
+            ->defaultValue(600)
+            ->min(1)
+            ->max(self::MAX_DEVICE_CODE_TTL)
+            ->end()
+            ->integerNode('device_code_interval')
+            ->info('Seconds a client waits between two polls of the token endpoint (RFC 8628 §3.2); five is the default of the specification, and a client that polls faster is told to add five.')
+            ->defaultValue(5)
+            ->min(1)
+            ->max(self::MAX_DEVICE_CODE_INTERVAL)
             ->end()
             ->integerNode('refresh_token_ttl')
             ->info('Sliding lifetime of a refresh token, renewed at each rotation.')
@@ -97,5 +123,8 @@ final readonly class TokensSection extends ConfigurationSection
         $services->get(JwtIdTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'id_token_ttl'));
         $services->get(TokenIssuer::class)->arg('$refreshTokenLifetime', self::seconds($tokens, 'refresh_token_ttl'));
         $services->get(AuthorizationCodeGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
+        $services->get(DeviceCodeGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
+        $services->get(DeviceAuthorizationHandler::class)->arg('$lifetime', self::seconds($tokens, 'device_code_ttl'));
+        $services->get(DeviceAuthorizationHandler::class)->arg('$interval', self::integer($tokens, 'device_code_interval'));
     }
 }

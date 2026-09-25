@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Heidi\Oidc\Application\Secret\SecretDrawer;
+use Heidi\Oidc\Application\Secret\UserCodeDrawer;
 use Heidi\Core\Port\RandomnessInterface;
 use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Bundle\Cache\SeenOnce;
@@ -19,6 +20,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
@@ -36,6 +38,8 @@ use Heidi\Bundle\Http\Decision\GrantedRenderer;
 use Heidi\Bundle\Http\Decision\InteractionPage;
 use Heidi\Bundle\Http\Decision\LoginRequiredRenderer;
 use Heidi\Bundle\Http\FormToken;
+use Heidi\Bundle\Http\DeviceApprovalPage;
+use Heidi\Bundle\Http\LoginTarget;
 use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\AuthorizationResponderInterface;
@@ -197,6 +201,7 @@ use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDeviceAuthorization;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIdToken;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
@@ -231,12 +236,17 @@ use Heidi\Oidc\Application\Key\PushedRequestJweKind;
 use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
+use Heidi\Oidc\Application\Consent\ConsentGranting;
+use Heidi\Oidc\Application\Device\DeviceApproval;
+use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\ClientCredentialsGrant;
+use Heidi\Oidc\Application\Token\DeviceCodeGrant;
+use Heidi\Oidc\Application\Token\RefreshTokenDue;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\Confirmations;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
@@ -291,6 +301,7 @@ use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProofKeyVerifierInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\RequestObjectFetcherInterface;
@@ -337,6 +348,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(InteractionPages::class);
     // what every page of the account asks first: the session of this browser, and the form token when it posts
     $services->set(FormToken::class);
+    // where a page of the provider that is not an authorization request sends a browser to sign in, and
+    // where the login of the firewall sends it back (RFC 8628 §3.3)
+    $services->set(LoginTarget::class);
+    $services->set(DeviceApprovalPage::class);
     $services->set(AccountAccess::class);
     $services->set(InteractionLocale::class)->args([
         '$enabledLocales' => '%kernel.enabled_locales%',
@@ -458,6 +473,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
     $services->set(DoctrinePushedAuthorizationRecordRepository::class);
     $services->alias(PushedAuthorizationRecordRepositoryInterface::class, DoctrinePushedAuthorizationRecordRepository::class);
+    $services->set(DoctrineDeviceAuthorizationRecordRepository::class);
+    $services->alias(DeviceAuthorizationRecordRepositoryInterface::class, DoctrineDeviceAuthorizationRecordRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
     $services->set(DoctrineAccessTokenRepository::class);
@@ -601,6 +618,8 @@ return static function (ContainerConfigurator $container): void {
 
     // The module: every value this provider hands out and recognises again is drawn here (issue #245)
     $services->set(SecretDrawer::class);
+    // RFC 8628 §3.3: a code read out loud and typed on a phone is not one of those, and is drawn beside them
+    $services->set(UserCodeDrawer::class);
 
     // The module: clients
     $services->set(ConfigurationClientRepository::class);
@@ -701,12 +720,16 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RequestObjectFetcher::class);
     $services->alias(RequestObjectFetcherInterface::class, RequestObjectFetcher::class);
     $services->set(PushedAuthorizationHandler::class);
+    // RFC 8628 §3.1, §3.3: where a client with no browser starts, and what the page its user goes to asks
+    $services->set(DeviceAuthorizationHandler::class);
+    $services->set(DeviceApproval::class);
     // What a client may still be encrypting to a key of the tenant, which is what holds an encryption key
     // back from retiring: each one reads its lifetime where that lifetime is set (architecture §3.3)
     $services->set(RequestObjectJweKind::class)->tag('heidi.key_bound_artifact');
     $services->set(PushedRequestJweKind::class)->tag('heidi.key_bound_artifact');
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);
+    $services->set(ConsentGranting::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
     $services->set(ResponseDocumentIssuer::class);
 
@@ -726,6 +749,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ResponseDocumentJwsKind::class)->tag('heidi.key_bound_artifact');
     $services->set(TokenIssuer::class);
     $services->set(RefreshTokenRevocation::class);
+    // RFC 6749 §4.1.4: whether a response carries a refresh token, asked once for every grant that may
+    $services->set(RefreshTokenDue::class);
     // one class per grant, tagged, and what is tagged is what the token endpoint serves, what a client
     // may register and what the discovery document announces, never an enumeration kept beside them
     // (issue #173). A grant names itself and declares what it makes of a refresh token by the interfaces
@@ -733,6 +758,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AuthorizationCodeGrant::class)->tag('heidi.oidc.grant');
     $services->set(RefreshTokenGrant::class)->tag('heidi.oidc.grant');
     $services->set(ClientCredentialsGrant::class)->tag('heidi.oidc.grant');
+    $services->set(DeviceCodeGrant::class)->tag('heidi.oidc.grant');
     $services->set(ServedGrants::class)->args([tagged_iterator('heidi.oidc.grant')]);
     $services->alias(ServedGrantsInterface::class, ServedGrants::class);
     $services->set(TokenHandler::class);
@@ -772,6 +798,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AnnouncedPkce::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedRevocation::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedPushedAuthorization::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedDeviceAuthorization::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedIntrospection::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedIssuerParameter::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedLogout::class)->tag('heidi.oidc.metadata');

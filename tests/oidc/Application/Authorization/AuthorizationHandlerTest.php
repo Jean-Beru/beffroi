@@ -31,6 +31,7 @@ use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Core\Tests\Fixture\Totps;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Consent\ConsentGranting;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
@@ -139,6 +140,7 @@ final class AuthorizationHandlerTest extends TestCase
         $this->handler = new AuthorizationHandler(
             $this->interactions,
             $this->consents,
+            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
             $this->codes,
             $this->pushedRequests,
             new IdTokenHintVerifier($jws),
@@ -780,15 +782,17 @@ final class AuthorizationHandlerTest extends TestCase
         $ofTheInteraction = str_repeat("\x00", DrawnSecret::LENGTH);
         $ofTheCode = str_repeat("\x04", DrawnSecret::LENGTH);
         $consentId = Uuid::fromString('0199a0d4-0000-7000-8000-000000000042');
+        $uuids = new FixedUuidGenerator([$consentId]);
         $handler = new AuthorizationHandler(
             $this->interactions,
             $this->consents,
+            new ConsentGranting($this->consents, $uuids, $this->events),
             $this->codes,
             $this->pushedRequests,
             new IdTokenHintVerifier(new FakeJwsVerifier()),
             Logins::passwordAndPasskey(),
             $this->credentials,
-            new FixedUuidGenerator([$consentId]),
+            $uuids,
             new SecretDrawer(new FixedRandomness([$ofTheInteraction, $ofTheCode])),
             $this->clock,
             $this->events,
@@ -1757,6 +1761,7 @@ final class AuthorizationHandlerTest extends TestCase
         $handler = new AuthorizationHandler(
             $this->interactions,
             $this->consents,
+            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
             $this->codes,
             $this->pushedRequests,
             new IdTokenHintVerifier(new FakeJwsVerifier()),
@@ -1787,6 +1792,7 @@ final class AuthorizationHandlerTest extends TestCase
         $handler = new AuthorizationHandler(
             $this->interactions,
             $this->consents,
+            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
             $this->codes,
             $this->pushedRequests,
             new IdTokenHintVerifier(new FakeJwsVerifier()),
@@ -1855,6 +1861,7 @@ final class AuthorizationHandlerTest extends TestCase
         return new AuthorizationHandler(
             $this->interactions,
             $this->consents,
+            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
             $this->codes,
             $this->pushedRequests,
             new IdTokenHintVerifier(new FakeJwsVerifier()),

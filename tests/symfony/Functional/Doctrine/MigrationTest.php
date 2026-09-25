@@ -27,10 +27,13 @@ use Heidi\Bundle\Migrations\Version20260923170000;
 use Heidi\Bundle\Migrations\Version20260923190000;
 use Heidi\Bundle\Migrations\Version20260925120000;
 use Heidi\Bundle\Migrations\Version20260925180000;
+use Heidi\Bundle\Migrations\Version20260926090000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
+use function preg_quote;
+use function preg_replace;
 use Psr\Log\NullLogger;
 use function sort;
 use function str_contains;
@@ -64,6 +67,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20260923190000::class,
         Version20260925120000::class,
         Version20260925180000::class,
+        Version20260926090000::class,
     ];
 
     #[Test]
@@ -96,7 +100,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheSixteenTablesOfTheBundle(): void
+    public function theMigrationsCreateTheSeventeenTablesOfTheBundle(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -108,13 +112,36 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(16, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(17, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**
      * The second migration adds the one table of the opaque access tokens and nothing else, so that a
      * deployment of spike 1 upgrades by one table.
      */
+    /**
+     * The last migration adds the one table of the device authorization requests, and renames what a
+     * refresh token family descends from, there being two kinds of record it can descend from now
+     * (RFC 8628 §3.4).
+     */
+    #[Test]
+    public function theLastMigrationAddsTheDeviceTableAndRenamesTheFamilyOrigin(): void
+    {
+        // Given
+        $migration = new Version20260926090000(DriverManager::getConnection([
+            'driver' => 'pdo_pgsql',
+            'serverVersion' => '16',
+        ]), new NullLogger());
+
+        // When
+        $migration->up(new Schema());
+
+        // Then
+        $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
+        static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertContains('ALTER TABLE heidi_refresh_token RENAME COLUMN family_authorization_code_hash TO family_granting_record_hash', $statements);
+    }
+
     #[Test]
     public function theSecondMigrationAddsTheAccessTokenTableAlone(): void
     {
@@ -318,10 +345,38 @@ final class MigrationTest extends DatabaseTestCase
 
                     continue;
                 }
+                // a column a later migration renames is the column the mappings describe, wherever an
+                // earlier statement about that table named it
+                if (preg_match('/^ALTER TABLE (\S+) RENAME COLUMN (\S+) TO (\S+)$/', $statement, $matches) === 1) {
+                    $statements = array_map(
+                        static fn (string $earlier): string => str_contains($earlier, $matches[1])
+                            ? self::renamed($earlier, $matches[2], $matches[3])
+                            : $earlier,
+                        $statements,
+                    );
+
+                    continue;
+                }
+                if (preg_match('/^ALTER INDEX (\S+) RENAME TO (\S+)$/', $statement, $matches) === 1) {
+                    $statements = array_map(
+                        static fn (string $earlier): string => self::renamed($earlier, $matches[1], $matches[2]),
+                        $statements,
+                    );
+
+                    continue;
+                }
                 $statements[] = $statement;
             }
         }
 
         return $statements;
+    }
+
+    /**
+     * One identifier for another, on its own and never inside a longer one.
+     */
+    private static function renamed(string $statement, string $from, string $to): string
+    {
+        return (string) preg_replace('/\b' . preg_quote($from, '/') . '\b/', $to, $statement);
     }
 }

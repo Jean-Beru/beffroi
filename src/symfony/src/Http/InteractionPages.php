@@ -84,13 +84,24 @@ final readonly class InteractionPages
     {
         $interaction = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
 
-        return $this->redirect($this->router->generate(
+        return $this->redirectToRoute(
             $route,
             $interaction === ''
                 ? []
                 : [
                     AuthorizationResponder::INTERACTION_PARAMETER => $interaction,
                 ],
-        ));
+        );
+    }
+
+    /**
+     * A redirection to a page of this provider with the parameters our own code wrote: what a page waiting
+     * for a login is resumed by (LoginTarget), and what the redirection above is made of.
+     *
+     * @param array<string, string> $parameters
+     */
+    public function redirectToRoute(string $route, array $parameters = []): RedirectResponse
+    {
+        return $this->redirect($this->router->generate($route, $parameters));
     }
 }

@@ -10,6 +10,7 @@ use Heidi\Bundle\Http\AuthorizationResponderInterface;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\LoginTarget;
 use Heidi\Bundle\Http\PendingLoginStore;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Security\CodeRefusal;
@@ -41,6 +42,7 @@ final readonly class LoginCodeController
         private InteractionPages $pages,
         private AuthenticationUtils $authentication,
         private InteractionLocale $locale,
+        private LoginTarget $loginTargets,
     ) {
     }
 
@@ -49,18 +51,20 @@ final readonly class LoginCodeController
     {
         $tenant = $this->tenants->provide();
         $interaction = $this->browser->pending($request, $tenant, $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER));
-        if ($interaction === null) {
+        if ($interaction === null && ! $this->loginTargets->isPending($request->getSession())) {
             return $this->responder->unknownInteraction();
         }
-        $this->locale->resume($request, $interaction);
+        if ($interaction !== null) {
+            $this->locale->resume($request, $interaction);
+        }
         $login = $this->pendingLogins->pending($request->getSession(), $this->contexts->fromRequest($request)->receivedAt);
         if ($login === null) {
-            return $this->pages->redirectToPage('heidi_interaction_login', $request);
+            return $this->pages->redirectToPage(LoginController::ROUTE, $request);
         }
 
         return $this->pages->render('code.html.twig', [
             'interaction' => $interaction,
-            'client' => $interaction->request->client,
+            'client' => $interaction?->request->client,
             'refusal' => CodeRefusal::shown($this->authentication->getLastAuthenticationError()),
         ]);
     }

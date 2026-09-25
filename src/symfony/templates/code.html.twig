@@ -10,11 +10,11 @@
 {% block title %}{{ 'code.title'|trans }}{% endblock %}
 
 {% block content %}
-    <p>{{ 'code.prompt'|trans({client: client.registration.name}) }}</p>
+    <p>{{ client is null ? 'code.prompt_alone'|trans : 'code.prompt'|trans({client: client.registration.name}) }}</p>
     {% if refusal is not null %}
         <p data-error="{{ refusal.value }}">{{ ('code.failed.' ~ refusal.value)|trans }}</p>
     {% endif %}
-    <form method="post" action="{{ path('heidi_interaction_login_code', {interaction: interaction.id}) }}" data-login="code">
+    <form method="post" action="{{ path('heidi_interaction_login_code', interaction is null ? {} : {interaction: interaction.id}) }}" data-login="code">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
         <label for="code">{{ 'code.code'|trans }}</label>
         <input type="text" id="code" name="_code" inputmode="numeric" autocomplete="one-time-code" required autofocus>
