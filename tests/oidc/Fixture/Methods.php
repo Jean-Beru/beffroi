@@ -12,6 +12,7 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
+use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
 use Heidi\Oidc\Application\Client\ClientKeySetProvider;
 use Heidi\Oidc\Application\Client\Method\ClientSecretBasic;
 use Heidi\Oidc\Application\Client\Method\ClientSecretJwt;
@@ -27,6 +28,7 @@ use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Signature\Algorithm\HS256;
@@ -62,7 +64,6 @@ final class Methods
     public static function privateKeyJwt(?ClientKeySetProvider $keys = null, ?ClientAssertionValidator $claims = null): PrivateKeyJwt
     {
         return new PrivateKeyJwt(
-            new JwtLibraryCompactJwtReader(),
             new JwtLibraryJwtKeyVerifier(Algorithms::all()->manager()),
             $keys ?? self::keySetProvider(),
             $claims ?? self::assertionValidator(),
@@ -73,7 +74,6 @@ final class Methods
     public static function clientSecretJwt(?ClientAssertionValidator $claims = null): ClientSecretJwt
     {
         return new ClientSecretJwt(
-            new JwtLibraryCompactJwtReader(),
             new JwtLibraryClientAssertionSecretVerifier(new AlgorithmManager([new HS256()])),
             $claims ?? self::assertionValidator(),
         );
@@ -100,6 +100,15 @@ final class Methods
             $clock ?? new MockClock('2026-09-15T12:00:00+00:00'),
             $cooldown ?? new DateInterval('PT300S'),
         );
+    }
+
+    /**
+     * What reads a request at an endpoint that authenticates a client, with the reader the provider is
+     * wired with: the assertion of RFC 7523 §2.2 is read here, once, whatever reads it afterwards.
+     */
+    public static function requestParser(?CompactJwtReaderInterface $reader = null): ClientAuthenticationRequestParser
+    {
+        return new ClientAuthenticationRequestParser($reader ?? new JwtLibraryCompactJwtReader());
     }
 
     public static function assertionValidator(?ClientAssertionReplayGuardInterface $replays = null): ClientAssertionValidator

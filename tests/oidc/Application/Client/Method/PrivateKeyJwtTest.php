@@ -22,6 +22,7 @@ use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use Heidi\Oidc\Exception\ClientKeysUnavailableException;
 use Heidi\Oidc\Exception\InvalidClientException;
+use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -234,6 +235,70 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
+     * RFC 7523 §3: the "sub" of an assertion names the client. An assertion that names none, in a body
+     * that names none either, leaves nothing to look up, and the refusal names no method because none was
+     * chosen.
+     */
+    #[Test]
+    public function itRefusesAnAssertionThatNamesNoClient(): void
+    {
+        // Given
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
+        unset($claims['sub']);
+
+        // When
+        $exception = $this->failToAuthenticate(ClientAssertions::signedWithKey($claims));
+
+        // Then
+        static::assertInstanceOf(InvalidClientException::class, $exception);
+        $refusal = $this->lastRefusal();
+        static::assertSame(ClientAuthenticationFailureReason::InvalidAssertion, $refusal->reason);
+        static::assertNull($refusal->clientId);
+        static::assertNull($refusal->method);
+    }
+
+    /**
+     * RFC 7523 §3, OIDC Core §9: a client sending both names itself twice, and the "client_id" of the body
+     * is what names the client to look up when the assertion carries no "sub". What the assertion then has
+     * to say is the validator's to judge, which it does naming that client.
+     */
+    #[Test]
+    public function theClientIdOfTheBodyNamesTheClientWhenTheAssertionDoesNot(): void
+    {
+        // Given
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
+        unset($claims['sub']);
+
+        // When
+        $this->authenticateFailing(null, [
+            'client_id' => $this->client->registration->clientId,
+            ...ClientAssertions::parameters(ClientAssertions::signedWithKey($claims)),
+        ]);
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * The "sub" of the assertion is what names the client; the "client_id" of the body is the client
+     * repeating itself. A body naming another client is a request that names two, and it is refused
+     * naming the one the assertion claims (RFC 6749 §5.2 "invalid_request").
+     */
+    #[Test]
+    public function theSubOfTheAssertionNamesTheClientWhenTheBodyNamesAnother(): void
+    {
+        // When
+        $exception = $this->authenticateFailing(null, [
+            'client_id' => 'basic-client',
+            ...ClientAssertions::parameters($this->assertion()),
+        ]);
+
+        // Then
+        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        $this->assertRefused(ClientAuthenticationFailureReason::MismatchedClientId);
+    }
+
+    /**
      * The signature is verified against the keys of the client and against nothing else.
      */
     #[Test]
@@ -344,6 +409,7 @@ final class PrivateKeyJwtTest extends TestCase
         return new ClientAuthenticator(
             $this->clients,
             Methods::all($this->hasher),
+            Methods::requestParser(),
             new MockClock('2026-09-15T10:00:00+00:00'),
             $this->events,
             new FakeClientLoadBudget(),
@@ -357,6 +423,7 @@ final class PrivateKeyJwtTest extends TestCase
         return new ClientAuthenticator(
             $this->clients,
             Methods::all($this->hasher, $keys),
+            Methods::requestParser(),
             new MockClock('2026-09-15T10:00:00+00:00'),
             $this->events,
             new FakeClientLoadBudget(),
@@ -395,11 +462,17 @@ final class PrivateKeyJwtTest extends TestCase
 
     private function assertRefused(ClientAuthenticationFailureReason $reason, ?string $clientId = null, string $method = 'private_key_jwt'): void
     {
-        $events = $this->events->of(ClientAuthenticationFailed::class);
-        $last = $events[count($events) - 1];
+        $last = $this->lastRefusal();
         static::assertSame($reason, $last->reason);
         static::assertSame($clientId ?? $this->client->registration->clientId, $last->clientId);
         static::assertSame($method, $last->method);
+    }
+
+    private function lastRefusal(): ClientAuthenticationFailed
+    {
+        $events = $this->events->of(ClientAuthenticationFailed::class);
+
+        return $events[count($events) - 1];
     }
 
     /**

@@ -341,7 +341,14 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     private function handler(?UserCodeDrawer $userCodes = null, ?DateInterval $lifetime = null, ?int $interval = null): DeviceAuthorizationHandler
     {
         return new DeviceAuthorizationHandler(
-            new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
+            new ClientAuthenticator(
+                $this->clients,
+                Methods::all($this->hasher),
+                Methods::requestParser(),
+                $this->clock,
+                new RecordingEventDispatcher(),
+                new FakeClientLoadBudget(),
+            ),
             new Endpoints(),
             Grants::servedWithDeviceCode(),
             $this->records,

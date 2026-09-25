@@ -221,6 +221,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
         return new ClientAuthenticator(
             $this->clients,
             Methods::all(keys: Methods::keySetProvider($fetcher, $clock)),
+            Methods::requestParser(),
             $clock,
             $this->events,
             new FakeClientLoadBudget(),

@@ -511,7 +511,14 @@ final class TokenHandlerTest extends TestCase
 
     private function authenticator(): ClientAuthenticator
     {
-        return new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events, new FakeClientLoadBudget());
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser(),
+            $this->clock,
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
     /**

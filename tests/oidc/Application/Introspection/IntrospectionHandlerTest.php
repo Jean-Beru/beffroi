@@ -101,7 +101,14 @@ final class IntrospectionHandlerTest extends TestCase
         $users = new InMemoryUserRepository();
         $users->save($user);
         $this->handler = new IntrospectionHandler(
-            new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
+            new ClientAuthenticator(
+                $clients,
+                Methods::all($hasher),
+                Methods::requestParser(),
+                $this->clock,
+                new RecordingEventDispatcher(),
+                new FakeClientLoadBudget(),
+            ),
             new Endpoints(),
             new AccessTokenInspector(
                 AccessTokenShapes::verifier(

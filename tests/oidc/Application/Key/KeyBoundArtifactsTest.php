@@ -373,7 +373,14 @@ final class KeyBoundArtifactsTest extends TestCase
         $clock = new MockClock(Fixtures::now());
 
         return new PushedAuthorizationHandler(
-            new ClientAuthenticator($this->clients, Methods::all(new FakePasswordHasher()), $clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
+            new ClientAuthenticator(
+                $this->clients,
+                Methods::all(new FakePasswordHasher()),
+                Methods::requestParser(),
+                $clock,
+                new RecordingEventDispatcher(),
+                new FakeClientLoadBudget(),
+            ),
             Proofs::verifier(),
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
