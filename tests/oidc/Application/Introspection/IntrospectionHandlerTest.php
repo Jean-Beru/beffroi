@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Application\Introspection;
 use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use function base64_encode;
 use DateTimeImmutable;
@@ -100,7 +101,7 @@ final class IntrospectionHandlerTest extends TestCase
         $users = new InMemoryUserRepository();
         $users->save($user);
         $this->handler = new IntrospectionHandler(
-            new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher()),
+            new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
             new Endpoints(),
             new AccessTokenInspector(
                 AccessTokenShapes::verifier(

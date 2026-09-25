@@ -161,6 +161,10 @@
         <source>error.invalid_request</source>
         <target>The application sent a request this provider cannot serve. Start again from the application.</target>
       </trans-unit>
+      <trans-unit id="7afc04115d" resname="error.too_many_requests">
+        <source>error.too_many_requests</source>
+        <target>This provider has taken too many requests and did not serve this one. Wait a moment and start again from the application.</target>
+      </trans-unit>
       <trans-unit id="276b888c75" resname="login.passkey">
         <source>login.passkey</source>
         <target>Use a passkey</target>

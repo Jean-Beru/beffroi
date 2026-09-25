@@ -37,6 +37,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\FakeLogoutTokenDelivery;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -372,7 +373,7 @@ final class KeyBoundArtifactsTest extends TestCase
         $clock = new MockClock(Fixtures::now());
 
         return new PushedAuthorizationHandler(
-            new ClientAuthenticator($this->clients, Methods::all(new FakePasswordHasher()), $clock, new RecordingEventDispatcher()),
+            new ClientAuthenticator($this->clients, Methods::all(new FakePasswordHasher()), $clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
             Proofs::verifier(),
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),

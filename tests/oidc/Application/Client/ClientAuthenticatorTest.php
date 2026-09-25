@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Application\Client;
 use function base64_encode;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Exception\LoadBudgetSpentException;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -20,6 +21,7 @@ use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -49,6 +51,8 @@ final class ClientAuthenticatorTest extends TestCase
 
     private MockClock $clock;
 
+    private FakeClientLoadBudget $budget;
+
     private ClientAuthenticator $authenticator;
 
     private Client $basicClient;
@@ -77,7 +81,8 @@ final class ClientAuthenticatorTest extends TestCase
         ));
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->authenticator = new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events);
+        $this->budget = new FakeClientLoadBudget();
+        $this->authenticator = new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events, $this->budget);
     }
 
     /**
@@ -123,6 +128,69 @@ final class ClientAuthenticatorTest extends TestCase
 
         // Then
         static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Decision 0014: the load budget of a client is counted where its identifier is proven, by tenant
+     * and by client.
+     */
+    #[Test]
+    public function anAuthenticatedClientTakesOneOfItsLoadBudget(): void
+    {
+        // When
+        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [], $this->context);
+
+        // Then
+        static::assertSame([$this->tenant->slug . '|basic-client'], $this->budget->consumed);
+    }
+
+    /**
+     * Decision 0014: a budget counted on an identifier that was only claimed is emptied by naming
+     * somebody else's client, so a client that proves nothing (RFC 6749 §2.1) is counted nowhere here.
+     */
+    #[Test]
+    public function aPublicClientTakesNothingOfTheLoadBudgetOfAClient(): void
+    {
+        // When
+        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, null, ['client_id' => 'public-client'], $this->context);
+
+        // Then
+        static::assertSame([], $this->budget->consumed);
+    }
+
+    /**
+     * Decision 0014: what a refusal costs is bounded by the budget of the origin of the request, the
+     * client not being known to be the client until the secret verifies.
+     */
+    #[Test]
+    public function aRefusedClientTakesNothingOfTheLoadBudgetOfAClient(): void
+    {
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', 'not-the-secret'), [], $this->context);
+        } catch (InvalidClientException) {
+        }
+
+        // Then
+        static::assertSame([], $this->budget->consumed);
+    }
+
+    /**
+     * Decision 0014: the refusal is not an error of the protocol and leaves the authenticator as it was
+     * thrown, for the one thing that answers it to turn it into the 429 of RFC 6585 §4.
+     */
+    #[Test]
+    public function aClientWhoseLoadBudgetIsSpentIsRefused(): void
+    {
+        // Given
+        $authenticator = new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events, new FakeClientLoadBudget(0));
+
+        // Then
+        $this->expectException(LoadBudgetSpentException::class);
+        $this->expectExceptionMessageIs('The "client" budget is spent; the request is served again in 42 seconds.');
+
+        // When
+        $authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [], $this->context);
     }
 
     /**

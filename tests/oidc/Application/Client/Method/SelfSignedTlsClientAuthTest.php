@@ -24,6 +24,7 @@ use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -217,6 +218,12 @@ final class SelfSignedTlsClientAuthTest extends TestCase
     {
         $clock = new MockClock('2026-09-22T12:00:00+00:00');
 
-        return new ClientAuthenticator($this->clients, Methods::all(keys: Methods::keySetProvider($fetcher, $clock)), $clock, $this->events);
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all(keys: Methods::keySetProvider($fetcher, $clock)),
+            $clock,
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 }

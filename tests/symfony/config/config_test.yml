@@ -123,6 +123,11 @@ doctrine:
 parameters:
     # The file of the database above, which DatabaseTestCase copies from its template before every test.
     heidi_test.database: '%kernel.cache_dir%/heidi.sqlite'
+    # The numbers of the two load budgets, which a deployment sets and a test of a refusal sets to one:
+    # they reach the budgets at runtime, so a test names them before it boots its kernel, the way
+    # PlaneTest names HEIDI_PLANE. Left alone, they are far above what the suite sends.
+    env(HEIDI_TEST_ORIGIN_BUDGET): 100000
+    env(HEIDI_TEST_CLIENT_BUDGET): 100000
     env(HEIDI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(HEIDI_TEST_KMS_KEY_ID): signing
 
@@ -139,6 +144,11 @@ key_management:
 heidi:
     tenant:
         issuer: 'https://op.test'
+    load:
+        origin:
+            limit: '%env(int:HEIDI_TEST_ORIGIN_BUDGET)%'
+        client:
+            limit: '%env(int:HEIDI_TEST_CLIENT_BUDGET)%'
     keys:
         kms: test
         key_id: '%env(HEIDI_TEST_KMS_KEY_ID)%'
@@ -337,6 +347,14 @@ services:
     # The 404s the plane tests expect are not worth a line on stderr.
     logger:
         class: Psr\Log\NullLogger
+
+    # The two budgets that bound a load (decision 0014) count in the memory of the process here, and not
+    # in a cache pool: the reboot the browser does between two requests then starts from an empty
+    # window, where this suite sends from one address, in one minute, what no deployment does and what a
+    # count kept in a file would make it refuse itself for. A test of a refusal keeps one kernel
+    # (disableReboot) and names its own numbers through the environment.
+    heidi.load.storage:
+        class: Symfony\Component\RateLimiter\Storage\InMemoryStorage
 
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
     heidi_test.kms:

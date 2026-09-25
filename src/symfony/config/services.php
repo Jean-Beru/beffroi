@@ -65,6 +65,11 @@ use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
 use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\KmsUnavailableListener;
+use Heidi\Bundle\Load\LoadBudget;
+use Heidi\Bundle\Load\LoadRefusal;
+use Heidi\Bundle\Load\LoadRefusalListener;
+use Heidi\Bundle\Load\OriginLoadListener;
+use Heidi\Bundle\Load\RateLimitedClientLoad;
 use Heidi\Bundle\MessageHandler\QueueLogoutTokenHandler;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
@@ -281,6 +286,7 @@ use Heidi\Oidc\Port\ClientJwksCacheInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Heidi\Oidc\Domain\Token\CertificateConfirmationKind;
 use Heidi\Oidc\Domain\Token\KeyConfirmationKind;
+use Heidi\Oidc\Port\ClientLoadBudgetInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
@@ -314,6 +320,7 @@ use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Signature\Algorithm\HS256;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\RateLimiter\Storage\CacheStorage;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
@@ -449,6 +456,25 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DecoyHashListener::class);
     // a KMS that does not answer or refuses is a 503 wherever it stands on the path of a request (architecture §3.3)
     $services->set(KmsUnavailableListener::class);
+
+    // The bundle: the two budgets that bound a load (decision 0014), the numbers filled in by the
+    // configuration and the count kept in a pool of its own, shared by the processes of the OP: what one
+    // origin sends, counted on every route of the two planes before any work, and what one authenticated
+    // client asks, counted where the module proves its identifier. A refusal is one shape for both.
+    $services->set('heidi.load.storage', CacheStorage::class)->args([service('heidi.load')]);
+    $services->set('heidi.load.' . LoadBudget::ORIGIN, LoadBudget::class)->args([
+        '$name' => LoadBudget::ORIGIN,
+        '$storage' => service('heidi.load.storage'),
+    ]);
+    $services->set('heidi.load.' . LoadBudget::CLIENT, LoadBudget::class)->args([
+        '$name' => LoadBudget::CLIENT,
+        '$storage' => service('heidi.load.storage'),
+    ]);
+    $services->set(OriginLoadListener::class)->args([service('heidi.load.' . LoadBudget::ORIGIN)]);
+    $services->set(RateLimitedClientLoad::class)->args([service('heidi.load.' . LoadBudget::CLIENT)]);
+    $services->alias(ClientLoadBudgetInterface::class, RateLimitedClientLoad::class);
+    $services->set(LoadRefusal::class);
+    $services->set(LoadRefusalListener::class);
 
     // The bundle: persistence (architecture §5.3); no service holds a Tenant, an entity is not a service
     $services->set(EntityManagers::class);

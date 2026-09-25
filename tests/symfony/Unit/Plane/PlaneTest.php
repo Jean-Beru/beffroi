@@ -47,6 +47,31 @@ final class PlaneTest extends TestCase
         static::assertSame($served, $plane->serves($route));
     }
 
+    /**
+     * @return iterable<string, array{string, ?Plane}>
+     */
+    public static function provideRoutesAndTheirPlane(): iterable
+    {
+        yield 'the login is of the interaction plane' => ['heidi_interaction_login', Plane::Interaction];
+        yield 'the token endpoint is of the protocol plane' => ['heidi_protocol_token', Plane::Protocol];
+        yield 'a route of the host application is of neither' => ['app_home', null];
+        yield 'an endpoint of the FIDO conformance tools is of neither' => ['heidi_fido_conformance_attestation_options', null];
+        yield 'a prefix alone is of neither' => ['heidi_interaction', null];
+        yield 'no route is of neither' => ['', null];
+    }
+
+    /**
+     * Architecture §5.2: what answers by plane reads the name of the route and holds no list, so a route
+     * the bundle gains is covered by being routed (decision 0014).
+     */
+    #[Test]
+    #[DataProvider('provideRoutesAndTheirPlane')]
+    public function theNameOfARouteCarriesItsPlane(string $route, ?Plane $plane): void
+    {
+        // When / Then
+        static::assertSame($plane, Plane::ofRoute($route));
+    }
+
     #[Test]
     #[DataProvider('provideRoutesTheProtocolPlaneServes')]
     public function theListenerLetsTheRoutesOfItsPlaneAndOfTheHostThrough(?string $route): void
