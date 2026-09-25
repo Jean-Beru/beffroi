@@ -31,6 +31,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ResponseFormat;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
@@ -87,7 +88,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
         $this->user->updateProfile(new Profile('Alice Martin', 'Alice', 'Martin', nickname: 'ali'), Fixtures::now());
         $this->user->changePhoneNumber('+33612345678', false, Fixtures::now());
-        $this->client = Clients::public($this->tenant);
+        $this->client = Clients::public($this->tenant, resources: Clients::resources());
         $this->session = Fixtures::session($this->user);
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->sessions->save($this->session);
@@ -403,6 +404,35 @@ final class UserInfoHandlerTest extends TestCase
 
         // When
         $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $idToken, [], Fixtures::context());
+    }
+
+    /**
+     * RFC 8707 §2: a token asked for a resource is addressed to that resource, and this endpoint is not
+     * it. The refusal is the one of RFC 6750 §3.1, whatever else the token is worth.
+     */
+    #[Test]
+    public function itRefusesATokenAddressedToAResource(): void
+    {
+        // Given
+        $code = Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            resources: ResourceIndicators::of([Clients::CALENDAR]),
+        );
+        $this->grants->save($code);
+        $token = $this->accessTokens->issue(
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            Fixtures::now(),
+        )->value;
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token is addressed to a resource of its own and not to this provider (RFC 8707 section 2).');
+
+        // When
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
     /**

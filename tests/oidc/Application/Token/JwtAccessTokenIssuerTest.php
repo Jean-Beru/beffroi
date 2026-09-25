@@ -17,6 +17,7 @@ use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
@@ -25,6 +26,7 @@ use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use Jose\Component\Checker\InvalidClaimException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
@@ -132,6 +134,52 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertSame('openid profile email', $claims['scope']);
         static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
         static::assertSame($code->grantId->toRfc4122(), $claims['grant_id']);
+    }
+
+    /**
+     * RFC 8707 §2: the token is addressed to the resources the request asked it for, and "client_id"
+     * goes on naming the client (RFC 9068 §2.2). One audience is written as a string and several as a
+     * list (RFC 7519 §4.1.3).
+     *
+     * @param list<string> $resources
+     * @param string|list<string> $audience
+     */
+    #[Test]
+    #[DataProvider('provideAudiences')]
+    public function theTokenIsAddressedToTheResourcesItWasAskedFor(array $resources, string|array $audience): void
+    {
+        // Given
+        $client = Clients::public($this->session->tenant, resources: Clients::resources());
+        $code = Tokens::code(
+            'the-code',
+            $client,
+            $this->session,
+            Fixtures::now(),
+            resources: ResourceIndicators::of($resources),
+        );
+        $token = $this->issuer->issue(
+            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            Fixtures::now(),
+        );
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame($audience, $claims['aud']);
+        static::assertSame('spa', $claims['client_id']);
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, string|list<string>}>
+     */
+    public static function provideAudiences(): iterable
+    {
+        yield 'one resource' => [[Clients::CALENDAR], Clients::CALENDAR];
+        yield 'two resources' => [
+            [Clients::CALENDAR, Clients::CONTACTS],
+            [Clients::CALENDAR, Clients::CONTACTS],
+        ];
     }
 
     /**

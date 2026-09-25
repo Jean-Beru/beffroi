@@ -23,6 +23,7 @@
             <join-column name="session_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
         </many-to-one>
         <field name="scopes" type="heidi_scopes" column="scopes"/>
+        <field name="resources" type="heidi_resources" column="resources" nullable="true"/>
         <field name="claimsRequest" type="heidi_claims_request" column="claims" nullable="true">
             <options>
                 <option name="jsonb">true</option>

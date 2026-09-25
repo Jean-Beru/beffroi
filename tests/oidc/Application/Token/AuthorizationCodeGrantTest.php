@@ -30,10 +30,12 @@ use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Event\AuthorizationCodeReplayed;
 use Heidi\Oidc\Domain\Event\TokensIssued;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
+use Heidi\Oidc\Exception\InvalidTargetException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
@@ -57,6 +59,8 @@ final class AuthorizationCodeGrantTest extends TestCase
     private Client $client;
 
     private Client $publicClient;
+
+    private Client $resourceClient;
 
     private Client $offlineClient;
 
@@ -84,6 +88,12 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->alice = Fixtures::user($this->tenant);
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->publicClient = Clients::public($this->tenant);
+        $this->resourceClient = Clients::confidential(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            clientId: 'calendar-client',
+            resources: Clients::resources(),
+        );
         $this->offlineClient = new Client(
             $this->tenant,
             new ClientRegistration(
@@ -150,6 +160,135 @@ final class AuthorizationCodeGrantTest extends TestCase
         static::assertTrue($issued->authorization->grantType->equals(Grants::authorizationCode()));
         static::assertSame($code->scopes, $issued->authorization->scopes);
         static::assertSame('n-0S6_WzA2Mj', $issued->authorization->nonce);
+    }
+
+    /**
+     * RFC 8707 §2.2: a request that names no resource takes the resources of the authorization it
+     * spends, and the access token is addressed to them.
+     */
+    #[Test]
+    public function aValidExchangeAddressesTheTokensToTheResourcesOfTheCode(): void
+    {
+        // Given
+        $this->code('the-code', $this->resourceClient, ['openid'], resources: ResourceIndicators::of([Clients::CALENDAR, Clients::CONTACTS]));
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->resourceClient), $this->request(), $this->context);
+
+        // Then
+        static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $issued->authorization->audience()->values);
+    }
+
+    /**
+     * RFC 8707 §2: a request that named no resource asks for nothing beyond the provider itself, and
+     * its token is addressed to the client that asked for it.
+     */
+    #[Test]
+    public function aCodeThatNamesNoResourceYieldsATokenAddressedToItsClient(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid']);
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame(['oidc-demo'], $issued->authorization->audience()->values);
+    }
+
+    /**
+     * RFC 8707 §2.2: the access token is issued for the subset of resources the request named.
+     */
+    #[Test]
+    public function aTokenRequestNarrowsTheResourcesOfTheCode(): void
+    {
+        // Given
+        $this->code('the-code', $this->resourceClient, ['openid'], resources: ResourceIndicators::of([Clients::CALENDAR, Clients::CONTACTS]));
+
+        // When
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->resourceClient),
+            $this->request(resource: Clients::CALENDAR),
+            $this->context,
+        );
+
+        // Then
+        static::assertSame([Clients::CALENDAR], $issued->authorization->audience()->values);
+    }
+
+    /**
+     * RFC 8707 §2.2: whatever subset the access token was narrowed to, the refresh token beside it is
+     * bound to the full original grant.
+     */
+    #[Test]
+    public function theRefreshTokenStaysBoundToEveryResourceOfTheGrant(): void
+    {
+        // Given
+        $this->code('the-code', $this->resourceClient, ['openid'], resources: ResourceIndicators::of([Clients::CALENDAR, Clients::CONTACTS]));
+
+        // When
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->resourceClient),
+            $this->request(resource: Clients::CALENDAR),
+            $this->context,
+        );
+
+        // Then
+        $refreshToken = $issued->refreshToken ?? static::fail('A confidential client registered for refresh_token gets a refresh token.');
+        static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $refreshToken->token->resources?->values());
+    }
+
+    /**
+     * RFC 8707 §2.2: a token request narrows the resources of the authorization it spends and never
+     * widens them, whether the authorization carries others or none at all.
+     *
+     * @param list<string>|null $granted
+     */
+    #[Test]
+    #[DataProvider('provideResourcesTheCodeDoesNotCarry')]
+    public function itRefusesAResourceTheCodeDoesNotCarry(?array $granted, string $asked): void
+    {
+        // Given
+        $this->code(
+            'the-code',
+            $this->resourceClient,
+            ['openid'],
+            resources: $granted === null ? null : ResourceIndicators::of($granted),
+        );
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIs('invalid_target: The requested resource is not among the resources of this authorization (RFC 8707 section 2.2).');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->resourceClient), $this->request(resource: $asked), $this->context);
+    }
+
+    /**
+     * @return iterable<string, array{list<string>|null, string}>
+     */
+    public static function provideResourcesTheCodeDoesNotCarry(): iterable
+    {
+        yield 'another resource' => [[Clients::CALENDAR], Clients::CONTACTS];
+        yield 'no resource at all' => [null, Clients::CALENDAR];
+    }
+
+    /**
+     * RFC 8707 §2: the value is an absolute URI without a fragment, at the token endpoint as at the
+     * authorization endpoint.
+     */
+    #[Test]
+    public function itRefusesAResourceThatIsNotAnAbsoluteUri(): void
+    {
+        // Given
+        $this->code('the-code', $this->resourceClient, ['openid'], resources: ResourceIndicators::of([Clients::CALENDAR]));
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIs('invalid_target: The resource parameter is an absolute URI without a fragment component (RFC 8707 section 2).');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->resourceClient), $this->request(resource: 'cal.example.com'), $this->context);
     }
 
     /**
@@ -947,36 +1086,53 @@ final class AuthorizationCodeGrantTest extends TestCase
     /**
      * @param list<string> $scopes
      */
-    private function code(string $code, Client $client, array $scopes = ['openid'], ?AuthenticationSession $session = null): AuthorizationCode
-    {
-        $record = Tokens::code($code, $client, $session ?? $this->session, $this->clock->now(), $scopes);
+    private function code(
+        string $code,
+        Client $client,
+        array $scopes = ['openid'],
+        ?AuthenticationSession $session = null,
+        ?ResourceIndicators $resources = null,
+    ): AuthorizationCode {
+        $record = Tokens::code($code, $client, $session ?? $this->session, $this->clock->now(), $scopes, resources: $resources);
         $this->codes->save($record);
 
         return $record;
     }
 
     /**
-     * @return array<string, string>
+     * @param string|list<string>|null $resource what the request asks its access token to be addressed to (RFC 8707 §2.2)
+     *
+     * @return array<string, string|list<string>>
      */
     private function parameters(
         string $code = 'the-code',
         string $redirectUri = 'https://demo.localhost/login/check',
         string $verifier = Tokens::CODE_VERIFIER,
+        string|array|null $resource = null,
     ): array {
-        return [
+        $parameters = [
             'grant_type' => 'authorization_code',
             'code' => $code,
             'redirect_uri' => $redirectUri,
             'code_verifier' => $verifier,
         ];
+        if ($resource !== null) {
+            $parameters['resource'] = $resource;
+        }
+
+        return $parameters;
     }
 
+    /**
+     * @param string|list<string>|null $resource what the request asks its access token to be addressed to (RFC 8707 §2.2)
+     */
     private function request(
         string $code = 'the-code',
         string $redirectUri = 'https://demo.localhost/login/check',
         string $verifier = Tokens::CODE_VERIFIER,
+        string|array|null $resource = null,
     ): TokenRequest {
-        return new TokenRequest($this->parameters($code, $redirectUri, $verifier));
+        return new TokenRequest($this->parameters($code, $redirectUri, $verifier, $resource));
     }
 
     private function failToGrant(Client $client, TokenRequest $request): void

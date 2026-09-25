@@ -37,6 +37,7 @@ use Heidi\Bundle\Doctrine\Type\IssuerType;
 use Heidi\Bundle\Doctrine\Type\KeyConfirmationType;
 use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
+use Heidi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\Key\KmsClientPass;
@@ -79,6 +80,7 @@ final class HeidiBundle extends AbstractBundle
         DeviceType::NAME => DeviceType::class,
         RedirectUriType::NAME => RedirectUriType::class,
         ScopesType::NAME => ScopesType::class,
+        ResourceIndicatorsType::NAME => ResourceIndicatorsType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
         ConfirmationType::NAME => ConfirmationType::class,

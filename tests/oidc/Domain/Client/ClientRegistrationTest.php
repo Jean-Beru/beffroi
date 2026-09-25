@@ -10,6 +10,9 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
+use Heidi\Oidc\Domain\Resource\ResourceIndicator;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
+use Heidi\Oidc\Domain\Token\TokenAudience;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\ClientUri;
@@ -461,6 +464,68 @@ final class ClientRegistrationTest extends TestCase
         static::assertSame('https://jar.example/request.jwt', $client->registration->registeredRequestUri('https://jar.example/request.jwt')?->value);
         static::assertNull($client->registration->registeredRequestUri('https://jar.example/request.jwt?v=2'));
         static::assertNull($client->registration->registeredRequestUri('https://jar.example/Request.jwt'));
+    }
+
+    /**
+     * RFC 8707 §2: what a client may ask a token for is a closed list, compared byte for byte like
+     * every other URI it registers, and registered twice is registered once.
+     */
+    #[Test]
+    public function aRegisteredResourceIsMatchedByteForByte(): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant(), resources: [
+            new ResourceIndicator(Clients::CALENDAR),
+            new ResourceIndicator(Clients::CALENDAR),
+        ]);
+
+        // When / Then
+        static::assertCount(1, $client->registration->resources);
+        static::assertTrue($client->registration->allowsResources(ResourceIndicators::of([Clients::CALENDAR])));
+        static::assertFalse($client->registration->allowsResources(ResourceIndicators::of([Clients::CONTACTS])));
+        static::assertFalse($client->registration->allowsResources(ResourceIndicators::of([Clients::CALENDAR, Clients::CONTACTS])));
+    }
+
+    /**
+     * RFC 8707 §2: a client that registered no resource may ask for none.
+     */
+    #[Test]
+    public function aClientRegisteredForNoResourceAsksForNone(): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant());
+
+        // When / Then
+        static::assertFalse($client->registration->allowsResources(ResourceIndicators::of([Clients::CALENDAR])));
+    }
+
+    /**
+     * RFC 8707 §2: a token of this client is addressed to one of the resources it registered, or to the
+     * client itself when the request named none.
+     *
+     * @param list<string> $audience
+     */
+    #[Test]
+    #[DataProvider('provideAudiences')]
+    public function aTokenIsAddressedToTheClientOrToAResourceItRegistered(array $audience, bool $addressable): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant(), resources: [new ResourceIndicator(Clients::CALENDAR)]);
+
+        // When / Then
+        static::assertSame($addressable, $client->registration->mayBeAddressedTo(new TokenAudience($audience)));
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, bool}>
+     */
+    public static function provideAudiences(): iterable
+    {
+        yield 'the client itself' => [['spa'], true];
+        yield 'a registered resource' => [[Clients::CALENDAR], true];
+        yield 'another client' => [['other'], false];
+        yield 'a resource it did not register' => [[Clients::CONTACTS], false];
+        yield 'a registered resource and one it did not register' => [[Clients::CALENDAR, Clients::CONTACTS], false];
     }
 
     /**

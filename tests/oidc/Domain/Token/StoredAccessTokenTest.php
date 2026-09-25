@@ -180,6 +180,7 @@ final class StoredAccessTokenTest extends TestCase
             $this->session,
             $scopes ?? new Scopes([Scope::openid()]),
             null,
+            null,
             new AuthenticationSnapshot(Fixtures::now(), $methods ?? ['pwd'], '1'),
             Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+10 minutes'),

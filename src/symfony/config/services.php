@@ -210,6 +210,7 @@ use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTls;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDpop;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTlsEndpoints;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedProtectedResources;
 use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Dpop\DpopProofValidator;
@@ -269,6 +270,7 @@ use Heidi\Oidc\Domain\Token\KeyConfirmationKind;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
+use Heidi\Oidc\Port\RegisteredResourcesInterface;
 use Heidi\Oidc\Port\ServedAccessTokenFormatsInterface;
 use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
@@ -595,6 +597,7 @@ return static function (ContainerConfigurator $container): void {
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
     // require, read where they are declared and nowhere else (issue #98)
     $services->alias(PushedAuthorizationRequirementInterface::class, ConfigurationClientRepository::class);
+    $services->alias(RegisteredResourcesInterface::class, ConfigurationClientRepository::class);
     $services->alias(ServedAccessTokenFormatsInterface::class, ConfigurationClientRepository::class);
     $services->alias(UnsignedRequestObjectsInterface::class, ConfigurationClientRepository::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
@@ -762,6 +765,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AnnouncedDpop::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedSignedAuthorizationResponse::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedMutualTlsEndpoints::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedProtectedResources::class)->tag('heidi.oidc.metadata');
     $services->set(DiscoveryHandler::class)->args([
         '$contributors' => tagged_iterator('heidi.oidc.metadata'),
     ]);
