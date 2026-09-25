@@ -11,6 +11,9 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
+use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
+use Heidi\Oidc\Application\Token\ServedAccessTokenShapes;
 use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
@@ -23,7 +26,10 @@ use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidTokenException;
+use Heidi\Oidc\Tests\Fixture\Bindings;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Jwts;
@@ -764,5 +770,49 @@ final class AccessTokenVerifierTest extends TestCase
         yield 'a word' => ['the-opaque-token'];
         yield 'a drawn value with something appended' => [DrawnSecret::draw() . 'x'];
         yield 'the digest of a value, which is not the value' => [DrawnSecret::digestOf(DrawnSecret::draw())];
+    }
+
+    /**
+     * Issue #239: a token this provider writes and cannot read back is a token nobody can spend, so the
+     * two wired lists are made to meet here rather than at a resource server.
+     */
+    #[Test]
+    public function aShapeWrittenAndReadBackByNobodyIsRefused(): void
+    {
+        // Given
+        $verifier = new AccessTokenVerifier([], Shapes::served());
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The provider writes access tokens in the "jwt" shape and nothing reads them back.');
+
+        // When
+        $verifier->verify($this->tenant, self::TOKEN, Fixtures::now());
+    }
+
+    /**
+     * The other way round: a deployment that dropped an issuer and kept its verifier reads back a shape
+     * nothing writes any more, which is a wiring nobody meant.
+     */
+    #[Test]
+    public function aVerifierOfAShapeNothingWritesIsRefused(): void
+    {
+        // Given
+        $clients = new InMemoryClientRepository();
+        $clients->save($this->client);
+        $verifier = new AccessTokenVerifier(
+            [
+                new JwtAccessTokenVerifier($this->jws, $clients, Bindings::wired()),
+                new OpaqueAccessTokenVerifier($this->storedTokens, new PublicSubjectIdentifierResolver()),
+            ],
+            new ServedAccessTokenShapes([new FakeAccessTokenIssuer('jwt')]),
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A verifier reads access tokens of the "opaque" shape back and nothing writes them; the wired shapes are jwt.');
+
+        // When
+        $verifier->verify($this->tenant, $this->opaque, Fixtures::now());
     }
 }

@@ -22,6 +22,7 @@ use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * JARM §2.1 and §2.4: what the provider signs for a client that asked for a signed answer, verified the
@@ -124,6 +125,7 @@ final class ResponseDocumentIssuerTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
                 authorizationResponse: ResponseFormat::signed(Algorithms::es256()),
             ),
         );

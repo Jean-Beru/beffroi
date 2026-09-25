@@ -12,18 +12,18 @@ use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
-use Heidi\Oidc\Application\Token\AccessTokenIssuer;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * What the extension hands the services from the configuration, read on the definitions before the
@@ -147,10 +147,11 @@ final class HeidiBundleExtensionTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the format is a per-client option, "jwt" unless the client says "opaque".
+     * Architecture §4.6: the shape is a per-client option. The tree reads the name and nothing else; a
+     * client that names none leaves it to the wiring, which is what knows the shapes and their order.
      */
     #[Test]
-    public function theAccessTokenFormatOfAClientIsRead(): void
+    public function theAccessTokenShapeOfAClientIsRead(): void
     {
         // When
         $container = self::load([
@@ -172,27 +173,27 @@ final class HeidiBundleExtensionTest extends TestCase
         static::assertIsArray($clients);
         static::assertIsArray($clients['app']);
         static::assertIsArray($clients['api-app']);
-        static::assertSame('jwt', $clients['app']['access_token_format']);
+        static::assertNull($clients['app']['access_token_format']);
         static::assertSame('opaque', $clients['api-app']['access_token_format']);
     }
 
     /**
-     * Architecture §4.6: one issuer per format, named by the format it writes.
+     * Architecture §4.6: one class per shape, tagged, and the shape it writes is the issuer's own
+     * business; the wiring holds an order and no name (issue #239).
      */
     #[Test]
-    public function theAccessTokenIssuersAreNamedByTheirFormat(): void
+    public function theAccessTokenIssuersAreTaggedAndNothingNamesTheirShape(): void
     {
         // When
         $container = self::load([]);
 
         // Then
-        $issuers = $container->getDefinition(AccessTokenIssuer::class)->getArgument('$issuers');
-        static::assertIsArray($issuers);
-        static::assertSame(['jwt', 'opaque'], array_keys($issuers));
-        static::assertInstanceOf(Reference::class, $issuers['jwt']);
-        static::assertInstanceOf(Reference::class, $issuers['opaque']);
-        static::assertSame(JwtAccessTokenIssuer::class, (string) $issuers['jwt']);
-        static::assertSame(OpaqueAccessTokenIssuer::class, (string) $issuers['opaque']);
+        foreach ([JwtAccessTokenIssuer::class, OpaqueAccessTokenIssuer::class] as $issuer) {
+            static::assertArrayHasKey('heidi.oidc.access_token_issuer', $container->getDefinition($issuer)->getTags());
+        }
+        foreach ([JwtAccessTokenVerifier::class, OpaqueAccessTokenVerifier::class] as $verifier) {
+            static::assertArrayHasKey('heidi.oidc.access_token_verifier', $container->getDefinition($verifier)->getTags());
+        }
     }
 
     /**

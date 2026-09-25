@@ -33,7 +33,6 @@ use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\FakeLogoutTokenDelivery;
@@ -46,6 +45,7 @@ use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §3.3: the kinds of artifact the module binds to a key of the tenant, as the rotation of the
@@ -253,7 +253,7 @@ final class KeyBoundArtifactsTest extends TestCase
         $this->clients->save(Clients::confidential(
             $this->tenant,
             new FakePasswordHasher()->hash(Clients::SECRET),
-            accessTokenFormat: AccessTokenFormat::Opaque,
+            accessTokenShape: Shapes::opaque(),
         ));
         $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all()), $this->clients);
 

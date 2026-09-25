@@ -25,6 +25,7 @@ use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.3, §5.3: an interaction parks a validated request, every parameter of it, and comes
@@ -183,7 +184,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         // Given
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
         $request = new AuthorizationRequest(
             $ghost,

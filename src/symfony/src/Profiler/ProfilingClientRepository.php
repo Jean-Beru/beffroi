@@ -47,7 +47,7 @@ final readonly class ProfilingClientRepository implements ClientRepositoryInterf
             'consent' => $client->registration->requiresConsent ? 'asked' : 'not asked',
             'grant types' => implode(', ', GrantNames::of($client->registration->grantTypes)),
             'allowed scopes' => (string) $client->registration->allowedScopes,
-            'access token' => $client->registration->accessTokenFormat->value,
+            'access token' => $client->registration->accessTokenShape->name(),
             'ID token' => RegisteredShape::of($client->registration->idToken),
             'UserInfo' => RegisteredShape::of($client->registration->userInfo),
             'authorization response' => RegisteredShape::of($client->registration->authorizationResponse),

@@ -28,6 +28,7 @@ use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.6, §5.3: a record keyed by the hash of a value it never keeps, found by that value,
@@ -218,7 +219,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $session = self::session(self::user());
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
         $grant = Uuid::v7();
         $orphan = self::tokens()

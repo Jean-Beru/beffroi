@@ -47,6 +47,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class AuthorizationCodeGrantTest extends TestCase
 {
@@ -102,6 +103,7 @@ final class AuthorizationCodeGrantTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://mobile.example/callback')],
+                Shapes::jwt(),
                 grantTypes: [Grants::authorizationCode(), Grants::refreshToken()],
                 allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
             ),
@@ -486,6 +488,7 @@ final class AuthorizationCodeGrantTest extends TestCase
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://demo.localhost/login/check')],
+                Shapes::jwt(),
                 allowedScopes: new Scopes([Scope::openid(), new Scope('offline_access')]),
             ),
             new HashedClientSecret(new FakePasswordHasher()->hash(Clients::SECRET)),

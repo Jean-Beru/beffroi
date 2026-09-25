@@ -63,6 +63,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class AuthorizationHandlerTest extends TestCase
 {
@@ -111,6 +112,7 @@ final class AuthorizationHandlerTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://portal.acme.example/callback')],
+                Shapes::jwt(),
                 allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
                 requiresConsent: false,
             ),
@@ -1365,6 +1367,7 @@ final class AuthorizationHandlerTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://portal.acme.example/callback')],
+                Shapes::jwt(),
                 allowedScopes: new Scopes([Scope::openid(), new Scope('profile')]),
                 requiresConsent: false,
             ),

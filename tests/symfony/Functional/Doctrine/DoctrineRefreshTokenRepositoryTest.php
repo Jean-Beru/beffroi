@@ -22,6 +22,7 @@ use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.6, §5.3: a token keyed by its hash, its family on every token of the lineage, found by
@@ -220,7 +221,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         $family = self::family();
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
         $orphan = self::token(RefreshToken::generate(), $ghost, $session, $family, null, self::now()->modify('+1 minute'));
         $kept = self::token(RefreshToken::generate(), self::client(), $session, $family, null, self::now()->modify('+2 minutes'));

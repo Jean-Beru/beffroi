@@ -16,6 +16,7 @@ use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * A registration bound to a tenant, with its shared secret in the shape the provider keeps it. What a
@@ -90,6 +91,7 @@ final class ClientTest extends TestCase
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://rp.example/cb')],
+                Shapes::jwt(),
             ),
             new SharedClientSecret(Clients::SECRET),
         );
@@ -103,7 +105,7 @@ final class ClientTest extends TestCase
     public function aClientCannotContradictWhatItsRegistrationDeclares(): void
     {
         // Given
-        $registration = new ClientRegistration('demo', 'Demo', Methods::clientSecretBasic(), true, [new RedirectUri('https://rp.example/cb')]);
+        $registration = new ClientRegistration('demo', 'Demo', Methods::clientSecretBasic(), true, [new RedirectUri('https://rp.example/cb')], Shapes::jwt());
 
         // Then
         $this->expectException(InvalidArgumentException::class);
