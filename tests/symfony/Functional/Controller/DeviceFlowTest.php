@@ -153,6 +153,7 @@ final class DeviceFlowTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertStringContainsString('Appliance with no keyboard', $crawler->filter('body')->text());
         static::assertSame(['openid', 'profile'], $crawler->filter('li[data-scope]')->extract(['data-scope']));
+        static::assertSame(['op.test'], $crawler->filter('p[data-provider]')->extract(['data-provider']), 'BCP 10027 section 2: which provider is asking');
         static::assertCount(1, $crawler->filter('p[data-origin]'));
         static::assertCount(1, $crawler->filter('p[data-warning="unexpected"]'), 'BCP 10027 §2: somebody who started nothing is told to refuse');
     }

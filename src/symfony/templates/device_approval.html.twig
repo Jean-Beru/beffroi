@@ -1,6 +1,6 @@
-{# What the code names, for the user to approve or refuse (RFC 8628 §3.3, BCP 10027 §2): the client that
-   asked, where it asked from, the code itself, and every scope of the request, the standard scopes of
-   OIDC Core §5.4 in words and any other by its value. The warning is not decoration: somebody who started
+{# What the code names, for the user to approve or refuse (RFC 8628 §3.3, BCP 10027 §2): the provider that
+   is asking, the client that asked, where it asked from, the code itself, and every scope of the request,
+   the standard scopes of OIDC Core §5.4 in words and any other by its value. The warning is not decoration: somebody who started
    nothing must be told to refuse. The answer is a POST with the token this page renders; a GET approves
    nothing.
    Overridable by an application under templates/bundles/HeidiBundle/. #}
@@ -12,6 +12,7 @@
 {% block title %}{{ 'device.approval.title'|trans({client: client.registration.name}) }}{% endblock %}
 
 {% block content %}
+    <p data-provider="{{ tenant.name }}">{{ 'device.approval.provider'|trans({provider: tenant.name}) }}</p>
     <p>{{ 'device.approval.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'device.approval.request'|trans({client: client.registration.name, code: typed}) }}</p>
     <p data-origin="{{ requested_from.ipAddress ?? '' }}">{{ 'device.approval.origin'|trans({

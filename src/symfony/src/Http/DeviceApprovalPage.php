@@ -14,8 +14,9 @@ use Symfony\Component\HttpFoundation\Response;
  * once it is given. Rendered by the controller that shows it and by the one that comes back to it with what
  * went wrong.
  *
- * The request is named, not summarised: the client, the address the appliance asked from and every scope it
- * asked for, so that somebody who started nothing can tell that they started nothing (BCP 10027 §2).
+ * The request is named, not summarised: the provider that is asking, the client, the address the appliance
+ * asked from and every scope it asked for, so that somebody who started nothing can tell that they started
+ * nothing (BCP 10027 §2).
  */
 final readonly class DeviceApprovalPage
 {
@@ -56,6 +57,7 @@ final readonly class DeviceApprovalPage
         return $this->pages->render('device_approval.html.twig', [
             'record' => $record,
             'client' => $record->client,
+            'tenant' => $record->tenant,
             'user' => $user,
             'scopes' => $record->scopes,
             'requested_from' => $record->requestedFrom,

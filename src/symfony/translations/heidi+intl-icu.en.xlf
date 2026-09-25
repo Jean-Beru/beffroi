@@ -473,6 +473,10 @@
         <source>device.answered.denied</source>
         <target>{client} has been refused. Nothing was given to it, and you can close this page.</target>
       </trans-unit>
+      <trans-unit id="7ea1ce200f" resname="device.approval.provider">
+        <source>device.approval.provider</source>
+        <target>{provider} is asking.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
