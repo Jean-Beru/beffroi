@@ -1,6 +1,12 @@
 parameters:
 	ignoreErrors:
 		-
+			rawMessage: 'Parameter #1 $length of method Heidi\Core\Bridge\Random\FixedRandomness::bytes() expects int<1, max>, int given.'
+			identifier: argument.type
+			count: 1
+			path: ../tests/core/Bridge/Random/FixedRandomnessTest.php
+
+		-
 			rawMessage: Using nullsafe property access on non-nullable type Heidi\Oidc\Domain\Client\ResponseEncryption. Use -> instead.
 			identifier: nullsafe.neverNull
 			count: 1

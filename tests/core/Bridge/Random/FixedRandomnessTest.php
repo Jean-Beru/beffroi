@@ -6,6 +6,7 @@ namespace Heidi\Core\Tests\Bridge\Random;
 
 use Heidi\Core\Bridge\Random\FixedRandomness;
 use Heidi\Core\Exception\InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
@@ -32,12 +33,30 @@ final class FixedRandomnessTest extends TestCase
         // Given
         $randomness = new FixedRandomness();
 
-        // When
-        $first = $randomness->bytes(8);
+        // When / Then
+        static::assertNotSame($randomness->bytes(8), $randomness->bytes(8));
+    }
 
-        // Then
-        static::assertSame(8, strlen($first));
-        static::assertNotSame($first, $randomness->bytes(8));
+    /**
+     * What it draws on its own is of the length it is asked for, shorter than the counter it is made of
+     * as well as longer.
+     */
+    #[Test]
+    #[DataProvider('provideLengths')]
+    public function whatItDrawsOnItsOwnIsOfTheLengthAskedFor(int $length): void
+    {
+        // When / Then
+        static::assertSame($length, strlen(new FixedRandomness()->bytes($length)));
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideLengths(): iterable
+    {
+        yield 'shorter than the counter' => [2];
+        yield 'as long as the counter' => [4];
+        yield 'longer than the counter' => [32];
     }
 
     /**
