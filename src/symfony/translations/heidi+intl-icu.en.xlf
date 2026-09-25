@@ -173,6 +173,34 @@
         <source>login.passkey_failed</source>
         <target>The passkey could not be used. Try again, or sign in with your password.</target>
       </trans-unit>
+      <trans-unit id="a71d2a8f04" resname="account.title">
+        <source>account.title</source>
+        <target>Your account</target>
+      </trans-unit>
+      <trans-unit id="949a77ae23" resname="account.signed_in_as">
+        <source>account.signed_in_as</source>
+        <target>Signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="1a530079a8" resname="account.signed_in_since">
+        <source>account.signed_in_since</source>
+        <target>Signed in since {date}.</target>
+      </trans-unit>
+      <trans-unit id="f89c3f6e13" resname="account.passkeys.state">
+        <source>account.passkeys.state</source>
+        <target>{count, plural, =0 {No passkey} one {One passkey} other {# passkeys}}</target>
+      </trans-unit>
+      <trans-unit id="0fe4f1a644" resname="account.two_factor.state.none">
+        <source>account.two_factor.state.none</source>
+        <target>No authenticator app</target>
+      </trans-unit>
+      <trans-unit id="ab8c5a2fff" resname="account.two_factor.state.active">
+        <source>account.two_factor.state.active</source>
+        <target>An authenticator app</target>
+      </trans-unit>
+      <trans-unit id="5cb4722c04" resname="account.sign_out">
+        <source>account.sign_out</source>
+        <target>Sign out</target>
+      </trans-unit>
       <trans-unit id="465d5b10ab" resname="passkeys.title">
         <source>passkeys.title</source>
         <target>Your passkeys</target>

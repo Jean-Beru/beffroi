@@ -173,6 +173,34 @@
         <source>login.passkey_failed</source>
         <target>La passkey n’a pas pu être utilisée. Réessayez, ou connectez-vous avec votre mot de passe.</target>
       </trans-unit>
+      <trans-unit id="a71d2a8f04" resname="account.title">
+        <source>account.title</source>
+        <target>Votre compte</target>
+      </trans-unit>
+      <trans-unit id="949a77ae23" resname="account.signed_in_as">
+        <source>account.signed_in_as</source>
+        <target>Connecté en tant que {username}.</target>
+      </trans-unit>
+      <trans-unit id="1a530079a8" resname="account.signed_in_since">
+        <source>account.signed_in_since</source>
+        <target>Session ouverte depuis le {date}.</target>
+      </trans-unit>
+      <trans-unit id="f89c3f6e13" resname="account.passkeys.state">
+        <source>account.passkeys.state</source>
+        <target>{count, plural, =0 {Aucune passkey} one {Une passkey} other {# passkeys}}</target>
+      </trans-unit>
+      <trans-unit id="0fe4f1a644" resname="account.two_factor.state.none">
+        <source>account.two_factor.state.none</source>
+        <target>Aucune application d’authentification</target>
+      </trans-unit>
+      <trans-unit id="ab8c5a2fff" resname="account.two_factor.state.active">
+        <source>account.two_factor.state.active</source>
+        <target>Une application d’authentification</target>
+      </trans-unit>
+      <trans-unit id="5cb4722c04" resname="account.sign_out">
+        <source>account.sign_out</source>
+        <target>Se déconnecter</target>
+      </trans-unit>
       <trans-unit id="465d5b10ab" resname="passkeys.title">
         <source>passkeys.title</source>
         <target>Vos passkeys</target>

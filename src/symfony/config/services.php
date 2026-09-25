@@ -31,6 +31,10 @@ use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Heidi\Bundle\EndSession\LogoutChannels;
 use Heidi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Heidi\Bundle\Http\AccountAccess;
+use Heidi\Bundle\Http\AccountHomePage;
+use Heidi\Bundle\Http\Account\AccountSections;
+use Heidi\Bundle\Http\Account\PasskeysSection;
+use Heidi\Bundle\Http\Account\TwoFactorSection;
 use Heidi\Bundle\Http\AuthorizationRequestReader;
 use Heidi\Bundle\Http\Decision\ConsentRequiredRenderer;
 use Heidi\Bundle\Http\Decision\DecisionRenderers;
@@ -360,6 +364,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginTarget::class);
     $services->set(DeviceApprovalPage::class);
     $services->set(AccountAccess::class);
+    // the pages of the account, in the order they are wired: what the home of the account offers, and the
+    // one place a kind of credential is known; a page added to the account is a section beside these and a
+    // line here, and neither the home page nor its template is edited
+    $services->set(PasskeysSection::class)->tag('heidi.account_section');
+    $services->set(TwoFactorSection::class)->tag('heidi.account_section');
+    $services->set(AccountSections::class)->args([tagged_iterator('heidi.account_section')]);
+    $services->set(AccountHomePage::class);
     $services->set(InteractionLocale::class)->args([
         '$enabledLocales' => '%kernel.enabled_locales%',
         '$defaultLocale' => '%kernel.default_locale%',
