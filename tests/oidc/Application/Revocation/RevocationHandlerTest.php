@@ -417,7 +417,14 @@ final class RevocationHandlerTest extends TestCase
     private function handler(InMemoryClientRepository $clients, FakePasswordHasher $hasher, AccessTokenRepositoryInterface $accessTokens): RevocationHandler
     {
         return new RevocationHandler(
-            new ClientAuthenticator($clients, Methods::all($hasher), $this->clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
+            new ClientAuthenticator(
+                $clients,
+                Methods::all($hasher),
+                Methods::requestParser(),
+                $this->clock,
+                new RecordingEventDispatcher(),
+                new FakeClientLoadBudget(),
+            ),
             new Endpoints(),
             AccessTokenShapes::verifier(
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),

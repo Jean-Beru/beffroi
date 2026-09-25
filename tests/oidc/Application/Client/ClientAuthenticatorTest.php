@@ -20,9 +20,11 @@ use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\OAuth2Exception;
+use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Tests\Fixture\RecordingCompactJwtReader;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -82,7 +84,14 @@ final class ClientAuthenticatorTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->budget = new FakeClientLoadBudget();
-        $this->authenticator = new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events, $this->budget);
+        $this->authenticator = new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser(),
+            $this->clock,
+            $this->events,
+            $this->budget,
+        );
     }
 
     /**
@@ -183,7 +192,14 @@ final class ClientAuthenticatorTest extends TestCase
     public function aClientWhoseLoadBudgetIsSpentIsRefused(): void
     {
         // Given
-        $authenticator = new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events, new FakeClientLoadBudget(0));
+        $authenticator = new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser(),
+            $this->clock,
+            $this->events,
+            new FakeClientLoadBudget(0),
+        );
 
         // Then
         $this->expectException(LoadBudgetSpentException::class);
@@ -191,6 +207,36 @@ final class ClientAuthenticatorTest extends TestCase
 
         // When
         $authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [], $this->context);
+    }
+
+    /**
+     * RFC 7523 §2.2, issue #246: the assertion a request carries is read once, before any method sees the
+     * request. Two of the wired methods take an assertion and the one that authenticates reads it again
+     * to verify it and to judge its claims; the reader is asked once all the same.
+     */
+    #[Test]
+    public function theAssertionOfARequestIsReadOnceWhateverReadsItAfterwards(): void
+    {
+        // Given
+        $reader = new RecordingCompactJwtReader();
+        $authenticator = new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser($reader),
+            $this->clock,
+            $this->events,
+            $this->budget,
+        );
+        $this->clients->save(Clients::withKeys($this->tenant));
+        $assertion = ClientAssertions::signedWithKey(
+            ClientAssertions::claims('key-client', $this->tenant->issuer->value, $this->context->receivedAt),
+        );
+
+        // When
+        $authenticator->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
+
+        // Then
+        static::assertSame([$assertion], $reader->read);
     }
 
     /**

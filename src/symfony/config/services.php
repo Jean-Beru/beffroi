@@ -191,6 +191,7 @@ use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
+use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Client\ClientDocumentIssuer;
 use Heidi\Oidc\Application\Client\ClientKeySetProvider;
@@ -671,6 +672,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(NoAuthentication::class)->tag('heidi.client_authentication_method');
     $services->set(ClientAuthenticationMethods::class)->args([tagged_iterator('heidi.client_authentication_method')]);
     $services->alias(ClientAuthenticationMethodsInterface::class, ClientAuthenticationMethods::class);
+    // what arrived at such an endpoint, read once into what the methods read (issue #246): the assertion
+    // of RFC 7523 §2.2 included, however many of the wired methods go on to read it
+    $services->set(ClientAuthenticationRequestParser::class);
     $services->set(ClientAuthenticator::class);
     // what reads an X.509 certificate and writes a distinguished name back (RFC 8705 §2.1.2): the same
     // reader on both sides, so that a name registered for a client and a name read out of a certificate

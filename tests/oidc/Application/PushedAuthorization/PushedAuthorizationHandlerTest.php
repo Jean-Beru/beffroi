@@ -529,7 +529,14 @@ final class PushedAuthorizationHandlerTest extends TestCase
     private function handler(PushedAuthorizationRecordRepositoryInterface $requests, ?DateInterval $lifetime = null): PushedAuthorizationHandler
     {
         return new PushedAuthorizationHandler(
-            new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
+            new ClientAuthenticator(
+                $this->clients,
+                Methods::all($this->hasher),
+                Methods::requestParser(),
+                $this->clock,
+                new RecordingEventDispatcher(),
+                new FakeClientLoadBudget(),
+            ),
             Proofs::verifier(),
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),

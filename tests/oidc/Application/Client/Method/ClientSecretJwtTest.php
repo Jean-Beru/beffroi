@@ -155,6 +155,7 @@ final class ClientSecretJwtTest extends TestCase
         return new ClientAuthenticator(
             $this->clients,
             Methods::all($this->hasher),
+            Methods::requestParser(),
             new MockClock('2026-09-15T10:00:00+00:00'),
             $this->events,
             new FakeClientLoadBudget(),

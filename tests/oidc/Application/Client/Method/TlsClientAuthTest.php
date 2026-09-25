@@ -314,6 +314,7 @@ final class TlsClientAuthTest extends TestCase
         return new ClientAuthenticator(
             $this->clients,
             Methods::all(),
+            Methods::requestParser(),
             $clock ?? new MockClock('2026-09-22T12:00:00+00:00'),
             $this->events,
             new FakeClientLoadBudget(),
