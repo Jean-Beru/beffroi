@@ -57,7 +57,11 @@ final class AuthorizationRequestParserTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->clients = new InMemoryClientRepository();
-        $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $this->client = Clients::confidential(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            resources: Clients::resources(),
+        );
         $this->clients->save($this->client);
         $this->clients->save(Clients::confidential(
             Fixtures::tenant('other', 'https://id.other.example'),
@@ -86,6 +90,7 @@ final class AuthorizationRequestParserTest extends TestCase
             'id_token_hint' => self::ID_TOKEN,
             'claims' => '{"id_token": {"auth_time": {"essential": true}}}',
             'response_mode' => 'query',
+            'resource' => Clients::CALENDAR,
         ]);
 
         // Then
@@ -110,6 +115,7 @@ final class AuthorizationRequestParserTest extends TestCase
             $request->claims?->idToken,
         );
         static::assertSame('query', $request->responseMode->value);
+        static::assertSame([Clients::CALENDAR], $request->resources?->values());
     }
 
     /**
@@ -137,6 +143,105 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertNull($request->idTokenHint);
         static::assertNull($request->claims);
         static::assertSame('query', $request->responseMode->value);
+        static::assertNull($request->resources);
+    }
+
+    /**
+     * RFC 8707 §2.1: "resource" may be sent several times, and it names the resources the tokens of this
+     * request will be addressed to.
+     */
+    #[Test]
+    public function itReadsTheResourcesTheRequestNamesSeveralTimes(): void
+    {
+        // When
+        $request = $this->parse([
+            'resource' => [Clients::CALENDAR, Clients::CONTACTS],
+        ]);
+
+        // Then
+        static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $request->resources?->values());
+    }
+
+    /**
+     * RFC 8707 §2: the value is an absolute URI without a fragment; anything else is "invalid_target",
+     * and the client reads it at its redirect URI as it reads any refusal of this stage.
+     */
+    #[Test]
+    #[DataProvider('provideResourcesThatAreNotAbsoluteUris')]
+    public function itRefusesAResourceThatIsNotAnAbsoluteUri(mixed $resource): void
+    {
+        // When
+        try {
+            $this->parse([
+                'resource' => $resource,
+            ]);
+            static::fail('The request should have been refused.');
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame('invalid_target', $exception->error);
+            static::assertSame(
+                'The resource parameter is an absolute URI without a fragment component (RFC 8707 section 2).',
+                $exception->errorDescription,
+            );
+            static::assertTrue($exception->redirectable);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function provideResourcesThatAreNotAbsoluteUris(): iterable
+    {
+        yield 'a relative URI' => ['/calendar'];
+        yield 'a fragment' => ['https://cal.example.com/#today'];
+        yield 'one of several' => [[Clients::CALENDAR, 'cal.example.com']];
+    }
+
+    /**
+     * RFC 8707 §2.1: what a client may ask for is a closed list on its registration, as every other list
+     * of a client is. The refusal names no resource: what the client registered is not something an
+     * error response teaches whoever sent the request.
+     */
+    #[Test]
+    public function itRefusesAResourceTheClientIsNotRegisteredFor(): void
+    {
+        // When
+        try {
+            $this->parse([
+                'resource' => 'https://files.example.com/',
+            ]);
+            static::fail('The request should have been refused.');
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame('invalid_target', $exception->error);
+            static::assertSame(
+                'The requested resource is not one this client is registered for (RFC 8707 section 2).',
+                $exception->errorDescription,
+            );
+            static::assertTrue($exception->redirectable);
+        }
+    }
+
+    /**
+     * RFC 6749 §3.1, as the endpoint hands a repeated parameter over: a "resource" of another shape is
+     * no resource.
+     */
+    #[Test]
+    public function itRefusesAResourceThatIsNotTextAtAll(): void
+    {
+        // When
+        try {
+            $this->parse([
+                'resource' => [
+                    'one' => Clients::CALENDAR,
+                ],
+            ]);
+            static::fail('The request should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            // Then
+            static::assertSame('The resource parameter must be a string or a list of strings.', $exception->errorDescription);
+            static::assertTrue($exception->redirectable);
+        }
     }
 
     /**
@@ -277,7 +382,7 @@ final class AuthorizationRequestParserTest extends TestCase
         // When
         $request = $this->parse([
             'foo' => 'bar',
-            'resource' => ['a', 'b'],
+            'whatever' => ['a', 'b'],
         ]);
 
         // Then

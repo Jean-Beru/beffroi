@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Bridge\Configuration;
 use function array_column;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use function array_map;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -19,6 +20,8 @@ use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Resource\ResourceIndicator;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
@@ -1105,6 +1108,27 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 ],
             'request_uris option of the client "bad" must be a list of strings',
         ];
+        yield 'a resource that is not an absolute URI' => [
+            $base
+                + [
+                    'resources' => ['cal.example.com'],
+                ],
+            'is not an absolute URI (RFC 8707 section 2, RFC 3986 section 4.3)',
+        ];
+        yield 'a resource with a fragment' => [
+            $base
+                + [
+                    'resources' => ['https://cal.example.com/#today'],
+                ],
+            'must not carry a fragment component (RFC 8707 section 2)',
+        ];
+        yield 'resources as a string' => [
+            $base
+                + [
+                    'resources' => 'https://cal.example.com/',
+                ],
+            'resources option of the client "bad" must be a list of strings',
+        ];
         yield 'back-channel logout URI over plain http' => [
             $base
                 + [
@@ -1355,6 +1379,33 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($client->registration->requestObjectSigning->accepts('ES256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
         static::assertFalse($client->registration->requestObjectSigning->accepts('PS256', ['RS256', 'PS256', 'ES256', 'EdDSA']));
         static::assertSame('https://key.example/request.jwt', $client->registration->registeredRequestUri('https://key.example/request.jwt')?->value);
+    }
+
+    /**
+     * RFC 8707 §2: what a client may ask a token for is read as it is written, and the tenant
+     * enumerates what its clients registered (RFC 9728 §4, issue #98).
+     */
+    #[Test]
+    public function aClientRegistersTheResourcesItMayAskATokenFor(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'calendar-client' => self::SPA
+                + [
+                    'resources' => [Clients::CALENDAR, Clients::CONTACTS],
+                ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'calendar-client');
+
+        // Then
+        static::assertTrue($client->registration->allowsResources(ResourceIndicators::of([Clients::CALENDAR])));
+        static::assertFalse($client->registration->allowsResources(ResourceIndicators::of(['https://files.example.com/'])));
+        static::assertSame(
+            [Clients::CALENDAR, Clients::CONTACTS],
+            array_map(static fn (ResourceIndicator $resource): string => $resource->value, $repository->resourcesRegisteredIn($this->tenant)),
+        );
     }
 
     /**

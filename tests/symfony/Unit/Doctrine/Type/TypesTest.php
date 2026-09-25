@@ -27,6 +27,7 @@ use Heidi\Bundle\Doctrine\Type\GeoLocationType;
 use Heidi\Bundle\Doctrine\Type\IssuerType;
 use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
+use Heidi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\HeidiBundle;
@@ -53,6 +54,7 @@ use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -103,6 +105,11 @@ final class TypesTest extends TestCase
             'S256:E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
         ];
         yield 'scopes' => [ScopesType::class, new Scopes([new Scope('openid'), new Scope('profile')]), 'openid profile'];
+        yield 'resources' => [
+            ResourceIndicatorsType::class,
+            ResourceIndicators::of(['https://cal.example.com/', 'https://contacts.example.com/']),
+            'https://cal.example.com/ https://contacts.example.com/',
+        ];
         yield 'proofs' => [
             AuthenticationProofsType::class,
             AuthenticationProofs::of(AuthenticationMethod::password(), new DateTimeImmutable('@1789000000'))->with(
@@ -228,6 +235,7 @@ final class TypesTest extends TestCase
         yield 'a string for an issuer' => [IssuerType::class, 'https://op.example'];
         yield 'a subject for an issuer' => [IssuerType::class, new Subject('alice')];
         yield 'a list of strings for scopes' => [ScopesType::class, ['openid']];
+        yield 'a list of strings for resources' => [ResourceIndicatorsType::class, ['https://cal.example.com/']];
         yield 'a string for scopes' => [ScopesType::class, 'openid'];
         yield 'an array for proofs' => [
             AuthenticationProofsType::class,
@@ -279,6 +287,9 @@ final class TypesTest extends TestCase
         yield 'a code challenge with the plain method' => [CodeChallengeType::class, 'plain:E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
         yield 'a code challenge too short' => [CodeChallengeType::class, 'S256:short'];
         yield 'a scope with a quote' => [ScopesType::class, 'open"id'];
+        yield 'a resource that is not an absolute URI' => [ResourceIndicatorsType::class, 'cal.example.com'];
+        yield 'a resource with a fragment' => [ResourceIndicatorsType::class, 'https://cal.example.com/#today'];
+        yield 'resources that are not a string' => [ResourceIndicatorsType::class, ['https://cal.example.com/']];
         yield 'scopes that are not a string' => [ScopesType::class, ['openid']];
         yield 'proofs that are not JSON' => [AuthenticationProofsType::class, '{'];
         yield 'proofs that are a JSON list' => [AuthenticationProofsType::class, '[1]'];
@@ -415,10 +426,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresEighteenTypes(): void
+    public function theBundleDeclaresNineteenTypes(): void
     {
         // When / Then
-        static::assertCount(18, HeidiBundle::DBAL_TYPES);
+        static::assertCount(19, HeidiBundle::DBAL_TYPES);
     }
 
     /**

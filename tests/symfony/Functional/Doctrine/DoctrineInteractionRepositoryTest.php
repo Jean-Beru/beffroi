@@ -18,6 +18,7 @@ use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
@@ -61,6 +62,8 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             'eyJhbGciOiJSUzI1NiJ9.e30.sig',
             $claims,
             ResponseMode::Query,
+            null,
+            ResourceIndicators::of(['https://cal.example.com/', 'https://contacts.example.com/']),
         );
         $id = Interaction::generateId();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, 'fr', self::now(), self::now()->modify('+10 minutes')));
@@ -97,6 +100,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertSame('eyJhbGciOiJSUzI1NiJ9.e30.sig', $parked->idTokenHint);
         static::assertEquals($claims, $parked->claims);
         static::assertSame('query', $parked->responseMode->value);
+        static::assertSame(['https://cal.example.com/', 'https://contacts.example.com/'], $parked->resources?->values());
     }
 
     #[Test]
@@ -131,6 +135,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertNull($parked->display);
         static::assertNull($parked->idTokenHint);
         static::assertNull($parked->claims);
+        static::assertNull($parked->resources);
     }
 
     #[Test]

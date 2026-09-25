@@ -25,10 +25,12 @@ use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\IssuedRefreshToken;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidGrantException;
+use Heidi\Oidc\Exception\InvalidTargetException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidScopeException;
 use Heidi\Oidc\Exception\OAuth2Exception;
@@ -630,6 +632,61 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
+     * RFC 8707 §2.2: a refresh token is bound to the resources of the whole grant, and the access token
+     * it yields is addressed to them when the request names none.
+     */
+    #[Test]
+    public function aRefreshAddressesTheAccessTokenToTheResourcesOfTheGrant(): void
+    {
+        // Given
+        $this->token('the-token', resources: ResourceIndicators::of([Clients::CALENDAR, Clients::CONTACTS]));
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $issued->authorization->audience()->values);
+    }
+
+    /**
+     * RFC 8707 §2.2: a refresh may ask for a subset of the resources of the grant, as it may for its
+     * scopes.
+     */
+    #[Test]
+    public function aRefreshNarrowsTheResourcesOfTheGrant(): void
+    {
+        // Given
+        $this->token('the-token', resources: ResourceIndicators::of([Clients::CALENDAR, Clients::CONTACTS]));
+
+        // When
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            $this->request(resource: Clients::CONTACTS),
+            $this->context,
+        );
+
+        // Then
+        static::assertSame([Clients::CONTACTS], $issued->authorization->audience()->values);
+    }
+
+    /**
+     * RFC 8707 §2.2: a refresh never widens what the grant carries.
+     */
+    #[Test]
+    public function itRefusesAResourceTheGrantDoesNotCarry(): void
+    {
+        // Given
+        $this->token('the-token', resources: ResourceIndicators::of([Clients::CALENDAR]));
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIs('invalid_target: The requested resource is not among the resources of this authorization (RFC 8707 section 2.2).');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(resource: Clients::CONTACTS), $this->context);
+    }
+
+    /**
      * @param list<string> $scopes
      */
     private function token(
@@ -638,8 +695,17 @@ final class RefreshTokenGrantTest extends TestCase
         ?Client $client = null,
         ?RefreshTokenFamily $family = null,
         ?AuthenticationSession $session = null,
+        ?ResourceIndicators $resources = null,
     ): RefreshToken {
-        $token = Tokens::refreshToken($value, $client ?? $this->client, $session ?? $this->session, $this->clock->now(), $family, $scopes);
+        $token = Tokens::refreshToken(
+            $value,
+            $client ?? $this->client,
+            $session ?? $this->session,
+            $this->clock->now(),
+            $family,
+            $scopes,
+            resources: $resources,
+        );
         $this->refreshTokens->save($token);
 
         return $token;
@@ -695,7 +761,10 @@ final class RefreshTokenGrantTest extends TestCase
         yield 'no proof at all' => [null];
     }
 
-    private function request(string $refreshToken = 'the-token', ?string $scope = null): TokenRequest
+    /**
+     * @param string|list<string>|null $resource what the request asks its access token to be addressed to (RFC 8707 §2.2)
+     */
+    private function request(string $refreshToken = 'the-token', ?string $scope = null, string|array|null $resource = null): TokenRequest
     {
         $parameters = [
             'grant_type' => 'refresh_token',
@@ -703,6 +772,9 @@ final class RefreshTokenGrantTest extends TestCase
         ];
         if ($scope !== null) {
             $parameters['scope'] = $scope;
+        }
+        if ($resource !== null) {
+            $parameters['resource'] = $resource;
         }
 
         return new TokenRequest($parameters);

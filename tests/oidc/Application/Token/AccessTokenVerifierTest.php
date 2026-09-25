@@ -18,8 +18,10 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
@@ -62,7 +64,7 @@ final class AccessTokenVerifierTest extends TestCase
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $this->client = Clients::public($this->tenant);
+        $this->client = Clients::public($this->tenant, resources: Clients::resources());
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
         $this->jws = new FakeJwsVerifier();
@@ -158,6 +160,47 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertSame('1', $token->authentication->contextClass);
         static::assertEquals(Fixtures::now(), $token->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
+    }
+
+    /**
+     * RFC 8707 §2: an opaque token says who it is addressed to exactly as the self-contained shape
+     * does, so that a resource server learns the same thing from the introspection of one as from the
+     * "aud" of the other.
+     *
+     * @param list<string>|null $resources
+     * @param list<string> $audience
+     */
+    #[Test]
+    #[DataProvider('provideStoredResources')]
+    public function itReadsWhoAnOpaqueTokenIsAddressedTo(?array $resources, array $audience): void
+    {
+        // Given
+        $this->storedTokens->keep(Tokens::storedAccessToken(
+            $this->opaque,
+            $this->client,
+            Fixtures::session(Fixtures::user($this->tenant)),
+            Fixtures::now(),
+            resources: $resources === null ? null : ResourceIndicators::of($resources),
+        ));
+
+        // When
+        $token = $this->verifier->verify($this->tenant, $this->opaque, Fixtures::now());
+
+        // Then
+        static::assertSame($audience, $token->audience->values);
+    }
+
+    /**
+     * @return iterable<string, array{list<string>|null, list<string>}>
+     */
+    public static function provideStoredResources(): iterable
+    {
+        yield 'no resource' => [null, ['spa']];
+        yield 'one resource' => [[Clients::CALENDAR], [Clients::CALENDAR]];
+        yield 'two resources' => [
+            [Clients::CALENDAR, Clients::CONTACTS],
+            [Clients::CALENDAR, Clients::CONTACTS],
+        ];
     }
 
     /**
@@ -291,7 +334,7 @@ final class AccessTokenVerifierTest extends TestCase
         yield 'as issued' => [self::PAYLOAD, 'openid profile', []];
         yield 'audience list' => [
             self::with([
-                'aud' => ['api', 'spa'],
+                'aud' => [Clients::CALENDAR, Clients::CONTACTS],
             ]),
             'openid profile',
             [],
@@ -426,7 +469,7 @@ final class AccessTokenVerifierTest extends TestCase
             null,
             null,
         ];
-        yield 'no aud' => [self::without('aud'), null, null];
+        yield 'no aud' => [self::without('aud'), null, InvalidArgumentException::class];
         yield 'aud of another client' => [
             self::with([
                 'aud' => 'other',
@@ -441,6 +484,20 @@ final class AccessTokenVerifierTest extends TestCase
             null,
             null,
         ];
+        yield 'aud of a resource the client is not registered for' => [
+            self::with([
+                'aud' => 'https://files.example.com/',
+            ]),
+            null,
+            null,
+        ];
+        yield 'aud list holding a resource the client is not registered for' => [
+            self::with([
+                'aud' => [Clients::CALENDAR, 'https://files.example.com/'],
+            ]),
+            null,
+            null,
+        ];
         yield 'aud as an object' => [
             self::with([
                 'aud' => [
@@ -448,14 +505,14 @@ final class AccessTokenVerifierTest extends TestCase
                 ],
             ]),
             null,
-            null,
+            InvalidArgumentException::class,
         ];
         yield 'aud as a number' => [
             self::with([
                 'aud' => 1,
             ]),
             null,
-            null,
+            InvalidArgumentException::class,
         ];
         yield 'no sub' => [self::without('sub'), null, null];
         yield 'no iat' => [self::without('iat'), null, null];

@@ -7,6 +7,7 @@
     <embeddable name="Heidi\Oidc\Domain\Authorization\AuthorizationRequest">
         <field name="redirectUri" type="heidi_redirect_uri" column="redirect_uri" length="2048"/>
         <field name="scopes" type="heidi_scopes" column="scopes"/>
+        <field name="resources" type="heidi_resources" column="resources" nullable="true"/>
         <field name="codeChallenge" type="heidi_code_challenge" column="code_challenge" length="133" nullable="true"/>
         <field name="state" type="text" column="state" nullable="true"/>
         <field name="nonce" type="text" column="nonce" nullable="true"/>

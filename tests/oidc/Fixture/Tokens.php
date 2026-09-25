@@ -14,6 +14,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
@@ -49,6 +50,7 @@ final class Tokens
         bool $pkce = true,
         ?Uuid $grantId = null,
         ?KeyConfirmation $dpopKey = null,
+        ?ResourceIndicators $resources = null,
     ): AuthorizationCode {
         return new AuthorizationCode(
             AuthorizationCode::hash($code),
@@ -57,6 +59,7 @@ final class Tokens
             $session,
             $client->registration->redirectUris[0],
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources,
             $nonce,
             $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
             $dpopKey,
@@ -83,6 +86,7 @@ final class Tokens
         ?Uuid $grantId = null,
         array $scopes = ['openid'],
         ?ClaimsRequest $claims = null,
+        ?ResourceIndicators $resources = null,
     ): StoredAccessToken {
         return new StoredAccessToken(
             DrawnSecret::digestOf($value),
@@ -90,6 +94,7 @@ final class Tokens
             $client,
             $session,
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
@@ -122,6 +127,7 @@ final class Tokens
         array $scopes = ['openid'],
         ?ClaimsRequest $claims = null,
         ?ConfirmationInterface $confirmation = null,
+        ?ResourceIndicators $resources = null,
     ): RefreshToken {
         $family ??= self::family($issuedAt);
 
@@ -131,6 +137,7 @@ final class Tokens
             $client,
             $session,
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,

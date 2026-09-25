@@ -12,6 +12,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Token\TokenAudience;
 use Heidi\Oidc\Domain\Token\VerifiedAccessToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -45,8 +46,8 @@ final class IntrospectionResponseTest extends TestCase
 
     /**
      * RFC 7662 §2.2: the members in the order of the section, then the authentication of RFC 9068 §2.2.1
-     * and the two names of the provider (architecture §4.6); "aud" and "client_id" are the client until a
-     * "resource" parameter says otherwise.
+     * and the two names of the provider (architecture §4.6); "aud" is the client, the token having been
+     * asked for no resource, and "client_id" names the client whatever the audience is.
      */
     #[Test]
     public function anActiveTokenIsDescribedByWhatTheProviderKnows(): void
@@ -56,6 +57,7 @@ final class IntrospectionResponseTest extends TestCase
         $grant = Uuid::v7();
         $token = new VerifiedAccessToken(
             Clients::public(Fixtures::tenant()),
+            new TokenAudience(['spa']),
             new Subject('alice-subject'),
             $session,
             $grant,
@@ -94,6 +96,35 @@ final class IntrospectionResponseTest extends TestCase
             '{"active":true,"scope":"openid email","client_id":"spa","token_type":"Bearer","exp":1789467000,"iat":1789466400,',
             $response->body(),
         );
+    }
+
+    /**
+     * RFC 8707 §2: the audience a resource server reads is the one the token carries, several resources
+     * as the list they are (RFC 7519 §4.1.3), while "client_id" goes on naming the client.
+     */
+    #[Test]
+    public function theAudienceIsWhatTheTokenIsAddressedTo(): void
+    {
+        // Given
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR, Clients::CONTACTS]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            Uuid::v7(),
+            new Scopes([Scope::openid()]),
+            [],
+            new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd'], '1'),
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $response->members['aud']);
+        static::assertSame('spa', $response->members['client_id']);
     }
 
     /**

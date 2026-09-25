@@ -222,6 +222,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             $session,
             $client->registration->redirectUris[0],
             new Scopes([new Scope('openid'), new Scope('email')]),
+            null,
             'n-0S6_WzA2Mj',
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
             null,

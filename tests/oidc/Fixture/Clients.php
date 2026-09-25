@@ -21,6 +21,7 @@ use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
 use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
+use Heidi\Oidc\Domain\Resource\ResourceIndicator;
 use Heidi\Oidc\Domain\Client\ResponseFormat;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -30,7 +31,15 @@ final class Clients
     public const string SECRET = 'a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3e7f2a6b0c4d8e1f5a9b3c7d0e4f8a2b6';
 
     /**
+     * Two resources a client may be registered for (RFC 8707 §2), as the examples of the RFC name them.
+     */
+    public const string CALENDAR = 'https://cal.example.com/';
+
+    public const string CONTACTS = 'https://contacts.example.com/';
+
+    /**
      * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow and its renewal unless the test says otherwise
+     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
      */
     public static function confidential(
         Tenant $tenant,
@@ -40,6 +49,7 @@ final class Clients
         bool $requiresPkce = true,
         AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt,
         ?array $grantTypes = null,
+        array $resources = [],
     ): Client {
         return new Client(
             $tenant,
@@ -54,6 +64,7 @@ final class Clients
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
                 requiresPkce: $requiresPkce,
                 accessTokenFormat: $accessTokenFormat,
+                resources: $resources,
             ),
             new HashedClientSecret($secretHash),
         );
@@ -82,12 +93,32 @@ final class Clients
         );
     }
 
-    public static function public(Tenant $tenant, string $clientId = 'spa'): Client
+    /**
+     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
+     */
+    public static function public(Tenant $tenant, string $clientId = 'spa', array $resources = []): Client
     {
         return new Client(
             $tenant,
-            new ClientRegistration($clientId, 'Single page application', Methods::none(), false, [new RedirectUri('https://spa.example/callback')]),
+            new ClientRegistration(
+                $clientId,
+                'Single page application',
+                Methods::none(),
+                false,
+                [new RedirectUri('https://spa.example/callback')],
+                resources: $resources,
+            ),
         );
+    }
+
+    /**
+     * The two resources the fixtures name, for the tests that ask a token for one of them.
+     *
+     * @return list<ResourceIndicator>
+     */
+    public static function resources(): array
+    {
+        return [new ResourceIndicator(self::CALENDAR), new ResourceIndicator(self::CONTACTS)];
     }
 
     /**

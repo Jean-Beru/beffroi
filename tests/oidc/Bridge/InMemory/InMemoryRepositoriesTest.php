@@ -591,6 +591,7 @@ final class InMemoryRepositoriesTest extends TestCase
             $this->client->registration->redirectUris[0],
             new Scopes([Scope::openid()]),
             null,
+            null,
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
             null,
             null,
