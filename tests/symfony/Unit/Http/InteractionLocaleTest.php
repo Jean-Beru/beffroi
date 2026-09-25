@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit\Http;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Core\Domain\Tenant\Issuer;
@@ -214,6 +215,6 @@ final class InteractionLocaleTest extends TestCase
             'nonce',
         );
 
-        return new Interaction(Interaction::generateId(), $tenant, $request, $locale, $now, $now->modify('+10 minutes'));
+        return new Interaction(Secrets::draw(), $tenant, $request, $locale, $now, $now->modify('+10 minutes'));
     }
 }

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Command;
 
+use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
@@ -235,7 +235,7 @@ final class CredentialsTest extends ConsoleTestCase
             false,
             false,
             Uuid::v4(),
-            PasskeyUserHandle::generate(),
+            Fixtures::userHandle(),
             self::now(),
         );
     }

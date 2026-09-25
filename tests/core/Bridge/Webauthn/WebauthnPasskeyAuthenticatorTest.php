@@ -10,7 +10,6 @@ use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\PasskeyCeremonyFailedException;
@@ -227,7 +226,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         $device = new SoftwareAuthenticator('https://id.acme.example');
         $device->create($this->ceremonies->optionsToJson(new WebauthnPasskeyRegistrar($this->ceremonies)->creationOptions(
             $this->alice,
-            PasskeyUserHandle::generate(),
+            Fixtures::userHandle(),
             [],
         )));
         $options = $this->authenticator->requestOptions($this->tenant, []);
@@ -347,7 +346,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         // Given
         $device = new SoftwareAuthenticator('https://id.acme.example');
         $registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
-        $attestation = $device->create($this->ceremonies->optionsToJson($registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), [])));
+        $attestation = $device->create($this->ceremonies->optionsToJson($registrar->creationOptions($this->alice, Fixtures::userHandle(), [])));
         $options = $this->authenticator->requestOptions($this->tenant, []);
 
         // Then
@@ -378,7 +377,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     private function enrol(SoftwareAuthenticator $device): PasskeyCredential
     {
         $registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
-        $options = $registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        $options = $registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
         $record = $registrar->verifyAttestation($this->tenant, $options, $device->create($this->ceremonies->optionsToJson($options)));
         $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $this->alice, 'Test key', $record, Fixtures::now());
         $this->credentials->save($passkey);

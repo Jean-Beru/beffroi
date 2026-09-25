@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
@@ -66,7 +67,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             null,
             ResourceIndicators::of(['https://cal.example.com/', 'https://contacts.example.com/']),
         );
-        $id = Interaction::generateId();
+        $id = Secrets::draw();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, 'fr', self::now(), self::now()->modify('+10 minutes')));
         self::reload();
 
@@ -115,7 +116,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
-        $id = Interaction::generateId();
+        $id = Secrets::draw();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
         self::reload();
 
@@ -154,7 +155,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
-        $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, 'en', self::now(), self::now()->modify('+10 minutes'));
+        $interaction = new Interaction(Secrets::draw(), self::tenant(), $request, 'en', self::now(), self::now()->modify('+10 minutes'));
         self::interactions()->save($interaction);
         $interaction->authenticate($session, self::now()->modify('+1 minute'));
         $interaction->consent($consent, self::now()->modify('+2 minutes'));
@@ -192,7 +193,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             new Scopes([new Scope('openid')]),
             new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
         );
-        $id = Interaction::generateId();
+        $id = Secrets::draw();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
         self::reload();
 
@@ -204,7 +205,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
     public function anUnknownIdentifierFindsNoInteraction(): void
     {
         // When / Then
-        static::assertNull(self::interactions()->find(Interaction::generateId()));
+        static::assertNull(self::interactions()->find(Secrets::draw()));
     }
 
     private static function interactions(): InteractionRepositoryInterface

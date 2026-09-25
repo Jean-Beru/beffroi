@@ -8,7 +8,6 @@ use function array_filter;
 use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordCredential;
 use Heidi\Core\Domain\Credential\PasswordHash;
@@ -41,7 +40,7 @@ final class PasskeyCredentialTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
         $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now());
 
         // When
@@ -211,7 +210,7 @@ final class PasskeyCredentialTest extends TestCase
             false,
             false,
             Uuid::v4(),
-            PasskeyUserHandle::generate(),
+            Fixtures::userHandle(),
             Fixtures::now(),
         );
 
@@ -325,7 +324,7 @@ final class PasskeyCredentialTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
         $aaguid = Uuid::v4();
         $record = CredentialRecord::create(
             'credential-id',

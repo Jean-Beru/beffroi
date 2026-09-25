@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Token;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
@@ -97,7 +98,7 @@ final class StoredClientAccessTokenTest extends TestCase
         $this->expectExceptionMessageIs('An opaque access token is stored as its hex SHA-256.');
 
         // When
-        $this->token(tokenHash: DrawnSecret::draw());
+        $this->token(tokenHash: Secrets::draw());
     }
 
     #[Test]

@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Authorization;
 
+use Heidi\Oidc\Domain\Token\Base64Url;
+use function str_repeat;
+use Heidi\Oidc\Application\Secret\SecretDrawer;
+use Heidi\Core\Bridge\Uid\FixedUuidGenerator;
+use Heidi\Core\Bridge\Random\FixedRandomness;
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use function array_map;
 use DateInterval;
 use DateTimeImmutable;
@@ -28,7 +36,6 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\Prompt;
@@ -137,6 +144,8 @@ final class AuthorizationHandlerTest extends TestCase
             new IdTokenHintVerifier($jws),
             Logins::passwordAndPasskey(),
             $this->credentials,
+            new SymfonyUuidGenerator(),
+            Secrets::drawer(),
             $this->clock,
             $this->events,
         );
@@ -314,7 +323,7 @@ final class AuthorizationHandlerTest extends TestCase
         $granted = $this->granted($decision);
         $code = $granted->code;
         static::assertSame([$code], $this->codes->all());
-        static::assertSame(AuthorizationCode::hash($granted->response->code), $code->codeHash);
+        static::assertSame(DrawnSecret::digestOf($granted->response->code), $code->codeHash);
         static::assertSame($this->client, $code->client);
         static::assertSame($session, $code->session);
         static::assertSame($request->redirectUri, $code->redirectUri);
@@ -757,6 +766,46 @@ final class AuthorizationHandlerTest extends TestCase
         static::assertSame($this->client, $recorded->client);
         static::assertSame($request->scopes, $recorded->scopes);
         static::assertEquals($this->clock->now(), $recorded->grantedAt);
+    }
+
+    /**
+     * Issue #245: what the handler draws is what it was given, so a test says what an interaction, a code
+     * and a consent will be called and reads the three of them back, with no store to ask and no clock to
+     * move.
+     */
+    #[Test]
+    public function whatItDrawsIsWhatItWasGiven(): void
+    {
+        // Given
+        $ofTheInteraction = str_repeat("\x00", DrawnSecret::LENGTH);
+        $ofTheCode = str_repeat("\x04", DrawnSecret::LENGTH);
+        $consentId = Uuid::fromString('0199a0d4-0000-7000-8000-000000000042');
+        $handler = new AuthorizationHandler(
+            $this->interactions,
+            $this->consents,
+            $this->codes,
+            $this->pushedRequests,
+            new IdTokenHintVerifier(new FakeJwsVerifier()),
+            Logins::passwordAndPasskey(),
+            $this->credentials,
+            new FixedUuidGenerator([$consentId]),
+            new SecretDrawer(new FixedRandomness([$ofTheInteraction, $ofTheCode])),
+            $this->clock,
+            $this->events,
+        );
+        $session = $this->session();
+        $consentRequired = $this->consentRequired(
+            $handler->begin($this->request(['openid', 'profile']), $session, $this->context),
+            ConsentRequirement::NotGranted,
+        );
+
+        // When
+        $granted = $this->granted($handler->grantConsent($consentRequired->interaction, $session, $this->context));
+
+        // Then
+        static::assertSame(Base64Url::encode($ofTheInteraction), $granted->interaction->id);
+        static::assertSame(Base64Url::encode($ofTheCode), $granted->response->code);
+        static::assertTrue($consentId->equals($granted->interaction->consent?->id));
     }
 
     /**
@@ -1713,6 +1762,8 @@ final class AuthorizationHandlerTest extends TestCase
             new IdTokenHintVerifier(new FakeJwsVerifier()),
             Logins::passwordAndPasskey(),
             $this->credentials,
+            new SymfonyUuidGenerator(),
+            Secrets::drawer(),
             $this->clock,
             $this->events,
             new DateInterval('PT5M'),
@@ -1741,6 +1792,8 @@ final class AuthorizationHandlerTest extends TestCase
             new IdTokenHintVerifier(new FakeJwsVerifier()),
             Logins::passwordAndPasskey(),
             $this->credentials,
+            new SymfonyUuidGenerator(),
+            Secrets::drawer(),
             $this->clock,
             $this->events,
             new DateInterval('PT5M'),
@@ -1807,6 +1860,8 @@ final class AuthorizationHandlerTest extends TestCase
             new IdTokenHintVerifier(new FakeJwsVerifier()),
             $logins,
             $this->credentials,
+            new SymfonyUuidGenerator(),
+            Secrets::drawer(),
             $this->clock,
             $this->events,
         );

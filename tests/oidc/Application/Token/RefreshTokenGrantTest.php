@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
@@ -88,7 +89,7 @@ final class RefreshTokenGrantTest extends TestCase
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
-        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events);
+        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
         $this->grant = new RefreshTokenGrant($this->refreshTokens, new RefreshTokenRevocation($this->refreshTokens), $issuer, $this->clock, $this->events);
     }
 

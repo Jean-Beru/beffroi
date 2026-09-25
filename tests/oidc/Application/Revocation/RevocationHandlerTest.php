@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Revocation;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use function base64_encode;
 use DateTimeImmutable;
@@ -138,8 +141,8 @@ final class RevocationHandlerTest extends TestCase
         $this->refreshTokens->save($current);
         $ofTheGrant = Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $family->grantId);
         $ofAnotherGrant = Tokens::storedAccessToken('of-another-grant', $this->client, $this->session, $this->clock->now());
-        $this->accessTokens->keep($ofTheGrant);
-        $this->accessTokens->keep($ofAnotherGrant);
+        $this->accessTokens->save($ofTheGrant);
+        $this->accessTokens->save($ofAnotherGrant);
 
         // When
         $this->handler->handle(
@@ -293,7 +296,7 @@ final class RevocationHandlerTest extends TestCase
         $token = Tokens::refreshToken('revoked', $this->client, $this->session, $this->clock->now()->modify('-1 day'));
         $token->revoke($this->clock->now()->modify('-1 hour'));
         $this->refreshTokens->save($token);
-        $this->accessTokens->keep(Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $token->family->grantId));
+        $this->accessTokens->save(Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $token->family->grantId));
 
         // When
         $this->handler->handle(
@@ -429,16 +432,15 @@ final class RevocationHandlerTest extends TestCase
 
     private function accessToken(Client $client): string
     {
-        return $this->accessTokens->issue(
+        return new OpaqueAccessTokenIssuer($this->accessTokens, Secrets::drawer())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $this->clock->now())),
             $this->clock->now(),
-            $this->clock->now()->modify('+10 minutes'),
-        );
+        )->value;
     }
 
     private function jwt(Client $client, DateTimeImmutable $issuedAt): string
     {
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $issuedAt)),
             $issuedAt,
         )->value;

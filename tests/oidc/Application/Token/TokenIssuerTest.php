@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use DateInterval;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
@@ -56,7 +58,7 @@ final class TokenIssuerTest extends TestCase
         $this->idTokens = new FakeIdTokenIssuer();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->events = new RecordingEventDispatcher();
-        $this->issuer = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, $this->events);
+        $this->issuer = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
     }
 
     /**
@@ -204,9 +206,9 @@ final class TokenIssuerTest extends TestCase
 
         // Then
         static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $issued->value));
-        static::assertSame(RefreshToken::hash($issued->value), $issued->token->tokenHash);
+        static::assertSame(DrawnSecret::digestOf($issued->value), $issued->token->tokenHash);
         static::assertSame([$issued->token], $this->refreshTokens->all());
-        static::assertSame($issued->token, $this->refreshTokens->findByTokenHash(RefreshToken::hash($issued->value)));
+        static::assertSame($issued->token, $this->refreshTokens->findByTokenHash(DrawnSecret::digestOf($issued->value)));
     }
 
     /**
@@ -291,7 +293,7 @@ final class TokenIssuerTest extends TestCase
         // Given
         $token = $this->previousRefreshToken();
         $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
-        $shortLived = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, $this->events, new DateInterval('PT1H'));
+        $shortLived = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events, new DateInterval('PT1H'));
 
         // When
         $issued = $shortLived->refreshToken($token->family, $authorization, Fixtures::now());

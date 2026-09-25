@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\EndSession;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use function array_keys;
 use function explode;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -45,7 +46,7 @@ final class LogoutTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::withBackChannelLogout($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all());
+        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator());
     }
 
     /**

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Authorization;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -22,8 +24,6 @@ use Heidi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function preg_match;
-use function strlen;
 use Symfony\Component\Uid\Uuid;
 
 final class AuthorizationCodeTest extends TestCase
@@ -36,43 +36,6 @@ final class AuthorizationCodeTest extends TestCase
     {
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
-    }
-
-    /**
-     * Architecture §4.4: the code is 256 bits of the CSPRNG in base64url.
-     */
-    #[Test]
-    public function aCodeIs256RandomBitsInBase64url(): void
-    {
-        // When
-        $code = AuthorizationCode::generate();
-
-        // Then
-        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $code));
-        static::assertNotSame($code, AuthorizationCode::generate());
-    }
-
-    /**
-     * Architecture §4.4: the code is stored as its SHA-256.
-     */
-    #[Test]
-    public function aCodeIsHashedWithSha256(): void
-    {
-        // When / Then
-        static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', AuthorizationCode::hash(''));
-        static::assertSame(64, strlen(AuthorizationCode::hash(AuthorizationCode::generate())));
-    }
-
-    #[Test]
-    public function twoCodesHashDifferently(): void
-    {
-        // Given
-        $code = AuthorizationCode::generate();
-        $again = AuthorizationCode::generate();
-
-        // When / Then
-        static::assertSame(AuthorizationCode::hash($code), AuthorizationCode::hash($code));
-        static::assertNotSame(AuthorizationCode::hash($code), AuthorizationCode::hash($again));
     }
 
     /**
@@ -114,7 +77,7 @@ final class AuthorizationCodeTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'), codeHash: AuthorizationCode::generate());
+        $this->code(Fixtures::now(), Fixtures::now()->modify('+60 seconds'), codeHash: Secrets::draw());
     }
 
     #[Test]
@@ -128,7 +91,7 @@ final class AuthorizationCodeTest extends TestCase
 
         // When
         new AuthorizationCode(
-            AuthorizationCode::hash(''),
+            DrawnSecret::digestOf(''),
             Uuid::v7(),
             $client,
             $this->session,

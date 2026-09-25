@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Bridge\InMemory;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_keys;
 use Heidi\Core\Domain\Identity\User;
@@ -74,7 +75,7 @@ final class InMemoryRepositoriesTest extends TestCase
         // When / Then
         static::assertSame($first, $repository->find($first->id));
         static::assertSame($second, $repository->find($second->id));
-        static::assertNull($repository->find(Interaction::generateId()));
+        static::assertNull($repository->find(Secrets::draw()));
     }
 
     #[Test]
@@ -182,7 +183,7 @@ final class InMemoryRepositoriesTest extends TestCase
 
         // When / Then
         static::assertSame([], $repository->all());
-        static::assertNull($repository->findByCodeHash(AuthorizationCode::hash('one')));
+        static::assertNull($repository->findByCodeHash(DrawnSecret::digestOf('one')));
     }
 
     #[Test]
@@ -210,8 +211,8 @@ final class InMemoryRepositoriesTest extends TestCase
         $repository->save($code);
 
         // When / Then
-        static::assertSame($code, $repository->findByCodeHash(AuthorizationCode::hash('one')));
-        static::assertNull($repository->findByCodeHash(AuthorizationCode::hash('two')));
+        static::assertSame($code, $repository->findByCodeHash(DrawnSecret::digestOf('one')));
+        static::assertNull($repository->findByCodeHash(DrawnSecret::digestOf('two')));
         static::assertNull($repository->findByCodeHash('one'), 'the lookup is by hash, never by value');
     }
 
@@ -247,12 +248,12 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryPushedAuthorizationRecordRepository();
-        $requestUri = RequestUri::generate();
+        $requestUri = RequestUri::of(Secrets::draw());
         $repository->save($this->pushedRequest($requestUri));
 
         // When / Then
         static::assertNotNull($repository->findByRequestUriHash($requestUri->hash()));
-        static::assertNull($repository->findByRequestUriHash(RequestUri::generate()->hash()));
+        static::assertNull($repository->findByRequestUriHash(RequestUri::of(Secrets::draw())->hash()));
         static::assertNull($repository->findByRequestUriHash($requestUri->value), 'the lookup is by hash, never by value');
     }
 
@@ -264,7 +265,7 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryPushedAuthorizationRecordRepository();
-        $request = $this->pushedRequest(RequestUri::generate());
+        $request = $this->pushedRequest(RequestUri::of(Secrets::draw()));
         $repository->save($request);
 
         // When / Then
@@ -280,7 +281,7 @@ final class InMemoryRepositoriesTest extends TestCase
         $repository = new InMemoryPushedAuthorizationRecordRepository();
 
         // When / Then
-        static::assertFalse($repository->consume($this->pushedRequest(RequestUri::generate()), Fixtures::now()));
+        static::assertFalse($repository->consume($this->pushedRequest(RequestUri::of(Secrets::draw())), Fixtures::now()));
     }
 
     /**
@@ -315,9 +316,9 @@ final class InMemoryRepositoriesTest extends TestCase
 
         // When / Then
         static::assertSame([], $repository->all());
-        static::assertNull($repository->findByTokenHash(RefreshToken::hash('first')));
+        static::assertNull($repository->findByTokenHash(DrawnSecret::digestOf('first')));
         static::assertSame([], $repository->findByFamily($family->id));
-        static::assertSame([], $repository->findByAuthorizationCode(AuthorizationCode::hash('first-code')));
+        static::assertSame([], $repository->findByAuthorizationCode(DrawnSecret::digestOf('first-code')));
         static::assertSame([], $repository->findBySession($this->session->id));
     }
 
@@ -333,9 +334,9 @@ final class InMemoryRepositoriesTest extends TestCase
         $repository->save($first);
 
         // When / Then
-        static::assertSame($first, $repository->findByTokenHash(RefreshToken::hash('first')));
+        static::assertSame($first, $repository->findByTokenHash(DrawnSecret::digestOf('first')));
         static::assertNull($repository->findByTokenHash('first'), 'the lookup is by hash, never by value');
-        static::assertNull($repository->findByTokenHash(RefreshToken::hash('unknown')));
+        static::assertNull($repository->findByTokenHash(DrawnSecret::digestOf('unknown')));
     }
 
     /**
@@ -375,9 +376,9 @@ final class InMemoryRepositoriesTest extends TestCase
         }
 
         // When / Then
-        static::assertSame($lineage, $repository->findByAuthorizationCode(AuthorizationCode::hash('first-code')));
-        static::assertSame([$other], $repository->findByAuthorizationCode(AuthorizationCode::hash('other-code')));
-        static::assertSame([], $repository->findByAuthorizationCode(AuthorizationCode::hash('unknown')));
+        static::assertSame($lineage, $repository->findByAuthorizationCode(DrawnSecret::digestOf('first-code')));
+        static::assertSame([$other], $repository->findByAuthorizationCode(DrawnSecret::digestOf('other-code')));
+        static::assertSame([], $repository->findByAuthorizationCode(DrawnSecret::digestOf('unknown')));
     }
 
     /**
@@ -425,10 +426,11 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a token is issued as a value the store never keeps, and found by that value.
+     * Architecture §4.6: a token is kept under the digest of a value the store never sees, and found by
+     * that value.
      */
     #[Test]
-    public function itIssuesAnAccessTokenAndFindsItByItsValue(): void
+    public function itKeepsAnAccessTokenAndFindsItByItsValue(): void
     {
         // Given
         $repository = new InMemoryAccessTokenRepository();
@@ -440,11 +442,12 @@ final class InMemoryRepositoriesTest extends TestCase
             ['openid', 'email'],
         ));
 
+        $value = Secrets::draw();
+
         // When
-        $value = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $repository->save($authorization->storedUnder(DrawnSecret::digestOf($value), Fixtures::now(), Fixtures::now()->modify('+10 minutes')));
 
         // Then
-        static::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $value);
         $record = $repository->find($value) ?? static::fail('The token was kept.');
         static::assertInstanceOf(StoredUserAccessToken::class, $record);
         static::assertSame(DrawnSecret::digestOf($value), $record->tokenHash);
@@ -455,27 +458,6 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertEquals(Fixtures::now(), $record->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $record->expiresAt);
         static::assertNull($repository->find(DrawnSecret::digestOf($value)), 'the hash is not the value');
-    }
-
-    #[Test]
-    public function twoAccessTokensIssuedFromTheSameAuthorizationDiffer(): void
-    {
-        // Given
-        $repository = new InMemoryAccessTokenRepository();
-        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
-            'the-code',
-            $this->client,
-            $this->session,
-            Fixtures::now(),
-        ));
-
-        // When
-        $first = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-        $second = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-
-        // Then
-        static::assertNotSame($first, $second);
-        static::assertCount(2, $repository->all());
     }
 
     #[Test]
@@ -495,8 +477,8 @@ final class InMemoryRepositoriesTest extends TestCase
         $repository = new InMemoryAccessTokenRepository();
         $revoked = Tokens::storedAccessToken('revoked', $this->client, $this->session, Fixtures::now());
         $kept = Tokens::storedAccessToken('kept', $this->client, $this->session, Fixtures::now());
-        $repository->keep($revoked);
-        $repository->keep($kept);
+        $repository->save($revoked);
+        $repository->save($kept);
 
         // When
         $repository->revoke($revoked);
@@ -519,7 +501,7 @@ final class InMemoryRepositoriesTest extends TestCase
         $second = Tokens::storedAccessToken('second', $this->client, $this->session, Fixtures::now(), $grant);
         $other = Tokens::storedAccessToken('other', $this->client, $this->session, Fixtures::now());
         foreach ([$first, $second, $other] as $token) {
-            $repository->keep($token);
+            $repository->save($token);
         }
 
         // When
@@ -549,8 +531,10 @@ final class InMemoryRepositoriesTest extends TestCase
             ResourceIndicators::of([Clients::CALENDAR]),
         );
 
+        $value = Secrets::draw();
+
         // When
-        $value = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $repository->save($authorization->storedUnder(DrawnSecret::digestOf($value), Fixtures::now(), Fixtures::now()->modify('+10 minutes')));
 
         // Then
         $record = $repository->find($value) ?? static::fail('The token was kept.');
@@ -575,8 +559,8 @@ final class InMemoryRepositoriesTest extends TestCase
             Clients::service($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET)),
             Fixtures::now(),
         );
-        $repository->keep($ofTheSession);
-        $repository->keep($ofTheService);
+        $repository->save($ofTheSession);
+        $repository->save($ofTheService);
 
         // When
         $revoked = $repository->revokeBySession($this->session->id);
@@ -601,8 +585,8 @@ final class InMemoryRepositoriesTest extends TestCase
             Fixtures::session(Fixtures::user($this->session->tenant, 'bob', 'bob-subject')),
             Fixtures::now(),
         );
-        $repository->keep($here);
-        $repository->keep($elsewhere);
+        $repository->save($here);
+        $repository->save($elsewhere);
 
         // When
         $revoked = $repository->revokeBySession($this->session->id);
@@ -615,7 +599,7 @@ final class InMemoryRepositoriesTest extends TestCase
     private function interaction(): Interaction
     {
         return new Interaction(
-            Interaction::generateId(),
+            Secrets::draw(),
             $this->client->tenant,
             Requests::authorization($this->client),
             null,
@@ -645,7 +629,7 @@ final class InMemoryRepositoriesTest extends TestCase
     private function code(string $value): AuthorizationCode
     {
         return new AuthorizationCode(
-            AuthorizationCode::hash($value),
+            DrawnSecret::digestOf($value),
             Uuid::v7(),
             $this->client,
             $this->session,

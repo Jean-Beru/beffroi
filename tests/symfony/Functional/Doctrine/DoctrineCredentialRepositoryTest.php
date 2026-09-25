@@ -8,7 +8,6 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
@@ -97,7 +96,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
         $credentialId = random_bytes(32);
         $aaguid = Uuid::v4();
         $passkey = new PasskeyCredential(
@@ -344,7 +343,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
             false,
             false,
             Uuid::v4(),
-            PasskeyUserHandle::generate(),
+            Fixtures::userHandle(),
             $createdAt ?? self::now(),
         );
     }

@@ -7,6 +7,7 @@ namespace Heidi\Core\Tests\Fixture;
 use function chr;
 use DateTimeImmutable;
 use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Core\Bridge\Webauthn\StoredMetadata;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
@@ -31,6 +32,14 @@ use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 
 final class Fixtures
 {
+    /**
+     * A handle of the shape an authenticator stores, for a test that does not care which.
+     */
+    public static function userHandle(): PasskeyUserHandle
+    {
+        return new PasskeyUserHandle(new PlatformRandomness()->bytes(PasskeyUserHandle::LENGTH));
+    }
+
     public static function now(): DateTimeImmutable
     {
         return new DateTimeImmutable('2026-09-15T10:00:00+00:00');
@@ -104,7 +113,7 @@ final class Fixtures
             $backupEligible,
             $backedUp,
             Uuid::v4(),
-            $userHandle ?? PasskeyUserHandle::generate(),
+            $userHandle ?? self::userHandle(),
             $createdAt ?? self::now(),
         );
     }

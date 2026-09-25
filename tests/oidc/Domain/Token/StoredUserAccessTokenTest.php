@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Token;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -137,7 +138,7 @@ final class StoredUserAccessTokenTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $this->token(tokenHash: DrawnSecret::draw());
+        $this->token(tokenHash: Secrets::draw());
     }
 
     #[Test]

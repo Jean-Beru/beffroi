@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\UserInfo;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
@@ -100,7 +103,12 @@ final class UserInfoHandlerTest extends TestCase
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->sessions->save($this->session);
         $this->jwts = new Jwts($this->tenant);
-        $this->accessTokens = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all());
+        $this->accessTokens = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            new PublicSubjectIdentifierResolver(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+        );
         $this->grants = new InMemoryAuthorizationCodeRepository();
         $this->storedTokens = new InMemoryAccessTokenRepository();
         $users = new InMemoryUserRepository();
@@ -144,11 +152,10 @@ final class UserInfoHandlerTest extends TestCase
     public function itServesTheClaimsOfAnOpaqueToken(): void
     {
         // Given
-        $token = $this->storedTokens->issue(
+        $token = $this->opaque()->issue(
             $this->authorization(['openid', 'email'], '{"userinfo":{"nickname":null}}'),
             Fixtures::now(),
-            Fixtures::now()->modify('+10 minutes'),
-        );
+        )->value;
 
         // When
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
@@ -845,7 +852,7 @@ final class UserInfoHandlerTest extends TestCase
             return $this->accessTokens->issue($authorization, Fixtures::now())->value;
         }
 
-        return $this->storedTokens->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        return $this->opaque()->issue($authorization, Fixtures::now())->value;
     }
 
     /**
@@ -870,7 +877,12 @@ final class UserInfoHandlerTest extends TestCase
             return $this->accessTokens->issue($authorization, Fixtures::now())->value;
         }
 
-        return $this->storedTokens->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        return $this->opaque()->issue($authorization, Fixtures::now())->value;
+    }
+
+    private function opaque(): OpaqueAccessTokenIssuer
+    {
+        return new OpaqueAccessTokenIssuer($this->storedTokens, Secrets::drawer());
     }
 
     /**

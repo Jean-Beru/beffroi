@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateInterval;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Fixtures;
@@ -35,7 +36,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->tokens = new InMemoryAccessTokenRepository();
-        $this->issuer = new OpaqueAccessTokenIssuer($this->tokens);
+        $this->issuer = new OpaqueAccessTokenIssuer($this->tokens, Secrets::drawer());
     }
 
     /**
@@ -95,7 +96,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     public function theLifetimeIsConfigurable(): void
     {
         // Given
-        $issuer = new OpaqueAccessTokenIssuer($this->tokens, new DateInterval('PT1H'));
+        $issuer = new OpaqueAccessTokenIssuer($this->tokens, Secrets::drawer(), new DateInterval('PT1H'));
         $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
