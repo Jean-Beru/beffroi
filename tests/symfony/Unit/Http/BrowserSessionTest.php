@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit\Http;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -325,7 +326,7 @@ final class BrowserSessionTest extends TestCase
     private function interaction(): Interaction
     {
         $request = Requests::authorization(Clients::public($this->tenant));
-        $interaction = new Interaction(Interaction::generateId(), $this->tenant, $request, null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $interaction = new Interaction(Secrets::draw(), $this->tenant, $request, null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $this->interactions->save($interaction);
 
         return $interaction;

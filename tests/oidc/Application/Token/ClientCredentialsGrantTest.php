@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
@@ -59,7 +61,8 @@ final class ClientCredentialsGrantTest extends TestCase
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->events = new RecordingEventDispatcher();
         $this->grant = new ClientCredentialsGrant(
-            new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events),
+            new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events),
+            new SymfonyUuidGenerator(),
             $clock,
         );
     }

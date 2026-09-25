@@ -54,7 +54,7 @@ final class Tokens
         ?ResourceIndicators $resources = null,
     ): AuthorizationCode {
         return new AuthorizationCode(
-            AuthorizationCode::hash($code),
+            DrawnSecret::digestOf($code),
             $grantId ?? Uuid::v7(),
             $client,
             $session,
@@ -133,7 +133,7 @@ final class Tokens
      */
     public static function family(DateTimeImmutable $startedAt, string $code = 'the-code', ?Uuid $grantId = null): RefreshTokenFamily
     {
-        return new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
+        return new RefreshTokenFamily(Uuid::v7(), DrawnSecret::digestOf($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
     }
 
     /**
@@ -158,7 +158,7 @@ final class Tokens
         $family ??= self::family($issuedAt);
 
         return new RefreshToken(
-            RefreshToken::hash($value),
+            DrawnSecret::digestOf($value),
             $family,
             $client,
             $session,

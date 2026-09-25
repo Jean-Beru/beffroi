@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use function base64_decode;
 use function base64_encode;
 use Closure;
@@ -167,7 +168,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
             'state-of-the-client',
             'nonce-of-the-client',
         );
-        $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, null, $createdAt, $expiresAt);
+        $interaction = new Interaction(Secrets::draw(), self::tenant(), $request, null, $createdAt, $expiresAt);
         self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->save($interaction);
         $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->begin($httpSession, $interaction));
 

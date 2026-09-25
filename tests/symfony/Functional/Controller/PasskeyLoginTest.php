@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
+use Heidi\Core\Tests\Fixture\Fixtures;
 use function base64_encode;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
@@ -544,7 +545,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
     {
         return (
             '{"rp":{"id":"op.test","name":"Other"},"user":{"id":"'
-            . Base64UrlSafe::encodeUnpadded(PasskeyUserHandle::generate()->value)
+            . Base64UrlSafe::encodeUnpadded(Fixtures::userHandle()->value)
             . '","name":"bob","displayName":"bob"},"challenge":"'
             . str_repeat('A', 43)
             . '","pubKeyCredParams":[{"type":"public-key","alg":-7}]}'

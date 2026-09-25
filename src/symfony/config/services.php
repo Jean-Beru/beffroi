@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Heidi\Oidc\Application\Secret\SecretDrawer;
+use Heidi\Core\Port\RandomnessInterface;
+use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Bundle\Cache\SeenOnce;
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
@@ -577,6 +580,9 @@ return static function (ContainerConfigurator $container): void {
     // Where the identifiers of the core come from, as its clock is given to it and not read
     $services->set(SymfonyUuidGenerator::class);
     $services->alias(UuidGeneratorInterface::class, SymfonyUuidGenerator::class);
+    // Where the bytes of a drawn value come from, for the same reason and in the same way (issue #245)
+    $services->set(PlatformRandomness::class);
+    $services->alias(RandomnessInterface::class, PlatformRandomness::class);
 
     // The core: use cases
     $services->set(PasswordAuthenticator::class);
@@ -592,6 +598,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SessionTerminator::class);
     $services->set(AuthenticationRefusal::class);
     $services->set(UserProvisioner::class);
+
+    // The module: every value this provider hands out and recognises again is drawn here (issue #245)
+    $services->set(SecretDrawer::class);
 
     // The module: clients
     $services->set(ConfigurationClientRepository::class);

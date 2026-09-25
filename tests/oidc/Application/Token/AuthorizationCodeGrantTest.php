@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateInterval;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -681,9 +683,9 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Given
         $code = $this->code('the-code', $this->client);
         $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
-        $this->accessTokens->keep(Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $code->grantId));
+        $this->accessTokens->save(Tokens::storedAccessToken('of-the-grant', $this->client, $this->session, $this->clock->now(), $code->grantId));
         $other = Tokens::storedAccessToken('of-another-grant', $this->client, $this->session, $this->clock->now());
-        $this->accessTokens->keep($other);
+        $this->accessTokens->save($other);
 
         // When
         $this->failToGrant($this->client, $this->request());
@@ -1074,13 +1076,14 @@ final class AuthorizationCodeGrantTest extends TestCase
         bool $refreshTokenWithoutOfflineAccess = true,
         ?ServedGrants $served = null,
     ): AuthorizationCodeGrant {
-        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events);
+        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
 
         return new AuthorizationCodeGrant(
             $this->codes,
             new RefreshTokenRevocation($this->refreshTokens),
             $this->accessTokens,
             $issuer,
+            new SymfonyUuidGenerator(),
             $this->clock,
             $this->events,
             $served ?? Grants::served(),

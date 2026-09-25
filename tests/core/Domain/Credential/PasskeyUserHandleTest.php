@@ -27,13 +27,13 @@ final class PasskeyUserHandleTest extends TestCase
         $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
 
         // When
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
 
         // Then
         static::assertSame(64, strlen($handle->value));
         static::assertNotSame($user->subject->value, $handle->value);
         static::assertNotSame((string) $user->email, $handle->value);
-        static::assertFalse($handle->equals(PasskeyUserHandle::generate()));
+        static::assertFalse($handle->equals(Fixtures::userHandle()));
     }
 
     #[Test]

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit\Security;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Bundle\Security\PasswordAttemptListener;
 use Heidi\Bundle\Security\RefusalCost;
 use Heidi\Bundle\Security\SecurityUser;
@@ -39,7 +40,7 @@ final class PasswordAttemptListenerTest extends TestCase
     public function aRefusedAttemptPaysTheDecoyHash(): void
     {
         // Given
-        $listener = new PasswordAttemptListener(new FakeAttemptLimiter(0), new RefusalCost(new DecoyHash($this->hasher)));
+        $listener = new PasswordAttemptListener(new FakeAttemptLimiter(0), new RefusalCost(new DecoyHash($this->hasher, new SymfonyUuidGenerator())));
         $event = self::event();
 
         // When
@@ -57,7 +58,7 @@ final class PasswordAttemptListenerTest extends TestCase
     public function aRefusedAttemptIsRefusedAsTooManyAttempts(): void
     {
         // Given
-        $listener = new PasswordAttemptListener(new FakeAttemptLimiter(0), new RefusalCost(new DecoyHash($this->hasher)));
+        $listener = new PasswordAttemptListener(new FakeAttemptLimiter(0), new RefusalCost(new DecoyHash($this->hasher, new SymfonyUuidGenerator())));
         $event = self::event();
 
         // Then
@@ -74,7 +75,7 @@ final class PasswordAttemptListenerTest extends TestCase
     public function anAllowedAttemptPaysNothing(): void
     {
         // Given
-        $listener = new PasswordAttemptListener(new FakeAttemptLimiter(5), new RefusalCost(new DecoyHash($this->hasher)));
+        $listener = new PasswordAttemptListener(new FakeAttemptLimiter(5), new RefusalCost(new DecoyHash($this->hasher, new SymfonyUuidGenerator())));
         $event = self::event();
 
         // When

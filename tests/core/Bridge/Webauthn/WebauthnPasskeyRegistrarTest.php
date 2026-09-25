@@ -8,7 +8,6 @@ use function array_map;
 use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -56,7 +55,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     public function theCreationOptionsAreThoseOfAPasskeyOfTheTenant(): void
     {
         // Given
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
 
         // When
         $options = $this->registrar->creationOptions($this->alice, $handle, []);
@@ -82,7 +81,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $this->alice->updateProfile(new Profile(name: 'Alice Martin'), Fixtures::now());
 
         // When
-        $options = $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        $options = $this->registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // Then
         static::assertSame('Alice Martin', $options->user->displayName);
@@ -92,7 +91,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     public function eachCallDrawsAnotherChallenge(): void
     {
         // Given
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
 
         // When
         $first = $this->registrar->creationOptions($this->alice, $handle, []);
@@ -109,7 +108,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     public function theExistingPasskeysAreExcluded(): void
     {
         // Given
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
         $existing = [
             Fixtures::passkey($this->alice, credentialId: 'first', userHandle: $handle),
             Fixtures::passkey($this->alice, credentialId: 'second', userHandle: $handle),
@@ -135,7 +134,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     {
         // Given
         $authenticator = new SoftwareAuthenticator('https://id.acme.example', backupEligible: $backupEligible, backedUp: $backedUp);
-        $options = $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        $options = $this->registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // When
         $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
@@ -197,7 +196,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         )]));
         $ceremonies = Fixtures::ceremonies($store);
         $registrar = new WebauthnPasskeyRegistrar($ceremonies);
-        $options = $registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        $options = $registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // When
         $record = $registrar->verifyAttestation($this->tenant, $options, $authenticator->create($ceremonies->optionsToJson($options)));
@@ -339,6 +338,6 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
 
     private function creationOptions(): PublicKeyCredentialCreationOptions
     {
-        return $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        return $this->registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
     }
 }

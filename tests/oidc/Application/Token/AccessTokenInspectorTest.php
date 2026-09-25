@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
@@ -308,7 +311,7 @@ final class AccessTokenInspectorTest extends TestCase
         $service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->clients->save($service);
 
-        return $this->tokens->issue(
+        return $this->opaque()->issue(
             new ClientAuthorization(
                 Grants::clientCredentials(),
                 Uuid::v7(),
@@ -317,8 +320,7 @@ final class AccessTokenInspectorTest extends TestCase
                 ResourceIndicators::of([Clients::CALENDAR]),
             ),
             Fixtures::now(),
-            Fixtures::now()->modify('+10 minutes'),
-        );
+        )->value;
     }
 
     private function code(): AuthorizationCode
@@ -331,11 +333,15 @@ final class AccessTokenInspectorTest extends TestCase
 
     private function tokenOf(AuthorizationCode $code): string
     {
-        return $this->tokens->issue(
+        return $this->opaque()->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
-            Fixtures::now()->modify('+10 minutes'),
-        );
+        )->value;
+    }
+
+    private function opaque(): OpaqueAccessTokenIssuer
+    {
+        return new OpaqueAccessTokenIssuer($this->tokens, Secrets::drawer());
     }
 
     /**
@@ -348,7 +354,7 @@ final class AccessTokenInspectorTest extends TestCase
             return $this->tokenOf($code);
         }
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         )->value;

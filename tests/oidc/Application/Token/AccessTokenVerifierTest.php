@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
@@ -79,7 +81,7 @@ final class AccessTokenVerifierTest extends TestCase
         $clients->save($this->client);
         $this->jws = new FakeJwsVerifier();
         $this->storedTokens = new InMemoryAccessTokenRepository();
-        $this->opaque = DrawnSecret::draw();
+        $this->opaque = Secrets::draw();
         $this->verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
     }
 
@@ -103,7 +105,7 @@ final class AccessTokenVerifierTest extends TestCase
             ['openid', 'email'],
             claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'),
         );
-        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         );
@@ -154,7 +156,7 @@ final class AccessTokenVerifierTest extends TestCase
             scopes: ['openid', 'email'],
             claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}}}'),
         );
-        $this->storedTokens->keep($record);
+        $this->storedTokens->save($record);
 
         // When
         $token = $this->verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
@@ -193,7 +195,10 @@ final class AccessTokenVerifierTest extends TestCase
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue($authorization, Fixtures::now());
+        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+            $authorization,
+            Fixtures::now(),
+        );
         $verifier = AccessTokenShapes::verifier(
             new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()),
             $clients,
@@ -223,7 +228,7 @@ final class AccessTokenVerifierTest extends TestCase
         // Given
         $service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $record = Tokens::storedClientAccessToken($this->opaque, $service, Fixtures::now());
-        $this->storedTokens->keep($record);
+        $this->storedTokens->save($record);
         $clients = new InMemoryClientRepository();
         $clients->save($service);
         $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
@@ -252,7 +257,7 @@ final class AccessTokenVerifierTest extends TestCase
     public function itReadsWhoAnOpaqueTokenIsAddressedTo(?array $resources, array $audience): void
     {
         // Given
-        $this->storedTokens->keep(Tokens::storedAccessToken(
+        $this->storedTokens->save(Tokens::storedAccessToken(
             $this->opaque,
             $this->client,
             Fixtures::session(Fixtures::user($this->tenant)),
@@ -287,7 +292,7 @@ final class AccessTokenVerifierTest extends TestCase
     public function anOpaqueTokenWithoutAClaimsRequestAskedForNoClaimByName(): void
     {
         // Given
-        $this->storedTokens->keep(Tokens::storedAccessToken(
+        $this->storedTokens->save(Tokens::storedAccessToken(
             $this->opaque,
             $this->client,
             Fixtures::session(Fixtures::user($this->tenant)),
@@ -332,7 +337,7 @@ final class AccessTokenVerifierTest extends TestCase
         yield 'no record' => [static function (): void {
         }];
         yield 'another value' => [static function (self $test): void {
-            $test->storedTokens->keep(Tokens::storedAccessToken(
+            $test->storedTokens->save(Tokens::storedAccessToken(
                 'another-token',
                 $test->client,
                 Fixtures::session(Fixtures::user($test->tenant)),
@@ -341,7 +346,7 @@ final class AccessTokenVerifierTest extends TestCase
         }];
         yield 'a record of another tenant' => [static function (self $test): void {
             $other = Fixtures::tenant('other', 'https://id.other.example');
-            $test->storedTokens->keep(Tokens::storedAccessToken(
+            $test->storedTokens->save(Tokens::storedAccessToken(
                 $test->opaque,
                 Clients::public($other),
                 Fixtures::session(Fixtures::user($other)),
@@ -358,7 +363,7 @@ final class AccessTokenVerifierTest extends TestCase
     public function itRefusesAnExpiredOpaqueToken(): void
     {
         // Given
-        $this->storedTokens->keep(Tokens::storedAccessToken(
+        $this->storedTokens->save(Tokens::storedAccessToken(
             $this->opaque,
             $this->client,
             Fixtures::session(Fixtures::user($this->tenant)),
@@ -853,8 +858,8 @@ final class AccessTokenVerifierTest extends TestCase
     {
         yield 'nothing' => [''];
         yield 'a word' => ['the-opaque-token'];
-        yield 'a drawn value with something appended' => [DrawnSecret::draw() . 'x'];
-        yield 'the digest of a value, which is not the value' => [DrawnSecret::digestOf(DrawnSecret::draw())];
+        yield 'a drawn value with something appended' => [Secrets::draw() . 'x'];
+        yield 'the digest of a value, which is not the value' => [DrawnSecret::digestOf(Secrets::draw())];
     }
 
     /**

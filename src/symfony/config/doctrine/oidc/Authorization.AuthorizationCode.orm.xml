@@ -38,7 +38,6 @@
         <embedded name="authentication" class="Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
-        <field name="usedAt" type="datetime_immutable" column="used_at" nullable="true"/>
         <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
         <entity-listeners>
             <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">

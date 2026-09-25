@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\PushedAuthorization;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use function array_filter;
 use function array_merge;
 use function base64_encode;
@@ -301,7 +302,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
 
         // When
         $this->push([
-            'request_uri' => RequestUri::generate()->value,
+            'request_uri' => RequestUri::of(Secrets::draw())->value,
         ]);
     }
 
@@ -533,6 +534,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
             RequestObjects::resolver($this->clients, $this->clock, decrypter: $this->decrypter),
             $requests,
+            Secrets::drawer(),
             $this->clock,
             $lifetime ?? new DateInterval('PT60S'),
         );

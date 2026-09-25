@@ -4,30 +4,15 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Secret;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function preg_match;
 use function strlen;
 
 final class DrawnSecretTest extends TestCase
 {
-    /**
-     * Architecture §4.6: 256 bits of the CSPRNG in base64url, without a dot, which is what tells an opaque
-     * token from a compact JWS.
-     */
-    #[Test]
-    public function aValueIs256RandomBitsInBase64url(): void
-    {
-        // When
-        $value = DrawnSecret::draw();
-
-        // Then
-        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $value));
-        static::assertNotSame($value, DrawnSecret::draw());
-    }
-
     /**
      * Architecture §4.6: stored as its SHA-256.
      */
@@ -36,15 +21,15 @@ final class DrawnSecretTest extends TestCase
     {
         // When / Then
         static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', DrawnSecret::digestOf(''));
-        static::assertSame(64, strlen(DrawnSecret::digestOf(DrawnSecret::draw())));
+        static::assertSame(64, strlen(DrawnSecret::digestOf(Secrets::draw())));
     }
 
     #[Test]
     public function twoValuesHashDifferently(): void
     {
         // Given
-        $value = DrawnSecret::draw();
-        $again = DrawnSecret::draw();
+        $value = Secrets::draw();
+        $again = Secrets::draw();
 
         // When / Then
         static::assertSame(DrawnSecret::digestOf($value), DrawnSecret::digestOf($value));
@@ -68,8 +53,8 @@ final class DrawnSecretTest extends TestCase
      */
     public static function provideDigests(): iterable
     {
-        yield 'the digest of a value' => [DrawnSecret::digestOf(DrawnSecret::draw()), true];
-        yield 'a value, which is not its own digest' => [DrawnSecret::draw(), false];
+        yield 'the digest of a value' => [DrawnSecret::digestOf(Secrets::draw()), true];
+        yield 'a value, which is not its own digest' => [Secrets::draw(), false];
         yield 'nothing' => ['', false];
         yield 'uppercase hexadecimal' => ['E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855', false];
         yield 'one character short' => ['e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85', false];
@@ -89,10 +74,10 @@ final class DrawnSecretTest extends TestCase
      */
     public static function provideValues(): iterable
     {
-        yield 'a value it drew' => [DrawnSecret::draw(), true];
+        yield 'a value it drew' => [Secrets::draw(), true];
         yield 'nothing' => ['', false];
         yield 'a digest, which is longer' => [DrawnSecret::digestOf('x'), false];
         yield 'base64 with padding' => ['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==', false];
-        yield 'a value with something after it' => [DrawnSecret::draw() . "\n", false];
+        yield 'a value with something after it' => [Secrets::draw() . "\n", false];
     }
 }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Introspection;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use function base64_encode;
 use DateTimeImmutable;
@@ -169,15 +172,14 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $certificate = Certificates::client();
-        $token = $this->tokens->issue(
+        $token = $this->opaqueIssuer()->issue(
             UserAuthorization::fromAuthorizationCode(
                 Grants::authorizationCode(),
                 $this->code($this->client, ['openid']),
                 CertificateConfirmation::ofCertificate($certificate),
             ),
             $this->clock->now(),
-            $this->clock->now()->modify('+10 minutes'),
-        );
+        )->value;
 
         // When
         $response = $this->handler->handle(
@@ -208,7 +210,7 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $code = $this->code($this->other, ['openid']);
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $this->clock->now(),
         )->value;
@@ -475,11 +477,15 @@ final class IntrospectionHandlerTest extends TestCase
     {
         $issuedAt ??= $this->clock->now();
 
-        return $this->tokens->issue(
+        return $this->opaqueIssuer()->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $issuedAt,
-            $issuedAt->modify('+10 minutes'),
-        );
+        )->value;
+    }
+
+    private function opaqueIssuer(): OpaqueAccessTokenIssuer
+    {
+        return new OpaqueAccessTokenIssuer($this->tokens, Secrets::drawer());
     }
 
     private static function basic(string $clientId, string $secret = Clients::SECRET): string

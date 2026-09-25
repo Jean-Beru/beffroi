@@ -198,11 +198,11 @@ final class EndSessionHandlerTest extends TestCase
     public function theStoredAccessTokensOfTheSessionAreRevoked(): void
     {
         // Given
-        $this->accessTokens->keep(Tokens::storedAccessToken('here', $this->client, $this->session, Fixtures::now()));
+        $this->accessTokens->save(Tokens::storedAccessToken('here', $this->client, $this->session, Fixtures::now()));
         $otherSession = Fixtures::session($this->alice);
         $this->sessions->save($otherSession);
         $elsewhere = Tokens::storedAccessToken('elsewhere', $this->client, $otherSession, Fixtures::now());
-        $this->accessTokens->keep($elsewhere);
+        $this->accessTokens->save($elsewhere);
 
         // When
         $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Authentication;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Application\Authentication\DecoyHash;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use PHPUnit\Framework\Attributes\Test;
@@ -18,7 +19,7 @@ final class DecoyHashTest extends TestCase
     protected function setUp(): void
     {
         $this->hasher = new FakePasswordHasher();
-        $this->decoy = new DecoyHash($this->hasher);
+        $this->decoy = new DecoyHash($this->hasher, new SymfonyUuidGenerator());
     }
 
     /**

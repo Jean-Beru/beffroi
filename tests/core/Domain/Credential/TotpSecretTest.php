@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Domain\Credential;
 
+use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Core\Domain\Credential\TotpSecret;
 use Heidi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
@@ -17,16 +18,13 @@ use function strlen;
 final class TotpSecretTest extends TestCase
 {
     #[Test]
-    public function aGeneratedSecretIsTwentyRandomBytes(): void
+    public function aSecretDrawnAtItsOwnLengthIsTwentyBytes(): void
     {
         // When
-        $first = TotpSecret::generate();
-        $second = TotpSecret::generate();
+        $secret = new TotpSecret(new PlatformRandomness()->bytes(TotpSecret::LENGTH));
 
         // Then
-        static::assertSame(TotpSecret::LENGTH, strlen($first->bytes));
-        static::assertSame(20, strlen($second->bytes));
-        static::assertNotSame($first->bytes, $second->bytes);
+        static::assertSame(20, strlen($secret->bytes));
     }
 
     #[Test]

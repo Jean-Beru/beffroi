@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\PushedAuthorization;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateInterval;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -303,7 +304,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     private function referenceThatIs(string $case): RequestUri
     {
         if ($case === 'unknown') {
-            return RequestUri::generate();
+            return RequestUri::of(Secrets::draw());
         }
         $requestUri = $this->push();
         if ($case === 'expired') {
@@ -327,7 +328,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         'scope' => 'openid',
     ]): RequestUri
     {
-        $requestUri = RequestUri::generate();
+        $requestUri = RequestUri::of(Secrets::draw());
         $this->requests->save(new PushedAuthorizationRecord(
             $requestUri->hash(),
             $this->client,

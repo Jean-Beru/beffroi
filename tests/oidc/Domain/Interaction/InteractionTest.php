@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Interaction;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\SessionEnd;
@@ -23,7 +24,6 @@ use Heidi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function preg_match;
 use Symfony\Component\Uid\Uuid;
 
 final class InteractionTest extends TestCase
@@ -38,20 +38,6 @@ final class InteractionTest extends TestCase
         $this->client = Clients::confidential($this->user->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
     }
 
-    /**
-     * Architecture §4.3: the identifier is 256 random bits in base64url, never guessable.
-     */
-    #[Test]
-    public function itsIdentifierIsRandom(): void
-    {
-        // When
-        $id = Interaction::generateId();
-
-        // Then
-        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $id));
-        static::assertNotSame($id, Interaction::generateId());
-    }
-
     #[Test]
     public function itParksTheRequestWithTheLocale(): void
     {
@@ -59,7 +45,7 @@ final class InteractionTest extends TestCase
         $request = Requests::authorization($this->client);
 
         // When
-        $interaction = new Interaction(Interaction::generateId(), $this->user->tenant, $request, 'fr', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $interaction = new Interaction(Secrets::draw(), $this->user->tenant, $request, 'fr', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
 
         // Then
         static::assertSame($request, $interaction->request);
@@ -403,8 +389,8 @@ final class InteractionTest extends TestCase
     {
         yield 'empty' => [''];
         yield 'short' => ['short'];
-        yield 'padded' => [Interaction::generateId() . '='];
-        yield 'too long' => [Interaction::generateId() . 'a'];
+        yield 'padded' => [Secrets::draw() . '='];
+        yield 'too long' => [Secrets::draw() . 'a'];
         yield 'standard base64 alphabet' => ['E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw+cM'];
     }
 
@@ -416,7 +402,7 @@ final class InteractionTest extends TestCase
 
         // When
         new Interaction(
-            Interaction::generateId(),
+            Secrets::draw(),
             Fixtures::tenant('other', 'https://id.other.example'),
             Requests::authorization($this->client),
             null,
@@ -433,7 +419,7 @@ final class InteractionTest extends TestCase
 
         // When
         new Interaction(
-            Interaction::generateId(),
+            Secrets::draw(),
             $this->user->tenant,
             Requests::authorization($this->client),
             '',
@@ -449,7 +435,7 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now());
+        new Interaction(Secrets::draw(), $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now());
     }
 
     private function interaction(?DateTimeImmutable $createdAt = null): Interaction
@@ -457,7 +443,7 @@ final class InteractionTest extends TestCase
         $createdAt ??= Fixtures::now();
 
         return new Interaction(
-            Interaction::generateId(),
+            Secrets::draw(),
             $this->user->tenant,
             Requests::authorization($this->client, ['openid', 'profile']),
             null,

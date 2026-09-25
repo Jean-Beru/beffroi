@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\PushedAuthorization;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use function hash;
 use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,7 +22,7 @@ final class RequestUriTest extends TestCase
     public function aGeneratedReferenceIsTheUrnOfTheSpecification(): void
     {
         // When
-        $requestUri = RequestUri::generate();
+        $requestUri = RequestUri::of(Secrets::draw());
 
         // Then
         static::assertStringStartsWith('urn:ietf:params:oauth:request_uri:', $requestUri->value);
@@ -36,8 +37,8 @@ final class RequestUriTest extends TestCase
     public function twoGeneratedReferencesDiffer(): void
     {
         // When
-        $first = RequestUri::generate();
-        $second = RequestUri::generate();
+        $first = RequestUri::of(Secrets::draw());
+        $second = RequestUri::of(Secrets::draw());
 
         // Then
         static::assertNotSame($first->value, $second->value);
@@ -47,7 +48,7 @@ final class RequestUriTest extends TestCase
     public function aGeneratedReferenceIsOneOfOurs(): void
     {
         // When / Then
-        static::assertTrue(RequestUri::isOurs(RequestUri::generate()->value));
+        static::assertTrue(RequestUri::isOurs(RequestUri::of(Secrets::draw())->value));
     }
 
     /**
@@ -84,7 +85,7 @@ final class RequestUriTest extends TestCase
     public function theHashIsTheSha256OfTheValue(): void
     {
         // Given
-        $requestUri = RequestUri::generate();
+        $requestUri = RequestUri::of(Secrets::draw());
 
         // When / Then
         static::assertSame(hash('sha256', $requestUri->value), $requestUri->hash());

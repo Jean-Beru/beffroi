@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Discovery;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_column;
 use function array_map;
@@ -143,7 +144,7 @@ final class JwksHandlerTest extends TestCase
     public function aTokenOfTheTenantVerifiesAgainstTheServedKeys(): void
     {
         // Given
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'the-code',
                 Clients::public($this->jwts->tenant),

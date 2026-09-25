@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Fixture;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use DateInterval;
 use Heidi\Core\Application\Authentication\DecoyHash;
 use Heidi\Core\Port\PasswordHasherInterface;
@@ -43,14 +44,14 @@ final class Methods
     {
         $hasher ??= new FakePasswordHasher();
 
-        return new ClientSecretBasic($hasher, $decoy ?? new DecoyHash($hasher));
+        return new ClientSecretBasic($hasher, $decoy ?? new DecoyHash($hasher, new SymfonyUuidGenerator()));
     }
 
     public static function clientSecretPost(?PasswordHasherInterface $hasher = null, ?DecoyHash $decoy = null): ClientSecretPost
     {
         $hasher ??= new FakePasswordHasher();
 
-        return new ClientSecretPost($hasher, $decoy ?? new DecoyHash($hasher));
+        return new ClientSecretPost($hasher, $decoy ?? new DecoyHash($hasher, new SymfonyUuidGenerator()));
     }
 
     public static function none(): NoAuthentication
@@ -115,7 +116,7 @@ final class Methods
         ?ClientAssertionValidator $claims = null,
     ): ClientAuthenticationMethods {
         $hasher ??= new FakePasswordHasher();
-        $decoy = new DecoyHash($hasher);
+        $decoy = new DecoyHash($hasher, new SymfonyUuidGenerator());
         $claims ??= self::assertionValidator();
 
         return new ClientAuthenticationMethods([

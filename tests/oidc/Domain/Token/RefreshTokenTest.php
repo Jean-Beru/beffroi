@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Token;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -27,8 +29,6 @@ use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function preg_match;
-use function strlen;
 
 final class RefreshTokenTest extends TestCase
 {
@@ -53,43 +53,6 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: 256 bits of the CSPRNG in base64url.
-     */
-    #[Test]
-    public function aTokenIs256RandomBitsInBase64url(): void
-    {
-        // When
-        $token = RefreshToken::generate();
-
-        // Then
-        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $token));
-        static::assertNotSame($token, RefreshToken::generate());
-    }
-
-    /**
-     * Architecture §4.6: stored as its SHA-256.
-     */
-    #[Test]
-    public function aTokenIsHashedWithSha256(): void
-    {
-        // When / Then
-        static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', RefreshToken::hash(''));
-        static::assertSame(64, strlen(RefreshToken::hash(RefreshToken::generate())));
-    }
-
-    #[Test]
-    public function twoTokensHashDifferently(): void
-    {
-        // Given
-        $token = RefreshToken::generate();
-        $again = RefreshToken::generate();
-
-        // When / Then
-        static::assertSame(RefreshToken::hash($token), RefreshToken::hash($token));
-        static::assertNotSame(RefreshToken::hash($token), RefreshToken::hash($again));
-    }
-
-    /**
      * Architecture §4.6: everything the next refresh needs, with the authentication of the original
      * authorization.
      */
@@ -107,7 +70,7 @@ final class RefreshTokenTest extends TestCase
         $token = Tokens::refreshToken('the-token', $this->client, $this->session, $issuedAt, $this->family, ['openid', 'profile'], $claims);
 
         // Then
-        static::assertSame(RefreshToken::hash('the-token'), $token->tokenHash);
+        static::assertSame(DrawnSecret::digestOf('the-token'), $token->tokenHash);
         static::assertSame($this->family, $token->family);
         static::assertSame($this->client, $token->client);
         static::assertSame($this->client->registration->clientId, $token->clientId);
@@ -182,7 +145,7 @@ final class RefreshTokenTest extends TestCase
 
         // When
         $token = RefreshToken::fromAuthorization(
-            RefreshToken::hash('the-token'),
+            DrawnSecret::digestOf('the-token'),
             $this->family,
             $authorization,
             Fixtures::now(),
@@ -207,7 +170,7 @@ final class RefreshTokenTest extends TestCase
 
         // When
         $token = RefreshToken::fromAuthorization(
-            RefreshToken::hash('the-token'),
+            DrawnSecret::digestOf('the-token'),
             $this->family,
             $authorization,
             Fixtures::now(),
@@ -239,7 +202,7 @@ final class RefreshTokenTest extends TestCase
 
         // When
         $token = RefreshToken::fromAuthorization(
-            RefreshToken::hash('the-token'),
+            DrawnSecret::digestOf('the-token'),
             $this->family,
             $authorization,
             Fixtures::now(),
@@ -268,7 +231,7 @@ final class RefreshTokenTest extends TestCase
 
         // When
         $token = RefreshToken::fromAuthorization(
-            RefreshToken::hash('the-token'),
+            DrawnSecret::digestOf('the-token'),
             $this->family,
             $authorization,
             Fixtures::now(),
@@ -325,7 +288,7 @@ final class RefreshTokenTest extends TestCase
         $late = Fixtures::now()->modify('+80 days');
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, $late, $late->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(DrawnSecret::digestOf('the-token'), $this->family, $authorization, $late, $late->modify('+30 days'));
 
         // Then
         static::assertEquals($this->family->expiresAt, $token->expiresAt);
@@ -482,7 +445,7 @@ final class RefreshTokenTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $this->token(tokenHash: RefreshToken::generate());
+        $this->token(tokenHash: Secrets::draw());
     }
 
     #[Test]
@@ -540,7 +503,7 @@ final class RefreshTokenTest extends TestCase
         ?DateTimeImmutable $expiresAt = null,
     ): RefreshToken {
         return new RefreshToken(
-            $tokenHash ?? RefreshToken::hash('the-token'),
+            $tokenHash ?? DrawnSecret::digestOf('the-token'),
             $this->family,
             $client ?? $this->client,
             $this->session,

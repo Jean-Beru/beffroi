@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit\Security;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Bundle\Security\RefusalCost;
 use Heidi\Core\Application\Authentication\DecoyHash;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
@@ -28,7 +29,7 @@ final class RefusalCostTest extends TestCase
     protected function setUp(): void
     {
         $this->hasher = new FakePasswordHasher();
-        $this->cost = new RefusalCost(new DecoyHash($this->hasher));
+        $this->cost = new RefusalCost(new DecoyHash($this->hasher, new SymfonyUuidGenerator()));
     }
 
     #[Test]

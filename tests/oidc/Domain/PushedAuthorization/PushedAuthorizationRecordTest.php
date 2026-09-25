@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\PushedAuthorization;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
@@ -225,7 +226,7 @@ final class PushedAuthorizationRecordTest extends TestCase
     private function request(?string $requestUriHash = null, ?DateTimeImmutable $expiresAt = null, array $parameters = []): PushedAuthorizationRecord
     {
         return new PushedAuthorizationRecord(
-            $requestUriHash ?? RequestUri::generate()->hash(),
+            $requestUriHash ?? RequestUri::of(Secrets::draw())->hash(),
             $this->client,
             $parameters,
             new DateTimeImmutable(self::NOW),

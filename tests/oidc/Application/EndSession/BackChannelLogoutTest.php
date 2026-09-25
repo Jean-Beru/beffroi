@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\EndSession;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\SessionEnd;
@@ -43,7 +44,12 @@ final class BackChannelLogoutTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->logout = new BackChannelLogout(
             $this->grants,
-            new LogoutTokenIssuer(new Jwts($this->session->tenant)->signer, new PublicSubjectIdentifierResolver(), Algorithms::all()),
+            new LogoutTokenIssuer(
+                new Jwts($this->session->tenant)->signer,
+                new PublicSubjectIdentifierResolver(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+            ),
             $this->events,
             new MockClock(Fixtures::now()),
         );

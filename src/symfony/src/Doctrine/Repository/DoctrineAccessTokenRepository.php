@@ -7,12 +7,10 @@ namespace Heidi\Bundle\Doctrine\Repository;
 use function array_filter;
 use function array_merge;
 use function array_values;
-use DateTimeImmutable;
 use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
 use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Domain\Token\AuthorizationInterface;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
@@ -50,15 +48,11 @@ final class DoctrineAccessTokenRepository implements
     ) {
     }
 
-    public function issue(AuthorizationInterface $authorization, DateTimeImmutable $now, DateTimeImmutable $expiresAt): string
+    public function save(StoredAccessToken $token): void
     {
-        $value = DrawnSecret::draw();
-        $token = $authorization->storedUnder(DrawnSecret::digestOf($value), $now, $expiresAt);
         $manager = $this->managers->forClass($token::class);
         $manager->persist($token);
         $manager->flush();
-
-        return $value;
     }
 
     public function find(string $token): ?StoredAccessToken

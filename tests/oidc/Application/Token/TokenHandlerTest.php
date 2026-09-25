@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use function base64_encode;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
@@ -99,12 +101,13 @@ final class TokenHandlerTest extends TestCase
         $this->codes = new InMemoryAuthorizationCodeRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->events = new RecordingEventDispatcher();
-        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, $this->events);
+        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, Secrets::drawer(), $this->events);
         $this->codeGrant = new AuthorizationCodeGrant(
             $this->codes,
             new RefreshTokenRevocation($this->refreshTokens),
             new InMemoryAccessTokenRepository(),
             $issuer,
+            new SymfonyUuidGenerator(),
             $this->clock,
             $this->events,
             Grants::served(),

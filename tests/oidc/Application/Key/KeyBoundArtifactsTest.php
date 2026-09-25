@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Key;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use DateInterval;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
@@ -91,7 +93,13 @@ final class KeyBoundArtifactsTest extends TestCase
         // Given
         $this->clients->save(Clients::public($this->tenant));
         $kind = new AccessTokenJwsKind(
-            new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT20M')),
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                new PublicSubjectIdentifierResolver(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                new DateInterval('PT20M'),
+            ),
             $this->clients,
         );
 
@@ -151,7 +159,13 @@ final class KeyBoundArtifactsTest extends TestCase
                     ),
                 ),
                 new AccessTokenJwsKind(
-                    new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT2M')),
+                    new JwtAccessTokenIssuer(
+                        $this->jwts->signer,
+                        new PublicSubjectIdentifierResolver(),
+                        Algorithms::all(),
+                        new SymfonyUuidGenerator(),
+                        new DateInterval('PT2M'),
+                    ),
                     $this->clients,
                 ),
                 new ResponseDocumentJwsKind($this->documents(new DateInterval('PT5M')), ServedModes::signedToo()),
@@ -224,7 +238,13 @@ final class KeyBoundArtifactsTest extends TestCase
                     ),
                 ),
                 new AccessTokenJwsKind(
-                    new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M')),
+                    new JwtAccessTokenIssuer(
+                        $this->jwts->signer,
+                        new PublicSubjectIdentifierResolver(),
+                        Algorithms::all(),
+                        new SymfonyUuidGenerator(),
+                        new DateInterval('PT1M'),
+                    ),
                     $this->clients,
                 ),
                 new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::backChannelOnly()),
@@ -255,7 +275,10 @@ final class KeyBoundArtifactsTest extends TestCase
             new FakePasswordHasher()->hash(Clients::SECRET),
             accessTokenShape: Shapes::opaque(),
         ));
-        $kind = new AccessTokenJwsKind(new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all()), $this->clients);
+        $kind = new AccessTokenJwsKind(
+            new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator()),
+            $this->clients,
+        );
 
         // When / Then
         static::assertNull($kind->longestLifetime($this->tenant));
@@ -315,7 +338,13 @@ final class KeyBoundArtifactsTest extends TestCase
                     ),
                 ),
                 new AccessTokenJwsKind(
-                    new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT2M')),
+                    new JwtAccessTokenIssuer(
+                        $this->jwts->signer,
+                        new PublicSubjectIdentifierResolver(),
+                        Algorithms::all(),
+                        new SymfonyUuidGenerator(),
+                        new DateInterval('PT2M'),
+                    ),
                     $this->clients,
                 ),
                 new RequestObjectJweKind(new RequestObjectValidator(new DateInterval('PT10M'), new DateInterval('PT30S'))),
@@ -349,6 +378,7 @@ final class KeyBoundArtifactsTest extends TestCase
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
             RequestObjects::resolver($this->clients, $clock),
             new InMemoryPushedAuthorizationRecordRepository(),
+            Secrets::drawer(),
             $clock,
             $lifetime,
         );

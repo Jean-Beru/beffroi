@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Oidc\Domain\Scope\Scopes;
@@ -42,10 +44,10 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        $code = AuthorizationCode::generate();
+        $code = Secrets::draw();
         self::codes()->save(self::code($code, self::client(), $session, null));
         self::reload();
-        $record = self::codes()->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
+        $record = self::codes()->findByCodeHash(DrawnSecret::digestOf($code)) ?? static::fail('The code was not stored.');
 
         // When
         $first = self::codes()->consume($record, self::now());
@@ -66,15 +68,15 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         $claims = new ClaimsRequest([
             'email' => new ClaimRequest(true),
         ]);
-        $code = AuthorizationCode::generate();
+        $code = Secrets::draw();
         self::codes()->save(self::code($code, $client, $session, $claims));
         self::reload();
 
         // When
-        $found = self::codes()->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
+        $found = self::codes()->findByCodeHash(DrawnSecret::digestOf($code)) ?? static::fail('The code was not stored.');
 
         // Then
-        static::assertSame(AuthorizationCode::hash($code), $found->codeHash);
+        static::assertSame(DrawnSecret::digestOf($code), $found->codeHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
         static::assertSame('oidc-demo', $found->client->registration->clientId);
@@ -98,7 +100,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     public function aConsumedCodeStaysConsumed(): void
     {
         // Given
-        $code = AuthorizationCode::generate();
+        $code = Secrets::draw();
         $record = self::code($code, self::client(), self::session(self::user()), null);
         self::codes()->save($record);
         $record->consume(self::now()->modify('+90 seconds'));
@@ -106,7 +108,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         self::reload();
 
         // When
-        $found = self::codes()->findByCodeHash(AuthorizationCode::hash($code)) ?? static::fail('The code was not stored.');
+        $found = self::codes()->findByCodeHash(DrawnSecret::digestOf($code)) ?? static::fail('The code was not stored.');
 
         // Then
         static::assertTrue($found->isUsed());
@@ -117,7 +119,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     public function anUnknownCodeIsNotFound(): void
     {
         // When / Then
-        static::assertNull(self::codes()->findByCodeHash(AuthorizationCode::hash(AuthorizationCode::generate())));
+        static::assertNull(self::codes()->findByCodeHash(DrawnSecret::digestOf(Secrets::draw())));
     }
 
     /**
@@ -132,12 +134,12 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             self::tenant(),
             new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
-        $code = AuthorizationCode::generate();
+        $code = Secrets::draw();
         self::codes()->save(self::code($code, $ghost, self::session(self::user()), null));
         self::reload();
 
         // When / Then
-        static::assertNull(self::codes()->findByCodeHash(AuthorizationCode::hash($code)));
+        static::assertNull(self::codes()->findByCodeHash(DrawnSecret::digestOf($code)));
     }
 
     /**
@@ -152,7 +154,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         self::used($session, self::client(), 'first-of-the-demo');
         self::used($session, self::client(), 'second-of-the-demo');
         self::used($session, self::client('legacy-app'), 'of-the-legacy-app');
-        self::codes()->save(self::code(AuthorizationCode::generate(), self::client('native-app'), $session, null));
+        self::codes()->save(self::code(Secrets::draw(), self::client('native-app'), $session, null));
         self::reload();
 
         // When
@@ -217,7 +219,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     private static function code(string $code, Client $client, AuthenticationSession $session, ?ClaimsRequest $claims): AuthorizationCode
     {
         return new AuthorizationCode(
-            AuthorizationCode::hash($code),
+            DrawnSecret::digestOf($code),
             Uuid::v7(),
             $client,
             $session,

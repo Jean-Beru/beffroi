@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Domain\Credential;
 
+use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Core\Domain\Credential\BackupCode;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordHash;
@@ -12,6 +13,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function str_repeat;
 use function str_split;
 
 /**
@@ -20,38 +22,48 @@ use function str_split;
 final class BackupCodeTest extends TestCase
 {
     #[Test]
-    public function aGeneratedCodeIsTenCharactersOfTheAlphabetInTwoGroups(): void
+    public function aCodeIsTenCharactersOfTheAlphabetInTwoGroups(): void
     {
         // When
-        $code = BackupCode::generate();
+        $code = BackupCode::spelledBy(self::drawn());
 
         // Then
         static::assertMatchesRegularExpression('/^[A-Z2-7]{5}-[A-Z2-7]{5}$/', $code);
     }
 
     /**
-     * Two thousand characters drawn: each of the thirty-two appears, none of them is skipped by the draw.
+     * Two thousand characters spelled: each of the thirty-two appears, none of them is skipped.
      */
     #[Test]
-    public function everyCharacterOfTheAlphabetIsDrawn(): void
+    public function everyCharacterOfTheAlphabetIsSpelled(): void
     {
         // Given
-        $drawn = '';
+        $spelled = '';
         for ($i = 0; $i < 200; ++$i) {
-            $drawn .= BackupCode::generate();
+            $spelled .= BackupCode::spelledBy(self::drawn());
         }
 
         // When / Then
         foreach (str_split(BackupCode::ALPHABET) as $character) {
-            static::assertStringContainsString($character, $drawn);
+            static::assertStringContainsString($character, $spelled);
         }
     }
 
+    /**
+     * The five low bits of each byte pick the character, and nothing above them is read.
+     */
     #[Test]
-    public function twoGeneratedCodesDiffer(): void
+    public function theBytesGivenSpellTheCode(): void
     {
         // When / Then
-        static::assertNotSame(BackupCode::generate(), BackupCode::generate());
+        static::assertSame('AAAAA-AAAAA', BackupCode::spelledBy(str_repeat("\x20", BackupCode::LENGTH)));
+    }
+
+    #[Test]
+    public function twoDrawsSpellDifferentCodes(): void
+    {
+        // When / Then
+        static::assertNotSame(BackupCode::spelledBy(self::drawn()), BackupCode::spelledBy(self::drawn()));
     }
 
     #[Test]
@@ -117,5 +129,10 @@ final class BackupCodeTest extends TestCase
     private static function hash(): PasswordHash
     {
         return new PasswordHash(new Argon2id(), '$argon2id$code');
+    }
+
+    private static function drawn(): string
+    {
+        return new PlatformRandomness()->bytes(BackupCode::LENGTH);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Core\Tests\Application\Totp;
 
+use Heidi\Core\Bridge\Random\PlatformRandomness;
 use function array_unique;
 use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Application\Credential\ActiveCredentials;
@@ -55,6 +56,7 @@ final class TotpEnrolmentTest extends TestCase
         $this->enrolment = new TotpEnrolment(
             $this->credentials,
             new SymfonyUuidGenerator(),
+            new PlatformRandomness(),
             new ActiveTotp(new ActiveCredentials($this->credentials)),
             Totps::algorithm(),
             new TotpCodeMatcher(Totps::algorithm()),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Application\Token;
 
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_keys;
 use DateInterval;
@@ -49,7 +50,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all());
+        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator());
     }
 
     /**
@@ -308,7 +309,13 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $this->session,
             Fixtures::now(),
         ));
-        $issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M'));
+        $issuer = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            new PublicSubjectIdentifierResolver(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            new DateInterval('PT1M'),
+        );
 
         // When
         $token = $issuer->issue($authorization, Fixtures::now());
@@ -331,7 +338,13 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $this->session,
             Fixtures::now(),
         ));
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new DateInterval('PT1M'))->issue(
+        $token = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            new PublicSubjectIdentifierResolver(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            new DateInterval('PT1M'),
+        )->issue(
             $authorization,
             Fixtures::now(),
         );

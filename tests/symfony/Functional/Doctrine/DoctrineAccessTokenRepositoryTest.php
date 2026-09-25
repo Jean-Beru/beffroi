@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use DateTimeImmutable;
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Domain\Token\AuthorizationInterface;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_map;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -52,12 +55,11 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
             'name' => new ClaimRequest(true),
         ]);
         $code = Tokens::code('the-code', $client, $session, self::now(), ['openid', 'email'], claims: $claims);
-        $value = self::tokens()
-            ->issue(
-                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-                self::now()->modify('+1 minute'),
-                self::now()->modify('+11 minutes'),
-            );
+        $value = self::issued(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            self::now()->modify('+1 minute'),
+            self::now()->modify('+11 minutes'),
+        );
         self::reload();
 
         // When
@@ -93,12 +95,11 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         // Given
         $session = self::session(self::user());
         $code = Tokens::code('the-code', self::client(), $session, self::now());
-        $value = self::tokens()
-            ->issue(
-                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code, $confirmation),
-                self::now(),
-                self::now()->modify('+10 minutes'),
-            );
+        $value = self::issued(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code, $confirmation),
+            self::now(),
+            self::now()->modify('+10 minutes'),
+        );
         self::reload();
 
         // When
@@ -127,7 +128,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     public function aTokenIsFoundByItsValueNeverByItsHash(): void
     {
         // Given
-        $value = self::tokens()->issue(self::authorization(self::session(self::user())), self::now(), self::now()->modify('+10 minutes'));
+        $value = self::issued(self::authorization(self::session(self::user())), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
 
         // When / Then
@@ -141,8 +142,8 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        $revoked = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
-        $kept = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
+        $revoked = self::issued(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
+        $kept = self::issued(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
         $record = self::tokens()->find($revoked) ?? static::fail('The token was not stored.');
 
@@ -164,19 +165,17 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         // Given
         $session = self::session(self::user());
         $code = Tokens::code('the-code', self::client(), $session, self::now());
-        $second = self::tokens()
-            ->issue(
-                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-                self::now()->modify('+2 minutes'),
-                self::now()->modify('+12 minutes'),
-            );
-        $first = self::tokens()
-            ->issue(
-                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-                self::now()->modify('+1 minute'),
-                self::now()->modify('+11 minutes'),
-            );
-        $other = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
+        $second = self::issued(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            self::now()->modify('+2 minutes'),
+            self::now()->modify('+12 minutes'),
+        );
+        $first = self::issued(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            self::now()->modify('+1 minute'),
+            self::now()->modify('+11 minutes'),
+        );
+        $other = self::issued(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
 
         // When
@@ -201,7 +200,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         // Given
         $service = self::client('service-app');
         $grant = Uuid::v7();
-        $value = self::tokens()->issue(self::clientAuthorization($service, $grant), self::now(), self::now()->modify('+10 minutes'));
+        $value = self::issued(self::clientAuthorization($service, $grant), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
 
         // When
@@ -226,7 +225,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     {
         // Given
         $service = self::client('service-app');
-        $value = self::tokens()->issue(self::clientAuthorization($service), self::now(), self::now()->modify('+10 minutes'));
+        $value = self::issued(self::clientAuthorization($service), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
         $found = self::tokens()->find($value) ?? static::fail('The token was not stored.');
 
@@ -247,8 +246,8 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        $ofTheSession = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
-        $ofTheService = self::tokens()->issue(self::clientAuthorization(self::client('service-app')), self::now(), self::now()->modify('+10 minutes'));
+        $ofTheSession = self::issued(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
+        $ofTheService = self::issued(self::clientAuthorization(self::client('service-app')), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
 
         // When
@@ -272,18 +271,16 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $session = self::session(self::user());
         $grant = Uuid::v7();
         $code = Tokens::code('shared-code', self::client(), $session, self::now(), grantId: $grant);
-        $ofTheSession = self::tokens()
-            ->issue(
-                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-                self::now(),
-                self::now()->modify('+10 minutes'),
-            );
-        $ofTheService = self::tokens()
-            ->issue(
-                self::clientAuthorization(self::client('service-app'), $grant),
-                self::now()->modify('+1 second'),
-                self::now()->modify('+10 minutes'),
-            );
+        $ofTheSession = self::issued(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            self::now(),
+            self::now()->modify('+10 minutes'),
+        );
+        $ofTheService = self::issued(
+            self::clientAuthorization(self::client('service-app'), $grant),
+            self::now()->modify('+1 second'),
+            self::now()->modify('+10 minutes'),
+        );
         self::reload();
 
         // When
@@ -310,8 +307,8 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $alice = self::user();
         $session = self::session($alice);
         $otherSession = self::session($alice, self::now()->modify('+1 minute'));
-        $here = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
-        $elsewhere = self::tokens()->issue(self::authorization($otherSession), self::now(), self::now()->modify('+10 minutes'));
+        $here = self::issued(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
+        $elsewhere = self::issued(self::authorization($otherSession), self::now(), self::now()->modify('+10 minutes'));
         self::reload();
 
         // When
@@ -338,30 +335,28 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
             new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
         $grant = Uuid::v7();
-        $orphan = self::tokens()
-            ->issue(
-                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
-                    'ghost-code',
-                    $ghost,
-                    $session,
-                    self::now(),
-                    grantId: $grant,
-                )),
+        $orphan = self::issued(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'ghost-code',
+                $ghost,
+                $session,
                 self::now(),
-                self::now()->modify('+10 minutes'),
-            );
-        $kept = self::tokens()
-            ->issue(
-                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
-                    'the-code',
-                    self::client(),
-                    $session,
-                    self::now()->modify('+1 minute'),
-                    grantId: $grant,
-                )),
+                grantId: $grant,
+            )),
+            self::now(),
+            self::now()->modify('+10 minutes'),
+        );
+        $kept = self::issued(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'the-code',
+                self::client(),
+                $session,
                 self::now()->modify('+1 minute'),
-                self::now()->modify('+11 minutes'),
-            );
+                grantId: $grant,
+            )),
+            self::now()->modify('+1 minute'),
+            self::now()->modify('+11 minutes'),
+        );
         self::reload();
 
         // When
@@ -397,6 +392,18 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     private static function tokens(): AccessTokenRepositoryInterface
     {
         return self::service('test.heidi.access_tokens_store', AccessTokenRepositoryInterface::class);
+    }
+
+    /**
+     * A token of the shape the authorization is, drawn where every value this provider hands out is drawn
+     * and kept by the store under its digest.
+     */
+    private static function issued(AuthorizationInterface $authorization, DateTimeImmutable $issuedAt, DateTimeImmutable $expiresAt): string
+    {
+        $value = Secrets::draw();
+        self::tokens()->save($authorization->storedUnder(DrawnSecret::digestOf($value), $issuedAt, $expiresAt));
+
+        return $value;
     }
 
     private static function revoker(): CanRevokeAccessTokenInterface

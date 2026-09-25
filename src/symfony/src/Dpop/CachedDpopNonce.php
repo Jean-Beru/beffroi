@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Dpop;
 use DateInterval;
 use DateTimeImmutable;
 use function hash;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Heidi\Oidc\Application\Secret\SecretDrawer;
 use Heidi\Oidc\Exception\UseDpopNonceException;
 use Heidi\Oidc\Port\DpopNonceInterface;
 use Psr\Cache\CacheItemPoolInterface;
@@ -27,6 +27,7 @@ final readonly class CachedDpopNonce implements DpopNonceInterface
 {
     public function __construct(
         private CacheItemPoolInterface $cache,
+        private SecretDrawer $secrets,
         private DateInterval $lifetime,
     ) {
     }
@@ -47,7 +48,7 @@ final readonly class CachedDpopNonce implements DpopNonceInterface
 
     private function issue(DateTimeImmutable $now): string
     {
-        $nonce = DrawnSecret::draw();
+        $nonce = $this->secrets->draw();
         $item = $this->cache->getItem(self::key($nonce));
         $item->set($now->getTimestamp());
         $item->expiresAt($now->add($this->lifetime));

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use function array_map;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
@@ -40,15 +41,15 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         $claims = new ClaimsRequest([], [
             'acr' => new ClaimRequest(true),
         ]);
-        $token = RefreshToken::generate();
+        $token = Secrets::draw();
         self::tokens()->save(self::token($token, $client, $session, $family, $claims, self::now()->modify('+1 minute')));
         self::reload();
 
         // When
-        $found = self::tokens()->findByTokenHash(RefreshToken::hash($token)) ?? static::fail('The token was not stored.');
+        $found = self::tokens()->findByTokenHash(DrawnSecret::digestOf($token)) ?? static::fail('The token was not stored.');
 
         // Then
-        static::assertSame(RefreshToken::hash($token), $found->tokenHash);
+        static::assertSame(DrawnSecret::digestOf($token), $found->tokenHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
         static::assertSame('oidc-demo', $found->client->registration->clientId);
@@ -72,7 +73,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     public function aRotationIsWrittenOnSave(): void
     {
         // Given
-        $token = self::token(RefreshToken::generate(), self::client(), self::session(self::user()), self::family(), null, self::now()->modify('+1 minute'));
+        $token = self::token(Secrets::draw(), self::client(), self::session(self::user()), self::family(), null, self::now()->modify('+1 minute'));
         self::tokens()->save($token);
         $token->rotate(self::now()->modify('+1 hour'));
         self::tokens()->save($token);
@@ -91,7 +92,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     public function aRevocationIsWrittenOnSave(): void
     {
         // Given
-        $token = self::token(RefreshToken::generate(), self::client(), self::session(self::user()), self::family(), null, self::now()->modify('+1 hour'));
+        $token = self::token(Secrets::draw(), self::client(), self::session(self::user()), self::family(), null, self::now()->modify('+1 hour'));
         self::tokens()->save($token);
         $token->revoke(self::now()->modify('+2 hours'));
         self::tokens()->save($token);
@@ -190,9 +191,9 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         $client = self::client();
         $family = self::family();
         $sibling = self::family();
-        $first = self::token(RefreshToken::generate(), $client, $aliceSession, $family, null, self::now()->modify('+1 minute'));
-        $second = self::token(RefreshToken::generate(), $client, $aliceSession, $family, null, self::now()->modify('+2 minutes'));
-        $third = self::token(RefreshToken::generate(), $client, $otherSession, $sibling, null, self::now()->modify('+3 minutes'));
+        $first = self::token(Secrets::draw(), $client, $aliceSession, $family, null, self::now()->modify('+1 minute'));
+        $second = self::token(Secrets::draw(), $client, $aliceSession, $family, null, self::now()->modify('+2 minutes'));
+        $third = self::token(Secrets::draw(), $client, $otherSession, $sibling, null, self::now()->modify('+3 minutes'));
         self::tokens()->save($second);
         self::tokens()->save($first);
         self::tokens()->save($third);
@@ -223,8 +224,8 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
             self::tenant(),
             new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
-        $orphan = self::token(RefreshToken::generate(), $ghost, $session, $family, null, self::now()->modify('+1 minute'));
-        $kept = self::token(RefreshToken::generate(), self::client(), $session, $family, null, self::now()->modify('+2 minutes'));
+        $orphan = self::token(Secrets::draw(), $ghost, $session, $family, null, self::now()->modify('+1 minute'));
+        $kept = self::token(Secrets::draw(), self::client(), $session, $family, null, self::now()->modify('+2 minutes'));
         self::tokens()->save($orphan);
         self::tokens()->save($kept);
         self::reload();
@@ -241,7 +242,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     {
         return new RefreshTokenFamily(
             Uuid::v7(),
-            AuthorizationCode::hash(AuthorizationCode::generate()),
+            DrawnSecret::digestOf(Secrets::draw()),
             Uuid::v7(),
             self::now(),
             self::now()->modify('+90 days'),
@@ -257,7 +258,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         DateTimeImmutable $issuedAt,
     ): RefreshToken {
         return new RefreshToken(
-            RefreshToken::hash($token),
+            DrawnSecret::digestOf($token),
             $family,
             $client,
             $session,
