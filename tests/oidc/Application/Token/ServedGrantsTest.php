@@ -73,6 +73,25 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
+     * CIBA Core §7: which of the wired grants has this provider reach its user is what they declare, and
+     * is what tells the two endpoints of the two waiting flows apart.
+     */
+    #[Test]
+    public function whichGrantsHaveTheProviderReachTheirUserIsWhatTheyDeclare(): void
+    {
+        // Given
+        $served = Grants::servedWithCiba();
+
+        // When
+        $backchannel = $served->askingTheUserThroughABackchannel();
+
+        // Then
+        static::assertSame(['urn:openid:params:grant-type:ciba'], GrantNames::of($backchannel));
+        static::assertSame([], GrantNames::of($served->askingTheUserOnAnotherDevice()));
+        static::assertSame([], GrantNames::of(Grants::servedWithDeviceCode()->askingTheUserThroughABackchannel()));
+    }
+
+    /**
      * Every wired grant that declares a capability is listed, in the order they are wired: the list is what
      * they all declare and not what the first of them does.
      */

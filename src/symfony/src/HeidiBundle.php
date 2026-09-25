@@ -10,6 +10,7 @@ use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Heidi\Bundle\Doctrine\Type\BackupCodesType;
+use Heidi\Bundle\Doctrine\Type\BindingMessageType;
 use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
 use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
@@ -17,6 +18,7 @@ use Heidi\Core\Port\PasswordAlgorithmsInterface;
 use Heidi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
+use Heidi\Bundle\Configuration\BackchannelAuthenticationSection;
 use Heidi\Bundle\Configuration\BackChannelLogoutSection;
 use Heidi\Bundle\Configuration\ClientAuthenticationSection;
 use Heidi\Bundle\Configuration\ClientsSection;
@@ -84,6 +86,7 @@ final class HeidiBundle extends AbstractBundle
         RedirectUriType::NAME => RedirectUriType::class,
         ScopesType::NAME => ScopesType::class,
         ResourceIndicatorsType::NAME => ResourceIndicatorsType::class,
+        BindingMessageType::NAME => BindingMessageType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
         ConfirmationType::NAME => ConfirmationType::class,
@@ -270,6 +273,7 @@ final class HeidiBundle extends AbstractBundle
             new TokensSection(),
             new LoadSection(),
             new BackChannelLogoutSection(),
+            new BackchannelAuthenticationSection(),
             new ClientAuthenticationSection(),
             new RequestObjectsSection(),
             new DpopSection(),

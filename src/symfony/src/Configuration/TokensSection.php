@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Configuration;
 
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
 use Heidi\Oidc\Application\Token\DeviceCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
@@ -43,6 +45,18 @@ final readonly class TokensSection extends ConfigurationSection
      * polls would make the flow slower than the code lives.
      */
     public const int MAX_DEVICE_CODE_INTERVAL = 30;
+
+    /**
+     * CIBA Core §7.1: a request somebody has to be reached about and then answer needs minutes, and an
+     * hour is as long as a provider should hold one open for a user who is not going to answer it.
+     */
+    public const int MAX_BACKCHANNEL_AUTHENTICATION_TTL = 3600;
+
+    /**
+     * CIBA Core §11: an interval a client is asked to respect is one it can respect, as for the device
+     * grant, and for the same reason.
+     */
+    public const int MAX_BACKCHANNEL_AUTHENTICATION_INTERVAL = 30;
 
     public function name(): string
     {
@@ -89,6 +103,24 @@ final readonly class TokensSection extends ConfigurationSection
             ->min(1)
             ->max(self::MAX_DEVICE_CODE_INTERVAL)
             ->end()
+            ->integerNode('backchannel_authentication_ttl')
+            ->info('Seconds a backchannel authentication request lives when the client asks for nothing (CIBA Core §7.3); five minutes is what somebody needs to be reached and to answer.')
+            ->defaultValue(300)
+            ->min(1)
+            ->max(self::MAX_BACKCHANNEL_AUTHENTICATION_TTL)
+            ->end()
+            ->integerNode('backchannel_authentication_max_requested_expiry')
+            ->info('Seconds the longest lifetime a client may ask for with "requested_expiry" (CIBA Core §7.1); a request that asks for more is served this, not refused.')
+            ->defaultValue(1800)
+            ->min(1)
+            ->max(self::MAX_BACKCHANNEL_AUTHENTICATION_TTL)
+            ->end()
+            ->integerNode('backchannel_authentication_interval')
+            ->info('Seconds a client waits between two polls of the token endpoint for a backchannel request (CIBA Core §7.3); five is the default of the specification, and a client that polls faster is told to add five.')
+            ->defaultValue(5)
+            ->min(1)
+            ->max(self::MAX_BACKCHANNEL_AUTHENTICATION_INTERVAL)
+            ->end()
             ->integerNode('refresh_token_ttl')
             ->info('Sliding lifetime of a refresh token, renewed at each rotation.')
             ->defaultValue(2592000)
@@ -126,5 +158,12 @@ final readonly class TokensSection extends ConfigurationSection
         $services->get(DeviceCodeGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
         $services->get(DeviceAuthorizationHandler::class)->arg('$lifetime', self::seconds($tokens, 'device_code_ttl'));
         $services->get(DeviceAuthorizationHandler::class)->arg('$interval', self::integer($tokens, 'device_code_interval'));
+        $services->get(BackchannelAuthenticationGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
+        $services->get(BackchannelAuthenticationHandler::class)->arg('$lifetime', self::seconds($tokens, 'backchannel_authentication_ttl'));
+        $services->get(BackchannelAuthenticationHandler::class)->arg(
+            '$maxRequestedExpiry',
+            self::seconds($tokens, 'backchannel_authentication_max_requested_expiry'),
+        );
+        $services->get(BackchannelAuthenticationHandler::class)->arg('$interval', self::integer($tokens, 'backchannel_authentication_interval'));
     }
 }

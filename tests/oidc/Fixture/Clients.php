@@ -7,6 +7,9 @@ namespace Heidi\Oidc\Tests\Fixture;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Heidi\Oidc\Domain\Ciba\DeliveryModeInterface;
+use Heidi\Oidc\Domain\Ciba\PingDelivery;
+use Heidi\Oidc\Domain\Ciba\PollDelivery;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
@@ -28,6 +31,11 @@ use Heidi\Oidc\Domain\Scope\Scope;
 
 final class Clients
 {
+    /**
+     * Where a client registered to be called back when a backchannel request has been answered.
+     */
+    public const string NOTIFICATION_ENDPOINT = 'https://terminal.example/ciba';
+
     public const string SECRET = 'a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3e7f2a6b0c4d8e1f5a9b3c7d0e4f8a2b6';
 
     /**
@@ -135,6 +143,62 @@ final class Clients
                 resources: $resources,
             ),
             new HashedClientSecret($secretHash),
+        );
+    }
+
+    /**
+     * A client that asks for a user it names and waits for them to approve on a device of their own (CIBA
+     * Core §7): registered for the backchannel grant and for the renewal that goes with it, for no
+     * redirect URI, there being no browser of its own anywhere in the flow, and for a delivery mode,
+     * without which it is not a client of this flow at all.
+     *
+     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
+     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the backchannel grant and its renewal unless the test says otherwise
+     */
+    public static function backchannel(
+        Tenant $tenant,
+        PasswordHash $secretHash,
+        string $clientId = 'payment-terminal',
+        ?DeliveryModeInterface $delivery = new PollDelivery(),
+        ?ClientUri $notificationEndpoint = null,
+        ?array $grantTypes = null,
+        array $resources = [],
+        ?Scopes $allowedScopes = null,
+        ?ClientJwks $jwks = null,
+    ): Client {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                'Payment terminal at the counter',
+                Methods::clientSecretBasic(),
+                true,
+                [],
+                Shapes::jwt(),
+                [],
+                $grantTypes ?? [Grants::ciba(), Grants::refreshToken()],
+                $allowedScopes ?? new Scopes([new Scope('openid'), new Scope('profile')]),
+                requiresConsent: false,
+                jwks: $jwks,
+                resources: $resources,
+                backchannelTokenDeliveryMode: $delivery,
+                backchannelClientNotificationEndpoint: $notificationEndpoint,
+            ),
+            new HashedClientSecret($secretHash),
+        );
+    }
+
+    /**
+     * The same client, registered for the mode where this provider calls it back (CIBA Core §10.2).
+     */
+    public static function pinged(Tenant $tenant, PasswordHash $secretHash, string $clientId = 'payment-terminal'): Client
+    {
+        return self::backchannel(
+            $tenant,
+            $secretHash,
+            $clientId,
+            new PingDelivery(),
+            new ClientUri(self::NOTIFICATION_ENDPOINT),
         );
     }
 

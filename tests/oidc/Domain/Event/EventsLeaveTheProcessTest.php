@@ -22,6 +22,7 @@ use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use Heidi\Oidc\Domain\Event\ConsentGranted;
 use Heidi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use Heidi\Oidc\Domain\Event\BackchannelRequestAnswered;
 use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
 use Heidi\Oidc\Domain\Event\PushedRequestRefusalReason;
 use Heidi\Oidc\Domain\Event\PushedRequestRefused;
@@ -110,6 +111,15 @@ final class EventsLeaveTheProcessTest extends TestCase
             ClientAuthenticationFailureReason::InvalidAssertion,
             $clientId,
             'private_key_jwt',
+        )];
+        yield 'a backchannel request answered' => [new BackchannelRequestAnswered(
+            $now,
+            $client->tenant,
+            $clientId,
+            new ClientUri('https://key.example/ciba-notification'),
+            'the-auth-req-id',
+            'the-notification-token',
+            $context,
         )];
         yield 'a consent granted' => [new ConsentGranted(
             $consent->grantedAt,

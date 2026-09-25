@@ -15,6 +15,7 @@ use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Token\GrantNames;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
+use Heidi\Oidc\Tests\Fixture\DeliveryModes;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -90,6 +91,9 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'request_uri_ttl' => 60,
                 'device_code_ttl' => 600,
                 'device_code_interval' => 5,
+                'backchannel_authentication_ttl' => 300,
+                'backchannel_authentication_max_requested_expiry' => 1800,
+                'backchannel_authentication_interval' => 5,
                 'refresh_token_ttl' => 2592000,
                 'refresh_token_absolute_ttl' => 7776000,
             ],
@@ -170,6 +174,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
+            DeliveryModes::served(),
         );
 
         // When
@@ -199,6 +204,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
+            DeliveryModes::served(),
         );
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(ClientDefinition::DEFAULT_GRANT_TYPES, GrantNames::of($fromTree->registration->grantTypes));

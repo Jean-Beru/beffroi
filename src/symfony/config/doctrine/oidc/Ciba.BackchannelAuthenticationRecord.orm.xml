@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!-- What the provider keeps of a backchannel authentication request (CIBA Core §7): the identifier the client comes back with, by its hash, as the key. The user it named is a row of its own and may be none, a request naming a stranger being kept exactly like every other so that nothing tells the two apart. The two sealed columns are for a client this provider has to call back (§10.2) and are null for every other: they hold the identifier it was handed and the token it sent, in an envelope of the KMS of the tenant, as a shared secret of a user is. Where the client asked from is kept because the page that answers shows it (BCP 10027 §5.2). The session the user approved with, and what it had proven then, arrive when somebody answers and are null until then, which is why the snapshot is a document here and an embeddable where it is there from the start. The client is a registration the module reads from its repository, not a row, as it is for a device authorization request. -->
+    <entity name="Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord" table="heidi_backchannel_authentication_request">
+        <indexes>
+            <index name="heidi_backchannel_authentication_expiry" columns="expires_at"/>
+        </indexes>
+        <id name="authRequestIdHash" type="string" column="auth_request_id_hash" length="64">
+            <options>
+                <option name="fixed">true</option>
+            </options>
+        </id>
+        <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
+        <field name="clientId" type="string" column="client_id" length="255"/>
+        <many-to-one field="user" target-entity="Heidi\Core\Domain\Identity\User">
+            <join-column name="user_id" referenced-column-name="id" nullable="true" on-delete="CASCADE"/>
+        </many-to-one>
+        <field name="scopes" type="heidi_scopes" column="scopes"/>
+        <field name="resources" type="heidi_resources" column="resources" nullable="true"/>
+        <field name="bindingMessage" type="heidi_binding_message" column="binding_message" length="255" nullable="true"/>
+        <field name="sealedAuthRequestId" type="heidi_bytes" column="sealed_auth_request_id" nullable="true"/>
+        <field name="sealedNotificationToken" type="heidi_bytes" column="sealed_notification_token" nullable="true"/>
+        <embedded name="requestedFrom" class="Heidi\Core\Domain\Session\RequestContext" column-prefix="requested_from_"/>
+        <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
+        <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
+        <field name="interval" type="integer" column="poll_interval"/>
+        <field name="lastPolledAt" type="datetime_immutable" column="last_polled_at" nullable="true"/>
+        <field name="approvedAt" type="datetime_immutable" column="approved_at" nullable="true"/>
+        <field name="deniedAt" type="datetime_immutable" column="denied_at" nullable="true"/>
+        <many-to-one field="session" target-entity="Heidi\Core\Domain\Session\AuthenticationSession">
+            <join-column name="session_id" referenced-column-name="id" nullable="true" on-delete="CASCADE"/>
+        </many-to-one>
+        <field name="authentication" type="heidi_authentication_snapshot" column="authentication" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <entity-listeners>
+            <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
+                <lifecycle-callback type="postLoad" method="postLoad"/>
+            </entity-listener>
+        </entity-listeners>
+    </entity>
+</doctrine-mapping>
