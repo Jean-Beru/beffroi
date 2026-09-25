@@ -19,7 +19,7 @@ use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Application\Token\TokenIssuer;
-use Heidi\Oidc\Application\Token\TokenRequest;
+use Heidi\Oidc\Application\Request\RequestParameters;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
@@ -517,7 +517,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs('invalid_request: The ' . $missing . ' parameter is missing.');
 
         // When
-        $this->grant->grant(new AuthenticatedClient($this->client), new TokenRequest($parameters), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), RequestParameters::of($parameters), $this->context);
     }
 
     /**
@@ -533,7 +533,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         unset($parameters[$missing]);
 
         // When
-        $this->failToGrant($this->client, new TokenRequest($parameters));
+        $this->failToGrant($this->client, RequestParameters::of($parameters));
 
         // Then
         static::assertFalse($code->isUsed());
@@ -892,7 +892,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->expectExceptionMessageIs(self::INVALID_GRANT);
 
         // When
-        $this->grant->grant(new AuthenticatedClient($this->client), new TokenRequest($parameters), $this->context);
+        $this->grant->grant(new AuthenticatedClient($this->client), RequestParameters::of($parameters), $this->context);
     }
 
     /**
@@ -907,7 +907,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         unset($parameters['code_verifier']);
 
         // When
-        $this->failToGrant($this->client, new TokenRequest($parameters));
+        $this->failToGrant($this->client, RequestParameters::of($parameters));
 
         // Then
         static::assertTrue($code->isUsed());
@@ -927,7 +927,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         unset($parameters['code_verifier']);
 
         // When
-        $issued = $this->grant->grant(new AuthenticatedClient($client), new TokenRequest($parameters), $this->context);
+        $issued = $this->grant->grant(new AuthenticatedClient($client), RequestParameters::of($parameters), $this->context);
 
         // Then
         static::assertSame('at:legacy:alice-subject:' . $this->clock->now()->getTimestamp(), $issued->accessToken->value);
@@ -1009,7 +1009,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     /**
      * A refused exchange issues nothing and announces nothing.
      *
-     * @param callable(self): TokenRequest $request
+     * @param callable(self): RequestParameters $request
      */
     #[Test]
     #[DataProvider('provideRefusedExchanges')]
@@ -1027,17 +1027,17 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{callable(self): TokenRequest}>
+     * @return iterable<string, array{callable(self): RequestParameters}>
      */
     public static function provideRefusedExchanges(): iterable
     {
         yield 'another redirect URI' => [
-            static fn (self $test): TokenRequest => $test->request(redirectUri: 'https://demo.localhost/login/check/'),
+            static fn (self $test): RequestParameters => $test->request(redirectUri: 'https://demo.localhost/login/check/'),
         ];
         yield 'wrong verifier' => [
-            static fn (self $test): TokenRequest => $test->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'),
+            static fn (self $test): RequestParameters => $test->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'),
         ];
-        yield 'expired code' => [static function (self $test): TokenRequest {
+        yield 'expired code' => [static function (self $test): RequestParameters {
             $test->clock->sleep(60);
 
             return $test->request();
@@ -1131,11 +1131,11 @@ final class AuthorizationCodeGrantTest extends TestCase
         string $redirectUri = 'https://demo.localhost/login/check',
         string $verifier = Tokens::CODE_VERIFIER,
         string|array|null $resource = null,
-    ): TokenRequest {
-        return new TokenRequest($this->parameters($code, $redirectUri, $verifier, $resource));
+    ): RequestParameters {
+        return RequestParameters::of($this->parameters($code, $redirectUri, $verifier, $resource));
     }
 
-    private function failToGrant(Client $client, TokenRequest $request): void
+    private function failToGrant(Client $client, RequestParameters $request): void
     {
         try {
             $this->grant->grant(new AuthenticatedClient($client), $request, $this->context);

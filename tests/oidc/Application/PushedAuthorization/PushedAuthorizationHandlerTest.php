@@ -22,8 +22,8 @@ use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRequestRepository;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
+use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
+use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationResponse;
 use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
 use Heidi\Oidc\Exception\InvalidClientException;
@@ -31,7 +31,7 @@ use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidScopeException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
-use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
+use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\Jwts;
@@ -57,7 +57,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
 
     private InMemoryClientRepository $clients;
 
-    private InMemoryPushedAuthorizationRequestRepository $requests;
+    private InMemoryPushedAuthorizationRecordRepository $requests;
 
     private MockClock $clock;
 
@@ -79,7 +79,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
         $this->clients->save(Clients::confidential($this->tenant, $this->hasher->hash(Clients::SECRET)));
         $this->clients->save(Clients::confidential($this->tenant, $this->hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'post-client'));
         $this->clients->save(Clients::public($this->tenant));
-        $this->requests = new InMemoryPushedAuthorizationRequestRepository();
+        $this->requests = new InMemoryPushedAuthorizationRecordRepository();
         $this->clock = new MockClock('2026-09-22T12:00:00+00:00');
         $keys = new Jwts($this->tenant);
         $this->encryption = $keys->activate(Algorithms::ecdhEsA256Kw(), Keys::encryptionPair());
@@ -398,7 +398,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     public function aRefusedRequestIsNeverStored(): void
     {
         // Given
-        $requests = $this->createMock(PushedAuthorizationRequestRepositoryInterface::class);
+        $requests = $this->createMock(PushedAuthorizationRecordRepositoryInterface::class);
         $requests->expects(static::never())->method('save');
         $this->handler = $this->handler($requests);
 
@@ -515,7 +515,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     /**
      * The record the endpoint kept for the reference it answered with.
      */
-    private function storedRequest(PushedAuthorizationResponse $response): PushedAuthorizationRequest
+    private function storedRequest(PushedAuthorizationResponse $response): PushedAuthorizationRecord
     {
         return (
             $this->requests->findByRequestUriHash(
@@ -524,7 +524,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
         );
     }
 
-    private function handler(PushedAuthorizationRequestRepositoryInterface $requests, ?DateInterval $lifetime = null): PushedAuthorizationHandler
+    private function handler(PushedAuthorizationRecordRepositoryInterface $requests, ?DateInterval $lifetime = null): PushedAuthorizationHandler
     {
         return new PushedAuthorizationHandler(
             new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher()),

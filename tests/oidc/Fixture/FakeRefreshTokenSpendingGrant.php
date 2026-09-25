@@ -7,7 +7,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\SpendsRefreshTokensInterface;
-use Heidi\Oidc\Application\Token\TokenRequest;
+use Heidi\Oidc\Application\Request\RequestParameters;
 use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
@@ -27,7 +27,7 @@ final readonly class FakeRefreshTokenSpendingGrant implements SpendsRefreshToken
         return $this->grantType;
     }
 
-    public function grant(AuthenticatedClient $client, TokenRequest $request, RequestContext $context): IssuedTokens
+    public function grant(AuthenticatedClient $client, RequestParameters $request, RequestContext $context): IssuedTokens
     {
         throw new LogicException('The fake grant grants nothing.');
     }

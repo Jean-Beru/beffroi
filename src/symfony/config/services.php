@@ -15,7 +15,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRequestRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
@@ -285,7 +285,7 @@ use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProofKeyVerifierInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
-use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
+use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Heidi\Oidc\Port\RequestObjectFetcherInterface;
@@ -451,8 +451,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
     // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6)
     $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
-    $services->set(DoctrinePushedAuthorizationRequestRepository::class);
-    $services->alias(PushedAuthorizationRequestRepositoryInterface::class, DoctrinePushedAuthorizationRequestRepository::class);
+    $services->set(DoctrinePushedAuthorizationRecordRepository::class);
+    $services->alias(PushedAuthorizationRecordRepositoryInterface::class, DoctrinePushedAuthorizationRecordRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
     $services->set(DoctrineAccessTokenRepository::class);

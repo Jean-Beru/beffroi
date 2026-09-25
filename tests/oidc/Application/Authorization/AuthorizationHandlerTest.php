@@ -25,7 +25,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRequestRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
@@ -90,7 +90,7 @@ final class AuthorizationHandlerTest extends TestCase
 
     private InMemoryAuthorizationCodeRepository $codes;
 
-    private InMemoryPushedAuthorizationRequestRepository $pushedRequests;
+    private InMemoryPushedAuthorizationRecordRepository $pushedRequests;
 
     private InMemoryCredentialRepository $credentials;
 
@@ -120,7 +120,7 @@ final class AuthorizationHandlerTest extends TestCase
         $this->interactions = new InMemoryInteractionRepository();
         $this->consents = new InMemoryConsentRepository();
         $this->codes = new InMemoryAuthorizationCodeRepository();
-        $this->pushedRequests = new InMemoryPushedAuthorizationRequestRepository();
+        $this->pushedRequests = new InMemoryPushedAuthorizationRecordRepository();
         $this->credentials = new InMemoryCredentialRepository();
         $this->credentials->save(Fixtures::password($this->alice));
         $this->events = new RecordingEventDispatcher();

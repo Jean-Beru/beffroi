@@ -429,7 +429,7 @@ services:
         alias: Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface
         public: true
     test.heidi.pushed_authorization_requests:
-        alias: Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface
+        alias: Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface
         public: true
     test.heidi.logged_in_clients:
         alias: Heidi\Oidc\Port\LoggedInClientsInterface
