@@ -34,6 +34,7 @@ use Heidi\Oidc\Exception\InvalidTargetException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidScopeException;
 use Heidi\Oidc\Exception\OAuth2Exception;
+use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
@@ -173,10 +174,12 @@ final class RefreshTokenGrantTest extends TestCase
         $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
-        static::assertTrue($issued->authorization->grantType->equals(Grants::refreshToken()));
-        static::assertSame($token->scopes, $issued->authorization->scopes);
-        static::assertNull($issued->authorization->nonce);
-        static::assertEquals($token->authentication->authenticatedAt, $issued->authorization->authentication->authenticatedAt);
+        $authorization = $issued->authorization;
+        static::assertInstanceOf(UserAuthorizationInterface::class, $authorization);
+        static::assertTrue($authorization->grantType->equals(Grants::refreshToken()));
+        static::assertSame($token->scopes, $authorization->scopes);
+        static::assertNull($authorization->nonce);
+        static::assertEquals($token->authentication->authenticatedAt, $authorization->authentication->authenticatedAt);
         static::assertSame('id:spa:alice-subject:-:' . $this->clock->now()->getTimestamp(), $issued->idToken);
         static::assertSame('openid profile', $issued->toResponse()->parameters()['scope']);
     }

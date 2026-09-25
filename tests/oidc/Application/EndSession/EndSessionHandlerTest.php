@@ -35,7 +35,7 @@ use Heidi\Oidc\Domain\EndSession\LoggedOut;
 use Heidi\Oidc\Domain\EndSession\LogoutConfirmationReason;
 use Heidi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
 use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Exception\InvalidArgumentException;
@@ -598,8 +598,8 @@ final class EndSessionHandlerTest extends TestCase
         $accessToken = new AccessToken('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $refreshToken = $this->refreshToken('current', $this->session);
         $authorization = $refreshed
-            ? GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $refreshToken, null)
-            : GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            ? UserAuthorization::fromRefreshToken(Grants::refreshToken(), $refreshToken, null)
+            : UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'the-code',
                 $this->client,
                 $this->session,

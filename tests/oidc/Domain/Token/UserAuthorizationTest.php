@@ -13,7 +13,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -23,7 +23,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-final class GrantedAuthorizationTest extends TestCase
+final class UserAuthorizationTest extends TestCase
 {
     private AuthenticationSession $session;
 
@@ -49,7 +49,7 @@ final class GrantedAuthorizationTest extends TestCase
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile'], 'n-0S6_WzA2Mj', $claims);
 
         // When
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
 
         // Then
         static::assertTrue($authorization->grantType->equals(Grants::authorizationCode()));
@@ -70,7 +70,7 @@ final class GrantedAuthorizationTest extends TestCase
     public function itKnowsTheScopesItCarries(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -94,7 +94,7 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, null);
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, null);
 
         // Then
         static::assertTrue($authorization->grantType->equals(Grants::refreshToken()));
@@ -114,7 +114,7 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // Then
         static::assertEquals([new Scope('profile')], $authorization->scopes->all);
@@ -129,7 +129,7 @@ final class GrantedAuthorizationTest extends TestCase
         $token = $this->refreshToken();
 
         // When
-        $authorization = GrantedAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // Then
         static::assertSame($token->client, $authorization->client);
@@ -173,8 +173,8 @@ final class GrantedAuthorizationTest extends TestCase
         ?Scopes $grantedScopes = null,
         ?string $nonce = null,
         ?array $methods = null,
-    ): GrantedAuthorization {
-        return new GrantedAuthorization(
+    ): UserAuthorization {
+        return new UserAuthorization(
             $grantType ?? Grants::authorizationCode(),
             Uuid::v7(),
             $client ?? $this->client,

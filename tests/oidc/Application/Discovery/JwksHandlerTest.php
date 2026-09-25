@@ -17,7 +17,7 @@ use Heidi\Core\Tests\Fixture\Keys;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
@@ -144,7 +144,7 @@ final class JwksHandlerTest extends TestCase
     {
         // Given
         $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'the-code',
                 Clients::public($this->jwts->tenant),
                 Fixtures::session(Fixtures::user($this->jwts->tenant)),

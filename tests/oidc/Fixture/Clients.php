@@ -71,6 +71,39 @@ final class Clients
     }
 
     /**
+     * A service acting for itself (RFC 6749 §4.4): a confidential client registered for the client
+     * credentials grant, for the resources it asks its tokens for, and for no redirect URI, there being no
+     * browser of anybody's to send anywhere.
+     *
+     * @param list<ResourceIndicator>|null $resources what this client may ask a token for, both fixtures unless the test says otherwise
+     */
+    public static function service(
+        Tenant $tenant,
+        PasswordHash $secretHash,
+        string $clientId = 'batch',
+        ?array $resources = null,
+        ?Scopes $allowedScopes = null,
+        ?AccessTokenShapeInterface $accessTokenShape = null,
+    ): Client {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                'Nightly batch',
+                Methods::clientSecretBasic(),
+                true,
+                [],
+                $accessTokenShape ?? Shapes::jwt(),
+                [],
+                [Grants::clientCredentials()],
+                $allowedScopes ?? new Scopes([new Scope('invoices.read'), new Scope('invoices.write')]),
+                resources: $resources ?? self::resources(),
+            ),
+            new HashedClientSecret($secretHash),
+        );
+    }
+
+    /**
      * A client whose only way of starting an authorization request is to push it (RFC 9126 §6), which is
      * what FAPI 2.0 asks of one.
      */
@@ -96,8 +129,9 @@ final class Clients
 
     /**
      * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
+     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow unless the test says otherwise
      */
-    public static function public(Tenant $tenant, string $clientId = 'spa', array $resources = []): Client
+    public static function public(Tenant $tenant, string $clientId = 'spa', array $resources = [], ?array $grantTypes = null): Client
     {
         return new Client(
             $tenant,
@@ -108,6 +142,7 @@ final class Clients
                 false,
                 [new RedirectUri('https://spa.example/callback')],
                 Shapes::jwt(),
+                grantTypes: $grantTypes ?? [Grants::authorizationCode()],
                 resources: $resources,
             ),
         );

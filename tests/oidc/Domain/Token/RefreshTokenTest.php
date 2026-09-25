@@ -15,7 +15,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
@@ -174,7 +174,7 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
-        $authorization = GrantedAuthorization::fromRefreshToken(
+        $authorization = UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
             new Scopes([new Scope('openid')]),
@@ -199,7 +199,7 @@ final class RefreshTokenTest extends TestCase
     public function itIsIssuedFromAnAuthorizationWithItsAuthentication(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromRefreshToken(
+        $authorization = UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
             new Scopes([new Scope('openid')]),
@@ -230,7 +230,7 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $key = new KeyConfirmation(self::THUMBPRINT);
-        $authorization = GrantedAuthorization::fromRefreshToken(
+        $authorization = UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family),
             null,
@@ -259,7 +259,7 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $client = Clients::confidential($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
-        $authorization = GrantedAuthorization::fromRefreshToken(
+        $authorization = UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken('previous', $client, $this->session, Fixtures::now(), $this->family),
             null,
@@ -317,7 +317,7 @@ final class RefreshTokenTest extends TestCase
     public function itNeverOutlivesItsFamily(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromRefreshToken(
+        $authorization = UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
             new Scopes([new Scope('openid')]),

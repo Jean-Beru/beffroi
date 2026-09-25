@@ -287,10 +287,6 @@ final class ClientRegistrationTest extends TestCase
             static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), true, $uris, Shapes::jwt()),
             'cannot hold a secret',
         ];
-        yield 'no redirect URI (RFC 6749 §3.1.2.2)' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, [], Shapes::jwt()),
-            'at least one redirect URI',
-        ];
         yield 'no grant type' => [
             static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, $uris, Shapes::jwt(), [], []),
             'at least one grant type',

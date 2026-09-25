@@ -36,6 +36,7 @@ use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidTargetException;
+use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
@@ -157,11 +158,13 @@ final class AuthorizationCodeGrantTest extends TestCase
         $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
 
         // Then
-        static::assertSame($this->client, $issued->authorization->client);
-        static::assertSame($this->session, $issued->authorization->session);
-        static::assertTrue($issued->authorization->grantType->equals(Grants::authorizationCode()));
-        static::assertSame($code->scopes, $issued->authorization->scopes);
-        static::assertSame('n-0S6_WzA2Mj', $issued->authorization->nonce);
+        $authorization = $issued->authorization;
+        static::assertInstanceOf(UserAuthorizationInterface::class, $authorization);
+        static::assertSame($this->client, $authorization->client);
+        static::assertSame($this->session, $authorization->session);
+        static::assertTrue($authorization->grantType->equals(Grants::authorizationCode()));
+        static::assertSame($code->scopes, $authorization->scopes);
+        static::assertSame('n-0S6_WzA2Mj', $authorization->nonce);
     }
 
     /**

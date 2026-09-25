@@ -7,7 +7,8 @@ namespace Heidi\Oidc\Tests\Fixture;
 use DateInterval;
 use DateTimeImmutable;
 use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\AuthorizationInterface;
+use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Heidi\Oidc\Port\AccessTokenShapeIssuerInterface;
 use function sprintf;
 
@@ -19,7 +20,7 @@ use function sprintf;
 final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
 {
     /**
-     * @var list<GrantedAuthorization>
+     * @var list<AuthorizationInterface>
      */
     public private(set) array $issued = [];
 
@@ -37,12 +38,17 @@ final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
         return $this->name;
     }
 
-    public function issue(GrantedAuthorization $authorization, DateTimeImmutable $now): AccessToken
+    public function issue(AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
     {
         $this->issued[] = $authorization;
 
         return new AccessToken(
-            sprintf('at:%s:%s:%d', $authorization->client->registration->clientId, $authorization->user->subject, $now->getTimestamp()),
+            sprintf(
+                'at:%s:%s:%d',
+                $authorization->client->registration->clientId,
+                $authorization instanceof UserAuthorizationInterface ? $authorization->user->subject : $authorization->client->registration->clientId,
+                $now->getTimestamp(),
+            ),
             $now,
             $now->add($this->lifetime),
         );

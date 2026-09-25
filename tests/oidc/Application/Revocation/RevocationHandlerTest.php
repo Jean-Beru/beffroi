@@ -25,8 +25,8 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Event\TokenRevoked;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
+use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\UnsupportedTokenTypeException;
@@ -346,9 +346,9 @@ final class RevocationHandlerTest extends TestCase
         $store = static::createStub(AccessTokenRepositoryInterface::class);
         $store
             ->method('find')
-            ->willReturn(StoredAccessToken::fromAuthorization(
+            ->willReturn(StoredUserAccessToken::fromAuthorization(
                 str_repeat('a', 64),
-                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                     'the-code',
                     $this->client,
                     $this->session,
@@ -430,7 +430,7 @@ final class RevocationHandlerTest extends TestCase
     private function accessToken(Client $client): string
     {
         return $this->accessTokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $this->clock->now())),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $this->clock->now())),
             $this->clock->now(),
             $this->clock->now()->modify('+10 minutes'),
         );
@@ -439,7 +439,7 @@ final class RevocationHandlerTest extends TestCase
     private function jwt(Client $client, DateTimeImmutable $issuedAt): string
     {
         return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $issuedAt)),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $issuedAt)),
             $issuedAt,
         )->value;
     }

@@ -8,6 +8,7 @@ use Heidi\Oidc\Tests\Fixture\Grants;
 use function array_keys;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
@@ -26,8 +27,12 @@ use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Heidi\Oidc\Domain\Token\ClientAuthorization;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
+use Heidi\Oidc\Domain\Token\StoredClientAccessToken;
+use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -427,7 +432,7 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryAccessTokenRepository();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -441,6 +446,7 @@ final class InMemoryRepositoriesTest extends TestCase
         // Then
         static::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $value);
         $record = $repository->find($value) ?? static::fail('The token was kept.');
+        static::assertInstanceOf(StoredUserAccessToken::class, $record);
         static::assertSame(DrawnSecret::digestOf($value), $record->tokenHash);
         static::assertSame($this->client, $record->client);
         static::assertSame($this->session, $record->session);
@@ -456,7 +462,7 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryAccessTokenRepository();
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -523,6 +529,61 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertSame([$first, $second], $revoked);
         static::assertSame([$other], $repository->all());
         static::assertSame([], $repository->revokeByGrant($grant), 'nothing left');
+    }
+
+    /**
+     * Architecture §4.6, RFC 6749 §4.4: the record kept for an authorization is the record of its kind, and
+     * the store is handed it by the authorization rather than recognising which kind it was given.
+     */
+    #[Test]
+    public function itKeepsAnAccessTokenNobodySignedInForAsTheRecordOfItsKind(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $service = Clients::service($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $authorization = new ClientAuthorization(
+            Grants::clientCredentials(),
+            Uuid::v7(),
+            $service,
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
+
+        // When
+        $value = $repository->issue($authorization, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // Then
+        $record = $repository->find($value) ?? static::fail('The token was kept.');
+        static::assertInstanceOf(StoredClientAccessToken::class, $record);
+        static::assertSame($service, $record->client);
+        static::assertTrue($authorization->grantId->equals($record->grantId));
+        static::assertSame([Clients::CALENDAR], $record->resources?->values());
+    }
+
+    /**
+     * Architecture §4.9, RFC 6749 §4.4: a logout revokes the tokens of the session that ended, and a token
+     * nobody signed in for has no session to have ended.
+     */
+    #[Test]
+    public function aLogoutLeavesTheAccessTokensNobodySignedInFor(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $ofTheSession = Tokens::storedAccessToken('here', $this->client, $this->session, Fixtures::now());
+        $ofTheService = Tokens::storedClientAccessToken(
+            'batch',
+            Clients::service($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET)),
+            Fixtures::now(),
+        );
+        $repository->keep($ofTheSession);
+        $repository->keep($ofTheService);
+
+        // When
+        $revoked = $repository->revokeBySession($this->session->id);
+
+        // Then
+        static::assertSame([$ofTheSession], $revoked);
+        static::assertSame([$ofTheService], $repository->all());
     }
 
     /**

@@ -6,7 +6,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 
 use DateTimeImmutable;
 use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
 use function sprintf;
 
@@ -17,11 +17,11 @@ use function sprintf;
 final class FakeIdTokenIssuer implements IdTokenIssuerInterface
 {
     /**
-     * @var list<array{GrantedAuthorization, AccessToken}>
+     * @var list<array{UserAuthorizationInterface, AccessToken}>
      */
     public private(set) array $issued = [];
 
-    public function issue(GrantedAuthorization $authorization, AccessToken $accessToken, DateTimeImmutable $now): string
+    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, DateTimeImmutable $now): string
     {
         $this->issued[] = [$authorization, $accessToken];
 

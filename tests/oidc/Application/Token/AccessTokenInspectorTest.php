@@ -12,6 +12,7 @@ use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
@@ -22,7 +23,11 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
+use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Domain\Token\ClientAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Grants;
@@ -31,6 +36,7 @@ use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The checks the provider's own resources add to the verification (architecture §4.6): the session, the
@@ -55,6 +61,8 @@ final class AccessTokenInspectorTest extends TestCase
 
     private Jwts $jwts;
 
+    private InMemoryClientRepository $clients;
+
     private AccessTokenInspector $inspector;
 
     protected function setUp(): void
@@ -70,12 +78,12 @@ final class AccessTokenInspectorTest extends TestCase
         $this->jwts = new Jwts($this->tenant);
         $users = new InMemoryUserRepository();
         $users->save($this->user);
-        $clients = new InMemoryClientRepository();
-        $clients->save($this->client);
+        $this->clients = new InMemoryClientRepository();
+        $this->clients->save($this->client);
         $this->inspector = new AccessTokenInspector(
             AccessTokenShapes::verifier(
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
-                $clients,
+                $this->clients,
                 $this->tokens,
                 new PublicSubjectIdentifierResolver(),
             ),
@@ -98,6 +106,44 @@ final class AccessTokenInspectorTest extends TestCase
         static::assertSame($this->user, $inspected->user);
         static::assertSame($this->client, $inspected->token->client);
         static::assertSame('alice-subject', (string) $inspected->token->subject);
+    }
+
+    /**
+     * RFC 6749 §4.4: a token a client holds for itself descends from no session and names nobody, so
+     * neither question is asked of it; it is honoured on what it carries, and the resource that answers
+     * for a user is told there is none.
+     */
+    #[Test]
+    public function itHandsOverATokenNobodySignedInForWithoutAUser(): void
+    {
+        // Given
+        $token = $this->clientToken();
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertNull($inspected->user);
+        static::assertNull($inspected->token->signIn);
+        static::assertSame('batch', (string) $inspected->token->subject);
+    }
+
+    /**
+     * The session of the tokens of a user having ended says nothing about a token nobody signed in for: it
+     * has no session to have ended and no grant of a browser flow to be revoked with one.
+     */
+    #[Test]
+    public function aTokenNobodySignedInForOutlivesTheLogoutOfEverybody(): void
+    {
+        // Given
+        $token = $this->clientToken();
+        $this->session->end(SessionEnd::User, Fixtures::now()->modify('+1 minute'));
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertNull($inspected->user);
     }
 
     /**
@@ -254,6 +300,27 @@ final class AccessTokenInspectorTest extends TestCase
         $inspector->inspect($this->tenant, $token, Fixtures::now());
     }
 
+    /**
+     * An opaque token a client holds for itself (RFC 6749 §4.4), of a service client the repository knows.
+     */
+    private function clientToken(): string
+    {
+        $service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $this->clients->save($service);
+
+        return $this->tokens->issue(
+            new ClientAuthorization(
+                Grants::clientCredentials(),
+                Uuid::v7(),
+                $service,
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+            ),
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+    }
+
     private function code(): AuthorizationCode
     {
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now());
@@ -265,7 +332,7 @@ final class AccessTokenInspectorTest extends TestCase
     private function tokenOf(AuthorizationCode $code): string
     {
         return $this->tokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
             Fixtures::now()->modify('+10 minutes'),
         );
@@ -282,7 +349,7 @@ final class AccessTokenInspectorTest extends TestCase
         }
 
         return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         )->value;
     }

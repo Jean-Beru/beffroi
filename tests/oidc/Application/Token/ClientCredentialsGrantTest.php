@@ -1,0 +1,279 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Oidc\Tests\Application\Token;
+
+use Heidi\Core\Domain\Session\RequestContext;
+use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Oidc\Application\Client\AuthenticatedClient;
+use Heidi\Oidc\Application\Request\RequestParameters;
+use Heidi\Oidc\Application\Token\ClientCredentialsGrant;
+use Heidi\Oidc\Application\Token\TokenIssuer;
+use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Event\TokensIssued;
+use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Domain\Token\ClientAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Heidi\Oidc\Exception\InvalidClientException;
+use Heidi\Oidc\Exception\InvalidRequestException;
+use Heidi\Oidc\Exception\InvalidScopeException;
+use Heidi\Oidc\Exception\InvalidTargetException;
+use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\Grants;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
+
+final class ClientCredentialsGrantTest extends TestCase
+{
+    private Tenant $tenant;
+
+    private Client $client;
+
+    private RequestContext $context;
+
+    private FakeIdTokenIssuer $idTokens;
+
+    private InMemoryRefreshTokenRepository $refreshTokens;
+
+    private RecordingEventDispatcher $events;
+
+    private ClientCredentialsGrant $grant;
+
+    protected function setUp(): void
+    {
+        $this->tenant = Fixtures::tenant();
+        $this->client = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $clock = new MockClock('2026-09-15T12:00:00+00:00');
+        $this->context = Fixtures::context($clock->now());
+        $this->idTokens = new FakeIdTokenIssuer();
+        $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->events = new RecordingEventDispatcher();
+        $this->grant = new ClientCredentialsGrant(
+            new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, $this->events),
+            $clock,
+        );
+    }
+
+    #[Test]
+    public function itHandlesTheClientCredentialsGrantType(): void
+    {
+        // When / Then
+        static::assertTrue($this->grant->grantType()->equals(Grants::clientCredentials()));
+    }
+
+    /**
+     * RFC 6749 §4.4: the authorization is the client's own, with nobody behind it, and the access token is
+     * addressed to the resource the request named (RFC 8707 §2).
+     */
+    #[Test]
+    public function itAuthorizesTheClientForItselfAndForTheResourceAsked(): void
+    {
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        $authorization = $issued->authorization;
+        static::assertNotInstanceOf(UserAuthorizationInterface::class, $authorization, 'nobody signed in for it');
+        static::assertInstanceOf(ClientAuthorization::class, $authorization);
+        static::assertSame($this->client, $authorization->client);
+        static::assertTrue($authorization->grantType->equals(Grants::clientCredentials()));
+        static::assertSame(['invoices.read'], $authorization->scopes->values());
+        static::assertSame([Clients::CALENDAR], $authorization->resources->values());
+        static::assertSame([Clients::CALENDAR], $authorization->audience()->values);
+    }
+
+    /**
+     * RFC 6749 §4.4.3: the response carries an access token and nothing else, whatever the client asked
+     * for; there is nobody to describe in an ID token and nothing to renew with a refresh token.
+     */
+    #[Test]
+    public function theResponseCarriesNoIdTokenAndNoRefreshToken(): void
+    {
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(scope: 'invoices.read invoices.write'), $this->context);
+
+        // Then
+        static::assertNull($issued->idToken);
+        static::assertNull($issued->refreshToken);
+        static::assertSame([], $this->idTokens->issued);
+        static::assertSame([], $this->refreshTokens->all());
+        static::assertSame('Bearer', $issued->toResponse()->parameters()['token_type']);
+    }
+
+    /**
+     * OIDC Core §2: "openid" asks for an authentication, and this grant authenticates nobody. The scope is
+     * refused rather than dropped from a response that would then look like an authentication.
+     */
+    #[Test]
+    public function itRefusesTheOpenidScope(): void
+    {
+        // Given
+        $client = Clients::service(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            allowedScopes: new Scopes([Scope::openid(), new Scope('invoices.read')]),
+        );
+
+        // Then
+        $this->expectException(InvalidScopeException::class);
+        $this->expectExceptionMessageIs('invalid_scope: The openid scope asks for an authentication, and this grant has no user to authenticate (OIDC Core section 2).');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($client), $this->request(scope: 'openid'), $this->context);
+    }
+
+    /**
+     * RFC 6749 §4.4.2, §5.2: what the client did not register, it is not granted.
+     */
+    #[Test]
+    public function itRefusesAScopeTheClientDidNotRegister(): void
+    {
+        // Then
+        $this->expectException(InvalidScopeException::class);
+        $this->expectExceptionMessageIs('invalid_scope: The requested scope is not allowed for this client.');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(scope: 'payroll.read'), $this->context);
+    }
+
+    /**
+     * RFC 6749 §3.3: a scope parameter is a space-separated list of scope tokens, wherever one is read.
+     */
+    #[Test]
+    public function itRefusesAScopeThatIsNotAListOfScopeTokens(): void
+    {
+        // Then
+        $this->expectException(InvalidScopeException::class);
+        $this->expectExceptionMessageIs('invalid_scope: The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(scope: "invoices.read\tinvoices.write"), $this->context);
+    }
+
+    /**
+     * RFC 6749 §5.2: the scope is optional in §4.4.2 and asked for here, for the reason the resource is,
+     * so a request that names none is missing a parameter rather than granted everything.
+     */
+    #[Test]
+    public function itRefusesARequestThatNamesNoScope(): void
+    {
+        // Given
+        $request = RequestParameters::of([
+            'grant_type' => 'client_credentials',
+            'resource' => Clients::CALENDAR,
+        ]);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $request, $this->context);
+    }
+
+    /**
+     * RFC 8707 §2: a resource that is missing is as invalid as one that is unknown. A token addressed to
+     * the client that asked for it is a token no resource server accepts, and this grant exists to reach
+     * one.
+     */
+    #[Test]
+    public function itRefusesARequestThatNamesNoResource(): void
+    {
+        // Given
+        $request = RequestParameters::of([
+            'grant_type' => 'client_credentials',
+            'scope' => 'invoices.read',
+        ]);
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIs('invalid_target: This grant type issues an access token for a resource, and the request names none (RFC 8707 section 2).');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $request, $this->context);
+    }
+
+    /**
+     * RFC 8707 §2.1: what a client may ask a token for is what it registered.
+     *
+     * @param string|list<string> $resource
+     */
+    #[Test]
+    #[DataProvider('provideResourcesTheClientMayNotAskFor')]
+    public function itRefusesAResourceTheClientDidNotRegister(string|array $resource): void
+    {
+        // Then
+        $this->expectException(InvalidTargetException::class);
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(resource: $resource), $this->context);
+    }
+
+    /**
+     * @return iterable<string, array{string|list<string>}>
+     */
+    public static function provideResourcesTheClientMayNotAskFor(): iterable
+    {
+        yield 'another resource' => ['https://payroll.example.com/'];
+        yield 'one registered and one not' => [[Clients::CALENDAR, 'https://payroll.example.com/']];
+        yield 'not an absolute URI' => ['/calendar'];
+    }
+
+    /**
+     * RFC 6749 §4.4: the client authenticates itself. A public client proves nothing, and is refused here
+     * as it is refused a registration for this grant.
+     */
+    #[Test]
+    public function itRefusesAPublicClient(): void
+    {
+        // Given
+        $client = Clients::public($this->tenant, resources: Clients::resources(), grantTypes: [Grants::clientCredentials()]);
+
+        // Then
+        $this->expectException(InvalidClientException::class);
+        $this->expectExceptionMessageIs('invalid_client: This grant type requires client authentication, and the client authenticated as a public client (RFC 6749 section 4.4).');
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($client), $this->request(scope: 'openid'), $this->context);
+    }
+
+    /**
+     * The event of a response says what left; there is no session to name, nobody having signed in.
+     */
+    #[Test]
+    public function theTokensAreAnnouncedWithoutASession(): void
+    {
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        $event = $this->events->of(TokensIssued::class)[0] ?? static::fail('The tokens were announced.');
+        static::assertNull($event->sessionId);
+        static::assertSame('batch', $event->clientId);
+        static::assertTrue($event->grantType->equals(Grants::clientCredentials()));
+        static::assertFalse($event->idTokenIssued);
+        static::assertNull($event->refreshTokenHash);
+        static::assertSame($this->context, $event->context);
+    }
+
+    /**
+     * @param string|list<string> $resource
+     */
+    private function request(string $scope = 'invoices.read', string|array $resource = Clients::CALENDAR): RequestParameters
+    {
+        return RequestParameters::of([
+            'grant_type' => 'client_credentials',
+            'scope' => $scope,
+            'resource' => $resource,
+        ]);
+    }
+}

@@ -31,7 +31,7 @@ use Heidi\Oidc\Domain\Event\TokenRevoked;
 use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\RevokedTokenHashes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Grants;
@@ -80,7 +80,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         $next = Tokens::refreshToken('next', $client, $session, $now, $family);
         $accessToken = Tokens::storedAccessToken('opaque', $client, $session, $now);
         $consent = new Consent(Uuid::v7(), $session->user, $client, new Scopes([Scope::openid()]), $now);
-        $authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
         $context = Fixtures::context();
 
         yield 'an authorization code issued' => [new AuthorizationCodeIssued(

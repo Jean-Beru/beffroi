@@ -13,6 +13,7 @@ use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
@@ -35,7 +36,8 @@ use Heidi\Oidc\Domain\Client\ResponseFormat;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\ClientAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
 use Heidi\Oidc\Exception\InsufficientScopeException;
 use Heidi\Oidc\Exception\InvalidDpopProofException;
@@ -55,6 +57,7 @@ use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The endpoint end to end below HTTP: tokens minted by the issuers of #8 and signed by the bridge of the
@@ -80,6 +83,8 @@ final class UserInfoHandlerTest extends TestCase
 
     private InMemoryAccessTokenRepository $storedTokens;
 
+    private Client $service;
+
     private UserInfoHandler $handler;
 
     protected function setUp(): void
@@ -90,6 +95,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->user->updateProfile(new Profile('Alice Martin', 'Alice', 'Martin', nickname: 'ali'), Fixtures::now());
         $this->user->changePhoneNumber('+33612345678', false, Fixtures::now());
         $this->client = Clients::public($this->tenant, resources: Clients::resources());
+        $this->service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->session = Fixtures::session($this->user);
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->sessions->save($this->session);
@@ -424,7 +430,7 @@ final class UserInfoHandlerTest extends TestCase
         );
         $this->grants->save($code);
         $token = $this->accessTokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         )->value;
 
@@ -462,6 +468,34 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.4, RFC 8707 §2: a token a client holds for itself is asked for a resource and addressed
+     * to it, and this endpoint is not that resource. It is refused there, before anything of it is read, so
+     * a service acting for itself never reads the claims of anybody.
+     */
+    #[Test]
+    public function itRefusesATokenNobodySignedInFor(): void
+    {
+        // Given
+        $token = $this->accessTokens->issue(
+            new ClientAuthorization(
+                Grants::clientCredentials(),
+                Uuid::v7(),
+                $this->service,
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+            ),
+            Fixtures::now(),
+        )->value;
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token is addressed to a resource of its own and not to this provider (RFC 8707 section 2).');
+
+        // When
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+    }
+
+    /**
      * RFC 6749 §4.1.2: the replay of an authorization code revokes what was issued from it. The access
      * token still verifies on its own (RFC 9068 §4), so a resource server holding only the keys keeps
      * serving it; the provider, which knows where its grants live, refuses it: invalid_token, 401.
@@ -471,7 +505,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $code = $this->code(['openid', 'email']);
-        $token = $this->accessTokens->issue(GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
+        $token = $this->accessTokens->issue(UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
         $code->revoke(Fixtures::now());
 
         // Then
@@ -512,7 +546,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $token = $this->accessTokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'never-stored',
                 $this->client,
                 $this->session,
@@ -691,6 +725,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
+        $clients->save($this->service);
 
         return new UserInfoHandler(
             new AccessTokenInspector(
@@ -801,7 +836,7 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function keyBoundToken(string $shape): string
     {
-        $authorization = GrantedAuthorization::fromAuthorizationCode(
+        $authorization = UserAuthorization::fromAuthorizationCode(
             Grants::authorizationCode(),
             $this->code(['openid', 'email']),
             Proofs::thumbprintOf(Proofs::key()),
@@ -826,7 +861,7 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function boundToken(string $shape, ClientCertificate $certificate): string
     {
-        $authorization = GrantedAuthorization::fromAuthorizationCode(
+        $authorization = UserAuthorization::fromAuthorizationCode(
             Grants::authorizationCode(),
             $this->code(['openid', 'email']),
             CertificateConfirmation::ofCertificate($certificate),
@@ -849,9 +884,9 @@ final class UserInfoHandlerTest extends TestCase
     /**
      * @param list<string> $scopes
      */
-    private function authorization(array $scopes, ?string $claims = null): GrantedAuthorization
+    private function authorization(array $scopes, ?string $claims = null): UserAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $this->code($scopes, $claims));
+        return UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $this->code($scopes, $claims));
     }
 
     /**
@@ -880,11 +915,11 @@ final class UserInfoHandlerTest extends TestCase
      *
      * @param list<string> $granted
      */
-    private function refreshed(array $granted, ?Scopes $scopes): GrantedAuthorization
+    private function refreshed(array $granted, ?Scopes $scopes): UserAuthorization
     {
         $family = Tokens::family(Fixtures::now(), grantId: $this->code($granted)->grantId);
 
-        return GrantedAuthorization::fromRefreshToken(
+        return UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $family, $granted),
             $scopes,
