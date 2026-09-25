@@ -23,6 +23,7 @@ use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.4, §5.3: a code keyed by its hash, with everything the token endpoint needs, back with
@@ -129,7 +130,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         // Given
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
         $code = AuthorizationCode::generate();
         self::codes()->save(self::code($code, $ghost, self::session(self::user()), null));
@@ -189,7 +190,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         $session = self::session(self::user());
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')]),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
         );
         self::used($session, $ghost, 'of-the-ghost');
         self::reload();

@@ -28,6 +28,7 @@ use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * What a relying party registered, and the rules it holds to (RFC 7591 §2). A registration answers for
@@ -129,6 +130,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::none(),
             false,
             [new RedirectUri('https://spa.example/callback')],
+            Shapes::jwt(),
             requiresPkce: false,
         );
     }
@@ -217,6 +219,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::none(),
             false,
             [new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb'), new RedirectUri('https://rp.example/cb2')],
+            Shapes::jwt(),
             [new RedirectUri('https://rp.example/'), new RedirectUri('https://rp.example/')],
             [Grants::authorizationCode(), Grants::authorizationCode()],
             new Scopes([new Scope('openid'), new Scope('openid'), new Scope('email')]),
@@ -253,43 +256,43 @@ final class ClientRegistrationTest extends TestCase
         $uris = [new RedirectUri('https://rp.example/cb')];
 
         yield 'empty client id' => [
-            static fn (): ClientRegistration => new ClientRegistration('', 'Name', Methods::none(), false, $uris),
+            static fn (): ClientRegistration => new ClientRegistration('', 'Name', Methods::none(), false, $uris, Shapes::jwt()),
             'visible ASCII',
         ];
         yield 'client id with a trailing space' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo ', 'Name', Methods::none(), false, $uris),
+            static fn (): ClientRegistration => new ClientRegistration('demo ', 'Name', Methods::none(), false, $uris, Shapes::jwt()),
             'visible ASCII',
         ];
         yield 'client id with a control character' => [
-            static fn (): ClientRegistration => new ClientRegistration("de\tmo", 'Name', Methods::none(), false, $uris),
+            static fn (): ClientRegistration => new ClientRegistration("de\tmo", 'Name', Methods::none(), false, $uris, Shapes::jwt()),
             'visible ASCII',
         ];
         yield 'client id beyond ASCII (RFC 6749 appendix A.1)' => [
-            static fn (): ClientRegistration => new ClientRegistration('démo', 'Name', Methods::none(), false, $uris),
+            static fn (): ClientRegistration => new ClientRegistration('démo', 'Name', Methods::none(), false, $uris, Shapes::jwt()),
             'visible ASCII',
         ];
         yield 'empty name' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', '', Methods::none(), false, $uris),
+            static fn (): ClientRegistration => new ClientRegistration('demo', '', Methods::none(), false, $uris, Shapes::jwt()),
             'has a name',
         ];
         yield 'client_secret_basic without a secret' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::clientSecretBasic(), false, $uris),
+            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::clientSecretBasic(), false, $uris, Shapes::jwt()),
             'needs a secret',
         ];
         yield 'client_secret_post without a secret' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::clientSecretPost(), false, $uris),
+            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::clientSecretPost(), false, $uris, Shapes::jwt()),
             'needs a secret',
         ];
         yield 'none with a secret (RFC 6749 §2.1)' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), true, $uris),
+            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), true, $uris, Shapes::jwt()),
             'cannot hold a secret',
         ];
         yield 'no redirect URI (RFC 6749 §3.1.2.2)' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, []),
+            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, [], Shapes::jwt()),
             'at least one redirect URI',
         ];
         yield 'no grant type' => [
-            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, $uris, [], []),
+            static fn (): ClientRegistration => new ClientRegistration('demo', 'Name', Methods::none(), false, $uris, Shapes::jwt(), [], []),
             'at least one grant type',
         ];
         yield 'no scope' => [
@@ -299,6 +302,7 @@ final class ClientRegistrationTest extends TestCase
                 Methods::none(),
                 false,
                 $uris,
+                Shapes::jwt(),
                 [],
                 [Grants::authorizationCode()],
                 new Scopes([]),
@@ -342,7 +346,7 @@ final class ClientRegistrationTest extends TestCase
         $this->expectExceptionMessageIsOrContains('publishes its keys in "jwks" or behind a "jwks_uri"');
 
         // When
-        new ClientRegistration('key-client', 'Key client', Methods::privateKeyJwt(), false, [new RedirectUri('https://key.example/callback')]);
+        new ClientRegistration('key-client', 'Key client', Methods::privateKeyJwt(), false, [new RedirectUri('https://key.example/callback')], Shapes::jwt());
     }
 
     /**
@@ -362,6 +366,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::privateKeyJwt(),
             false,
             [new RedirectUri('https://key.example/callback')],
+            Shapes::jwt(),
             jwks: ClientAssertions::publishedKeys(),
             jwksUri: new ClientUri('https://key.example/jwks'),
         );
@@ -379,7 +384,14 @@ final class ClientRegistrationTest extends TestCase
         $this->expectExceptionMessageIsOrContains('registers one of the values of RFC 8705 section 2.1.2');
 
         // When
-        new ClientRegistration('mtls-client', 'Mutual TLS client', Methods::tlsClientAuth(), false, [new RedirectUri('https://mtls.example/callback')]);
+        new ClientRegistration(
+            'mtls-client',
+            'Mutual TLS client',
+            Methods::tlsClientAuth(),
+            false,
+            [new RedirectUri('https://mtls.example/callback')],
+            Shapes::jwt(),
+        );
     }
 
     /**
@@ -400,6 +412,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::none(),
             false,
             [new RedirectUri('https://spa.example/callback')],
+            Shapes::jwt(),
             certificateIdentity: new SubjectDistinguishedName('cn=client'),
         );
     }
@@ -422,6 +435,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::selfSignedTlsClientAuth(),
             false,
             [new RedirectUri('https://self-signed.example/callback')],
+            Shapes::jwt(),
         );
     }
 
@@ -439,6 +453,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::none(),
             false,
             [new RedirectUri('https://spa.example/callback')],
+            Shapes::jwt(),
             jwks: ClientAssertions::publishedKeys(),
         );
 
@@ -546,6 +561,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::none(),
             false,
             [new RedirectUri('https://jar.example/callback')],
+            Shapes::jwt(),
             requestObjectSigning: new OneRegisteredAlgorithm(Algorithms::es256()),
         );
     }
@@ -564,6 +580,7 @@ final class ClientRegistrationTest extends TestCase
             Methods::none(),
             false,
             [new RedirectUri('https://jar.example/callback')],
+            Shapes::jwt(),
             requestObjectSigning: new UnsignedRequestObjects(),
         );
 

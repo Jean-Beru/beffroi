@@ -8,13 +8,13 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class InMemoryClientRepositoryTest extends TestCase
 {
@@ -74,14 +74,14 @@ final class InMemoryClientRepositoryTest extends TestCase
     public function theTenantIssuesTheFormatAClientOfItsIsRegisteredFor(): void
     {
         // When / Then
-        static::assertTrue($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Jwt));
+        static::assertTrue($this->repository->issuesAccessTokensIn($this->tenant, Shapes::jwt()));
     }
 
     #[Test]
     public function theTenantDoesNotIssueAFormatNoneOfItsClientsIsRegisteredFor(): void
     {
         // When / Then
-        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Opaque));
+        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, Shapes::opaque()));
     }
 
     /**
@@ -131,11 +131,11 @@ final class InMemoryClientRepositoryTest extends TestCase
             $other,
             new FakePasswordHasher()->hash(Clients::SECRET),
             clientId: 'api',
-            accessTokenFormat: AccessTokenFormat::Opaque,
+            accessTokenShape: Shapes::opaque(),
         ));
 
         // When / Then
-        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Opaque));
+        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, Shapes::opaque()));
     }
 
     /**

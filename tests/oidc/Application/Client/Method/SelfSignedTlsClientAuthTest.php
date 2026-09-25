@@ -28,6 +28,7 @@ use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * "self_signed_tls_client_auth" (RFC 8705 §2.2): the client presents a certificate it signed itself, and
@@ -154,6 +155,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
                     Methods::selfSignedTlsClientAuth(),
                     false,
                     $this->client->registration->redirectUris,
+                    Shapes::jwt(),
                     jwksUri: new ClientUri(self::JWKS_URI),
                 ),
             ),

@@ -276,6 +276,15 @@ heidi:
             requires_consent: false
             access_token_format: opaque
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # a shape no class of the module knows, wired below: what a deployment adds is two classes and
+        # two tags, and the name it registers here is read from that wiring (issue #239)
+        invented-app:
+            name: 'Application with tokens of an invented shape'
+            secret: 'invented-secret-of-at-least-32-characters'
+            redirect_uris: ['https://invented.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            access_token_format: invented
         opaque-app:
             name: 'Application with opaque tokens'
             secret: 'opaque-secret-of-at-least-32-characters-long'
@@ -459,6 +468,20 @@ services:
     Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
         autoconfigure: true
         public: true
+
+    # A third shape of access token, wired as a deployment wires one: an issuer that names it, a verifier
+    # that answers to the same name, and no line of src edited for the token endpoint to mint it and for
+    # the UserInfo endpoint to read it back (issue #239). Behind the two the bundle wires, because the
+    # first wired shape is what a client that registers none takes, and the clients of this kernel that
+    # register none expect the "at+jwt" the bundle writes first.
+    Heidi\Bundle\Tests\Functional\Token\InventedAccessTokenIssuer:
+        arguments: ['@Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer']
+        tags:
+            - { name: heidi.oidc.access_token_issuer, priority: -10 }
+    Heidi\Bundle\Tests\Functional\Token\InventedAccessTokenVerifier:
+        arguments: ['@Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier']
+        tags:
+            - { name: heidi.oidc.access_token_verifier, priority: -10 }
 
     # A missing translation fails the request rather than showing its key or its English (architecture §5.7).
     Heidi\Bundle\Tests\Functional\Translation\StrictTranslator:

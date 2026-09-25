@@ -231,7 +231,6 @@ use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
-use Heidi\Oidc\Application\Token\AccessTokenIssuer;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -242,6 +241,7 @@ use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\PresentedAccessTokenParser;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
+use Heidi\Oidc\Application\Token\ServedAccessTokenShapes;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenHandler;
@@ -255,7 +255,6 @@ use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
 use Heidi\Oidc\Bridge\Null\NoDpopNonce;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
@@ -272,7 +271,8 @@ use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\RegisteredResourcesInterface;
-use Heidi\Oidc\Port\ServedAccessTokenFormatsInterface;
+use Heidi\Oidc\Port\RegisteredAccessTokenShapesInterface;
+use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
@@ -599,7 +599,7 @@ return static function (ContainerConfigurator $container): void {
     // require, read where they are declared and nowhere else (issue #98)
     $services->alias(PushedAuthorizationRequirementInterface::class, ConfigurationClientRepository::class);
     $services->alias(RegisteredResourcesInterface::class, ConfigurationClientRepository::class);
-    $services->alias(ServedAccessTokenFormatsInterface::class, ConfigurationClientRepository::class);
+    $services->alias(RegisteredAccessTokenShapesInterface::class, ConfigurationClientRepository::class);
     $services->alias(UnsignedRequestObjectsInterface::class, ConfigurationClientRepository::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
@@ -700,16 +700,15 @@ return static function (ContainerConfigurator $container): void {
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
     $services->set(ResponseDocumentIssuer::class);
 
-    // The module: token endpoint; the grants are tagged by hand, the issuers named by the format each one writes
-    $services->set(JwtAccessTokenIssuer::class);
-    $services->set(OpaqueAccessTokenIssuer::class);
-    $services->set(AccessTokenIssuer::class)->args([
-        '$issuers' => [
-            AccessTokenFormat::Jwt->value => service(JwtAccessTokenIssuer::class),
-            AccessTokenFormat::Opaque->value => service(OpaqueAccessTokenIssuer::class),
-        ],
-    ]);
-    $services->alias(AccessTokenIssuerInterface::class, AccessTokenIssuer::class);
+    // The module: token endpoint. One class per shape an access token is written in, tagged, and what
+    // is tagged is what a client may register and what a signing key still waits for, never an
+    // enumeration kept beside them (issue #239). An issuer names the shape it writes and the verifier of
+    // that shape answers to the same name; the first tagged one is what a client that names none takes.
+    $services->set(JwtAccessTokenIssuer::class)->tag('heidi.oidc.access_token_issuer');
+    $services->set(OpaqueAccessTokenIssuer::class)->tag('heidi.oidc.access_token_issuer');
+    $services->set(ServedAccessTokenShapes::class)->args([tagged_iterator('heidi.oidc.access_token_issuer')]);
+    $services->alias(AccessTokenIssuerInterface::class, ServedAccessTokenShapes::class);
+    $services->alias(ServedAccessTokenShapesInterface::class, ServedAccessTokenShapes::class);
     $services->set(JwtIdTokenIssuer::class);
     $services->alias(IdTokenIssuerInterface::class, JwtIdTokenIssuer::class);
     $services->set(IdTokenJwsKind::class)->tag('heidi.key_bound_artifact');
@@ -733,9 +732,11 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ServedTokenSchemesInterface::class, Confirmations::class);
     $services->alias('heidi.confirmations', ConfirmationReaderInterface::class)->public();
 
-    $services->set(JwtAccessTokenVerifier::class)->tag('heidi.oidc.access_token_shape');
-    $services->set(OpaqueAccessTokenVerifier::class)->tag('heidi.oidc.access_token_shape');
-    $services->set(AccessTokenVerifier::class)->args([tagged_iterator('heidi.oidc.access_token_shape')]);
+    // the other side of a shape: a token this provider writes and cannot read back is refused by the
+    // verifier that collects them, where the two wired lists meet
+    $services->set(JwtAccessTokenVerifier::class)->tag('heidi.oidc.access_token_verifier');
+    $services->set(OpaqueAccessTokenVerifier::class)->tag('heidi.oidc.access_token_verifier');
+    $services->set(AccessTokenVerifier::class)->args([tagged_iterator('heidi.oidc.access_token_verifier')]);
     $services->set(AccessTokenInspector::class);
     $services->set(PresentedAccessTokenParser::class);
 

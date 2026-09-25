@@ -17,7 +17,6 @@ use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Resource\ResourceIndicator;
@@ -35,6 +34,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
+use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class ConfigurationClientRepositoryTest extends TestCase
 {
@@ -299,6 +300,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::all(),
             Methods::all(),
             new ServedGrants([new FakeGrant(Grants::invented())]),
+            Shapes::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
@@ -706,6 +708,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::all(),
             Methods::all(),
             Grants::served(),
+            Shapes::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
@@ -885,6 +888,13 @@ final class ConfigurationClientRepositoryTest extends TestCase
                     'token_endpoint_auth_method' => 'smoke_signal',
                 ],
             'must be one of: client_secret_basic, client_secret_post, private_key_jwt, client_secret_jwt, tls_client_auth, self_signed_tls_client_auth, none',
+        ];
+        yield 'an access token shape nothing writes' => [
+            $base
+                + [
+                    'access_token_format' => 'paseto',
+                ],
+            'The access_token_format option of the client "bad" must be one of: jwt, opaque.',
         ];
         yield 'two of the values of RFC 8705 §2.1.2' => [
             $base
@@ -1217,6 +1227,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 Algorithms::all(),
                 Methods::all(),
                 Grants::served(),
+                Shapes::served(),
                 new PkiFrameworkCertificateReader(),
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
@@ -1229,6 +1240,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 Algorithms::all(),
                 Methods::all(),
                 Grants::served(),
+                Shapes::served(),
                 new PkiFrameworkCertificateReader(),
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
@@ -1249,6 +1261,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::all(),
             Methods::all(),
             Grants::served(),
+            Shapes::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
@@ -1270,20 +1283,20 @@ final class ConfigurationClientRepositoryTest extends TestCase
      * @param array<string, array<string, mixed>> $clients
      */
     #[Test]
-    #[DataProvider('provideRegistrationsAndTheFormatsTheyIssue')]
-    public function theTenantIssuesTheAccessTokenFormatsItsClientsAreRegisteredFor(array $clients, AccessTokenFormat $format, bool $expected): void
+    #[DataProvider('provideRegistrationsAndTheShapesTheyIssue')]
+    public function theTenantIssuesTheAccessTokenShapesItsClientsAreRegisteredFor(array $clients, AccessTokenShapeInterface $shape, bool $expected): void
     {
         // Given
         $repository = $this->repository($clients);
 
         // When / Then
-        static::assertSame($expected, $repository->issuesAccessTokensIn($this->tenant, $format));
+        static::assertSame($expected, $repository->issuesAccessTokensIn($this->tenant, $shape));
     }
 
     /**
-     * @return iterable<string, array{array<string, array<string, mixed>>, AccessTokenFormat, bool}>
+     * @return iterable<string, array{array<string, array<string, mixed>>, AccessTokenShapeInterface, bool}>
      */
-    public static function provideRegistrationsAndTheFormatsTheyIssue(): iterable
+    public static function provideRegistrationsAndTheShapesTheyIssue(): iterable
     {
         $opaque = [
             ...self::SPA,
@@ -1293,14 +1306,14 @@ final class ConfigurationClientRepositoryTest extends TestCase
             [
                 'spa' => self::SPA,
             ],
-            AccessTokenFormat::Jwt,
+            Shapes::jwt(),
             true,
         ];
         yield 'no opaque client' => [
             [
                 'spa' => self::SPA,
             ],
-            AccessTokenFormat::Opaque,
+            Shapes::opaque(),
             false,
         ];
         yield 'one opaque client among jwt ones' => [
@@ -1308,17 +1321,17 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 'spa' => self::SPA,
                 'api' => $opaque,
             ],
-            AccessTokenFormat::Opaque,
+            Shapes::opaque(),
             true,
         ];
         yield 'every client opaque, no jwt' => [
             [
                 'api' => $opaque,
             ],
-            AccessTokenFormat::Jwt,
+            Shapes::jwt(),
             false,
         ];
-        yield 'no client at all' => [[], AccessTokenFormat::Jwt, false];
+        yield 'no client at all' => [[], Shapes::jwt(), false];
     }
 
     #[Test]
@@ -1330,7 +1343,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         ]);
 
         // When / Then
-        static::assertFalse($repository->issuesAccessTokensIn(Fixtures::tenant('other', 'https://id.other.example'), AccessTokenFormat::Jwt));
+        static::assertFalse($repository->issuesAccessTokensIn(Fixtures::tenant('other', 'https://id.other.example'), Shapes::jwt()));
     }
 
     /**
@@ -1345,6 +1358,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::all(),
             Methods::all(),
             Grants::served(),
+            Shapes::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),

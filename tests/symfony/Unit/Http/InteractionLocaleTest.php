@@ -26,6 +26,7 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Translation\LocaleSwitcher;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §5.7: the locale of an interaction is "ui_locales" (OIDC Core §3.1.2.1) matched against
@@ -202,7 +203,7 @@ final class InteractionLocaleTest extends TestCase
         $tenant = new Tenant(Uuid::v7(), 'default', new Issuer('https://op.test'), 'OP', $now);
         $client = new Client(
             $tenant,
-            new ClientRegistration('native-app', 'Native', Methods::none(), false, [new RedirectUri('http://127.0.0.1/callback')]),
+            new ClientRegistration('native-app', 'Native', Methods::none(), false, [new RedirectUri('http://127.0.0.1/callback')], Shapes::jwt()),
         );
         $request = new AuthorizationRequest(
             $client,

@@ -27,7 +27,6 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\GrantedAuthorization;
@@ -48,6 +47,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * The endpoint end to end below HTTP: tokens of both shapes, a real client authentication, the response
@@ -83,7 +83,7 @@ final class IntrospectionHandlerTest extends TestCase
         $this->context = Fixtures::context($this->clock->now());
         $this->session = Fixtures::session($user, $this->clock->now()->modify('-1 hour'));
         $hasher = new FakePasswordHasher();
-        $this->client = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), accessTokenFormat: AccessTokenFormat::Opaque);
+        $this->client = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), accessTokenShape: Shapes::opaque());
         $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'other');
         $clients = new InMemoryClientRepository();
         foreach ([$this->client, $this->other, Clients::public($this->tenant)] as $client) {

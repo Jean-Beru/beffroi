@@ -46,6 +46,7 @@ use function rtrim;
 use function strtr;
 use function substr;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class JwtIdTokenIssuerTest extends TestCase
 {
@@ -462,6 +463,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
                 idToken: ResponseFormat::signed(Algorithms::es256()),
             ),
         );
@@ -504,6 +506,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
                 idToken: ResponseFormat::signed(Algorithms::edDsa()),
             ),
         );

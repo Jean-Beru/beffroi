@@ -22,6 +22,7 @@ use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Back-Channel Logout 1.0 §2.4 and §2.6: what the provider signs for a client of a session that ended,
@@ -88,6 +89,7 @@ final class LogoutTokenIssuerTest extends TestCase
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
                 backChannelLogoutUri: new ClientUri('https://spa.example/backchannel-logout'),
                 idToken: ResponseFormat::signed(Algorithms::es256()),
             ),

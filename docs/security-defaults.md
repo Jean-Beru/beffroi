@@ -6,7 +6,7 @@ The OP does not offer the option to do it wrong. The rules of RFC 9700, OAuth 2.
 - No implicit grant, no resource owner password credentials.
 - Redirect URIs match exactly.
 - `iss` in every authorization response (RFC 9207), success or error.
-- Access tokens are `at+jwt` (RFC 9068) or opaque and introspectable (RFC 7662, signed response RFC 9701), per client (`access_token_format`, `jwt` by default), with `aud` and `scope` in both shapes; revocation (RFC 7009) of what can be revoked, `unsupported_token_type` for a self-contained token.
+- Access tokens are `at+jwt` (RFC 9068) or opaque and introspectable (RFC 7662, signed response RFC 9701), per client (`access_token_format`, the first shape the deployment wires when the client names none), with `aud` and `scope` in both shapes; revocation (RFC 7009) of what can be revoked, `unsupported_token_type` for a self-contained token.
 - No outbound request ever follows a redirect.
 - No boolean coming from a third party is ever cast: `filter_var()` or a strict comparison, never `(bool)`.
 - Refresh tokens rotate on every use; reuse revokes the family; logout revokes the session's tokens.

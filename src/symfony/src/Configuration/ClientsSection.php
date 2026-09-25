@@ -6,9 +6,7 @@ namespace Heidi\Bundle\Configuration;
 
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
-use function array_column;
 use function is_array;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -123,10 +121,9 @@ final readonly class ClientsSection extends ConfigurationSection
             ->info('The JWE content encryption algorithm the payload of that authorization response is encrypted with (JARM §3), among those the provider is wired with.')
             ->defaultNull()
             ->end()
-            ->enumNode('access_token_format')
-            ->info('The shape of the access tokens: "jwt" (RFC 9068, verified offline against the JWK Set) or "opaque" (a reference the resource server introspects, RFC 7662, revocable at once). Per client, nothing global.')
-            ->values(array_column(AccessTokenFormat::cases(), 'value'))
-            ->defaultValue(AccessTokenFormat::Jwt->value)
+            ->scalarNode('access_token_format')
+            ->info('The shape the access tokens of this client are written in, among those the provider is wired to write: "jwt" (RFC 9068, verified offline against the JWK Set) or "opaque" (a reference the resource server introspects, RFC 7662, revocable at once). Left out, it takes the first wired one. A name nothing writes fails at boot. Per client, nothing global.')
+            ->defaultNull()
             ->end()
             ->scalarNode('backchannel_logout_uri')
             ->info('Where the provider posts a logout token when a session this client signed in ends (Back-Channel Logout 1.0 §2.2); HTTPS, or plain HTTP on a loopback host. Absent for a client the provider does not tell.')

@@ -18,6 +18,7 @@ use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class AuthorizationErrorResponseTest extends TestCase
 {
@@ -72,7 +73,7 @@ final class AuthorizationErrorResponseTest extends TestCase
         // Given
         $client = new Client(
             Fixtures::tenant(),
-            new ClientRegistration('app', 'Application', Methods::none(), false, [new RedirectUri('https://rp.example/cb?app=1')]),
+            new ClientRegistration('app', 'Application', Methods::none(), false, [new RedirectUri('https://rp.example/cb?app=1')], Shapes::jwt()),
         );
         $target = new RedirectTarget($client, new RedirectUri('https://rp.example/cb?app=1'), 'a state with spaces & ampersand');
 

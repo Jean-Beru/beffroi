@@ -30,6 +30,7 @@ use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\Definition\PrototypedArrayNode;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ConfigurationExtensionInterface;
+use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * The configuration tree of architecture §5.1, read through the Config component as the kernel reads it.
@@ -163,6 +164,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::all(),
             Methods::all(),
             Grants::served(),
+            Shapes::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
@@ -191,6 +193,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::all(),
             Methods::all(),
             Grants::served(),
+            Shapes::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),

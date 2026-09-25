@@ -8,7 +8,7 @@ use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
+use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
@@ -47,7 +47,7 @@ final class Clients
         ?ClientAuthenticationMethodInterface $method = null,
         string $clientId = 'oidc-demo',
         bool $requiresPkce = true,
-        AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt,
+        ?AccessTokenShapeInterface $accessTokenShape = null,
         ?array $grantTypes = null,
         array $resources = [],
     ): Client {
@@ -59,11 +59,11 @@ final class Clients
                 $method ?? Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://demo.localhost/login/check')],
+                $accessTokenShape ?? Shapes::jwt(),
                 [new RedirectUri('https://demo.localhost/')],
                 $grantTypes ?? [Grants::authorizationCode(), Grants::refreshToken()],
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
                 requiresPkce: $requiresPkce,
-                accessTokenFormat: $accessTokenFormat,
                 resources: $resources,
             ),
             new HashedClientSecret($secretHash),
@@ -84,6 +84,7 @@ final class Clients
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://fapi.localhost/login/check')],
+                Shapes::jwt(),
                 [],
                 [Grants::authorizationCode(), Grants::refreshToken()],
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
@@ -106,6 +107,7 @@ final class Clients
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
                 resources: $resources,
             ),
         );
@@ -140,6 +142,7 @@ final class Clients
                 $method ?? Methods::privateKeyJwt(),
                 false,
                 [new RedirectUri('https://key.example/callback')],
+                Shapes::jwt(),
                 jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,
                 jwksUri: $jwksUri,
             ),
@@ -166,6 +169,7 @@ final class Clients
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://encrypted.example/callback')],
+                Shapes::jwt(),
                 [],
                 [Grants::authorizationCode(), Grants::refreshToken()],
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
@@ -199,6 +203,7 @@ final class Clients
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://jar.example/callback')],
+                Shapes::jwt(),
                 [],
                 [Grants::authorizationCode()],
                 new Scopes([new Scope('openid'), new Scope('profile')]),
@@ -224,6 +229,7 @@ final class Clients
                 Methods::clientSecretJwt(),
                 true,
                 [new RedirectUri('https://mac.example/callback')],
+                Shapes::jwt(),
             ),
             new SharedClientSecret($secret),
         );
@@ -237,7 +243,7 @@ final class Clients
         Tenant $tenant,
         ?CertificateIdentityInterface $identity = null,
         string $clientId = 'mtls-client',
-        AccessTokenFormat $accessTokenFormat = AccessTokenFormat::Jwt,
+        ?AccessTokenShapeInterface $accessTokenShape = null,
     ): Client {
         return new Client(
             $tenant,
@@ -247,10 +253,10 @@ final class Clients
                 Methods::tlsClientAuth(),
                 false,
                 [new RedirectUri('https://mtls.example/callback')],
+                $accessTokenShape ?? Shapes::jwt(),
                 [],
                 [Grants::authorizationCode(), Grants::refreshToken()],
                 null,
-                accessTokenFormat: $accessTokenFormat,
                 certificateIdentity: $identity ?? new SubjectDistinguishedName(Certificates::SUBJECT_DN),
             ),
         );
@@ -269,6 +275,7 @@ final class Clients
                 Methods::selfSignedTlsClientAuth(),
                 false,
                 [new RedirectUri('https://self-signed.example/callback')],
+                Shapes::jwt(),
                 [],
                 [Grants::authorizationCode(), Grants::refreshToken()],
                 null,
@@ -295,6 +302,7 @@ final class Clients
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
                 frontChannelLogoutUri: new ClientUri($logoutUri),
                 frontChannelLogoutSessionRequired: $sessionRequired,
             ),
@@ -314,6 +322,7 @@ final class Clients
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
                 backChannelLogoutUri: new ClientUri($logoutUri),
             ),
         );
