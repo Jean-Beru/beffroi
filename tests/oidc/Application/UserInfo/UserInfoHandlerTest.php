@@ -18,6 +18,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
+use Heidi\Oidc\Application\Token\PresentedAccessTokenParser;
 use Heidi\Oidc\Tests\Fixture\Bindings;
 use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -708,7 +709,7 @@ final class UserInfoHandlerTest extends TestCase
             new Endpoints(),
             new PublicSubjectIdentifierResolver(),
             new StandardClaimsProvider(),
-            Bindings::wired(),
+            new PresentedAccessTokenParser(Bindings::wired()),
         );
     }
 
