@@ -227,6 +227,40 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
+     * RFC 9126 §2, RFC 8707 §2.1: a request pushed to /par is read by the very parser the authorization
+     * endpoint reads with, so the resources it names travel with the record and reach the token.
+     */
+    #[Test]
+    public function aPushedRequestCarriesTheResourcesItNames(): void
+    {
+        // Given
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $pushed = self::authorizationParameters(self::CLIENT_ID, [
+            'redirect_uri' => self::REDIRECT_URI,
+        ]);
+        $body = http_build_query($pushed)
+            . '&resource=' . rawurlencode(self::CALENDAR)
+            . '&resource=' . rawurlencode(self::CONTACTS);
+        $this->browser->request('POST', '/par', $pushed, [], self::credentials(self::CLIENT_ID, self::SECRET) + [
+            'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+        ], $body);
+        $requestUri = self::string(self::json($this->browser->getResponse())['request_uri'] ?? null);
+
+        // When
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => self::CLIENT_ID,
+            'request_uri' => $requestUri,
+        ]);
+        $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
+        $this->exchange($code);
+
+        // Then
+        $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['access_token']));
+        static::assertSame([self::CALENDAR, self::CONTACTS], $claims['aud']);
+    }
+
+    /**
      * RFC 8707 §2: a token addressed to a resource opens nothing of the provider itself, the UserInfo
      * endpoint included; a client that comes for the claims of its user asks for a token naming no
      * resource.

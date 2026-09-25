@@ -128,6 +128,30 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
+     * RFC 8707 §2.1: in a request object, a single "resource" is a JSON string and several are an array
+     * of strings, which reaches the parser as the repeated parameter it is.
+     */
+    #[Test]
+    public function aListOfStringsIsAParameterGivenSeveralValues(): void
+    {
+        // Given
+        $object = self::objectOf([
+            'resource' => ['https://cal.example.com/', 'https://contacts.example.com/'],
+        ]);
+
+        // When
+        $parameters = $object->parameters();
+
+        // Then
+        static::assertSame(
+            [
+                'resource' => ['https://cal.example.com/', 'https://contacts.example.com/'],
+            ],
+            $parameters,
+        );
+    }
+
+    /**
      * Decision 0006: a value no authorization request carries is refused, never cast into one.
      */
     #[Test]
