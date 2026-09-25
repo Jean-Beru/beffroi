@@ -35,6 +35,13 @@ final readonly class QueueLogoutTokenHandler implements LogoutChannelInterface
 
     public function __invoke(LogoutTokenIssued $event): void
     {
-        $this->commandBus->dispatch(SendLogoutToken::of($event));
+        $this->commandBus->dispatch(new SendLogoutToken(
+            $event->tenant,
+            $event->clientId,
+            $event->logoutUri->value,
+            $event->token,
+            $event->sessionId,
+            $event->context,
+        ));
     }
 }

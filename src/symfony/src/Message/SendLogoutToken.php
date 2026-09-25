@@ -6,7 +6,6 @@ namespace Heidi\Bundle\Message;
 
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -26,17 +25,5 @@ final readonly class SendLogoutToken implements Notification
         public Uuid $sessionId,
         public RequestContext $context,
     ) {
-    }
-
-    public static function of(LogoutTokenIssued $issued): self
-    {
-        return new self(
-            $issued->tenant,
-            $issued->clientId,
-            $issued->logoutUri->value,
-            $issued->token,
-            $issued->sessionId,
-            $issued->context,
-        );
     }
 }
