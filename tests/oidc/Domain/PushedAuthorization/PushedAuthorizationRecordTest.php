@@ -9,7 +9,7 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
+use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
@@ -19,7 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
-final class PushedAuthorizationRequestTest extends TestCase
+final class PushedAuthorizationRecordTest extends TestCase
 {
     private const string NOW = '2026-09-22T12:00:00+00:00';
 
@@ -222,9 +222,9 @@ final class PushedAuthorizationRequestTest extends TestCase
     /**
      * @param array<string, string> $parameters
      */
-    private function request(?string $requestUriHash = null, ?DateTimeImmutable $expiresAt = null, array $parameters = []): PushedAuthorizationRequest
+    private function request(?string $requestUriHash = null, ?DateTimeImmutable $expiresAt = null, array $parameters = []): PushedAuthorizationRecord
     {
-        return new PushedAuthorizationRequest(
+        return new PushedAuthorizationRecord(
             $requestUriHash ?? RequestUri::generate()->hash(),
             $this->client,
             $parameters,

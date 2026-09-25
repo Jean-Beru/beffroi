@@ -8,7 +8,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
+use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
@@ -26,7 +26,7 @@ final readonly class ClientResolver
     ) {
     }
 
-    public function postLoad(Interaction|AuthorizationCode|PushedAuthorizationRequest|RefreshToken|StoredAccessToken|Consent $entity): void
+    public function postLoad(Interaction|AuthorizationCode|PushedAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): void
     {
         $client = $this->clients->findByClientId($entity->tenant, $entity->clientId);
         if ($client === null) {
@@ -36,7 +36,7 @@ final readonly class ClientResolver
         $property->setValue($holder, $client);
     }
 
-    public static function isResolved(Interaction|AuthorizationCode|PushedAuthorizationRequest|RefreshToken|StoredAccessToken|Consent $entity): bool
+    public static function isResolved(Interaction|AuthorizationCode|PushedAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): bool
     {
         [$holder, $property] = self::clientProperty($entity);
 
@@ -46,7 +46,7 @@ final readonly class ClientResolver
     /**
      * @return array{object, ReflectionProperty} the holder of the client and the property
      */
-    private static function clientProperty(Interaction|AuthorizationCode|PushedAuthorizationRequest|RefreshToken|StoredAccessToken|Consent $entity): array
+    private static function clientProperty(Interaction|AuthorizationCode|PushedAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): array
     {
         if ($entity instanceof Interaction) {
             return [$entity->request, new ReflectionProperty(AuthorizationRequest::class, 'client')];

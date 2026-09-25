@@ -9,31 +9,31 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
-use Heidi\Oidc\Port\PushedAuthorizationRequestRepositoryInterface;
+use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
+use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
 use function is_string;
 use function sprintf;
 
 /**
- * Pushed authorization requests in heidi_pushed_authorization_request (RFC 9126 §2.2). A request of a
- * client no longer registered is not found, as a code of one is not.
+ * The records of pushed authorization requests, in heidi_pushed_authorization_request (RFC 9126 §2.2).
+ * A record of a client no longer registered is not found, as a code of one is not.
  *
- * @extends DoctrineRepository<PushedAuthorizationRequest>
+ * @extends DoctrineRepository<PushedAuthorizationRecord>
  */
-final readonly class DoctrinePushedAuthorizationRequestRepository extends DoctrineRepository implements PushedAuthorizationRequestRepositoryInterface
+final readonly class DoctrinePushedAuthorizationRecordRepository extends DoctrineRepository implements PushedAuthorizationRecordRepositoryInterface
 {
     public function __construct(EntityManagers $managers)
     {
-        parent::__construct($managers, PushedAuthorizationRequest::class);
+        parent::__construct($managers, PushedAuthorizationRecord::class);
     }
 
-    public function findByRequestUriHash(string $requestUriHash): ?PushedAuthorizationRequest
+    public function findByRequestUriHash(string $requestUriHash): ?PushedAuthorizationRecord
     {
-        $request = $this->repository()->findOneBy([
+        $record = $this->repository()->findOneBy([
             'requestUriHash' => $requestUriHash,
         ]);
 
-        return $request !== null && ClientResolver::isResolved($request) ? $request : null;
+        return $record !== null && ClientResolver::isResolved($record) ? $record : null;
     }
 
     /**
@@ -41,10 +41,10 @@ final readonly class DoctrinePushedAuthorizationRequestRepository extends Doctri
      * affected rows says who claimed the row. The loser reads the date back so that its copy says what
      * the winner wrote.
      */
-    public function consume(PushedAuthorizationRequest $request, DateTimeImmutable $now): bool
+    public function consume(PushedAuthorizationRecord $record, DateTimeImmutable $now): bool
     {
         $manager = $this->manager();
-        $metadata = $manager->getClassMetadata(PushedAuthorizationRequest::class);
+        $metadata = $manager->getClassMetadata(PushedAuthorizationRecord::class);
         $claimed =
             $manager->getConnection()->executeStatement(
                 sprintf(
@@ -56,7 +56,7 @@ final readonly class DoctrinePushedAuthorizationRequestRepository extends Doctri
                 ),
                 [
                     'now' => $now,
-                    'requestUriHash' => $request->requestUriHash,
+                    'requestUriHash' => $record->requestUriHash,
                 ],
                 [
                     'now' => Types::DATETIME_IMMUTABLE,
@@ -64,7 +64,7 @@ final readonly class DoctrinePushedAuthorizationRequestRepository extends Doctri
                 ],
             ) === 1;
         if ($claimed) {
-            $request->consume($now);
+            $record->consume($now);
 
             return true;
         }
@@ -76,21 +76,21 @@ final readonly class DoctrinePushedAuthorizationRequestRepository extends Doctri
                 $metadata->getColumnName('requestUriHash'),
             ),
             [
-                'requestUriHash' => $request->requestUriHash,
+                'requestUriHash' => $record->requestUriHash,
             ],
             [
                 'requestUriHash' => ParameterType::STRING,
             ],
         );
         if (is_string($usedAt)) {
-            $request->recordConsumption(new DateTimeImmutable($usedAt));
+            $record->recordConsumption(new DateTimeImmutable($usedAt));
         }
 
         return false;
     }
 
-    public function save(PushedAuthorizationRequest $request): void
+    public function save(PushedAuthorizationRecord $record): void
     {
-        $this->store($request);
+        $this->store($record);
     }
 }

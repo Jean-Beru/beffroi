@@ -16,7 +16,7 @@ use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\TokenIssuer;
-use Heidi\Oidc\Application\Token\TokenRequest;
+use Heidi\Oidc\Application\Request\RequestParameters;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Event\RefreshTokenReuseDetected;
@@ -367,7 +367,7 @@ final class RefreshTokenGrantTest extends TestCase
         // When
         $this->grant->grant(
             new AuthenticatedClient($this->client),
-            new TokenRequest([
+            RequestParameters::of([
                 'grant_type' => 'refresh_token',
             ]),
             $this->context,
@@ -764,7 +764,7 @@ final class RefreshTokenGrantTest extends TestCase
     /**
      * @param string|list<string>|null $resource what the request asks its access token to be addressed to (RFC 8707 §2.2)
      */
-    private function request(string $refreshToken = 'the-token', ?string $scope = null, string|array|null $resource = null): TokenRequest
+    private function request(string $refreshToken = 'the-token', ?string $scope = null, string|array|null $resource = null): RequestParameters
     {
         $parameters = [
             'grant_type' => 'refresh_token',
@@ -777,10 +777,10 @@ final class RefreshTokenGrantTest extends TestCase
             $parameters['resource'] = $resource;
         }
 
-        return new TokenRequest($parameters);
+        return RequestParameters::of($parameters);
     }
 
-    private function failToGrant(TokenRequest $request): void
+    private function failToGrant(RequestParameters $request): void
     {
         try {
             $this->grant->grant(new AuthenticatedClient($this->client), $request, $this->context);

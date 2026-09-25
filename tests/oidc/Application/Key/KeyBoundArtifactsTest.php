@@ -32,7 +32,7 @@ use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRequestRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
 use Heidi\Oidc\Domain\Client\AccessTokenFormat;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
@@ -348,7 +348,7 @@ final class KeyBoundArtifactsTest extends TestCase
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
             RequestObjects::resolver($this->clients, $clock),
-            new InMemoryPushedAuthorizationRequestRepository(),
+            new InMemoryPushedAuthorizationRecordRepository(),
             $clock,
             $lifetime,
         );

@@ -3,8 +3,8 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- An authorization request a client pushed (RFC 9126 §2.2), waiting for the reference it was answered with. The parameters are kept as the client wrote them, not as the parser read them: the authorization endpoint reads one request whichever way it arrived. The client is a registration the module reads from its repository, not a row, as it is for an interaction. -->
-    <entity name="Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest" table="heidi_pushed_authorization_request">
+    <!-- What the provider keeps of an authorization request a client pushed (RFC 9126 §2.2), waiting for the reference it was answered with. The parameters are kept as the client wrote them, not as the parser read them: the authorization endpoint reads one request whichever way it arrived. The client is a registration the module reads from its repository, not a row, as it is for an interaction. -->
+    <entity name="Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord" table="heidi_pushed_authorization_request">
         <id name="requestUriHash" type="string" column="request_uri_hash" length="64">
             <options>
                 <option name="fixed">true</option>

@@ -11,11 +11,11 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
-use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRequestRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Event\PushedRequestRefusalReason;
 use Heidi\Oidc\Domain\Event\PushedRequestRefused;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRequest;
+use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
 use Heidi\Oidc\Exception\InvalidRequestUriException;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -34,7 +34,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
 
     private Client $client;
 
-    private InMemoryPushedAuthorizationRequestRepository $requests;
+    private InMemoryPushedAuthorizationRecordRepository $requests;
 
     private RecordingEventDispatcher $events;
 
@@ -47,7 +47,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->context = Fixtures::context();
         $this->client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
-        $this->requests = new InMemoryPushedAuthorizationRequestRepository();
+        $this->requests = new InMemoryPushedAuthorizationRecordRepository();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-22T12:00:00+00:00');
         $this->resolver = new PushedAuthorizationRequestResolver($this->requests, $this->clock, $this->events);
@@ -125,7 +125,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         );
 
         // Then
-        static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
+        static::assertInstanceOf(PushedAuthorizationRecord::class, $record);
         static::assertSame(
             [
                 'scope' => 'openid profile',
@@ -152,7 +152,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         $record = $this->resolver->resolve($this->tenant, self::query($requestUri), $this->context);
 
         // Then
-        static::assertInstanceOf(PushedAuthorizationRequest::class, $record);
+        static::assertInstanceOf(PushedAuthorizationRecord::class, $record);
     }
 
     /**
@@ -328,7 +328,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     ]): RequestUri
     {
         $requestUri = RequestUri::generate();
-        $this->requests->save(new PushedAuthorizationRequest(
+        $this->requests->save(new PushedAuthorizationRecord(
             $requestUri->hash(),
             $this->client,
             $parameters,

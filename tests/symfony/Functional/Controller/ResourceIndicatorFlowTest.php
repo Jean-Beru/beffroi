@@ -194,6 +194,62 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
+     * RFC 8707 §2.1: "resource" may be sent several times, at the token endpoint as at the authorization
+     * endpoint, and both values are read: the token endpoint reads a raw parameter the one way the whole
+     * module reads one. The audience follows the order the token request named them, which is not the
+     * order the authorization carries, so it is the request that was read and not the grant.
+     */
+    #[Test]
+    public function aTokenRequestNamesAResourceTwiceAndBothAreRead(): void
+    {
+        // Given
+        $code = $this->codeAskedFor([self::CALENDAR, self::CONTACTS]);
+
+        // When
+        $this->post(
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => self::REDIRECT_URI,
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            'resource=' . rawurlencode(self::CONTACTS) . '&resource=' . rawurlencode(self::CALENDAR),
+        );
+
+        // Then
+        $claims = self::claimsOf(self::string(self::json($this->browser->getResponse())['access_token']));
+        static::assertSame([self::CONTACTS, self::CALENDAR], $claims['aud']);
+    }
+
+    /**
+     * RFC 6749 §3.1: every other parameter is single, and one the token endpoint receives twice is
+     * "invalid_request" rather than read as whichever occurrence PHP kept.
+     */
+    #[Test]
+    public function aParameterTheSpecificationSaysIsSingleIsRefusedWhenItIsSentTwice(): void
+    {
+        // Given
+        $code = $this->codeAskedFor([self::CALENDAR]);
+
+        // When
+        $this->post(
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => self::REDIRECT_URI,
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            'code=' . rawurlencode($code) . '&code=' . rawurlencode($code),
+        );
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        static::assertSame('invalid_request', self::json($response)['error']);
+    }
+
+    /**
      * RFC 8707 §2.2: the refresh token is bound to the full original grant, so a refresh may ask for
      * the resource the access token beside it was not narrowed to.
      */
@@ -358,6 +414,28 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 
         return self::string(self::json($response)['access_token']);
+    }
+
+    /**
+     * A form body written by hand, which is the only way to send a name twice over HTTP: PHP keeps the
+     * last occurrence of a repeated name and says nothing of the others.
+     *
+     * @param array<string, string> $parameters the names the body carries once
+     * @param string $repeated what it carries besides them, already encoded
+     */
+    private function post(string $uri, array $parameters, string $repeated): void
+    {
+        $this->browser->request(
+            'POST',
+            $uri,
+            $parameters,
+            [],
+            self::credentials(self::CLIENT_ID, self::SECRET)
+            + [
+                'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+            ],
+            http_build_query($parameters) . '&' . $repeated,
+        );
     }
 
     /**
