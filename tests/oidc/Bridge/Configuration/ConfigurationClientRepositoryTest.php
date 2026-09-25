@@ -26,6 +26,7 @@ use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
+use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\Grants;
@@ -280,6 +281,112 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.4: a client of a grant it uses for itself registers no redirect URI, there being no
+     * browser of anybody's to send anywhere, and it authenticates itself. What a registration of such a
+     * grant must carry and must not is read from what the wired grant declares.
+     */
+    #[Test]
+    public function aClientOfAGrantItUsesForItselfRegistersNoRedirectUri(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'batch' => [
+                'secret' => Clients::SECRET,
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['client_credentials'],
+                'allowed_scopes' => ['invoices.read'],
+                'resources' => [Clients::CALENDAR],
+            ],
+        ], grants: Grants::servedWithClientCredentials());
+
+        // When
+        $client = self::find($repository, $this->tenant, 'batch');
+
+        // Then
+        static::assertSame([], $client->registration->redirectUris);
+        static::assertEquals([Grants::clientCredentials()], $client->registration->grantTypes);
+        static::assertFalse($client->registration->isPublic());
+        static::assertSame([Clients::CALENDAR], array_column($client->registration->resources, 'value'));
+    }
+
+    /**
+     * What a registration of a grant must carry and must not, read where the registration meets the
+     * wiring: only the wired grants say whether one of them sends a browser anywhere, or authenticates the
+     * client it serves (issue #98).
+     *
+     * @param array<string, mixed> $definition
+     */
+    #[Test]
+    #[DataProvider('provideRegistrationsTheseGrantsRefuse')]
+    public function aRegistrationTheWiredGrantsRefuseFailsAtBoot(array $definition, string $reason): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains($reason);
+
+        // When
+        $this->repository([
+            'bad' => $definition,
+        ], grants: Grants::servedWithClientCredentials());
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function provideRegistrationsTheseGrantsRefuse(): iterable
+    {
+        yield 'a public client for a grant that authenticates it (RFC 6749 §4.4)' => [
+            [
+                'token_endpoint_auth_method' => 'none',
+                'grant_types' => ['client_credentials'],
+                'resources' => [Clients::CALENDAR],
+            ],
+            'which requires client authentication, and authenticates with none, which proves nothing',
+        ];
+        yield 'a redirect URI no grant would send the user to' => [
+            [
+                'secret' => Clients::SECRET,
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['client_credentials'],
+                'redirect_uris' => ['https://batch.example/callback'],
+                'resources' => [Clients::CALENDAR],
+            ],
+            'registers redirect URIs and no grant that would send the user to one',
+        ];
+        yield 'no redirect URI for the grant that sends the user back (RFC 6749 §3.1.2.2)' => [
+            [
+                'secret' => Clients::SECRET,
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['authorization_code'],
+            ],
+            'whose flow sends the user back to it, and therefore registers at least one redirect URI',
+        ];
+    }
+
+    /**
+     * OIDC Core §2, RFC 6749 appendix A.1: a client identifier may carry a space and a subject may not, so
+     * a client named that way cannot be the "sub" of a token it holds for itself, and is refused the grant
+     * at boot rather than at its first request.
+     */
+    #[Test]
+    public function aClientNamedInAWayASubjectCannotBeIsRefusedThatGrant(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('cannot be the "sub" of a token it holds for itself');
+
+        // When
+        $this->repository([
+            'the batch' => [
+                'secret' => Clients::SECRET,
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['client_credentials'],
+                'resources' => [Clients::CALENDAR],
+            ],
+        ], grants: Grants::servedWithClientCredentials());
+    }
+
+    /**
      * RFC 6749 §4.5, RFC 7591 §2: a client registers the grants the provider serves, whatever their
      * names, and a grant the provider gains needs no line here to be registrable.
      */
@@ -291,7 +398,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
             $this->tenant->slug,
             [
                 'invented-client' => [
-                    'redirect_uris' => ['https://demo.localhost/login/check'],
                     'token_endpoint_auth_method' => 'none',
                     'grant_types' => ['urn:example:params:oauth:grant-type:invented'],
                 ],
@@ -1349,7 +1455,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     /**
      * @param array<string, array<string, mixed>> $clients
      */
-    private function repository(array $clients, ?PasswordHasherInterface $hasher = null): ConfigurationClientRepository
+    private function repository(array $clients, ?PasswordHasherInterface $hasher = null, ?ServedGrantsInterface $grants = null): ConfigurationClientRepository
     {
         return new ConfigurationClientRepository(
             $this->tenant->slug,
@@ -1357,7 +1463,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             $hasher ?? new FakePasswordHasher(),
             Algorithms::all(),
             Methods::all(),
-            Grants::served(),
+            $grants ?? Grants::served(),
             Shapes::served(),
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),

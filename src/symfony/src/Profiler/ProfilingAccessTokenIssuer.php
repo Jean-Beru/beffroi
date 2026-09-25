@@ -6,7 +6,8 @@ namespace Heidi\Bundle\Profiler;
 
 use DateTimeImmutable;
 use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\AuthorizationInterface;
+use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Heidi\Oidc\Exception\InvalidJwtException;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
@@ -23,6 +24,9 @@ use const DATE_ATOM;
  * The "jti" is the one thing about a token that only the token says, so it is read back from it, the one
  * claim of it that is kept. A token that is not a JWT carries no claim at all, which is what its shape
  * being opaque means, and the panel says so rather than guessing.
+ *
+ * What the session had proven is said of a token somebody signed in for, and of a token a client holds for
+ * itself the panel says that nobody did (RFC 6749 §4.4) rather than showing three empty rows.
  */
 final readonly class ProfilingAccessTokenIssuer implements AccessTokenIssuerInterface
 {
@@ -33,7 +37,7 @@ final readonly class ProfilingAccessTokenIssuer implements AccessTokenIssuerInte
     ) {
     }
 
-    public function issue(GrantedAuthorization $authorization, DateTimeImmutable $now): AccessToken
+    public function issue(AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
     {
         $token = $this->issuer->issue($authorization, $now);
         $confirmation = $authorization->confirmation;
@@ -41,17 +45,33 @@ final readonly class ProfilingAccessTokenIssuer implements AccessTokenIssuerInte
             'grant' => $authorization->grantType->value,
             'shape' => $authorization->client->registration->accessTokenShape->name(),
             'jti' => $this->jtiOf($token),
-            'aud' => $authorization->client->registration->clientId,
+            'aud' => implode(' ', $authorization->audience()->values),
             'exp' => $token->expiresAt->format(DATE_ATOM),
             'scopes of this response' => (string) $authorization->scopes,
             'scopes granted' => (string) $authorization->grantedScopes,
             'binding' => $confirmation === null ? 'bearer' : sprintf('cnf.%s %s', $confirmation->member(), $confirmation->value()),
-            'acr' => $authorization->authentication->contextClass,
-            'amr' => implode(' ', $authorization->authentication->methods),
-            'auth_time' => $authorization->authentication->authenticatedAt->format(DATE_ATOM),
+            ...self::whoSignedIn($authorization),
         ]));
 
         return $token;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function whoSignedIn(AuthorizationInterface $authorization): array
+    {
+        if (! $authorization instanceof UserAuthorizationInterface) {
+            return [
+                'signed in' => 'nobody: the client asked for itself',
+            ];
+        }
+
+        return [
+            'acr' => $authorization->authentication->contextClass,
+            'amr' => implode(' ', $authorization->authentication->methods),
+            'auth_time' => $authorization->authentication->authenticatedAt->format(DATE_ATOM),
+        ];
     }
 
     private function jtiOf(AccessToken $token): string

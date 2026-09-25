@@ -13,6 +13,7 @@ use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\TokenAudience;
+use Heidi\Oidc\Domain\Token\TokenSignIn;
 use Heidi\Oidc\Domain\Token\VerifiedAccessToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -59,11 +60,10 @@ final class IntrospectionResponseTest extends TestCase
             Clients::public(Fixtures::tenant()),
             new TokenAudience(['spa']),
             new Subject('alice-subject'),
-            $session,
             $grant,
             new Scopes([Scope::openid(), new Scope('email')]),
+            new TokenSignIn($session, new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2')),
             ['name'],
-            new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2'),
             new DateTimeImmutable('@1789466400'),
             new DateTimeImmutable('@1789467000'),
         );
@@ -99,6 +99,49 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.4, RFC 9068 §2.2: a token a client holds for itself is described by what it says, the
+     * client in "sub", and carries no "sid", no "auth_time", no "acr" and no "amr", nobody having signed in
+     * for it.
+     */
+    #[Test]
+    public function aTokenNobodySignedInForIsDescribedWithoutASignIn(): void
+    {
+        // Given
+        $grant = Uuid::v7();
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('spa'),
+            $grant,
+            new Scopes([new Scope('invoices.read')]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame(
+            [
+                'active' => true,
+                'scope' => 'invoices.read',
+                'client_id' => 'spa',
+                'token_type' => 'Bearer',
+                'exp' => 1789467000,
+                'iat' => 1789466400,
+                'sub' => 'spa',
+                'aud' => Clients::CALENDAR,
+                'iss' => 'https://id.acme.example',
+                'grant_id' => $grant->toRfc4122(),
+            ],
+            $response->members,
+        );
+    }
+
+    /**
      * RFC 8707 §2: the audience a resource server reads is the one the token carries, several resources
      * as the list they are (RFC 7519 §4.1.3), while "client_id" goes on naming the client.
      */
@@ -111,10 +154,9 @@ final class IntrospectionResponseTest extends TestCase
             new TokenAudience([Clients::CALENDAR, Clients::CONTACTS]),
             new Subject('alice-subject'),
             Uuid::v7(),
-            Uuid::v7(),
             new Scopes([Scope::openid()]),
+            new TokenSignIn(Uuid::v7(), new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd'], '1')),
             [],
-            new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd'], '1'),
             new DateTimeImmutable('@1789466400'),
             new DateTimeImmutable('@1789467000'),
         );

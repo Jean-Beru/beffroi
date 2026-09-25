@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Application\Token;
 use Heidi\Oidc\Application\Token\GrantNames;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\FakeClientActingGrant;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenIssuingGrant;
 use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenSpendingGrant;
@@ -31,6 +32,61 @@ final class ServedGrantsTest extends TestCase
 
         // Then
         static::assertSame(['authorization_code', 'refresh_token'], GrantNames::of($grantTypes));
+    }
+
+    /**
+     * RFC 6749 §4.4, §3.1.2: which of the wired grants a client uses for itself, and which send the user's
+     * browser back to it, is what they declare; it is what decides which lists a registration of them must
+     * carry and must not.
+     */
+    #[Test]
+    public function whatEachGrantDoesWithAUserIsWhatItDeclares(): void
+    {
+        // Given
+        $served = Grants::servedWithClientCredentials();
+
+        // When
+        $forTheClient = $served->actingForTheClientItself();
+        $toTheUser = $served->sendingTheUserToTheClient();
+
+        // Then
+        static::assertSame(['client_credentials'], GrantNames::of($forTheClient));
+        static::assertSame(['authorization_code'], GrantNames::of($toTheUser));
+    }
+
+    /**
+     * Every wired grant that declares a capability is listed, in the order they are wired: the list is what
+     * they all declare and not what the first of them does.
+     */
+    #[Test]
+    public function everyGrantThatDeclaresACapabilityIsListed(): void
+    {
+        // Given
+        $served = new ServedGrants([
+            new FakeClientActingGrant(Grants::clientCredentials()),
+            new FakeClientActingGrant(Grants::invented()),
+        ]);
+
+        // When
+        $forTheClient = $served->actingForTheClientItself();
+
+        // Then
+        static::assertSame(['client_credentials', 'urn:example:params:oauth:grant-type:invented'], GrantNames::of($forTheClient));
+    }
+
+    /**
+     * A wiring where no grant declares either is a wiring where no client registers a redirect URI and
+     * none acts for itself: the lists are read from the grants and never guessed from their names.
+     */
+    #[Test]
+    public function aWiringOfGrantsThatDeclareNeitherHasNeither(): void
+    {
+        // Given
+        $served = new ServedGrants([new FakeGrant(Grants::invented())]);
+
+        // When / Then
+        static::assertSame([], $served->actingForTheClientItself());
+        static::assertSame([], $served->sendingTheUserToTheClient());
     }
 
     /**

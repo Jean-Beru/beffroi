@@ -24,6 +24,11 @@ final readonly class Grants
         return new GrantTypeName('refresh_token');
     }
 
+    public static function clientCredentials(): GrantTypeName
+    {
+        return new GrantTypeName('client_credentials');
+    }
+
     /**
      * A grant nobody wrote a line of production code for, named by an absolute URI as an extension
      * grant is (RFC 6749 §4.5, RFC 6755).
@@ -34,14 +39,27 @@ final readonly class Grants
     }
 
     /**
-     * What the provider is wired with today: a grant that issues refresh tokens and a grant that spends
-     * them, neither of them doing anything.
+     * What the provider is wired with today: a grant that issues refresh tokens and sends the user back to
+     * the client, and a grant that spends them, neither of them doing anything.
      */
     public static function served(): ServedGrants
     {
         return new ServedGrants([
             new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
             new FakeRefreshTokenSpendingGrant(self::refreshToken()),
+        ]);
+    }
+
+    /**
+     * The same wiring with a grant a client uses for itself beside them (RFC 6749 §4.4), for what a
+     * registration of such a grant must carry and must not.
+     */
+    public static function servedWithClientCredentials(): ServedGrants
+    {
+        return new ServedGrants([
+            new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
+            new FakeRefreshTokenSpendingGrant(self::refreshToken()),
+            new FakeClientActingGrant(self::clientCredentials()),
         ]);
     }
 }

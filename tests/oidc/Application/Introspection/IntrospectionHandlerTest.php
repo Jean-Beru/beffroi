@@ -29,7 +29,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Tests\Fixture\Certificates;
@@ -170,7 +170,7 @@ final class IntrospectionHandlerTest extends TestCase
         // Given
         $certificate = Certificates::client();
         $token = $this->tokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(
+            UserAuthorization::fromAuthorizationCode(
                 Grants::authorizationCode(),
                 $this->code($this->client, ['openid']),
                 CertificateConfirmation::ofCertificate($certificate),
@@ -209,7 +209,7 @@ final class IntrospectionHandlerTest extends TestCase
         // Given
         $code = $this->code($this->other, ['openid']);
         $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $this->clock->now(),
         )->value;
 
@@ -476,7 +476,7 @@ final class IntrospectionHandlerTest extends TestCase
         $issuedAt ??= $this->clock->now();
 
         return $this->tokens->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $issuedAt,
             $issuedAt->modify('+10 minutes'),
         );

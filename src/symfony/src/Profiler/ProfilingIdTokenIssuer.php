@@ -6,7 +6,7 @@ namespace Heidi\Bundle\Profiler;
 
 use DateTimeImmutable;
 use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Heidi\Oidc\Exception\InvalidJwtException;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
@@ -32,7 +32,7 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
     ) {
     }
 
-    public function issue(GrantedAuthorization $authorization, AccessToken $accessToken, DateTimeImmutable $now): string
+    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, DateTimeImmutable $now): string
     {
         $idToken = $this->issuer->issue($authorization, $accessToken, $now);
         $requested = $authorization->claimsRequest->idToken ?? [];

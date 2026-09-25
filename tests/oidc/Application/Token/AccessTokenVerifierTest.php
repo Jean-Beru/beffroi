@@ -8,6 +8,7 @@ use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Exception\InvalidJwsException;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
@@ -23,7 +24,9 @@ use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Domain\Token\ClientAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Tests\Fixture\Bindings;
@@ -40,6 +43,7 @@ use JsonException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 use Throwable;
 
 final class AccessTokenVerifierTest extends TestCase
@@ -100,7 +104,7 @@ final class AccessTokenVerifierTest extends TestCase
             claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'),
         );
         $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue(
-            GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         );
         $clients = new InMemoryClientRepository();
@@ -124,10 +128,11 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertFalse($token->scopes->has(new Scope('profile')));
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
         static::assertTrue($code->grantId->equals($token->grantId));
-        static::assertTrue($session->id->equals($token->sessionId));
-        static::assertEquals($session->authenticatedAt(), $token->authentication->authenticatedAt);
-        static::assertSame(['pwd'], $token->authentication->methods);
-        static::assertSame('1', $token->authentication->contextClass);
+        $signIn = $token->signIn ?? static::fail('The token descends from a sign-in.');
+        static::assertTrue($session->id->equals($signIn->sessionId));
+        static::assertEquals($session->authenticatedAt(), $signIn->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $signIn->authentication->methods);
+        static::assertSame('1', $signIn->authentication->contextClass);
         static::assertEquals(Fixtures::now(), $token->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
     }
@@ -160,12 +165,78 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertSame(['openid', 'email'], $token->scopes?->values());
         static::assertSame(['name', 'picture'], $token->userinfoClaims);
         static::assertTrue($record->grantId->equals($token->grantId));
-        static::assertTrue($session->id->equals($token->sessionId));
-        static::assertEquals($session->authenticatedAt(), $token->authentication->authenticatedAt);
-        static::assertSame(['pwd'], $token->authentication->methods);
-        static::assertSame('1', $token->authentication->contextClass);
+        $signIn = $token->signIn ?? static::fail('The token descends from a sign-in.');
+        static::assertTrue($session->id->equals($signIn->sessionId));
+        static::assertEquals($session->authenticatedAt(), $signIn->authentication->authenticatedAt);
+        static::assertSame(['pwd'], $signIn->authentication->methods);
+        static::assertSame('1', $signIn->authentication->contextClass);
         static::assertEquals(Fixtures::now(), $token->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
+    }
+
+    /**
+     * RFC 6749 §4.4, RFC 9068 §2.2: a self-contained token a client holds for itself names that client in
+     * "sub" and descends from no sign-in, so nothing of a session is read back from it.
+     */
+    #[Test]
+    public function itReadsASelfContainedTokenNobodySignedInFor(): void
+    {
+        // Given
+        $jwts = new Jwts($this->tenant);
+        $service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $clients = new InMemoryClientRepository();
+        $clients->save($service);
+        $authorization = new ClientAuthorization(
+            Grants::clientCredentials(),
+            Uuid::v7(),
+            $service,
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
+        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())->issue($authorization, Fixtures::now());
+        $verifier = AccessTokenShapes::verifier(
+            new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()),
+            $clients,
+            $this->storedTokens,
+            new PublicSubjectIdentifierResolver(),
+        );
+
+        // When
+        $token = $verifier->verify($this->tenant, $minted->value, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertNull($token->signIn);
+        static::assertSame('batch', (string) $token->subject);
+        static::assertSame([Clients::CALENDAR], $token->audience->values);
+        static::assertSame(['invoices.read'], $token->scopes?->values());
+        static::assertSame([], $token->userinfoClaims);
+        static::assertTrue($authorization->grantId->equals($token->grantId));
+    }
+
+    /**
+     * Architecture §4.6: the record of a token nobody signed in for says the same thing as the
+     * self-contained shape does, the client in "sub" and no sign-in.
+     */
+    #[Test]
+    public function itReadsTheRecordOfAnOpaqueTokenNobodySignedInFor(): void
+    {
+        // Given
+        $service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $record = Tokens::storedClientAccessToken($this->opaque, $service, Fixtures::now());
+        $this->storedTokens->keep($record);
+        $clients = new InMemoryClientRepository();
+        $clients->save($service);
+        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+
+        // When
+        $token = $verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertNull($token->signIn);
+        static::assertSame('batch', (string) $token->subject);
+        static::assertSame([Clients::CALENDAR], $token->audience->values);
+        static::assertSame([], $token->userinfoClaims);
+        static::assertTrue($record->grantId->equals($token->grantId));
     }
 
     /**
@@ -538,6 +609,10 @@ final class AccessTokenVerifierTest extends TestCase
         ];
         yield 'no auth_time' => [self::without('auth_time'), null, Throwable::class];
         yield 'no sid' => [self::without('sid'), null, null];
+        // half of a sign-in was not written here: a claim of the session without the "sid" it belongs to
+        yield 'an auth_time without a sid' => [self::withoutAll(['sid', 'acr', 'amr']), null, null];
+        yield 'an acr without a sid' => [self::withoutAll(['sid', 'auth_time', 'amr']), null, null];
+        yield 'an amr without a sid' => [self::withoutAll(['sid', 'auth_time', 'acr']), null, null];
         yield 'sid not a UUID' => [
             self::with([
                 'sid' => 'the-session',
@@ -738,10 +813,20 @@ final class AccessTokenVerifierTest extends TestCase
 
     private static function without(string $claim): string
     {
-        $claims = json_decode(self::PAYLOAD, true, 8, JSON_THROW_ON_ERROR);
-        unset($claims[$claim]);
+        return self::withoutAll([$claim]);
+    }
 
-        return json_encode($claims, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    /**
+     * @param list<string> $claims
+     */
+    private static function withoutAll(array $claims): string
+    {
+        $payload = json_decode(self::PAYLOAD, true, 8, JSON_THROW_ON_ERROR);
+        foreach ($claims as $claim) {
+            unset($payload[$claim]);
+        }
+
+        return json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
     }
 
     /**

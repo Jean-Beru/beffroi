@@ -14,9 +14,9 @@ use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Grants;
@@ -25,7 +25,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-final class StoredAccessTokenTest extends TestCase
+final class StoredUserAccessTokenTest extends TestCase
 {
     private AuthenticationSession $session;
 
@@ -80,7 +80,7 @@ final class StoredAccessTokenTest extends TestCase
     {
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'email']);
-        $authorization = GrantedAuthorization::fromRefreshToken(
+        $authorization = UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken(
                 'previous',
@@ -94,7 +94,7 @@ final class StoredAccessTokenTest extends TestCase
         );
 
         // When
-        $token = StoredAccessToken::fromAuthorization(
+        $token = StoredUserAccessToken::fromAuthorization(
             DrawnSecret::digestOf('the-token'),
             $authorization,
             Fixtures::now(),
@@ -172,8 +172,8 @@ final class StoredAccessTokenTest extends TestCase
         ?Scopes $scopes = null,
         ?array $methods = null,
         ?DateTimeImmutable $expiresAt = null,
-    ): StoredAccessToken {
-        return new StoredAccessToken(
+    ): StoredUserAccessToken {
+        return new StoredUserAccessToken(
             $tokenHash ?? DrawnSecret::digestOf('the-token'),
             Uuid::v7(),
             $client ?? $this->client,

@@ -10,7 +10,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\IssuedRefreshToken;
 use Heidi\Oidc\Domain\Token\IssuedTokens;
 use Heidi\Oidc\Exception\InvalidArgumentException;
@@ -26,7 +26,7 @@ final class IssuedTokensTest extends TestCase
 
     private Client $client;
 
-    private GrantedAuthorization $authorization;
+    private UserAuthorization $authorization;
 
     private AccessToken $accessToken;
 
@@ -34,7 +34,7 @@ final class IssuedTokensTest extends TestCase
     {
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
-        $this->authorization = GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+        $this->authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
             $this->session,
@@ -137,7 +137,7 @@ final class IssuedTokensTest extends TestCase
     public function theScopesOfTheResponseAreThoseOfTheAuthorization(): void
     {
         // Given
-        $narrowed = GrantedAuthorization::fromRefreshToken(
+        $narrowed = UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),
             Tokens::refreshToken('rt.value', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
             new Scopes([new Scope('profile')]),

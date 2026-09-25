@@ -26,6 +26,7 @@ use Heidi\Bundle\Migrations\Version20260923090000;
 use Heidi\Bundle\Migrations\Version20260923170000;
 use Heidi\Bundle\Migrations\Version20260923190000;
 use Heidi\Bundle\Migrations\Version20260925120000;
+use Heidi\Bundle\Migrations\Version20260925180000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -62,6 +63,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20260923170000::class,
         Version20260923190000::class,
         Version20260925120000::class,
+        Version20260925180000::class,
     ];
 
     #[Test]
@@ -94,7 +96,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheFifteenTablesOfTheBundle(): void
+    public function theMigrationsCreateTheSixteenTablesOfTheBundle(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -106,7 +108,7 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(15, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(16, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**

@@ -3,12 +3,8 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- An opaque access token as the provider keeps it (architecture §4.6): the hash is the key, the grant and the session are what a replayed code and a logout revoke by, and a revocation removes the row. -->
-    <entity name="Heidi\Oidc\Domain\Token\StoredAccessToken" table="heidi_access_token">
-        <indexes>
-            <index name="heidi_access_token_grant" columns="grant_id"/>
-            <index name="heidi_access_token_expiry" columns="expires_at"/>
-        </indexes>
+    <!-- What every kind of opaque access token keeps (architecture §4.6): the hash is the key, the grant is what a replayed code revokes by, and a revocation removes the row. Each kind has a table of its own, so that a token nobody signed in for carries no session and no columns of one. -->
+    <mapped-superclass name="Heidi\Oidc\Domain\Token\StoredAccessToken">
         <id name="tokenHash" type="string" column="token_hash" length="64">
             <options>
                 <option name="fixed">true</option>
@@ -19,17 +15,8 @@
         </many-to-one>
         <field name="grantId" type="uuid" column="grant_id"/>
         <field name="clientId" type="string" column="client_id" length="255"/>
-        <many-to-one field="session" target-entity="Heidi\Core\Domain\Session\AuthenticationSession">
-            <join-column name="session_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
-        </many-to-one>
         <field name="scopes" type="heidi_scopes" column="scopes"/>
         <field name="resources" type="heidi_resources" column="resources" nullable="true"/>
-        <field name="claimsRequest" type="heidi_claims_request" column="claims" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
-        <embedded name="authentication" class="Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
         <field name="confirmation" type="heidi_confirmation" column="cnf" nullable="true">
             <options>
                 <option name="jsonb">true</option>
@@ -37,10 +24,5 @@
         </field>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
-        <entity-listeners>
-            <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
-                <lifecycle-callback type="postLoad" method="postLoad"/>
-            </entity-listener>
-        </entity-listeners>
-    </entity>
+    </mapped-superclass>
 </doctrine-mapping>

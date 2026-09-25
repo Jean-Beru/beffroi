@@ -7,7 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Token;
 use DateTimeImmutable;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\AuthorizationInterface;
 use Heidi\Oidc\Port\AccessTokenShapeIssuerInterface;
 
 /**
@@ -34,7 +34,7 @@ final readonly class InventedAccessTokenIssuer implements AccessTokenShapeIssuer
         return self::NAME;
     }
 
-    public function issue(GrantedAuthorization $authorization, DateTimeImmutable $now): AccessToken
+    public function issue(AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
     {
         $token = $this->issuer->issue($authorization, $now);
 

@@ -10,7 +10,7 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Token\ServedAccessTokenShapes;
 use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
@@ -171,10 +171,10 @@ final class ServedAccessTokenShapesTest extends TestCase
         $this->shapes->issue($authorization, Fixtures::now());
     }
 
-    private function authorization(AccessTokenShapeInterface $shape): GrantedAuthorization
+    private function authorization(AccessTokenShapeInterface $shape): UserAuthorization
     {
         $client = Clients::confidential($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET), accessTokenShape: $shape);
 
-        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, Fixtures::now()));
+        return UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, Fixtures::now()));
     }
 }

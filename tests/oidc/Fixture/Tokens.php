@@ -21,7 +21,8 @@ use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Heidi\Oidc\Domain\Token\StoredClientAccessToken;
+use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
 use Symfony\Component\Uid\Uuid;
 
 final class Tokens
@@ -87,8 +88,8 @@ final class Tokens
         array $scopes = ['openid'],
         ?ClaimsRequest $claims = null,
         ?ResourceIndicators $resources = null,
-    ): StoredAccessToken {
-        return new StoredAccessToken(
+    ): StoredUserAccessToken {
+        return new StoredUserAccessToken(
             DrawnSecret::digestOf($value),
             $grantId ?? Uuid::v7(),
             $client,
@@ -97,6 +98,31 @@ final class Tokens
             $resources,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
+            $issuedAt,
+            $issuedAt->modify('+10 minutes'),
+        );
+    }
+
+    /**
+     * The record of an opaque access token a client holds for itself (RFC 6749 §4.4), issued now for ten
+     * minutes, under the hash of the value given: no session, no authentication, nobody.
+     *
+     * @param list<string> $scopes
+     */
+    public static function storedClientAccessToken(
+        string $value,
+        Client $client,
+        DateTimeImmutable $issuedAt,
+        ?ResourceIndicators $resources = null,
+        ?Uuid $grantId = null,
+        array $scopes = ['invoices.read'],
+    ): StoredClientAccessToken {
+        return new StoredClientAccessToken(
+            DrawnSecret::digestOf($value),
+            $grantId ?? Uuid::v7(),
+            $client,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources ?? ResourceIndicators::of([Clients::CALENDAR]),
             $issuedAt,
             $issuedAt->modify('+10 minutes'),
         );

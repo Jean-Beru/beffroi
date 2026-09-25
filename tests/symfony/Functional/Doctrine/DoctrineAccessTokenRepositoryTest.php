@@ -12,17 +12,23 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
+use Heidi\Oidc\Domain\Token\ClientAuthorization;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
+use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Heidi\Oidc\Domain\Token\StoredClientAccessToken;
+use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
+use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -48,7 +54,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $code = Tokens::code('the-code', $client, $session, self::now(), ['openid', 'email'], claims: $claims);
         $value = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
                 self::now()->modify('+1 minute'),
                 self::now()->modify('+11 minutes'),
             );
@@ -58,6 +64,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $found = self::tokens()->find($value) ?? static::fail('The token was not stored.');
 
         // Then
+        static::assertInstanceOf(StoredUserAccessToken::class, $found);
         static::assertSame(DrawnSecret::digestOf($value), $found->tokenHash);
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertTrue($code->grantId->equals($found->grantId));
@@ -88,7 +95,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $code = Tokens::code('the-code', self::client(), $session, self::now());
         $value = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code, $confirmation),
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code, $confirmation),
                 self::now(),
                 self::now()->modify('+10 minutes'),
             );
@@ -159,13 +166,13 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $code = Tokens::code('the-code', self::client(), $session, self::now());
         $second = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
                 self::now()->modify('+2 minutes'),
                 self::now()->modify('+12 minutes'),
             );
         $first = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
                 self::now()->modify('+1 minute'),
                 self::now()->modify('+11 minutes'),
             );
@@ -182,6 +189,115 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         static::assertNull(self::tokens()->find($second));
         static::assertNotNull(self::tokens()->find($other));
         static::assertSame([], self::grantRevoker()->revokeByGrant($code->grantId), 'nothing left');
+    }
+
+    /**
+     * Architecture §4.6, §5.3, RFC 6749 §4.4: a token nobody signed in for is kept in the table of its own
+     * kind, which has no session to point at, and is found by its value like any other.
+     */
+    #[Test]
+    public function aTokenNobodySignedInForComesBackFromTheTableOfItsKind(): void
+    {
+        // Given
+        $service = self::client('service-app');
+        $grant = Uuid::v7();
+        $value = self::tokens()->issue(self::clientAuthorization($service, $grant), self::now(), self::now()->modify('+10 minutes'));
+        self::reload();
+
+        // When
+        $found = self::tokens()->find($value) ?? static::fail('The token was not stored.');
+
+        // Then
+        static::assertInstanceOf(StoredClientAccessToken::class, $found);
+        static::assertSame(DrawnSecret::digestOf($value), $found->tokenHash);
+        static::assertTrue($found->tenant->id->equals(self::tenant()->id));
+        static::assertTrue($grant->equals($found->grantId));
+        static::assertSame('service-app', $found->clientId);
+        static::assertSame('service-app', $found->client->registration->clientId);
+        static::assertSame([Clients::CALENDAR], $found->resources?->values());
+        static::assertEquals([new Scope('invoices.read')], $found->scopes->all);
+    }
+
+    /**
+     * RFC 7009 §2.1: a token nobody signed in for is taken back like any other, from the table of its kind.
+     */
+    #[Test]
+    public function aTokenNobodySignedInForIsRevokedLikeAnyOther(): void
+    {
+        // Given
+        $service = self::client('service-app');
+        $value = self::tokens()->issue(self::clientAuthorization($service), self::now(), self::now()->modify('+10 minutes'));
+        self::reload();
+        $found = self::tokens()->find($value) ?? static::fail('The token was not stored.');
+
+        // When
+        self::revoker()->revoke($found);
+        self::reload();
+
+        // Then
+        static::assertNull(self::tokens()->find($value));
+    }
+
+    /**
+     * Architecture §4.9, RFC 6749 §4.4: a logout revokes the tokens of the session that ended, and a token
+     * nobody signed in for has no session to have ended, so it stays and is not listed as revoked.
+     */
+    #[Test]
+    public function aLogoutLeavesTheTokensNobodySignedInFor(): void
+    {
+        // Given
+        $session = self::session(self::user());
+        $ofTheSession = self::tokens()->issue(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
+        $ofTheService = self::tokens()->issue(self::clientAuthorization(self::client('service-app')), self::now(), self::now()->modify('+10 minutes'));
+        self::reload();
+
+        // When
+        $revoked = self::sessionRevoker()->revokeBySession($session->id);
+        self::reload();
+
+        // Then
+        static::assertSame([DrawnSecret::digestOf($ofTheSession)], self::hashes($revoked));
+        static::assertNull(self::tokens()->find($ofTheSession));
+        static::assertNotNull(self::tokens()->find($ofTheService));
+    }
+
+    /**
+     * RFC 6749 §4.1.2: a grant is revoked with every token descending from it, in whichever table its
+     * kind keeps them.
+     */
+    #[Test]
+    public function aGrantIsRevokedAcrossTheTablesOfEveryKind(): void
+    {
+        // Given
+        $session = self::session(self::user());
+        $grant = Uuid::v7();
+        $code = Tokens::code('shared-code', self::client(), $session, self::now(), grantId: $grant);
+        $ofTheSession = self::tokens()
+            ->issue(
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+                self::now(),
+                self::now()->modify('+10 minutes'),
+            );
+        $ofTheService = self::tokens()
+            ->issue(
+                self::clientAuthorization(self::client('service-app'), $grant),
+                self::now()->modify('+1 second'),
+                self::now()->modify('+10 minutes'),
+            );
+        self::reload();
+
+        // When
+        $revoked = self::grantRevoker()->revokeByGrant($grant);
+        self::reload();
+
+        // Then
+        static::assertSame(
+            [DrawnSecret::digestOf($ofTheSession), DrawnSecret::digestOf($ofTheService)],
+            self::hashes($revoked),
+            'oldest first, whichever table it was in',
+        );
+        static::assertNull(self::tokens()->find($ofTheSession));
+        static::assertNull(self::tokens()->find($ofTheService));
     }
 
     /**
@@ -224,7 +340,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         $grant = Uuid::v7();
         $orphan = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                     'ghost-code',
                     $ghost,
                     $session,
@@ -236,7 +352,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
             );
         $kept = self::tokens()
             ->issue(
-                GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                     'the-code',
                     self::client(),
                     $session,
@@ -262,9 +378,20 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         );
     }
 
-    private static function authorization(AuthenticationSession $session): GrantedAuthorization
+    private static function authorization(AuthenticationSession $session): UserAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('a-code', self::client(), $session, self::now()));
+        return UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('a-code', self::client(), $session, self::now()));
+    }
+
+    private static function clientAuthorization(Client $client, ?Uuid $grantId = null): ClientAuthorization
+    {
+        return new ClientAuthorization(
+            Grants::clientCredentials(),
+            $grantId ?? Uuid::v7(),
+            $client,
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
     }
 
     private static function tokens(): AccessTokenRepositoryInterface

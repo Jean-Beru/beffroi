@@ -276,6 +276,25 @@ heidi:
             requires_consent: false
             access_token_format: opaque
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # RFC 6749 §4.4 (issue #218): a service acting for itself. It registers no redirect URI, there being
+        # no browser of anybody's to send anywhere, and the resources its tokens are addressed to; the two
+        # shapes again, so that what a self-contained token says and what the introspection of an opaque one
+        # says are compared on one grant.
+        service-app:
+            name: 'Service acting for itself'
+            secret: 'service-secret-of-at-least-32-characters-l'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['client_credentials']
+            allowed_scopes: ['invoices.read', 'invoices.write']
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        service-opaque-app:
+            name: 'Service acting for itself, with opaque tokens'
+            secret: 'service-opaque-secret-of-at-least-32-chars'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['client_credentials']
+            allowed_scopes: ['invoices.read', 'invoices.write']
+            access_token_format: opaque
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
         # a shape no class of the module knows, wired below: what a deployment adds is two classes and
         # two tags, and the name it registers here is read from that wiring (issue #239)
         invented-app:

@@ -233,6 +233,7 @@ use Heidi\Oidc\Application\Revocation\RevocationHandler;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Heidi\Oidc\Application\Token\ClientCredentialsGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\Confirmations;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
@@ -722,6 +723,7 @@ return static function (ContainerConfigurator $container): void {
     // it implements; the list is read when a question is asked of it, because a grant reads it too.
     $services->set(AuthorizationCodeGrant::class)->tag('heidi.oidc.grant');
     $services->set(RefreshTokenGrant::class)->tag('heidi.oidc.grant');
+    $services->set(ClientCredentialsGrant::class)->tag('heidi.oidc.grant');
     $services->set(ServedGrants::class)->args([tagged_iterator('heidi.oidc.grant')]);
     $services->alias(ServedGrantsInterface::class, ServedGrants::class);
     $services->set(TokenHandler::class);
