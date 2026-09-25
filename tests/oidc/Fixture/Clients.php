@@ -104,6 +104,41 @@ final class Clients
     }
 
     /**
+     * An appliance with no browser and no keyboard (RFC 8628 §3.1): a client registered for the device grant
+     * and for the renewal that goes with it, for no redirect URI, there being nothing of anybody's to send
+     * anywhere, and for the scopes it shows its user on the approval page.
+     *
+     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
+     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the device grant and its renewal unless the test says otherwise
+     */
+    public static function appliance(
+        Tenant $tenant,
+        PasswordHash $secretHash,
+        string $clientId = 'television',
+        ?array $grantTypes = null,
+        array $resources = [],
+        ?Scopes $allowedScopes = null,
+    ): Client {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                'Television in the waiting room',
+                Methods::clientSecretBasic(),
+                true,
+                [],
+                Shapes::jwt(),
+                [],
+                $grantTypes ?? [Grants::deviceCode(), Grants::refreshToken()],
+                $allowedScopes ?? new Scopes([new Scope('openid'), new Scope('profile')]),
+                requiresConsent: false,
+                resources: $resources,
+            ),
+            new HashedClientSecret($secretHash),
+        );
+    }
+
+    /**
      * A client whose only way of starting an authorization request is to push it (RFC 9126 §6), which is
      * what FAPI 2.0 asks of one.
      */

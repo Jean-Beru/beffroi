@@ -55,6 +55,24 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
+     * RFC 8628 §3.3: which of the wired grants asks its user somewhere other than in the client's own
+     * browser is what they declare, and is what the endpoint where such a flow starts reads.
+     */
+    #[Test]
+    public function whichGrantsAskTheirUserOnAnotherDeviceIsWhatTheyDeclare(): void
+    {
+        // Given
+        $served = Grants::servedWithDeviceCode();
+
+        // When
+        $elsewhere = $served->askingTheUserOnAnotherDevice();
+
+        // Then
+        static::assertSame(['urn:ietf:params:oauth:grant-type:device_code'], GrantNames::of($elsewhere));
+        static::assertSame(['authorization_code'], GrantNames::of($served->sendingTheUserToTheClient()));
+    }
+
+    /**
      * Every wired grant that declares a capability is listed, in the order they are wired: the list is what
      * they all declare and not what the first of them does.
      */
@@ -87,6 +105,7 @@ final class ServedGrantsTest extends TestCase
         // When / Then
         static::assertSame([], $served->actingForTheClientItself());
         static::assertSame([], $served->sendingTheUserToTheClient());
+        static::assertSame([], $served->askingTheUserOnAnotherDevice());
     }
 
     /**

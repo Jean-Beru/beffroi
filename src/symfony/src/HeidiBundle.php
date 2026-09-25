@@ -14,6 +14,7 @@ use Heidi\Bundle\Doctrine\Type\BytesType;
 use Heidi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
 use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
 use Heidi\Core\Port\PasswordAlgorithmsInterface;
+use Heidi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Configuration\BackChannelLogoutSection;
@@ -76,6 +77,7 @@ final class HeidiBundle extends AbstractBundle
         EmailAddressType::NAME => EmailAddressType::class,
         AddressType::NAME => AddressType::class,
         AuthenticationProofsType::NAME => AuthenticationProofsType::class,
+        AuthenticationSnapshotType::NAME => AuthenticationSnapshotType::class,
         GeoLocationType::NAME => GeoLocationType::class,
         DeviceType::NAME => DeviceType::class,
         RedirectUriType::NAME => RedirectUriType::class,

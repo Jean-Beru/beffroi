@@ -1,4 +1,6 @@
-{# The login page of an interaction, in the locale the interaction recorded. The form is the one the form
+{# The login page, in the locale the interaction recorded. It serves the interaction that is waiting for a
+   login and, with no client to name, the page of the provider that asked for one and is not an
+   authorization request (the page where a user approves what an appliance asked, RFC 8628 §3.3). The form is the one the form
    login of the firewall reads (architecture §5.4); a refused login shows one message, whatever the reason.
    Below it, the passkey: hidden until the script of the bundle finds a browser that can hold one, then
    a button, and the autofill of the username field when the browser offers it (conditional UI); the
@@ -17,19 +19,19 @@
 {% endblock %}
 
 {% block content %}
-    <p>{{ 'login.prompt'|trans({client: client.registration.name}) }}</p>
+    <p>{{ client is null ? 'login.prompt_alone'|trans : 'login.prompt'|trans({client: client.registration.name}) }}</p>
     {% if step_up is not null %}
         <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|map(class => class.value)|join(' ') }}">{{ 'login.step_up'|trans({client: client.registration.name}) }}</p>
         {% for kind in step_up.kinds %}
             <p data-step-up="{{ kind }}">{{ ('login.step_up.' ~ kind)|trans }}</p>
         {% endfor %}
-    {% elseif requirement.value != 'no_session' %}
+    {% elseif requirement is not null and requirement.value != 'no_session' %}
         <p data-requirement="{{ requirement.value }}">{{ 'login.reauthentication'|trans }}</p>
     {% endif %}
     {% if failed %}
         <p data-error="authentication_failed">{{ 'login.failed'|trans }}</p>
     {% endif %}
-    <form method="post" action="{{ path('heidi_interaction_login', {interaction: interaction.id}) }}">
+    <form method="post" action="{{ path('heidi_interaction_login', interaction is null ? {} : {interaction: interaction.id}) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
         <label for="username">{{ 'login.username'|trans }}</label>
         <input type="text" id="username" name="_username" value="{{ username ?? '' }}" autocomplete="username webauthn" required autofocus>
@@ -37,7 +39,7 @@
         <input type="password" id="password" name="_password" autocomplete="current-password" required>
         <button type="submit">{{ 'login.submit'|trans }}</button>
     </form>
-    <form method="post" action="{{ path('heidi_interaction_passkey_login', {interaction: interaction.id}) }}" data-passkey="login" data-options-url="{{ path('heidi_interaction_passkey_login_options', {interaction: interaction.id}) }}" hidden>
+    <form method="post" action="{{ path('heidi_interaction_passkey_login', interaction is null ? {} : {interaction: interaction.id}) }}" data-passkey="login" data-options-url="{{ path('heidi_interaction_passkey_login_options', interaction is null ? {} : {interaction: interaction.id}) }}" hidden>
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
         <input type="hidden" name="_passkey" value="">
         <button type="button" data-passkey-button>{{ 'login.passkey'|trans }}</button>

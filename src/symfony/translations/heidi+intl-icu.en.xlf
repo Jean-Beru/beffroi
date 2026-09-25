@@ -389,6 +389,90 @@
         <source>front_channel_logout.frame</source>
         <target>Signing out of an application</target>
       </trans-unit>
+      <trans-unit id="2a09e75af2" resname="login.prompt_alone">
+        <source>login.prompt_alone</source>
+        <target>Please sign in to continue.</target>
+      </trans-unit>
+      <trans-unit id="386016f13c" resname="code.prompt_alone">
+        <source>code.prompt_alone</source>
+        <target>Please sign in to continue. Enter the code shown by your authenticator app, or one of your backup codes.</target>
+      </trans-unit>
+      <trans-unit id="dc02dea145" resname="device.title">
+        <source>device.title</source>
+        <target>Connect a device</target>
+      </trans-unit>
+      <trans-unit id="fdd74a6c56" resname="device.prompt">
+        <source>device.prompt</source>
+        <target>Enter the code your device is showing.</target>
+      </trans-unit>
+      <trans-unit id="fd47214568" resname="device.code">
+        <source>device.code</source>
+        <target>Code</target>
+      </trans-unit>
+      <trans-unit id="0ebc2034f0" resname="device.submit">
+        <source>device.submit</source>
+        <target>Continue</target>
+      </trans-unit>
+      <trans-unit id="9795377dd9" resname="device.refused.unknown_code">
+        <source>device.refused.unknown_code</source>
+        <target>That code is not one we are waiting for. Check the code your device is showing, and enter it again.</target>
+      </trans-unit>
+      <trans-unit id="f530b41973" resname="device.refused.too_many_attempts">
+        <source>device.refused.too_many_attempts</source>
+        <target>Too many codes have been entered from here. Wait a minute and try again.</target>
+      </trans-unit>
+      <trans-unit id="99e6bfe694" resname="device.approval.title">
+        <source>device.approval.title</source>
+        <target>Allow {client} to connect?</target>
+      </trans-unit>
+      <trans-unit id="37c90fe35d" resname="device.approval.signed_in_as">
+        <source>device.approval.signed_in_as</source>
+        <target>You are signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="a6aca898f1" resname="device.approval.request">
+        <source>device.approval.request</source>
+        <target>{client} asks to connect to your account with the code {code}.</target>
+      </trans-unit>
+      <trans-unit id="453aa8634a" resname="device.approval.origin">
+        <source>device.approval.origin</source>
+        <target>The request came from {address} ({agent}).</target>
+      </trans-unit>
+      <trans-unit id="a6f6ea1b9e" resname="device.approval.unknown_address">
+        <source>device.approval.unknown_address</source>
+        <target>an address we could not read</target>
+      </trans-unit>
+      <trans-unit id="e3833693f9" resname="device.approval.unknown_agent">
+        <source>device.approval.unknown_agent</source>
+        <target>a device that named itself to us</target>
+      </trans-unit>
+      <trans-unit id="2ac67d203a" resname="device.approval.unexpected">
+        <source>device.approval.unexpected</source>
+        <target>If you did not start this on a device of yours, refuse it. Nobody ever needs a code from you.</target>
+      </trans-unit>
+      <trans-unit id="f62ada85d7" resname="device.approval.allow">
+        <source>device.approval.allow</source>
+        <target>Allow</target>
+      </trans-unit>
+      <trans-unit id="9a1c11f83f" resname="device.approval.deny">
+        <source>device.approval.deny</source>
+        <target>Refuse</target>
+      </trans-unit>
+      <trans-unit id="f3543cfd93" resname="device.answered.approved.title">
+        <source>device.answered.approved.title</source>
+        <target>Device connected</target>
+      </trans-unit>
+      <trans-unit id="8515dd5522" resname="device.answered.denied.title">
+        <source>device.answered.denied.title</source>
+        <target>Request refused</target>
+      </trans-unit>
+      <trans-unit id="3a6d124638" resname="device.answered.approved">
+        <source>device.answered.approved</source>
+        <target>{client} may now use your account. Go back to your device; it will continue on its own.</target>
+      </trans-unit>
+      <trans-unit id="b3cdc73ad3" resname="device.answered.denied">
+        <source>device.answered.denied</source>
+        <target>{client} has been refused. Nothing was given to it, and you can close this page.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

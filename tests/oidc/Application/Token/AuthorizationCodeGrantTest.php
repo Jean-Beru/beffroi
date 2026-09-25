@@ -18,6 +18,7 @@ use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Heidi\Oidc\Application\Token\RefreshTokenDue;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Application\Token\TokenIssuer;
@@ -331,7 +332,7 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // Then
         $refreshToken = $issued->refreshToken ?? static::fail('A confidential client registered for refresh_token gets a refresh token.');
-        static::assertSame($code->codeHash, $refreshToken->token->family->authorizationCodeHash);
+        static::assertSame($code->codeHash, $refreshToken->token->family->grantingRecordHash);
         static::assertEquals($this->clock->now(), $refreshToken->token->family->startedAt);
         static::assertEquals($this->clock->now()->modify('+90 days'), $refreshToken->token->family->expiresAt);
         static::assertEquals($this->clock->now()->modify('+30 days'), $refreshToken->token->expiresAt);
@@ -1086,9 +1087,8 @@ final class AuthorizationCodeGrantTest extends TestCase
             new SymfonyUuidGenerator(),
             $this->clock,
             $this->events,
-            $served ?? Grants::served(),
+            new RefreshTokenDue($served ?? Grants::served(), $refreshTokenWithoutOfflineAccess),
             $familyLifetime ?? new DateInterval('P90D'),
-            $refreshTokenWithoutOfflineAccess,
         );
     }
 

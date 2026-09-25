@@ -44,6 +44,8 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://op.example/introspect', $endpoints->introspection);
         static::assertSame('https://op.example/revoke', $endpoints->revocation);
         static::assertSame('https://op.example/par', $endpoints->pushedAuthorizationRequest);
+        static::assertSame('https://op.example/device_authorization', $endpoints->deviceAuthorization);
+        static::assertSame('https://op.example/device', $endpoints->deviceVerification);
     }
 
     /**
@@ -136,6 +138,7 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://mtls.op.example/tenant1/introspect', $endpoints->introspection);
         static::assertSame('https://mtls.op.example/tenant1/revoke', $endpoints->revocation);
         static::assertSame('https://mtls.op.example/tenant1/par', $endpoints->pushedAuthorizationRequest);
+        static::assertSame('https://mtls.op.example/tenant1/device_authorization', $endpoints->deviceAuthorization);
     }
 
     /**
@@ -175,6 +178,8 @@ final class RouterEndpointLocatorTest extends TestCase
         $routes->add('heidi_protocol_introspection', new Route($prefix . '/introspect'));
         $routes->add('heidi_protocol_revocation', new Route($prefix . '/revoke'));
         $routes->add('heidi_protocol_pushed_authorization_request', new Route($prefix . '/par'));
+        $routes->add('heidi_protocol_device_authorization', new Route($prefix . '/device_authorization'));
+        $routes->add('heidi_interaction_device', new Route($prefix . '/device'));
 
         return new UrlGenerator($routes, $context ?? new RequestContext());
     }

@@ -8,6 +8,7 @@ use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\LoginTarget;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Core\Application\Passkey\PasskeyAuthentication;
 use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
@@ -34,6 +35,7 @@ final readonly class PasskeyLoginOptionsController
         private PasskeyAuthentication $authentication,
         private WebauthnCeremonies $ceremonies,
         private PasskeyOptionsStore $options,
+        private LoginTarget $loginTargets,
     ) {
     }
 
@@ -42,7 +44,7 @@ final readonly class PasskeyLoginOptionsController
     {
         $tenant = $this->tenants->provide();
         $interaction = $this->browser->pending($request, $tenant, $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER));
-        if ($interaction === null) {
+        if ($interaction === null && ! $this->loginTargets->isPending($request->getSession())) {
             return new JsonResponse(
                 [
                     'error' => AuthorizationResponder::UNKNOWN_INTERACTION,

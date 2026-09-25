@@ -28,6 +28,8 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/introspect',
             'https://id.acme.example/revoke',
             'https://id.acme.example/par',
+            'https://id.acme.example/device_authorization',
+            'https://id.acme.example/device',
         );
 
         // Then
@@ -39,6 +41,8 @@ final class ProviderEndpointsTest extends TestCase
         static::assertSame('https://id.acme.example/introspect', $endpoints->introspection);
         static::assertSame('https://id.acme.example/revoke', $endpoints->revocation);
         static::assertSame('https://id.acme.example/par', $endpoints->pushedAuthorizationRequest);
+        static::assertSame('https://id.acme.example/device_authorization', $endpoints->deviceAuthorization);
+        static::assertSame('https://id.acme.example/device', $endpoints->deviceVerification);
     }
 
     /**
@@ -58,6 +62,8 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/introspect',
             'https://op.localhost/revoke',
             'https://op.localhost/par',
+            'https://op.localhost/device_authorization',
+            'https://op.localhost/device',
         );
 
         // Then
@@ -85,13 +91,15 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/introspect',
             'https://op.localhost/revoke',
             'https://op.localhost/par',
+            'https://op.localhost/device_authorization',
+            'https://op.localhost/device',
         ];
         $urls[$position] = 'http://localhost/x';
 
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIsOrContains($name
-        . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2), on a loopback host too');
+        . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2, RFC 8628 section 3.1), on a loopback host too');
 
         // When
         new ProviderEndpoints(...$urls);
@@ -106,6 +114,7 @@ final class ProviderEndpointsTest extends TestCase
         yield 'introspection' => ['introspection', 5];
         yield 'revocation' => ['revocation', 6];
         yield 'pushed authorization request' => ['pushed authorization request', 7];
+        yield 'device authorization' => ['device authorization', 8];
     }
 
     /**
@@ -130,6 +139,8 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/introspect',
             'https://id.acme.example/revoke',
             'https://id.acme.example/par',
+            'https://id.acme.example/device_authorization',
+            'https://id.acme.example/device',
         );
     }
 
@@ -156,7 +167,7 @@ final class ProviderEndpointsTest extends TestCase
     public function everyEndpointIsCheckedAndNamed(string $name, int $position, string $url): void
     {
         // Given
-        $urls = array_fill(0, 8, 'https://id.acme.example/x');
+        $urls = array_fill(0, 10, 'https://id.acme.example/x');
         $urls[$position] = $url;
 
         // Then
@@ -180,5 +191,7 @@ final class ProviderEndpointsTest extends TestCase
         yield 'introspection' => ['introspection', 5, 'https://id.acme.example/i#f'];
         yield 'revocation' => ['revocation', 6, 'https://id.acme.example/r#f'];
         yield 'pushed authorization request' => ['pushed authorization request', 7, 'https://id.acme.example/p#f'];
+        yield 'device authorization' => ['device authorization', 8, 'https://id.acme.example/d#f'];
+        yield 'device verification' => ['device verification', 9, 'https://id.acme.example/v#f'];
     }
 }

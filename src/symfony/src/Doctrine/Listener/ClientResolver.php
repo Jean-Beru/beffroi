@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Doctrine\Listener;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Consent\Consent;
+use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Heidi\Oidc\Domain\Token\RefreshToken;
@@ -26,7 +27,7 @@ final readonly class ClientResolver
     ) {
     }
 
-    public function postLoad(Interaction|AuthorizationCode|PushedAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): void
+    public function postLoad(Interaction|AuthorizationCode|PushedAuthorizationRecord|DeviceAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): void
     {
         $client = $this->clients->findByClientId($entity->tenant, $entity->clientId);
         if ($client === null) {
@@ -36,7 +37,7 @@ final readonly class ClientResolver
         $property->setValue($holder, $client);
     }
 
-    public static function isResolved(Interaction|AuthorizationCode|PushedAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): bool
+    public static function isResolved(Interaction|AuthorizationCode|PushedAuthorizationRecord|DeviceAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): bool
     {
         [$holder, $property] = self::clientProperty($entity);
 
@@ -46,7 +47,7 @@ final readonly class ClientResolver
     /**
      * @return array{object, ReflectionProperty} the holder of the client and the property
      */
-    private static function clientProperty(Interaction|AuthorizationCode|PushedAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): array
+    private static function clientProperty(Interaction|AuthorizationCode|PushedAuthorizationRecord|DeviceAuthorizationRecord|RefreshToken|StoredAccessToken|Consent $entity): array
     {
         if ($entity instanceof Interaction) {
             return [$entity->request, new ReflectionProperty(AuthorizationRequest::class, 'client')];

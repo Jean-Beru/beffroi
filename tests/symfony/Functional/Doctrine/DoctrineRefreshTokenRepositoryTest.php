@@ -55,7 +55,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertSame('oidc-demo', $found->client->registration->clientId);
         static::assertTrue($found->session->id->equals($session->id));
         static::assertTrue($found->family->id->equals($family->id));
-        static::assertSame($family->authorizationCodeHash, $found->family->authorizationCodeHash);
+        static::assertSame($family->grantingRecordHash, $found->family->grantingRecordHash);
         static::assertEquals($family->startedAt, $found->family->startedAt);
         static::assertEquals($family->expiresAt, $found->family->expiresAt);
         static::assertEquals([new Scope('openid'), new Scope('offline_access')], $found->scopes->all);
@@ -131,7 +131,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         ['family' => $family, 'first' => $first, 'second' => $second] = self::twoFamilies();
 
         // When / Then
-        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes(self::tokens()->findByAuthorizationCode($family->authorizationCodeHash)));
+        static::assertSame([$first->tokenHash, $second->tokenHash], self::hashes(self::tokens()->findByAuthorizationCode($family->grantingRecordHash)));
     }
 
     /**

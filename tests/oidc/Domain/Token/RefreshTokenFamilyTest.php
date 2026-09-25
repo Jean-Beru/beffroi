@@ -29,7 +29,7 @@ final class RefreshTokenFamilyTest extends TestCase
 
         // Then
         static::assertSame($id, $family->id);
-        static::assertSame(DrawnSecret::digestOf('the-code'), $family->authorizationCodeHash);
+        static::assertSame(DrawnSecret::digestOf('the-code'), $family->grantingRecordHash);
         static::assertEquals(Fixtures::now(), $family->startedAt);
     }
 

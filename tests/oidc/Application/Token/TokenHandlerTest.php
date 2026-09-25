@@ -15,6 +15,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Heidi\Oidc\Application\Token\RefreshTokenDue;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\ServedGrants;
@@ -110,7 +111,7 @@ final class TokenHandlerTest extends TestCase
             new SymfonyUuidGenerator(),
             $this->clock,
             $this->events,
-            Grants::served(),
+            new RefreshTokenDue(Grants::served()),
         );
         $refreshGrant = new RefreshTokenGrant($this->refreshTokens, new RefreshTokenRevocation($this->refreshTokens), $issuer, $this->clock, $this->events);
         $this->handler = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), new ServedGrants([$this->codeGrant, $refreshGrant]));

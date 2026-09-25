@@ -35,6 +35,7 @@ final class AnnouncedMutualTlsEndpointsTest extends TestCase
                     'introspection_endpoint' => 'https://mtls.as.example/introspect',
                     'revocation_endpoint' => 'https://mtls.as.example/revoke',
                     'pushed_authorization_request_endpoint' => 'https://mtls.as.example/par',
+                    'device_authorization_endpoint' => 'https://mtls.as.example/device_authorization',
                 ],
             ],
             $members,

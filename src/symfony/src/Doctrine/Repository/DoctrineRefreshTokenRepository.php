@@ -44,7 +44,7 @@ final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository i
     public function findByAuthorizationCode(string $codeHash): array
     {
         return $this->resolved([
-            'family.authorizationCodeHash' => $codeHash,
+            'family.grantingRecordHash' => $codeHash,
         ]);
     }
 

@@ -88,6 +88,8 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'access_token_ttl' => 600,
                 'id_token_ttl' => 600,
                 'request_uri_ttl' => 60,
+                'device_code_ttl' => 600,
+                'device_code_interval' => 5,
                 'refresh_token_ttl' => 2592000,
                 'refresh_token_absolute_ttl' => 7776000,
             ],

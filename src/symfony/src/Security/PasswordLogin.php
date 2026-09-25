@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Security;
 
+use Heidi\Bundle\Controller\LoginController;
 use DateTimeImmutable;
 use Heidi\Core\Domain\Event\AuthenticationFailureReason;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -48,7 +49,7 @@ final readonly class PasswordLogin implements AnnouncesItsRefusalInterface, Date
 
     public function route(): string
     {
-        return 'heidi_interaction_login';
+        return LoginController::ROUTE;
     }
 
     /**
