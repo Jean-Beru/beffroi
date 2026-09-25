@@ -56,8 +56,10 @@ final readonly class InteractionPages
      *
      * @param string $error a code the template translates
      * @param string|null $description the error_description of the protocol, never an internal message
+     * @param array<string, string> $headers what this refusal carries over the headers of the plane, the
+     *                                       Retry-After of a budget that is spent for one
      */
-    public function error(int $status, string $error, ?string $description = null): Response
+    public function error(int $status, string $error, ?string $description = null, array $headers = []): Response
     {
         return $this->render(
             'error.html.twig',
@@ -67,6 +69,7 @@ final readonly class InteractionPages
                 'description' => $description,
             ],
             $status,
+            $headers,
         );
     }
 

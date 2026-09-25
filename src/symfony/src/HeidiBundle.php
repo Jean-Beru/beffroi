@@ -23,6 +23,7 @@ use Heidi\Bundle\Configuration\ClientsSection;
 use Heidi\Bundle\Configuration\ConfigurationSectionInterface;
 use Heidi\Bundle\Configuration\DpopSection;
 use Heidi\Bundle\Configuration\KeysSection;
+use Heidi\Bundle\Configuration\LoadSection;
 use Heidi\Bundle\Configuration\MutualTlsSection;
 use Heidi\Bundle\Configuration\RequestObjectsSection;
 use Heidi\Bundle\Configuration\TenantSection;
@@ -188,9 +189,9 @@ final class HeidiBundle extends AbstractBundle
             ]);
         }
         if ($builder->hasExtension('framework')) {
-            // the keys of the clients, the assertions already seen and what DPoP remembers of a proof
-            // live in pools of their own, so that a deployment can point them at a shared store
-            // without touching the rest of its cache
+            // the keys of the clients, the assertions already seen, what DPoP remembers of a proof and
+            // what each budget of a load has been asked for live in pools of their own, so that a
+            // deployment can point them at a shared store without touching the rest of its cache
             $builder->prependExtensionConfig('framework', [
                 'cache' => [
                     'pools' => [
@@ -201,6 +202,9 @@ final class HeidiBundle extends AbstractBundle
                             'adapter' => 'cache.app',
                         ],
                         'heidi.dpop' => [
+                            'adapter' => 'cache.app',
+                        ],
+                        'heidi.load' => [
                             'adapter' => 'cache.app',
                         ],
                     ],
@@ -264,6 +268,7 @@ final class HeidiBundle extends AbstractBundle
             new WebauthnSection(),
             new MutualTlsSection(),
             new TokensSection(),
+            new LoadSection(),
             new BackChannelLogoutSection(),
             new ClientAuthenticationSection(),
             new RequestObjectsSection(),

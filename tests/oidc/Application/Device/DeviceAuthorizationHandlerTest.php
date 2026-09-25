@@ -30,6 +30,7 @@ use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Exception\UnauthorizedClientException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Secrets;
@@ -340,7 +341,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     private function handler(?UserCodeDrawer $userCodes = null, ?DateInterval $lifetime = null, ?int $interval = null): DeviceAuthorizationHandler
     {
         return new DeviceAuthorizationHandler(
-            new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher()),
+            new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
             new Endpoints(),
             Grants::servedWithDeviceCode(),
             $this->records,

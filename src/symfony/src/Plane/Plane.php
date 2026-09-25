@@ -21,14 +21,28 @@ enum Plane: string
     public const string PROTOCOL_ROUTE_PREFIX = 'heidi_protocol_';
 
     /**
-     * A route that is not one of the bundle's is never refused.
+     * The plane a route belongs to, read from its name, and null for a route that is not one of the two
+     * planes: a route of the host application, and the endpoints of the FIDO conformance tools, which
+     * belong to no plane and to no environment but dev. What answers by plane reads this and holds no
+     * list of routes, so that a route the bundle gains is covered by being routed.
+     */
+    public static function ofRoute(string $routeName): ?self
+    {
+        return match (true) {
+            str_starts_with($routeName, self::INTERACTION_ROUTE_PREFIX) => self::Interaction,
+            str_starts_with($routeName, self::PROTOCOL_ROUTE_PREFIX) => self::Protocol,
+            default => null,
+        };
+    }
+
+    /**
+     * A route that is not one of the bundle's is never refused, and a process that serves every plane
+     * refuses nothing. The convention that a name carries its plane is read once, above.
      */
     public function serves(string $routeName): bool
     {
-        return match ($this) {
-            self::All => true,
-            self::Interaction => ! str_starts_with($routeName, self::PROTOCOL_ROUTE_PREFIX),
-            self::Protocol => ! str_starts_with($routeName, self::INTERACTION_ROUTE_PREFIX),
-        };
+        $plane = self::ofRoute($routeName);
+
+        return $plane === null || $this === self::All || $plane === $this;
     }
 }

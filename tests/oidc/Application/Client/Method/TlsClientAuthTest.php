@@ -29,6 +29,7 @@ use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -310,6 +311,12 @@ final class TlsClientAuthTest extends TestCase
 
     private function authenticator(?ClockInterface $clock = null): ClientAuthenticator
     {
-        return new ClientAuthenticator($this->clients, Methods::all(), $clock ?? new MockClock('2026-09-22T12:00:00+00:00'), $this->events);
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all(),
+            $clock ?? new MockClock('2026-09-22T12:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 }

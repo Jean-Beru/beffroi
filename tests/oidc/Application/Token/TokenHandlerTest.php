@@ -41,6 +41,7 @@ use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\Grants;
@@ -510,7 +511,7 @@ final class TokenHandlerTest extends TestCase
 
     private function authenticator(): ClientAuthenticator
     {
-        return new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events);
+        return new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events, new FakeClientLoadBudget());
     }
 
     /**

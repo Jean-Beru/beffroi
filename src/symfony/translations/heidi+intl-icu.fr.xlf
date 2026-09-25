@@ -161,6 +161,10 @@
         <source>error.invalid_request</source>
         <target>L’application a envoyé une requête que ce fournisseur ne peut pas servir. Recommencez depuis l’application.</target>
       </trans-unit>
+      <trans-unit id="7afc04115d" resname="error.too_many_requests">
+        <source>error.too_many_requests</source>
+        <target>Ce fournisseur a reçu trop de requêtes et n’a pas servi celle-ci. Patientez un instant, puis recommencez depuis l’application.</target>
+      </trans-unit>
       <trans-unit id="276b888c75" resname="login.passkey">
         <source>login.passkey</source>
         <target>Utiliser une passkey</target>

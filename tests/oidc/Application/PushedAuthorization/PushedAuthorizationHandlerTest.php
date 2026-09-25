@@ -35,6 +35,7 @@ use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
 use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Heidi\Oidc\Tests\Fixture\Proofs;
@@ -528,7 +529,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     private function handler(PushedAuthorizationRecordRepositoryInterface $requests, ?DateInterval $lifetime = null): PushedAuthorizationHandler
     {
         return new PushedAuthorizationHandler(
-            new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher()),
+            new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, new RecordingEventDispatcher(), new FakeClientLoadBudget()),
             Proofs::verifier(),
             new Endpoints(),
             new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),

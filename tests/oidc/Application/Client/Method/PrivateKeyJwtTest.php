@@ -26,6 +26,7 @@ use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
+use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\Test;
@@ -340,14 +341,26 @@ final class PrivateKeyJwtTest extends TestCase
 
     private function authenticator(): ClientAuthenticator
     {
-        return new ClientAuthenticator($this->clients, Methods::all($this->hasher), new MockClock('2026-09-15T10:00:00+00:00'), $this->events);
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
     private function authenticatorFetching(FakeClientJwksFetcher $fetcher): ClientAuthenticator
     {
         $keys = Methods::keySetProvider($fetcher, new MockClock('2026-09-15T10:00:00+00:00'), new DateInterval('PT300S'));
 
-        return new ClientAuthenticator($this->clients, Methods::all($this->hasher, $keys), new MockClock('2026-09-15T10:00:00+00:00'), $this->events);
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher, $keys),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
     private function authenticate(string $assertion): AuthenticatedClient
