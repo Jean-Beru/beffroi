@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Load;
 
+use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\ProtocolAnswer;
 use Heidi\Bundle\Plane\Plane;
 use Heidi\Oidc\Domain\Token\TokenErrorResponse;
 use Heidi\Oidc\Domain\Token\TokenResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -39,6 +41,7 @@ final readonly class LoadRefusal
 
     public function __construct(
         private InteractionPages $pages,
+        private InteractionLocale $locales,
     ) {
     }
 
@@ -46,19 +49,22 @@ final readonly class LoadRefusal
      * @param Plane|null $plane the plane of the route the request was matched to
      * @param int $retryAfter seconds before the window has room again
      */
-    public function response(?Plane $plane, int $retryAfter): Response
+    public function response(?Plane $plane, int $retryAfter, Request $request): Response
     {
         // the interaction plane answers a browser, everything else answers a machine
-        return (
-            $plane === Plane::Interaction
-                ? $this->pages->error(self::STATUS, self::PAGE_ERROR, headers: self::retryAfter($retryAfter))
-                : ProtocolAnswer::json(
-                    ['error_description' => self::DESCRIPTION],
-                    self::STATUS,
-                    TokenErrorResponse::CONTENT_TYPE,
-                    self::retryAfter($retryAfter) + TokenResponse::HEADERS,
-                )
-        );
+        if ($plane !== Plane::Interaction) {
+            return ProtocolAnswer::json(
+                ['error_description' => self::DESCRIPTION],
+                self::STATUS,
+                TokenErrorResponse::CONTENT_TYPE,
+                self::retryAfter($retryAfter) + TokenResponse::HEADERS,
+            );
+        }
+        // the budget is consumed above the listener that chooses the language of a page (§5.7), so the
+        // refusal chooses it itself: a page of this plane is read by somebody
+        $this->locales->apply($request, $this->locales->choose($request));
+
+        return $this->pages->error(self::STATUS, self::PAGE_ERROR, headers: self::retryAfter($retryAfter));
     }
 
     /**

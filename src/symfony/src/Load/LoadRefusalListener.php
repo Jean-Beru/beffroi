@@ -48,7 +48,7 @@ final readonly class LoadRefusalListener
         $route = $request->attributes->getString('_route');
         $context = $this->contexts->fromRequest($request);
         $this->events->dispatch(new LoadBudgetSpent($context->receivedAt, $this->tenants->provide(), $context, $spent->budget, $route, $spent->client));
-        $event->setResponse($this->refusal->response(Plane::ofRoute($route), $spent->retryAfter));
+        $event->setResponse($this->refusal->response(Plane::ofRoute($route), $spent->retryAfter, $request));
     }
 
     /**

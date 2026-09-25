@@ -51,12 +51,13 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * The acceptance of issue #178: a route is covered because it is routed. Every route of the two
-     * planes is asked for once the budget of this address is spent, and the test names the one that is
-     * served, the way the events of the module are covered by being in their directory.
+     * The acceptance of issue #178: a route is covered because it is routed, and the refusal has one
+     * shape. Every route of the two planes is asked for once the budget of this address is spent, and
+     * the test names the one that was served or answered without the delay to wait, the way the events
+     * of the module are covered by being in their directory.
      */
     #[Test]
-    public function everyRouteOfTheTwoPlanesGoesThroughTheBudgetOfItsOrigin(): void
+    public function everyRouteOfTheTwoPlanesIsRefusedWithTheDelayToWait(): void
     {
         // Given
         $this->spendTheBudget();
@@ -65,8 +66,9 @@ final class OriginLoadBudgetTest extends BrowserTestCase
         $served = [];
         foreach (self::planeRoutes() as $name => $request) {
             $this->browser->request($request[0], $request[1], server: self::from(self::ADDRESS));
-            if ($this->browser->getResponse()->getStatusCode() !== LoadRefusal::STATUS) {
-                $served[] = sprintf('%s (%s %s)', $name, $request[0], $request[1]);
+            $response = $this->browser->getResponse();
+            if ($response->getStatusCode() !== LoadRefusal::STATUS || (int) $response->headers->get('Retry-After') <= 0) {
+                $served[] = sprintf('%s (%s %s): %d', $name, $request[0], $request[1], $response->getStatusCode());
             }
         }
 
@@ -152,6 +154,30 @@ final class OriginLoadBudgetTest extends BrowserTestCase
         static::assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
         self::assertInteractionHeaders($response);
         static::assertSame(LoadRefusal::PAGE_ERROR, $this->browser->getCrawler()->filter('[data-error]')->attr('data-error'));
+    }
+
+    /**
+     * Architecture §5.7: a page of the interaction plane is read by somebody, and the budget is consumed
+     * above the listener that chooses the language, so the refusal chooses it itself.
+     */
+    #[Test]
+    public function theRefusedPageIsInTheLanguageTheBrowserAsksFor(): void
+    {
+        // Given
+        $this->spendTheBudget();
+
+        // When
+        $this->browser->request(
+            'GET',
+            '/login',
+            server: self::from(self::ADDRESS)
+            + [
+                'HTTP_ACCEPT_LANGUAGE' => 'fr-FR,fr;q=0.9',
+            ],
+        );
+
+        // Then
+        static::assertSame('fr', $this->browser->getCrawler()->filter('html')->attr('lang'));
     }
 
     /**
