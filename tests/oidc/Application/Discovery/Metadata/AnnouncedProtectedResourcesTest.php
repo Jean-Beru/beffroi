@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedProtectedResources;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Domain\Resource\ResourceIndicator;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -23,6 +24,9 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         // Given
         $tenant = Fixtures::tenant();
         $clients = new InMemoryClientRepository();
+        // a client of another tenant first, whose resources are no business of this one
+        $other = Fixtures::tenant('other', 'https://id.other.example');
+        $clients->save(Clients::public($other, resources: [new ResourceIndicator('https://files.example.com/')]));
         $clients->save(Clients::public($tenant, resources: Clients::resources()));
         $announced = new AnnouncedProtectedResources($clients);
 

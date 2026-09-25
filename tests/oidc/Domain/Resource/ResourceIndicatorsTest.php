@@ -109,6 +109,16 @@ final class ResourceIndicatorsTest extends TestCase
     }
 
     #[Test]
+    public function aSetIsNotEqualToOneItMerelyCovers(): void
+    {
+        // Given
+        $resources = ResourceIndicators::of([self::CALENDAR, self::CONTACTS]);
+
+        // When / Then
+        static::assertFalse($resources->equals(ResourceIndicators::of([self::CALENDAR])));
+    }
+
+    #[Test]
     public function aSetCountsWhatItHolds(): void
     {
         // When / Then

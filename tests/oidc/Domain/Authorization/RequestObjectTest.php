@@ -152,6 +152,47 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
+     * OIDC Core §6.1: anything else an array holds is an object, and it is written back as the JSON the
+     * query would have carried; only a list of strings is a parameter given several values.
+     *
+     * @param array<array-key, mixed> $value
+     */
+    #[Test]
+    #[DataProvider('provideArraysThatAreNotSeveralValues')]
+    public function anArrayThatIsNotAListOfStringsIsWrittenBackAsJson(array $value, string $json): void
+    {
+        // Given
+        $object = self::objectOf([
+            'resource' => $value,
+        ]);
+
+        // When
+        $parameters = $object->parameters();
+
+        // Then
+        static::assertSame(
+            [
+                'resource' => $json,
+            ],
+            $parameters,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{array<array-key, mixed>, string}>
+     */
+    public static function provideArraysThatAreNotSeveralValues(): iterable
+    {
+        yield 'a list holding a number' => [['https://cal.example.com/', 1], '["https://cal.example.com/",1]'];
+        yield 'an object of strings' => [
+            [
+                'one' => 'https://cal.example.com/',
+            ],
+            '{"one":"https://cal.example.com/"}',
+        ];
+    }
+
+    /**
      * Decision 0006: a value no authorization request carries is refused, never cast into one.
      */
     #[Test]

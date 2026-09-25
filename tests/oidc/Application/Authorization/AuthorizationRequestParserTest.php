@@ -229,16 +229,19 @@ final class AuthorizationRequestParserTest extends TestCase
     #[Test]
     public function itRefusesAResourceThatIsNotTextAtAll(): void
     {
-        // Then
-        $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessageIs('invalid_request: The resource parameter must be a string or a list of strings.');
-
         // When
-        $this->parse([
-            'resource' => [
-                'one' => Clients::CALENDAR,
-            ],
-        ]);
+        try {
+            $this->parse([
+                'resource' => [
+                    'one' => Clients::CALENDAR,
+                ],
+            ]);
+            static::fail('The request should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            // Then
+            static::assertSame('The resource parameter must be a string or a list of strings.', $exception->errorDescription);
+            static::assertTrue($exception->redirectable);
+        }
     }
 
     /**

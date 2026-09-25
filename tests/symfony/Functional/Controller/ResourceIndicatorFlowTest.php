@@ -239,12 +239,18 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
         $pushed = self::authorizationParameters(self::CLIENT_ID, [
             'redirect_uri' => self::REDIRECT_URI,
         ]);
-        $body = http_build_query($pushed)
-            . '&resource=' . rawurlencode(self::CALENDAR)
-            . '&resource=' . rawurlencode(self::CONTACTS);
-        $this->browser->request('POST', '/par', $pushed, [], self::credentials(self::CLIENT_ID, self::SECRET) + [
-            'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
-        ], $body);
+        $body = http_build_query($pushed) . '&resource=' . rawurlencode(self::CALENDAR) . '&resource=' . rawurlencode(self::CONTACTS);
+        $this->browser->request(
+            'POST',
+            '/par',
+            $pushed,
+            [],
+            self::credentials(self::CLIENT_ID, self::SECRET)
+            + [
+                'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+            ],
+            $body,
+        );
         $requestUri = self::string(self::json($this->browser->getResponse())['request_uri'] ?? null);
 
         // When
