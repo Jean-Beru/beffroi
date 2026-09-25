@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Fixture;
 
+use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Domain\Client\GrantTypeName;
 
@@ -32,6 +33,11 @@ final readonly class Grants
     public static function deviceCode(): GrantTypeName
     {
         return new GrantTypeName('urn:ietf:params:oauth:grant-type:device_code');
+    }
+
+    public static function ciba(): GrantTypeName
+    {
+        return new GrantTypeName(BackchannelAuthenticationGrant::GRANT_TYPE);
     }
 
     /**
@@ -78,6 +84,19 @@ final readonly class Grants
             new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
             new FakeRefreshTokenSpendingGrant(self::refreshToken()),
             new FakeUserOnAnotherDeviceGrant(self::deviceCode()),
+        ]);
+    }
+
+    /**
+     * The same wiring with a grant whose user this provider reaches itself beside them (CIBA Core §7),
+     * for the endpoint where such a flow starts.
+     */
+    public static function servedWithCiba(): ServedGrants
+    {
+        return new ServedGrants([
+            new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
+            new FakeRefreshTokenSpendingGrant(self::refreshToken()),
+            new FakeBackchannelGrant(self::ciba()),
         ]);
     }
 }

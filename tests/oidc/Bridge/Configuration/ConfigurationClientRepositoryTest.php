@@ -28,6 +28,7 @@ use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\DeliveryModes;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -410,6 +411,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
+            DeliveryModes::served(),
         );
 
         // When
@@ -818,6 +820,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
+            DeliveryModes::served(),
         );
     }
 
@@ -1337,6 +1340,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 new PkiFrameworkCertificateReader(),
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
+                DeliveryModes::served(),
             )->hasSecret(),
         );
         static::assertTrue(
@@ -1350,6 +1354,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 new PkiFrameworkCertificateReader(),
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
+                DeliveryModes::served(),
             )->hasSecret(),
         );
     }
@@ -1371,6 +1376,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
+            DeliveryModes::served(),
         );
 
         // Then
@@ -1468,6 +1474,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             new PkiFrameworkCertificateReader(),
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
+            DeliveryModes::served(),
         );
     }
 

@@ -1,0 +1,49 @@
+{# What is waiting for this user to answer (CIBA Core §10.1, BCP 10027 §5.2): one block per request, with
+   the provider that is asking, the client that asked, the message that client wrote, where it asked from
+   and every scope of the request, the standard scopes of OIDC Core §5.4 in words and any other by its
+   value. The warning is not decoration: somebody who started nothing must be told to refuse. Each answer
+   is a POST with the token this page renders and the handle of the request it names; a GET answers
+   nothing.
+   Overridable by an application under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% set described_scopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'] %}
+
+{% block title %}{{ 'approvals.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p data-provider="{{ tenant.name }}">{{ 'approvals.provider'|trans({provider: tenant.name}) }}</p>
+    <p>{{ 'approvals.signed_in_as'|trans({username: user.username}) }}</p>
+    {% if refusal is not null %}
+        <p data-error="{{ refusal }}">{{ ('approvals.refused.' ~ refusal)|trans }}</p>
+    {% endif %}
+    {% if records is empty %}
+        <p data-approvals="none">{{ 'approvals.nothing'|trans }}</p>
+    {% else %}
+        {% for record in records %}
+            <section data-approval="{{ record.authRequestIdHash }}">
+                <p>{{ 'approvals.request'|trans({client: record.client.registration.name}) }}</p>
+                {% if record.bindingMessage is not null %}
+                    <p data-binding-message="{{ record.bindingMessage.value }}">{{ 'approvals.binding_message'|trans({message: record.bindingMessage.value}) }}</p>
+                {% endif %}
+                <p data-origin="{{ record.requestedFrom.ipAddress ?? '' }}">{{ 'approvals.origin'|trans({
+                    address: record.requestedFrom.ipAddress ?? ('approvals.unknown_address'|trans),
+                    agent: record.requestedFrom.userAgent ?? ('approvals.unknown_agent'|trans),
+                }) }}</p>
+                <ul>
+                    {% for scope in record.scopes %}
+                        <li data-scope="{{ scope.value }}">{{ scope.value in described_scopes ? ('scope.' ~ scope.value)|trans : scope.value }}</li>
+                    {% endfor %}
+                </ul>
+                <form method="post" action="{{ path('heidi_interaction_approvals') }}">
+                    <input type="hidden" name="request" value="{{ record.authRequestIdHash }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('heidi_approvals') }}">
+                    <button type="submit" name="answer" value="allow">{{ 'approvals.allow'|trans }}</button>
+                    <button type="submit" name="answer" value="deny">{{ 'approvals.deny'|trans }}</button>
+                </form>
+            </section>
+        {% endfor %}
+        <p data-warning="unexpected">{{ 'approvals.unexpected'|trans }}</p>
+    {% endif %}
+{% endblock %}

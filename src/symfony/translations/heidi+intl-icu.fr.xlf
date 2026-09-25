@@ -509,6 +509,74 @@
         <source>device.approval.provider</source>
         <target>C'est {provider} qui demande.</target>
       </trans-unit>
+      <trans-unit id="1fdfeca8b7" resname="approvals.title">
+        <source>approvals.title</source>
+        <target>Des demandes vous attendent</target>
+      </trans-unit>
+      <trans-unit id="a7cbe7f52a" resname="approvals.provider">
+        <source>approvals.provider</source>
+        <target>C'est {provider} qui demande.</target>
+      </trans-unit>
+      <trans-unit id="aff636cc62" resname="approvals.signed_in_as">
+        <source>approvals.signed_in_as</source>
+        <target>Vous êtes connecté en tant que {username}.</target>
+      </trans-unit>
+      <trans-unit id="3cbe156f9c" resname="approvals.nothing">
+        <source>approvals.nothing</source>
+        <target>Rien ne vous attend. Si une application vous a dit le contraire, ce n'était pas nous.</target>
+      </trans-unit>
+      <trans-unit id="2f2cc83054" resname="approvals.request">
+        <source>approvals.request</source>
+        <target>{client} demande à utiliser votre compte.</target>
+      </trans-unit>
+      <trans-unit id="44ce1f2c66" resname="approvals.binding_message">
+        <source>approvals.binding_message</source>
+        <target>{client} indique : {message}</target>
+      </trans-unit>
+      <trans-unit id="7eccbd5d22" resname="approvals.origin">
+        <source>approvals.origin</source>
+        <target>La demande vient de {address} ({agent}).</target>
+      </trans-unit>
+      <trans-unit id="42210e2c97" resname="approvals.unknown_address">
+        <source>approvals.unknown_address</source>
+        <target>une adresse que nous n'avons pas pu lire</target>
+      </trans-unit>
+      <trans-unit id="5cb6f3dc54" resname="approvals.unknown_agent">
+        <source>approvals.unknown_agent</source>
+        <target>un client qui s'est nommé auprès de nous</target>
+      </trans-unit>
+      <trans-unit id="a6a9c0f2d8" resname="approvals.unexpected">
+        <source>approvals.unexpected</source>
+        <target>Si vous n'avez rien lancé vous-même, refusez. Personne n'a jamais besoin que vous autorisiez à sa place.</target>
+      </trans-unit>
+      <trans-unit id="6ce56f5d12" resname="approvals.allow">
+        <source>approvals.allow</source>
+        <target>Autoriser</target>
+      </trans-unit>
+      <trans-unit id="5a7dfc49d3" resname="approvals.deny">
+        <source>approvals.deny</source>
+        <target>Refuser</target>
+      </trans-unit>
+      <trans-unit id="afba73eebf" resname="approvals.refused.nothing_to_answer">
+        <source>approvals.refused.nothing_to_answer</source>
+        <target>Cette demande n'attend plus de réponse. Voici ce qu'il reste.</target>
+      </trans-unit>
+      <trans-unit id="8e71b29d2d" resname="approvals.answered.approved.title">
+        <source>approvals.answered.approved.title</source>
+        <target>Demande autorisée</target>
+      </trans-unit>
+      <trans-unit id="9eabc0605e" resname="approvals.answered.denied.title">
+        <source>approvals.answered.denied.title</source>
+        <target>Demande refusée</target>
+      </trans-unit>
+      <trans-unit id="921a96cc05" resname="approvals.answered.approved">
+        <source>approvals.answered.approved</source>
+        <target>{client} peut désormais utiliser votre compte. Retournez là où vous avez commencé, cela continuera de soi-même.</target>
+      </trans-unit>
+      <trans-unit id="965ccbcb18" resname="approvals.answered.denied">
+        <source>approvals.answered.denied</source>
+        <target>{client} a été refusé. Rien ne lui a été remis, et vous pouvez fermer cette page.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

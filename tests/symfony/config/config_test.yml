@@ -64,7 +64,7 @@ security:
             id: Heidi\Bundle\Security\IdentityUserProvider
     firewalls:
         heidi_protocol:
-            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization)$
+            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication)$
             security: false
         heidi_interaction:
             lazy: true
@@ -323,6 +323,28 @@ heidi:
             grant_types: ['urn:ietf:params:oauth:grant-type:device_code']
             allowed_scopes: ['openid', 'profile']
             requires_consent: false
+        # CIBA Core §7 (issues #221, #222): a client that asks for a user it names and waits for them to
+        # approve on a device they already hold. It registers no redirect URI, there being no browser of
+        # its own anywhere in the flow, and a delivery mode, without which it is not a client of this flow
+        # at all. "pinged-terminal" is the same client in the mode where this provider calls it back.
+        terminal-app:
+            name: 'Payment terminal at the counter'
+            secret: 'terminal-secret-of-at-least-32-characters'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:openid:params:grant-type:ciba', 'refresh_token']
+            allowed_scopes: ['openid', 'profile', 'offline_access']
+            requires_consent: false
+            resources: ['https://cal.example.com/']
+            backchannel_token_delivery_mode: poll
+        pinged-terminal:
+            name: 'Payment terminal that is called back'
+            secret: 'pinged-secret-of-at-least-32-characters!'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:openid:params:grant-type:ciba']
+            allowed_scopes: ['openid', 'profile']
+            requires_consent: false
+            backchannel_token_delivery_mode: ping
+            backchannel_client_notification_endpoint: 'https://terminal.test/ciba'
         # a shape no class of the module knows, wired below: what a deployment adds is two classes and
         # two tags, and the name it registers here is read from that wiring (issue #239)
         invented-app:
@@ -497,6 +519,9 @@ services:
         public: true
     test.heidi.device_authorization_requests:
         alias: Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface
+        public: true
+    test.heidi.backchannel_authentication_requests:
+        alias: Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface
         public: true
     test.heidi.logged_in_clients:
         alias: Heidi\Oidc\Port\LoggedInClientsInterface

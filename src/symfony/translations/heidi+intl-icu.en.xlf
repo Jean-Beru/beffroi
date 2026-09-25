@@ -509,6 +509,74 @@
         <source>device.approval.provider</source>
         <target>{provider} is asking.</target>
       </trans-unit>
+      <trans-unit id="1fdfeca8b7" resname="approvals.title">
+        <source>approvals.title</source>
+        <target>Requests waiting for you</target>
+      </trans-unit>
+      <trans-unit id="a7cbe7f52a" resname="approvals.provider">
+        <source>approvals.provider</source>
+        <target>{provider} is asking.</target>
+      </trans-unit>
+      <trans-unit id="aff636cc62" resname="approvals.signed_in_as">
+        <source>approvals.signed_in_as</source>
+        <target>You are signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="3cbe156f9c" resname="approvals.nothing">
+        <source>approvals.nothing</source>
+        <target>Nothing is waiting for you. If an application told you otherwise, it was not us.</target>
+      </trans-unit>
+      <trans-unit id="2f2cc83054" resname="approvals.request">
+        <source>approvals.request</source>
+        <target>{client} asks to use your account.</target>
+      </trans-unit>
+      <trans-unit id="44ce1f2c66" resname="approvals.binding_message">
+        <source>approvals.binding_message</source>
+        <target>{client} says: {message}</target>
+      </trans-unit>
+      <trans-unit id="7eccbd5d22" resname="approvals.origin">
+        <source>approvals.origin</source>
+        <target>The request came from {address} ({agent}).</target>
+      </trans-unit>
+      <trans-unit id="42210e2c97" resname="approvals.unknown_address">
+        <source>approvals.unknown_address</source>
+        <target>an address we could not read</target>
+      </trans-unit>
+      <trans-unit id="5cb6f3dc54" resname="approvals.unknown_agent">
+        <source>approvals.unknown_agent</source>
+        <target>a client that named itself to us</target>
+      </trans-unit>
+      <trans-unit id="a6a9c0f2d8" resname="approvals.unexpected">
+        <source>approvals.unexpected</source>
+        <target>If you did not start this yourself, refuse it. Nobody ever needs your approval on their behalf.</target>
+      </trans-unit>
+      <trans-unit id="6ce56f5d12" resname="approvals.allow">
+        <source>approvals.allow</source>
+        <target>Allow</target>
+      </trans-unit>
+      <trans-unit id="5a7dfc49d3" resname="approvals.deny">
+        <source>approvals.deny</source>
+        <target>Refuse</target>
+      </trans-unit>
+      <trans-unit id="afba73eebf" resname="approvals.refused.nothing_to_answer">
+        <source>approvals.refused.nothing_to_answer</source>
+        <target>That request is no longer waiting for an answer. Here is what is left.</target>
+      </trans-unit>
+      <trans-unit id="8e71b29d2d" resname="approvals.answered.approved.title">
+        <source>approvals.answered.approved.title</source>
+        <target>Request allowed</target>
+      </trans-unit>
+      <trans-unit id="9eabc0605e" resname="approvals.answered.denied.title">
+        <source>approvals.answered.denied.title</source>
+        <target>Request refused</target>
+      </trans-unit>
+      <trans-unit id="921a96cc05" resname="approvals.answered.approved">
+        <source>approvals.answered.approved</source>
+        <target>{client} may now use your account. Go back to where you started; it will continue on its own.</target>
+      </trans-unit>
+      <trans-unit id="965ccbcb18" resname="approvals.answered.denied">
+        <source>approvals.answered.denied</source>
+        <target>{client} has been refused. Nothing was given to it, and you can close this page.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

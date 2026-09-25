@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Routing;
 
+use Heidi\Bundle\Controller\BackchannelAuthenticationController;
 use Heidi\Bundle\Controller\DeviceAuthorizationController;
 use Heidi\Bundle\Controller\DeviceVerificationController;
+use Heidi\Bundle\Controller\PendingApprovalsController;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Domain\Discovery\ProviderMetadata;
@@ -87,6 +89,8 @@ final readonly class RouterEndpointLocator implements EndpointLocatorInterface, 
             $origin . $this->path('heidi_protocol_pushed_authorization_request'),
             $origin . $this->path(DeviceAuthorizationController::ROUTE),
             $origin . $this->path(DeviceVerificationController::ROUTE),
+            $origin . $this->path(BackchannelAuthenticationController::ROUTE),
+            $origin . $this->path(PendingApprovalsController::ROUTE),
         );
     }
 

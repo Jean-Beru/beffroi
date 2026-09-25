@@ -6,6 +6,7 @@ use Heidi\Oidc\Application\Secret\SecretDrawer;
 use Heidi\Oidc\Application\Secret\UserCodeDrawer;
 use Heidi\Core\Port\RandomnessInterface;
 use Heidi\Core\Bridge\Random\PlatformRandomness;
+use Heidi\Bundle\Ciba\QueuedPendingApprovalNotifier;
 use Heidi\Bundle\Cache\SeenOnce;
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
@@ -20,6 +21,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineBackchannelAuthenticationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
@@ -50,6 +52,8 @@ use Heidi\Bundle\Http\AuthorizationResponderInterface;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
 use Heidi\Bundle\Http\InteractionPages;
+use Heidi\Bundle\Http\ClientNotificationSender;
+use Heidi\Bundle\Http\PendingApprovalsPage;
 use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Bundle\Http\PasskeysPage;
@@ -74,6 +78,7 @@ use Heidi\Bundle\Load\LoadRefusal;
 use Heidi\Bundle\Load\LoadRefusalListener;
 use Heidi\Bundle\Load\OriginLoadListener;
 use Heidi\Bundle\Load\RateLimitedClientLoad;
+use Heidi\Bundle\MessageHandler\TellUserOfPendingApprovalHandler;
 use Heidi\Bundle\MessageHandler\QueueLogoutTokenHandler;
 use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
@@ -211,6 +216,7 @@ use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedBackchannelAuthentication;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDeviceAuthorization;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIdToken;
@@ -247,6 +253,13 @@ use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Consent\ConsentGranting;
+use Heidi\Oidc\Application\Ciba\BackchannelApproval;
+use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
+use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
+use Heidi\Oidc\Application\Ciba\Hint\SubjectLoginHint;
+use Heidi\Oidc\Application\Ciba\Hint\UsernameLoginHint;
+use Heidi\Oidc\Application\Ciba\ServedDeliveryModes;
+use Heidi\Oidc\Application\Ciba\UserHints;
 use Heidi\Oidc\Application\Device\DeviceApproval;
 use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
@@ -255,6 +268,7 @@ use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\ClientCredentialsGrant;
+use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
 use Heidi\Oidc\Application\Token\DeviceCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenDue;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -312,6 +326,11 @@ use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProofKeyVerifierInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Heidi\Oidc\Domain\Ciba\PingDelivery;
+use Heidi\Oidc\Domain\Ciba\PollDelivery;
+use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
+use Heidi\Oidc\Port\PendingApprovalNotifierInterface;
+use Heidi\Oidc\Port\ServedDeliveryModesInterface;
 use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
@@ -364,6 +383,7 @@ return static function (ContainerConfigurator $container): void {
     // where the login of the firewall sends it back (RFC 8628 §3.3)
     $services->set(LoginTarget::class);
     $services->set(DeviceApprovalPage::class);
+    $services->set(PendingApprovalsPage::class);
     $services->set(AccountAccess::class);
     // the pages of the account, in the order they are wired: what the home of the account offers, and the
     // one place a kind of credential is known; a page added to the account is a section beside these and a
@@ -429,8 +449,18 @@ return static function (ContainerConfigurator $container): void {
     $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
     $services->get(QueueLogoutTokenHandler::class)->tag('heidi.logout_channel');
     $services->set(HeidiSchedule::class);
+    // what tells a user that something is waiting for them, on the lane rather than in the request the
+    // client is waiting on (CIBA Core §7); what carries the word at the end of it is whatever a
+    // deployment tagged "heidi.pending_approval_channel", and the bundle tags nothing
+    $services->set(QueuedPendingApprovalNotifier::class);
+    $services->alias(PendingApprovalNotifierInterface::class, QueuedPendingApprovalNotifier::class);
+    $services->get(TellUserOfPendingApprovalHandler::class)->args([
+        '$channels' => tagged_iterator('heidi.pending_approval_channel'),
+    ]);
     // what carries a logout token to a client, and what says the provider gave up on one (§4.9)
     $services->set(LogoutTokenSender::class);
+    // what tells a client that a backchannel request it made has been answered (CIBA Core §10.2)
+    $services->set(ClientNotificationSender::class);
     $services->set(LogoutTokenGivenUpListener::class);
     // how long a notification the provider carries to a third party is tried again: the policy the
     // application gives to the transport of that lane, and the one thing that says so
@@ -513,6 +543,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(PushedAuthorizationRecordRepositoryInterface::class, DoctrinePushedAuthorizationRecordRepository::class);
     $services->set(DoctrineDeviceAuthorizationRecordRepository::class);
     $services->alias(DeviceAuthorizationRecordRepositoryInterface::class, DoctrineDeviceAuthorizationRecordRepository::class);
+    $services->set(DoctrineBackchannelAuthenticationRecordRepository::class);
+    $services->alias(BackchannelAuthenticationRecordRepositoryInterface::class, DoctrineBackchannelAuthenticationRecordRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
     $services->set(DoctrineAccessTokenRepository::class);
@@ -764,6 +796,23 @@ return static function (ContainerConfigurator $container): void {
     // RFC 8628 §3.1, §3.3: where a client with no browser starts, and what the page its user goes to asks
     $services->set(DeviceAuthorizationHandler::class);
     $services->set(DeviceApproval::class);
+    // CIBA Core §7, §10.1: where a client asks for a user it names, and what the page that user answers
+    // on asks. One class per way of telling the client its request was answered, tagged, and what is
+    // tagged is what a client may register and what the document announces; one class per way a request
+    // may name its user, of which the deployment wires the one that reads a "login_hint"
+    // (BackchannelAuthenticationSection) and this the one that reads an ID token we issued
+    $services->set(PollDelivery::class)->tag('heidi.oidc.ciba_delivery_mode');
+    $services->set(PingDelivery::class)->tag('heidi.oidc.ciba_delivery_mode');
+    $services->set(ServedDeliveryModes::class)->args([tagged_iterator('heidi.oidc.ciba_delivery_mode')]);
+    $services->alias(ServedDeliveryModesInterface::class, ServedDeliveryModes::class);
+    $services->set(IdTokenUserHint::class)->tag('heidi.oidc.ciba_user_hint');
+    // the two ways of reading a "login_hint" the bundle ships, of which the deployment tags one: two
+    // things reading one parameter would be a wiring with two answers to one question
+    $services->set(SubjectLoginHint::class);
+    $services->set(UsernameLoginHint::class);
+    $services->set(UserHints::class)->args([tagged_iterator('heidi.oidc.ciba_user_hint')]);
+    $services->set(BackchannelAuthenticationHandler::class);
+    $services->set(BackchannelApproval::class);
     // What a client may still be encrypting to a key of the tenant, which is what holds an encryption key
     // back from retiring: each one reads its lifetime where that lifetime is set (architecture §3.3)
     $services->set(RequestObjectJweKind::class)->tag('heidi.key_bound_artifact');
@@ -800,6 +849,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RefreshTokenGrant::class)->tag('heidi.oidc.grant');
     $services->set(ClientCredentialsGrant::class)->tag('heidi.oidc.grant');
     $services->set(DeviceCodeGrant::class)->tag('heidi.oidc.grant');
+    $services->set(BackchannelAuthenticationGrant::class)->tag('heidi.oidc.grant');
     $services->set(ServedGrants::class)->args([tagged_iterator('heidi.oidc.grant')]);
     $services->alias(ServedGrantsInterface::class, ServedGrants::class);
     $services->set(TokenHandler::class);
@@ -840,6 +890,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AnnouncedRevocation::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedPushedAuthorization::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedDeviceAuthorization::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedBackchannelAuthentication::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedIntrospection::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedIssuerParameter::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedLogout::class)->tag('heidi.oidc.metadata');

@@ -30,6 +30,8 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/par',
             'https://id.acme.example/device_authorization',
             'https://id.acme.example/device',
+            'https://id.acme.example/backchannel_authentication',
+            'https://id.acme.example/approvals',
         );
 
         // Then
@@ -43,6 +45,8 @@ final class ProviderEndpointsTest extends TestCase
         static::assertSame('https://id.acme.example/par', $endpoints->pushedAuthorizationRequest);
         static::assertSame('https://id.acme.example/device_authorization', $endpoints->deviceAuthorization);
         static::assertSame('https://id.acme.example/device', $endpoints->deviceVerification);
+        static::assertSame('https://id.acme.example/backchannel_authentication', $endpoints->backchannelAuthentication);
+        static::assertSame('https://id.acme.example/approvals', $endpoints->backchannelApproval);
     }
 
     /**
@@ -64,6 +68,8 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/par',
             'https://op.localhost/device_authorization',
             'https://op.localhost/device',
+            'https://op.localhost/backchannel_authentication',
+            'https://op.localhost/approvals',
         );
 
         // Then
@@ -93,13 +99,15 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/par',
             'https://op.localhost/device_authorization',
             'https://op.localhost/device',
+            'https://op.localhost/backchannel_authentication',
+            'https://op.localhost/approvals',
         ];
         $urls[$position] = 'http://localhost/x';
 
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIsOrContains($name
-        . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2, RFC 8628 section 3.1), on a loopback host too');
+        . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2, RFC 8628 section 3.1, CIBA Core section 7), on a loopback host too');
 
         // When
         new ProviderEndpoints(...$urls);
@@ -115,6 +123,7 @@ final class ProviderEndpointsTest extends TestCase
         yield 'revocation' => ['revocation', 6];
         yield 'pushed authorization request' => ['pushed authorization request', 7];
         yield 'device authorization' => ['device authorization', 8];
+        yield 'backchannel authentication' => ['backchannel authentication', 10];
     }
 
     /**
@@ -141,6 +150,8 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/par',
             'https://id.acme.example/device_authorization',
             'https://id.acme.example/device',
+            'https://id.acme.example/backchannel_authentication',
+            'https://id.acme.example/approvals',
         );
     }
 
@@ -167,7 +178,7 @@ final class ProviderEndpointsTest extends TestCase
     public function everyEndpointIsCheckedAndNamed(string $name, int $position, string $url): void
     {
         // Given
-        $urls = array_fill(0, 10, 'https://id.acme.example/x');
+        $urls = array_fill(0, 12, 'https://id.acme.example/x');
         $urls[$position] = $url;
 
         // Then
@@ -193,5 +204,7 @@ final class ProviderEndpointsTest extends TestCase
         yield 'pushed authorization request' => ['pushed authorization request', 7, 'https://id.acme.example/p#f'];
         yield 'device authorization' => ['device authorization', 8, 'https://id.acme.example/d#f'];
         yield 'device verification' => ['device verification', 9, 'https://id.acme.example/v#f'];
+        yield 'backchannel authentication' => ['backchannel authentication', 10, 'https://id.acme.example/b#f'];
+        yield 'backchannel approval' => ['backchannel approval', 11, 'https://id.acme.example/c#f'];
     }
 }
