@@ -12,6 +12,20 @@ parameters:
 		non_ignorable: false
 	checkUninitializedProperties: true
 	treatPhpDocTypesAsCertain: false
+	# doctrine/dbal 4.4 marks AbstractAsset "@internal This class should be extended only by DBAL itself",
+	# and every schema asset descends from it. The annotation is about extending that hierarchy, but PHPStan
+	# reads it as "do not call" and reports the two things the library asks of us: an empty Schema, which is
+	# what Doctrine Migrations hands a migration and so what a test that runs one has to build, and
+	# getObjectName(), which is the replacement the @deprecated of getName() names. Scoped to the two tests
+	# that run a migration and read the mapped tables; here rather than in the baseline, which says what is
+	# ignored and never why, and which castor prepare-pr regenerates.
+	ignoreErrors:
+		-
+			identifier: method.internal
+			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/MigrationTest.php
+		-
+			identifier: method.internalClass
+			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/SchemaTest.php
 
 includes:
 	- %currentWorkingDirectory%/.ci-tools/phpstan-baseline.neon
