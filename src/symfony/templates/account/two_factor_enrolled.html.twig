@@ -7,6 +7,7 @@
 {% block title %}{{ 'two_factor.enrolled.title'|trans }}{% endblock %}
 
 {% block content %}
+    {{ include('@Heidi/account/back.html.twig') }}
     <p>{{ 'two_factor.signed_in_as'|trans({username: user.username}) }}</p>
     <p data-two-factor="enrolled">{{ 'two_factor.enrolled.done'|trans }}</p>
     <p>{{ 'two_factor.enrolled.codes'|trans }}</p>
@@ -15,5 +16,4 @@
             <li><code>{{ code }}</code></li>
         {% endfor %}
     </ul>
-    <p><a href="{{ path('heidi_interaction_account_two_factor') }}">{{ 'two_factor.enrolled.back'|trans }}</a></p>
 {% endblock %}

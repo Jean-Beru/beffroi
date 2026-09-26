@@ -37,6 +37,7 @@ use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\AccountHomePage;
 use Heidi\Bundle\Http\Account\AccountSections;
 use Heidi\Bundle\Http\Account\PasskeysSection;
+use Heidi\Bundle\Http\Account\ProfileSection;
 use Heidi\Bundle\Http\Account\ConsentsSection;
 use Heidi\Bundle\Http\Account\TwoFactorSection;
 use Heidi\Bundle\Http\AuthorizationRequestReader;
@@ -58,6 +59,7 @@ use Heidi\Bundle\Http\ClientNotificationSender;
 use Heidi\Bundle\Http\PendingApprovalsPage;
 use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
+use Heidi\Bundle\Http\ProfilePage;
 use Heidi\Bundle\Http\PasskeysPage;
 use Heidi\Bundle\Http\ConsentsPage;
 use Heidi\Bundle\Http\PendingLoginStore;
@@ -399,6 +401,7 @@ return static function (ContainerConfigurator $container): void {
     // the pages of the account, in the order they are wired: what the home of the account offers, and the
     // one place a kind of credential is known; a page added to the account is a section beside these and a
     // line here, and neither the home page nor its template is edited
+    $services->set(ProfileSection::class)->tag('heidi.account_section');
     $services->set(PasskeysSection::class)->tag('heidi.account_section');
     $services->set(TwoFactorSection::class)->tag('heidi.account_section');
     $services->set(ConsentsSection::class)->tag('heidi.account_section');
@@ -432,6 +435,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AuthorizationRequestReader::class);
     $services->alias(AuthorizationRequestReaderInterface::class, AuthorizationRequestReader::class);
     $services->set(PasskeyOptionsStore::class);
+    $services->set(ProfilePage::class);
     $services->set(PasskeysPage::class);
     $services->set(ConsentsPage::class);
     // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
