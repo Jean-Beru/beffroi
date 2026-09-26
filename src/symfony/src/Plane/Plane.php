@@ -22,9 +22,9 @@ enum Plane: string
 
     /**
      * The plane a route belongs to, read from its name, and null for a route that is not one of the two
-     * planes: a route of the host application, and the endpoints of the FIDO conformance tools, which
-     * belong to no plane and to no environment but dev. What answers by plane reads this and holds no
-     * list of routes, so that a route the bundle gains is covered by being routed.
+     * planes: a route of the host application, and the endpoints a conformance tool drives, which belong
+     * to no plane and to no environment but dev. What answers by plane reads this and holds no list of
+     * routes, so that a route the bundle gains is covered by being routed.
      */
     public static function ofRoute(string $routeName): ?self
     {

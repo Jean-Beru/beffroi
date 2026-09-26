@@ -33,6 +33,14 @@ use Symfony\Component\Console\Input\InputOption;
  * the ones written down, or the module passing, is not that gap: the run fails on it, so that a
  * regression stays visible and the line is deleted rather than carried. A module is listed there once the
  * gap is written down, never to quiet a surprise.
+ *
+ * "waiting_on" is the other thing entirely: a run of a plan the provider does not pass yet, with the
+ * issues that will make it, which are open and worked on rather than decided and left. Its modules run
+ * and every result and finding is printed, and they do not fail the task while the line is there, so that
+ * the runs the provider does pass keep gating. It is one line per run and not one per module because what
+ * is missing is the provider's and not the module's: naming every red under "known" would write the one
+ * blocker of the day thirty times over, and every line of it would be wrong the day it is lifted. A run
+ * that passes whole with the line still there fails the task, which is what deletes the line.
  */
 /**
  * A client per logout channel, in place of the "client" of the configuration: the suite certifies one
@@ -69,6 +77,60 @@ const CONFORMANCE_FAPI_MTLS_CLIENTS = ['conformance-fapi-mtls', 'conformance-fap
 const CONFORMANCE_FAPI_SIGNING_PRIVATE_KEY_JWT_CLIENTS = ['conformance-fapi-signing-private-key-jwt', 'conformance-fapi-signing-private-key-jwt-second'];
 
 const CONFORMANCE_FAPI_SIGNING_MTLS_CLIENTS = ['conformance-fapi-signing-mtls', 'conformance-fapi-signing-mtls-second'];
+
+/**
+ * The clients of the two FAPI-CIBA runs, read as "client" and "client2" like every other pair. One pair
+ * per run and not one for both: a client registers one backchannel token delivery mode (CIBA Core §4),
+ * and the two runs are that mode changed (apps/op/config/packages/heidi.yaml).
+ */
+const CONFORMANCE_CIBA_POLL_CLIENTS = ['conformance-ciba-poll', 'conformance-ciba-poll-second'];
+
+const CONFORMANCE_CIBA_PING_CLIENTS = ['conformance-ciba-ping', 'conformance-ciba-ping-second'];
+
+/**
+ * What a client of the FAPI-CIBA runs names its user with (CIBA Core §7.1, the "hint_type" and
+ * "hint_value" of the suite): the subject this provider issued them, which is what the tenant of the
+ * development stack reads a login hint as and what §15 asks for in place of an identifier that says who
+ * somebody is everywhere. "castor provision" publishes the value with the other ones it draws.
+ */
+const CONFORMANCE_CIBA_HINT_TYPE = 'login_hint';
+
+const CONFORMANCE_CIBA_HINT_VALUE = '{HEIDI_DEV_USER_SUBJECT}';
+
+/**
+ * Where the suite posts the answer of the user when there is nobody to give one (its
+ * "automated_ciba_approval_url"): the endpoint of the bundle an application imports in development only
+ * (src/symfony/config/routes/ciba-conformance.php), which signs the user in with their password and
+ * answers the request the suite names. "{auth_req_id}" and "{action}" are what the suite substitutes,
+ * itself, in the URL it was given; everything else is filled here.
+ *
+ * Without it every module of the plan waits for a human: there is no browser in this flow for the
+ * scripted browser of the suite to drive, and the modules that need an answer would each wait out
+ * CONFORMANCE_MODULE_TIMEOUT.
+ */
+const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
+
+/**
+ * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-26 and written whole in
+ * docs/conformance-suite.md: five rules of the profile, none of them of this flow alone and none of them
+ * a gap anybody decided to leave. The audience of a client assertion is in front of all of it, and the
+ * four others were measured behind it, the accepted audiences widened for one run and the widening thrown
+ * away.
+ */
+const CONFORMANCE_CIBA_ISSUES = [
+    // the "aud" of a client assertion, which the suite also writes as the endpoint that received the
+    // request and as the token endpoint (CIBA Core §7.1)
+    'heidi#267',
+    // "invalid_request_object" is not an error of this endpoint (CIBA Core §13)
+    'heidi#268',
+    // a backchannel authentication request is a signed object carrying "iat" and "jti" (FAPI-CIBA §5.2.2)
+    'heidi#269',
+    // an access token of this grant is refused by UserInfo, the grant being looked for among the
+    // authorization codes
+    'heidi#270',
+    // the TLS listener of the development stack accepts a cipher the profile does not permit
+    'heidi#271',
+];
 
 /**
  * The modules that need the user to have consented to nothing. A consent is remembered, which is what
@@ -249,6 +311,41 @@ const CONFORMANCE_PLANS = [
         ],
         'known' => CONFORMANCE_FAPI_KNOWN_MODULES,
     ],
+    // The two runs of FAPI-CIBA (issue #227), the judge of spike 6: the same plan created once per
+    // delivery mode, "ciba_mode" being the variant that changes what the suite does between two
+    // requests. In poll mode it asks the token endpoint again until it is answered; in ping mode it
+    // waits for the provider to post the identifier of the request to the endpoint it serves, which the
+    // worker reaches through the conformance-worker-redirector sidecar of compose.yaml as it reaches it
+    // for a logout token. Both authenticate with "private_key_jwt" and present a certificate all the
+    // same: the profile asks for sender-constrained tokens whichever way the client authenticated, so
+    // the suite calls the token endpoint on the mTLS alias (RFC 8705 §5) and refuses to configure a
+    // static client of this plan without a certificate.
+    'fapi-ciba-poll' => [
+        'name' => 'fapi-ciba-id1-test-plan',
+        'variant' => [
+            'client_auth_type' => 'private_key_jwt',
+            'ciba_mode' => 'poll',
+            'fapi_ciba_profile' => 'plain_fapi',
+            'client_registration' => 'static_client',
+        ],
+        'ciba' => [
+            'clients' => CONFORMANCE_CIBA_POLL_CLIENTS,
+        ],
+        'waiting_on' => CONFORMANCE_CIBA_ISSUES,
+    ],
+    'fapi-ciba-ping' => [
+        'name' => 'fapi-ciba-id1-test-plan',
+        'variant' => [
+            'client_auth_type' => 'private_key_jwt',
+            'ciba_mode' => 'ping',
+            'fapi_ciba_profile' => 'plain_fapi',
+            'client_registration' => 'static_client',
+        ],
+        'ciba' => [
+            'clients' => CONFORMANCE_CIBA_PING_CLIENTS,
+        ],
+        'waiting_on' => CONFORMANCE_CIBA_ISSUES,
+    ],
     // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
     // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
     // new key with the old one still there. The other plans of the suite are for response types and
@@ -283,6 +380,9 @@ const CONFORMANCE_REQUIRED_VALUES = [
     'CONFORMANCE_POST_SECRET',
     'CONFORMANCE_FRONT_CHANNEL_LOGOUT_SECRET',
     'CONFORMANCE_BACK_CHANNEL_LOGOUT_SECRET',
+    // The subject the provider issued the development user: what a client of the FAPI-CIBA runs names
+    // its user with, and the one value of those runs that follows the rows rather than the file.
+    'HEIDI_DEV_USER_SUBJECT',
 ];
 
 /**
@@ -311,11 +411,11 @@ const CONFORMANCE_OP_TIMEOUT = 180;
  * @param array<string> $module
  */
 #[AsTask(
-    description: 'Run the certification plans the OP answers (Basic OP, Config OP, Form Post OP, the three logout profiles, the four runs of FAPI 2 and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
+    description: 'Run the certification plans the OP answers (Basic OP, Config OP, Form Post OP, the three logout profiles, the four runs of FAPI 2, the two runs of FAPI-CIBA and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
 )]
 function conformance(
     #[AsOption(
-        description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls or rotate-keys (repeatable); every plan by default',
+        description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping or rotate-keys (repeatable); every plan by default',
         mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
     )]
     array $plan = [],
@@ -354,7 +454,17 @@ function conformance(
     $verdict = [];
     $stale = [];
     $planUrls = [];
-    foreach ($plans as $definition) {
+    // WARNING and REVIEW are what a human reads before submitting; SKIPPED is the suite's own choice, and
+    // KNOWN a gap named in CONFORMANCE_PLANS with the issue that closes it. Under --strict a WARNING is a
+    // failure: the CI keeps the plans at the state a submission needs, and REVIEW and SKIPPED stay
+    // accepted because no run of a plan can avoid them (tests/conformance/README.md).
+    $accepted = $strict ? [...CONFORMANCE_UNCONDITIONALLY_ACCEPTED, 'KNOWN'] : [...CONFORMANCE_UNCONDITIONALLY_ACCEPTED, 'KNOWN', 'WARNING'];
+    // What a run that does not pass yet did not pass, by the short name "--plan" takes: printed at the end
+    // with the issues that run waits on, and not counted against the task (CONFORMANCE_PLANS,
+    // "waiting_on").
+    $unpassed = [];
+    $failed = 0;
+    foreach ($plans as $short => $definition) {
         if ($definition['module'] ?? false) {
             $planId = null;
             $planUrl = null;
@@ -414,7 +524,7 @@ function conformance(
         foreach ($modules as $index => $moduleDefinition) {
             $name = (string) $moduleDefinition['testModule'];
             io()->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
-            conformance_forget_consents($name, $definition['fapi']['clients'] ?? []);
+            conformance_forget_consents($name, conformance_clients_of($definition));
             $started = microtime(true);
             $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, $definition['before_start'] ?? null);
             if ($planUrl === null) {
@@ -429,6 +539,13 @@ function conformance(
             }
             $rows[] = [$definition['name'], $name, $result, sprintf('%ds', (int) $elapsed), $run['url']];
             $verdict[$result] = ($verdict[$result] ?? 0) + 1;
+            if (! in_array($result, $accepted, true)) {
+                if (($definition['waiting_on'] ?? []) === []) {
+                    ++$failed;
+                } else {
+                    $unpassed[$short][] = sprintf('%s: %s', $name, $result);
+                }
+            }
             io()->text(sprintf(
                 '  %s in %ds: %s',
                 $result === 'KNOWN' ? sprintf('%s, known (%s)', $run['result'], $known['reason']) : $result,
@@ -478,12 +595,39 @@ function conformance(
         exit(1);
     }
 
-    // WARNING and REVIEW are what a human reads before submitting; SKIPPED is the suite's own choice, and
-    // KNOWN a gap named in CONFORMANCE_PLANS with the issue that closes it. Under --strict a WARNING is a
-    // failure: the CI keeps the plans at the state a submission needs, and REVIEW and SKIPPED stay
-    // accepted because no run of a plan can avoid them (tests/conformance/README.md).
-    $accepted = $strict ? [...CONFORMANCE_UNCONDITIONALLY_ACCEPTED, 'KNOWN'] : [...CONFORMANCE_UNCONDITIONALLY_ACCEPTED, 'KNOWN', 'WARNING'];
-    $failed = array_sum(array_filter($verdict, static fn (string $result): bool => ! in_array($result, $accepted, true), \ARRAY_FILTER_USE_KEY));
+    // A run of a plan the provider does not pass yet says so, module by module, with the issues that will
+    // make it pass: it is the one thing a reader needs of it, and it is not a failure of the task while
+    // the line is in CONFORMANCE_PLANS. A run that passes whole with the line still there is the line to
+    // delete, as a module that no longer fails is the "known" line to delete.
+    $passing = [];
+    foreach ($plans as $short => $definition) {
+        $waitingOn = $definition['waiting_on'] ?? [];
+        if ($waitingOn === []) {
+            continue;
+        }
+        if (($unpassed[$short] ?? []) !== []) {
+            io()->warning([
+                sprintf(
+                    '%s does not pass yet and waits on %s; %d module(s) of it:',
+                    $short,
+                    implode(', ', $waitingOn),
+                    count($unpassed[$short]),
+                ),
+                ...$unpassed[$short],
+            ]);
+
+            continue;
+        }
+        // Only a whole run says that: --module ran a few of them and says nothing of the rest.
+        if ($module === []) {
+            $passing[] = sprintf('%s (waiting on %s)', $short, implode(', ', $waitingOn));
+        }
+    }
+    if ($passing !== []) {
+        io()->error(['These runs pass whole and must lose their "waiting_on" line in CONFORMANCE_PLANS:', ...$passing]);
+        exit(1);
+    }
+
     if ($failed > 0) {
         io()->error(sprintf('%d module(s) did not pass.', $failed));
         exit(1);
@@ -491,8 +635,8 @@ function conformance(
     $known = $verdict['KNOWN'] ?? 0;
     io()->success(
         $known === 0
-            ? 'Every module passed.'
-            : sprintf('Every module passed but %d left to a gap named in CONFORMANCE_PLANS.', $known),
+            ? 'Every module of the runs that gate passed.'
+            : sprintf('Every module of the runs that gate passed but %d left to a gap named in CONFORMANCE_PLANS.', $known),
     );
 }
 
@@ -620,13 +764,17 @@ function conformance_configuration(array $env, array $definition): string
     }
     $client = $definition['client'] ?? [];
     $fapi = $definition['fapi'] ?? [];
-    if ($client !== [] || $fapi !== []) {
+    $ciba = $definition['ciba'] ?? [];
+    if ($client !== [] || $fapi !== [] || $ciba !== []) {
         $decoded = json_decode($template, true, 32, \JSON_THROW_ON_ERROR);
         if ($client !== []) {
             $decoded['client'] = $client;
         }
         if ($fapi !== []) {
             $decoded = conformance_fapi_sections($decoded, $fapi['clients'], (string) $definition['variant']['sender_constrain']);
+        }
+        if ($ciba !== []) {
+            $decoded = conformance_ciba_sections($decoded, $ciba['clients'], $env);
         }
         $template = json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT);
     }
@@ -674,6 +822,48 @@ function conformance_fapi_sections(array $configuration, array $clients, string 
     $configuration['resource'] = [
         'resourceUrl' => ($certificates ? '{HEIDI_MTLS_ORIGIN}' : '{HEIDI_ISSUER}') . CONFORMANCE_FAPI_RESOURCE_PATH,
     ];
+
+    return $configuration;
+}
+
+/**
+ * The sections a FAPI-CIBA run needs: the ones of a FAPI run whose tokens are bound to a certificate,
+ * and the two things this flow adds. There is no browser in it, so the "browser" section of the file is
+ * never read and nothing of it is taken out; what replaces it is the URL the suite posts the answer of
+ * the user to.
+ *
+ * Each client says how it names its user (CIBA Core §7.1). Both of them, and not the first only: a
+ * module that asks as the second client reads the hint of that client.
+ *
+ * @param array<string, mixed> $configuration
+ * @param list<string> $clients the two clients of the run, "client" and "client2"
+ * @param array<string, string> $env the environment of the application, where the user and their password are
+ *
+ * @return array<string, mixed>
+ */
+function conformance_ciba_sections(array $configuration, array $clients, array $env): array
+{
+    $configuration = conformance_fapi_sections($configuration, $clients, 'mtls');
+    foreach (['client', 'client2'] as $section) {
+        $configuration[$section]['hint_type'] = CONFORMANCE_CIBA_HINT_TYPE;
+        $configuration[$section]['hint_value'] = CONFORMANCE_CIBA_HINT_VALUE;
+    }
+    // The values of the user are put in here and not left as placeholders: a password is a value of a
+    // query and is encoded for one, which the filling of the file does not do.
+    $configuration['automated_ciba_approval_url'] = sprintf(
+        '%s%s?%s',
+        $env['HEIDI_ISSUER'],
+        CONFORMANCE_CIBA_APPROVAL_PATH,
+        implode('&', [
+            http_build_query([
+                'username' => DEV_USERNAME,
+                'password' => $env['HEIDI_DEV_USER_PASSWORD'],
+            ]),
+            // what the suite substitutes itself, left as it writes it
+            'auth_req_id={auth_req_id}',
+            'action={action}',
+        ]),
+    );
 
     return $configuration;
 }
@@ -754,6 +944,19 @@ function conformance_fapi_material(string $clientId, string $extension, callable
  * @param array{testModule: string, variant?: array<string, string>} $definition
  * @return array{result: string, url: string, findings: array<string>}
  */
+/**
+ * The clients of a run that registers a pair of its own, whichever family of plans it belongs to, and
+ * none for a run served by the clients of the file.
+ *
+ * @param array<string, mixed> $definition the plan, as CONFORMANCE_PLANS declares it
+ *
+ * @return list<string>
+ */
+function conformance_clients_of(array $definition): array
+{
+    return $definition['fapi']['clients'] ?? $definition['ciba']['clients'] ?? [];
+}
+
 /**
  * Takes back what the development user granted the clients of a run, for the modules that need to see
  * them ask again (CONFORMANCE_MODULES_NEEDING_A_FRESH_CONSENT).

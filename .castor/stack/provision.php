@@ -109,17 +109,25 @@ const DEV_MTLS_CLIENT_DAYS = 90;
 const DEV_CONFORMANCE_DIRECTORY = 'var/conformance';
 
 /**
- * The eight clients the FAPI 2 plans run with, two per run: a handful of modules need a second client to
- * present an authorization code or a request URI that was issued to another one. Each one holds one
- * P-256 key, published to the provider in the environment variable named here
+ * The clients the plans that prove a key run with, two per run: a handful of modules need a second client
+ * to present an authorization code, a request URI or a request object that was issued to another one.
+ * Each one holds one P-256 key, published to the provider in the environment variable named here
  * (apps/op/config/packages/heidi.yaml reads it) and held whole by the suite; the ones that carry a
- * certificate authenticate with "self_signed_tls_client_auth" (RFC 8705 §2.2), the certificate being
- * issued on that very key, so the handshake and the signature of a request object are the same key.
+ * certificate have it issued on that very key, so what the handshake proves and what signs a request
+ * object are the same key.
+ *
+ * What the certificate is for depends on the run. In the FAPI 2 runs that bind their tokens to one, it is
+ * also what authenticates the client ("self_signed_tls_client_auth", RFC 8705 §2.2). In the FAPI-CIBA
+ * runs it is only what the tokens are bound to: those clients authenticate with "private_key_jwt" and
+ * present a certificate all the same, the profile asking for sender-constrained tokens whichever way the
+ * client authenticated, and the suite refusing to configure a static client of that plan without one.
  *
  * The Security Profile and Message Signing runs do not share their clients. Message Signing holds a
  * client to signing every authorization request it starts (OIDC Registration,
  * require_signed_request_object), which is a registration and not a mode: the same client cannot both
- * require an object and start the unsigned requests the Security Profile plan sends.
+ * require an object and start the unsigned requests the Security Profile plan sends. The FAPI-CIBA runs
+ * do not share theirs either: a client registers one backchannel token delivery mode (CIBA Core §4), and
+ * the two runs are that mode changed.
  */
 const DEV_FAPI_CLIENTS = [
     'conformance-fapi-private-key-jwt' => [
@@ -152,6 +160,22 @@ const DEV_FAPI_CLIENTS = [
     ],
     'conformance-fapi-signing-mtls-second' => [
         'env' => 'CONFORMANCE_FAPI_SIGNING_MTLS_SECOND_JWKS',
+        'certificate' => true,
+    ],
+    'conformance-ciba-poll' => [
+        'env' => 'CONFORMANCE_CIBA_POLL_JWKS',
+        'certificate' => true,
+    ],
+    'conformance-ciba-poll-second' => [
+        'env' => 'CONFORMANCE_CIBA_POLL_SECOND_JWKS',
+        'certificate' => true,
+    ],
+    'conformance-ciba-ping' => [
+        'env' => 'CONFORMANCE_CIBA_PING_JWKS',
+        'certificate' => true,
+    ],
+    'conformance-ciba-ping-second' => [
+        'env' => 'CONFORMANCE_CIBA_PING_SECOND_JWKS',
         'certificate' => true,
     ],
 ];
@@ -266,6 +290,7 @@ function provision(
         ['heidi:user:set-password', DEV_USERNAME, '--password-stdin'],
         context()->withInput($env['HEIDI_DEV_USER_PASSWORD'] . "\n"),
     );
+    $env['HEIDI_DEV_USER_SUBJECT'] = provision_dev_subject(getcwd() . '/' . DEV_ENV_LOCAL);
 
     io()->section('Client certificate');
     provision_mtls_client();
@@ -287,13 +312,17 @@ function provision(
         [
             'Password' => $env['HEIDI_DEV_USER_PASSWORD'],
         ],
+        [
+            'Subject' => $env['HEIDI_DEV_USER_SUBJECT'],
+        ],
         ...array_map(static fn (string $name): array => [
             $name => $env[$name],
         ], DEV_CLIENT_SECRETS),
     );
     io()->note(sprintf(
-        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the eight clients of the FAPI 2 plans are in %s, whole, and their public half in the same file.',
+        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the %d clients of the FAPI 2 and FAPI-CIBA plans are in %s, whole, and their public half in the same file.',
         DEV_ENV_LOCAL,
+        count(DEV_FAPI_CLIENTS),
         DEV_CONFORMANCE_DIRECTORY,
     ));
 }
@@ -322,6 +351,30 @@ function provision_key(string $algorithm): void
 function provision_published_keys(): string
 {
     return (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
+}
+
+/**
+ * The subject the provider issued the development user, published into apps/op/.env.local: what a client
+ * of the FAPI-CIBA plans names its user by ("login_hint", CIBA Core §7.1, §15) and the one value of that
+ * configuration no secret and no client holds. It follows the user as the keys of the conformance clients
+ * follow their files: a database emptied and provisioned again is another user with another subject, and
+ * the variable says what the rows say, never what an earlier run wrote.
+ *
+ * @param string $path apps/op/.env.local
+ */
+function provision_dev_subject(string $path): string
+{
+    $shown = op_console(['heidi:user:show', DEV_USERNAME, '--no-ansi'], context()->withQuiet())->getOutput();
+    if (preg_match('/^\s*Subject\s+(\S+)\s*$/m', $shown, $matches) !== 1) {
+        io()->error(sprintf('"heidi:user:show %s" does not say which subject the user was issued.', DEV_USERNAME));
+        exit(1);
+    }
+    $subject = $matches[1];
+    if (provision_env_local_set($path, 'HEIDI_DEV_USER_SUBJECT', $subject)) {
+        io()->text(sprintf('Published the subject of "%s" into %s.', DEV_USERNAME, DEV_ENV_LOCAL));
+    }
+
+    return $subject;
 }
 
 /**

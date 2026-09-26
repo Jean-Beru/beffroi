@@ -444,6 +444,10 @@ return static function (ContainerConfigurator $container): void {
     // routes are a file of their own (config/routes/fido-conformance.php) an application imports in development
     // only, and a controller no route names is dropped from the container
     $services->load('Heidi\\Bundle\\Fido\\Conformance\\', '../src/Fido/Conformance/');
+    // The bundle: what answers a backchannel request when the certification suite is the one waiting for
+    // the answer (CIBA Core §10.1), on the same terms as the endpoints above and in the same place in a
+    // deployment: a file of routes of its own (config/routes/ciba-conformance.php), development only
+    $services->load('Heidi\\Bundle\\Ciba\\Conformance\\', '../src/Ciba/Conformance/');
 
     // The bundle: the handlers of its own messages and what time does on its own (architecture §5.6)
     $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
