@@ -15,6 +15,8 @@ Two hosts, one TLS listener:
 
 The second host lives in `apps/op/frankenphp/mtls.Caddyfile`, a site block of its own imported by `CADDY_EXTRA_CONFIG` (`import mtls.Caddyfile`), the way the worker mode is imported by `FRANKENPHP_CONFIG`. `compose.yaml` sets both variables and gives the `op` service the network alias `mtls.op.localhost`, so a container of the stack reaches it the way a browser on the machine does. A deployment that serves no mTLS endpoint leaves `CADDY_EXTRA_CONFIG` empty and has one host, as before.
 
+Both hosts import the `fapi_ciphers` snippet of the Caddyfile beside it and offer the same cipher suites, the ones FAPI 1.0 Advanced Final §8.5 permits ([Security defaults](security-defaults.md)): a run of a FAPI plan calls the token endpoint on this host and the TLS checks on both.
+
 `mode request` is what "asks without requiring" means in Caddy: the client is asked for a certificate, and a client that presents none is served all the same. A provider needs exactly that, because a client that authenticates with a secret or with a private key must not fail at the handshake, and because `self_signed_tls_client_auth` (RFC 8705 §2.2) presents a certificate that chains nowhere. The handshake still proves the client holds the private key of what it presented: a certificate is only accepted with its `CertificateVerify` signature (RFC 8446 §4.4.3). What it does not prove is a chain, which matters below.
 
 ## What reaches PHP

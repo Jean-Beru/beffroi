@@ -121,8 +121,6 @@ const CONFORMANCE_CIBA_ISSUES = [
     // an access token of this grant is refused by UserInfo, the grant being looked for among the
     // authorization codes
     'heidi#270',
-    // the TLS listener of the development stack accepts a cipher the profile does not permit
-    'heidi#271',
 ];
 
 /**
