@@ -112,15 +112,12 @@ const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
 
 /**
  * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-26 and written whole in
- * docs/conformance-suite.md: five rules of the profile, none of them of this flow alone and none of them
- * a gap anybody decided to leave. The audience of a client assertion is in front of all of it, and the
- * four others were measured behind it, the accepted audiences widened for one run and the widening thrown
- * away.
+ * docs/conformance-suite.md: four rules of the profile, none of them of this flow alone and none of them
+ * a gap anybody decided to leave. They were measured behind the audience of a client assertion, which
+ * that run found in front of all of them and which the provider follows since (issue heidi#267,
+ * decision 0016 of the design).
  */
 const CONFORMANCE_CIBA_ISSUES = [
-    // the "aud" of a client assertion, which the suite also writes as the endpoint that received the
-    // request and as the token endpoint (CIBA Core §7.1)
-    'heidi#267',
     // "invalid_request_object" is not an error of this endpoint (CIBA Core §13)
     'heidi#268',
     // a backchannel authentication request is a signed object carrying "iat" and "jti" (FAPI-CIBA §5.2.2)

@@ -198,6 +198,7 @@ use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Client\AcceptedAssertionAudiences;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
@@ -747,6 +748,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwtLibraryClientAssertionSecretVerifier::class)->args([service('heidi.oidc.client_assertion.mac_algorithms')]);
     $services->alias(ClientAssertionSecretVerifierInterface::class, JwtLibraryClientAssertionSecretVerifier::class);
     $services->set(ClientAssertionValidator::class);
+    // the names of this provider a client assertion may name in its "aud" (issue #267): the issuer of
+    // the tenant, and the two endpoints CIBA Core §7.1 adds for a client registered for a grant that
+    // reaches its user itself, read from what the provider serves and from what the client registered
+    $services->set(AcceptedAssertionAudiences::class);
     $services->set(ClientKeySetProvider::class);
     // the keys of a client read back over HTTPS, kept in a pool the workers share, and the "jti" of the
     // assertions already seen kept until they expire

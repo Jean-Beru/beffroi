@@ -10,6 +10,7 @@ use Heidi\Core\Application\Authentication\DecoyHash;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Heidi\Oidc\Application\Client\AcceptedAssertionAudiences;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
@@ -28,6 +29,7 @@ use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Jose\Component\Core\AlgorithmManager;
@@ -111,9 +113,34 @@ final class Methods
         return new ClientAuthenticationRequestParser($reader ?? new JwtLibraryCompactJwtReader());
     }
 
-    public static function assertionValidator(?ClientAssertionReplayGuardInterface $replays = null): ClientAssertionValidator
+    /**
+     * @param AcceptedAssertionAudiences|null $audiences the names this provider answers to, read from a wiring
+     *                                                  with no backchannel grant unless the test brings one
+     */
+    public static function assertionValidator(
+        ?ClientAssertionReplayGuardInterface $replays = null,
+        ?AcceptedAssertionAudiences $audiences = null,
+    ): ClientAssertionValidator {
+        return new ClientAssertionValidator(
+            $replays ?? new InMemoryClientAssertionReplayGuard(),
+            $audiences ?? self::acceptedAudiences(),
+            new DateInterval('PT300S'),
+            new DateInterval('PT30S'),
+        );
+    }
+
+    /**
+     * The names of this provider a client assertion may name (issue #267), read from what the provider
+     * serves and from what the client registered.
+     *
+     * @param ServedGrantsInterface|null $grants what the provider is wired with, the two ordinary grants by default
+     * @param string|null $mutualTlsOrigin the host whose TLS listener asks for a certificate, none by default (RFC 8705 §5)
+     */
+    public static function acceptedAudiences(?ServedGrantsInterface $grants = null, ?string $mutualTlsOrigin = null): AcceptedAssertionAudiences
     {
-        return new ClientAssertionValidator($replays ?? new InMemoryClientAssertionReplayGuard(), new DateInterval('PT300S'), new DateInterval('PT30S'));
+        $endpoints = new Endpoints($mutualTlsOrigin);
+
+        return new AcceptedAssertionAudiences($endpoints, $endpoints, $grants ?? Grants::served());
     }
 
     /**
