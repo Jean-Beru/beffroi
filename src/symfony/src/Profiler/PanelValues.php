@@ -18,7 +18,7 @@ use const JSON_UNESCAPED_UNICODE;
  *
  * A name that carries a credential is said to be there and never spelled out (WithheldValues). A name
  * the provider serves as a claim about a user is personal data, and the panel names it rather than
- * giving it (decision 0011, which spike 12 will only harden); which names those are is asked of the
+ * giving it (decision 0011, which spike 8 will only harden); which names those are is asked of the
  * claims provider, the same one the discovery document announces them from, so the rule follows what is
  * wired and no list is kept beside it.
  *
