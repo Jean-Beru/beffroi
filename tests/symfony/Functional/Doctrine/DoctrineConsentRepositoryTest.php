@@ -6,7 +6,14 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Consent\Consent;
+use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
+use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Tests\Fixture\Shapes;
+use function array_map;
+use Heidi\Oidc\Port\ActiveConsentsInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
@@ -94,6 +101,65 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         // When / Then
         static::assertNull(self::consents()->findActive($user, $client));
         static::assertEquals(self::now()->modify('+1 hour'), self::entityManager()->find(Consent::class, $consent->id)?->revokedAt);
+    }
+
+    /**
+     * What the page of the account reads: one line per client, the most recently granted first, the
+     * consents of another user left out.
+     */
+    #[Test]
+    public function theConsentsInForceAreListedForTheirUser(): void
+    {
+        // Given
+        $alice = self::user();
+        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client(), new Scopes([new Scope('openid')]), self::now()->modify('-1 day')));
+        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client('native-app'), new Scopes([new Scope('openid')]), self::now()));
+        self::consents()->save(new Consent(Uuid::v7(), self::user('bob', 'bob-subject'), self::client(), new Scopes([new Scope('openid')]), self::now()));
+        self::reload();
+
+        // When
+        $inForce = self::activeConsents()->activeOf($alice);
+
+        // Then
+        static::assertSame(['native-app', 'oidc-demo'], array_map(static fn (Consent $consent): string => $consent->clientId, $inForce));
+    }
+
+    #[Test]
+    public function aConsentTakenBackIsNotInForce(): void
+    {
+        // Given
+        $alice = self::user();
+        $consent = new Consent(Uuid::v7(), $alice, self::client(), new Scopes([new Scope('openid')]), self::now());
+        $consent->revoke(self::now()->modify('+1 hour'));
+        self::consents()->save($consent);
+        self::reload();
+
+        // When / Then
+        static::assertSame([], self::activeConsents()->activeOf($alice));
+    }
+
+    /**
+     * A client the configuration no longer declares leaves rows behind; a consent of nobody is not one.
+     */
+    #[Test]
+    public function aConsentOfAClientNoLongerRegisteredIsNotListed(): void
+    {
+        // Given
+        $alice = self::user();
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
+        );
+        self::consents()->save(new Consent(Uuid::v7(), $alice, $ghost, new Scopes([new Scope('openid')]), self::now()));
+        self::reload();
+
+        // When / Then
+        static::assertSame([], self::activeConsents()->activeOf($alice));
+    }
+
+    private static function activeConsents(): ActiveConsentsInterface
+    {
+        return self::service('test.heidi.active_consents', ActiveConsentsInterface::class);
     }
 
     private static function consents(): ConsentRepositoryInterface

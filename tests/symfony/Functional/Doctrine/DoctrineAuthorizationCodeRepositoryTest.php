@@ -20,6 +20,9 @@ use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Oidc\Domain\Consent\Consent;
+use Heidi\Oidc\Port\GrantsOfAConsentInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
@@ -209,6 +212,59 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         $record = self::code($code, $client, $session, null);
         $record->consume(self::now()->modify('+90 seconds'));
         self::codes()->save($record);
+    }
+
+    /**
+     * Architecture §4.3: what a user taking back a consent reaches, whatever state the code is in and
+     * whichever session of theirs left it.
+     */
+    #[Test]
+    public function theGrantsOfAConsentAreThoseOfItsUserAndItsClient(): void
+    {
+        // Given
+        $alice = self::user();
+        $session = self::session($alice);
+        self::used($session, self::client(), 'first-of-the-demo');
+        self::codes()->save(self::code('waiting-of-the-demo', self::client(), self::session($alice, self::now()->modify('+1 second')), null));
+        self::used($session, self::client('native-app'), 'of-the-native-app');
+        self::used(self::session(self::user('bob', 'bob-subject')), self::client(), 'of-bob');
+        self::reload();
+
+        // When
+        $grants = self::grantsOfAConsent()->ofConsent(self::consent($alice, self::client()));
+
+        // Then
+        $hashes = array_map(static fn (AuthorizationCode $code): string => $code->codeHash, $grants);
+        sort($hashes);
+        $expected = [DrawnSecret::digestOf('first-of-the-demo'), DrawnSecret::digestOf('waiting-of-the-demo')];
+        sort($expected);
+        static::assertSame($expected, $hashes);
+    }
+
+    #[Test]
+    public function aGrantOfAClientNoLongerRegisteredIsNotListed(): void
+    {
+        // Given
+        $alice = self::user();
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
+        );
+        self::used(self::session($alice), $ghost, 'of-the-ghost');
+        self::reload();
+
+        // When / Then
+        static::assertSame([], self::grantsOfAConsent()->ofConsent(self::consent($alice, $ghost)));
+    }
+
+    private static function consent(User $user, Client $client): Consent
+    {
+        return new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
+    }
+
+    private static function grantsOfAConsent(): GrantsOfAConsentInterface
+    {
+        return self::service('test.heidi.grants_of_a_consent', GrantsOfAConsentInterface::class);
     }
 
     private static function loggedInClients(): LoggedInClientsInterface

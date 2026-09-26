@@ -175,6 +175,84 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertSame($tie, $repository->findActive($this->session->user, $this->client));
     }
 
+    /**
+     * What the page of the account reads: one line per client, the most recently granted first, and
+     * nothing of what was taken back.
+     */
+    #[Test]
+    public function itListsWhatAUserHasInForce(): void
+    {
+        // Given
+        $repository = new InMemoryConsentRepository();
+        $alice = $this->session->user;
+        $another = Clients::public($alice->tenant, 'another');
+        $older = $this->consent($alice, $another, '-2 days');
+        $newer = $this->consent($alice, $this->client, '-1 day');
+        $revoked = $this->consent($alice, Clients::public($alice->tenant, 'third'), '+0 seconds');
+        $revoked->revoke(Fixtures::now());
+        foreach ([$older, $newer, $revoked] as $consent) {
+            $repository->save($consent);
+        }
+        $repository->save($this->consent(Fixtures::user($alice->tenant, 'bob', 'bob-subject'), $this->client, '+0 seconds'));
+
+        // When / Then
+        static::assertSame([$newer, $older], $repository->activeOf($alice));
+    }
+
+    #[Test]
+    public function itFindsTheGrantsAClientHoldsForAUser(): void
+    {
+        // Given
+        $repository = new InMemoryAuthorizationCodeRepository();
+        $consent = $this->consent($this->session->user, $this->client, '-1 day');
+        $mine = $this->code('mine');
+        $elsewhere = Tokens::code('elsewhere', Clients::public($this->session->tenant, 'another'), $this->session, Fixtures::now());
+        $repository->save($mine);
+        $repository->save($elsewhere);
+
+        // When / Then
+        static::assertSame([$mine], $repository->ofConsent($consent));
+    }
+
+    #[Test]
+    public function itFindsTheRefreshTokensAClientHoldsForAUser(): void
+    {
+        // Given
+        $repository = new InMemoryRefreshTokenRepository();
+        $consent = $this->consent($this->session->user, $this->client, '-1 day');
+        $mine = Tokens::refreshToken('mine', $this->client, $this->session, Fixtures::now());
+        $repository->save($mine);
+        $repository->save(Tokens::refreshToken('elsewhere', Clients::public($this->session->tenant, 'another'), $this->session, Fixtures::now()));
+
+        // When / Then
+        static::assertSame([$mine], $repository->ofConsent($consent));
+    }
+
+    /**
+     * RFC 6749 §4.4: a token a client holds for itself descends from no user and from no consent.
+     */
+    #[Test]
+    public function itRemovesTheAccessTokensAClientHoldsForAUser(): void
+    {
+        // Given
+        $repository = new InMemoryAccessTokenRepository();
+        $consent = $this->consent($this->session->user, $this->client, '-1 day');
+        $mine = Tokens::storedAccessToken('mine', $this->client, $this->session, Fixtures::now());
+        $ofTheClientItself = Tokens::storedClientAccessToken('its own', $this->client, Fixtures::now());
+        $repository->save($mine);
+        $repository->save($ofTheClientItself);
+        $repository->save(Tokens::storedAccessToken('elsewhere', Clients::public($this->session->tenant, 'another'), $this->session, Fixtures::now()));
+
+        // When
+        $removed = $repository->revokeByConsent($consent);
+
+        // Then
+        static::assertSame([$mine], $removed);
+        static::assertNull($repository->find('mine'));
+        static::assertNotNull($repository->find('its own'));
+        static::assertNotNull($repository->find('elsewhere'));
+    }
+
     #[Test]
     public function anEmptyCodeRepositoryFindsNothing(): void
     {

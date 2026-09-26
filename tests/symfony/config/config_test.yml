@@ -542,6 +542,18 @@ services:
     test.heidi.consents:
         alias: Heidi\Oidc\Port\ConsentRepositoryInterface
         public: true
+    test.heidi.active_consents:
+        alias: Heidi\Oidc\Port\ActiveConsentsInterface
+        public: true
+    test.heidi.grants_of_a_consent:
+        alias: Heidi\Oidc\Port\GrantsOfAConsentInterface
+        public: true
+    test.heidi.refresh_tokens_of_a_consent:
+        alias: Heidi\Oidc\Port\RefreshTokensOfAConsentInterface
+        public: true
+    test.heidi.access_tokens_of_a_consent:
+        alias: Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface
+        public: true
     test.heidi.browser_session:
         alias: Heidi\Bundle\Http\BrowserSession
         public: true

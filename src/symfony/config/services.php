@@ -36,6 +36,7 @@ use Heidi\Bundle\Http\AccountAccess;
 use Heidi\Bundle\Http\AccountHomePage;
 use Heidi\Bundle\Http\Account\AccountSections;
 use Heidi\Bundle\Http\Account\PasskeysSection;
+use Heidi\Bundle\Http\Account\ConsentsSection;
 use Heidi\Bundle\Http\Account\TwoFactorSection;
 use Heidi\Bundle\Http\AuthorizationRequestReader;
 use Heidi\Bundle\Http\Decision\ConsentRequiredRenderer;
@@ -57,6 +58,7 @@ use Heidi\Bundle\Http\PendingApprovalsPage;
 use Heidi\Bundle\Http\LogoutTokenSender;
 use Heidi\Bundle\Http\PasskeyOptionsStore;
 use Heidi\Bundle\Http\PasskeysPage;
+use Heidi\Bundle\Http\ConsentsPage;
 use Heidi\Bundle\Http\PendingLoginStore;
 use Heidi\Bundle\Http\QrCode;
 use Heidi\Bundle\Http\RequestContextFactory;
@@ -253,6 +255,7 @@ use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Consent\ConsentGranting;
+use Heidi\Oidc\Application\Consent\ConsentRevocation;
 use Heidi\Oidc\Application\Ciba\BackchannelApproval;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
@@ -295,6 +298,7 @@ use Heidi\Oidc\Bridge\Null\NoDpopNonce;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Port\AccessTokenIssuerInterface;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
+use Heidi\Oidc\Port\ActiveConsentsInterface;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\CertificateReaderInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
@@ -315,6 +319,9 @@ use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
+use Heidi\Oidc\Port\GrantsOfAConsentInterface;
+use Heidi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\IdTokenIssuerInterface;
@@ -390,6 +397,7 @@ return static function (ContainerConfigurator $container): void {
     // line here, and neither the home page nor its template is edited
     $services->set(PasskeysSection::class)->tag('heidi.account_section');
     $services->set(TwoFactorSection::class)->tag('heidi.account_section');
+    $services->set(ConsentsSection::class)->tag('heidi.account_section');
     $services->set(AccountSections::class)->args([tagged_iterator('heidi.account_section')]);
     $services->set(AccountHomePage::class);
     $services->set(InteractionLocale::class)->args([
@@ -421,6 +429,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AuthorizationRequestReaderInterface::class, AuthorizationRequestReader::class);
     $services->set(PasskeyOptionsStore::class);
     $services->set(PasskeysPage::class);
+    $services->set(ConsentsPage::class);
     // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
     $services->set(PendingLoginStore::class);
     $services->set(TotpProvisioningSealer::class);
@@ -541,8 +550,10 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
     $services->set(DoctrineAuthorizationCodeRepository::class);
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
-    // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6)
+    // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6), the
+    // grants of a consent what a user taking it back reaches (architecture §4.3)
     $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
+    $services->alias(GrantsOfAConsentInterface::class, DoctrineAuthorizationCodeRepository::class);
     $services->set(DoctrinePushedAuthorizationRecordRepository::class);
     $services->alias(PushedAuthorizationRecordRepositoryInterface::class, DoctrinePushedAuthorizationRecordRepository::class);
     $services->set(DoctrineDeviceAuthorizationRecordRepository::class);
@@ -551,10 +562,14 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(BackchannelAuthenticationRecordRepositoryInterface::class, DoctrineBackchannelAuthenticationRecordRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
+    $services->alias(RefreshTokensOfAConsentInterface::class, DoctrineRefreshTokenRepository::class);
     $services->set(DoctrineAccessTokenRepository::class);
     $services->alias(AccessTokenRepositoryInterface::class, DoctrineAccessTokenRepository::class);
+    $services->alias(CanRevokeAccessTokensByConsentInterface::class, DoctrineAccessTokenRepository::class);
     $services->set(DoctrineConsentRepository::class);
     $services->alias(ConsentRepositoryInterface::class, DoctrineConsentRepository::class);
+    // what the page of the account lists, read past the profiler: it is no interaction
+    $services->alias(ActiveConsentsInterface::class, DoctrineConsentRepository::class);
 
     // The core: keys
     $services->set(EnvelopeKeySealer::class);
@@ -824,6 +839,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(IdTokenHintVerifier::class);
     $services->set(AuthorizationHandler::class);
     $services->set(ConsentGranting::class);
+    // and its counterpart: a consent taken back takes back what was issued under it (issue #273)
+    $services->set(ConsentRevocation::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
     $services->set(ResponseDocumentIssuer::class);
 

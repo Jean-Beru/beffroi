@@ -21,6 +21,7 @@ use Heidi\Oidc\Domain\Event\AuthorizationCodeReplayed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use Heidi\Oidc\Domain\Event\ConsentGranted;
+use Heidi\Oidc\Domain\Event\ConsentRevoked;
 use Heidi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use Heidi\Oidc\Domain\Event\BackchannelRequestAnswered;
 use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
@@ -129,6 +130,17 @@ final class EventsLeaveTheProcessTest extends TestCase
             $consent->user->id,
             $consent->scopes,
             null,
+            $context,
+        )];
+        yield 'a consent taken back' => [new ConsentRevoked(
+            $now,
+            $consent->tenant,
+            $consent->id,
+            $consent->clientId,
+            $consent->user->id,
+            [$code->grantId],
+            RevokedTokenHashes::of([$previous, $next]),
+            RevokedTokenHashes::of([$accessToken]),
             $context,
         )];
         yield 'a logout token given up on' => [new LogoutTokenGivenUp(

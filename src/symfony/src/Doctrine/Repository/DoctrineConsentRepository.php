@@ -9,7 +9,9 @@ use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Consent\Consent;
+use Heidi\Oidc\Port\ActiveConsentsInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use function array_values;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
@@ -17,7 +19,7 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
  *
  * @extends DoctrineRepository<Consent>
  */
-final readonly class DoctrineConsentRepository extends DoctrineRepository implements ConsentRepositoryInterface
+final readonly class DoctrineConsentRepository extends DoctrineRepository implements ConsentRepositoryInterface, ActiveConsentsInterface
 {
     public function __construct(EntityManagers $managers)
     {
@@ -40,6 +42,33 @@ final readonly class DoctrineConsentRepository extends DoctrineRepository implem
             ->getOneOrNullResult();
 
         return $consent !== null && ClientResolver::isResolved($consent) ? $consent : null;
+    }
+
+    /**
+     * One line per client, the one findActive() would answer for it: a consent superseded by another is
+     * revoked at that instant, and a row left active beside a newer one is not a second agreement.
+     *
+     * @return list<Consent>
+     */
+    public function activeOf(User $user): array
+    {
+        /** @var list<Consent> $consents */
+        $consents = $this->queryBuilder('c')
+            ->where('c.user = :user')
+            ->andWhere('c.revokedAt IS NULL')
+            ->orderBy('c.grantedAt', 'DESC')
+            ->addOrderBy('c.id', 'DESC')
+            ->setParameter('user', $user->id, UuidType::NAME)
+            ->getQuery()
+            ->getResult();
+        $found = [];
+        foreach ($consents as $consent) {
+            if (ClientResolver::isResolved($consent)) {
+                $found[$consent->clientId] ??= $consent;
+            }
+        }
+
+        return array_values($found);
     }
 
     public function save(Consent $consent): void
