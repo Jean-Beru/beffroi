@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Fixture;
 
 use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
+use Heidi\Oidc\Application\Token\JwtBearerGrant;
+use Heidi\Oidc\Application\Token\TokenExchangeGrant;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Domain\Client\GrantTypeName;
 
@@ -38,6 +40,16 @@ final readonly class Grants
     public static function ciba(): GrantTypeName
     {
         return new GrantTypeName(BackchannelAuthenticationGrant::GRANT_TYPE);
+    }
+
+    public static function tokenExchange(): GrantTypeName
+    {
+        return new GrantTypeName(TokenExchangeGrant::GRANT_TYPE);
+    }
+
+    public static function jwtBearer(): GrantTypeName
+    {
+        return new GrantTypeName(JwtBearerGrant::GRANT_TYPE);
     }
 
     /**
@@ -84,6 +96,19 @@ final readonly class Grants
             new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
             new FakeRefreshTokenSpendingGrant(self::refreshToken()),
             new FakeUserOnAnotherDeviceGrant(self::deviceCode()),
+        ]);
+    }
+
+    /**
+     * The same wiring with a grant that takes a token and gives a token back beside them (RFC 8693 §2.1),
+     * for what a registration of such a grant must carry and must not.
+     */
+    public static function servedWithTokenExchange(): ServedGrants
+    {
+        return new ServedGrants([
+            new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
+            new FakeRefreshTokenSpendingGrant(self::refreshToken()),
+            new FakeExchangingGrant(self::tokenExchange()),
         ]);
     }
 

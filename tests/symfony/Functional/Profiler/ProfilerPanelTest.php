@@ -247,7 +247,7 @@ final class ProfilerPanelTest extends BrowserTestCase
         $served = $this->observation('What this provider serves');
         static::assertSame('https://op.test', $served['issuer']);
         static::assertSame(
-            'authorization_code refresh_token client_credentials urn:ietf:params:oauth:grant-type:device_code urn:openid:params:grant-type:ciba',
+            'authorization_code refresh_token client_credentials urn:ietf:params:oauth:grant-type:device_code urn:openid:params:grant-type:ciba urn:ietf:params:oauth:grant-type:token-exchange urn:ietf:params:oauth:grant-type:jwt-bearer',
             $served['grant_types_supported'],
         );
         static::assertSame('S256', $served['code_challenge_methods_supported']);

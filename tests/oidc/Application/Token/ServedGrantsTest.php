@@ -92,6 +92,24 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
+     * RFC 8693 §2.1: which of the wired grants takes a token and gives a token back is what they declare, and
+     * is what decides which registrations must carry what a client may present.
+     */
+    #[Test]
+    public function whichGrantsExchangeATokenIsWhatTheyDeclare(): void
+    {
+        // Given
+        $served = Grants::servedWithTokenExchange();
+
+        // When
+        $exchanging = $served->exchangingTokens();
+
+        // Then
+        static::assertSame(['urn:ietf:params:oauth:grant-type:token-exchange'], GrantNames::of($exchanging));
+        static::assertSame([], GrantNames::of(Grants::servedWithClientCredentials()->exchangingTokens()));
+    }
+
+    /**
      * Every wired grant that declares a capability is listed, in the order they are wired: the list is what
      * they all declare and not what the first of them does.
      */

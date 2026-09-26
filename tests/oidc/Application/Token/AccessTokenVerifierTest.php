@@ -37,6 +37,8 @@ use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\Shapes;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Heidi\Oidc\Tests\Fixture\Grants;
+use Heidi\Core\Domain\Identity\Subject;
+use Heidi\Oidc\Domain\Exchange\Actor;
 use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use const JSON_THROW_ON_ERROR;
@@ -242,6 +244,80 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertSame([Clients::CALENDAR], $token->audience->values);
         static::assertSame([], $token->userinfoClaims);
         static::assertTrue($record->grantId->equals($token->grantId));
+    }
+
+    /**
+     * RFC 8693 §2.2.1, §4.1: the record of a token somebody holds for its subject says the subject it was
+     * given, the sign-in the token it descends from named, and the chain of actors as it was written.
+     */
+    #[Test]
+    public function itReadsTheRecordOfAnOpaqueTokenSomebodyHoldsForItsSubject(): void
+    {
+        // Given
+        $session = Fixtures::session(Fixtures::user($this->tenant));
+        $gateway = Clients::gateway($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $actor = new Actor(new Subject('gateway'), new Actor(new Subject('first-hop')));
+        $record = Tokens::storedSubjectAccessToken(
+            $this->opaque,
+            $gateway,
+            new Subject('alice-subject'),
+            Fixtures::now(),
+            session: $session,
+            actor: $actor,
+        );
+        $this->storedTokens->save($record);
+        $clients = new InMemoryClientRepository();
+        $clients->save($gateway);
+        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+
+        // When
+        $token = $verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame('alice-subject', (string) $token->subject);
+        static::assertTrue($token->signIn?->sessionId->equals($session->id));
+        static::assertTrue($token->actor?->equals($actor));
+        static::assertSame([Clients::CALENDAR], $token->audience->values);
+    }
+
+    /**
+     * RFC 8693 §1.3: a record of an impersonation names nobody acting, and nothing of one is read back.
+     */
+    #[Test]
+    public function itReadsTheRecordOfAnImpersonationWithoutAnActor(): void
+    {
+        // Given
+        $gateway = Clients::gateway($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $this->storedTokens->save(Tokens::storedSubjectAccessToken($this->opaque, $gateway, new Subject('alice-subject'), Fixtures::now()));
+        $clients = new InMemoryClientRepository();
+        $clients->save($gateway);
+        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+
+        // When
+        $token = $verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertNull($token->actor);
+        static::assertNull($token->signIn);
+    }
+
+    /**
+     * RFC 8693 §4.1: what the issuer wrote is what comes back, the most recent actor outermost, so a
+     * delegation stays a delegation on the way back.
+     */
+    #[Test]
+    public function itReadsTheChainOfActorsOfASelfContainedToken(): void
+    {
+        // Given
+        $this->knows('{"iss":"https://id.acme.example","exp":1789467000,"aud":"spa","sub":"alice-subject","client_id":"spa","iat":1789466400,'
+        . '"jti":"6f1c2b7e-1d2a-4c3b-8e9f-0a1b2c3d4e5f","scope":"openid","grant_id":"01997b9e-0000-7000-8000-00000000000a",'
+        . '"act":{"sub":"gateway","act":{"sub":"first-hop"}}}');
+
+        // When
+        $token = $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now());
+
+        // Then
+        static::assertTrue($token->actor?->equals(new Actor(new Subject('gateway'), new Actor(new Subject('first-hop')))));
     }
 
     /**
@@ -489,9 +565,21 @@ final class AccessTokenVerifierTest extends TestCase
     {
         yield 'does not verify' => [null, null, InvalidJwsException::class];
         yield 'not JSON' => ['not json', null, JsonException::class];
+        // RFC 8693 §4.1: a chain of actors nests, and one nested deeper than any exchange of this provider
+        // ever writes was not written here
         yield 'too deep' => [
             self::with([
-                'amr' => [['pwd']],
+                'act' => [
+                    'act' => [
+                        'act' => [
+                            'act' => [
+                                'act' => [
+                                    'sub' => 'gateway',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
             ]),
             null,
             JsonException::class,

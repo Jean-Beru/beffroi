@@ -15,6 +15,7 @@ use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
 use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
 use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
+use Heidi\Bundle\Doctrine\Type\ActorType;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
@@ -54,6 +55,7 @@ use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Exchange\Actor;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -172,6 +174,12 @@ final class TypesTest extends TestCase
             '[{"algorithm":"argon2id","encoded":"$argon2id$one","parameters":[],"used_at":null},{"algorithm":"pbkdf2-sha256","encoded":"two","parameters":{"salt":"c2FsdA","iterations":27500},"used_at":1789000060}]',
         ];
         yield 'no backup code' => [BackupCodesType::class, [], '[]'];
+        yield 'one actor' => [ActorType::class, new Actor(new Subject('gateway')), '{"sub":"gateway"}'];
+        yield 'a chain of actors' => [
+            ActorType::class,
+            new Actor(new Subject('backend'), new Actor(new Subject('gateway'))),
+            '{"sub":"backend","act":{"sub":"gateway"}}',
+        ];
     }
 
     /**
@@ -244,6 +252,7 @@ final class TypesTest extends TestCase
             ],
         ];
         yield 'a string for a claims request' => [ClaimsRequestType::class, '{}'];
+        yield 'a subject for an actor' => [ActorType::class, new Subject('gateway')];
         yield 'a string for a user handle' => [PasskeyUserHandleType::class, str_repeat('h', 64)];
         yield 'an array for a policy' => [
             AuthenticationContextPolicyType::class,
@@ -296,6 +305,9 @@ final class TypesTest extends TestCase
         yield 'proofs with a string timestamp' => [AuthenticationProofsType::class, '{"pwd":"1789000000"}'];
         yield 'proofs with no entry' => [AuthenticationProofsType::class, '{}'];
         yield 'proofs with a malformed method' => [AuthenticationProofsType::class, '{"p w d":1789000000}'];
+        yield 'an actor with no subject' => [ActorType::class, '{"client_id":"gateway"}'];
+        yield 'an actor that is a JSON list' => [ActorType::class, '["gateway"]'];
+        yield 'an actor whose nested one is not an object' => [ActorType::class, '{"sub":"backend","act":"gateway"}'];
         yield 'a location with a bad country code' => [GeoLocationType::class, '{"country_code":"France"}'];
         yield 'a location with a string ASN' => [GeoLocationType::class, '{"asn":"3215"}'];
         yield 'a location with a string latitude' => [GeoLocationType::class, '{"latitude":"48.8","longitude":2.3}'];
@@ -426,10 +438,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTwentyOneTypes(): void
+    public function theBundleDeclaresTwentyTwoTypes(): void
     {
         // When / Then
-        static::assertCount(21, HeidiBundle::DBAL_TYPES);
+        static::assertCount(22, HeidiBundle::DBAL_TYPES);
     }
 
     /**
