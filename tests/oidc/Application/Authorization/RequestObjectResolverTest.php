@@ -60,7 +60,7 @@ final class RequestObjectResolverTest extends TestCase
         $parameters = $this->resolver->resolve($this->tenant, [
             'client_id' => 'jar-client',
             'scope' => 'openid',
-        ]);
+        ])?->parameters;
 
         // Then
         static::assertNull($parameters);
@@ -86,7 +86,7 @@ final class RequestObjectResolverTest extends TestCase
             'request' => $object,
             'scope' => 'openid email',
             'state' => 'only-in-the-query',
-        ]);
+        ])?->parameters;
 
         // Then
         static::assertSame(
@@ -120,7 +120,7 @@ final class RequestObjectResolverTest extends TestCase
                 'request' => $object,
             ],
             $client,
-        );
+        )?->parameters;
 
         // Then
         static::assertSame(
@@ -282,7 +282,7 @@ final class RequestObjectResolverTest extends TestCase
         $parameters = $this->resolver->resolve($this->tenant, [
             'client_id' => 'unsigned-client',
             'request' => $object,
-        ]);
+        ])?->parameters;
 
         // Then
         static::assertSame('form_post', $parameters['response_mode'] ?? null);
@@ -332,7 +332,7 @@ final class RequestObjectResolverTest extends TestCase
         $parameters = $resolver->resolve($this->tenant, [
             'client_id' => 'reference-client',
             'request_uri' => self::PUBLISHED,
-        ]);
+        ])?->parameters;
 
         // Then
         static::assertSame('openid profile', $parameters['scope'] ?? null);

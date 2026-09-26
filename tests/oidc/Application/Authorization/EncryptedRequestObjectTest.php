@@ -78,7 +78,7 @@ final class EncryptedRequestObjectTest extends TestCase
         $parameters = $this->resolver->resolve($this->tenant, [
             'client_id' => 'jar-client',
             'request' => $object,
-        ]);
+        ])?->parameters;
 
         // Then
         static::assertSame(
@@ -140,7 +140,7 @@ final class EncryptedRequestObjectTest extends TestCase
         $parameters = $this->resolver->resolve($this->tenant, [
             'client_id' => 'unsigned-client',
             'request' => $object,
-        ]);
+        ])?->parameters;
 
         // Then
         static::assertSame('form_post', $parameters['response_mode'] ?? null);
@@ -166,7 +166,7 @@ final class EncryptedRequestObjectTest extends TestCase
         $parameters = $this->resolver->resolve($this->tenant, [
             'client_id' => 'unsigned-client',
             'request' => $object,
-        ]);
+        ])?->parameters;
 
         // Then
         static::assertSame('openid', $parameters['scope'] ?? null);

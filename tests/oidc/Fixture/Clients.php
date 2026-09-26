@@ -165,6 +165,7 @@ final class Clients
         array $resources = [],
         ?Scopes $allowedScopes = null,
         ?ClientJwks $jwks = null,
+        bool $requiresSignedRequestObject = false,
     ): Client {
         return new Client(
             $tenant,
@@ -180,6 +181,7 @@ final class Clients
                 $allowedScopes ?? new Scopes([new Scope('openid'), new Scope('profile')]),
                 requiresConsent: false,
                 jwks: $jwks,
+                requiresSignedRequestObject: $requiresSignedRequestObject,
                 resources: $resources,
                 backchannelTokenDeliveryMode: $delivery,
                 backchannelClientNotificationEndpoint: $notificationEndpoint,
