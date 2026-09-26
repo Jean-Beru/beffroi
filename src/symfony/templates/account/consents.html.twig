@@ -1,0 +1,41 @@
+{# What the signed-in user has agreed to (architecture §5.2), in the language of the browser: one line
+   per client that may obtain something about them, what each was granted and when, and the button that
+   takes one back. Overridable by an application under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% block title %}{{ 'consents.title'|trans }}{% endblock %}
+
+{% block content %}
+    <p>{{ 'consents.signed_in_as'|trans({username: user.username}) }}</p>
+    {% if consents is empty %}
+        <p data-consents="none">{{ 'consents.none'|trans }}</p>
+    {% else %}
+        <p>{{ 'consents.explanation'|trans }}</p>
+        <table data-consents="{{ consents|length }}">
+            <thead>
+                <tr>
+                    <th>{{ 'consents.application'|trans }}</th>
+                    <th>{{ 'consents.access'|trans }}</th>
+                    <th>{{ 'consents.granted_at'|trans }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for consent in consents %}
+                    <tr data-consent="{{ consent.id }}" data-client="{{ consent.clientId }}">
+                        <td>{{ consent.client.registration.name }}</td>
+                        <td>{{ include('@Heidi/scopes.html.twig', {scopes: consent.scopes}) }}</td>
+                        <td><time datetime="{{ consent.grantedAt|date('c') }}">{{ consent.grantedAt|date('Y-m-d H:i') }}</time></td>
+                        <td>
+                            <form method="post" action="{{ path('heidi_interaction_account_consents_revoke', {id: consent.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('heidi_consent_revoke') }}">
+                                <button type="submit" name="revoke" value="{{ consent.id }}">{{ 'consents.revoke'|trans }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

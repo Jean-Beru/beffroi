@@ -189,6 +189,10 @@
         <source>account.passkeys.state</source>
         <target>{count, plural, =0 {Aucune passkey} one {Une passkey} other {# passkeys}}</target>
       </trans-unit>
+      <trans-unit id="788ce7e79c" resname="account.consents.state">
+        <source>account.consents.state</source>
+        <target>{count, plural, =0 {Aucune application} one {Une application} other {# applications}}</target>
+      </trans-unit>
       <trans-unit id="0fe4f1a644" resname="account.two_factor.state.none">
         <source>account.two_factor.state.none</source>
         <target>Aucune application d’authentification</target>
@@ -300,6 +304,38 @@
       <trans-unit id="af360d0c03" resname="code.failed.too_many_attempts">
         <source>code.failed.too_many_attempts</source>
         <target>Trop de codes ont été essayés. Patientez un instant, puis réessayez.</target>
+      </trans-unit>
+      <trans-unit id="8cdae7d238" resname="consents.title">
+        <source>consents.title</source>
+        <target>Les applications que vous avez autorisées</target>
+      </trans-unit>
+      <trans-unit id="f0810fc3a0" resname="consents.signed_in_as">
+        <source>consents.signed_in_as</source>
+        <target>Session ouverte pour {username}.</target>
+      </trans-unit>
+      <trans-unit id="b40383a420" resname="consents.none">
+        <source>consents.none</source>
+        <target>Vous n’avez autorisé aucune application.</target>
+      </trans-unit>
+      <trans-unit id="792b29ed69" resname="consents.explanation">
+        <source>consents.explanation</source>
+        <target>Une application que vous avez autorisée ne vous est plus redemandée. La retirer retire aussi l’accès qu’elle détient : elle vous le redemandera la prochaine fois que vous l’utiliserez.</target>
+      </trans-unit>
+      <trans-unit id="d697faa88f" resname="consents.application">
+        <source>consents.application</source>
+        <target>Application</target>
+      </trans-unit>
+      <trans-unit id="985a1ee4b8" resname="consents.access">
+        <source>consents.access</source>
+        <target>Accès</target>
+      </trans-unit>
+      <trans-unit id="1cf8e20127" resname="consents.granted_at">
+        <source>consents.granted_at</source>
+        <target>Autorisée le</target>
+      </trans-unit>
+      <trans-unit id="d729adbd9a" resname="consents.revoke">
+        <source>consents.revoke</source>
+        <target>Retirer</target>
       </trans-unit>
       <trans-unit id="68e780445d" resname="two_factor.title">
         <source>two_factor.title</source>

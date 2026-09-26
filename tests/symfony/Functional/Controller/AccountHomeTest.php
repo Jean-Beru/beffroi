@@ -68,7 +68,7 @@ final class AccountHomeTest extends PasskeyTestCase
         $crawler = $this->accountPage();
 
         // Then
-        static::assertCount(2, $crawler->filter('ul[data-sections="2"] li'));
+        static::assertCount(3, $crawler->filter('ul[data-sections="3"] li'));
         $passkeys = $crawler->filter('li[data-section="heidi_interaction_account_passkeys"]');
         static::assertSame('/account/passkeys', $passkeys->filter('a')->attr('href'));
         static::assertSame('Your passkeys', $passkeys->filter('a')->text());
@@ -76,6 +76,10 @@ final class AccountHomeTest extends PasskeyTestCase
         $twoFactor = $crawler->filter('li[data-section="heidi_interaction_account_two_factor"]');
         static::assertSame('/account/two-factor', $twoFactor->filter('a')->attr('href'));
         static::assertSame('No authenticator app', $twoFactor->filter('span[data-state]')->text());
+        $consents = $crawler->filter('li[data-section="heidi_interaction_account_consents"]');
+        static::assertSame('/account/consents', $consents->filter('a')->attr('href'));
+        static::assertSame('Applications you have allowed', $consents->filter('a')->text());
+        static::assertSame('No application', $consents->filter('span[data-state]')->text());
     }
 
     #[Test]

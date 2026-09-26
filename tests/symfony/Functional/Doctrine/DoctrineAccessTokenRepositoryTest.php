@@ -27,7 +27,10 @@ use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Domain\Token\StoredClientAccessToken;
 use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
+use Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
@@ -298,6 +301,46 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
+     * Architecture §4.3: the tokens a client holds for a user go with the consent that user takes back.
+     * Those of another client, those of another user, and the one the client holds for itself, which
+     * descends from no user at all (RFC 6749 §4.4), stay.
+     */
+    #[Test]
+    public function theTokensOfAConsentAreRevokedTogether(): void
+    {
+        // Given
+        $alice = self::user();
+        $session = self::session($alice);
+        $here = self::issued(self::authorization($session), self::now(), self::now()->modify('+10 minutes'));
+        $ofAnotherClient = self::issued(
+            self::authorization($session, self::client('native-app')),
+            self::now(),
+            self::now()->modify('+10 minutes'),
+        );
+        $ofAnotherUser = self::issued(
+            self::authorization(self::session(self::user('bob', 'bob-subject'))),
+            self::now(),
+            self::now()->modify('+10 minutes'),
+        );
+        $ofTheClientItself = self::issued(
+            self::clientAuthorization(self::client('service-app')),
+            self::now(),
+            self::now()->modify('+10 minutes'),
+        );
+        self::reload();
+
+        // When
+        $revoked = self::consentRevoker()->revokeByConsent(self::consent($alice, self::client()));
+
+        // Then
+        static::assertSame([DrawnSecret::digestOf($here)], self::hashes($revoked));
+        static::assertNull(self::tokens()->find($here));
+        static::assertNotNull(self::tokens()->find($ofAnotherClient));
+        static::assertNotNull(self::tokens()->find($ofAnotherUser));
+        static::assertNotNull(self::tokens()->find($ofTheClientItself));
+    }
+
+    /**
      * Architecture §4.9: the tokens of a session go together; those of another session stay.
      */
     #[Test]
@@ -373,9 +416,22 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         );
     }
 
-    private static function authorization(AuthenticationSession $session): UserAuthorization
+    private static function authorization(AuthenticationSession $session, ?Client $client = null): UserAuthorization
     {
-        return UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('a-code', self::client(), $session, self::now()));
+        return UserAuthorization::fromAuthorizationCode(
+            Grants::authorizationCode(),
+            Tokens::code('a-code', $client ?? self::client(), $session, self::now()),
+        );
+    }
+
+    private static function consent(User $user, Client $client): Consent
+    {
+        return new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
+    }
+
+    private static function consentRevoker(): CanRevokeAccessTokensByConsentInterface
+    {
+        return self::service('test.heidi.access_tokens_of_a_consent', CanRevokeAccessTokensByConsentInterface::class);
     }
 
     private static function clientAuthorization(Client $client, ?Uuid $grantId = null): ClientAuthorization

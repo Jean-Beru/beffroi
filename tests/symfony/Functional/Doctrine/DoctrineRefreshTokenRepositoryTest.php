@@ -19,7 +19,10 @@ use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Heidi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
@@ -269,6 +272,39 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
             $issuedAt,
             self::now()->modify('+30 days'),
         );
+    }
+
+    /**
+     * Architecture §4.3: what a client can still renew for a user goes with the consent that user takes
+     * back; what it renews for another user, and what another client renews, stays.
+     */
+    #[Test]
+    public function theRefreshTokensOfAConsentAreThoseOfItsUserAndItsClient(): void
+    {
+        // Given
+        $alice = self::user();
+        $session = self::session($alice);
+        $here = Secrets::draw();
+        self::tokens()->save(self::token($here, self::client(), $session, self::family(), null, self::now()));
+        self::tokens()->save(self::token(Secrets::draw(), self::client('native-app'), $session, self::family(), null, self::now()));
+        self::tokens()->save(self::token(Secrets::draw(), self::client(), self::session(self::user('bob', 'bob-subject')), self::family(), null, self::now()));
+        self::reload();
+
+        // When
+        $found = self::refreshTokensOfAConsent()->ofConsent(self::consent($alice, self::client()));
+
+        // Then
+        static::assertSame([DrawnSecret::digestOf($here)], self::hashes($found));
+    }
+
+    private static function consent(User $user, Client $client): Consent
+    {
+        return new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
+    }
+
+    private static function refreshTokensOfAConsent(): RefreshTokensOfAConsentInterface
+    {
+        return self::service('test.heidi.refresh_tokens_of_a_consent', RefreshTokensOfAConsentInterface::class);
     }
 
     /**

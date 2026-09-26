@@ -10,16 +10,19 @@ use function array_values;
 use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
 use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
+use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\StoredAccessToken;
 use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
+use Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use function is_subclass_of;
 use function sort;
 use function usort;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -35,6 +38,7 @@ use Symfony\Component\Uid\Uuid;
 final class DoctrineAccessTokenRepository implements
     AccessTokenRepositoryInterface,
     CanRevokeAccessTokenInterface,
+    CanRevokeAccessTokensByConsentInterface,
     CanRevokeAccessTokensByGrantInterface,
     CanRevokeAccessTokensBySessionInterface
 {
@@ -92,6 +96,33 @@ final class DoctrineAccessTokenRepository implements
     }
 
     /**
+     * The user is a column of the session and not of the token, so the kinds that have one are asked by
+     * a join where the others are asked by a criterion.
+     */
+    public function revokeByConsent(Consent $consent): array
+    {
+        $tokens = [];
+        foreach ($this->kindsUnder(StoredUserAccessToken::class) as $kind) {
+            /** @var list<StoredAccessToken> $ofThatKind */
+            $ofThatKind = $this->managers
+                ->forClass($kind)
+                ->createQueryBuilder()
+                ->select('t')
+                ->from($kind, 't')
+                ->join('t.session', 's')
+                ->where('s.user = :user')
+                ->andWhere('t.clientId = :clientId')
+                ->setParameter('user', $consent->user->id, UuidType::NAME)
+                ->setParameter('clientId', $consent->clientId)
+                ->getQuery()
+                ->getResult();
+            $tokens = array_merge($tokens, $ofThatKind);
+        }
+
+        return $this->removeAll($tokens);
+    }
+
+    /**
      * @param array<string, mixed> $criteria
      * @param class-string<StoredAccessToken> $of the kinds this reaches
      *
@@ -100,10 +131,7 @@ final class DoctrineAccessTokenRepository implements
     private function removeMatching(array $criteria, string $of = StoredAccessToken::class): array
     {
         $tokens = [];
-        foreach ($this->kinds() as $kind) {
-            if (! is_subclass_of($kind, $of) && $kind !== $of) {
-                continue;
-            }
+        foreach ($this->kindsUnder($of) as $kind) {
             $tokens = array_merge($tokens, $this->managers
                 ->forClass($kind)
                 ->getRepository($kind)
@@ -112,10 +140,34 @@ final class DoctrineAccessTokenRepository implements
                     'tokenHash' => 'ASC',
                 ]));
         }
+
+        return $this->removeAll($tokens);
+    }
+
+    /**
+     * @param list<StoredAccessToken> $tokens
+     *
+     * @return list<StoredAccessToken> the rows removed, oldest first, those of an unregistered client left out
+     */
+    private function removeAll(array $tokens): array
+    {
         usort($tokens, static fn (StoredAccessToken $a, StoredAccessToken $b): int => [$a->issuedAt, $a->tokenHash] <=> [$b->issuedAt, $b->tokenHash]);
         $this->remove($tokens);
 
         return array_values(array_filter($tokens, ClientResolver::isResolved(...)));
+    }
+
+    /**
+     * @param class-string<StoredAccessToken> $of
+     *
+     * @return list<class-string<StoredAccessToken>>
+     */
+    private function kindsUnder(string $of): array
+    {
+        return array_values(array_filter(
+            $this->kinds(),
+            static fn (string $kind): bool => $kind === $of || is_subclass_of($kind, $of),
+        ));
     }
 
     /**

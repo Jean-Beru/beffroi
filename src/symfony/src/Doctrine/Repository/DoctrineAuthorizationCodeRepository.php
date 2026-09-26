@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Doctrine\Repository;
 
+use function array_filter;
 use function array_values;
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
@@ -12,10 +13,13 @@ use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Heidi\Oidc\Port\GrantsOfAConsentInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use function is_string;
 use function sprintf;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -24,7 +28,10 @@ use Symfony\Component\Uid\Uuid;
  *
  * @extends DoctrineRepository<AuthorizationCode>
  */
-final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements AuthorizationCodeRepositoryInterface, LoggedInClientsInterface
+final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements
+    AuthorizationCodeRepositoryInterface,
+    GrantsOfAConsentInterface,
+    LoggedInClientsInterface
 {
     public function __construct(EntityManagers $managers)
     {
@@ -72,6 +79,29 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
         }
 
         return array_values($clients);
+    }
+
+    /**
+     * The grants a user's browser left to a client, whatever their state: a code still waiting at the
+     * token endpoint issued nothing yet and is revoked all the same, since nothing may come of it now.
+     *
+     * @return list<AuthorizationCode>
+     */
+    public function ofConsent(Consent $consent): array
+    {
+        /** @var list<AuthorizationCode> $codes */
+        $codes = $this->queryBuilder('c')
+            ->join('c.session', 's')
+            ->where('s.user = :user')
+            ->andWhere('c.clientId = :clientId')
+            ->orderBy('c.issuedAt', 'ASC')
+            ->addOrderBy('c.codeHash', 'ASC')
+            ->setParameter('user', $consent->user->id, UuidType::NAME)
+            ->setParameter('clientId', $consent->clientId)
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter($codes, ClientResolver::isResolved(...)));
     }
 
     /**

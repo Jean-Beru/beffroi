@@ -4,18 +4,12 @@
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
 
-{% set described_scopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'] %}
-
 {% block title %}{{ 'consent.title'|trans({client: client.registration.name}) }}{% endblock %}
 
 {% block content %}
     <p>{{ 'consent.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'consent.request'|trans({client: client.registration.name}) }}</p>
-    <ul>
-        {% for scope in scopes %}
-            <li data-scope="{{ scope.value }}">{{ scope.value in described_scopes ? ('scope.' ~ scope.value)|trans : scope.value }}</li>
-        {% endfor %}
-    </ul>
+    {{ include('@Heidi/scopes.html.twig', {scopes: scopes}) }}
     <form method="post" action="{{ path('heidi_interaction_consent') }}">
         <input type="hidden" name="interaction" value="{{ interaction.id }}">
         <input type="hidden" name="_token" value="{{ csrf_token('heidi_consent') }}">

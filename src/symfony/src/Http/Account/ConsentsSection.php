@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Http\Account;
+
+use function count;
+use Heidi\Bundle\Controller\AccountConsentsController;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Oidc\Port\ActiveConsentsInterface;
+
+/**
+ * What a user has agreed to, on the home page: how many clients may obtain something about them. Which
+ * ones, and what each was granted, is on the page of the consents, where one is taken back.
+ */
+final readonly class ConsentsSection implements AccountSectionInterface
+{
+    public function __construct(
+        private ActiveConsentsInterface $consents,
+    ) {
+    }
+
+    public function route(): string
+    {
+        return AccountConsentsController::ROUTE;
+    }
+
+    public function title(): string
+    {
+        return 'consents.title';
+    }
+
+    public function state(User $user): AccountSectionState
+    {
+        return new AccountSectionState('account.consents.state', [
+            'count' => count($this->consents->activeOf($user)),
+        ]);
+    }
+}
