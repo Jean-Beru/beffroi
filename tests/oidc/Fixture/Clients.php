@@ -260,6 +260,8 @@ final class Clients
     /**
      * A client that signs its assertions with a key of its own (OIDC Core §9, "private_key_jwt"),
      * publishing its JWK Set inline or behind a "jwks_uri".
+     *
+     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow alone unless the test says otherwise
      */
     public static function withKeys(
         Tenant $tenant,
@@ -267,6 +269,7 @@ final class Clients
         ?ClientJwks $jwks = null,
         ?ClientUri $jwksUri = null,
         ?ClientAuthenticationMethodInterface $method = null,
+        ?array $grantTypes = null,
     ): Client {
         return new Client(
             $tenant,
@@ -277,6 +280,7 @@ final class Clients
                 false,
                 [new RedirectUri('https://key.example/callback')],
                 Shapes::jwt(),
+                grantTypes: $grantTypes ?? [Grants::authorizationCode()],
                 jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,
                 jwksUri: $jwksUri,
             ),

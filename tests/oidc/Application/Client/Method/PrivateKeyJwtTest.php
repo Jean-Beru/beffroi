@@ -28,6 +28,7 @@ use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
 use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
+use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\Test;
@@ -41,6 +42,8 @@ use Symfony\Component\Clock\MockClock;
 final class PrivateKeyJwtTest extends TestCase
 {
     private const string ENDPOINT = 'https://id.acme.example/token';
+
+    private const string BACKCHANNEL_ENDPOINT = 'https://id.acme.example/backchannel_authentication';
 
     private const string JWKS_URI = 'https://key.example/jwks';
 
@@ -93,9 +96,9 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * FAPI 2.0 Security Profile §5.2.2: the endpoint the request was sent to is not an audience, although
-     * OIDC Core §9 names it, because an assertion made for one endpoint would then be an assertion for
-     * every other one of the same provider.
+     * FAPI 2.0 Security Profile §5.3.2.1 clause 8: the endpoint the request was sent to is not an audience
+     * of an ordinary client, although RFC 7523 §3 permits it and OIDC Core §9 recommends it. Only a client
+     * of the backchannel flow names it (issue #267).
      */
     #[Test]
     public function itRefusesTheEndpointAsTheAudience(): void
@@ -392,6 +395,60 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
+     * CIBA Core §7.1: the URL of the token endpoint is one of the three audiences the provider accepts from
+     * a client whose user it reaches itself, the specification naming the ambiguity it settles.
+     */
+    #[Test]
+    public function aClientOfTheBackchannelFlowIsAuthenticatedNamingTheTokenEndpoint(): void
+    {
+        // Given
+        $client = $this->backchannelClient();
+
+        // When
+        $authenticated = $this->authenticateBackchannel($client, self::ENDPOINT);
+
+        // Then
+        static::assertSame($client, $authenticated->client);
+    }
+
+    /**
+     * CIBA Core §7.1: and so is the URL of the endpoint where such a request is made, which is the default
+     * of the client the suite drives.
+     */
+    #[Test]
+    public function aClientOfTheBackchannelFlowIsAuthenticatedNamingTheBackchannelEndpoint(): void
+    {
+        // Given
+        $client = $this->backchannelClient();
+
+        // When
+        $authenticated = $this->authenticateBackchannel($client, self::BACKCHANNEL_ENDPOINT);
+
+        // Then
+        static::assertSame($client, $authenticated->client);
+    }
+
+    /**
+     * Three names accepted is still one name written: an "aud" naming two of them is an assertion made for
+     * more than the request it travels in, and the widening does not reach it.
+     */
+    #[Test]
+    public function aClientOfTheBackchannelFlowIsRefusedAnAudienceThatNamesTwoOfThem(): void
+    {
+        // Given
+        $client = $this->backchannelClient();
+
+        // When
+        $this->failToAuthenticate(
+            $this->assertionOf($client, [$this->tenant->issuer->value, self::ENDPOINT]),
+            $this->authenticatorServingCiba(),
+        );
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion, $client->registration->clientId);
+    }
+
+    /**
      * @param array<string, mixed> $overrides
      */
     private function assertion(array $overrides = []): string
@@ -402,6 +459,58 @@ final class PrivateKeyJwtTest extends TestCase
             $this->context->receivedAt,
             $overrides,
         ));
+    }
+
+    /**
+     * A client that signs with a key of its own and waits for its user to approve elsewhere (CIBA Core §7),
+     * which is what the FAPI-CIBA plan drives.
+     */
+    private function backchannelClient(): Client
+    {
+        $client = Clients::withKeys($this->tenant, 'terminal-client', grantTypes: [Grants::ciba()]);
+        $this->clients->save($client);
+
+        return $client;
+    }
+
+    /**
+     * @param string|list<string> $audience
+     */
+    private function assertionOf(Client $client, string|array $audience): string
+    {
+        return ClientAssertions::signedWithKey(ClientAssertions::claims(
+            $client->registration->clientId,
+            $this->tenant->issuer->value,
+            $this->context->receivedAt,
+            ['aud' => $audience],
+        ));
+    }
+
+    private function authenticateBackchannel(Client $client, string $audience): AuthenticatedClient
+    {
+        return $this->authenticatorServingCiba()->authenticate(
+            $this->tenant,
+            self::BACKCHANNEL_ENDPOINT,
+            null,
+            ClientAssertions::parameters($this->assertionOf($client, $audience)),
+            $this->context,
+        );
+    }
+
+    /**
+     * The same wiring with the backchannel grant served, which is what makes a client registered for it a
+     * client of that flow.
+     */
+    private function authenticatorServingCiba(): ClientAuthenticator
+    {
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher, claims: Methods::assertionValidator(audiences: Methods::acceptedAudiences(Grants::servedWithCiba()))),
+            Methods::requestParser(),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
     private function authenticator(): ClientAuthenticator
