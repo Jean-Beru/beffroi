@@ -27,6 +27,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * RFC 8628 §3.3, §5.1: what the page a user goes to asks of the provider. A code that names no request
@@ -244,6 +245,7 @@ final class DeviceApprovalTest extends TestCase
         $record = new DeviceAuthorizationRecord(
             DrawnSecret::digestOf('the-device-code'),
             UserCode::hashOf(self::CODE),
+            Uuid::v7(),
             $this->client,
             new Scopes([new Scope('openid'), new Scope('profile')]),
             null,

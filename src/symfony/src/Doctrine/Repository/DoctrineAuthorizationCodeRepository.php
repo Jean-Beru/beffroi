@@ -15,8 +15,9 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
-use Heidi\Oidc\Port\GrantsOfAConsentInterface;
+use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
+use Heidi\Oidc\Port\RecordedGrantsInterface;
 use function is_string;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -30,8 +31,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements
     AuthorizationCodeRepositoryInterface,
-    GrantsOfAConsentInterface,
-    LoggedInClientsInterface
+    CanRevokeGrantsByConsentInterface,
+    LoggedInClientsInterface,
+    RecordedGrantsInterface
 {
     public function __construct(EntityManagers $managers)
     {
@@ -87,7 +89,25 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
      *
      * @return list<AuthorizationCode>
      */
-    public function ofConsent(Consent $consent): array
+    public function revokeByConsent(Consent $consent, DateTimeImmutable $now): array
+    {
+        $revoked = [];
+        foreach ($this->ofConsent($consent) as $code) {
+            if ($code->isRevoked()) {
+                continue;
+            }
+            $code->revoke($now);
+            $revoked[] = $code;
+        }
+        $this->storeAll($revoked);
+
+        return $revoked;
+    }
+
+    /**
+     * @return list<AuthorizationCode>
+     */
+    private function ofConsent(Consent $consent): array
     {
         /** @var list<AuthorizationCode> $codes */
         $codes = $this->queryBuilder('c')

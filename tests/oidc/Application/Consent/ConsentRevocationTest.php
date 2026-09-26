@@ -13,10 +13,13 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Consent\ConsentRevocation;
+use Heidi\Oidc\Application\Grant\RecordedGrants;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryBackchannelAuthenticationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryDeviceAuthorizationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
@@ -77,13 +80,14 @@ final class ConsentRevocationTest extends TestCase
         $this->context = Fixtures::context($this->clock->now());
         $this->consents = new InMemoryConsentRepository();
         $this->codes = new InMemoryAuthorizationCodeRepository();
+        $deviceRecords = new InMemoryDeviceAuthorizationRecordRepository();
+        $backchannelRecords = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->accessTokens = new InMemoryAccessTokenRepository();
         $this->events = new RecordingEventDispatcher();
         $this->revocation = new ConsentRevocation(
             $this->consents,
-            $this->codes,
-            $this->codes,
+            new RecordedGrants([$this->codes, $deviceRecords, $backchannelRecords]),
             new RefreshTokenRevocation($this->refreshTokens),
             $this->refreshTokens,
             $this->accessTokens,

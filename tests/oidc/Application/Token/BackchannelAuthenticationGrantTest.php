@@ -45,6 +45,7 @@ use Heidi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * CIBA Core §10.1, §11: the client comes back, and is told "not yet", "slow down", "expired", "refused",
@@ -395,6 +396,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     {
         $record = new BackchannelAuthenticationRecord(
             DrawnSecret::digestOf(self::AUTH_REQUEST_ID),
+            Uuid::v7(),
             $this->client,
             $this->session->user,
             new Scopes([new Scope('openid'), new Scope('profile')]),

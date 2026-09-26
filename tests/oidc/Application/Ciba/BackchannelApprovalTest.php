@@ -31,6 +31,7 @@ use Heidi\Oidc\Tests\Fixture\FakeSecretSealer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * CIBA Core §10.1, §11, BCP 10027 §5.2: what the page where a user answers asks of the provider. What is
@@ -274,6 +275,7 @@ final class BackchannelApprovalTest extends TestCase
 
         return new BackchannelAuthenticationRecord(
             DrawnSecret::digestOf(self::AUTH_REQUEST_ID),
+            Uuid::v7(),
             $client,
             $this->alice,
             new Scopes([Scope::openid()]),
@@ -294,6 +296,7 @@ final class BackchannelApprovalTest extends TestCase
     ): BackchannelAuthenticationRecord {
         return new BackchannelAuthenticationRecord(
             DrawnSecret::digestOf($authRequestId),
+            Uuid::v7(),
             $this->client,
             $user ?? $this->alice,
             new Scopes([Scope::openid()]),

@@ -8,6 +8,7 @@ use function array_filter;
 use function array_merge;
 use function base64_encode;
 use DateInterval;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
@@ -354,6 +355,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
             $this->records,
             Secrets::drawer(),
             $userCodes ?? UserCodes::drawer([self::FIRST_CODE, self::SECOND_CODE]),
+            new SymfonyUuidGenerator(),
             $this->clock,
             $lifetime ?? new DateInterval('PT600S'),
             $interval ?? 5,

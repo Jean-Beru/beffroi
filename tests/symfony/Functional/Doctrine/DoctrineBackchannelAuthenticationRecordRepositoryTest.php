@@ -19,6 +19,7 @@ use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * CIBA Core §7, §10.1, architecture §5.3: a backchannel authentication request keyed by the hash of the
@@ -242,6 +243,7 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
 
         return new BackchannelAuthenticationRecord(
             DrawnSecret::digestOf($authRequestId),
+            Uuid::v7(),
             $client,
             $user,
             new Scopes([new Scope('openid'), new Scope('profile')]),

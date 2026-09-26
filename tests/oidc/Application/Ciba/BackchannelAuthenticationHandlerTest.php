@@ -8,6 +8,7 @@ use function array_filter;
 use function array_merge;
 use function base64_encode;
 use DateInterval;
+use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Domain\Tenant\Tenant;
@@ -713,6 +714,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
             new UserHints([new SubjectLoginHint($this->users)]),
             $this->records,
             Secrets::drawer(),
+            new SymfonyUuidGenerator(),
             new FakeSecretSealer(),
             $this->notifier,
             $this->clock,

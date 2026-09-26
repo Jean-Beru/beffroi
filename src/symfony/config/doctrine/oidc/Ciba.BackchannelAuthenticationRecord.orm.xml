@@ -3,11 +3,14 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- What the provider keeps of a backchannel authentication request (CIBA Core §7): the identifier the client comes back with, by its hash, as the key. The user it named is a row of its own and may be none, a request naming a stranger being kept exactly like every other so that nothing tells the two apart. The two sealed columns are for a client this provider has to call back (§10.2) and are null for every other: they hold the identifier it was handed and the token it sent, in an envelope of the KMS of the tenant, as a shared secret of a user is. Where the client asked from is kept because the page that answers shows it (BCP 10027 §5.2). The session the user approved with, and what it had proven then, arrive when somebody answers and are null until then, which is why the snapshot is a document here and an embeddable where it is there from the start. The client is a registration the module reads from its repository, not a row, as it is for a device authorization request. -->
+    <!-- What the provider keeps of a backchannel authentication request (CIBA Core §7): the identifier the client comes back with, by its hash, as the key. The user it named is a row of its own and may be none, a request naming a stranger being kept exactly like every other so that nothing tells the two apart. The two sealed columns are for a client this provider has to call back (§10.2) and are null for every other: they hold the identifier it was handed and the token it sent, in an envelope of the KMS of the tenant, as a shared secret of a user is. Where the client asked from is kept because the page that answers shows it (BCP 10027 §5.2). The session the user approved with, and what it had proven then, arrive when somebody answers and are null until then, which is why the snapshot is a document here and an embeddable where it is there from the start. The client is a registration the module reads from its repository, not a row, as it is for a device authorization request. The record is also the grant the tokens of this flow name, under a unique constraint on "grant_id", and revoked when the consent behind it is taken back. -->
     <entity name="Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord" table="heidi_backchannel_authentication_request">
         <indexes>
             <index name="heidi_backchannel_authentication_expiry" columns="expires_at"/>
         </indexes>
+        <unique-constraints>
+            <unique-constraint name="heidi_backchannel_authentication_grant" columns="grant_id"/>
+        </unique-constraints>
         <id name="authRequestIdHash" type="string" column="auth_request_id_hash" length="64">
             <options>
                 <option name="fixed">true</option>
@@ -16,6 +19,7 @@
         <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
         </many-to-one>
+        <field name="grantId" type="uuid" column="grant_id"/>
         <field name="clientId" type="string" column="client_id" length="255"/>
         <many-to-one field="user" target-entity="Heidi\Core\Domain\Identity\User">
             <join-column name="user_id" referenced-column-name="id" nullable="true" on-delete="CASCADE"/>
