@@ -9,6 +9,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Exchange\TokenTypeIdentifier;
 use Heidi\Oidc\Domain\Token\AccessToken;
 use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\IssuedRefreshToken;
@@ -42,6 +43,38 @@ final class IssuedTokensTest extends TestCase
             ['openid', 'profile'],
         ));
         $this->accessToken = new AccessToken('at.value', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+    }
+
+    /**
+     * RFC 8693 §2.2.1: the grant that exchanged them says the type it issued, and the response carries it.
+     */
+    #[Test]
+    public function theTypeAGrantSaysItIssuedReachesTheResponse(): void
+    {
+        // Given
+        $issued = new IssuedTokens($this->authorization, $this->accessToken, null, null);
+
+        // When
+        $response = $issued->withIssuedTokenType(TokenTypeIdentifier::accessToken())->toResponse();
+
+        // Then
+        static::assertSame('urn:ietf:params:oauth:token-type:access_token', $response->parameters()['issued_token_type']);
+    }
+
+    /**
+     * RFC 6749 §5.1: a grant with no type to name names none.
+     */
+    #[Test]
+    public function aGrantWithNoTypeToNameNamesNone(): void
+    {
+        // Given
+        $issued = new IssuedTokens($this->authorization, $this->accessToken, null, null);
+
+        // When
+        $response = $issued->toResponse();
+
+        // Then
+        static::assertArrayNotHasKey('issued_token_type', $response->parameters());
     }
 
     /**

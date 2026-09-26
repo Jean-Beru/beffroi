@@ -8,6 +8,7 @@ use function array_column;
 use Heidi\Core\Bridge\Password\NativePasswordHasher;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use function array_map;
+use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\PasswordHasherInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
@@ -19,6 +20,7 @@ use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Exchange\MayAct;
 use Heidi\Oidc\Domain\Resource\ResourceIndicator;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Client\ClientJwks;
@@ -38,6 +40,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
 use Heidi\Oidc\Tests\Fixture\Shapes;
+use Heidi\Oidc\Tests\Fixture\TokenTypes;
 
 final class ConfigurationClientRepositoryTest extends TestCase
 {
@@ -70,6 +73,22 @@ final class ConfigurationClientRepositoryTest extends TestCase
     private const array SPA = [
         'redirect_uris' => ['https://spa.example/callback'],
         'token_endpoint_auth_method' => 'none',
+    ];
+
+    /**
+     * A client that authenticates with a key of its own (OIDC Core §9), publishing its JWK Set inline.
+     *
+     * @var array<string, mixed>
+     */
+    private const array GATEWAY = [
+        'secret' => Clients::SECRET,
+        'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+        'resources' => [Clients::CALENDAR],
+        'token_exchange' => [
+            'subject_token_types' => ['urn:ietf:params:oauth:token-type:access_token'],
+            'may_act_for_a_user' => true,
+        ],
+        'may_act' => 'backend',
     ];
 
     /**
@@ -412,6 +431,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
+            TokenTypes::served(),
         );
 
         // When
@@ -821,6 +841,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
+            TokenTypes::served(),
         );
     }
 
@@ -1341,6 +1362,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
                 DeliveryModes::served(),
+                TokenTypes::served(),
             )->hasSecret(),
         );
         static::assertTrue(
@@ -1355,6 +1377,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 Algorithms::keyEncryption(),
                 Algorithms::contentEncryption(),
                 DeliveryModes::served(),
+                TokenTypes::served(),
             )->hasSecret(),
         );
     }
@@ -1377,6 +1400,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
+            TokenTypes::served(),
         );
 
         // Then
@@ -1475,6 +1499,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
+            TokenTypes::served(),
         );
     }
 
@@ -1533,6 +1558,166 @@ final class ConfigurationClientRepositoryTest extends TestCase
             [Clients::CALENDAR, Clients::CONTACTS],
             array_map(static fn (ResourceIndicator $resource): string => $resource->value, $repository->resourcesRegisteredIn($this->tenant)),
         );
+    }
+
+    /**
+     * RFC 8693 §2.1, §4.4: what a client may do at the exchange is read as it is written, and so is who may
+     * act for the subject of a token issued to it.
+     */
+    #[Test]
+    public function aClientRegistersWhatItMayExchangeAndWhoMayActForItsTokens(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'gateway' => self::GATEWAY,
+        ], grants: Grants::servedWithTokenExchange());
+
+        // When
+        $registration = self::find($repository, $this->tenant, 'gateway')->registration;
+
+        // Then
+        static::assertTrue($registration->tokenExchange?->allowsTokenType(TokenTypes::accessToken()));
+        static::assertFalse($registration->tokenExchange->allowsTokenType(TokenTypes::invented()));
+        static::assertTrue($registration->tokenExchange->mayActForAUser);
+        static::assertTrue($registration->mayAct?->equals(new MayAct(new Subject('backend'))));
+    }
+
+    /**
+     * RFC 8693 §2.1: a client that registers nothing there may exchange nothing, and one that registers
+     * nothing about who may act for its tokens says nothing.
+     */
+    #[Test]
+    public function aClientThatRegistersNoExchangeMayExchangeNothing(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'spa' => self::SPA,
+        ]);
+
+        // When
+        $registration = self::find($repository, $this->tenant, 'spa')->registration;
+
+        // Then
+        static::assertNull($registration->tokenExchange);
+        static::assertNull($registration->mayAct);
+    }
+
+    /**
+     * RFC 8693 §4.1, §4.4: the client is named where a subject is expected, in the "act" of the token it
+     * receives and in the comparison a "may_act" is read for, so an identifier a subject cannot be is refused
+     * at boot.
+     */
+    #[Test]
+    public function aClientNamedInAWayASubjectCannotBeIsRefusedTheExchange(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('cannot be the "sub" of a token it holds for itself');
+
+        // When
+        $this->repository([
+            'the gateway' => self::GATEWAY,
+        ], grants: Grants::servedWithTokenExchange());
+    }
+
+    /**
+     * RFC 8693 §2.1, §3: a registration the wiring of the exchange refuses fails at boot, and not at the
+     * first request.
+     *
+     * @param array<string, mixed> $definition
+     */
+    #[Test]
+    #[DataProvider('provideExchangesThatFailAtBoot')]
+    public function anExchangeTheWiringRefusesFailsAtBoot(array $definition, string $reason): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains($reason);
+
+        // When
+        $this->repository([
+            'bad' => $definition,
+        ], grants: Grants::servedWithTokenExchange());
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function provideExchangesThatFailAtBoot(): iterable
+    {
+        yield 'a grant that exchanges and nothing declared' => [
+            [
+                'secret' => Clients::SECRET,
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+                'resources' => [Clients::CALENDAR],
+            ],
+            'declares under "token_exchange" what it may present and what it may ask for',
+        ];
+        yield 'a declaration and no grant that would exchange anything' => [
+            [
+                'secret' => Clients::SECRET,
+                'redirect_uris' => ['https://gateway.example/callback'],
+                'token_exchange' => [
+                    'subject_token_types' => ['urn:ietf:params:oauth:token-type:access_token'],
+                ],
+            ],
+            'declares a token_exchange and no grant that would exchange anything',
+        ];
+        yield 'a type nothing reads' => [
+            [
+                'secret' => Clients::SECRET,
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+                'resources' => [Clients::CALENDAR],
+                'token_exchange' => [
+                    'subject_token_types' => ['urn:example:params:oauth:token-type:invented'],
+                ],
+            ],
+            'which this provider does not read',
+        ];
+        yield 'no type at all' => [
+            [
+                'secret' => Clients::SECRET,
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+                'resources' => [Clients::CALENDAR],
+                'token_exchange' => [
+                    'subject_token_types' => [],
+                ],
+            ],
+            'registers at least one subject_token_types',
+        ];
+        yield 'an unknown key in the declaration' => [
+            [
+                'secret' => Clients::SECRET,
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+                'resources' => [Clients::CALENDAR],
+                'token_exchange' => [
+                    'subject_token_types' => ['urn:ietf:params:oauth:token-type:access_token'],
+                    'may_act_for_anybody' => true,
+                ],
+            ],
+            'has unknown keys: may_act_for_anybody',
+        ];
+        yield 'a declaration that is not a map' => [
+            [
+                'secret' => Clients::SECRET,
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+                'resources' => [Clients::CALENDAR],
+                'token_exchange' => 'yes',
+            ],
+            'must be a map (RFC 8693 section 2.1)',
+        ];
+        yield 'a may_act that is not a subject' => [
+            [
+                'secret' => Clients::SECRET,
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+                'resources' => [Clients::CALENDAR],
+                'token_exchange' => [
+                    'subject_token_types' => ['urn:ietf:params:oauth:token-type:access_token'],
+                ],
+                'may_act' => 'the backend',
+            ],
+            'names a subject (OIDC Core section 2)',
+        ];
     }
 
     /**

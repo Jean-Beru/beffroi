@@ -17,12 +17,18 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Heidi\Core\Domain\Identity\Subject;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
+use Heidi\Oidc\Domain\Exchange\Actor;
+use Heidi\Oidc\Domain\Exchange\MayAct;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\ClientAuthorization;
+use Heidi\Oidc\Domain\Token\SubjectAuthorization;
+use Heidi\Oidc\Domain\Token\TokenSignIn;
 use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -167,6 +173,112 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertSame(Clients::CALENDAR, $claims['aud']);
         static::assertSame('invoices.read', $claims['scope']);
         static::assertSame($authorization->grantId->toRfc4122(), $claims['grant_id']);
+    }
+
+    /**
+     * RFC 8693 §2.2.1, §4.1: a token somebody holds for its subject names the subject it was given and the
+     * chain of actors that holds it, the most recent actor outermost, and carries the sign-in the token it
+     * descends from named.
+     */
+    #[Test]
+    public function aTokenExchangedForAnotherNamesItsSubjectAndWhoHoldsIt(): void
+    {
+        // Given
+        $gateway = Clients::gateway($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $signIn = new TokenSignIn($this->session->id, AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()));
+        $authorization = new SubjectAuthorization(
+            Grants::tokenExchange(),
+            Uuid::v7(),
+            $gateway,
+            new Subject('alice-subject'),
+            new Scopes([new Scope('invoices.read')]),
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            $signIn,
+            new Actor(new Subject('gateway'), new Actor(new Subject('first-hop'))),
+        );
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame('alice-subject', $claims['sub']);
+        static::assertSame('gateway', $claims['client_id']);
+        static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
+        static::assertSame(
+            [
+                'sub' => 'gateway',
+                'act' => [
+                    'sub' => 'first-hop',
+                ],
+            ],
+            $claims['act'],
+        );
+    }
+
+    /**
+     * RFC 8693 §1.3: an impersonation says nothing of anybody acting, which is what tells it from a
+     * delegation.
+     */
+    #[Test]
+    public function aTokenNobodyHoldsForItsSubjectCarriesNoActor(): void
+    {
+        // Given
+        $gateway = Clients::gateway($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $authorization = new SubjectAuthorization(
+            Grants::tokenExchange(),
+            Uuid::v7(),
+            $gateway,
+            new Subject('alice-subject'),
+            new Scopes([new Scope('invoices.read')]),
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertArrayNotHasKey('act', $claims);
+        static::assertArrayNotHasKey('sid', $claims);
+    }
+
+    /**
+     * RFC 8693 §4.4: who may act for the subject of a token of this client, as its registration says it, so
+     * that a resource server verifying the token offline reads the rule the provider applies.
+     */
+    #[Test]
+    public function aTokenOfAClientThatNamesWhoMayActForItCarriesThatName(): void
+    {
+        // Given
+        $gateway = Clients::gateway(
+            $this->session->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            mayAct: new MayAct(new Subject('backend')),
+        );
+        $authorization = new ClientAuthorization(
+            Grants::clientCredentials(),
+            Uuid::v7(),
+            $gateway,
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame(
+            [
+                'sub' => 'backend',
+            ],
+            $claims['may_act'],
+        );
     }
 
     /**

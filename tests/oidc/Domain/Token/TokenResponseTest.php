@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Domain\Token;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\TokenErrorResponse;
+use Heidi\Oidc\Domain\Exchange\TokenTypeIdentifier;
 use Heidi\Oidc\Domain\Token\TokenResponse;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidClientException;
@@ -38,6 +39,50 @@ final class TokenResponseTest extends TestCase
             ],
             $response->parameters(),
         );
+    }
+
+    /**
+     * RFC 8693 §2.2.1: the response of an exchange names the type of the token it issued, beside what every
+     * other response carries.
+     */
+    #[Test]
+    public function aResponseOfAnExchangeNamesTheTypeOfTheTokenItIssued(): void
+    {
+        // When
+        $response = new TokenResponse(
+            'at.value',
+            600,
+            null,
+            null,
+            new Scopes([new Scope('invoices.read')]),
+            TokenResponse::BEARER,
+            TokenTypeIdentifier::accessToken(),
+        );
+
+        // Then
+        static::assertSame(
+            [
+                'access_token' => 'at.value',
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'issued_token_type' => 'urn:ietf:params:oauth:token-type:access_token',
+                'scope' => 'invoices.read',
+            ],
+            $response->parameters(),
+        );
+    }
+
+    /**
+     * RFC 6749 §5.1: a response no exchange produced has no type to name, and names none.
+     */
+    #[Test]
+    public function aResponseNoExchangeProducedNamesNoIssuedTokenType(): void
+    {
+        // When
+        $response = new TokenResponse('at.value', 600, null, null, new Scopes([Scope::openid()]));
+
+        // Then
+        static::assertArrayNotHasKey('issued_token_type', $response->parameters());
     }
 
     #[Test]

@@ -32,6 +32,7 @@ use Symfony\Component\Config\Definition\PrototypedArrayNode;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ConfigurationExtensionInterface;
 use Heidi\Oidc\Tests\Fixture\Shapes;
+use Heidi\Oidc\Tests\Fixture\TokenTypes;
 
 /**
  * The configuration tree of architecture §5.1, read through the Config component as the kernel reads it.
@@ -175,6 +176,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
+            TokenTypes::served(),
         );
 
         // When
@@ -205,6 +207,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::keyEncryption(),
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
+            TokenTypes::served(),
         );
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(ClientDefinition::DEFAULT_GRANT_TYPES, GrantNames::of($fromTree->registration->grantTypes));

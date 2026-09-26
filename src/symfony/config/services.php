@@ -9,6 +9,7 @@ use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Bundle\Ciba\QueuedPendingApprovalNotifier;
 use Heidi\Bundle\Cache\SeenOnce;
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
+use Heidi\Bundle\Trust\IssuerAssertionReplayGuard;
 use Heidi\Bundle\Client\RequestObjectReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
 use Heidi\Bundle\Client\ClientJwksFetcher;
@@ -25,6 +26,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository
 use Heidi\Bundle\Doctrine\Repository\DoctrineBackchannelAuthenticationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineLinkedIdentityRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
@@ -193,6 +195,7 @@ use Heidi\Core\Port\SigningKeyProviderInterface;
 use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use Heidi\Core\Port\TotpAlgorithmInterface;
 use Heidi\Core\Port\UserAgentParserInterface;
+use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
@@ -260,7 +263,10 @@ use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Consent\ConsentGranting;
 use Heidi\Oidc\Application\Consent\ConsentRevocation;
+use Heidi\Oidc\Application\Exchange\PresentedAccessTokenType;
+use Heidi\Oidc\Application\Exchange\PresentedTokenTypes;
 use Heidi\Oidc\Application\Grant\RecordedGrants;
+use Heidi\Oidc\Application\Trust\IssuerAssertionValidator;
 use Heidi\Oidc\Application\Ciba\BackchannelApproval;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
@@ -277,6 +283,8 @@ use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\ClientCredentialsGrant;
+use Heidi\Oidc\Application\Token\JwtBearerGrant;
+use Heidi\Oidc\Application\Token\TokenExchangeGrant;
 use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
 use Heidi\Oidc\Application\Token\DeviceCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenDue;
@@ -295,6 +303,7 @@ use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
@@ -311,6 +320,9 @@ use Heidi\Oidc\Port\RecordedGrantsInterface;
 use Heidi\Oidc\Port\CertificateReaderInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Heidi\Oidc\Port\IssuerAssertionReplayGuardInterface;
+use Heidi\Oidc\Port\PresentedTokenTypesInterface;
+use Heidi\Oidc\Port\TrustedIssuersInterface;
 use Heidi\Oidc\Port\RequestObjectReplayGuardInterface;
 use Heidi\Oidc\Port\ClientAssertionSecretVerifierInterface;
 use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
@@ -552,6 +564,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClientResolver::class)->tag('doctrine.orm.entity_listener');
     $services->set(DoctrineUserRepository::class);
     $services->alias(UserRepositoryInterface::class, DoctrineUserRepository::class);
+    // the identities a user has at an upstream provider (decision 0002), which is what the subject of an
+    // assertion of a trusted issuer resolves through (RFC 7523 §2.1)
+    $services->set(DoctrineLinkedIdentityRepository::class);
+    $services->alias(LinkedIdentityRepositoryInterface::class, DoctrineLinkedIdentityRepository::class);
     $services->set(DoctrineCredentialRepository::class);
     $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
     $services->set(DoctrineAuthenticationSessionRepository::class);
@@ -790,6 +806,17 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->alias(ClientAssertionReplayGuardInterface::class, ClientAssertionReplayGuard::class);
 
+    // The module: an assertion read as an authorization and not as an authentication (RFC 7523 §2.1). It
+    // shares nothing with the reading above: its own registration of who is trusted, its own validator and
+    // its own pool of the assertions already seen, so that one reading cannot satisfy the other.
+    $services->set(ConfigurationTrustedIssuers::class);
+    $services->alias(TrustedIssuersInterface::class, ConfigurationTrustedIssuers::class);
+    $services->set(IssuerAssertionValidator::class);
+    $services->set(IssuerAssertionReplayGuard::class)->args([
+        inline_service(SeenOnce::class)->args([service('heidi.issuer_assertions')]),
+    ]);
+    $services->alias(IssuerAssertionReplayGuardInterface::class, IssuerAssertionReplayGuard::class);
+
     // The module: the proof of possession a request carries (RFC 9449), read with the reader every JWT
     // a client signs is read with and verified against the key of its own header, with the algorithms
     // the provider is wired with; the proofs already seen and the nonces it hands out live in a pool
@@ -892,8 +919,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClientCredentialsGrant::class)->tag('heidi.oidc.grant');
     $services->set(DeviceCodeGrant::class)->tag('heidi.oidc.grant');
     $services->set(BackchannelAuthenticationGrant::class)->tag('heidi.oidc.grant');
+    $services->set(TokenExchangeGrant::class)->tag('heidi.oidc.grant');
+    $services->set(JwtBearerGrant::class)->tag('heidi.oidc.grant');
     $services->set(ServedGrants::class)->args([tagged_iterator('heidi.oidc.grant')]);
     $services->alias(ServedGrantsInterface::class, ServedGrants::class);
+    // one class per type of token the exchange reads (RFC 8693 §3), tagged, and what is tagged is what a
+    // request may present and what a client may register, never an enumeration kept beside them
+    $services->set(PresentedAccessTokenType::class)->tag('heidi.oidc.presented_token_type');
+    $services->set(PresentedTokenTypes::class)->args([tagged_iterator('heidi.oidc.presented_token_type')]);
+    $services->alias(PresentedTokenTypesInterface::class, PresentedTokenTypes::class);
     $services->set(TokenHandler::class);
     // what a token descends from, and what a consent taken back reaches, read across the records every
     // flow of the provider writes (architecture §4.3, §4.6)

@@ -6,6 +6,7 @@ namespace Heidi\Bundle;
 
 use function is_a;
 use function dirname;
+use Heidi\Bundle\Doctrine\Type\ActorType;
 use Heidi\Bundle\Doctrine\Type\AddressType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
@@ -30,6 +31,7 @@ use Heidi\Bundle\Configuration\MutualTlsSection;
 use Heidi\Bundle\Configuration\RequestObjectsSection;
 use Heidi\Bundle\Configuration\TenantSection;
 use Heidi\Bundle\Configuration\TokensSection;
+use Heidi\Bundle\Configuration\TrustedIssuersSection;
 use Heidi\Bundle\Configuration\WebauthnSection;
 use Heidi\Bundle\Doctrine\Type\ConfirmationType;
 use Heidi\Bundle\Doctrine\Type\NeedsConfirmationReaderInterface;
@@ -89,6 +91,7 @@ final class HeidiBundle extends AbstractBundle
         BindingMessageType::NAME => BindingMessageType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
+        ActorType::NAME => ActorType::class,
         ConfirmationType::NAME => ConfirmationType::class,
         KeyConfirmationType::NAME => KeyConfirmationType::class,
         BytesType::NAME => BytesType::class,
@@ -192,7 +195,8 @@ final class HeidiBundle extends AbstractBundle
             ]);
         }
         if ($builder->hasExtension('framework')) {
-            // the keys of the clients, the assertions already seen, the request objects already seen,
+            // the keys of the clients, the assertions of a client and the assertions of a trusted issuer
+            // already seen, each in a pool of its own, the request objects already seen,
             // what DPoP remembers of a proof and what each budget of a load has been asked for live in
             // pools of their own, so that a deployment can point them at a shared store without
             // touching the rest of its cache
@@ -203,6 +207,9 @@ final class HeidiBundle extends AbstractBundle
                             'adapter' => 'cache.app',
                         ],
                         'heidi.client_assertions' => [
+                            'adapter' => 'cache.app',
+                        ],
+                        'heidi.issuer_assertions' => [
                             'adapter' => 'cache.app',
                         ],
                         'heidi.request_objects' => [
@@ -281,6 +288,7 @@ final class HeidiBundle extends AbstractBundle
             new ClientAuthenticationSection(),
             new RequestObjectsSection(),
             new DpopSection(),
+            new TrustedIssuersSection(),
             new ClientsSection(),
         ];
     }

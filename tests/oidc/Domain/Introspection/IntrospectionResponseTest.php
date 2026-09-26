@@ -10,6 +10,7 @@ use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Heidi\Oidc\Domain\Exchange\Actor;
 use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\TokenAudience;
@@ -139,6 +140,71 @@ final class IntrospectionResponseTest extends TestCase
             ],
             $response->members,
         );
+    }
+
+    /**
+     * RFC 8693 §4.1: a token somebody holds for its subject renders who in "act", the most recent actor
+     * outermost, which is what a resource server reads to know through whom it was reached.
+     */
+    #[Test]
+    public function aTokenSomebodyHoldsForItsSubjectRendersTheChainOfActors(): void
+    {
+        // Given
+        $grant = Uuid::v7();
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            $grant,
+            new Scopes([new Scope('invoices.read')]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+            null,
+            new Actor(new Subject('gateway'), new Actor(new Subject('first-hop'))),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame(
+            [
+                'sub' => 'gateway',
+                'act' => [
+                    'sub' => 'first-hop',
+                ],
+            ],
+            $response->members['act'],
+        );
+    }
+
+    /**
+     * RFC 8693 §1.3: a token nobody holds for anybody renders no "act" at all, which is what tells an
+     * impersonation from a delegation.
+     */
+    #[Test]
+    public function aTokenNobodyHoldsForAnybodyRendersNoActor(): void
+    {
+        // Given
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            new Scopes([new Scope('invoices.read')]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertArrayNotHasKey('act', $response->members);
     }
 
     /**

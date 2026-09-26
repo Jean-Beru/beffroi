@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 
 use function array_map;
 use DateTimeImmutable;
+use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
@@ -18,6 +19,9 @@ use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
 use Heidi\Oidc\Domain\Device\UserCode;
+use Heidi\Oidc\Domain\Exchange\Actor;
+use Heidi\Oidc\Domain\Exchange\MayAct;
+use Heidi\Oidc\Domain\Exchange\PresentedToken;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
@@ -26,7 +30,10 @@ use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Domain\Token\StoredClientAccessToken;
+use Heidi\Oidc\Domain\Token\StoredSubjectAccessToken;
 use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
+use Heidi\Oidc\Domain\Token\TokenAudience;
+use Heidi\Oidc\Domain\Token\TokenSignIn;
 use Symfony\Component\Uid\Uuid;
 
 final class Tokens
@@ -190,6 +197,67 @@ final class Tokens
             $resources ?? ResourceIndicators::of([Clients::CALENDAR]),
             $issuedAt,
             $issuedAt->modify('+10 minutes'),
+        );
+    }
+
+    /**
+     * The record of an opaque access token whose subject was named by what the client presented
+     * (RFC 8693 §2.1, RFC 7523 §2.1), issued now for ten minutes, under the hash of the value given.
+     *
+     * @param list<string> $scopes
+     */
+    public static function storedSubjectAccessToken(
+        string $value,
+        Client $client,
+        Subject $subject,
+        DateTimeImmutable $issuedAt,
+        ?ResourceIndicators $resources = null,
+        ?Uuid $grantId = null,
+        array $scopes = ['invoices.read'],
+        ?AuthenticationSession $session = null,
+        ?Actor $actor = null,
+    ): StoredSubjectAccessToken {
+        return new StoredSubjectAccessToken(
+            DrawnSecret::digestOf($value),
+            $grantId ?? Uuid::v7(),
+            $client,
+            $subject,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources ?? ResourceIndicators::of([Clients::CALENDAR]),
+            $session?->id,
+            $session === null ? null : AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
+            $actor,
+            $issuedAt,
+            $issuedAt->modify('+10 minutes'),
+        );
+    }
+
+    /**
+     * What the exchange reads of the token a request presents (RFC 8693 §2.1), about a user when a session is
+     * given and about the client itself otherwise (RFC 6749 §4.4).
+     *
+     * @param list<string> $scopes
+     * @param list<string>|null $audience who the presented token is addressed to, the calendar unless the test says otherwise
+     */
+    public static function presented(
+        Client $client,
+        Subject $subject,
+        ?AuthenticationSession $session = null,
+        array $scopes = ['invoices.read', 'invoices.write'],
+        ?array $audience = null,
+        ?Uuid $grantId = null,
+        ?Actor $actor = null,
+        ?MayAct $mayAct = null,
+    ): PresentedToken {
+        return new PresentedToken(
+            $subject,
+            $client,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            new TokenAudience($audience ?? [Clients::CALENDAR]),
+            $grantId ?? Uuid::v7(),
+            $session === null ? null : new TokenSignIn($session->id, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass())),
+            $actor,
+            $mayAct,
         );
     }
 

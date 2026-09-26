@@ -27,6 +27,9 @@ use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
 use Heidi\Oidc\Domain\Resource\ResourceIndicator;
 use Heidi\Oidc\Domain\Client\ResponseFormat;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
+use Heidi\Oidc\Domain\Client\TokenExchange;
+use Heidi\Oidc\Domain\Exchange\MayAct;
+use Heidi\Oidc\Domain\Exchange\TokenTypeIdentifier;
 use Heidi\Oidc\Domain\Scope\Scope;
 
 final class Clients
@@ -104,6 +107,78 @@ final class Clients
                 $accessTokenShape ?? Shapes::jwt(),
                 [],
                 [Grants::clientCredentials()],
+                $allowedScopes ?? new Scopes([new Scope('invoices.read'), new Scope('invoices.write')]),
+                resources: $resources ?? self::resources(),
+            ),
+            new HashedClientSecret($secretHash),
+        );
+    }
+
+    /**
+     * A service that acts for somebody else (RFC 8693 §2.1): a confidential client registered for the token
+     * exchange, for the types of token it may present and for the resources it may ask a token for. It
+     * registers no redirect URI, there being no browser of anybody's in the flow.
+     *
+     * @param list<ResourceIndicator>|null $resources what this client may ask a token for, both fixtures unless the test says otherwise
+     * @param list<TokenTypeIdentifier>|null $subjectTokenTypes what it may present, the access token unless the test says otherwise
+     */
+    public static function gateway(
+        Tenant $tenant,
+        PasswordHash $secretHash,
+        string $clientId = 'gateway',
+        ?array $resources = null,
+        ?Scopes $allowedScopes = null,
+        bool $mayActForAUser = true,
+        ?array $subjectTokenTypes = null,
+        ?MayAct $mayAct = null,
+        ?AccessTokenShapeInterface $accessTokenShape = null,
+    ): Client {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                'API gateway',
+                Methods::clientSecretBasic(),
+                true,
+                [],
+                $accessTokenShape ?? Shapes::jwt(),
+                [],
+                [Grants::tokenExchange()],
+                $allowedScopes ?? new Scopes([new Scope('invoices.read'), new Scope('invoices.write')]),
+                resources: $resources ?? self::resources(),
+                tokenExchange: new TokenExchange($subjectTokenTypes ?? [TokenTypeIdentifier::accessToken()], $mayActForAUser),
+                mayAct: $mayAct,
+            ),
+            new HashedClientSecret($secretHash),
+        );
+    }
+
+    /**
+     * A service that presents an assertion of an issuer the tenant trusts (RFC 7523 §2.1): a confidential
+     * client registered for the JWT bearer grant, for the scopes it may ask for and for the resources its
+     * tokens are addressed to. It registers no redirect URI: the user was authenticated elsewhere.
+     *
+     * @param list<ResourceIndicator>|null $resources what this client may ask a token for, both fixtures unless the test says otherwise
+     */
+    public static function presentingAssertions(
+        Tenant $tenant,
+        PasswordHash $secretHash,
+        string $clientId = 'job-runner',
+        ?array $resources = null,
+        ?Scopes $allowedScopes = null,
+        ?AccessTokenShapeInterface $accessTokenShape = null,
+    ): Client {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                'Nightly job runner',
+                Methods::clientSecretBasic(),
+                true,
+                [],
+                $accessTokenShape ?? Shapes::jwt(),
+                [],
+                [Grants::jwtBearer()],
                 $allowedScopes ?? new Scopes([new Scope('invoices.read'), new Scope('invoices.write')]),
                 resources: $resources ?? self::resources(),
             ),
