@@ -21,6 +21,7 @@ use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * RFC 8628 §3.2, §3.3, §3.5: the record waits for its user, who answers it once, and for the client, which
@@ -236,6 +237,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
         new DeviceAuthorizationRecord(
             $deviceCodeHash,
             $userCodeHash,
+            Uuid::v7(),
             $this->client,
             new Scopes([new Scope('openid')]),
             null,
@@ -298,6 +300,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
         return new DeviceAuthorizationRecord(
             DrawnSecret::digestOf('the-device-code'),
             UserCode::hashOf('BCDFGHJK'),
+            Uuid::v7(),
             $this->client,
             new Scopes([new Scope('openid'), new Scope('profile')]),
             null,

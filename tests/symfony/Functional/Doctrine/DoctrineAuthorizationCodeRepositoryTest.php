@@ -22,7 +22,8 @@ use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Port\GrantsOfAConsentInterface;
+use Heidi\Oidc\Domain\Grant\GrantRecord;
+use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Heidi\Oidc\Port\LoggedInClientsInterface;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
@@ -207,11 +208,13 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     /**
      * A code the client exchanged for tokens.
      */
-    private static function used(AuthenticationSession $session, Client $client, string $code): void
+    private static function used(AuthenticationSession $session, Client $client, string $code): AuthorizationCode
     {
         $record = self::code($code, $client, $session, null);
         $record->consume(self::now()->modify('+90 seconds'));
         self::codes()->save($record);
+
+        return $record;
     }
 
     /**
@@ -219,26 +222,27 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
      * whichever session of theirs left it.
      */
     #[Test]
-    public function theGrantsOfAConsentAreThoseOfItsUserAndItsClient(): void
+    public function theGrantsRevokedWithAConsentAreThoseOfItsUserAndItsClient(): void
     {
         // Given
         $alice = self::user();
         $session = self::session($alice);
-        self::used($session, self::client(), 'first-of-the-demo');
-        self::codes()->save(self::code('waiting-of-the-demo', self::client(), self::session($alice, self::now()->modify('+1 second')), null));
+        $exchanged = self::used($session, self::client(), 'first-of-the-demo');
+        $waiting = self::code('waiting-of-the-demo', self::client(), self::session($alice, self::now()->modify('+1 second')), null);
+        self::codes()->save($waiting);
         self::used($session, self::client('native-app'), 'of-the-native-app');
         self::used(self::session(self::user('bob', 'bob-subject')), self::client(), 'of-bob');
+        $expected = [$exchanged->grantId->toRfc4122(), $waiting->grantId->toRfc4122()];
+        sort($expected);
         self::reload();
 
         // When
-        $grants = self::grantsOfAConsent()->ofConsent(self::consent($alice, self::client()));
+        $grants = self::grantsOfAConsent()->revokeByConsent(self::consent($alice, self::client()), self::now());
 
         // Then
-        $hashes = array_map(static fn (AuthorizationCode $code): string => $code->codeHash, $grants);
-        sort($hashes);
-        $expected = [DrawnSecret::digestOf('first-of-the-demo'), DrawnSecret::digestOf('waiting-of-the-demo')];
-        sort($expected);
-        static::assertSame($expected, $hashes);
+        $revoked = array_map(static fn (GrantRecord $grant): string => $grant->grantId->toRfc4122(), $grants);
+        sort($revoked);
+        static::assertSame($expected, $revoked);
     }
 
     #[Test]
@@ -254,7 +258,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         self::reload();
 
         // When / Then
-        static::assertSame([], self::grantsOfAConsent()->ofConsent(self::consent($alice, $ghost)));
+        static::assertSame([], self::grantsOfAConsent()->revokeByConsent(self::consent($alice, $ghost), self::now()));
     }
 
     private static function consent(User $user, Client $client): Consent
@@ -262,9 +266,9 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         return new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
     }
 
-    private static function grantsOfAConsent(): GrantsOfAConsentInterface
+    private static function grantsOfAConsent(): CanRevokeGrantsByConsentInterface
     {
-        return self::service('test.heidi.grants_of_a_consent', GrantsOfAConsentInterface::class);
+        return self::service('test.heidi.grants_of_a_consent', CanRevokeGrantsByConsentInterface::class);
     }
 
     private static function loggedInClients(): LoggedInClientsInterface

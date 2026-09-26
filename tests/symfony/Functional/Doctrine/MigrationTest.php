@@ -29,6 +29,7 @@ use Heidi\Bundle\Migrations\Version20260925120000;
 use Heidi\Bundle\Migrations\Version20260925180000;
 use Heidi\Bundle\Migrations\Version20260926090000;
 use Heidi\Bundle\Migrations\Version20260926210000;
+use Heidi\Bundle\Migrations\Version20260926220000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -70,6 +71,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20260925180000::class,
         Version20260926090000::class,
         Version20260926210000::class,
+        Version20260926220000::class,
     ];
 
     #[Test]
@@ -365,6 +367,11 @@ final class MigrationTest extends DatabaseTestCase
                         $statements,
                     );
 
+                    continue;
+                }
+                // what a migration does to the rows is not what the mappings describe: a column made
+                // mandatory on a table of records that live minutes empties it first
+                if (str_starts_with($statement, 'DELETE FROM ')) {
                     continue;
                 }
                 $statements[] = $statement;

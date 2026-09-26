@@ -21,6 +21,7 @@ use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * CIBA Core §7, §10.1, §11: the record waits for the user it named, who answers it once, and for the
@@ -243,6 +244,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
         // When
         new BackchannelAuthenticationRecord(
             'not-a-digest',
+            Uuid::v7(),
             $this->client,
             $this->user,
             new Scopes([Scope::openid()]),
@@ -325,6 +327,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     ): BackchannelAuthenticationRecord {
         return new BackchannelAuthenticationRecord(
             DrawnSecret::digestOf('the-auth-req-id'),
+            Uuid::v7(),
             $this->client,
             $named ? $user ?? $this->user : null,
             new Scopes([Scope::openid()]),

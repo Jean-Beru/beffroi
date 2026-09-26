@@ -16,6 +16,7 @@ use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
 use Heidi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * RFC 8628 §3.2, architecture §5.3: a device authorization request keyed by the hash of the code its client
@@ -189,6 +190,7 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
         return new DeviceAuthorizationRecord(
             DrawnSecret::digestOf($deviceCode),
             UserCode::hashOf(self::USER_CODE),
+            Uuid::v7(),
             $client,
             new Scopes([new Scope('openid'), new Scope('profile')]),
             new ResourceIndicators([new ResourceIndicator('https://cal.example.com/')]),

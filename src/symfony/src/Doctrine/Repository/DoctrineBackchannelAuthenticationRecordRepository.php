@@ -13,7 +13,11 @@ use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
+use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
+use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
+use Heidi\Oidc\Port\RecordedGrantsInterface;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use function is_string;
 use function sprintf;
@@ -24,7 +28,10 @@ use function sprintf;
  *
  * @extends DoctrineRepository<BackchannelAuthenticationRecord>
  */
-final readonly class DoctrineBackchannelAuthenticationRecordRepository extends DoctrineRepository implements BackchannelAuthenticationRecordRepositoryInterface
+final readonly class DoctrineBackchannelAuthenticationRecordRepository extends DoctrineRepository implements
+    BackchannelAuthenticationRecordRepositoryInterface,
+    CanRevokeGrantsByConsentInterface,
+    RecordedGrantsInterface
 {
     public function __construct(EntityManagers $managers)
     {
@@ -56,6 +63,44 @@ final readonly class DoctrineBackchannelAuthenticationRecordRepository extends D
             ->getResult();
 
         return array_values(array_filter($records, ClientResolver::isResolved(...)));
+    }
+
+    public function findByGrantId(Uuid $grantId): ?BackchannelAuthenticationRecord
+    {
+        $record = $this->repository()->findOneBy([
+            'grantId' => $grantId,
+        ]);
+
+        return $record !== null && ClientResolver::isResolved($record) ? $record : null;
+    }
+
+    /**
+     * The grants a client asked a user for through a backchannel, whatever their state: the request names
+     * its user before anybody answers it, so one still waiting is covered by the consent and is revoked
+     * with it.
+     *
+     * @return list<BackchannelAuthenticationRecord>
+     */
+    public function revokeByConsent(Consent $consent, DateTimeImmutable $now): array
+    {
+        /** @var list<BackchannelAuthenticationRecord> $records */
+        $records = $this->queryBuilder('r')
+            ->where('r.user = :user')
+            ->andWhere('r.clientId = :clientId')
+            ->andWhere('r.revokedAt IS NULL')
+            ->orderBy('r.issuedAt', 'ASC')
+            ->addOrderBy('r.authRequestIdHash', 'ASC')
+            ->setParameter('user', $consent->user->id, UuidType::NAME)
+            ->setParameter('clientId', $consent->clientId)
+            ->getQuery()
+            ->getResult();
+        $revoked = array_values(array_filter($records, ClientResolver::isResolved(...)));
+        foreach ($revoked as $record) {
+            $record->revoke($now);
+        }
+        $this->storeAll($revoked);
+
+        return $revoked;
     }
 
     /**

@@ -47,6 +47,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * RFC 8628 §3.4, §3.5: the client polls, and is told "not yet", "slow down", "expired", "refused", or given
@@ -467,6 +468,7 @@ final class DeviceCodeGrantTest extends TestCase
         $record = new DeviceAuthorizationRecord(
             DrawnSecret::digestOf(self::DEVICE_CODE),
             UserCode::hashOf('BCDFGHJK'),
+            Uuid::v7(),
             $this->client,
             new Scopes([new Scope('openid'), new Scope('profile')]),
             $resources,

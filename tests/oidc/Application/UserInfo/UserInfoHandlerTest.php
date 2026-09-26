@@ -29,9 +29,13 @@ use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
+use Heidi\Oidc\Application\Grant\RecordedGrants;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryBackchannelAuthenticationRecordRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryDeviceAuthorizationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Heidi\Oidc\Domain\Client\Client;
@@ -84,6 +88,10 @@ final class UserInfoHandlerTest extends TestCase
 
     private InMemoryAuthorizationCodeRepository $grants;
 
+    private InMemoryDeviceAuthorizationRecordRepository $deviceRecords;
+
+    private InMemoryBackchannelAuthenticationRecordRepository $backchannelRecords;
+
     private InMemoryAccessTokenRepository $storedTokens;
 
     private Client $service;
@@ -110,6 +118,8 @@ final class UserInfoHandlerTest extends TestCase
             new SymfonyUuidGenerator(),
         );
         $this->grants = new InMemoryAuthorizationCodeRepository();
+        $this->deviceRecords = new InMemoryDeviceAuthorizationRecordRepository();
+        $this->backchannelRecords = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->storedTokens = new InMemoryAccessTokenRepository();
         $users = new InMemoryUserRepository();
         $users->save($this->user);
@@ -572,6 +582,83 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
+     * RFC 8628 §3.4: the tokens of the device grant descend from the device authorization request and from
+     * no authorization code, so the record of that request is what says the grant is still alive. Asked of
+     * the codes alone, the question had no answer and the token was refused at this endpoint.
+     */
+    #[Test]
+    public function itServesATokenOfTheDeviceGrant(): void
+    {
+        // Given
+        $token = $this->accessTokens->issue($this->ofADeviceRequest(), Fixtures::now())->value;
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        static::assertSame($this->user->subject->value, $response->claims['sub']);
+    }
+
+    /**
+     * Architecture §4.3: a device authorization request is revoked as a code is, and the tokens that
+     * descend from it stop being served here.
+     */
+    #[Test]
+    public function itRefusesATokenOfARevokedDeviceRequest(): void
+    {
+        // Given
+        $record = Tokens::approvedDeviceRecord($this->client, $this->session, Fixtures::now());
+        $this->deviceRecords->save($record);
+        $token = $this->accessTokens->issue($this->ofTheRecord($record->grantId, $record->scopes), Fixtures::now())->value;
+        $record->revoke(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
+
+        // When
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+    }
+
+    /**
+     * CIBA Core §10.1: the tokens of the backchannel grant descend from the backchannel authentication
+     * request and from no authorization code, which is the refusal the FAPI-CIBA plan met at this endpoint.
+     */
+    #[Test]
+    public function itServesATokenOfTheBackchannelGrant(): void
+    {
+        // Given
+        $token = $this->accessTokens->issue($this->ofABackchannelRequest(), Fixtures::now())->value;
+
+        // When
+        $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        static::assertSame($this->user->subject->value, $response->claims['sub']);
+    }
+
+    /**
+     * Architecture §4.3: a backchannel authentication request is revoked as a code is, and the tokens that
+     * descend from it stop being served here.
+     */
+    #[Test]
+    public function itRefusesATokenOfARevokedBackchannelRequest(): void
+    {
+        // Given
+        $record = Tokens::approvedBackchannelRecord($this->client, $this->session, Fixtures::now());
+        $this->backchannelRecords->save($record);
+        $token = $this->accessTokens->issue($this->ofTheRecord($record->grantId, $record->scopes), Fixtures::now())->value;
+        $record->revoke(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token descends from a grant this provider revoked.');
+
+        // When
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+    }
+
+    /**
      * A token that names a user the tenant has disabled opens nothing: invalid_token, the same as a bad
      * one. Nothing about the user is said.
      */
@@ -743,7 +830,7 @@ final class UserInfoHandlerTest extends TestCase
                     new PublicSubjectIdentifierResolver(),
                 ),
                 $this->sessions,
-                $this->grants,
+                new RecordedGrants([$this->grants, $this->deviceRecords, $this->backchannelRecords]),
                 $users,
             ),
             $this->jwts->documents,
@@ -891,6 +978,44 @@ final class UserInfoHandlerTest extends TestCase
     private function accessToken(array $scopes, ?string $claims = null): string
     {
         return $this->accessTokens->issue($this->authorization($scopes, $claims), Fixtures::now())->value;
+    }
+
+    /**
+     * The authorization the device grant builds, its grant named by the record it spent (RFC 8628 §3.4).
+     */
+    private function ofADeviceRequest(): UserAuthorization
+    {
+        $record = Tokens::approvedDeviceRecord($this->client, $this->session, Fixtures::now(), ['openid', 'email']);
+        $this->deviceRecords->save($record);
+
+        return $this->ofTheRecord($record->grantId, $record->scopes);
+    }
+
+    /**
+     * The authorization the backchannel grant builds, its grant named by the record it spent (CIBA Core
+     * §10.1).
+     */
+    private function ofABackchannelRequest(): UserAuthorization
+    {
+        $record = Tokens::approvedBackchannelRecord($this->client, $this->session, Fixtures::now(), ['openid', 'email']);
+        $this->backchannelRecords->save($record);
+
+        return $this->ofTheRecord($record->grantId, $record->scopes);
+    }
+
+    private function ofTheRecord(Uuid $grantId, Scopes $scopes): UserAuthorization
+    {
+        return new UserAuthorization(
+            Grants::deviceCode(),
+            $grantId,
+            $this->client,
+            $this->session,
+            $scopes,
+            $scopes,
+            null,
+            null,
+            AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
+        );
     }
 
     /**

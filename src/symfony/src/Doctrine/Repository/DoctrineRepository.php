@@ -50,4 +50,22 @@ abstract readonly class DoctrineRepository
         $manager->persist($entity);
         $manager->flush();
     }
+
+    /**
+     * One flush for a set a single call changed, a consent taken back reaching every grant it covers at
+     * once (architecture §4.3).
+     *
+     * @param list<T> $entities
+     */
+    protected function storeAll(array $entities): void
+    {
+        if ($entities === []) {
+            return;
+        }
+        $manager = $this->manager();
+        foreach ($entities as $entity) {
+            $manager->persist($entity);
+        }
+        $manager->flush();
+    }
 }

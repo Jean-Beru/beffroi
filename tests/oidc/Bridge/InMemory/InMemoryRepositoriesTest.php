@@ -200,7 +200,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     #[Test]
-    public function itFindsTheGrantsAClientHoldsForAUser(): void
+    public function itRevokesTheGrantsAClientHoldsForAUser(): void
     {
         // Given
         $repository = new InMemoryAuthorizationCodeRepository();
@@ -211,7 +211,7 @@ final class InMemoryRepositoriesTest extends TestCase
         $repository->save($elsewhere);
 
         // When / Then
-        static::assertSame([$mine], $repository->ofConsent($consent));
+        static::assertSame([$mine], $repository->revokeByConsent($consent, Fixtures::now()));
     }
 
     #[Test]

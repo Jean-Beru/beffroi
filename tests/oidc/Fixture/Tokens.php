@@ -13,7 +13,11 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
+use Heidi\Oidc\Domain\Device\UserCode;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
@@ -69,6 +73,67 @@ final class Tokens
             $issuedAt,
             $issuedAt->modify('+60 seconds'),
         );
+    }
+
+    /**
+     * A device authorization request already approved by the session given, the grant a token of that flow
+     * descends from (RFC 8628 §3.3).
+     *
+     * @param list<string> $scopes
+     */
+    public static function approvedDeviceRecord(
+        Client $client,
+        AuthenticationSession $session,
+        DateTimeImmutable $issuedAt,
+        array $scopes = ['openid'],
+        ?Uuid $grantId = null,
+    ): DeviceAuthorizationRecord {
+        $record = new DeviceAuthorizationRecord(
+            DrawnSecret::digestOf('the-device-code'),
+            UserCode::hashOf('BCDFGHJK'),
+            $grantId ?? Uuid::v7(),
+            $client,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            null,
+            Fixtures::context($issuedAt),
+            $issuedAt,
+            $issuedAt->modify('+600 seconds'),
+        );
+        $record->approve($session, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()), $issuedAt);
+
+        return $record;
+    }
+
+    /**
+     * A backchannel authentication request already approved by the session given, the grant a token of that
+     * flow descends from (CIBA Core §7.1).
+     *
+     * @param list<string> $scopes
+     */
+    public static function approvedBackchannelRecord(
+        Client $client,
+        AuthenticationSession $session,
+        DateTimeImmutable $issuedAt,
+        array $scopes = ['openid'],
+        ?Uuid $grantId = null,
+    ): BackchannelAuthenticationRecord {
+        $record = new BackchannelAuthenticationRecord(
+            DrawnSecret::digestOf('the-auth-req-id'),
+            $grantId ?? Uuid::v7(),
+            $client,
+            $session->user,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            null,
+            null,
+            null,
+            null,
+            Fixtures::context($issuedAt),
+            $issuedAt,
+            $issuedAt->modify('+600 seconds'),
+        );
+        $record->approve($session, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()), $issuedAt);
+
+        return $record;
     }
 
     /**

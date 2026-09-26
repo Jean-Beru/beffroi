@@ -28,8 +28,12 @@ use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
+use Heidi\Oidc\Application\Grant\RecordedGrants;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryBackchannelAuthenticationRecordRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryDeviceAuthorizationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Token\CertificateConfirmation;
@@ -48,7 +52,9 @@ use Jose\Component\Signature\Algorithm\RS256;
 use Jose\Component\Signature\JWSVerifier;
 use Jose\Component\Signature\Serializer\CompactSerializer;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Uid\Uuid;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Heidi\Oidc\Tests\Fixture\Shapes;
@@ -75,6 +81,10 @@ final class IntrospectionHandlerTest extends TestCase
 
     private InMemoryAuthorizationCodeRepository $grants;
 
+    private InMemoryDeviceAuthorizationRecordRepository $deviceRecords;
+
+    private InMemoryBackchannelAuthenticationRecordRepository $backchannelRecords;
+
     private InMemoryAccessTokenRepository $tokens;
 
     private IntrospectionHandler $handler;
@@ -95,6 +105,8 @@ final class IntrospectionHandlerTest extends TestCase
         }
         $this->jwts = new Jwts($this->tenant);
         $this->grants = new InMemoryAuthorizationCodeRepository();
+        $this->deviceRecords = new InMemoryDeviceAuthorizationRecordRepository();
+        $this->backchannelRecords = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->tokens = new InMemoryAccessTokenRepository();
         $sessions = new InMemoryAuthenticationSessionRepository();
         $sessions->save($this->session);
@@ -118,7 +130,7 @@ final class IntrospectionHandlerTest extends TestCase
                     new PublicSubjectIdentifierResolver(),
                 ),
                 $sessions,
-                $this->grants,
+                new RecordedGrants([$this->grants, $this->deviceRecords, $this->backchannelRecords]),
                 $users,
             ),
             $this->jwts->signer,
@@ -468,6 +480,77 @@ final class IntrospectionHandlerTest extends TestCase
             ],
             Jwts::decode(Jwts::rawPayload($jwt))['token_introspection'],
         );
+    }
+
+    /**
+     * RFC 8628 §3.4: the tokens of the device grant descend from the device authorization request, so it is
+     * that record introspection asks whether the grant is still alive.
+     */
+    #[Test]
+    public function itDescribesATokenOfTheDeviceGrantAsActive(): void
+    {
+        // Given
+        $record = Tokens::approvedDeviceRecord($this->client, $this->session, $this->clock->now());
+        $this->deviceRecords->save($record);
+        $token = $this->tokenOfTheRecord($record->grantId, $record->scopes);
+
+        // When
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+            ],
+            $this->context,
+            false,
+        );
+
+        // Then
+        static::assertSame($record->grantId->toRfc4122(), $response->members['grant_id']);
+    }
+
+    /**
+     * CIBA Core §10.1: the same of the backchannel grant, whose record is the grant too.
+     */
+    #[Test]
+    public function itDescribesATokenOfTheBackchannelGrantAsActive(): void
+    {
+        // Given
+        $record = Tokens::approvedBackchannelRecord($this->client, $this->session, $this->clock->now());
+        $this->backchannelRecords->save($record);
+        $token = $this->tokenOfTheRecord($record->grantId, $record->scopes);
+
+        // When
+        $response = $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+            ],
+            $this->context,
+            false,
+        );
+
+        // Then
+        static::assertSame($record->grantId->toRfc4122(), $response->members['grant_id']);
+    }
+
+    private function tokenOfTheRecord(Uuid $grantId, Scopes $scopes): string
+    {
+        return $this->opaqueIssuer()->issue(
+            new UserAuthorization(
+                Grants::deviceCode(),
+                $grantId,
+                $this->client,
+                $this->session,
+                $scopes,
+                $scopes,
+                null,
+                null,
+                AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
+            ),
+            $this->clock->now(),
+        )->value;
     }
 
     /**

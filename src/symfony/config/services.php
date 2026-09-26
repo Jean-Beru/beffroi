@@ -260,6 +260,7 @@ use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Consent\ConsentGranting;
 use Heidi\Oidc\Application\Consent\ConsentRevocation;
+use Heidi\Oidc\Application\Grant\RecordedGrants;
 use Heidi\Oidc\Application\Ciba\BackchannelApproval;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
@@ -305,6 +306,8 @@ use Heidi\Oidc\Port\AccessTokenIssuerInterface;
 use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
 use Heidi\Oidc\Port\ActiveConsentsInterface;
 use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
+use Heidi\Oidc\Port\RecordedGrantsInterface;
 use Heidi\Oidc\Port\CertificateReaderInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
@@ -326,7 +329,6 @@ use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
 use Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
-use Heidi\Oidc\Port\GrantsOfAConsentInterface;
 use Heidi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
@@ -556,17 +558,17 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AuthenticationSessionRepositoryInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->set(DoctrineInteractionRepository::class);
     $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
-    $services->set(DoctrineAuthorizationCodeRepository::class);
+    // the three stores that carry a grant, each one tagged so that the reader of what a token descends
+    // from asks them all and knows no flow by name (architecture §4.6)
+    $services->set(DoctrineAuthorizationCodeRepository::class)->tag('heidi.oidc.grant_record');
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
-    // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6), the
-    // grants of a consent what a user taking it back reaches (architecture §4.3)
+    // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6)
     $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
-    $services->alias(GrantsOfAConsentInterface::class, DoctrineAuthorizationCodeRepository::class);
     $services->set(DoctrinePushedAuthorizationRecordRepository::class);
     $services->alias(PushedAuthorizationRecordRepositoryInterface::class, DoctrinePushedAuthorizationRecordRepository::class);
-    $services->set(DoctrineDeviceAuthorizationRecordRepository::class);
+    $services->set(DoctrineDeviceAuthorizationRecordRepository::class)->tag('heidi.oidc.grant_record');
     $services->alias(DeviceAuthorizationRecordRepositoryInterface::class, DoctrineDeviceAuthorizationRecordRepository::class);
-    $services->set(DoctrineBackchannelAuthenticationRecordRepository::class);
+    $services->set(DoctrineBackchannelAuthenticationRecordRepository::class)->tag('heidi.oidc.grant_record');
     $services->alias(BackchannelAuthenticationRecordRepositoryInterface::class, DoctrineBackchannelAuthenticationRecordRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
@@ -893,6 +895,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ServedGrants::class)->args([tagged_iterator('heidi.oidc.grant')]);
     $services->alias(ServedGrantsInterface::class, ServedGrants::class);
     $services->set(TokenHandler::class);
+    // what a token descends from, and what a consent taken back reaches, read across the records every
+    // flow of the provider writes (architecture §4.3, §4.6)
+    $services->set(RecordedGrants::class)->args([tagged_iterator('heidi.oidc.grant_record')]);
+    $services->alias(RecordedGrantsInterface::class, RecordedGrants::class);
+    $services->alias(CanRevokeGrantsByConsentInterface::class, RecordedGrants::class);
     $services->set(CertificateConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
     $services->set(KeyConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
     $services->set(Confirmations::class)->args([tagged_iterator('heidi.oidc.confirmation_kind')]);

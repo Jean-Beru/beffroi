@@ -545,8 +545,11 @@ services:
     test.heidi.active_consents:
         alias: Heidi\Oidc\Port\ActiveConsentsInterface
         public: true
+    test.heidi.recorded_grants:
+        alias: Heidi\Oidc\Port\RecordedGrantsInterface
+        public: true
     test.heidi.grants_of_a_consent:
-        alias: Heidi\Oidc\Port\GrantsOfAConsentInterface
+        alias: Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface
         public: true
     test.heidi.refresh_tokens_of_a_consent:
         alias: Heidi\Oidc\Port\RefreshTokensOfAConsentInterface

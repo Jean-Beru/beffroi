@@ -3,13 +3,14 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- What the provider keeps of a device authorization request (RFC 8628 §3.2): the two codes by their hash, the one the client polls with as the key and the one the user types under a unique constraint, because the page that takes a code looks it up by itself. Where the appliance asked from is kept because the approval page shows it (BCP 10027 §2). The session the user approved with, and what it had proven then, arrive when somebody answers and are null until then, which is why the snapshot is a document here and an embeddable where it is there from the start. The client is a registration the module reads from its repository, not a row, as it is for a pushed request. -->
+    <!-- What the provider keeps of a device authorization request (RFC 8628 §3.2): the two codes by their hash, the one the client polls with as the key and the one the user types under a unique constraint, because the page that takes a code looks it up by itself. Where the appliance asked from is kept because the approval page shows it (BCP 10027 §2). The session the user approved with, and what it had proven then, arrive when somebody answers and are null until then, which is why the snapshot is a document here and an embeddable where it is there from the start. The client is a registration the module reads from its repository, not a row, as it is for a pushed request. The record is also the grant the tokens of this flow name, under a unique constraint on "grant_id", and revoked when the consent behind it is taken back. -->
     <entity name="Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord" table="heidi_device_authorization_request">
         <indexes>
             <index name="heidi_device_authorization_expiry" columns="expires_at"/>
         </indexes>
         <unique-constraints>
             <unique-constraint name="heidi_device_authorization_user_code" columns="user_code_hash"/>
+            <unique-constraint name="heidi_device_authorization_grant" columns="grant_id"/>
         </unique-constraints>
         <id name="deviceCodeHash" type="string" column="device_code_hash" length="64">
             <options>
@@ -24,6 +25,7 @@
         <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
         </many-to-one>
+        <field name="grantId" type="uuid" column="grant_id"/>
         <field name="clientId" type="string" column="client_id" length="255"/>
         <field name="scopes" type="heidi_scopes" column="scopes"/>
         <field name="resources" type="heidi_resources" column="resources" nullable="true"/>

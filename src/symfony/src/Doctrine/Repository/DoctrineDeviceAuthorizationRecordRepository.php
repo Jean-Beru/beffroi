@@ -9,8 +9,15 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
+use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
+use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
+use Heidi\Oidc\Port\RecordedGrantsInterface;
+use Symfony\Bridge\Doctrine\Types\UuidType;
+use Symfony\Component\Uid\Uuid;
+use function array_filter;
+use function array_values;
 use function is_string;
 use function sprintf;
 
@@ -20,7 +27,10 @@ use function sprintf;
  *
  * @extends DoctrineRepository<DeviceAuthorizationRecord>
  */
-final readonly class DoctrineDeviceAuthorizationRecordRepository extends DoctrineRepository implements DeviceAuthorizationRecordRepositoryInterface
+final readonly class DoctrineDeviceAuthorizationRecordRepository extends DoctrineRepository implements
+    CanRevokeGrantsByConsentInterface,
+    DeviceAuthorizationRecordRepositoryInterface,
+    RecordedGrantsInterface
 {
     public function __construct(EntityManagers $managers)
     {
@@ -39,6 +49,43 @@ final readonly class DoctrineDeviceAuthorizationRecordRepository extends Doctrin
         return $this->resolved($this->repository()->findOneBy([
             'userCodeHash' => $userCodeHash,
         ]));
+    }
+
+    public function findByGrantId(Uuid $grantId): ?DeviceAuthorizationRecord
+    {
+        return $this->resolved($this->repository()->findOneBy([
+            'grantId' => $grantId,
+        ]));
+    }
+
+    /**
+     * The grants a user left to a client on an appliance of theirs, whatever their state. A request nobody
+     * has answered yet names no user, so no consent covers it and the ten minutes it has left run out on
+     * their own.
+     *
+     * @return list<DeviceAuthorizationRecord>
+     */
+    public function revokeByConsent(Consent $consent, DateTimeImmutable $now): array
+    {
+        /** @var list<DeviceAuthorizationRecord> $records */
+        $records = $this->queryBuilder('r')
+            ->join('r.session', 's')
+            ->where('s.user = :user')
+            ->andWhere('r.clientId = :clientId')
+            ->andWhere('r.revokedAt IS NULL')
+            ->orderBy('r.issuedAt', 'ASC')
+            ->addOrderBy('r.deviceCodeHash', 'ASC')
+            ->setParameter('user', $consent->user->id, UuidType::NAME)
+            ->setParameter('clientId', $consent->clientId)
+            ->getQuery()
+            ->getResult();
+        $revoked = array_values(array_filter($records, ClientResolver::isResolved(...)));
+        foreach ($revoked as $record) {
+            $record->revoke($now);
+        }
+        $this->storeAll($revoked);
+
+        return $revoked;
     }
 
     /**
