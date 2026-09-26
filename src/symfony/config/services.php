@@ -9,6 +9,7 @@ use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Bundle\Ciba\QueuedPendingApprovalNotifier;
 use Heidi\Bundle\Cache\SeenOnce;
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
+use Heidi\Bundle\Client\RequestObjectReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
 use Heidi\Bundle\Client\ClientJwksFetcher;
 use Heidi\Bundle\Client\RequestObjectFetcher;
@@ -263,6 +264,7 @@ use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
 use Heidi\Oidc\Application\Ciba\Hint\SubjectLoginHint;
 use Heidi\Oidc\Application\Ciba\Hint\UsernameLoginHint;
 use Heidi\Oidc\Application\Ciba\ServedDeliveryModes;
+use Heidi\Oidc\Application\Ciba\SignedBackchannelRequest;
 use Heidi\Oidc\Application\Ciba\UserHints;
 use Heidi\Oidc\Application\Device\DeviceApproval;
 use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
@@ -304,6 +306,7 @@ use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Heidi\Oidc\Port\CertificateReaderInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Heidi\Oidc\Port\RequestObjectReplayGuardInterface;
 use Heidi\Oidc\Port\ClientAssertionSecretVerifierInterface;
 use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
 use Heidi\Oidc\Port\ClientJwksCacheInterface;
@@ -814,6 +817,12 @@ return static function (ContainerConfigurator $container): void {
     // tenant (RFC 9101 §6.1)
     $services->set(RequestObjectReader::class);
     $services->set(RequestObjectResolver::class);
+    // CIBA Core §7.1.1: the "jti" of a backchannel request object is remembered until its "exp", in a
+    // pool of its own, so that one signed request is made once (issue #269)
+    $services->set(RequestObjectReplayGuard::class)->args([
+        inline_service(SeenOnce::class)->args([service('heidi.request_objects')]),
+    ]);
+    $services->alias(RequestObjectReplayGuardInterface::class, RequestObjectReplayGuard::class);
     $services->set(RequestObjectFetcher::class);
     $services->alias(RequestObjectFetcherInterface::class, RequestObjectFetcher::class);
     $services->set(PushedAuthorizationHandler::class);
@@ -835,6 +844,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SubjectLoginHint::class);
     $services->set(UsernameLoginHint::class);
     $services->set(UserHints::class)->args([tagged_iterator('heidi.oidc.ciba_user_hint')]);
+    $services->set(SignedBackchannelRequest::class);
     $services->set(BackchannelAuthenticationHandler::class);
     $services->set(BackchannelApproval::class);
     // What a client may still be encrypting to a key of the tenant, which is what holds an encryption key

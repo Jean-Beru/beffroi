@@ -38,7 +38,7 @@ final readonly class AuthorizationRequestReader implements AuthorizationRequestR
         // A request object the client signed was read at the endpoint it pushed to, and the record is
         // what answers for it here (RFC 9126 §4): what carried the request is the record's to say.
         return new ReceivedAuthorizationRequest(
-            $object ?? $parameters,
+            $object->parameters ?? $parameters,
             $pushed !== null,
             $object !== null || ($pushed->carriedBySignedObject ?? false),
             $pushed?->requestUriHash,

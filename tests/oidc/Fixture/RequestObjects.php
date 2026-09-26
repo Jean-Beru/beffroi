@@ -37,7 +37,15 @@ use function strtr;
 final class RequestObjects
 {
     /**
-     * RFC 9101 §4: the request is the claims, "iss" naming the client and "aud" the provider.
+     * The "jti" of an object nobody replays: one value, so that two objects built alike are the same
+     * object, which is what a test of a replay sends twice and what every other test sends once.
+     */
+    public const string JTI = 'b2f1c0a9-8e7d-4c6b-9a5f-0d1e2f3a4b5c';
+
+    /**
+     * RFC 9101 §4: the request is the claims, "iss" naming the client and "aud" the provider. CIBA Core
+     * §7.1.1 adds "iat" and "jti" to the ones a backchannel authentication request carries, and a client
+     * that writes them writes them everywhere.
      *
      * @param array<string, mixed> $parameters
      *
@@ -48,6 +56,8 @@ final class RequestObjects
         return [
             'iss' => $clientId,
             'aud' => $issuer,
+            'iat' => $now->getTimestamp(),
+            'jti' => self::JTI,
             'nbf' => $now->getTimestamp(),
             'exp' => $now->getTimestamp() + 300,
             'client_id' => $clientId,

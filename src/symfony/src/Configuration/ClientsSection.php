@@ -82,7 +82,7 @@ final readonly class ClientsSection extends ConfigurationSection
             ->defaultFalse()
             ->end()
             ->booleanNode('require_signed_request_object')
-            ->info('An authorization request of this client is only read from a request object it signed (OIDC Registration, require_signed_request_object; FAPI 2.0 Message Signing §5.3.1), whether the object arrives in the query, behind a request_uri, or inside the record it pushed. An unsigned one is refused on a page before its redirect URI is read, exactly as a request that was not pushed is.')
+            ->info('A request of this client is only read from a request object it signed (OIDC Registration, require_signed_request_object; FAPI 2.0 Message Signing §5.3.1; FAPI-CIBA §5.2.2), whether the object arrives in the query, behind a request_uri, inside the record it pushed or in the body of a backchannel authentication request. An unsigned authorization request is refused on a page before its redirect URI is read, exactly as a request that was not pushed is; an unsigned backchannel one is refused invalid_request.')
             ->defaultFalse()
             ->end()
             ->scalarNode('id_token_signed_response_alg')

@@ -15,11 +15,13 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
+use Heidi\Oidc\Application\Ciba\SignedBackchannelRequest;
 use Heidi\Oidc\Application\Ciba\Hint\SubjectLoginHint;
 use Heidi\Oidc\Application\Ciba\UserHints;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Bridge\InMemory\InMemoryBackchannelAuthenticationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryRequestObjectReplayGuard;
 use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationResponse;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Exception\InvalidBindingMessageException;
@@ -64,6 +66,8 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
 
     private RecordingPendingApprovalNotifier $notifier;
 
+    private InMemoryRequestObjectReplayGuard $replays;
+
     private MockClock $clock;
 
     private BackchannelAuthenticationHandler $handler;
@@ -93,6 +97,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
         $this->users->save(Fixtures::user($this->tenant));
         $this->records = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->notifier = new RecordingPendingApprovalNotifier();
+        $this->replays = new InMemoryRequestObjectReplayGuard();
         $this->clock = new MockClock('2026-09-26T09:00:00+00:00');
         $this->handler = $this->handler();
     }
@@ -475,32 +480,116 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     public function aSignedRequestObjectIsTheRequest(): void
     {
         // Given
-        $this->clients->save(Clients::backchannel(
-            $this->tenant,
-            $this->hasher->hash(Clients::SECRET),
-            'signing-terminal',
-            jwks: ClientAssertions::publishedKeys(),
-        ));
+        $this->signingClient();
 
         // When
-        $response = $this->handler->handle(
-            $this->tenant,
-            self::basic('signing-terminal', Clients::SECRET),
-            [
-                'client_id' => 'signing-terminal',
-                'request' => RequestObjects::signed(RequestObjects::claims('signing-terminal', $this->tenant->issuer->value, $this->clock->now(), [
-                    'scope' => 'openid profile',
-                    'login_hint' => 'alice-subject',
-                    'binding_message' => 'Payment of 42 euros',
-                ])),
-            ],
-            $this->context,
-        );
+        $response = $this->askWithAnObject($this->claims([
+            'binding_message' => 'Payment of 42 euros',
+        ]));
 
         // Then
         $record = $this->records->findByAuthRequestIdHash(DrawnSecret::digestOf($response->authRequestId)) ?? static::fail('No record.');
         static::assertSame('Payment of 42 euros', $record->bindingMessage?->value);
         static::assertSame('alice', $record->user?->username);
+    }
+
+    /**
+     * §13: the errors this endpoint answers are the ones it lists, and "invalid_request_object" is not
+     * among them; it belongs to the endpoint a browser reaches. An object this one will not read is
+     * "invalid_request", with the reason the object was refused for and with nowhere to be sent, this
+     * client having no browser.
+     */
+    #[Test]
+    public function anObjectThisEndpointWillNotReadIsAnInvalidRequest(): void
+    {
+        // Given
+        $this->signingClient();
+        $claims = RequestObjects::claims('signing-terminal', 'https://id.other.example', $this->clock->now(), [
+            'scope' => 'openid profile',
+            'login_hint' => 'alice-subject',
+        ]);
+
+        // When
+        try {
+            $this->askWithAnObject($claims);
+            static::fail('An object of another provider should have been refused.');
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame('invalid_request', $exception->error);
+            static::assertSame('The aud of a request object names the issuer of this provider (RFC 9101 section 4).', $exception->errorDescription);
+            static::assertFalse($exception->redirectable);
+        }
+    }
+
+    /**
+     * FAPI-CIBA §5.2.2, OIDC Registration "require_signed_request_object": a client that registered it is
+     * read from an object it signed here as at the authorization endpoint, a request having arrived
+     * without a browser changing nothing of what a request of that client is made of.
+     */
+    #[Test]
+    public function aClientHeldToSignedObjectsIsRefusedARequestOfFormParameters(): void
+    {
+        // Given
+        $this->signingClient(requiresSignedRequestObject: true);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: This client makes a backchannel authentication request with a request object it signed and no other way (OIDC Registration, require_signed_request_object; FAPI-CIBA section 5.2.2).');
+
+        // When
+        $this->askAs('signing-terminal');
+    }
+
+    /**
+     * §7.1.1: a signed backchannel authentication request carries an "iat" and a "jti" beyond the four
+     * claims that bound what a signature proves, an object of this endpoint being bound to nothing but
+     * itself where one of the authorization endpoint is bound to a browser.
+     */
+    #[Test]
+    #[DataProvider('provideAClaimOfItsOwn')]
+    public function aSignedRequestWithoutWhatItSaysOfItselfIsRefused(string $claim, string $message): void
+    {
+        // Given
+        $this->signingClient();
+        $claims = $this->claims();
+        unset($claims[$claim]);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->askWithAnObject($claims);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideAClaimOfItsOwn(): iterable
+    {
+        yield 'iat' => ['iat', 'invalid_request: A signed backchannel authentication request carries an iat (CIBA Core section 7.1.1).'];
+        yield 'jti' => ['jti', 'invalid_request: A signed backchannel authentication request carries a jti (CIBA Core section 7.1.1).'];
+    }
+
+    /**
+     * §7.1.1: the "jti" is remembered until the "exp" the object already carries, so that one signed
+     * request is made once. Replaying it would draw a second identifier and ask a real person a second
+     * time to approve one payment.
+     */
+    #[Test]
+    public function aSignedRequestIsMadeOnceUnderItsJti(): void
+    {
+        // Given
+        $this->signingClient();
+        $claims = $this->claims();
+        $this->askWithAnObject($claims);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The jti of this backchannel authentication request has been used already (CIBA Core section 7.1.1).');
+
+        // When
+        $this->askWithAnObject($claims);
     }
 
     /**
@@ -522,6 +611,52 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     private const string NOTIFICATION_TOKEN = 'a8f2c1d0e9b7a6c5d4e3f2a1b0';
+
+    /**
+     * A client of this flow that signs what it sends, with the keys the fixtures publish.
+     */
+    private function signingClient(bool $requiresSignedRequestObject = false): void
+    {
+        $this->clients->save(Clients::backchannel(
+            $this->tenant,
+            $this->hasher->hash(Clients::SECRET),
+            'signing-terminal',
+            jwks: ClientAssertions::publishedKeys(),
+            requiresSignedRequestObject: $requiresSignedRequestObject,
+        ));
+    }
+
+    /**
+     * @param array<string, mixed> $parameters
+     *
+     * @return array<string, mixed>
+     */
+    private function claims(array $parameters = []): array
+    {
+        return RequestObjects::claims('signing-terminal', $this->tenant->issuer->value, $this->clock->now(), [
+            'scope' => 'openid profile',
+            'login_hint' => 'alice-subject',
+            ...$parameters,
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $claims
+     *
+     * @throws OAuth2Exception
+     */
+    private function askWithAnObject(array $claims): BackchannelAuthenticationResponse
+    {
+        return $this->handler->handle(
+            $this->tenant,
+            self::basic('signing-terminal', Clients::SECRET),
+            [
+                'client_id' => 'signing-terminal',
+                'request' => RequestObjects::signed($claims),
+            ],
+            $this->context,
+        );
+    }
 
     /**
      * @param array<string, string|null> $overrides
@@ -574,6 +709,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
             new Endpoints(),
             Grants::servedWithCiba(),
             RequestObjects::resolver($this->clients, $this->clock),
+            new SignedBackchannelRequest($this->replays),
             new UserHints([new SubjectLoginHint($this->users)]),
             $this->records,
             Secrets::drawer(),
