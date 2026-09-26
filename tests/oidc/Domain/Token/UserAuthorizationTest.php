@@ -13,9 +13,11 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\RefreshToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
@@ -148,6 +150,75 @@ final class UserAuthorizationTest extends TestCase
         $this->authorization(scopes: new Scopes([Scope::openid(), new Scope('email')]), grantedScopes: new Scopes([Scope::openid()]));
     }
 
+    /**
+     * RFC 9396 §7: the details of a response are among the ones the user agreed to, a token request being
+     * free to narrow them and never to widen them.
+     */
+    #[Test]
+    public function itRefusesAnAuthorizationDetailOutsideTheGrantedOnes(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The authorization details of a response are among the granted ones (RFC 9396 section 7).');
+
+        // When
+        $this->authorization(
+            authorizationDetails: AuthorizationDetailTypes::details('acct-0815'),
+            grantedAuthorizationDetails: AuthorizationDetailTypes::details('acct-4711'),
+        );
+    }
+
+    /**
+     * A grant nobody agreed to a detail for grants none, so a response that carries one stands on nothing.
+     */
+    #[Test]
+    public function itRefusesAnAuthorizationDetailWhenTheGrantCarriesNone(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The authorization details of a response are among the granted ones (RFC 9396 section 7).');
+
+        // When
+        $this->authorization(authorizationDetails: AuthorizationDetailTypes::details());
+    }
+
+    /**
+     * RFC 9396 §7: what the code carried is what the response carries, and what the grant stands on, so a
+     * refresh token beside it is bound to all of it.
+     */
+    #[Test]
+    public function fromAnAuthorizationCodeItTakesTheDetailsOfTheCode(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details();
+        $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), authorizationDetails: $details);
+
+        // When
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
+
+        // Then
+        static::assertSame($details, $authorization->authorizationDetails);
+        static::assertSame($details, $authorization->grantedAuthorizationDetails);
+    }
+
+    /**
+     * RFC 9396 §7: a refresh takes the details of the token it spends, which the whole grant stands on.
+     */
+    #[Test]
+    public function fromARefreshTokenItTakesTheDetailsOfTheToken(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details();
+        $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), authorizationDetails: $details);
+
+        // When
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, null);
+
+        // Then
+        static::assertSame($details, $authorization->authorizationDetails);
+        static::assertSame($details, $authorization->grantedAuthorizationDetails);
+    }
+
     #[Test]
     public function itRefusesASessionOfAnotherTenant(): void
     {
@@ -173,6 +244,8 @@ final class UserAuthorizationTest extends TestCase
         ?Scopes $grantedScopes = null,
         ?string $nonce = null,
         ?array $methods = null,
+        ?AuthorizationDetails $authorizationDetails = null,
+        ?AuthorizationDetails $grantedAuthorizationDetails = null,
     ): UserAuthorization {
         return new UserAuthorization(
             $grantType ?? Grants::authorizationCode(),
@@ -188,6 +261,8 @@ final class UserAuthorizationTest extends TestCase
                 $methods ?? $this->session->methodReferences(),
                 $this->session->authenticationContextClass()->value,
             ),
+            authorizationDetails: $authorizationDetails,
+            grantedAuthorizationDetails: $grantedAuthorizationDetails,
         );
     }
 }

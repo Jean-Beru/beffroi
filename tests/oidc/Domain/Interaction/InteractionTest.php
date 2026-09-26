@@ -19,6 +19,7 @@ use Heidi\Oidc\Exception\InteractionCompletedException;
 use Heidi\Oidc\Exception\InteractionExpiredException;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -368,6 +369,32 @@ final class InteractionTest extends TestCase
 
         // When
         $interaction->consent(new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([new Scope('openid')]), Fixtures::now()), Fixtures::now());
+    }
+
+    /**
+     * RFC 9396 §7: a consent recorded on an interaction covers the authorization details of the request as
+     * it covers its scopes, or the answer would be a code for something nobody agreed to.
+     */
+    #[Test]
+    public function itRefusesAConsentThatDoesNotCoverTheDetailsOfTheRequest(): void
+    {
+        // Given
+        $interaction = new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client, ['openid', 'profile'], authorizationDetails: AuthorizationDetailTypes::details()),
+            null,
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A consent recorded on an interaction covers every authorization detail of the request (RFC 9396 section 7).');
+
+        // When
+        $interaction->consent($this->consent(), Fixtures::now());
     }
 
     #[Test]

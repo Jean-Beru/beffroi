@@ -19,6 +19,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenDue;
+use Heidi\Oidc\Application\Token\RequestedAuthorizationDetails;
 use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Application\Token\TokenIssuer;
@@ -27,6 +28,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
@@ -36,10 +38,13 @@ use Heidi\Oidc\Domain\Event\TokensIssued;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\RefreshToken;
+use Heidi\Oidc\Exception\InvalidAuthorizationDetailsException;
 use Heidi\Oidc\Exception\InvalidGrantException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\InvalidTargetException;
+use Heidi\Oidc\Domain\Token\IssuedTokens;
 use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
@@ -244,6 +249,110 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         $refreshToken = $issued->refreshToken ?? static::fail('A confidential client registered for refresh_token gets a refresh token.');
         static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $refreshToken->token->resources?->values());
+    }
+
+    /**
+     * RFC 9396 §7: a request that asks for no detail takes the details the code carries, which is what the
+     * user agreed to.
+     */
+    #[Test]
+    public function aTokenRequestThatAsksForNoDetailTakesTheDetailsOfTheCode(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details();
+        $this->code('the-code', $this->client, ['openid'], authorizationDetails: $details);
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertTrue(self::userAuthorization($issued)->authorizationDetails?->equals($details));
+    }
+
+    /**
+     * RFC 9396 §7: the access token carries the subset of details the request asked for.
+     */
+    #[Test]
+    public function aTokenRequestNarrowsTheDetailsOfTheCode(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid'], authorizationDetails: new AuthorizationDetails([
+            AuthorizationDetailTypes::detail('acct-4711'),
+            AuthorizationDetailTypes::detail('acct-0815'),
+        ]));
+
+        // When
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            $this->request(authorizationDetails: AuthorizationDetailTypes::parameter('acct-0815')),
+            $this->context,
+        );
+
+        // Then
+        static::assertTrue(self::userAuthorization($issued)->authorizationDetails?->equals(AuthorizationDetailTypes::details('acct-0815')));
+    }
+
+    /**
+     * RFC 9396 §7: whatever subset the access token was narrowed to, the refresh token beside it is bound
+     * to the whole of what the user agreed to.
+     */
+    #[Test]
+    public function theRefreshTokenStaysBoundToEveryDetailOfTheGrant(): void
+    {
+        // Given
+        $granted = new AuthorizationDetails([
+            AuthorizationDetailTypes::detail('acct-4711'),
+            AuthorizationDetailTypes::detail('acct-0815'),
+        ]);
+        $this->code('the-code', $this->client, ['openid'], authorizationDetails: $granted);
+
+        // When
+        $issued = $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            $this->request(authorizationDetails: AuthorizationDetailTypes::parameter('acct-0815')),
+            $this->context,
+        );
+
+        // Then
+        $refreshToken = $issued->refreshToken ?? static::fail('A confidential client registered for refresh_token gets a refresh token.');
+        static::assertTrue($refreshToken->token->authorizationDetails?->equals($granted));
+    }
+
+    /**
+     * RFC 9396 §7: a token request narrows the details of the authorization it spends and never widens
+     * them, whether the authorization carries others or none at all.
+     */
+    #[Test]
+    #[DataProvider('provideDetailsTheCodeDoesNotCarry')]
+    public function itRefusesADetailTheCodeDoesNotCarry(?string $granted, string $asked): void
+    {
+        // Given
+        $this->code(
+            'the-code',
+            $this->client,
+            ['openid'],
+            authorizationDetails: $granted === null ? null : AuthorizationDetailTypes::details($granted),
+        );
+
+        // Then
+        $this->expectException(InvalidAuthorizationDetailsException::class);
+        $this->expectExceptionMessageIs('invalid_authorization_details: The requested authorization detail is not among the details of this authorization (RFC 9396 section 7).');
+
+        // When
+        $this->grant->grant(
+            new AuthenticatedClient($this->client),
+            $this->request(authorizationDetails: AuthorizationDetailTypes::parameter($asked)),
+            $this->context,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string}>
+     */
+    public static function provideDetailsTheCodeDoesNotCarry(): iterable
+    {
+        yield 'another detail' => ['acct-4711', 'acct-0815'];
+        yield 'no detail at all' => [null, 'acct-4711'];
     }
 
     /**
@@ -1088,6 +1197,7 @@ final class AuthorizationCodeGrantTest extends TestCase
             $this->clock,
             $this->events,
             new RefreshTokenDue($served ?? Grants::served(), $refreshTokenWithoutOfflineAccess),
+            new RequestedAuthorizationDetails(AuthorizationDetailTypes::served()),
             $familyLifetime ?? new DateInterval('P90D'),
         );
     }
@@ -1101,8 +1211,17 @@ final class AuthorizationCodeGrantTest extends TestCase
         array $scopes = ['openid'],
         ?AuthenticationSession $session = null,
         ?ResourceIndicators $resources = null,
+        ?AuthorizationDetails $authorizationDetails = null,
     ): AuthorizationCode {
-        $record = Tokens::code($code, $client, $session ?? $this->session, $this->clock->now(), $scopes, resources: $resources);
+        $record = Tokens::code(
+            $code,
+            $client,
+            $session ?? $this->session,
+            $this->clock->now(),
+            $scopes,
+            resources: $resources,
+            authorizationDetails: $authorizationDetails,
+        );
         $this->codes->save($record);
 
         return $record;
@@ -1118,6 +1237,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         string $redirectUri = 'https://demo.localhost/login/check',
         string $verifier = Tokens::CODE_VERIFIER,
         string|array|null $resource = null,
+        ?string $authorizationDetails = null,
     ): array {
         $parameters = [
             'grant_type' => 'authorization_code',
@@ -1127,6 +1247,9 @@ final class AuthorizationCodeGrantTest extends TestCase
         ];
         if ($resource !== null) {
             $parameters['resource'] = $resource;
+        }
+        if ($authorizationDetails !== null) {
+            $parameters['authorization_details'] = $authorizationDetails;
         }
 
         return $parameters;
@@ -1140,8 +1263,9 @@ final class AuthorizationCodeGrantTest extends TestCase
         string $redirectUri = 'https://demo.localhost/login/check',
         string $verifier = Tokens::CODE_VERIFIER,
         string|array|null $resource = null,
+        ?string $authorizationDetails = null,
     ): RequestParameters {
-        return RequestParameters::of($this->parameters($code, $redirectUri, $verifier, $resource));
+        return RequestParameters::of($this->parameters($code, $redirectUri, $verifier, $resource, $authorizationDetails));
     }
 
     private function failToGrant(Client $client, RequestParameters $request): void
@@ -1174,5 +1298,17 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->refreshTokens->save($successor);
 
         return $successor;
+    }
+
+    /**
+     * What a grant of a browser flow yields, which is the only kind of authorization these grants produce
+     * and the only kind that carries what a user agreed to (RFC 9396 §2).
+     */
+    private static function userAuthorization(IssuedTokens $issued): UserAuthorizationInterface
+    {
+        $authorization = $issued->authorization;
+        static::assertInstanceOf(UserAuthorizationInterface::class, $authorization);
+
+        return $authorization;
     }
 }

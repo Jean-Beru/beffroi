@@ -12,6 +12,11 @@
         <many-to-one field="session" target-entity="Heidi\Core\Domain\Session\AuthenticationSession">
             <join-column name="session_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
         </many-to-one>
+        <field name="authorizationDetails" type="heidi_authorization_details" column="authorization_details" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="claimsRequest" type="heidi_claims_request" column="claims" nullable="true">
             <options>
                 <option name="jsonb">true</option>

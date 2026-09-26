@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="heidi">
+    <header>
+      <note>The message of the one authorization detail type this kernel wires (RFC 9396 §2): a type ships the message that says what it asks for, as this deployment does for the type it serves.</note>
+    </header>
+    <body>
+      <trans-unit id="92ea4fae4b" resname="authorization_details.account_information">
+        <source>authorization_details.account_information</source>
+        <target>Read the account {account}: {actions}.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -61,6 +61,10 @@
         <source>consent.request</source>
         <target>{client} demande l’accès à :</target>
       </trans-unit>
+      <trans-unit id="57188e00f3" resname="consent.authorization_details">
+        <source>consent.authorization_details</source>
+        <target>{client} demande en outre l’autorisation de :</target>
+      </trans-unit>
       <trans-unit id="271b1bd84f" resname="consent.allow">
         <source>consent.allow</source>
         <target>Autoriser</target>

@@ -17,6 +17,7 @@ use Heidi\Oidc\Domain\Token\TokenAudience;
 use Heidi\Oidc\Domain\Token\TokenSignIn;
 use Heidi\Oidc\Domain\Token\VerifiedAccessToken;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -178,6 +179,61 @@ final class IntrospectionResponseTest extends TestCase
             ],
             $response->members['act'],
         );
+    }
+
+    /**
+     * RFC 9396 §9: a token of a grant somebody agreed to details for renders them, the same array the
+     * self-contained shape carries, so a resource server learns the same thing from either form.
+     */
+    #[Test]
+    public function aTokenOfAGrantWithDetailsRendersThem(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details('acct-4711', ['read']);
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            new Scopes([Scope::openid()]),
+            new TokenSignIn(Uuid::v7(), new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd'], '1')),
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+            authorizationDetails: $details,
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame($details->toClaim(), $response->members['authorization_details']);
+    }
+
+    /**
+     * A token of a grant nobody agreed to a detail for renders none rather than rendering it empty.
+     */
+    #[Test]
+    public function aTokenOfAGrantWithoutDetailsRendersNone(): void
+    {
+        // Given
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            new Scopes([Scope::openid()]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertArrayNotHasKey('authorization_details', $response->members);
     }
 
     /**

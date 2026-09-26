@@ -9,6 +9,8 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetail;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Resource\ResourceIndicator;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
@@ -22,6 +24,7 @@ use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\ClientAssertions;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -508,6 +511,61 @@ final class ClientRegistrationTest extends TestCase
 
         // When / Then
         static::assertFalse($client->registration->allowsResources(ResourceIndicators::of([Clients::CALENDAR])));
+    }
+
+    /**
+     * RFC 9396 §11: what a client may ask for beyond its scopes is a closed list, compared byte for byte
+     * like every other name it registers, and registered twice is registered once.
+     */
+    #[Test]
+    public function aRegisteredAuthorizationDetailTypeIsMatchedByteForByte(): void
+    {
+        // Given
+        $client = Clients::confidential(
+            Fixtures::tenant(),
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            authorizationDetailsTypes: [AuthorizationDetailTypes::INVENTED, AuthorizationDetailTypes::INVENTED],
+        );
+
+        // When / Then
+        static::assertSame([AuthorizationDetailTypes::INVENTED], $client->registration->authorizationDetailsTypes);
+        static::assertTrue($client->registration->allowsAuthorizationDetails(AuthorizationDetailTypes::details()));
+    }
+
+    /**
+     * RFC 9396 §11: a client that registered no type may ask for none, and one registered for a type may
+     * not ask for another.
+     */
+    #[Test]
+    public function aClientAsksForNoAuthorizationDetailTypeItDidNotRegister(): void
+    {
+        // Given
+        $registered = Clients::confidential(
+            Fixtures::tenant(),
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            authorizationDetailsTypes: [AuthorizationDetailTypes::INVENTED],
+        );
+        $none = Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'no-details');
+        $other = new AuthorizationDetails([new AuthorizationDetail(AuthorizationDetailTypes::UNSERVED)]);
+
+        // When / Then
+        static::assertFalse($registered->registration->allowsAuthorizationDetails($other));
+        static::assertSame([], $none->registration->authorizationDetailsTypes);
+        static::assertFalse($none->registration->allowsAuthorizationDetails(AuthorizationDetailTypes::details()));
+    }
+
+    /**
+     * A closed list of a client holds names, and the empty string is not one.
+     */
+    #[Test]
+    public function itRefusesAnEmptyAuthorizationDetailTypeName(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The client "oidc-demo" registers no empty name in a closed list.');
+
+        // When
+        Clients::confidential(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET), authorizationDetailsTypes: ['']);
     }
 
     /**

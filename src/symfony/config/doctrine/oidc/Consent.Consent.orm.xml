@@ -17,6 +17,11 @@
         </many-to-one>
         <field name="clientId" type="string" column="client_id" length="255"/>
         <field name="scopes" type="heidi_scopes" column="scopes"/>
+        <field name="authorizationDetails" type="heidi_authorization_details" column="authorization_details" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="grantedAt" type="datetime_immutable" column="granted_at"/>
         <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
         <entity-listeners>

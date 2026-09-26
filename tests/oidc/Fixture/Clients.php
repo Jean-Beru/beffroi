@@ -51,6 +51,7 @@ final class Clients
     /**
      * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow and its renewal unless the test says otherwise
      * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
+     * @param list<string> $authorizationDetailsTypes what this client may ask for beyond its scopes (RFC 9396 §2, §11)
      */
     public static function confidential(
         Tenant $tenant,
@@ -61,6 +62,7 @@ final class Clients
         ?AccessTokenShapeInterface $accessTokenShape = null,
         ?array $grantTypes = null,
         array $resources = [],
+        array $authorizationDetailsTypes = [],
     ): Client {
         return new Client(
             $tenant,
@@ -76,6 +78,7 @@ final class Clients
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
                 requiresPkce: $requiresPkce,
                 resources: $resources,
+                authorizationDetailsTypes: $authorizationDetailsTypes,
             ),
             new HashedClientSecret($secretHash),
         );
@@ -332,6 +335,17 @@ final class Clients
     public static function resources(): array
     {
         return [new ResourceIndicator(self::CALENDAR), new ResourceIndicator(self::CONTACTS)];
+    }
+
+    /**
+     * The types of authorization detail a client of the tests is registered for (RFC 9396 §11): the one a
+     * deployment invents, which InventedAuthorizationDetailType answers for.
+     *
+     * @return list<string>
+     */
+    public static function authorizationDetailsTypes(): array
+    {
+        return [AuthorizationDetailTypes::INVENTED];
     }
 
     /**

@@ -29,6 +29,7 @@ use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Port\ServedGrantsInterface;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\DeliveryModes;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
@@ -301,6 +302,63 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
+     * RFC 9396 §11: a client declares the types of authorization detail it may ask for, among the ones the
+     * provider is wired with; a name nothing serves fails at boot, and a deployment wired with none says so
+     * rather than naming an empty list.
+     */
+    #[Test]
+    public function aClientDeclaresTheAuthorizationDetailTypesItMayAskFor(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'oidc-demo' => self::DEMO
+                + [
+                    'authorization_details_types' => [AuthorizationDetailTypes::INVENTED],
+                ],
+        ]);
+
+        // When
+        $client = self::find($repository, $this->tenant, 'oidc-demo');
+
+        // Then
+        static::assertSame([AuthorizationDetailTypes::INVENTED], $client->registration->authorizationDetailsTypes);
+    }
+
+    /**
+     * A deployment wired with no type serves none, so a client that names one is refused at boot with what
+     * the provider actually holds.
+     */
+    #[Test]
+    public function aClientNamingATypeOfADeploymentWiredWithNoneFailsAtBoot(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('must be one of: none: this provider is wired with no authorization detail type');
+
+        // When
+        new ConfigurationClientRepository(
+            'acme',
+            [
+                'oidc-demo' => self::DEMO
+                    + [
+                        'authorization_details_types' => [AuthorizationDetailTypes::INVENTED],
+                    ],
+            ],
+            new FakePasswordHasher(),
+            Algorithms::all(),
+            Methods::all(),
+            Grants::served(),
+            Shapes::served(),
+            new PkiFrameworkCertificateReader(),
+            Algorithms::keyEncryption(),
+            Algorithms::contentEncryption(),
+            DeliveryModes::served(),
+            TokenTypes::served(),
+            AuthorizationDetailTypes::none(),
+        );
+    }
+
+    /**
      * RFC 6749 §4.4: a client of a grant it uses for itself registers no redirect URI, there being no
      * browser of anybody's to send anywhere, and it authenticates itself. What a registration of such a
      * grant must carry and must not is read from what the wired grant declares.
@@ -432,6 +490,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
             TokenTypes::served(),
+            AuthorizationDetailTypes::served(),
         );
 
         // When
@@ -842,6 +901,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
             TokenTypes::served(),
+            AuthorizationDetailTypes::served(),
         );
     }
 
@@ -1269,6 +1329,20 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 ],
             'resources option of the client "bad" must be a list of strings',
         ];
+        yield 'an authorization detail type nothing serves' => [
+            $base
+                + [
+                    'authorization_details_types' => ['payment_initiation'],
+                ],
+            'authorization_details_types option of the client "bad" must be one of: account_information',
+        ];
+        yield 'authorization_details_types as a string' => [
+            $base
+                + [
+                    'authorization_details_types' => 'account_information',
+                ],
+            'authorization_details_types option of the client "bad" must be a list of strings',
+        ];
         yield 'back-channel logout URI over plain http' => [
             $base
                 + [
@@ -1363,6 +1437,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 Algorithms::contentEncryption(),
                 DeliveryModes::served(),
                 TokenTypes::served(),
+                AuthorizationDetailTypes::served(),
             )->hasSecret(),
         );
         static::assertTrue(
@@ -1378,6 +1453,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 Algorithms::contentEncryption(),
                 DeliveryModes::served(),
                 TokenTypes::served(),
+                AuthorizationDetailTypes::served(),
             )->hasSecret(),
         );
     }
@@ -1401,6 +1477,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
             TokenTypes::served(),
+            AuthorizationDetailTypes::served(),
         );
 
         // Then
@@ -1500,6 +1577,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
             TokenTypes::served(),
+            AuthorizationDetailTypes::served(),
         );
     }
 

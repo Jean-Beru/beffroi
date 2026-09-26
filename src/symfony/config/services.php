@@ -245,6 +245,8 @@ use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTls;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDpop;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTlsEndpoints;
+use Heidi\Oidc\Application\AuthorizationDetails\ServedAuthorizationDetailTypes;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthorizationDetails;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedProtectedResources;
 use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
@@ -291,6 +293,7 @@ use Heidi\Oidc\Application\Token\TokenExchangeGrant;
 use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
 use Heidi\Oidc\Application\Token\DeviceCodeGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenDue;
+use Heidi\Oidc\Application\Token\RequestedAuthorizationDetails;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\Confirmations;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
@@ -335,11 +338,13 @@ use Heidi\Oidc\Domain\Token\CertificateConfirmationKind;
 use Heidi\Oidc\Domain\Token\KeyConfirmationKind;
 use Heidi\Oidc\Port\ClientLoadBudgetInterface;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\RegisteredResourcesInterface;
 use Heidi\Oidc\Port\RegisteredAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
+use Heidi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
 use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Port\CompactJwtReaderInterface;
 use Heidi\Oidc\Port\ConsentRepositoryInterface;
@@ -739,6 +744,16 @@ return static function (ContainerConfigurator $container): void {
     // RFC 8628 §3.3: a code read out loud and typed on a phone is not one of those, and is drawn beside them
     $services->set(UserCodeDrawer::class);
 
+    // RFC 9396 §2: one class per type of authorization detail, tagged, and what is tagged is what a
+    // request may ask for, what a client may register and what the discovery document announces, never an
+    // enumeration kept beside them (issue #98). The bundle wires none: no type of detail is universal, a
+    // type says what a client may do to what in the words of one domain, so a deployment that serves rich
+    // authorization requests adds the class its own domain needs and tags it here.
+    $services->set(ServedAuthorizationDetailTypes::class)->args([tagged_iterator('heidi.oidc.authorization_detail_type')]);
+    $services->alias(AuthorizationDetailsReaderInterface::class, ServedAuthorizationDetailTypes::class);
+    $services->alias(ServedAuthorizationDetailTypesInterface::class, ServedAuthorizationDetailTypes::class);
+    $services->alias('heidi.authorization_detail_types', AuthorizationDetailsReaderInterface::class)->public();
+
     // The module: clients
     $services->set(ConfigurationClientRepository::class);
     $services->alias(ClientRepositoryInterface::class, ConfigurationClientRepository::class);
@@ -919,6 +934,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RefreshTokenRevocation::class);
     // RFC 6749 §4.1.4: whether a response carries a refresh token, asked once for every grant that may
     $services->set(RefreshTokenDue::class);
+    // RFC 9396 §7: what a token request narrows the details of its authorization to, read once for every
+    // grant that spends one, as RequestedResources is for the resources beside them
+    $services->set(RequestedAuthorizationDetails::class);
     // one class per grant, tagged, and what is tagged is what the token endpoint serves, what a client
     // may register and what the discovery document announces, never an enumeration kept beside them
     // (issue #173). A grant names itself and declares what it makes of a refresh token by the interfaces
@@ -989,6 +1007,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AnnouncedSignedAuthorizationResponse::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedMutualTlsEndpoints::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedProtectedResources::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedAuthorizationDetails::class)->tag('heidi.oidc.metadata');
     $services->set(DiscoveryHandler::class)->args([
         '$contributors' => tagged_iterator('heidi.oidc.metadata'),
     ]);

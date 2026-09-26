@@ -267,6 +267,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
             $session,
             new Scopes([new Scope('openid'), new Scope('offline_access')]),
             null,
+            null,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,

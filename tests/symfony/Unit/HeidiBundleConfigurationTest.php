@@ -15,6 +15,7 @@ use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Token\GrantNames;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\DeliveryModes;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -177,6 +178,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
             TokenTypes::served(),
+            AuthorizationDetailTypes::served(),
         );
 
         // When
@@ -208,6 +210,7 @@ final class HeidiBundleConfigurationTest extends TestCase
             Algorithms::contentEncryption(),
             DeliveryModes::served(),
             TokenTypes::served(),
+            AuthorizationDetailTypes::served(),
         );
         static::assertEquals($fromModule, $fromTree);
         static::assertSame(ClientDefinition::DEFAULT_GRANT_TYPES, GrantNames::of($fromTree->registration->grantTypes));

@@ -510,6 +510,7 @@ final class RefreshTokenTest extends TestCase
             $scopes ?? new Scopes([Scope::openid()]),
             null,
             null,
+            null,
             new AuthenticationSnapshot(
                 $this->session->authenticatedAt(),
                 $methods ?? $this->session->methodReferences(),

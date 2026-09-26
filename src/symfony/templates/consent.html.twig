@@ -1,5 +1,6 @@
-{# The consent page of an interaction, in the locale the interaction recorded: the client, the user and
-   every scope of the request, the standard scopes of OIDC Core §5.4 in words, any other by its value.
+{# The consent page of an interaction, in the locale the interaction recorded: the client, the user,
+   every scope of the request, the standard scopes of OIDC Core §5.4 in words, any other by its value, and
+   what the request asks for beyond them (RFC 9396 §2) said in the words of each type.
    Overridable by an application under templates/bundles/HeidiBundle/. #}
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
@@ -10,6 +11,10 @@
     <p>{{ 'consent.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'consent.request'|trans({client: client.registration.name}) }}</p>
     {{ include('@Heidi/scopes.html.twig', {scopes: scopes}) }}
+    {% if authorization_details is not null %}
+        <p>{{ 'consent.authorization_details'|trans({client: client.registration.name}) }}</p>
+        {{ include('@Heidi/authorization_details.html.twig', {details: authorization_details}) }}
+    {% endif %}
     <form method="post" action="{{ path('heidi_interaction_consent') }}">
         <input type="hidden" name="interaction" value="{{ interaction.id }}">
         <input type="hidden" name="_token" value="{{ csrf_token('heidi_consent') }}">

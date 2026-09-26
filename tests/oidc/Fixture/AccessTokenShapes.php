@@ -27,7 +27,7 @@ final class AccessTokenShapes
         ?SubjectIdentifierResolverInterface $subjects = null,
     ): AccessTokenVerifier {
         return new AccessTokenVerifier([
-            new JwtAccessTokenVerifier($jws, $clients, Bindings::wired()),
+            new JwtAccessTokenVerifier($jws, $clients, Bindings::wired(), AuthorizationDetailTypes::served()),
             new OpaqueAccessTokenVerifier($storedTokens ?? new InMemoryAccessTokenRepository(), $subjects ?? new PublicSubjectIdentifierResolver()),
         ], Shapes::served());
     }

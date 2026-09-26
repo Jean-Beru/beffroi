@@ -32,6 +32,7 @@ use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
 use Heidi\Oidc\Domain\Token\StoredClientAccessToken;
 use Heidi\Oidc\Domain\Token\StoredSubjectAccessToken;
 use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Token\TokenAudience;
 use Heidi\Oidc\Domain\Token\TokenSignIn;
 use Symfony\Component\Uid\Uuid;
@@ -63,6 +64,7 @@ final class Tokens
         ?Uuid $grantId = null,
         ?KeyConfirmation $dpopKey = null,
         ?ResourceIndicators $resources = null,
+        ?AuthorizationDetails $authorizationDetails = null,
     ): AuthorizationCode {
         return new AuthorizationCode(
             DrawnSecret::digestOf($code),
@@ -72,6 +74,7 @@ final class Tokens
             $client->registration->redirectUris[0],
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $resources,
+            $authorizationDetails,
             $nonce,
             $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
             $dpopKey,
@@ -160,6 +163,7 @@ final class Tokens
         array $scopes = ['openid'],
         ?ClaimsRequest $claims = null,
         ?ResourceIndicators $resources = null,
+        ?AuthorizationDetails $authorizationDetails = null,
     ): StoredUserAccessToken {
         return new StoredUserAccessToken(
             DrawnSecret::digestOf($value),
@@ -168,6 +172,7 @@ final class Tokens
             $session,
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $resources,
+            $authorizationDetails,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
@@ -287,6 +292,7 @@ final class Tokens
         ?ClaimsRequest $claims = null,
         ?ConfirmationInterface $confirmation = null,
         ?ResourceIndicators $resources = null,
+        ?AuthorizationDetails $authorizationDetails = null,
     ): RefreshToken {
         $family ??= self::family($issuedAt);
 
@@ -297,6 +303,7 @@ final class Tokens
             $session,
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $resources,
+            $authorizationDetails,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,

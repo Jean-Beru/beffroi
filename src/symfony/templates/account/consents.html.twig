@@ -26,7 +26,12 @@
                 {% for consent in consents %}
                     <tr data-consent="{{ consent.id }}" data-client="{{ consent.clientId }}">
                         <td>{{ consent.client.registration.name }}</td>
-                        <td>{{ include('@Heidi/scopes.html.twig', {scopes: consent.scopes}) }}</td>
+                        <td>
+                            {{ include('@Heidi/scopes.html.twig', {scopes: consent.scopes}) }}
+                            {% if consent.authorizationDetails is not null %}
+                                {{ include('@Heidi/authorization_details.html.twig', {details: consent.authorizationDetails}) }}
+                            {% endif %}
+                        </td>
                         <td><time datetime="{{ consent.grantedAt|date('c') }}">{{ consent.grantedAt|date('Y-m-d H:i') }}</time></td>
                         <td>
                             <form method="post" action="{{ path('heidi_interaction_account_consents_revoke', {id: consent.id}) }}">
