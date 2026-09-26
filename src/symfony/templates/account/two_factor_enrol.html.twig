@@ -9,6 +9,7 @@
 {% block title %}{{ 'two_factor.enrol.title'|trans }}{% endblock %}
 
 {% block content %}
+    {{ include('@Heidi/account/back.html.twig') }}
     <p>{{ 'two_factor.signed_in_as'|trans({username: user.username}) }}</p>
     {% if error is not null %}
         <p data-error="{{ error }}">{{ ('two_factor.error.' ~ error)|trans }}</p>

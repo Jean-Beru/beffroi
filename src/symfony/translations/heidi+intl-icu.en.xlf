@@ -185,6 +185,10 @@
         <source>account.signed_in_since</source>
         <target>Signed in since {date}.</target>
       </trans-unit>
+      <trans-unit id="65154335f6" resname="account.profile.state">
+        <source>account.profile.state</source>
+        <target>{count, plural, =0 {Nothing filled in} one {One detail} other {# details}}</target>
+      </trans-unit>
       <trans-unit id="f89c3f6e13" resname="account.passkeys.state">
         <source>account.passkeys.state</source>
         <target>{count, plural, =0 {No passkey} one {One passkey} other {# passkeys}}</target>
@@ -201,9 +205,125 @@
         <source>account.two_factor.state.active</source>
         <target>An authenticator app</target>
       </trans-unit>
+      <trans-unit id="ee464a5f53" resname="account.back">
+        <source>account.back</source>
+        <target>Back to your account</target>
+      </trans-unit>
       <trans-unit id="5cb4722c04" resname="account.sign_out">
         <source>account.sign_out</source>
         <target>Sign out</target>
+      </trans-unit>
+      <trans-unit id="35245e14b0" resname="profile.title">
+        <source>profile.title</source>
+        <target>Your information</target>
+      </trans-unit>
+      <trans-unit id="bf077998cc" resname="profile.signed_in_as">
+        <source>profile.signed_in_as</source>
+        <target>You are signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="be9758262f" resname="profile.explanation">
+        <source>profile.explanation</source>
+        <target>This is everything this provider holds about you. An application obtains what you allow it to and nothing else; your passkeys, your authenticator app and the applications you have allowed are on the pages of their own.</target>
+      </trans-unit>
+      <trans-unit id="76abe8899b" resname="profile.account">
+        <source>profile.account</source>
+        <target>Your account here</target>
+      </trans-unit>
+      <trans-unit id="5b974a26e1" resname="profile.about_you">
+        <source>profile.about_you</source>
+        <target>About you</target>
+      </trans-unit>
+      <trans-unit id="eaa27dc1d2" resname="profile.none">
+        <source>profile.none</source>
+        <target>You have told this provider nothing about yourself.</target>
+      </trans-unit>
+      <trans-unit id="b0e678f0e9" resname="profile.verified">
+        <source>profile.verified</source>
+        <target>verified</target>
+      </trans-unit>
+      <trans-unit id="b636667ab7" resname="profile.unverified">
+        <source>profile.unverified</source>
+        <target>not verified</target>
+      </trans-unit>
+      <trans-unit id="9cdc497348" resname="profile.username">
+        <source>profile.username</source>
+        <target>Username</target>
+      </trans-unit>
+      <trans-unit id="7dfe6bd8ef" resname="profile.subject">
+        <source>profile.subject</source>
+        <target>Identifier applications receive</target>
+      </trans-unit>
+      <trans-unit id="a49dd70115" resname="profile.created_at">
+        <source>profile.created_at</source>
+        <target>Account created</target>
+      </trans-unit>
+      <trans-unit id="23ba2362e6" resname="profile.updated_at">
+        <source>profile.updated_at</source>
+        <target>Last change</target>
+      </trans-unit>
+      <trans-unit id="43b26cec8d" resname="profile.email">
+        <source>profile.email</source>
+        <target>Email address</target>
+      </trans-unit>
+      <trans-unit id="d2921f1caa" resname="profile.phone_number">
+        <source>profile.phone_number</source>
+        <target>Phone number</target>
+      </trans-unit>
+      <trans-unit id="7c02d4292c" resname="profile.name">
+        <source>profile.name</source>
+        <target>Full name</target>
+      </trans-unit>
+      <trans-unit id="25b09e30e8" resname="profile.given_name">
+        <source>profile.given_name</source>
+        <target>Given name</target>
+      </trans-unit>
+      <trans-unit id="ff2feb233e" resname="profile.family_name">
+        <source>profile.family_name</source>
+        <target>Family name</target>
+      </trans-unit>
+      <trans-unit id="25813757bf" resname="profile.middle_name">
+        <source>profile.middle_name</source>
+        <target>Middle name</target>
+      </trans-unit>
+      <trans-unit id="05218d9e6f" resname="profile.nickname">
+        <source>profile.nickname</source>
+        <target>Nickname</target>
+      </trans-unit>
+      <trans-unit id="24482f4bbc" resname="profile.preferred_username">
+        <source>profile.preferred_username</source>
+        <target>Preferred username</target>
+      </trans-unit>
+      <trans-unit id="3a58b7a487" resname="profile.birthdate">
+        <source>profile.birthdate</source>
+        <target>Date of birth</target>
+      </trans-unit>
+      <trans-unit id="b70497d99e" resname="profile.gender">
+        <source>profile.gender</source>
+        <target>Gender</target>
+      </trans-unit>
+      <trans-unit id="ea722b79ef" resname="profile.locale">
+        <source>profile.locale</source>
+        <target>Language</target>
+      </trans-unit>
+      <trans-unit id="5e323fac89" resname="profile.zoneinfo">
+        <source>profile.zoneinfo</source>
+        <target>Time zone</target>
+      </trans-unit>
+      <trans-unit id="f8b6df7bf6" resname="profile.profile_url">
+        <source>profile.profile_url</source>
+        <target>Profile page</target>
+      </trans-unit>
+      <trans-unit id="b63d2bc82b" resname="profile.picture_url">
+        <source>profile.picture_url</source>
+        <target>Picture</target>
+      </trans-unit>
+      <trans-unit id="282ca669bd" resname="profile.website_url">
+        <source>profile.website_url</source>
+        <target>Website</target>
+      </trans-unit>
+      <trans-unit id="ef830c2e9b" resname="profile.address">
+        <source>profile.address</source>
+        <target>Postal address</target>
       </trans-unit>
       <trans-unit id="465d5b10ab" resname="passkeys.title">
         <source>passkeys.title</source>
@@ -408,10 +528,6 @@
       <trans-unit id="87b3bb2962" resname="two_factor.enrolled.codes">
         <source>two_factor.enrolled.codes</source>
         <target>Keep these backup codes somewhere safe. Each one signs you in once, in place of a code of the app, if you lose it. They are shown only now.</target>
-      </trans-unit>
-      <trans-unit id="27ee01caa6" resname="two_factor.enrolled.back">
-        <source>two_factor.enrolled.back</source>
-        <target>Back to your account</target>
       </trans-unit>
       <trans-unit id="732a6b396d" resname="two_factor.error.refused">
         <source>two_factor.error.refused</source>

@@ -436,7 +436,7 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     ];
 
     // the login page resumes the interaction: the browser goes to the callback with a code
-    [$status, $location] = demo_request($cookies, $ca, 'GET', (string) ($passkey['location'] ?? ''));
+    [$status, $location] = demo_resume($cookies, $ca, $issuer, (string) ($passkey['location'] ?? ''));
     demo_expect(
         $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
         sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location),
@@ -579,7 +579,7 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
         demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
 
         // and here the mode shows: a page, not a redirection
-        [$status, $location, $page, $headers] = demo_request($cookies, $ca, 'GET', $location);
+        [$status, $location, $page, $headers] = demo_resume($cookies, $ca, $issuer, $location);
         demo_expect($status === 200 && $location === '', sprintf(
             'the OP answers the authorization request with a page of its own, not with a redirection (got %d %s)',
             $status,
@@ -812,7 +812,7 @@ function demo_second_sign_in(array &$cookies, string $issuer, string $ca): array
     );
 
     for ($hop = 0; $hop < 5 && str_starts_with($location, $issuer); ++$hop) {
-        [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+        [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
         demo_expect($status === 302, sprintf('the OP answers from the session it holds, without asking anything (got %d)', $status));
     }
     demo_expect(
@@ -1211,7 +1211,7 @@ function demo_ladder_check(string $issuer, string $password, string $ca): void
 
         // and here the response comes back, each rung its own way
         if ($rung['response'] === 'form_post') {
-            [$status, , $page, $headers] = demo_request($cookies, $ca, 'GET', $location);
+            [$status, , $page, $headers] = demo_resume($cookies, $ca, $issuer, $location);
             demo_expect($status === 200 && preg_match('/form[^>]+method="post"[^>]+action="([^"]+)"/i', $page, $form) === 1, sprintf(
                 '%s: the OP answers with a page that posts the response back (got %d)',
                 $slug,
@@ -1223,7 +1223,7 @@ function demo_ladder_check(string $issuer, string $password, string $ca): void
             $returned = sprintf('a form of %d fields, no-store', count($response));
             [$status, $location] = demo_request($cookies, $ca, 'POST', $action, $response);
         } else {
-            [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+            [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
             demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/c/' . $slug . '/callback'), sprintf(
                 '%s: the OP sends the browser to the callback of the rung (got %d %s)',
                 $slug,
@@ -2163,7 +2163,7 @@ function demo_login_at(array &$cookies, string $issuer, string $password, string
         '_csrf_token' => $csrf[1],
     ]);
     demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
-    [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+    [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
     demo_expect(
         $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
         sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location),
@@ -2172,6 +2172,41 @@ function demo_login_at(array &$cookies, string $issuer, string $password, string
     demo_expect(isset($callback['code'], $callback['state']) && ($callback['iss'] ?? null) === $issuer, 'the callback carries code, state and iss (RFC 9207)');
 
     return $location;
+}
+
+/**
+ * The interaction resumed, and the consent given if the provider asks for one (architecture §4.3, OIDC
+ * Core §3.1.2.4): the browser goes where the login sent it, and a client that is not exempt from the
+ * consent puts one page more between that login and its response, which the walk answers as whoever is in
+ * front of the browser would. A client the provider does not ask about, and a consent already in force,
+ * go straight through: the page is answered when it is shown and never expected.
+ *
+ * What comes back is what the provider answers the request with, a redirection to the client or the page
+ * a response mode of its own renders, so that every walk reads its answer where it already read it.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ * @return array{int, string, string, array<string, list<string>>}
+ */
+function demo_resume(array &$cookies, string $ca, string $issuer, string $url): array
+{
+    [$status, $location, $page, $headers] = demo_request($cookies, $ca, 'GET', $url);
+    if ($status !== 302 || ! str_starts_with($location, $issuer . '/consent?')) {
+        return [$status, $location, $page, $headers];
+    }
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200
+        && preg_match('/name="_token" value="([^"]+)"/', $page, $token) === 1
+        && preg_match('/name="interaction" value="([^"]+)"/', $page, $interaction) === 1
+        && preg_match('/action="([^"]+)"/', $page, $action) === 1,
+        sprintf('the consent page carries the form (got %d)', $status),
+    );
+
+    return demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
+        'interaction' => $interaction[1],
+        '_token' => $token[1],
+        'answer' => 'allow',
+    ]);
 }
 
 /**

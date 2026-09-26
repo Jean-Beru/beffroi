@@ -1,0 +1,6 @@
+{# The way back from a page of the account to its home (architecture §5.2), said the same way on every one
+   of them: a page of the account belongs to no client and to no interaction, so the home is the only place
+   it returns to. The home itself hangs from nothing and includes this not. Overridable by an application
+   under templates/bundles/HeidiBundle/. #}
+{% trans_default_domain 'heidi' %}
+<nav><a href="{{ path('heidi_interaction_account') }}" data-back>{{ 'account.back'|trans }}</a></nav>

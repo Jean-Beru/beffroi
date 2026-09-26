@@ -68,7 +68,11 @@ final class AccountHomeTest extends PasskeyTestCase
         $crawler = $this->accountPage();
 
         // Then
-        static::assertCount(3, $crawler->filter('ul[data-sections="3"] li'));
+        static::assertCount(4, $crawler->filter('ul[data-sections="4"] li'));
+        $profile = $crawler->filter('li[data-section="heidi_interaction_account_profile"]');
+        static::assertSame('/account/profile', $profile->filter('a')->attr('href'));
+        static::assertSame('Your information', $profile->filter('a')->text());
+        static::assertSame('Nothing filled in', $profile->filter('span[data-state]')->text());
         $passkeys = $crawler->filter('li[data-section="heidi_interaction_account_passkeys"]');
         static::assertSame('/account/passkeys', $passkeys->filter('a')->attr('href'));
         static::assertSame('Your passkeys', $passkeys->filter('a')->text());

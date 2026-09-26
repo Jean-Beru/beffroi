@@ -7,6 +7,7 @@
 {% block title %}{{ 'consents.title'|trans }}{% endblock %}
 
 {% block content %}
+    {{ include('@Heidi/account/back.html.twig') }}
     <p>{{ 'consents.signed_in_as'|trans({username: user.username}) }}</p>
     {% if consents is empty %}
         <p data-consents="none">{{ 'consents.none'|trans }}</p>

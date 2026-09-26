@@ -1,0 +1,30 @@
+{# What this provider holds about the signed-in user (architecture §5.2), in the language of the browser:
+   the account itself, which keeping a record for someone keeps, then what that person told us, each thing
+   with its label and its value. A record that says nothing of the person says so. Overridable by an
+   application under templates/bundles/HeidiBundle/. #}
+{% extends '@Heidi/layout.html.twig' %}
+{% trans_default_domain 'heidi' %}
+
+{% block title %}{{ 'profile.title'|trans }}{% endblock %}
+
+{% block content %}
+    {{ include('@Heidi/account/back.html.twig') }}
+    <p>{{ 'profile.signed_in_as'|trans({username: user.username}) }}</p>
+    <p>{{ 'profile.explanation'|trans }}</p>
+    <h2>{{ 'profile.account'|trans }}</h2>
+    <dl data-information="account">
+        {% for detail in identity %}
+            {{ include('@Heidi/account/detail.html.twig', {detail: detail}) }}
+        {% endfor %}
+    </dl>
+    <h2>{{ 'profile.about_you'|trans }}</h2>
+    {% if claims is empty %}
+        <p data-claims="none">{{ 'profile.none'|trans }}</p>
+    {% else %}
+        <dl data-information="claims" data-claims="{{ claims|length }}">
+            {% for detail in claims %}
+                {{ include('@Heidi/account/detail.html.twig', {detail: detail}) }}
+            {% endfor %}
+        </dl>
+    {% endif %}
+{% endblock %}
