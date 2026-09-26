@@ -11,7 +11,7 @@ use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
@@ -47,7 +47,7 @@ final class HeidiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        static::assertSame('PT45S', self::interval($container, AuthorizationHandler::class, '$codeLifetime'));
+        static::assertSame('PT45S', self::interval($container, AuthorizationCodeIssuer::class, '$lifetime'));
         static::assertSame('PT300S', self::interval($container, JwtAccessTokenIssuer::class, '$lifetime'));
         static::assertSame('PT300S', self::interval($container, OpaqueAccessTokenIssuer::class, '$lifetime'));
         static::assertSame('PT120S', self::interval($container, JwtIdTokenIssuer::class, '$lifetime'));

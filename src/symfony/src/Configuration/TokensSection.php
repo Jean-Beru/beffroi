@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Configuration;
 
-use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
@@ -148,7 +148,7 @@ final readonly class TokensSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $tokens = $this->own($config);
-        $services->get(AuthorizationHandler::class)->arg('$codeLifetime', self::seconds($tokens, 'authorization_code_ttl'));
+        $services->get(AuthorizationCodeIssuer::class)->arg('$lifetime', self::seconds($tokens, 'authorization_code_ttl'));
         $services->get(PushedAuthorizationHandler::class)->arg('$lifetime', self::seconds($tokens, 'request_uri_ttl'));
         $services->get(JwtAccessTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
         $services->get(OpaqueAccessTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));

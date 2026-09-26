@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use Heidi\Oidc\Tests\Fixture\ServedModes;
 use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
@@ -13,7 +14,6 @@ use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Authorization\Display;
 use Heidi\Oidc\Domain\Authorization\Prompt;
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -63,7 +63,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             Display::Page,
             'eyJhbGciOiJSUzI1NiJ9.e30.sig',
             $claims,
-            ResponseMode::Query,
+            ServedModes::QUERY,
             null,
             ResourceIndicators::of(['https://cal.example.com/', 'https://contacts.example.com/']),
         );
@@ -101,7 +101,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertSame(Display::Page, $parked->display);
         static::assertSame('eyJhbGciOiJSUzI1NiJ9.e30.sig', $parked->idTokenHint);
         static::assertEquals($claims, $parked->claims);
-        static::assertSame('query', $parked->responseMode->value);
+        static::assertSame('query', $parked->responseMode);
         static::assertSame(['https://cal.example.com/', 'https://contacts.example.com/'], $parked->resources?->values());
     }
 

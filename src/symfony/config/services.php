@@ -197,6 +197,8 @@ use Heidi\Core\Port\TotpAlgorithmInterface;
 use Heidi\Core\Port\UserAgentParserInterface;
 use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
+use Heidi\Oidc\Application\Authorization\AuthenticationRequirement;
+use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
@@ -262,6 +264,7 @@ use Heidi\Oidc\Application\Key\RequestObjectJweKind;
 use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
 use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
 use Heidi\Oidc\Application\Consent\ConsentGranting;
+use Heidi\Oidc\Application\Consent\RequiredConsent;
 use Heidi\Oidc\Application\Consent\ConsentRevocation;
 use Heidi\Oidc\Application\Exchange\PresentedAccessTokenType;
 use Heidi\Oidc\Application\Exchange\PresentedTokenTypes;
@@ -885,6 +888,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RequestObjectJweKind::class)->tag('heidi.key_bound_artifact');
     $services->set(PushedRequestJweKind::class)->tag('heidi.key_bound_artifact');
     $services->set(IdTokenHintVerifier::class);
+    // The authorization endpoint, one subject per class (issue #251): what the authentication of an
+    // interaction still needs, whether a consent page is still needed, the code minted when nothing is, and
+    // a handler that orchestrates the three and owns the lifecycle of the interaction.
+    $services->set(AuthenticationRequirement::class);
+    $services->set(AuthorizationCodeIssuer::class);
+    $services->set(RequiredConsent::class);
     $services->set(AuthorizationHandler::class);
     $services->set(ConsentGranting::class);
     // and its counterpart: a consent taken back takes back what was issued under it (issue #273)

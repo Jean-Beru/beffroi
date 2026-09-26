@@ -6,7 +6,6 @@ namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use Heidi\Oidc\Tests\Fixture\WiredModes;
 use PHPUnit\Framework\Attributes\Test;
@@ -61,7 +60,7 @@ final class AnnouncedResponsesTest extends TestCase
     public function aModeWiredTwiceIsAnnouncedOnce(): void
     {
         // Given
-        $announced = new AnnouncedResponses(WiredModes::of([ResponseMode::FormPost, ResponseMode::Query, ResponseMode::FormPost]));
+        $announced = new AnnouncedResponses(WiredModes::of([ServedModes::FORM_POST, ServedModes::QUERY, ServedModes::FORM_POST]));
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -78,7 +77,11 @@ final class AnnouncedResponsesTest extends TestCase
     public function aWiredSignedModeAnnouncesTheAlias(): void
     {
         // Given
-        $announced = new AnnouncedResponses(WiredModes::of([ResponseMode::Query, ResponseMode::QueryJwt]));
+        $announced = new AnnouncedResponses(WiredModes::of(
+            [ServedModes::QUERY, ServedModes::SIGNED_QUERY],
+            [ServedModes::SIGNED_QUERY],
+            ServedModes::SIGNED_QUERY,
+        ));
 
         // When
         $members = $announced->metadata(Fixtures::tenant());

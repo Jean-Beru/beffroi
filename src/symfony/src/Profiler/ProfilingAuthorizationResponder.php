@@ -46,7 +46,7 @@ final readonly class ProfilingAuthorizationResponder implements AuthorizationRes
             'outcome' => $exception->redirectable ? 'refused, and the client is told' : 'refused, and the user is shown a page',
             'error' => $exception->error,
             'description' => $exception->errorDescription,
-            'response mode' => $target->responseMode->value,
+            'response mode' => $target->responseMode,
         ]));
 
         return $this->responder->failure($request, $target, $exception, $interaction);

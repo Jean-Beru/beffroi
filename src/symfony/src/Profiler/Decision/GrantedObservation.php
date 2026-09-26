@@ -25,7 +25,7 @@ final readonly class GrantedObservation implements DecisionObservationInterface
     {
         return new Observation('Decision', 'Decision', [
             'outcome' => 'granted',
-            'response mode' => $decision->interaction->request->responseMode->value,
+            'response mode' => $decision->interaction->request->responseMode,
             'parameters sent back' => $decision instanceof Granted ? implode(' ', array_keys($decision->response->parameters())) : '',
         ]);
     }

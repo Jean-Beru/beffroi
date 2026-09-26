@@ -6,7 +6,6 @@ namespace Heidi\Bundle\Http\ResponseMode;
 
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * type, the only one this provider serves (decision 0006). The document is minted by the module; the
  * delivery is the ordinary query mode, so a signed answer travels exactly as an unsigned one does.
  */
-final readonly class SignedQueryResponseRenderer implements AuthorizationResponseRendererInterface
+final readonly class SignedQueryResponseRenderer implements AnswersTheJwtAliasInterface
 {
     public function __construct(
         private ResponseDocumentIssuer $documents,
@@ -23,9 +22,9 @@ final readonly class SignedQueryResponseRenderer implements AuthorizationRespons
     ) {
     }
 
-    public function mode(): ResponseMode
+    public function mode(): string
     {
-        return ResponseMode::QueryJwt;
+        return 'query.jwt';
     }
 
     public function render(AuthorizationAnswer $answer): Response

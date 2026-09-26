@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use Heidi\Oidc\Port\EndpointLocatorInterface;
+use Heidi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -112,19 +113,24 @@ final class DiscoveryControllerTest extends BrowserTestCase
 
     /**
      * OIDC Discovery §3 "response_modes_supported", issue #98: the ways of answering wired into the
-     * authorization endpoint of the bundle, the default one, the posted form (Form Post Response Mode
-     * §2) and the two deliveries of a signed document (JARM §2.1), plus the "jwt" those two make
-     * meaningful; the response types stay "code" alone, in every mode (decision 0006).
+     * authorization endpoint, in the order they are wired, plus the "jwt" a signed one makes meaningful
+     * (JARM §2.1). Four come from the bundle, the default one, the posted form (Form Post Response Mode §2)
+     * and the two deliveries of a signed document; the fifth is the one this kernel wires itself, which is
+     * what issue #240 is about: the document announces what is wired and nothing kept beside it. The
+     * response types stay "code" alone, in every mode (decision 0006).
      */
     #[Test]
-    public function theMetadataAnnouncesTheResponseModesTheBundleWires(): void
+    public function theMetadataAnnouncesTheResponseModesTheIntegrationWires(): void
     {
         // When
         $this->browser->request('GET', '/.well-known/openid-configuration');
 
         // Then
         $metadata = self::json($this->browser->getResponse());
-        static::assertSame(['query', 'form_post', 'query.jwt', 'form_post.jwt', 'jwt'], $metadata['response_modes_supported']);
+        static::assertSame(
+            ['query', 'form_post', 'query.jwt', 'form_post.jwt', InventedResponseModeRenderer::MODE, 'jwt'],
+            $metadata['response_modes_supported'],
+        );
         static::assertSame(['code'], $metadata['response_types_supported']);
     }
 
