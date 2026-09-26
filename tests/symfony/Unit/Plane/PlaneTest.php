@@ -56,6 +56,7 @@ final class PlaneTest extends TestCase
         yield 'the token endpoint is of the protocol plane' => ['heidi_protocol_token', Plane::Protocol];
         yield 'a route of the host application is of neither' => ['app_home', null];
         yield 'an endpoint of the FIDO conformance tools is of neither' => ['heidi_fido_conformance_attestation_options', null];
+        yield 'the automated approval of the conformance suite is of neither' => ['heidi_ciba_conformance_approval', null];
         yield 'a prefix alone is of neither' => ['heidi_interaction', null];
         yield 'no route is of neither' => ['', null];
     }
