@@ -7,7 +7,6 @@ namespace Heidi\Bundle\Http\ResponseMode;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Authorization\FormPostResponse;
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -25,9 +24,9 @@ final readonly class FormPostResponseRenderer implements AuthorizationResponseRe
     ) {
     }
 
-    public function mode(): ResponseMode
+    public function mode(): string
     {
-        return ResponseMode::FormPost;
+        return 'form_post';
     }
 
     public function render(AuthorizationAnswer $answer): Response

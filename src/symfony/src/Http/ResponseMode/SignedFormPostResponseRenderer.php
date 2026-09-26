@@ -6,7 +6,6 @@ namespace Heidi\Bundle\Http\ResponseMode;
 
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -14,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Response Mode §2 as one "response" field. The document is minted by the module; the delivery is the
  * ordinary form post mode, so that the page, its policy and its script are written once.
  */
-final readonly class SignedFormPostResponseRenderer implements AuthorizationResponseRendererInterface
+final readonly class SignedFormPostResponseRenderer implements SignsTheAnswerInterface
 {
     public function __construct(
         private ResponseDocumentIssuer $documents,
@@ -22,9 +21,9 @@ final readonly class SignedFormPostResponseRenderer implements AuthorizationResp
     ) {
     }
 
-    public function mode(): ResponseMode
+    public function mode(): string
     {
-        return ResponseMode::FormPostJwt;
+        return 'form_post.jwt';
     }
 
     public function render(AuthorizationAnswer $answer): Response

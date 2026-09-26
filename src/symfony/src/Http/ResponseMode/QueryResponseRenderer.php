@@ -6,7 +6,6 @@ namespace Heidi\Bundle\Http\ResponseMode;
 
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -20,9 +19,9 @@ final readonly class QueryResponseRenderer implements AuthorizationResponseRende
     ) {
     }
 
-    public function mode(): ResponseMode
+    public function mode(): string
     {
-        return ResponseMode::Query;
+        return 'query';
     }
 
     public function render(AuthorizationAnswer $answer): Response

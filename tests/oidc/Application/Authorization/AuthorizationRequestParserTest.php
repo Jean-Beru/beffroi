@@ -15,7 +15,6 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\Display;
 use Heidi\Oidc\Domain\Authorization\Prompt;
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\KeyConfirmation;
@@ -25,6 +24,7 @@ use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Exception\UnsupportedResponseModeException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
+use Heidi\Oidc\Tests\Fixture\WiredModes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -114,7 +114,7 @@ final class AuthorizationRequestParserTest extends TestCase
             ],
             $request->claims?->idToken,
         );
-        static::assertSame('query', $request->responseMode->value);
+        static::assertSame('query', $request->responseMode);
         static::assertSame([Clients::CALENDAR], $request->resources?->values());
     }
 
@@ -142,7 +142,7 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertNull($request->display);
         static::assertNull($request->idTokenHint);
         static::assertNull($request->claims);
-        static::assertSame('query', $request->responseMode->value);
+        static::assertSame('query', $request->responseMode);
         static::assertNull($request->resources);
     }
 
@@ -257,7 +257,7 @@ final class AuthorizationRequestParserTest extends TestCase
         ]);
 
         // Then
-        static::assertSame(ResponseMode::FormPost, $request->responseMode);
+        static::assertSame(ServedModes::FORM_POST, $request->responseMode);
     }
 
     /**
@@ -273,7 +273,7 @@ final class AuthorizationRequestParserTest extends TestCase
         ]));
 
         // Then
-        static::assertSame(ResponseMode::FormPost, $target->responseMode);
+        static::assertSame(ServedModes::FORM_POST, $target->responseMode);
     }
 
     /**
@@ -294,7 +294,7 @@ final class AuthorizationRequestParserTest extends TestCase
         $request = $parser->parse($parser->redirectTarget($this->tenant, $parameters), $parameters);
 
         // Then
-        static::assertSame(ResponseMode::QueryJwt, $request->responseMode);
+        static::assertSame(ServedModes::SIGNED_QUERY, $request->responseMode);
     }
 
     /**
@@ -313,7 +313,7 @@ final class AuthorizationRequestParserTest extends TestCase
         $request = $parser->parse($parser->redirectTarget($this->tenant, $parameters), $parameters);
 
         // Then
-        static::assertSame(ResponseMode::FormPostJwt, $request->responseMode);
+        static::assertSame(ServedModes::SIGNED_FORM_POST, $request->responseMode);
     }
 
     /**
@@ -370,7 +370,45 @@ final class AuthorizationRequestParserTest extends TestCase
         ]));
 
         // Then
-        static::assertSame(ResponseMode::Query, $target->responseMode);
+        static::assertSame(ServedModes::QUERY, $target->responseMode);
+    }
+
+    /**
+     * Issue #240: the fallback is the wiring's and not a name written in the module. A deployment that answers
+     * in "form_post" and wires no "query" refuses its own requests in a mode it can actually deliver, where a
+     * fallback written as a name would have answered in one it has no way of rendering.
+     */
+    #[Test]
+    public function aDeploymentThatWiresNoQueryFallsBackToAModeItServes(): void
+    {
+        // Given
+        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]));
+
+        // When
+        $target = $parser->redirectTarget($this->tenant, self::parameters([
+            'response_mode' => 'fragment',
+        ]));
+
+        // Then
+        static::assertSame(ServedModes::FORM_POST, $target->responseMode);
+    }
+
+    /**
+     * Multiple Response Type Encoding Practices §2.1: a request that asks for no mode is answered in the one
+     * the "code" response type defaults to, which the integration wires first for that reason; a deployment
+     * that wires it nowhere is answered in the first mode it does wire rather than in one it cannot render.
+     */
+    #[Test]
+    public function aRequestThatAsksForNoModeFallsBackToAModeItServes(): void
+    {
+        // Given
+        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]));
+
+        // When
+        $target = $parser->redirectTarget($this->tenant, self::parameters([]));
+
+        // Then
+        static::assertSame(ServedModes::FORM_POST, $target->responseMode);
     }
 
     /**

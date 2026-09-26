@@ -11,6 +11,7 @@ use Heidi\Core\Bridge\Uid\FixedUuidGenerator;
 use Heidi\Core\Bridge\Random\FixedRandomness;
 use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Heidi\Core\Port\UuidGeneratorInterface;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use function array_map;
 use DateInterval;
@@ -30,8 +31,11 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Core\Tests\Fixture\Totps;
 use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Application\Authorization\AuthenticationRequirement;
+use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Consent\ConsentGranting;
+use Heidi\Oidc\Application\Consent\RequiredConsent;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
@@ -137,19 +141,47 @@ final class AuthorizationHandlerTest extends TestCase
         $jws = new FakeJwsVerifier();
         $jws->knows($this->tenant, self::ALICE_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo"}');
         $jws->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
-        $this->handler = new AuthorizationHandler(
-            $this->interactions,
-            $this->consents,
-            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
+        $this->handler = $this->handlerWith(hints: new IdTokenHintVerifier($jws));
+    }
+
+    /**
+     * The endpoint as the bundle wires it (issue #251): what the authentication still needs, whether a consent
+     * is still needed, the issuer of the code, and the handler that orchestrates the three.
+     */
+    private function handlerWith(
+        ?Logins $logins = null,
+        ?IdTokenHintVerifier $hints = null,
+        ?DateInterval $interactionLifetime = null,
+        ?DateInterval $codeLifetime = null,
+        ?SecretDrawer $secrets = null,
+        ?UuidGeneratorInterface $uuids = null,
+    ): AuthorizationHandler {
+        // one drawer and one generator for the two: the interaction is drawn by the handler and the code by
+        // the issuer, and a test that says what both will be called reads one sequence
+        $secrets ??= Secrets::drawer();
+        $uuids ??= new SymfonyUuidGenerator();
+        $codes = new AuthorizationCodeIssuer(
             $this->codes,
             $this->pushedRequests,
-            new IdTokenHintVerifier($jws),
-            Logins::passwordAndPasskey(),
-            $this->credentials,
-            new SymfonyUuidGenerator(),
-            Secrets::drawer(),
-            $this->clock,
+            $secrets,
+            $uuids,
             $this->events,
+            ...$codeLifetime === null ? [] : [$codeLifetime],
+        );
+
+        return new AuthorizationHandler(
+            $this->interactions,
+            new ConsentGranting($this->consents, $uuids, $this->events),
+            new RequiredConsent($this->consents),
+            $secrets,
+            new AuthenticationRequirement(
+                $logins ?? Logins::passwordAndPasskey(),
+                $this->credentials,
+                $hints ?? new IdTokenHintVerifier(new FakeJwsVerifier()),
+            ),
+            $codes,
+            $this->clock,
+            ...$interactionLifetime === null ? [] : [$interactionLifetime],
         );
     }
 
@@ -783,19 +815,9 @@ final class AuthorizationHandlerTest extends TestCase
         $ofTheCode = str_repeat("\x04", DrawnSecret::LENGTH);
         $consentId = Uuid::fromString('0199a0d4-0000-7000-8000-000000000042');
         $uuids = new FixedUuidGenerator([$consentId]);
-        $handler = new AuthorizationHandler(
-            $this->interactions,
-            $this->consents,
-            new ConsentGranting($this->consents, $uuids, $this->events),
-            $this->codes,
-            $this->pushedRequests,
-            new IdTokenHintVerifier(new FakeJwsVerifier()),
-            Logins::passwordAndPasskey(),
-            $this->credentials,
-            $uuids,
-            new SecretDrawer(new FixedRandomness([$ofTheInteraction, $ofTheCode])),
-            $this->clock,
-            $this->events,
+        $handler = $this->handlerWith(
+            secrets: new SecretDrawer(new FixedRandomness([$ofTheInteraction, $ofTheCode])),
+            uuids: $uuids,
         );
         $session = $this->session();
         $consentRequired = $this->consentRequired(
@@ -1758,22 +1780,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function theInteractionLifetimeIsConfigurable(): void
     {
         // Given
-        $handler = new AuthorizationHandler(
-            $this->interactions,
-            $this->consents,
-            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
-            $this->codes,
-            $this->pushedRequests,
-            new IdTokenHintVerifier(new FakeJwsVerifier()),
-            Logins::passwordAndPasskey(),
-            $this->credentials,
-            new SymfonyUuidGenerator(),
-            Secrets::drawer(),
-            $this->clock,
-            $this->events,
-            new DateInterval('PT5M'),
-            new DateInterval('PT30S'),
-        );
+        $handler = $this->handlerWith(interactionLifetime: new DateInterval('PT5M'), codeLifetime: new DateInterval('PT30S'));
 
         // When
         $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
@@ -1789,22 +1796,7 @@ final class AuthorizationHandlerTest extends TestCase
     public function theCodeLifetimeIsConfigurable(): void
     {
         // Given
-        $handler = new AuthorizationHandler(
-            $this->interactions,
-            $this->consents,
-            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
-            $this->codes,
-            $this->pushedRequests,
-            new IdTokenHintVerifier(new FakeJwsVerifier()),
-            Logins::passwordAndPasskey(),
-            $this->credentials,
-            new SymfonyUuidGenerator(),
-            Secrets::drawer(),
-            $this->clock,
-            $this->events,
-            new DateInterval('PT5M'),
-            new DateInterval('PT30S'),
-        );
+        $handler = $this->handlerWith(interactionLifetime: new DateInterval('PT5M'), codeLifetime: new DateInterval('PT30S'));
 
         // When
         $decision = $handler->begin(Requests::authorization($this->firstParty), $this->session(), $this->context);
@@ -1854,24 +1846,6 @@ final class AuthorizationHandlerTest extends TestCase
         $this->credentials->save($passkey);
 
         return $passkey;
-    }
-
-    private function handlerWith(Logins $logins): AuthorizationHandler
-    {
-        return new AuthorizationHandler(
-            $this->interactions,
-            $this->consents,
-            new ConsentGranting($this->consents, new SymfonyUuidGenerator(), $this->events),
-            $this->codes,
-            $this->pushedRequests,
-            new IdTokenHintVerifier(new FakeJwsVerifier()),
-            $logins,
-            $this->credentials,
-            new SymfonyUuidGenerator(),
-            Secrets::drawer(),
-            $this->clock,
-            $this->events,
-        );
     }
 
     private function loginRequired(AuthorizationDecision $decision, LoginRequirement $requirement): LoginRequired

@@ -60,7 +60,7 @@ final readonly class ProfilingInteractionRepository implements InteractionReposi
             'locale' => $interaction->locale ?? 'the one of the browser',
             'client_id' => $interaction->clientId,
             'redirect_uri' => $request->redirectUri->value,
-            'response mode' => $request->responseMode->value,
+            'response mode' => $request->responseMode,
             'scopes requested' => (string) $request->scopes,
             'PKCE' => $challenge === null ? 'none: the client is exempt (decision 0008)' : $challenge->method->value,
             'state' => $request->state === null ? 'none' : 'carried',

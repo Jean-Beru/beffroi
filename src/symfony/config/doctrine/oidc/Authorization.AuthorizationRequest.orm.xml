@@ -35,7 +35,7 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <field name="responseMode" type="string" column="response_mode" length="16" enum-type="Heidi\Oidc\Domain\Authorization\ResponseMode"/>
+        <field name="responseMode" type="string" column="response_mode" length="16"/>
         <field name="dpopKey" type="heidi_key_confirmation" column="dpop_jkt" length="43" nullable="true"/>
     </embeddable>
 </doctrine-mapping>

@@ -64,7 +64,7 @@ final class AuthorizationRequestTest extends TestCase
     public function itsResponseModeIsQuery(): void
     {
         // When / Then
-        static::assertSame('query', $this->request->responseMode->value);
+        static::assertSame('query', $this->request->responseMode);
     }
 
     #[Test]

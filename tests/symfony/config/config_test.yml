@@ -581,6 +581,15 @@ services:
         tags:
             - { name: heidi.oidc.access_token_verifier, priority: -10 }
 
+    # A fifth way of answering the authorization endpoint, wired as a deployment wires one: it names itself,
+    # and that name is what a request may ask for, what the document announces and what the endpoint answers
+    # in, with no line of src edited (issue #240). Behind the four the bundle wires, because the first wired
+    # mode is what a request the provider cannot answer as it asked falls back to, and every other test of
+    # this kernel expects that fallback to be the "query" of RFC 6749 §4.1.2.
+    Heidi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer:
+        tags:
+            - { name: heidi.response_mode, priority: -10 }
+
     # A missing translation fails the request rather than showing its key or its English (architecture §5.7).
     Heidi\Bundle\Tests\Functional\Translation\StrictTranslator:
         decorates: translator
