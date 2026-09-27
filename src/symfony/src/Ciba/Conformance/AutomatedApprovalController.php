@@ -29,11 +29,13 @@ use function sprintf;
  * Not an API of the product and not imported by the routes of the bundle: an application imports it in
  * development only, under a prefix of its own, as it imports the endpoints of the FIDO2 server API.
  *
- * It answers with the two calls the page answers with (PendingApprovalsController) and gains nothing the
- * page does not have. The user signs in first, with their password, exactly as they would on the login
- * form, because a session is opened on a proof here as everywhere (decision 0006); the request is then
- * looked for among the ones waiting for that user, so a request made for somebody else is no more
- * answerable through this than it is through the page.
+ * It answers with the calls the page answers with (PendingApprovalsController) and gains nothing the page
+ * does not have. The user signs in first, with their password, exactly as they would on the login form,
+ * because a session is opened on a proof here as everywhere (decision 0006); the request is then looked
+ * for among the ones waiting for that user, so a request made for somebody else is no more answerable
+ * through this than it is through the page. A request asking for a class that password does not prove is
+ * refused here, where the page would send a browser to the login for one more proof (§7.1, decision
+ * 0010): what a scripted client cannot do, it is told, and the module is not asked to make an exception.
  */
 #[AsController]
 final readonly class AutomatedApprovalController
@@ -110,6 +112,11 @@ final readonly class AutomatedApprovalController
         if ($answer === self::ANSWER_DENY) {
             $this->approval->deny($record, $context);
         } else {
+            if ($this->approval->stepUpFor($record, $session) !== null) {
+                // the request asked for a class a password does not prove, and there is nobody here to
+                // give one more proof: the page would ask, this answers what it cannot do (§7.1)
+                return self::refused(sprintf('The request asks for a class the password of "%s" does not prove.', $username));
+            }
             $this->approval->approve($record, $session, $context);
         }
 

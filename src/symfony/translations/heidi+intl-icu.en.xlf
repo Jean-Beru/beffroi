@@ -21,6 +21,10 @@
         <source>login.step_up</source>
         <target>{client} requires a stronger sign-in than the one you have.</target>
       </trans-unit>
+      <trans-unit id="bc176883bc" resname="login.step_up_alone">
+        <source>login.step_up_alone</source>
+        <target>A stronger sign-in than the one you have is required.</target>
+      </trans-unit>
       <trans-unit id="6282806c35" resname="login.step_up.passkey">
         <source>login.step_up.passkey</source>
         <target>A passkey would satisfy it.</target>

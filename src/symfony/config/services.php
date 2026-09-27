@@ -273,6 +273,7 @@ use Heidi\Oidc\Application\Exchange\PresentedAccessTokenType;
 use Heidi\Oidc\Application\Exchange\PresentedTokenTypes;
 use Heidi\Oidc\Application\Grant\RecordedGrants;
 use Heidi\Oidc\Application\Trust\IssuerAssertionValidator;
+use Heidi\Oidc\Application\Ciba\ApprovalAuthenticationRequirement;
 use Heidi\Oidc\Application\Ciba\BackchannelApproval;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
@@ -901,6 +902,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(UserHints::class)->args([tagged_iterator('heidi.oidc.ciba_user_hint')]);
     $services->set(SignedBackchannelRequest::class);
     $services->set(BackchannelAuthenticationHandler::class);
+    // what a backchannel request asks of the authentication of whoever answers it (issue #266)
+    $services->set(ApprovalAuthenticationRequirement::class);
     $services->set(BackchannelApproval::class);
     // What a client may still be encrypting to a key of the tenant, which is what holds an encryption key
     // back from retiring: each one reads its lifetime where that lifetime is set (architecture §3.3)

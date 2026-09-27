@@ -402,6 +402,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
             new Scopes([new Scope('openid'), new Scope('profile')]),
             $resources,
             null,
+            [],
             null,
             null,
             $this->context,

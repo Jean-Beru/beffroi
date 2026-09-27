@@ -249,6 +249,7 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
             new Scopes([new Scope('openid'), new Scope('profile')]),
             new ResourceIndicators([new ResourceIndicator('https://cal.example.com/')]),
             new BindingMessage('Payment of 42 euros'),
+            ['phr'],
             $sealedAuthRequestId,
             $sealedNotificationToken,
             self::context(),
