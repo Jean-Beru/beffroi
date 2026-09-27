@@ -20,7 +20,7 @@ use Doctrine\Migrations\AbstractMigration;
  * is revoked and never deleted, as every credential of a user is: it says a browser was reachable and is
  * not any more.
  */
-final class Version20260928090000 extends AbstractMigration
+final class Version20260927180000 extends AbstractMigration
 {
     public function getDescription(): string
     {
