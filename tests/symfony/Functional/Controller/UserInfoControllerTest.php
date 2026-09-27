@@ -5,16 +5,24 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
+use Heidi\Bundle\Http\FapiInteractionId;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * OIDC Core §5.3, RFC 6750 §2 and §3, architecture §4.7: where the token is read from, and how a
  * refusal is answered; across a rotation (OIDC Core §10.1.1, architecture §3.3), which tokens still
- * open the door.
+ * open the door; and what every answer of this resource names its exchange with (FAPI 1.0 Advanced
+ * Final §6.2.1).
  */
 final class UserInfoControllerTest extends BrowserTestCase
 {
+    /**
+     * What a client names an exchange with (FAPI 1.0 Advanced Final §6.2.1): an RFC 4122 UUID.
+     */
+    private const string INTERACTION_ID = '4b2a1c6e-7d3f-4a91-8f52-9c0d6e1b7a84';
+
     /**
      * RFC 6750 §3.1: no token at all is the bare challenge, no error code, no body.
      */
@@ -165,6 +173,70 @@ final class UserInfoControllerTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
         static::assertStringContainsString('invalid_token', self::string($response->headers->get('WWW-Authenticate')));
+    }
+
+    /**
+     * FAPI 1.0 Advanced Final §6.2.1: the answer of a resource of the provider carries the
+     * "x-fapi-interaction-id" the request named, so that the client and the provider name one exchange.
+     */
+    #[Test]
+    public function theAnswerCarriesTheInteractionIdTheRequestNamed(): void
+    {
+        // Given
+        self::signingKey();
+        $accessToken = $this->accessTokenOfTheDemoClient();
+
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+            'HTTP_X_FAPI_INTERACTION_ID' => self::INTERACTION_ID,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(self::INTERACTION_ID, $response->headers->get(FapiInteractionId::HEADER));
+    }
+
+    /**
+     * FAPI 1.0 Advanced Final §6.2.1: a request that named none is answered with one drawn for it, an
+     * exchange the provider can name being the point of the header.
+     */
+    #[Test]
+    public function theAnswerOfARequestThatNamedNoInteractionIdCarriesOneDrawnForIt(): void
+    {
+        // Given
+        self::signingKey();
+        $accessToken = $this->accessTokenOfTheDemoClient();
+
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertTrue(Uuid::isValid(self::string($response->headers->get(FapiInteractionId::HEADER))));
+    }
+
+    /**
+     * FAPI 1.0 Advanced Final §6.2.1: the exchange is named whatever became of the request, so a refusal
+     * carries the header as an answer does; here the bare challenge of RFC 6750 §3.1, which has no body
+     * to say anything in.
+     */
+    #[Test]
+    public function aRefusalCarriesTheInteractionIdTheRequestNamed(): void
+    {
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_X_FAPI_INTERACTION_ID' => self::INTERACTION_ID,
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+        static::assertSame(self::INTERACTION_ID, $response->headers->get(FapiInteractionId::HEADER));
     }
 
     private function accessTokenOfTheDemoClient(): string
