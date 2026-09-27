@@ -316,6 +316,26 @@ heidi:
             grant_types: ['client_credentials']
             allowed_scopes: ['invoices.read', 'invoices.write']
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+            # RFC 8693 §4.4: who may act for the subject of a token of this service, written on every token
+            # it receives; the gateway below and nobody else
+            may_act: 'gateway-app'
+        # RFC 8693 §2.1 (issue #228): the gateway that exchanges the token of a service to act on its
+        # behalf, and the service that says who may (§4.4). The two share the resources they may ask a
+        # token for, so that the one the resource server answers for and the one it does not are both
+        # reachable by both.
+        # It asks for a token of its own by client_credentials, which is what it presents as the
+        # "actor_token" of the exchange: an "act" names who holds the new token for its subject, and a
+        # client writes nothing into it but a token that names itself (RFC 8693 §2.1, §4.1).
+        gateway-app:
+            name: 'Gateway acting for a service'
+            secret: 'gateway-secret-of-at-least-32-characters-l'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
+            allowed_scopes: ['invoices.read', 'invoices.write']
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+            token_exchange:
+                subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
+                may_act_for_a_user: false
         service-opaque-app:
             name: 'Service acting for itself, with opaque tokens'
             secret: 'service-opaque-secret-of-at-least-32-chars'
