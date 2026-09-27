@@ -62,6 +62,53 @@ final class UserCodeTest extends TestCase
     }
 
     /**
+     * BCP 10027 §2: the user compares the code on the page with the code on the screen they read it from, so
+     * the page shows it the way that screen does whatever form it was typed in.
+     */
+    #[Test]
+    #[DataProvider('provideShownCodes')]
+    public function whatTheUserTypedIsShownBackAsTheApplianceShowsIt(string $typed, string $shown): void
+    {
+        // When / Then
+        static::assertSame($shown, UserCode::shown($typed));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideShownCodes(): iterable
+    {
+        yield 'the bare code' => ['BCDFGHJK', 'BCDF-GHJK'];
+        yield 'as it was shown' => ['BCDF-GHJK', 'BCDF-GHJK'];
+        yield 'in lower case' => ['bcdf-ghjk', 'BCDF-GHJK'];
+        yield 'with spaces' => [' BCDF GHJK ', 'BCDF-GHJK'];
+    }
+
+    /**
+     * What is not a code is shown back as it was read, so that a wrong character can be corrected rather
+     * than hidden behind a grouping that would not hold anyway.
+     */
+    #[Test]
+    #[DataProvider('provideTypedValuesThatAreNotACode')]
+    public function whatIsNotACodeIsShownBackAsItWasTyped(string $typed, string $shown): void
+    {
+        // When / Then
+        static::assertSame($shown, UserCode::shown($typed));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideTypedValuesThatAreNotACode(): iterable
+    {
+        yield 'too short' => ['BCDF', 'BCDF'];
+        yield 'too long' => ['BCDFGHJKL', 'BCDFGHJKL'];
+        yield 'a character of no alphabet' => ['BCDF-GHJ1', 'BCDFGHJ1'];
+        yield 'a vowel' => ['bcdf-ghja', 'BCDFGHJA'];
+        yield 'nothing at all' => ['', ''];
+    }
+
+    /**
      * @return iterable<string, array{string, string}>
      */
     public static function provideTypedCodes(): iterable

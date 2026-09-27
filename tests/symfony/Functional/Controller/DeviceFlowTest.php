@@ -333,6 +333,25 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
+     * BCP 10027 §2: the user compares the code on this page with the code on the screen of the appliance, so
+     * it is shown the way that screen shows it whatever form it was typed in, separator included.
+     */
+    #[Test]
+    public function theCodeIsShownBackAsTheApplianceShowsItWhateverFormItWasTypedIn(): void
+    {
+        // Given
+        $userCode = self::string(self::json($this->ask())['user_code']);
+        $this->signIn(self::userWithPassword('alice', self::PASSWORD));
+
+        // When
+        $crawler = $this->type(strtolower(self::normalized($userCode)));
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertStringContainsString($userCode, $crawler->filter('body')->text());
+    }
+
+    /**
      * RFC 8628 §5.1: a code that names no request awaiting an answer gets one refusal, whatever the reason it
      * names none.
      */

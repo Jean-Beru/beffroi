@@ -2500,14 +2500,6 @@ const DEMO_DEVICE_CLI = 'tests/demo/device-cli.php';
 const DEMO_DEVICE_CLIENT_ID = 'demo-appliance';
 
 /**
- * What playing this walk found and the provider does not do yet: the appliance is handed the code in the form
- * of RFC 8628 §6.1, "QGXM-VTSK", and the page where it is confirmed shows "QGXMVTSK", the form what was typed
- * is compared in. The walk asserts the gap rather than quieting it, so that the day it closes the line fails
- * and is deleted; it is the rule the "known" list of the conformance plans follows.
- */
-const DEMO_DEVICE_CODE_GAP = 'https://github.com/beffroi-php/heidi/issues/302';
-
-/**
  * The resource the service and the gateway ask their tokens for, which is the one the resource server of the
  * demonstration answers for (its OIDC_RESOURCE), and the one it does not: a token addressed elsewhere is
  * refused there rather than described (RFC 8707 §2).
@@ -2681,20 +2673,9 @@ function demo_device_confirm(string $issuer, string $password, string $ca, strin
         $status === 200 && str_contains($approval, 'data-warning="unexpected"'),
         sprintf('the browser comes back to the page that asks about the code (got %d %s)', $status, $location),
     );
-    // The gap playing this walk found, written down with the issue that closes it, as the refused rung of the
-    // ladder is (DEMO_LADDER_RUNGS): the appliance shows the code with the separator of RFC 8628 §6.1 and the
-    // page shows it without, so a user recognises it character by character rather than at a glance. The day
-    // the issue lands, this expectation is the one that fails, and the two lines below become one asserting
-    // the code as the appliance was handed it.
-    // castor loads no class of the monorepo, so the form what was typed is compared in is written here as the
-    // one rule it is: the separator gone (UserCode::normalize()).
     demo_expect(
-        str_contains($approval, str_replace('-', '', $userCode)),
-        'the page shows the code that was typed, so the user can see it is theirs (BCP 10027 §2)',
-    );
-    demo_expect(
-        ! str_contains($approval, $userCode),
-        sprintf('and still shows it without the separator the appliance shows (%s, BCP 10027 §2)', DEMO_DEVICE_CODE_GAP),
+        str_contains($approval, $userCode),
+        sprintf('the page shows the code as the appliance shows it, separator included (BCP 10027 §2: %s)', $userCode),
     );
     demo_expect(
         preg_match('/data-provider="([^"]+)"/', $approval) === 1 && preg_match('/data-origin="([^"]*)"/', $approval) === 1,
