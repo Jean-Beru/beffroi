@@ -127,18 +127,6 @@ const CONFORMANCE_CIBA_ACR_VALUE = '1';
 const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
 
 /**
- * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-27 and written whole in
- * the issue it names: a rule of the profile, the provider's, not of this flow alone and not a gap
- * anybody decided to leave. It is the runs' and not one module's, which is why it is one line here and
- * not a "known" module apiece.
- */
-const CONFORMANCE_CIBA_ISSUES = [
-    // a token request that holds no certificate is answered authorization_pending rather than refused,
-    // section 5.2.2 asking for a bound token whichever way the client authenticated
-    'heidi#319',
-];
-
-/**
  * The modules that need the user to have consented to nothing. A consent is remembered, which is what
  * makes the provider ask once and not at every authorization; a module that has to see the user refuse
  * needs the page where refusing happens, and an earlier module of the same plan has already granted it.
@@ -337,7 +325,6 @@ const CONFORMANCE_PLANS = [
         'ciba' => [
             'clients' => CONFORMANCE_CIBA_POLL_CLIENTS,
         ],
-        'waiting_on' => CONFORMANCE_CIBA_ISSUES,
     ],
     'fapi-ciba-ping' => [
         'name' => 'fapi-ciba-id1-test-plan',
@@ -350,7 +337,6 @@ const CONFORMANCE_PLANS = [
         'ciba' => [
             'clients' => CONFORMANCE_CIBA_PING_CLIENTS,
         ],
-        'waiting_on' => CONFORMANCE_CIBA_ISSUES,
     ],
     // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
     // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a

@@ -15,6 +15,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
 use Heidi\Oidc\Application\Token\RefreshTokenDue;
 use Heidi\Oidc\Application\Token\RequestedAuthorizationDetails;
 use Heidi\Oidc\Application\Token\RefreshTokenGrant;
@@ -24,14 +25,22 @@ use Heidi\Oidc\Application\Token\TokenHandler;
 use Heidi\Oidc\Application\Token\TokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryBackchannelAuthenticationRecordRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokensIssued;
+use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Domain\Token\ConfirmationInterface;
+use Heidi\Oidc\Exception\AuthorizationPendingException;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidDpopProofException;
 use Heidi\Oidc\Exception\InvalidGrantException;
@@ -40,6 +49,7 @@ use Heidi\Oidc\Exception\UnauthorizedClientException;
 use Heidi\Oidc\Exception\UnsupportedGrantTypeException;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
@@ -56,9 +66,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 final class TokenHandlerTest extends TestCase
 {
+    private const string AUTH_REQUEST_ID = 'the-auth-req-id';
+
     private Tenant $tenant;
 
     private Client $basicClient;
@@ -66,6 +79,8 @@ final class TokenHandlerTest extends TestCase
     private Client $postClient;
 
     private Client $publicClient;
+
+    private Client $boundClient;
 
     private AuthenticationSession $session;
 
@@ -83,6 +98,10 @@ final class TokenHandlerTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private InMemoryBackchannelAuthenticationRecordRepository $backchannelRecords;
+
+    private TokenIssuer $issuer;
+
     private AuthorizationCodeGrant $codeGrant;
 
     private TokenHandler $handler;
@@ -95,8 +114,9 @@ final class TokenHandlerTest extends TestCase
         $this->basicClient = Clients::confidential($this->tenant, $this->hasher->hash(Clients::SECRET), Methods::clientSecretBasic(), 'basic-client');
         $this->postClient = Clients::confidential($this->tenant, $this->hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'post-client');
         $this->publicClient = Clients::public($this->tenant, 'public-client');
+        $this->boundClient = Clients::boundToItsCertificate($this->tenant);
         $this->clients = new InMemoryClientRepository();
-        foreach ([$this->basicClient, $this->postClient, $this->publicClient] as $client) {
+        foreach ([$this->basicClient, $this->postClient, $this->publicClient, $this->boundClient] as $client) {
             $this->clients->save($client);
         }
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
@@ -104,13 +124,14 @@ final class TokenHandlerTest extends TestCase
         $this->context = Fixtures::context($this->clock->now());
         $this->codes = new InMemoryAuthorizationCodeRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->backchannelRecords = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->events = new RecordingEventDispatcher();
-        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, Secrets::drawer(), $this->events);
+        $this->issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, Secrets::drawer(), $this->events);
         $this->codeGrant = new AuthorizationCodeGrant(
             $this->codes,
             new RefreshTokenRevocation($this->refreshTokens),
             new InMemoryAccessTokenRepository(),
-            $issuer,
+            $this->issuer,
             new SymfonyUuidGenerator(),
             $this->clock,
             $this->events,
@@ -120,7 +141,7 @@ final class TokenHandlerTest extends TestCase
         $refreshGrant = new RefreshTokenGrant(
             $this->refreshTokens,
             new RefreshTokenRevocation($this->refreshTokens),
-            $issuer,
+            $this->issuer,
             new RequestedAuthorizationDetails(AuthorizationDetailTypes::served()),
             $this->clock,
             $this->events,
@@ -519,6 +540,78 @@ final class TokenHandlerTest extends TestCase
         );
     }
 
+    /**
+     * FAPI 1.0 Advanced Final §5.2.2, RFC 8705 §3.4: the client of a profile that binds authenticates
+     * with an assertion and presents a certificate all the same, and the tokens it comes for are bound
+     * to that certificate.
+     */
+    #[Test]
+    public function aClientRegisteredForCertificateBoundTokensGetsThemBoundToTheCertificateItPresented(): void
+    {
+        // Given
+        $this->backchannelRecords->save($this->approvedBackchannelRequest());
+
+        // When
+        $this->backchannelHandler()->handle($this->tenant, null, $this->cibaExchange(), $this->context, Certificates::client());
+
+        // Then
+        static::assertEquals(CertificateConfirmation::ofCertificate(Certificates::client()), $this->issuedConfirmation());
+    }
+
+    /**
+     * FAPI 1.0 Advanced Final §5.2.2: a token request of such a client that proves no certificate gets
+     * no token at all, and is refused before anything is read of what it came to spend. The request
+     * below comes for a backchannel request nobody has answered, and is refused rather than told to
+     * come back later.
+     */
+    #[Test]
+    #[DataProvider('provideRequestsThatProveNoCertificate')]
+    public function aTokenRequestThatProvesNoCertificateIsRefusedRatherThanToldToComeBackLater(bool $provesAKey): void
+    {
+        // Given
+        $this->backchannelRecords->save($this->unansweredBackchannelRequest());
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The tokens of this client are bound to the certificate it presents, and this request proves none (RFC 8705 section 3.4).');
+
+        // When
+        $this->backchannelHandler()->handle(
+            $this->tenant,
+            null,
+            $this->cibaExchange(),
+            $this->context,
+            null,
+            $provesAKey ? $this->proof() : null,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{bool}>
+     */
+    public static function provideRequestsThatProveNoCertificate(): iterable
+    {
+        yield 'nothing at all' => [false];
+        yield 'a key instead' => [true];
+    }
+
+    /**
+     * CIBA Core §11: the rule above is about what the request proves and about nothing else. The same
+     * request presenting the certificate reaches the grant, and hears what the grant has to say.
+     */
+    #[Test]
+    public function aRequestThatProvesItsCertificateIsToldToComeBackLaterWhileNobodyHasAnswered(): void
+    {
+        // Given
+        $this->backchannelRecords->save($this->unansweredBackchannelRequest());
+
+        // Then
+        $this->expectException(AuthorizationPendingException::class);
+
+        // When
+        $this->backchannelHandler()->handle($this->tenant, null, $this->cibaExchange(), $this->context, Certificates::client());
+    }
+
     private function authenticator(): ClientAuthenticator
     {
         return new ClientAuthenticator(
@@ -568,6 +661,79 @@ final class TokenHandlerTest extends TestCase
             'redirect_uri' => 'https://spa.example/callback',
             'client_id' => 'public-client',
             'code_verifier' => Tokens::CODE_VERIFIER,
+        ];
+    }
+
+    /**
+     * The token endpoint of a provider serving the one grant a client of a FAPI-CIBA plan comes for.
+     */
+    private function backchannelHandler(): TokenHandler
+    {
+        return new TokenHandler(
+            $this->authenticator(),
+            Proofs::verifier(),
+            new Endpoints(),
+            new ServedGrants([new BackchannelAuthenticationGrant(
+                $this->backchannelRecords,
+                $this->issuer,
+                new RefreshTokenDue(Grants::servedWithCiba()),
+                new SymfonyUuidGenerator(),
+                $this->clock,
+            )]),
+        );
+    }
+
+    /**
+     * A backchannel request of that client that nobody has answered yet (CIBA Core §7).
+     */
+    private function unansweredBackchannelRequest(): BackchannelAuthenticationRecord
+    {
+        return new BackchannelAuthenticationRecord(
+            DrawnSecret::digestOf(self::AUTH_REQUEST_ID),
+            Uuid::v7(),
+            $this->boundClient,
+            $this->session->user,
+            new Scopes([new Scope('openid')]),
+            null,
+            null,
+            [],
+            null,
+            null,
+            $this->context,
+            $this->clock->now(),
+            $this->clock->now()->modify('+300 seconds'),
+        );
+    }
+
+    /**
+     * The same request, approved by the user it named (CIBA Core §10.1).
+     */
+    private function approvedBackchannelRequest(): BackchannelAuthenticationRecord
+    {
+        $record = $this->unansweredBackchannelRequest();
+        $record->approve(
+            $this->session,
+            AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
+            $this->clock->now(),
+        );
+
+        return $record;
+    }
+
+    /**
+     * What that client sends to collect its tokens: the identifier of its request, and the assertion it
+     * authenticates with (CIBA Core §10.1, OIDC Core §9).
+     *
+     * @return array<string, string>
+     */
+    private function cibaExchange(): array
+    {
+        return [
+            'grant_type' => 'urn:openid:params:grant-type:ciba',
+            'auth_req_id' => self::AUTH_REQUEST_ID,
+            ...ClientAssertions::parameters(ClientAssertions::signedWithKey(
+                ClientAssertions::claims('bound-terminal', $this->tenant->issuer->value, $this->clock->now()),
+            )),
         ];
     }
 
