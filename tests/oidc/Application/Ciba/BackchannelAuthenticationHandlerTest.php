@@ -191,7 +191,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
         $approval = $this->notifier->told[0];
         static::assertSame('Payment terminal at the counter', $approval->clientName);
         static::assertSame('Payment of 42 euros', $approval->bindingMessage?->value);
-        static::assertSame('https://id.acme.example/approvals', $approval->approvalUri);
+        static::assertSame('https://id.acme.example/account/approvals', $approval->approvalUri);
         static::assertEquals($this->clock->now()->modify('+300 seconds'), $approval->expiresAt);
     }
 

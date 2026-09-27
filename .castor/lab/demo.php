@@ -77,7 +77,7 @@ const DEMO_LADDER_KEYS = [
 const DEMO_LADDER_DIRECTORY = 'var/demo';
 
 #[AsTask(
-    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to',
+    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
 )]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
@@ -121,7 +121,7 @@ function demo(
     )]
     bool $service = false,
     #[AsOption(
-        description: 'Spike 6 (issue #299): a client asks for a user it names by login_hint, with a binding message, and that user finds the request on /approvals and allows it; both delivery modes, the client polling in one and called back on a listener of its own in the other (tests/demo/ciba-client.php)',
+        description: 'Spike 6 (issue #299): a client asks for a user it names by login_hint, with a binding message, and that user finds the request on /account/approvals and allows it; both delivery modes, the client polling in one and called back on a listener of its own in the other (tests/demo/ciba-client.php)',
     )]
     bool $ciba = false,
     #[AsOption(
@@ -140,6 +140,10 @@ function demo(
         description: 'Spike 6 (issue #311): a push service of the lab takes the notification of a backchannel request, a browser of the lab opens it (RFC 8291) and verifies who signed it (RFC 8292), nothing in it names the request (BCP 10027 §5.2), then a 503 brings the message back and a 410 takes the browser out',
     )]
     bool $push = false,
+    #[AsOption(
+        description: 'Nobody answers for you, and nothing of the laboratory stands in for anybody. With --ciba the request is made for the development user, in poll mode, and the run waits while you read the notification your own browser received and answer on /account/approvals yourself. With --push there is no push service and no browser of the laboratory at all: the notification goes to the browsers you subscribed, through their own push services, and the run says which of them this provider reached and when',
+    )]
+    bool $byHand = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -264,7 +268,7 @@ function demo(
             io()->error('HEIDI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user.');
             exit(1);
         }
-        demo_ciba_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['HEIDI_DEV_USER_SUBJECT'], $secrets);
+        demo_ciba_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['HEIDI_DEV_USER_SUBJECT'], $secrets, $byHand);
     }
     if ($assertion) {
         if (($env['DEMO_ASSERTION_SECRET'] ?? '') === '') {
@@ -289,15 +293,28 @@ function demo(
     }
     if ($push) {
         $registration = DEMO_CIBA_CLIENTS['poll'];
-        foreach ([$registration['secret'], 'HEIDI_DEV_USER_SUBJECT'] as $name) {
-            if (($env[$name] ?? '') === '') {
-                io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
+        if (($env[$registration['secret']] ?? '') === '') {
+            io()->error(sprintf('%s is empty: run "castor provision" first.', $registration['secret']));
+            exit(1);
+        }
+        if ($byHand) {
+            if (($env['HEIDI_DEV_USER_SUBJECT'] ?? '') === '') {
+                io()->error('HEIDI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user.');
                 exit(1);
             }
+            demo_push_by_hand(
+                $env['HEIDI_ISSUER'],
+                $env['HEIDI_DEV_USER_PASSWORD'],
+                $ca,
+                $registration['client'],
+                $env[$registration['secret']],
+                $env['HEIDI_DEV_USER_SUBJECT'],
+            );
+        } else {
+            demo_push_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, [
+                $registration['secret'] => $env[$registration['secret']],
+            ]);
         }
-        demo_push_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['HEIDI_DEV_USER_SUBJECT'], [
-            $registration['secret'] => $env[$registration['secret']],
-        ]);
     }
     if ($logoutOthers) {
         if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
@@ -2965,12 +2982,18 @@ const DEMO_CIBA_BINDING_MESSAGE = 'Invoice 4711';
  *                        what CIBA Core §15 asks for, an identifier that says nothing outside this provider
  * @param array<string, string> $secrets apps/op/.env.local, by the name of the variable each client's is under
  */
-function demo_ciba_check(string $issuer, string $password, string $ca, string $subject, array $secrets): void
+function demo_ciba_check(string $issuer, string $password, string $ca, string $subject, array $secrets, bool $byHand = false): void
 {
-    io()->section('A backchannel client, and the user who answers it elsewhere');
+    io()->section($byHand ? 'A backchannel client, and you are the other device' : 'A backchannel client, and the user who answers it elsewhere');
     $verified = [];
+    // by hand there is one delivery mode and not two: what is being shown is the other device, which is a
+    // person, and asking them to do it twice shows nothing the first one did not
+    $clients = $byHand
+        ? [
+            'poll' => DEMO_CIBA_CLIENTS['poll'],
+        ] : DEMO_CIBA_CLIENTS;
 
-    foreach (DEMO_CIBA_CLIENTS as $mode => $registration) {
+    foreach ($clients as $mode => $registration) {
         $cli = new Process(
             [
                 'php',
@@ -2983,9 +3006,9 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
                 '--binding-message=' . DEMO_CIBA_BINDING_MESSAGE,
                 '--notification-port=' . DEMO_CIBA_NOTIFICATION_PORT,
                 '--cafile=' . $ca,
-                '--timeout=120',
+                '--timeout=' . ($byHand ? DEMO_CIBA_BY_HAND_TIMEOUT : 120),
             ],
-            timeout: 180.0,
+            timeout: $byHand ? DEMO_CIBA_BY_HAND_TIMEOUT + 60 : 180.0,
         );
         $cli->start();
 
@@ -3002,8 +3025,12 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
             );
 
             // the other device: the browser of a user who holds nothing of the request and finds it by who
-            // they are
-            demo_ciba_approve($issuer, $password, $ca, $registration['client']);
+            // they are. By hand, that browser is yours and nothing here answers for you.
+            if ($byHand) {
+                demo_ciba_wait_for_you($issuer, $asked);
+            } else {
+                demo_ciba_approve($issuer, $password, $ca, $registration['client']);
+            }
 
             if ($mode === 'ping') {
                 // CIBA Core §10.2: the provider posts the identifier to the endpoint that client registered,
@@ -3016,7 +3043,7 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
                 $verified[] = ['ping: notification', sprintf('called back after %s s, on the token the client drew', (string) ($notified['waited'] ?? '?'))];
             }
 
-            $tokens = demo_cli_step($cli, 'tokens');
+            $tokens = demo_cli_step($cli, 'tokens', $byHand ? (float) DEMO_CIBA_BY_HAND_TIMEOUT : 150.0);
             demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf(
                 '%s: the client holds a bearer token (got %s)',
                 $mode,
@@ -3048,7 +3075,52 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
     }
 
     io()->table(['Step', 'Verified'], $verified);
-    io()->success('A request made by somebody else was found, read and allowed by the user it named, in both delivery modes.');
+    io()->success(
+        $byHand
+            ? 'A request made by somebody else reached you, and the client was served the moment you allowed it.'
+            : 'A request made by somebody else was found, read and allowed by the user it named, in both delivery modes.',
+    );
+}
+
+/**
+ * How long a run that waits for a person gives them, in seconds: the lifetime of a backchannel request is
+ * five minutes on this stack, and there is no point waiting past the thing they would be answering.
+ */
+const DEMO_CIBA_BY_HAND_TIMEOUT = 300;
+
+/**
+ * The other device, when it is yours. Nothing here answers the request: the run says what is on its way to
+ * you and where to answer it, and then waits for the client to be handed its token, which only happens
+ * once you have allowed it.
+ *
+ * This is what the rest of this task is not: every other walk plays both sides, which is what makes it a
+ * test, and a flow whose whole point is that somebody is asked cannot be shown by a program that answers
+ * itself.
+ *
+ * @param array<string, mixed> $asked what the backchannel authentication endpoint answered
+ */
+function demo_ciba_wait_for_you(string $issuer, array $asked): void
+{
+    $lifetime = is_int($asked['expires_in'] ?? null) ? $asked['expires_in'] : DEMO_CIBA_BY_HAND_TIMEOUT;
+    io()->newLine();
+    io()->block(
+        [
+            sprintf('A client has asked for "%s", and wrote: "%s".', DEV_USERNAME, DEMO_CIBA_BINDING_MESSAGE),
+            '',
+            sprintf(
+                'Every browser of that user this provider can reach has been sent a notification (%s/account/notifications lists them). It says that something is waiting and nothing else: no identifier of this request and no link that answers it (BCP 10027 §5.2).',
+                $issuer,
+            ),
+            '',
+            sprintf('Open %s/account/approvals, read what is asked, and allow or refuse it. Nothing here will answer for you.', $issuer),
+            '',
+            sprintf('The client is polling and will be handed its token the moment you allow it. You have %d s before the request expires.', $lifetime),
+        ],
+        'YOUR TURN',
+        'fg=black;bg=yellow',
+        ' ',
+        true,
+    );
 }
 
 /**
@@ -3062,7 +3134,7 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
 function demo_ciba_approve(string $issuer, string $password, string $ca, string $clientId): void
 {
     $cookies = [];
-    $page = $issuer . '/approvals';
+    $page = $issuer . '/account/approvals';
 
     // no session yet, so the page asks for a login and brings the browser back to it (LoginTarget)
     $approvals = demo_browser_sign_in($cookies, $issuer, $password, $ca, $page);
@@ -3525,7 +3597,7 @@ function demo_native_check(string $issuer, string $password, string $ca): void
                 ($redirected['state_matches'] ?? false) === true && ($redirected['iss_matches'] ?? false) === true,
                 sprintf('run %d: the client recognises its own flow, by its state and by the issuer (RFC 9207 §2.4)', $run),
             );
-            $tokens = demo_cli_step($cli, 'tokens');
+            $tokens = demo_cli_step($cli, 'tokens', $byHand ? (float) DEMO_CIBA_BY_HAND_TIMEOUT : 150.0);
             demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf(
                 'run %d: it holds a bearer token (got %s)',
                 $run,
@@ -3610,9 +3682,21 @@ const DEMO_PUSH_KEY = 'var/demo/push-service.key';
 const DEMO_PUSH_TRUSTED_CERTIFICATE = '/usr/local/share/ca-certificates/heidi-lab-push.crt';
 
 /**
+ * The user this walk asks for, and never the development user. What it measures of a push service that
+ * answers 503 is the notifications lane coming back, and the lane comes back only when **no** browser at
+ * all was reached (architecture §5.6): a browser somebody enrolled by hand on the account they use would
+ * answer that question instead of it. So the walk holds a user whose only browser is the one it draws, and
+ * anybody looking at this flow in a browser of their own is left alone.
+ *
+ * Created on the first run and kept, with the password of the development user, which is the one secret a
+ * development stack has for a person.
+ */
+const DEMO_PUSH_USERNAME = 'push-walk';
+
+/**
  * What the user calls this browser of theirs on the page that subscribes it.
  */
-const DEMO_PUSH_LABEL = 'Alice at her desk';
+const DEMO_PUSH_LABEL = 'The browser of the push walk';
 
 /**
  * The "sub" of every signed request this provider sends a push service (RFC 8292 §2.1), as the
@@ -3643,15 +3727,14 @@ const DEMO_PUSH_FIRST_RETRY = 2;
  * Then the two answers a push service gives that are not a yes: 503, and the message coming back under
  * the patience of the notifications lane; 410, and the row taken out rather than tried for ever.
  *
- * @param string $subject the subject this provider issued the development user, which is what a
- *                        "login_hint" names for this tenant
  * @param array<string, string> $secrets apps/op/.env.local, by the name of the variable each client's is under
  */
-function demo_push_check(string $issuer, string $password, string $ca, string $subject, array $secrets): void
+function demo_push_check(string $issuer, string $password, string $ca, array $secrets): void
 {
     io()->section('A push service of the lab, and a notification opened');
     $verified = [];
     $registration = DEMO_CIBA_CLIENTS['poll'];
+    $subject = demo_push_user($password);
     $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
     $backchannel = is_string($metadata['backchannel_authentication_endpoint'] ?? null) ? $metadata['backchannel_authentication_endpoint'] : '';
     demo_expect($backchannel !== '', 'the provider announces a backchannel authentication endpoint (CIBA Core §4)');
@@ -3724,7 +3807,7 @@ function demo_push_check(string $issuer, string $password, string $ca, string $s
             sprintf('and carries what the client wrote for the user to read (CIBA Core §7.1: "%s")', DEMO_CIBA_BINDING_MESSAGE),
         );
         demo_expect(
-            ($opened['url'] ?? null) === $issuer . '/approvals',
+            ($opened['url'] ?? null) === $issuer . '/account/approvals',
             sprintf('and sends them to the page of the provider where requests are answered (%s)', (string) ($opened['url'] ?? '')),
         );
         demo_expect(
@@ -3786,6 +3869,179 @@ function demo_push_check(string $issuer, string $password, string $ca, string $s
 
     io()->table(['Step', 'Verified'], $verified);
     io()->success('A notification of this provider was signed, encrypted, carried by a push service and opened by the browser it was for.');
+}
+
+/**
+ * How long a run that waits for a push service to answer gives it, in seconds: the first attempt leaves at
+ * once, so a browser nobody reached in this long is one nothing is reaching today.
+ */
+const DEMO_PUSH_BY_HAND_TIMEOUT = 45;
+
+/**
+ * Issue #311 by hand: nothing of the laboratory stands in for anybody. No push service of ours, no browser
+ * of ours, no user of ours. The request is made for the development user, the notification goes to the
+ * browsers that user subscribed, through their own push services, and what this says is which of them this
+ * provider reached and when.
+ *
+ * It is the other half of "castor demo --push", and the half a program cannot assert: whether a person sees
+ * a notification is between their browser, their push service and their operating system, and the most this
+ * can do is say what left here and what came back. What it reads it reads from the page of the account and
+ * from nowhere else, so what it reports is what that user reads for themselves.
+ */
+function demo_push_by_hand(string $issuer, string $password, string $ca, string $clientId, string $secret, string $subject): void
+{
+    io()->section('A notification to a browser of yours, and nobody answering for you');
+    $page = $issuer . '/account/notifications';
+    $cookies = [];
+    demo_browser_sign_in($cookies, $issuer, $password, $ca, $issuer . '/account/approvals');
+    [$status, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
+    demo_expect($status === 200, sprintf('the page of the browsers this provider may reach opens (got %d)', $status));
+    $before = demo_push_browsers($rendered);
+    if ($before === []) {
+        io()->error(sprintf(
+            'No browser of "%s" is subscribed, so there is nobody for this provider to reach. Open %s in your own browser, subscribe it, and run this again.',
+            DEV_USERNAME,
+            $page,
+        ));
+        exit(1);
+    }
+    io()->text(sprintf('%d browser(s) of "%s" are subscribed; every one of them is pushed to.', count($before), DEV_USERNAME));
+
+    $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
+    $backchannel = is_string($metadata['backchannel_authentication_endpoint'] ?? null) ? $metadata['backchannel_authentication_endpoint'] : '';
+    demo_expect($backchannel !== '', 'the provider announces a backchannel authentication endpoint (CIBA Core §4)');
+    $asked = demo_push_backchannel($backchannel, $ca, $clientId, $secret, $subject);
+
+    // the page is what says a browser was told, and it is the page that user reads themselves
+    $deadline = microtime(true) + DEMO_PUSH_BY_HAND_TIMEOUT;
+    $after = $before;
+    while (microtime(true) < $deadline) {
+        [, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
+        $after = demo_push_browsers($rendered);
+        if (demo_push_reached($before, $after) !== []) {
+            break;
+        }
+        usleep(2_000_000);
+    }
+    $reached = demo_push_reached($before, $after);
+    $rows = [];
+    foreach ($after as $id => $browser) {
+        $rows[] = [
+            $browser['label'],
+            isset($reached[$id]) ? 'told just now, at ' . $browser['told'] : ($browser['told'] === '' ? 'never told' : 'last told ' . $browser['told']),
+        ];
+    }
+    io()->table(['Browser', 'What the page says'], $rows);
+    if ($reached === []) {
+        io()->warning(sprintf(
+            'No browser was reached within %d s. The provider is still trying, on the patience of the notifications lane: "castor logs worker" says what each push service answered. A browser whose subscription its push service has dropped is taken out of the page rather than tried for ever (RFC 8030 §7.3).',
+            DEMO_PUSH_BY_HAND_TIMEOUT,
+        ));
+    } else {
+        io()->success(sprintf(
+            '%d browser(s) were told, and this provider knows nothing more: what a push service does with a message it took is between it and that browser (RFC 8030 §5).',
+            count($reached),
+        ));
+    }
+
+    io()->newLine();
+    io()->block(
+        [
+            sprintf('A client has asked for "%s", and wrote: "%s".', DEV_USERNAME, DEMO_CIBA_BINDING_MESSAGE),
+            '',
+            'What your browser was sent says that something is waiting and nothing else: no identifier of this request and no link that answers it (BCP 10027 §5.2). What it does carry is the address of this provider, which is where an answer is given.',
+            '',
+            sprintf(
+                'Open %s/account/approvals and answer it. The request lives %d s; nothing here will answer for you, and no client is polling for it in this run ("castor demo --ciba --by-hand" is the one that is).',
+                $issuer,
+                is_int($asked['expires_in'] ?? null) ? $asked['expires_in'] : 300,
+            ),
+        ],
+        'YOUR TURN',
+        'fg=black;bg=yellow',
+        ' ',
+        true,
+    );
+}
+
+/**
+ * The browsers the page of the account lists, by the identifier it gives each row: what the user called it,
+ * and when this provider last left a message for it, as that page says it (an empty string for a browser it
+ * never has).
+ *
+ * @return array<string, array{label: string, told: string}>
+ */
+function demo_push_browsers(string $page): array
+{
+    $browsers = [];
+    foreach (demo_push_rows($page, null) as $row) {
+        if (preg_match('/data-subscription="([^"]+)"/', $row, $id) !== 1) {
+            continue;
+        }
+        preg_match_all('/<time datetime="([^"]+)"/', $row, $dates);
+        preg_match('#<td>([^<]*)</td>#', $row, $label);
+        $browsers[$id[1]] = [
+            // the first date of a row is when the browser subscribed, the second, when there is one, is when
+            // this provider last left a message for it
+            'label' => trim(html_entity_decode($label[1] ?? '')),
+            'told' => $dates[1][1] ?? '',
+        ];
+    }
+
+    return $browsers;
+}
+
+/**
+ * The browsers this provider left a message for between the two readings of the page: a row whose date
+ * moved, and a row that has one where it had none.
+ *
+ * @param array<string, array{label: string, told: string}> $before
+ * @param array<string, array{label: string, told: string}> $after
+ *
+ * @return array<string, array{label: string, told: string}>
+ */
+function demo_push_reached(array $before, array $after): array
+{
+    $reached = [];
+    foreach ($after as $id => $browser) {
+        if ($browser['told'] !== '' && $browser['told'] !== ($before[$id]['told'] ?? '')) {
+            $reached[$id] = $browser;
+        }
+    }
+
+    return $reached;
+}
+
+/**
+ * The user this walk asks for, created on the first run and kept, with the password of the development
+ * user: the account it subscribes a browser on, and the one a backchannel request names.
+ *
+ * Its own user rather than the development one, because the browsers of a user are what the lane reaches:
+ * this walk needs the only browser of whoever it asks for, and somebody looking at this flow by hand uses
+ * the development user.
+ *
+ * @return string the subject this provider issued it, which is what a "login_hint" names for this tenant
+ */
+function demo_push_user(string $password): string
+{
+    // created if it is not there, kept if it is: the command says so itself and the run reads its own user
+    op_console(
+        ['heidi:user:create', DEMO_PUSH_USERNAME, '--email', DEMO_PUSH_USERNAME . '@op.localhost', '--email-verified'],
+        context()->withAllowFailure()->withQuiet(),
+    );
+    // never on the command line: the command reads it on its standard input
+    op_console(
+        ['heidi:user:set-password', DEMO_PUSH_USERNAME, '--password-stdin'],
+        context()->withQuiet()->withInput($password . "\n"),
+    );
+    $shown = op_console(['heidi:user:show', DEMO_PUSH_USERNAME, '--no-ansi'], context()->withQuiet())->getOutput();
+    if (preg_match('/^\s*Subject\s+(\S+)\s*$/m', $shown, $subject) !== 1) {
+        io()->error(sprintf('"heidi:user:show %s" does not say which subject the user was issued.', DEMO_PUSH_USERNAME));
+        exit(1);
+    }
+    io()->text(sprintf('The walk asks for "%s", whose only browser is the one it draws.', DEMO_PUSH_USERNAME));
+
+    return $subject[1];
 }
 
 /**
@@ -3913,7 +4169,7 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
     // a page of the account belongs to no client and to no interaction, so it answers a browser without a
     // session 401 and sends it nowhere (AccountAccess): the browser signs in where a user of this flow goes
     // by themselves, the page of what is waiting for them, and walks to the account from there
-    demo_browser_sign_in($cookies, $issuer, $password, $ca, $issuer . '/approvals');
+    demo_browser_sign_in($cookies, $issuer, $password, $ca, $issuer . '/account/approvals', DEMO_PUSH_USERNAME);
     [$status, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
     demo_expect($status === 200, sprintf('the page of the browsers this provider may reach opens (got %d)', $status));
     // this walk has to be the only browser this provider can reach; a browser of a previous run of itself is
@@ -3942,14 +4198,13 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
 }
 
 /**
- * This walk has to be the only browser this provider can reach. What it measures of a push service that
- * answers 503 is the lane coming back, and the lane comes back only when **no** browser at all was reached
- * (architecture §5.6): a second browser that took the message would answer that question instead of it.
+ * This walk has to hold the only browser of the user it asks for. What it measures of a push service that
+ * answers 503 is the lane coming back, and the lane comes back only when **no** browser of that user was
+ * reached (architecture §5.6): a second browser that took the message would answer that question instead of
+ * it. The user is the walk's own (DEMO_PUSH_USERNAME), so nothing anybody enrolled by hand is in the way.
  *
- * So a browser a run of this walk left behind is taken out here, recognised by the name it subscribes
- * under, and a browser anybody else enrolled is not: it belongs to whoever enrolled it, taking one out is
- * not something this walk can undo, and a real browser of a real user is exactly what somebody looking at
- * this flow by hand has just registered. When one is still there the walk says which and stops.
+ * A browser a run of this walk left behind is taken out here, recognised by the name it subscribes under.
+ * Anything else on that account is not this walk's to revoke, and it says which and stops.
  *
  * @param array<string, array<string, string>> $cookies
  *
@@ -3968,10 +4223,11 @@ function demo_push_alone(array &$cookies, string $ca, string $issuer, string $pa
     $others = demo_push_rows($rendered, null);
     if ($others !== []) {
         io()->error(sprintf(
-            'This walk needs to be the only browser %s can reach, and %d other one(s) are subscribed there. Take them out on %s, or run this walk on a stack of its own: what it measures of a push service that cannot answer is the notifications lane coming back, which only happens when no browser at all was reached.',
-            $issuer,
+            'The account of "%s" carries %d browser(s) this walk did not enrol, and it needs to hold the only one: what it measures of a push service that cannot answer is the notifications lane coming back, which only happens when no browser of that user was reached. Take them out on %s, signed in as "%s".',
+            DEMO_PUSH_USERNAME,
             count($others),
             $page,
+            DEMO_PUSH_USERNAME,
         ));
         exit(1);
     }
@@ -4010,7 +4266,7 @@ function demo_push_rows(string $page, ?string $label): array
  *
  * @return string the page, once the browser is signed in and on it
  */
-function demo_browser_sign_in(array &$cookies, string $issuer, string $password, string $ca, string $page): string
+function demo_browser_sign_in(array &$cookies, string $issuer, string $password, string $ca, string $page, string $username = DEV_USERNAME): string
 {
     [$status, $location, $rendered] = demo_request($cookies, $ca, 'GET', $page);
     if ($status === 200) {
@@ -4026,7 +4282,7 @@ function demo_browser_sign_in(array &$cookies, string $issuer, string $password,
         'the login page carries the form',
     );
     [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
-        '_username' => DEV_USERNAME,
+        '_username' => $username,
         '_password' => $password,
         '_csrf_token' => $csrf[1],
     ]);

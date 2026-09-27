@@ -40,6 +40,7 @@ use Heidi\Bundle\Http\AccountHomePage;
 use Heidi\Bundle\Http\Account\AccountSections;
 use Heidi\Bundle\Http\Account\PasskeysSection;
 use Heidi\Bundle\Http\Account\ProfileSection;
+use Heidi\Bundle\Http\Account\ApprovalsSection;
 use Heidi\Bundle\Http\Account\ConsentsSection;
 use Heidi\Bundle\Http\Account\TwoFactorSection;
 use Heidi\Bundle\Http\AuthorizationRequestReader;
@@ -454,6 +455,9 @@ return static function (ContainerConfigurator $container): void {
     // the pages of the account, in the order they are wired: what the home of the account offers, and the
     // one place a kind of credential is known; a page added to the account is a section beside these and a
     // line here, and neither the home page nor its template is edited
+    // first of the sections: every other one says what the account holds, this one says that somebody is
+    // waiting on it now, and it is what makes the page of the answers findable at all (BCP 10027 §5.2)
+    $services->set(ApprovalsSection::class)->tag('heidi.account_section');
     $services->set(ProfileSection::class)->tag('heidi.account_section');
     $services->set(PasskeysSection::class)->tag('heidi.account_section');
     $services->set(TwoFactorSection::class)->tag('heidi.account_section');

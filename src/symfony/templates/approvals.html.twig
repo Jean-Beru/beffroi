@@ -13,6 +13,7 @@
 {% block title %}{{ 'approvals.title'|trans }}{% endblock %}
 
 {% block content %}
+    {{ include('@Heidi/account/back.html.twig') }}
     <p data-provider="{{ tenant.name }}">{{ 'approvals.provider'|trans({provider: tenant.name}) }}</p>
     <p>{{ 'approvals.signed_in_as'|trans({username: user.username}) }}</p>
     {% if refusal is not null %}
@@ -36,7 +37,7 @@
                         <li data-scope="{{ scope.value }}">{{ scope.value in described_scopes ? ('scope.' ~ scope.value)|trans : scope.value }}</li>
                     {% endfor %}
                 </ul>
-                <form method="post" action="{{ path('heidi_interaction_approvals') }}">
+                <form method="post" action="{{ path('heidi_interaction_account_approvals') }}">
                     <input type="hidden" name="request" value="{{ record.authRequestIdHash }}">
                     <input type="hidden" name="_token" value="{{ csrf_token('heidi_approvals') }}">
                     <button type="submit" name="answer" value="allow">{{ 'approvals.allow'|trans }}</button>

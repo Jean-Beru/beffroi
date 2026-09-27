@@ -31,7 +31,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/device_authorization',
             'https://id.acme.example/device',
             'https://id.acme.example/backchannel_authentication',
-            'https://id.acme.example/approvals',
+            'https://id.acme.example/account/approvals',
         );
 
         // Then
@@ -46,7 +46,7 @@ final class ProviderEndpointsTest extends TestCase
         static::assertSame('https://id.acme.example/device_authorization', $endpoints->deviceAuthorization);
         static::assertSame('https://id.acme.example/device', $endpoints->deviceVerification);
         static::assertSame('https://id.acme.example/backchannel_authentication', $endpoints->backchannelAuthentication);
-        static::assertSame('https://id.acme.example/approvals', $endpoints->backchannelApproval);
+        static::assertSame('https://id.acme.example/account/approvals', $endpoints->backchannelApproval);
     }
 
     /**
@@ -69,7 +69,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/device_authorization',
             'https://op.localhost/device',
             'https://op.localhost/backchannel_authentication',
-            'https://op.localhost/approvals',
+            'https://op.localhost/account/approvals',
         );
 
         // Then
@@ -100,7 +100,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/device_authorization',
             'https://op.localhost/device',
             'https://op.localhost/backchannel_authentication',
-            'https://op.localhost/approvals',
+            'https://op.localhost/account/approvals',
         ];
         $urls[$position] = 'http://localhost/x';
 
@@ -151,7 +151,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/device_authorization',
             'https://id.acme.example/device',
             'https://id.acme.example/backchannel_authentication',
-            'https://id.acme.example/approvals',
+            'https://id.acme.example/account/approvals',
         );
     }
 

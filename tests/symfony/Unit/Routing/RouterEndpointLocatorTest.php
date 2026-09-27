@@ -47,7 +47,7 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://op.example/device_authorization', $endpoints->deviceAuthorization);
         static::assertSame('https://op.example/device', $endpoints->deviceVerification);
         static::assertSame('https://op.example/backchannel_authentication', $endpoints->backchannelAuthentication);
-        static::assertSame('https://op.example/approvals', $endpoints->backchannelApproval);
+        static::assertSame('https://op.example/account/approvals', $endpoints->backchannelApproval);
     }
 
     /**
@@ -183,7 +183,7 @@ final class RouterEndpointLocatorTest extends TestCase
         $routes->add('heidi_protocol_device_authorization', new Route($prefix . '/device_authorization'));
         $routes->add('heidi_interaction_device', new Route($prefix . '/device'));
         $routes->add('heidi_protocol_backchannel_authentication', new Route($prefix . '/backchannel_authentication'));
-        $routes->add('heidi_interaction_approvals', new Route($prefix . '/approvals'));
+        $routes->add('heidi_interaction_account_approvals', new Route($prefix . '/account/approvals'));
 
         return new UrlGenerator($routes, $context ?? new RequestContext());
     }
