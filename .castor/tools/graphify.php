@@ -80,7 +80,9 @@ function graphify_build(
         return;
     }
 
-    graphify_label($model, true);
+    // Every name, not only the missing ones: the extraction above re-partitioned the graph, so the
+    // communities are numbered afresh and a name kept from the previous numbering would name another set.
+    graphify_label($model);
 
     io()->success(sprintf('%s holds graph.json, GRAPH_REPORT.md and graph.html', graphify_out()));
 }
