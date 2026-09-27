@@ -42,6 +42,14 @@ final class Clients
     public const string SECRET = 'a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3e7f2a6b0c4d8e1f5a9b3c7d0e4f8a2b6';
 
     /**
+     * What a native client registers (RFC 8252 §7.3): the loopback IP literal, no port, the port being what
+     * the operating system hands it when it starts.
+     */
+    public const string LOOPBACK_REDIRECT_URI = 'http://127.0.0.1/callback';
+
+    public const string LOOPBACK_POST_LOGOUT_URI = 'http://127.0.0.1/after-logout';
+
+    /**
      * Two resources a client may be registered for (RFC 8707 §2), as the examples of the RFC name them.
      */
     public const string CALENDAR = 'https://cal.example.com/';
@@ -52,6 +60,7 @@ final class Clients
      * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow and its renewal unless the test says otherwise
      * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
      * @param list<string> $authorizationDetailsTypes what this client may ask for beyond its scopes (RFC 9396 §2, §11)
+     * @param list<RedirectUri>|null $redirectUris where its browser is sent back to, the HTTPS one of the demonstration unless the test says otherwise
      */
     public static function confidential(
         Tenant $tenant,
@@ -63,6 +72,7 @@ final class Clients
         ?array $grantTypes = null,
         array $resources = [],
         array $authorizationDetailsTypes = [],
+        ?array $redirectUris = null,
     ): Client {
         return new Client(
             $tenant,
@@ -71,7 +81,7 @@ final class Clients
                 'OIDC demo',
                 $method ?? Methods::clientSecretBasic(),
                 true,
-                [new RedirectUri('https://demo.localhost/login/check')],
+                $redirectUris ?? [new RedirectUri('https://demo.localhost/login/check')],
                 $accessTokenShape ?? Shapes::jwt(),
                 [new RedirectUri('https://demo.localhost/')],
                 $grantTypes ?? [Grants::authorizationCode(), Grants::refreshToken()],
@@ -309,9 +319,17 @@ final class Clients
     /**
      * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
      * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow unless the test says otherwise
+     * @param list<RedirectUri>|null $redirectUris where its browser is sent back to, an HTTPS URI unless the test says otherwise
+     * @param list<RedirectUri> $postLogoutRedirectUris where it is sent back to at the end of a session (RP-Initiated Logout §2)
      */
-    public static function public(Tenant $tenant, string $clientId = 'spa', array $resources = [], ?array $grantTypes = null): Client
-    {
+    public static function public(
+        Tenant $tenant,
+        string $clientId = 'spa',
+        array $resources = [],
+        ?array $grantTypes = null,
+        ?array $redirectUris = null,
+        array $postLogoutRedirectUris = [],
+    ): Client {
         return new Client(
             $tenant,
             new ClientRegistration(
@@ -319,11 +337,28 @@ final class Clients
                 'Single page application',
                 Methods::none(),
                 false,
-                [new RedirectUri('https://spa.example/callback')],
+                $redirectUris ?? [new RedirectUri('https://spa.example/callback')],
                 Shapes::jwt(),
+                $postLogoutRedirectUris,
                 grantTypes: $grantTypes ?? [Grants::authorizationCode()],
                 resources: $resources,
             ),
+        );
+    }
+
+    /**
+     * A native client (RFC 8252 §8.3): a public client whose browser comes back to the loopback interface,
+     * on whatever port the operating system handed it, and which registers the IP literal without a port.
+     *
+     * @param list<RedirectUri>|null $postLogoutRedirectUris the loopback one unless the test says otherwise
+     */
+    public static function native(Tenant $tenant, string $clientId = 'native-app', ?array $postLogoutRedirectUris = null): Client
+    {
+        return self::public(
+            $tenant,
+            $clientId,
+            redirectUris: [new RedirectUri(self::LOOPBACK_REDIRECT_URI)],
+            postLogoutRedirectUris: $postLogoutRedirectUris ?? [new RedirectUri(self::LOOPBACK_POST_LOGOUT_URI)],
         );
     }
 

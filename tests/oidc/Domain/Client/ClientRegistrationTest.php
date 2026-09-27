@@ -179,6 +179,149 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
+     * RFC 8252 §7.3: the port of a loopback redirection of a public native client is the one named
+     * exception to the exact match, because the client listens on the port the operating system handed it
+     * when it started. Nothing else varies.
+     */
+    #[Test]
+    #[DataProvider('provideLoopbackRedirectUris')]
+    public function aPublicClientIsAnsweredOnAnyPortOfItsLoopbackRedirectUri(string $uri, bool $registered): void
+    {
+        // Given
+        $client = Clients::native(Fixtures::tenant());
+
+        // When / Then
+        static::assertSame($registered, $client->registration->hasRedirectUri($uri));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideLoopbackRedirectUris(): iterable
+    {
+        yield 'as registered' => [Clients::LOOPBACK_REDIRECT_URI, true];
+        yield 'on the port it was given' => ['http://127.0.0.1:53127/callback', true];
+        yield 'another path on that port' => ['http://127.0.0.1:53127/other', false];
+        yield 'a name in place of the literal' => ['http://localhost:53127/callback', false];
+        yield 'a private address' => ['http://192.168.1.10/callback', false];
+        yield 'the other literal' => ['http://[::1]:53127/callback', false];
+    }
+
+    /**
+     * RFC 8252 §8.3: a public client in plain HTTP is a native client, and it names the loopback interface
+     * by its IP literal. A name is resolved, and a redirection carrying a code is not a thing to hand to
+     * whatever answers for it on the machine of the user.
+     */
+    #[Test]
+    #[DataProvider('provideNamesAPublicClientCannotBeSentBackTo')]
+    public function aPublicClientInPlainHttpNamesTheLoopbackLiteral(string $value): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('never by a name (RFC 8252 section 8.3)');
+
+        // When
+        Clients::public(Fixtures::tenant(), redirectUris: [new RedirectUri($value)]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesAPublicClientCannotBeSentBackTo(): iterable
+    {
+        yield 'localhost' => ['http://localhost/callback'];
+        yield 'localhost with a port' => ['http://localhost:53127/callback'];
+        yield 'a name under localhost' => ['http://rp.localhost/callback'];
+        yield 'another address of the loopback block' => ['http://127.0.0.2/callback'];
+    }
+
+    /**
+     * The same rule for the URI a session ends at, a native client being reached the same way at both.
+     */
+    #[Test]
+    public function aPublicClientInPlainHttpNamesTheLoopbackLiteralAtTheEndOfASessionToo(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('never by a name (RFC 8252 section 8.3)');
+
+        // When
+        Clients::public(
+            Fixtures::tenant(),
+            redirectUris: [new RedirectUri(Clients::LOOPBACK_REDIRECT_URI)],
+            postLogoutRedirectUris: [new RedirectUri('http://localhost/after-logout')],
+        );
+    }
+
+    /**
+     * RFC 8252 §8.3 is a rule about a native client, which a confidential client is not: a web application
+     * on the machine of a developer registers plain HTTP on a loopback name (ClientUri) and is held to it
+     * byte for byte.
+     */
+    #[Test]
+    public function aConfidentialClientMayBeSentBackToALoopbackName(): void
+    {
+        // Given
+        $client = Clients::confidential(
+            Fixtures::tenant(),
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            redirectUris: [new RedirectUri('http://demo.localhost:8003/oidc/callback')],
+        );
+
+        // When / Then
+        static::assertTrue($client->registration->hasRedirectUri('http://demo.localhost:8003/oidc/callback'));
+        static::assertFalse($client->registration->hasRedirectUri('http://demo.localhost:8004/oidc/callback'));
+    }
+
+    /**
+     * RFC 8252 §7.3: the exception belongs to a client that cannot register its port, which a confidential
+     * client is not; it has a host of its own and is held to what it registered.
+     */
+    #[Test]
+    public function aConfidentialClientIsHeldToThePortOfItsLoopbackRedirectUri(): void
+    {
+        // Given
+        $client = Clients::confidential(
+            Fixtures::tenant(),
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            redirectUris: [new RedirectUri(Clients::LOOPBACK_REDIRECT_URI)],
+        );
+
+        // When / Then
+        static::assertTrue($client->registration->hasRedirectUri(Clients::LOOPBACK_REDIRECT_URI));
+        static::assertFalse($client->registration->hasRedirectUri('http://127.0.0.1:53127/callback'));
+    }
+
+    /**
+     * RFC 8252 §7.3: a public client that registered HTTPS registered a host it controls, and the port
+     * with it.
+     */
+    #[Test]
+    public function aPublicClientIsHeldToThePortOfAUriThatIsNotALoopbackOne(): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant());
+
+        // When / Then
+        static::assertFalse($client->registration->hasRedirectUri('https://spa.example:8443/callback'));
+    }
+
+    /**
+     * RP-Initiated Logout §2 and the same exception: a native client is reached on the port it was given at
+     * the end of a session as at the beginning of one.
+     */
+    #[Test]
+    public function aPublicClientIsSentBackOnAnyPortOfItsLoopbackPostLogoutRedirectUri(): void
+    {
+        // Given
+        $client = Clients::native(Fixtures::tenant());
+
+        // When / Then
+        static::assertTrue($client->registration->hasPostLogoutRedirectUri('http://127.0.0.1:53127/after-logout'));
+        static::assertFalse($client->registration->hasPostLogoutRedirectUri('http://127.0.0.1:53127/callback'));
+    }
+
+    /**
      * OIDC RP-Initiated Logout 1.0 §2: the post-logout URI is a registered value, matched exactly too.
      */
     #[Test]
