@@ -5,7 +5,8 @@ declare(strict_types=1);
 /*
  * The knowledge graph of the repository (graphify): tree-sitter over the code, a model over the documents,
  * and a graph the agents and the maintainer query about the whole monorepo at once. It reads the sources
- * and never the running stack, and it writes graphify-out/, which git ignores.
+ * and never the running stack, and it writes graphify-out/, which git ignores: graph.json, the report
+ * GRAPH_REPORT.md and the page graph.html, whose bubbles are the communities the model named.
  *
  * The semantic half needs a model. It is asked of the Claude Code CLI, billed to the subscription, rather
  * than of an API key, and that choice is what these tasks carry: the backend is named explicitly because
@@ -55,11 +56,13 @@ function graphify_install(): void
     io()->success('graphify installed, and the skill is the one of this version');
 }
 
-#[AsTask(description: 'Build the graph of the repository: tree-sitter over the code, the CLI backend over the documents')]
+#[AsTask(
+    description: 'Build the graph of the repository: tree-sitter over the code, the CLI backend over the documents, then the communities named and the page and the report written with them',
+)]
 function graphify_build(
     #[AsOption(description: 'The model the CLI backend asks for')]
     string $model = GRAPHIFY_MODEL,
-    #[AsOption(description: 'Index the code only, with no model call and no document in the graph')]
+    #[AsOption(description: 'Index the code only: no model call, no document in the graph, and the communities keep their number for a name')]
     bool $codeOnly = false,
 ): void {
     io()->title('Building the graph');
@@ -71,7 +74,44 @@ function graphify_build(
 
     graphify_run($arguments, $model);
 
-    io()->success(sprintf('%s/graph.json written', graphify_out()));
+    if ($codeOnly) {
+        io()->success(sprintf('%s/graph.json written', graphify_out()));
+
+        return;
+    }
+
+    graphify_label($model, true);
+
+    io()->success(sprintf('%s holds graph.json, GRAPH_REPORT.md and graph.html', graphify_out()));
+}
+
+#[AsTask(
+    description: 'Name the communities of the graph with the CLI backend, and rewrite the report and the page with the names',
+)]
+function graphify_label(
+    #[AsOption(description: 'The model the CLI backend asks for')]
+    string $model = GRAPHIFY_MODEL,
+    #[AsOption(description: 'Keep the names already given and name only the communities that have none')]
+    bool $missingOnly = false,
+): void {
+    io()->title('Naming the communities');
+
+    $arguments = ['label', graphify_root(), '--backend=' . GRAPHIFY_BACKEND];
+    if ($missingOnly) {
+        $arguments[] = '--missing-only';
+    }
+
+    graphify_run($arguments, $model);
+}
+
+#[AsTask(
+    description: 'Write the graph in one of the shapes graphify exports: html, callflow-html, obsidian, wiki, svg, graphml',
+)]
+function graphify_export(string $format): void
+{
+    io()->title(sprintf('Exporting the graph as %s', $format));
+
+    graphify_run(['export', $format]);
 }
 
 #[AsTask(description: 'Re-extract the code files that changed and update the graph, without a model call')]
@@ -97,19 +137,19 @@ function graphify_query(
         $arguments[] = '--dfs';
     }
 
-    graphify_run($arguments);
+    graphify_read($arguments);
 }
 
 #[AsTask(description: 'Explain one node of the graph and its neighbours in plain language')]
 function graphify_explain(string $node): void
 {
-    graphify_run(['explain', $node]);
+    graphify_read(['explain', $node]);
 }
 
 #[AsTask(description: 'The shortest path the graph holds between two nodes')]
 function graphify_path(string $from, string $to): void
 {
-    graphify_run(['path', $from, $to]);
+    graphify_read(['path', $from, $to]);
 }
 
 #[AsTask(description: 'The most connected nodes of the graph, the architectural hubs')]
@@ -117,26 +157,57 @@ function graphify_god_nodes(
     #[AsOption(description: 'How many nodes to show')]
     int $top = 10,
 ): void {
-    graphify_run(['god-nodes', '--top', (string) $top]);
+    graphify_read(['god-nodes', '--top', (string) $top]);
 }
 
 /**
- * Runs graphify against this repository whatever directory castor was started from: the corpus is named by
- * its absolute path and the output directory by GRAPHIFY_OUT, which every graphify command reads, so a task
- * called from a package of the monorepo writes and queries the one graph at the root.
- *
- * "env -u" is what removes the API key for the child process only; the key stays in the shell that called.
+ * Runs a graphify command that writes the graph. A failure is a failure of the task, reported as such.
  *
  * @param array<string> $arguments
  */
 function graphify_run(array $arguments, string $model = GRAPHIFY_MODEL): void
+{
+    run(graphify_command($arguments, $model), context: context()->withTimeout(null));
+}
+
+/**
+ * Runs a graphify command that reads the graph, and carries its exit code without adding to its output: a
+ * question the graph cannot answer is answered by graphify itself, naming the nodes that were ambiguous or
+ * the graph that is missing, and a task that framed that as its own error would bury the answer.
+ *
+ * @param array<string> $arguments
+ */
+function graphify_read(array $arguments): void
+{
+    $result = run(
+        graphify_command($arguments, GRAPHIFY_MODEL),
+        context: context()->withTimeout(null)->withAllowFailure(),
+    );
+    if (! $result->isSuccessful()) {
+        exit($result->getExitCode() ?? 1);
+    }
+}
+
+/**
+ * The command line of every task: graphify against this repository whatever directory castor was started
+ * from, the corpus named by its absolute path and the output directory by GRAPHIFY_OUT, which every
+ * graphify command reads, so a task called from a package of the monorepo writes and queries the one graph
+ * at the root.
+ *
+ * "env -u" is what removes the API key for the child process only; the key stays in the shell that called.
+ *
+ * @param array<string> $arguments
+ *
+ * @return array<string>
+ */
+function graphify_command(array $arguments, string $model): array
 {
     if (trim((string) shell_exec('command -v graphify')) === '') {
         io()->error('graphify is not on the PATH: run "castor graphify-install" first.');
         exit(1);
     }
 
-    $command = [
+    return [
         'env',
         '-u',
         'ANTHROPIC_API_KEY',
@@ -145,8 +216,6 @@ function graphify_run(array $arguments, string $model = GRAPHIFY_MODEL): void
         'graphify',
         ...$arguments,
     ];
-
-    run($command, context: context()->withTimeout(null));
 }
 
 /**
