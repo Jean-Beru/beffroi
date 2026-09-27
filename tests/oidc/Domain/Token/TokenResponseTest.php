@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Domain\Token;
 
 use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Token\TokenErrorResponse;
 use Heidi\Oidc\Domain\Exchange\TokenTypeIdentifier;
@@ -70,6 +71,57 @@ final class TokenResponseTest extends TestCase
             ],
             $response->parameters(),
         );
+    }
+
+    /**
+     * RFC 9396 §7: the response says what it granted beyond its scopes, so that a client can compare it with
+     * what it asked for, a provider being free to grant less.
+     */
+    #[Test]
+    public function aResponseThatGrantedDetailsSaysWhichOnesItGranted(): void
+    {
+        // When
+        $response = new TokenResponse(
+            'at.value',
+            600,
+            null,
+            null,
+            new Scopes([Scope::openid()]),
+            TokenResponse::BEARER,
+            null,
+            AuthorizationDetailTypes::details(),
+        );
+
+        // Then
+        static::assertSame(
+            [
+                'access_token' => 'at.value',
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'scope' => 'openid',
+                'authorization_details' => [
+                    [
+                        'type' => 'account_information',
+                        'account' => 'acct-4711',
+                        'actions' => ['read'],
+                    ],
+                ],
+            ],
+            $response->parameters(),
+        );
+    }
+
+    /**
+     * RFC 9396 §7: a response that granted none writes no member, as it writes no "issued_token_type".
+     */
+    #[Test]
+    public function aResponseThatGrantedNoDetailWritesNoMember(): void
+    {
+        // When
+        $response = new TokenResponse('at.value', 600, null, null, new Scopes([Scope::openid()]));
+
+        // Then
+        static::assertArrayNotHasKey('authorization_details', $response->parameters());
     }
 
     /**

@@ -15,6 +15,7 @@ use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\IssuedRefreshToken;
 use Heidi\Oidc\Domain\Token\IssuedTokens;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Tokens;
@@ -164,6 +165,56 @@ final class IssuedTokensTest extends TestCase
 
         // When
         new IssuedRefreshToken($token, 'another');
+    }
+
+    /**
+     * RFC 9396 §7: the response says what the authorization granted beyond its scopes, which is what a client
+     * holding an opaque access token would otherwise have to introspect its own token to learn.
+     */
+    #[Test]
+    public function theDetailsOfTheAuthorizationReachTheResponse(): void
+    {
+        // Given
+        $withDetails = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid'],
+            authorizationDetails: AuthorizationDetailTypes::details(),
+        ));
+        $issued = new IssuedTokens($withDetails, $this->accessToken, null, null);
+
+        // When
+        $response = $issued->toResponse();
+
+        // Then
+        static::assertSame(
+            [
+                [
+                    'type' => 'account_information',
+                    'account' => 'acct-4711',
+                    'actions' => ['read'],
+                ],
+            ],
+            $response->parameters()['authorization_details'],
+        );
+    }
+
+    /**
+     * RFC 9396 §7: an authorization that granted none says nothing of them.
+     */
+    #[Test]
+    public function anAuthorizationWithNoDetailWritesNoMember(): void
+    {
+        // Given
+        $issued = new IssuedTokens($this->authorization, $this->accessToken, null, null);
+
+        // When
+        $response = $issued->toResponse();
+
+        // Then
+        static::assertArrayNotHasKey('authorization_details', $response->parameters());
     }
 
     #[Test]

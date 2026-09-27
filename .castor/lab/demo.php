@@ -3256,14 +3256,6 @@ const DEMO_RAR_GRANTED = [
     ],
 ];
 
-/**
- * What this walk found and the provider does not do yet: RFC 9396 §7 asks the token response to say what it
- * granted, and it says nothing, so a client holding an opaque access token learns it by introspecting its own
- * token. The walk asserts the gap rather than quieting it, so that the day it closes the line fails and is
- * deleted; it is the rule the "known" list of the conformance plans and the refused rung of the ladder follow.
- */
-const DEMO_RAR_RESPONSE_GAP = 'https://github.com/beffroi-php/heidi/issues/300';
-
 const DEMO_RAR_UNWIRED_DETAILS = [
     [
         'type' => 'account_information',
@@ -3335,16 +3327,12 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
         DEMO_RAR_GRANTED[0]['actions'] !== DEMO_RAR_DETAILS[0]['actions'],
         'and in the order of its type rather than of the request, which is what lets one consent cover two requests that ask for the same thing',
     );
-    // The gap this walk measures, written down with the issue that closes it, as the refused rung of the
-    // ladder is (DEMO_LADDER_RUNGS): RFC 9396 §7 asks the response to say what it granted, and this one says
-    // nothing, so a client holding an opaque token has to introspect to learn it. The day the issue lands,
-    // this is the expectation that fails, and the line is deleted rather than carried.
     demo_expect(
-        ! isset($tokens['authorization_details']),
-        sprintf('the token response still says nothing of what it granted (%s, RFC 9396 §7)', DEMO_RAR_RESPONSE_GAP),
+        ($tokens['authorization_details'] ?? null) === DEMO_RAR_GRANTED,
+        sprintf('and the token response says what it granted (RFC 9396 §7: %s)', json_encode($tokens['authorization_details'] ?? null)),
     );
     $verified[] = ['Access token', sprintf('authorization_details of %d object(s), in the order of its type', count(DEMO_RAR_GRANTED))];
-    $verified[] = ['The token response', sprintf('carries none, %s', DEMO_RAR_RESPONSE_GAP)];
+    $verified[] = ['The token response', sprintf('says what it granted, %d object(s)', count(DEMO_RAR_GRANTED))];
 
     // RFC 9396 §9: where a resource server that does not read the token itself finds the same thing
     $described = demo_rar_introspection($issuer, $ca, $secret, (string) ($tokens['access_token'] ?? ''));
