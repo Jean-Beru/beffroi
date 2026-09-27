@@ -3926,10 +3926,7 @@ function demo_push_by_hand(string $issuer, string $password, string $ca, string 
     $reached = demo_push_reached($before, $after);
     $rows = [];
     foreach ($after as $id => $browser) {
-        $rows[] = [
-            $browser['label'],
-            isset($reached[$id]) ? 'told just now, at ' . $browser['told'] : ($browser['told'] === '' ? 'never told' : 'last told ' . $browser['told']),
-        ];
+        $rows[] = [$browser['label'], demo_push_said_of($browser, isset($reached[$id]))];
     }
     io()->table(['Browser', 'What the page says'], $rows);
     if ($reached === []) {
@@ -3962,6 +3959,21 @@ function demo_push_by_hand(string $issuer, string $password, string $ca, string 
         ' ',
         true,
     );
+}
+
+/**
+ * What the page says of one browser, in the words of a run that waits for a person: told by this run, told
+ * before it, or never told at all.
+ *
+ * @param array{label: string, told: string} $browser
+ */
+function demo_push_said_of(array $browser, bool $reached): string
+{
+    if ($reached) {
+        return 'told just now, at ' . $browser['told'];
+    }
+
+    return $browser['told'] === '' ? 'never told' : 'last told ' . $browser['told'];
 }
 
 /**
