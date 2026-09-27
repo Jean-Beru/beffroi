@@ -87,6 +87,50 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
+     * RFC 9396 §7: the response says what it granted, which is where a client holding an opaque access token
+     * learns it without introspecting its own token, and what any client compares with what it asked for.
+     */
+    #[Test]
+    public function theTokenResponseSaysWhatItGranted(): void
+    {
+        // Given
+        $code = $this->codeAllowedByAlice(AuthorizationDetailTypes::parameter('acct-4711', ['read']));
+
+        // When
+        $this->exchange($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(
+            [
+                [
+                    'type' => AuthorizationDetailTypes::INVENTED,
+                    'account' => 'acct-4711',
+                    'actions' => ['read'],
+                ],
+            ],
+            self::json($response)['authorization_details'],
+        );
+    }
+
+    /**
+     * RFC 9396 §7: a response that granted nothing beyond its scopes writes no member at all.
+     */
+    #[Test]
+    public function aTokenResponseThatGrantedNoDetailSaysNothingOfThem(): void
+    {
+        // Given
+        $code = $this->codeAllowedByAlice(null);
+
+        // When
+        $this->exchange($code);
+
+        // Then
+        static::assertArrayNotHasKey('authorization_details', self::json($this->browser->getResponse()));
+    }
+
+    /**
      * RFC 9396 §7: a request that asks for nothing beyond its scopes gets a token that carries nothing of
      * one, rather than carrying it empty.
      */
