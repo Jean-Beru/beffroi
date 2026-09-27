@@ -113,14 +113,11 @@ const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
 /**
  * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-27 and written whole in
  * docs/conformance-suite.md: rules of the profile, none of them of this flow alone and none of them a
- * gap anybody decided to leave. Four of them are the provider's and one is what this configuration hands
+ * gap anybody decided to leave. Three of them are the provider's and one is what this configuration hands
  * the suite, and they are the runs' and not one module's, which is why they are one line each here and
  * not a "known" module apiece.
  */
 const CONFORMANCE_CIBA_ISSUES = [
-    // no response of a resource carries the x-fapi-interaction-id of FAPI 1.0 Advanced Final section
-    // 6.2.1, which FAPI 2.0 dropped and no other run of this task asks for
-    'heidi#315',
     // the TLS listener still offers the two ChaCha20-Poly1305 suites, one per version of TLS, that
     // section 8.5 does not permit
     'heidi#316',

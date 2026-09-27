@@ -8,6 +8,7 @@ use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Http\DpopProofHeader;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
+use Heidi\Bundle\Http\ServesAProtectedResourceInterface;
 use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
 use Heidi\Oidc\Domain\Token\JwtPayload;
@@ -24,9 +25,12 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * The UserInfo endpoint (OIDC Core §5.3), GET or POST; a GET hands the module no parameter at all
  * (RFC 6750 §2.3).
+ *
+ * It is a protected resource of the provider, the first one: an access token is presented here, and every
+ * answer it writes names the exchange it belongs to (`FapiInteractionId`).
  */
 #[AsController]
-final readonly class UserInfoController
+final readonly class UserInfoController implements ServesAProtectedResourceInterface
 {
     public function __construct(
         private TenantProvider $tenants,

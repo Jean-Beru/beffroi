@@ -48,6 +48,7 @@ use Heidi\Bundle\Http\Decision\DecisionRenderers;
 use Heidi\Bundle\Http\Decision\GrantedRenderer;
 use Heidi\Bundle\Http\Decision\InteractionPage;
 use Heidi\Bundle\Http\Decision\LoginRequiredRenderer;
+use Heidi\Bundle\Http\FapiInteractionId;
 use Heidi\Bundle\Http\FormToken;
 use Heidi\Bundle\Http\DeviceApprovalPage;
 use Heidi\Bundle\Http\LoginTarget;
@@ -428,6 +429,10 @@ return static function (ContainerConfigurator $container): void {
     // The bundle: the two planes (architecture §5.2)
     $services->load('Heidi\\Bundle\\Controller\\', '../src/Controller/');
     $services->set(RequestContextFactory::class);
+    // what every answer of a protected resource of the provider names the exchange with (FAPI 1.0
+    // Advanced Final §6.2.1): read where the resource that will answer is known, written where the
+    // answer is written, and asked of no endpoint
+    $services->set(FapiInteractionId::class);
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
     // what every page of the account asks first: the session of this browser, and the form token when it posts
