@@ -68,7 +68,12 @@ final class AccountHomeTest extends PasskeyTestCase
         $crawler = $this->accountPage();
 
         // Then
-        static::assertCount(5, $crawler->filter('ul[data-sections="5"] li'));
+        static::assertCount(6, $crawler->filter('ul[data-sections="6"] li'));
+        // first of them: it is what makes the page of what somebody is waiting on findable (BCP 10027 §5.2)
+        $approvals = $crawler->filter('li[data-section="heidi_interaction_account_approvals"]');
+        static::assertSame('/account/approvals', $approvals->filter('a')->attr('href'));
+        static::assertSame('Requests waiting for you', $approvals->filter('a')->text());
+        static::assertSame('Nothing waiting for you', $approvals->filter('span[data-state]')->text());
         $profile = $crawler->filter('li[data-section="heidi_interaction_account_profile"]');
         static::assertSame('/account/profile', $profile->filter('a')->attr('href'));
         static::assertSame('Your information', $profile->filter('a')->text());

@@ -151,7 +151,7 @@ final class BackchannelFlowTest extends BrowserTestCase
         $this->signIn($alice);
 
         // When
-        $crawler = $this->browser->request('GET', '/approvals');
+        $crawler = $this->browser->request('GET', '/account/approvals');
 
         // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
@@ -175,11 +175,29 @@ final class BackchannelFlowTest extends BrowserTestCase
         $this->signIn(self::userWithPassword('bob', self::PASSWORD));
 
         // When
-        $crawler = $this->browser->request('GET', '/approvals');
+        $crawler = $this->browser->request('GET', '/account/approvals');
 
         // Then
         static::assertCount(1, $crawler->filter('p[data-approvals="none"]'));
         static::assertCount(0, $crawler->filter('section[data-approval]'));
+    }
+
+    /**
+     * Architecture §5.2: the page offers the way back to the home of the account, whether the browser
+     * reached it from there or from a notification, so that a user who answered, or who had nothing to
+     * answer, is not left on a page with no way out.
+     */
+    #[Test]
+    public function thePageOffersTheWayBackToTheHomeOfTheAccount(): void
+    {
+        // Given
+        $this->signIn(self::userWithPassword('alice', self::PASSWORD));
+
+        // When
+        $crawler = $this->browser->request('GET', '/account/approvals');
+
+        // Then
+        static::assertSame('/account', $crawler->filter('nav a[data-back]')->attr('href'));
     }
 
     /**
@@ -189,7 +207,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     public function thePageAsksForALoginFirst(): void
     {
         // When
-        $this->browser->request('GET', '/approvals');
+        $this->browser->request('GET', '/account/approvals');
 
         // Then
         $response = $this->browser->getResponse();
@@ -282,7 +300,7 @@ final class BackchannelFlowTest extends BrowserTestCase
         $this->answer('Allow');
 
         // When
-        $crawler = $this->browser->request('GET', '/approvals');
+        $crawler = $this->browser->request('GET', '/account/approvals');
 
         // Then
         static::assertCount(1, $crawler->filter('p[data-approvals="none"]'));
@@ -399,7 +417,7 @@ final class BackchannelFlowTest extends BrowserTestCase
 
     private function answer(string $button): void
     {
-        $crawler = $this->browser->request('GET', '/approvals');
+        $crawler = $this->browser->request('GET', '/account/approvals');
         $this->browser->submit($crawler->selectButton($button)->form());
     }
 

@@ -53,6 +53,19 @@ final readonly class WebPushSender
     private const string CONTENT_ENCODING = 'aes128gcm';
 
     /**
+     * The length every notification of this provider is padded to before it is encrypted (RFC 8291 §4), so
+     * that what a push service carries is the same size whatever it says: the words are short and the shape
+     * is always the same three members, so their length would otherwise tell a push service how long a
+     * client's binding message is.
+     *
+     * A constant and not the library's recommendation, which pads to 3052 and leaves under a kilobyte of the
+     * 4096 octets RFC 8291 §4 allows: what a client wrote is text this provider did not choose, and a
+     * notification that grows into the ceiling is one the sender refuses outright rather than delivers
+     * shorter.
+     */
+    private const int PADDED_TO = 1024;
+
+    /**
      * @param string $subject the "sub" of the signed token, a "mailto:" or "https:" URI a push service can
      *                        reach this deployment at when something is wrong with what it sends
      *                        (RFC 8292 §2.1)
@@ -100,7 +113,7 @@ final readonly class WebPushSender
         $extensions = ExtensionManager::create()
             ->add(TTLExtension::create())
             ->add(UrgencyExtension::create())
-            ->add(PayloadExtension::create()->addContentEncoding(AES128GCM::create($this->clock)))
+            ->add(PayloadExtension::create()->addContentEncoding(AES128GCM::create($this->clock)->customPadding(self::PADDED_TO)))
             ->add(VAPIDExtension::create($this->subject, new WebTokenProvider($publicKey, $privateKey), $this->clock));
 
         return WebPush::create($this->http->withOptions([

@@ -25,6 +25,14 @@ final class PushSubscriptionTest extends TestCase
 
     private const string AUTH_SECRET = 'tBHItJI5svbpez7KI4CCXg';
 
+    /**
+     * What the same browser hands over the next time it subscribes: a browser draws both afresh every time
+     * (RFC 8291 §3.1).
+     */
+    private const string OTHER_PUBLIC_KEY = 'BCmti7ScyxVpXpWiRsw88Bt4pPqoQfOF7pwoSHnt4V8MwHbDb-3sQd7mpE4tCLnfbEvJ6VPwxQEO-zPlRrLW4tI';
+
+    private const string OTHER_AUTH_SECRET = 'BTBZMqHH6r4Tts7J_aSIgg';
+
     private User $alice;
 
     protected function setUp(): void
@@ -152,6 +160,60 @@ final class PushSubscriptionTest extends TestCase
         // Then
         static::assertTrue($subscription->isRevoked());
         static::assertEquals(Fixtures::now(), $subscription->revokedAt);
+    }
+
+    /**
+     * Push API §4, RFC 8291 §3.1: a browser that subscribes again draws its keys afresh and may have been
+     * handed another application server key since, and this row is what carries them.
+     */
+    #[Test]
+    public function aBrowserThatSubscribesAgainCarriesWhatItHandedThisTime(): void
+    {
+        // Given
+        $subscription = $this->subscription();
+
+        // When
+        $subscription->resubscribedWith(self::OTHER_PUBLIC_KEY, self::OTHER_AUTH_SECRET, 'the-other-key', 'Alice at home');
+
+        // Then
+        static::assertSame(self::OTHER_PUBLIC_KEY, $subscription->publicKey);
+        static::assertSame(self::OTHER_AUTH_SECRET, $subscription->authSecret);
+        static::assertTrue($subscription->isBoundTo('the-other-key'));
+        static::assertSame('Alice at home', $subscription->label);
+    }
+
+    /**
+     * RFC 8030 §7.3: a browser the user had taken out says it is reachable again by subscribing again.
+     */
+    #[Test]
+    public function aBrowserTakenOutIsReachableAgainWhenItSubscribesAgain(): void
+    {
+        // Given
+        $subscription = $this->subscription();
+        $subscription->revoke(Fixtures::now());
+
+        // When
+        $subscription->resubscribedWith(self::OTHER_PUBLIC_KEY, self::OTHER_AUTH_SECRET, 'the-key', null);
+
+        // Then
+        static::assertFalse($subscription->isRevoked());
+    }
+
+    /**
+     * What the second way in records is what the first one accepts, and nothing else.
+     */
+    #[Test]
+    public function aBrowserThatSubscribesAgainWithAKeyThatIsNotBase64UrlIsRefused(): void
+    {
+        // Given
+        $subscription = $this->subscription();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The public key of a push subscription is base64url (RFC 8291 section 3.1).');
+
+        // When
+        $subscription->resubscribedWith('not base64url', self::OTHER_AUTH_SECRET, 'the-key', null);
     }
 
     private function subscription(

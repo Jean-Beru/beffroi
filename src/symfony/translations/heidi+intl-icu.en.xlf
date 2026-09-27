@@ -805,6 +805,10 @@
         <source>notifications.error.not_served</source>
         <target>This provider does not tell browsers.</target>
       </trans-unit>
+      <trans-unit id="a7c31de490" resname="account.approvals.state">
+        <source>account.approvals.state</source>
+        <target>{count, plural, =0 {Nothing waiting for you} one {One request waiting for you} other {# requests waiting for you}}</target>
+      </trans-unit>
       <trans-unit id="e0bc57b68b" resname="account.notifications.state">
         <source>account.notifications.state</source>
         <target>{count, plural, =0 {No browser told} one {One browser told} other {# browsers told}}</target>

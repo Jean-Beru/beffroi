@@ -43,7 +43,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class PendingApprovalsController
 {
-    public const string ROUTE = 'heidi_interaction_approvals';
+    public const string ROUTE = 'heidi_interaction_account_approvals';
 
     public const string CSRF_TOKEN_ID = 'heidi_approvals';
 
@@ -66,7 +66,7 @@ final readonly class PendingApprovalsController
     ) {
     }
 
-    #[Route('/approvals', name: self::ROUTE, methods: ['GET', 'POST'])]
+    #[Route('/account/approvals', name: self::ROUTE, methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         $tenant = $this->tenants->provide();

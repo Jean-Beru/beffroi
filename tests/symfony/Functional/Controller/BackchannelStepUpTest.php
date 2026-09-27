@@ -97,7 +97,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
         // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
-        static::assertSame('/approvals', $response->headers->get('Location'));
+        static::assertSame('/account/approvals', $response->headers->get('Location'));
         $this->answer('Allow');
         static::assertCount(1, $this->browser->getCrawler()->filter('p[data-answer="approved"]'));
     }
@@ -233,7 +233,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
 
     private function answer(string $button): void
     {
-        $crawler = $this->browser->request('GET', '/approvals');
+        $crawler = $this->browser->request('GET', '/account/approvals');
         $this->browser->submit($crawler->selectButton($button)->form());
     }
 
