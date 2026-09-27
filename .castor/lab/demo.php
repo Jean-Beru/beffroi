@@ -3597,7 +3597,7 @@ function demo_native_check(string $issuer, string $password, string $ca): void
                 ($redirected['state_matches'] ?? false) === true && ($redirected['iss_matches'] ?? false) === true,
                 sprintf('run %d: the client recognises its own flow, by its state and by the issuer (RFC 9207 §2.4)', $run),
             );
-            $tokens = demo_cli_step($cli, 'tokens', $byHand ? (float) DEMO_CIBA_BY_HAND_TIMEOUT : 150.0);
+            $tokens = demo_cli_step($cli, 'tokens');
             demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf(
                 'run %d: it holds a bearer token (got %s)',
                 $run,
