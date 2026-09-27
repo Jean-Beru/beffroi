@@ -157,6 +157,11 @@ final class BackchannelFlowTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertStringContainsString('Payment terminal at the counter', $crawler->filter('body')->text());
         static::assertSame(['Payment of 42 euros'], $crawler->filter('p[data-binding-message]')->extract(['data-binding-message']));
+        static::assertSame(
+            'Payment terminal at the counter says: Payment of 42 euros',
+            $crawler->filter('p[data-binding-message]')->text(),
+            'BCP 10027 section 5.2: the message names the client that wrote it',
+        );
         static::assertSame(['openid', 'profile'], $crawler->filter('li[data-scope]')->extract(['data-scope']));
         static::assertSame(['op.test'], $crawler->filter('p[data-provider]')->extract(['data-provider']), 'BCP 10027 section 5.2: which provider is asking');
         static::assertCount(1, $crawler->filter('p[data-origin]'));
