@@ -113,14 +113,11 @@ const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
 /**
  * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-27 and written whole in
  * docs/conformance-suite.md: rules of the profile, none of them of this flow alone and none of them a
- * gap anybody decided to leave. Three of them are the provider's and one is what this configuration hands
+ * gap anybody decided to leave. Two of them are the provider's and one is what this configuration hands
  * the suite, and they are the runs' and not one module's, which is why they are one line each here and
  * not a "known" module apiece.
  */
 const CONFORMANCE_CIBA_ISSUES = [
-    // the TLS listener still offers the two ChaCha20-Poly1305 suites, one per version of TLS, that
-    // section 8.5 does not permit
-    'heidi#316',
     // this configuration names no acr_value, and a module sends one on a backchannel request
     'heidi#317',
     // a client called back reaches the token endpoint before it will answer, which is why every module
