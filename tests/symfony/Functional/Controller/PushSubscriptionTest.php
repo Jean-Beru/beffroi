@@ -115,6 +115,57 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
+     * Push API §4: the same browser subscribing again hands back the endpoint it already had, so the row it
+     * has is what changes. It is the one path where a row is read and written in the same request, which is
+     * what a second object over one identity is refused by, and what no test against an in-memory store can
+     * see.
+     */
+    #[Test]
+    public function aBrowserThatSubscribesAgainChangesTheRowItHas(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn($alice);
+        self::applicationServerKey();
+        $this->subscribe();
+        $first = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('Nothing was subscribed.');
+
+        // When
+        $this->subscribe(label: 'Alice at home');
+
+        // Then
+        $again = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('The browser is gone.');
+        static::assertTrue($first->id->equals($again->id));
+        static::assertEquals($first->createdAt, $again->createdAt);
+        static::assertSame('Alice at home', $again->label);
+        static::assertCount(1, self::subscriptions()->findActiveByUser(self::reloaded($alice)));
+    }
+
+    /**
+     * RFC 8030 §7.3, Push API §4: a browser the user had taken out is reachable again when it subscribes
+     * again, having just said so, and it does not come back beside itself.
+     */
+    #[Test]
+    public function aBrowserTakenOutIsReachableAgainWhenItSubscribesAgain(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn($alice);
+        self::applicationServerKey();
+        $this->subscribe();
+        $subscription = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('Nothing was subscribed.');
+        $this->browser->request('POST', '/account/notifications/' . $subscription->id->toRfc4122() . '/revoke', [
+            '_token' => $this->token('tr[data-subscription] form'),
+        ]);
+
+        // When
+        $this->subscribe();
+
+        // Then
+        static::assertCount(1, self::subscriptions()->findActiveByUser(self::reloaded($alice)));
+    }
+
+    /**
      * RFC 8030 §2: what could not be a push endpoint is refused, and the page says so.
      */
     #[Test]
@@ -184,14 +235,14 @@ final class PushSubscriptionTest extends BrowserTestCase
         static::assertSame('text/javascript; charset=utf-8', $response->headers->get('Content-Type'));
     }
 
-    private function subscribe(string $endpoint = self::ENDPOINT): void
+    private function subscribe(string $endpoint = self::ENDPOINT, string $label = 'Alice at the counter'): void
     {
         $this->browser->request('POST', '/account/notifications', [
             '_token' => $this->token('form[data-push="subscribe"]'),
             'endpoint' => $endpoint,
             'p256dh' => self::PUBLIC_KEY,
             'auth' => self::AUTH_SECRET,
-            'label' => 'Alice at the counter',
+            'label' => $label,
         ]);
     }
 
