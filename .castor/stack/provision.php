@@ -218,6 +218,24 @@ const DEV_DEMO_CLIENTS = [
     ],
 ];
 
+/**
+ * The issuer of the development stack whose signature the tenant trusts (RFC 7523 §3, issue #299), which
+ * "castor demo --assertion" signs with. Its key lives beside the ones of the ladder and under the same rule:
+ * what a development stack generates is not committed, the provider is given the public half through
+ * apps/op/.env.local, and the lab reads the private one from var/demo/.
+ *
+ * It is not a client, and the name here is not a client identifier: it is the "iss" its assertions carry, the
+ * source of the linked identities their subjects name (`identity_provider`), and the subject the development
+ * user is known by over there, which this task links to that user because nothing else ever writes such a row.
+ */
+const DEV_DEMO_ISSUER = [
+    'issuer' => 'https://issuer.demo.localhost',
+    'env' => 'DEMO_ISSUER_JWKS',
+    'file' => 'demo-issuer',
+    'identity_provider' => 'demo-issuer',
+    'subject' => 'alice@issuer.demo.localhost',
+];
+
 const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -230,6 +248,10 @@ const DEV_CLIENT_SECRETS = [
     'DEMO_FORM_POST_SECRET',
     'DEMO_SERVICE_SECRET',
     'DEMO_GATEWAY_SECRET',
+    'DEMO_CIBA_POLL_SECRET',
+    'DEMO_CIBA_PING_SECRET',
+    'DEMO_ASSERTION_SECRET',
+    'DEMO_RAR_SECRET',
 ];
 
 #[AsTask(
@@ -293,6 +315,10 @@ function provision(
         context()->withInput($env['HEIDI_DEV_USER_PASSWORD'] . "\n"),
     );
     $env['HEIDI_DEV_USER_SUBJECT'] = provision_dev_subject(getcwd() . '/' . DEV_ENV_LOCAL);
+    // Decision 0002: the subject of an assertion of the trusted issuer above is this user through this row
+    // and through nothing else, so it is written before that issuer can name anybody ("castor demo
+    // --assertion"). Replayed on every run, the command refreshes the row rather than adding one.
+    op_console(['heidi:user:link', DEV_USERNAME, DEV_DEMO_ISSUER['identity_provider'], DEV_DEMO_ISSUER['subject']]);
 
     io()->section('Client certificate');
     provision_mtls_client();
@@ -322,10 +348,12 @@ function provision(
         ], DEV_CLIENT_SECRETS),
     );
     io()->note(sprintf(
-        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the %d clients of the FAPI 2 and FAPI-CIBA plans are in %s, whole, and their public half in the same file.',
+        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the %d clients of the FAPI 2 and FAPI-CIBA plans are in %s, whole, and their public half in the same file; the keys of the ladder and of the trusted issuer %s are in %s, the same way.',
         DEV_ENV_LOCAL,
         count(DEV_FAPI_CLIENTS),
         DEV_CONFORMANCE_DIRECTORY,
+        DEV_DEMO_ISSUER['issuer'],
+        DEV_DEMO_DIRECTORY,
     ));
 }
 
@@ -474,7 +502,7 @@ function provision_env_local(?string $kms): array
     // public half of what var/conformance/ holds whole, so the key material is the source and the
     // variable follows it. A key generated again there is published again here, and a variable edited
     // by hand is put back to what the suite will actually sign with.
-    $published = [...provision_fapi_clients($path), ...provision_demo_clients($path)];
+    $published = [...provision_fapi_clients($path), ...provision_demo_clients($path), ...provision_demo_issuer($path)];
 
     if ($lines === [] && $published === []) {
         io()->note(sprintf('%s carries every development value already.', DEV_ENV_LOCAL));
@@ -833,6 +861,40 @@ function provision_demo_clients(string $path): array
     }
 
     return $published;
+}
+
+/**
+ * The signing key of the trusted issuer of the development stack, published to the provider as its public
+ * half (RFC 7523 §3): the tenant holds the keys of an issuer it trusts and reads no key an assertion names,
+ * so the registration is what this writes, and var/demo/ keeps the half the lab signs with.
+ *
+ * @return list<string> the issuer, when its public half was written or rewritten
+ */
+function provision_demo_issuer(string $path): array
+{
+    $directory = getcwd() . '/' . DEV_DEMO_DIRECTORY;
+    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
+        io()->error(sprintf('Cannot create %s.', $directory));
+        exit(1);
+    }
+    $keys = provision_demo_keys($directory, DEV_DEMO_ISSUER['file'], false);
+    $public = array_map(static function (array $key): array {
+        unset($key['d']);
+
+        return $key;
+    }, $keys);
+    $set = json_encode(
+        [
+            'keys' => $public,
+        ],
+        \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES,
+    );
+    if (! provision_env_local_set($path, DEV_DEMO_ISSUER['env'], base64_encode($set))) {
+        return [];
+    }
+    io()->text(sprintf('Published the public JWK Set of the trusted issuer %s into %s.', DEV_DEMO_ISSUER['issuer'], DEV_ENV_LOCAL));
+
+    return [DEV_DEMO_ISSUER['issuer']];
 }
 
 /**

@@ -123,6 +123,7 @@ use Heidi\Core\Application\Authentication\SessionOpener;
 use Heidi\Core\Application\Authentication\SessionTerminator;
 use Heidi\Core\Application\Credential\ActiveCredentials;
 use Heidi\Core\Application\Credential\CredentialRevocation;
+use Heidi\Core\Application\Identity\IdentityLinker;
 use Heidi\Core\Application\Identity\UserProvisioner;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Application\Passkey\PasskeyAuthentication;
@@ -738,6 +739,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SessionTerminator::class);
     $services->set(AuthenticationRefusal::class);
     $services->set(UserProvisioner::class);
+    // Decision 0002: the one way a row saying a user is a subject at an upstream provider comes to exist
+    // outside a flow that receives one; what needs it today is the JWT bearer grant (RFC 7523 §3)
+    $services->set(IdentityLinker::class);
 
     // The module: every value this provider hands out and recognises again is drawn here (issue #245)
     $services->set(SecretDrawer::class);
