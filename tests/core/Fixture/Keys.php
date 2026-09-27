@@ -26,6 +26,8 @@ final class Keys
 
     private static ?GeneratedKeyPair $encryptionPair = null;
 
+    private static ?GeneratedKeyPair $applicationServerPair = null;
+
     private static ?EnvelopeEncrypter $envelopes = null;
 
     private static ?EnvelopeKeySealer $sealer = null;
@@ -46,6 +48,15 @@ final class Keys
     public static function encryptionPair(): GeneratedKeyPair
     {
         return self::$encryptionPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::ecdhEsA256Kw());
+    }
+
+    /**
+     * The application server key pair of a tenant, over P-256: what a browser subscribes under and what
+     * signs a push to it afterwards (RFC 8292 §2).
+     */
+    public static function applicationServerPair(): GeneratedKeyPair
+    {
+        return self::$applicationServerPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::vapid());
     }
 
     /**

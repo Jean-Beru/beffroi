@@ -213,6 +213,44 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
+     * Issue #98: a name no registry carries is refused with what each of them had to say about it, so
+     * that an operator who typed one reads what this provider does sign with, is encrypted to with, and
+     * hands out.
+     */
+    #[Test]
+    public function aNameNoRegistryCarriesIsRefusedWithWhatEachOfThemServes(): void
+    {
+        // Then
+        $this->expectException(UnsupportedAlgorithmException::class);
+        $this->expectExceptionMessageIs('This provider does not sign with "HS256"; it signs with RS256, PS256, ES256, EdDSA. '
+        . 'This provider is not encrypted to with "HS256"; it is encrypted to with ECDH-ES+A256KW, RSA-OAEP-256. '
+        . 'This provider hands out no key named "HS256"; it hands out VAPID.');
+
+        // When
+        Algorithms::everyUse()->named('HS256');
+    }
+
+    /**
+     * The first refusal is the trail: what the registry a name would most likely have belonged to said
+     * about it is what a reader of the exception follows.
+     */
+    #[Test]
+    public function theRefusalOfTheFirstRegistryIsTheTrail(): void
+    {
+        // When
+        try {
+            Algorithms::everyUse()->named('HS256');
+            static::fail('A name no registry carries is refused.');
+        } catch (UnsupportedAlgorithmException $refusal) {
+            // Then
+            static::assertSame(
+                'This provider does not sign with "HS256"; it signs with RS256, PS256, ES256, EdDSA.',
+                $refusal->getPrevious()?->getMessage(),
+            );
+        }
+    }
+
+    /**
      * Open by addition: an algorithm the core, the module and the bundle have never heard of is generated,
      * signed with and published because it was wired, and for no other reason.
      */
@@ -223,7 +261,9 @@ final class SignatureAlgorithmsTest extends TestCase
         $unwired = new FakeSignatureAlgorithm();
         $algorithms = new JoseSignatureAlgorithms([$unwired]);
         $repository = new InMemoryTenantKeyRepository();
-        $pair = new JwtLibraryKeyPairGenerator(new JoseKeyAlgorithms($algorithms, Algorithms::noKeyEncryption()))->generate($unwired);
+        $pair = new JwtLibraryKeyPairGenerator(
+            new JoseKeyAlgorithms($algorithms, Algorithms::noKeyEncryption(), Algorithms::noApplicationServer()),
+        )->generate($unwired);
         $key = new TenantKey(
             $pair->kid,
             $this->tenant,

@@ -1,0 +1,174 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Core\Tests\Domain\Identity;
+
+use Heidi\Core\Domain\Identity\PushSubscription;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Exception\InvalidArgumentException;
+use Heidi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * RFC 8030 §2, RFC 8291 §3.1, RFC 8292 §3.2: what a browser hands over when it subscribes, and what this
+ * provider refuses to keep as a subscription.
+ */
+final class PushSubscriptionTest extends TestCase
+{
+    private const string ENDPOINT = 'https://push.example/f/AbCdEf';
+
+    private const string PUBLIC_KEY = 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM';
+
+    private const string AUTH_SECRET = 'tBHItJI5svbpez7KI4CCXg';
+
+    private User $alice;
+
+    protected function setUp(): void
+    {
+        $this->alice = Fixtures::user(Fixtures::tenant());
+    }
+
+    /**
+     * Decision 0002: the tenant of a subscription is the tenant of the user it belongs to, restated.
+     */
+    #[Test]
+    public function itBelongsToTheTenantOfItsUser(): void
+    {
+        // When
+        $subscription = $this->subscription();
+
+        // Then
+        static::assertTrue($subscription->tenant->equals($this->alice->tenant));
+    }
+
+    /**
+     * A browser is recognised by the digest of its endpoint, whatever its length.
+     */
+    #[Test]
+    public function itIsRecognisedByTheDigestOfItsEndpoint(): void
+    {
+        // When / Then
+        static::assertSame(PushSubscription::digestOf(self::ENDPOINT), $this->subscription()->endpointHash);
+    }
+
+    /**
+     * RFC 8030 §2: a push service takes a message over HTTPS, and nothing else is an endpoint.
+     */
+    #[Test]
+    public function anEndpointThatIsNotHttpsIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A push subscription is delivered to over HTTPS (RFC 8030 section 2).');
+
+        // When
+        $this->subscription(endpoint: 'http://push.example/f/AbCdEf');
+    }
+
+    /**
+     * RFC 8291 §3.1: the two keys arrive base64url, and what is not is not a key of a browser.
+     */
+    #[Test]
+    #[DataProvider('provideKeysThatAreNotBase64Url')]
+    public function aKeyThatIsNotBase64UrlIsRefused(string $publicKey, string $authSecret, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->subscription(publicKey: $publicKey, authSecret: $authSecret);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function provideKeysThatAreNotBase64Url(): iterable
+    {
+        yield 'a public key with padding' => [
+            self::PUBLIC_KEY . '==',
+            self::AUTH_SECRET,
+            'The public key of a push subscription is base64url (RFC 8291 section 3.1).',
+        ];
+        yield 'an empty public key' => [
+            '',
+            self::AUTH_SECRET,
+            'The public key of a push subscription is base64url (RFC 8291 section 3.1).',
+        ];
+        yield 'an authentication secret in standard base64' => [
+            self::PUBLIC_KEY,
+            'tBHItJI5svbpez7KI4CC+g',
+            'The authentication secret of a push subscription is base64url (RFC 8291 section 3.1).',
+        ];
+    }
+
+    /**
+     * RFC 8292 §3.2: a subscription is bound to the application server key it was made under, so one
+     * that names none is one nobody could sign a push for.
+     */
+    #[Test]
+    public function itNamesTheApplicationServerKeyItWasMadeUnder(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A push subscription names the application server key it was made under (RFC 8292 section 3.2).');
+
+        // When
+        $this->subscription(kid: '');
+    }
+
+    /**
+     * RFC 8292 §4.2: a push signed by another key is refused by the push service, so the key a
+     * subscription names is the only one that may sign for it.
+     */
+    #[Test]
+    public function itIsBoundToOneKeyAndNotToAnother(): void
+    {
+        // Given
+        $subscription = $this->subscription(kid: 'the-key');
+
+        // When / Then
+        static::assertTrue($subscription->isBoundTo('the-key'));
+        static::assertFalse($subscription->isBoundTo('another-key'));
+    }
+
+    /**
+     * The row stays, as it does for every credential of a user, and the first revocation wins.
+     */
+    #[Test]
+    public function aRevokedSubscriptionKeepsTheDateOfTheFirstRevocation(): void
+    {
+        // Given
+        $subscription = $this->subscription();
+        $subscription->revoke(Fixtures::now());
+
+        // When
+        $subscription->revoke(Fixtures::now()->modify('+1 hour'));
+
+        // Then
+        static::assertTrue($subscription->isRevoked());
+        static::assertEquals(Fixtures::now(), $subscription->revokedAt);
+    }
+
+    private function subscription(
+        string $endpoint = self::ENDPOINT,
+        string $publicKey = self::PUBLIC_KEY,
+        string $authSecret = self::AUTH_SECRET,
+        string $kid = 'the-key',
+    ): PushSubscription {
+        return new PushSubscription(
+            Uuid::v7(),
+            $this->alice,
+            $endpoint,
+            $publicKey,
+            $authSecret,
+            $kid,
+            'Alice at the counter',
+            Fixtures::now(),
+        );
+    }
+}

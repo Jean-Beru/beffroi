@@ -737,6 +737,90 @@
         <source>approvals.answered.denied</source>
         <target>{client} a été refusé. Rien ne lui a été remis, et vous pouvez fermer cette page.</target>
       </trans-unit>
+      <trans-unit id="93dc1e5079" resname="notifications.title">
+        <source>notifications.title</source>
+        <target>Notifications</target>
+      </trans-unit>
+      <trans-unit id="d0d4c1e8a2" resname="notifications.signed_in_as">
+        <source>notifications.signed_in_as</source>
+        <target>Vous êtes connecté en tant que {username}.</target>
+      </trans-unit>
+      <trans-unit id="07e99afba9" resname="notifications.what_is_sent">
+        <source>notifications.what_is_sent</source>
+        <target>Un navigateur ajouté ici est prévenu quand quelque chose attend votre réponse. Ce qui lui est dit, c'est qui demande et ce qui a été écrit ; il ne porte jamais une demande et n'en approuve aucune, vous venez toujours ici pour la voir.</target>
+      </trans-unit>
+      <trans-unit id="1a8a70cf10" resname="notifications.none">
+        <source>notifications.none</source>
+        <target>Aucun de vos navigateurs n'est prévenu.</target>
+      </trans-unit>
+      <trans-unit id="6bee5ae6f1" resname="notifications.label">
+        <source>notifications.label</source>
+        <target>Navigateur</target>
+      </trans-unit>
+      <trans-unit id="9ccb115d7e" resname="notifications.unnamed">
+        <source>notifications.unnamed</source>
+        <target>Sans nom</target>
+      </trans-unit>
+      <trans-unit id="463cb30490" resname="notifications.created_at">
+        <source>notifications.created_at</source>
+        <target>Ajouté le</target>
+      </trans-unit>
+      <trans-unit id="87dc9c5a99" resname="notifications.last_pushed_at">
+        <source>notifications.last_pushed_at</source>
+        <target>Dernier message</target>
+      </trans-unit>
+      <trans-unit id="cbcf139564" resname="notifications.never_pushed">
+        <source>notifications.never_pushed</source>
+        <target>Jamais</target>
+      </trans-unit>
+      <trans-unit id="349298c2df" resname="notifications.revoke">
+        <source>notifications.revoke</source>
+        <target>Ne plus prévenir ce navigateur</target>
+      </trans-unit>
+      <trans-unit id="9874b08d83" resname="notifications.new_label">
+        <source>notifications.new_label</source>
+        <target>Nommez ce navigateur</target>
+      </trans-unit>
+      <trans-unit id="2fada520c3" resname="notifications.subscribe">
+        <source>notifications.subscribe</source>
+        <target>Prévenir ce navigateur</target>
+      </trans-unit>
+      <trans-unit id="fb344c54e6" resname="notifications.unsupported">
+        <source>notifications.unsupported</source>
+        <target>Ce navigateur ne peut pas être prévenu ; utilisez-en un qui sait afficher des notifications.</target>
+      </trans-unit>
+      <trans-unit id="092d481e7c" resname="notifications.not_served">
+        <source>notifications.not_served</source>
+        <target>Ce fournisseur ne prévient pas les navigateurs.</target>
+      </trans-unit>
+      <trans-unit id="b7d8776630" resname="notifications.error.browser">
+        <source>notifications.error.browser</source>
+        <target>Ce navigateur n'a pas été ajouté. Il a peut-être refusé les notifications.</target>
+      </trans-unit>
+      <trans-unit id="e773e70d91" resname="notifications.error.refused">
+        <source>notifications.error.refused</source>
+        <target>Ce que ce navigateur a envoyé n'est pas une adresse à laquelle un service de notification pourrait livrer.</target>
+      </trans-unit>
+      <trans-unit id="99fed0616f" resname="notifications.error.not_served">
+        <source>notifications.error.not_served</source>
+        <target>Ce fournisseur ne prévient pas les navigateurs.</target>
+      </trans-unit>
+      <trans-unit id="e0bc57b68b" resname="account.notifications.state">
+        <source>account.notifications.state</source>
+        <target>{count, plural, =0 {Aucun navigateur prévenu} one {Un navigateur prévenu} other {# navigateurs prévenus}}</target>
+      </trans-unit>
+      <trans-unit id="ac987c5e1e" resname="push.approval.title">
+        <source>push.approval.title</source>
+        <target>{provider}</target>
+      </trans-unit>
+      <trans-unit id="cfcb9f29bb" resname="push.approval.body">
+        <source>push.approval.body</source>
+        <target>{client} vous demande d'approuver une connexion. Ouvrez votre compte pour répondre.</target>
+      </trans-unit>
+      <trans-unit id="23fcbc70a0" resname="push.approval.body_with_message">
+        <source>push.approval.body_with_message</source>
+        <target>{client} vous demande d'approuver : {message}. Ouvrez votre compte pour répondre.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

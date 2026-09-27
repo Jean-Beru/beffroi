@@ -389,6 +389,20 @@ use Webauthn\MetadataService\CertificateChain\CertificateChainValidator;
 use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 use Webauthn\MetadataService\MetadataStatementRepository;
 use Webauthn\MetadataService\StatusReportRepository;
+use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
+use Heidi\Core\Port\ApplicationServerKeyProviderInterface;
+use Heidi\Core\Port\ApplicationServerAlgorithmsInterface;
+use Heidi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
+use Heidi\Core\Application\Push\PushSubscriptionRevocation;
+use Heidi\Core\Application\Push\PushSubscriptionEnrolment;
+use Heidi\Bundle\Configuration\WebPushSection;
+use Heidi\Bundle\Push\WebPushSender;
+use Heidi\Bundle\Http\NotificationsPage;
+use Heidi\Bundle\Http\BundleScript;
+use Heidi\Bundle\Http\Account\NotificationsSection;
+use Heidi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
+use Heidi\Bundle\Ciba\WebPushApprovalChannel;
 
 /*
  * Every service of the core, of the module and of the bundle, autowired, the ports aliased to their one
@@ -421,7 +435,20 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginTarget::class);
     $services->set(DeviceApprovalPage::class);
     $services->set(PendingApprovalsPage::class);
+    // Reaching a user through the push service of a browser they signed in with (RFC 8030, §5.6): the
+    // pages they subscribe on, what leaves this provider, and the channel the lane hands an approval to.
+    // The channel and the algorithm of the key are tagged by WebPushSection and only when a deployment
+    // names a subject, a channel nobody wired being a channel nobody wanted.
+    $services->set(PushSubscriptionEnrolment::class);
+    $services->set(PushSubscriptionRevocation::class);
+    $services->set(NotificationsPage::class);
+    $services->set(WebPushSender::class)->args([
+        '$subject' => '',
+        '$timeout' => WebPushSection::DEFAULT_TIMEOUT,
+    ]);
+    $services->set(WebPushApprovalChannel::class);
     $services->set(AccountAccess::class);
+    $services->set(BundleScript::class);
     // the pages of the account, in the order they are wired: what the home of the account offers, and the
     // one place a kind of credential is known; a page added to the account is a section beside these and a
     // line here, and neither the home page nor its template is edited
@@ -429,6 +456,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PasskeysSection::class)->tag('heidi.account_section');
     $services->set(TwoFactorSection::class)->tag('heidi.account_section');
     $services->set(ConsentsSection::class)->tag('heidi.account_section');
+    $services->set(NotificationsSection::class)->tag('heidi.account_section');
     $services->set(AccountSections::class)->args([tagged_iterator('heidi.account_section')]);
     $services->set(AccountHomePage::class);
     $services->set(InteractionLocale::class)->args([
@@ -578,6 +606,9 @@ return static function (ContainerConfigurator $container): void {
     // assertion of a trusted issuer resolves through (RFC 7523 §2.1)
     $services->set(DoctrineLinkedIdentityRepository::class);
     $services->alias(LinkedIdentityRepositoryInterface::class, DoctrineLinkedIdentityRepository::class);
+    // the browsers of a user this provider may push to (decision 0002, §5.6)
+    $services->set(DoctrinePushSubscriptionRepository::class);
+    $services->alias(PushSubscriptionRepositoryInterface::class, DoctrinePushSubscriptionRepository::class);
     $services->set(DoctrineCredentialRepository::class);
     $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
     $services->set(DoctrineAuthenticationSessionRepository::class);
@@ -618,6 +649,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(SigningKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(DecryptionKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(PublicKeySetProviderInterface::class, SealedKeyProvider::class);
+    $services->alias(ApplicationServerKeyProviderInterface::class, SealedKeyProvider::class);
     // The algorithms the provider signs with: one class per algorithm, tagged; the first tagged one is
     // the default, the one an access token, a signed introspection response and a client that registered
     // none are signed with. A new algorithm is a class and a line here, and the discovery document, the
@@ -651,6 +683,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JoseContentEncryptionAlgorithms::class)->args([tagged_iterator('heidi.content_encryption_algorithm')]);
     $services->alias(ContentEncryptionAlgorithmsInterface::class, JoseContentEncryptionAlgorithms::class);
     $services->set(JoseEncryptionAlgorithms::class);
+    // The algorithms of the keys the tenant hands out itself rather than publishing in its JWK Set
+    // (RFC 8292 §2): wired by the deployment that reaches its users by push and by no other, so that a
+    // deployment that does not draws no such key and has no page that would hand one out (§5.6).
+    $services->set(Vapid::class);
+    $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('heidi.application_server_algorithm')]);
+    $services->alias(ApplicationServerAlgorithmsInterface::class, JoseApplicationServerAlgorithms::class);
     // What a key may be generated for, the two lists read as one: the key commands and the key files
     // resolve an algorithm name against this, whatever the key is published for
     $services->set(JoseKeyAlgorithms::class);

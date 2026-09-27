@@ -31,6 +31,7 @@
         "spomky-labs/aes-key-wrap": "^7.0",
         "spomky-labs/otphp": "^11.5",
         "spomky-labs/pki-framework": "^1.2.1",
+        "spomky-labs/web-push-lib": "^3.2",
         "symfony/clock": "8.2.*",
         "symfony/config": "8.2.*",
         "symfony/console": "^8.1",

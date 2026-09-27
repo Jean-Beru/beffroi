@@ -183,11 +183,13 @@ const DEV_FAPI_CLIENTS = [
 /**
  * The keys the tenant holds beside the one the provider signs with by default: ES256, because the four
  * clients of the FAPI 2 plans register it for everything the provider signs for them and the profile
- * refuses RS256, and the key a client encrypts a request object to, same custody, same four states,
- * published with "use": "enc" (issue #164). A key that is published already is kept and rotated by hand;
- * nothing here generates a second one.
+ * refuses RS256, the key a client encrypts a request object to, same custody, same four states,
+ * published with "use": "enc" (issue #164), and the application server key of Web Push, same custody
+ * again and the one key the tenant hands out itself rather than publishing (RFC 8292 §2, issue #265): a
+ * browser subscribes under it, so it exists before anybody opens the page of their notifications. A key
+ * that is published already is kept and rotated by hand; nothing here generates a second one.
  */
-const DEV_KEY_ALGORITHMS = ['ES256', 'ECDH-ES+A256KW'];
+const DEV_KEY_ALGORITHMS = ['ES256', 'ECDH-ES+A256KW', 'VAPID'];
 
 /**
  * Where the key material of the rungs of the ladder of demonstration clients lives (issue #201), beside

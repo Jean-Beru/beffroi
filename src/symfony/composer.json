@@ -25,6 +25,7 @@
         "heidi/core": "self.version",
         "heidi/oidc": "self.version",
         "psr/event-dispatcher": "^1.0",
+        "spomky-labs/web-push-lib": "^3.2",
         "symfony/clock": "8.2.*",
         "symfony/config": "8.2.*",
         "symfony/console": "^8.1",

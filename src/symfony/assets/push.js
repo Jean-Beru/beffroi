@@ -1,0 +1,92 @@
+/*
+ * The browser side of a push subscription (Push API §4, architecture §5.2, §5.6): the page of the
+ * account names, in data-application-server-key, the public half of the application server key of the
+ * tenant (RFC 8292 §3.2) and, in data-worker-url, the service worker that will receive. The script
+ * registers the worker, asks the user for permission, subscribes to their own push service, writes the
+ * endpoint and the two keys the subscription carries into the hidden fields of the form and submits it,
+ * so that the answer is a redirection the browser follows, as with every other form of these pages.
+ *
+ * Nothing is loaded from anywhere else, and nothing of a subscription reaches this provider but what the
+ * form posts.
+ */
+(() => {
+    'use strict';
+
+    const form = document.querySelector('form[data-push="subscribe"]');
+    if (!form) {
+        return;
+    }
+
+    const supported = 'serviceWorker' in navigator
+        && 'PushManager' in window
+        && typeof Notification === 'function';
+
+    const unsupported = document.querySelector('[data-push-unsupported]');
+    const refused = form.querySelector('[data-push-error]');
+
+    if (!supported || !form.dataset.applicationServerKey) {
+        if (unsupported) {
+            unsupported.hidden = false;
+        }
+
+        return;
+    }
+
+    form.hidden = false;
+    if (unsupported) {
+        unsupported.hidden = true;
+    }
+
+    /* RFC 8292 §3.2: the uncompressed point, base64url, as the bytes the Push API takes. */
+    const bytesOf = (base64url) => {
+        const padded = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const binary = window.atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+
+        return bytes;
+    };
+
+    const base64urlOf = (buffer) => {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        bytes.forEach((byte) => {
+            binary += String.fromCharCode(byte);
+        });
+
+        return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+
+    const fail = () => {
+        if (refused) {
+            refused.hidden = false;
+        }
+    };
+
+    form.querySelector('[data-push-button]').addEventListener('click', async () => {
+        if (refused) {
+            refused.hidden = true;
+        }
+        try {
+            if (await Notification.requestPermission() !== 'granted') {
+                fail();
+
+                return;
+            }
+            const registration = await navigator.serviceWorker.register(form.dataset.workerUrl);
+            await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: bytesOf(form.dataset.applicationServerKey),
+            });
+            form.querySelector('input[name="endpoint"]').value = subscription.endpoint;
+            form.querySelector('input[name="p256dh"]').value = base64urlOf(subscription.getKey('p256dh'));
+            form.querySelector('input[name="auth"]').value = base64urlOf(subscription.getKey('auth'));
+            form.submit();
+        } catch (error) {
+            fail();
+        }
+    });
+})();
