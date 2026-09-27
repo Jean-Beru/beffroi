@@ -286,6 +286,25 @@ heidi:
             requires_consent: false
             access_token_format: opaque
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # RFC 9396 §2 (issue #225): what a client asks for beyond its scopes. The type is the class the
+        # services section below wires, as a deployment wires the one its own domain asks for; the two
+        # shapes again, so that what a self-contained token carries and what the introspection of an opaque
+        # one renders are compared on one flow. The first requires consent, the page being where the user
+        # reads what they are about to agree to.
+        rar-app:
+            name: 'Application that asks for more than a scope'
+            secret: 'rar-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://rar.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            authorization_details_types: ['account_information']
+        rar-opaque-app:
+            name: 'Application that asks for more than a scope, with opaque tokens'
+            secret: 'rar-opaque-secret-of-at-least-32-character'
+            redirect_uris: ['https://rar.test/opaque']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            access_token_format: opaque
+            authorization_details_types: ['account_information']
         # RFC 6749 §4.4 (issue #218): a service acting for itself. It registers no redirect URI, there being
         # no browser of anybody's to send anywhere, and the resources its tokens are addressed to; the two
         # shapes again, so that what a self-contained token says and what the introspection of an opaque one
@@ -377,6 +396,12 @@ services:
     # (disableReboot) and names its own numbers through the environment.
     heidi.load.storage:
         class: Symfony\Component\RateLimiter\Storage\InMemoryStorage
+
+    # RFC 9396 §2 (issue #225): one class per type of authorization detail, tagged, which is the whole of
+    # what a deployment adds to serve one. The bundle wires none, no type of detail being universal, so
+    # this kernel is the deployment that wires one; the type of the test fixtures is that class.
+    Heidi\Oidc\Tests\Fixture\InventedAuthorizationDetailType:
+        tags: ['heidi.oidc.authorization_detail_type']
 
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
     heidi_test.kms:

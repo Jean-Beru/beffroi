@@ -34,7 +34,10 @@ use Heidi\Bundle\Configuration\TokensSection;
 use Heidi\Bundle\Configuration\TrustedIssuersSection;
 use Heidi\Bundle\Configuration\WebauthnSection;
 use Heidi\Bundle\Doctrine\Type\ConfirmationType;
+use Heidi\Bundle\Doctrine\Type\AuthorizationDetailsType;
+use Heidi\Bundle\Doctrine\Type\NeedsAuthorizationDetailTypesInterface;
 use Heidi\Bundle\Doctrine\Type\NeedsConfirmationReaderInterface;
+use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
@@ -88,6 +91,7 @@ final class HeidiBundle extends AbstractBundle
         RedirectUriType::NAME => RedirectUriType::class,
         ScopesType::NAME => ScopesType::class,
         ResourceIndicatorsType::NAME => ResourceIndicatorsType::class,
+        AuthorizationDetailsType::NAME => AuthorizationDetailsType::class,
         BindingMessageType::NAME => BindingMessageType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
@@ -104,7 +108,7 @@ final class HeidiBundle extends AbstractBundle
     /**
      * The types that read a wiring back are told what the deployment is wired with, as soon as the
      * container can answer: which algorithm a stored password hash names, which kind of confirmation a
-     * stored "cnf" names. It goes to the class and not to an instance: Doctrine builds its types itself,
+     * stored "cnf" names, what an "authorization_details" a user agreed to asks for. It goes to the class and not to an instance: Doctrine builds its types itself,
      * when a connection is first made, so no instance of one exists while the bundles boot. A deployment
      * has one wiring, and a kernel booted after another hands over the same one.
      */
@@ -116,12 +120,16 @@ final class HeidiBundle extends AbstractBundle
         }
         $algorithms = $container->has('heidi.password_algorithms') ? $container->get('heidi.password_algorithms') : null;
         $confirmations = $container->has('heidi.confirmations') ? $container->get('heidi.confirmations') : null;
+        $authorizationDetails = $container->has('heidi.authorization_detail_types') ? $container->get('heidi.authorization_detail_types') : null;
         foreach (self::DBAL_TYPES as $class) {
             if ($algorithms instanceof PasswordAlgorithmsInterface && is_a($class, NeedsPasswordAlgorithmsInterface::class, true)) {
                 $class::resolveWith($algorithms);
             }
             if ($confirmations instanceof ConfirmationReaderInterface && is_a($class, NeedsConfirmationReaderInterface::class, true)) {
                 $class::resolveWith($confirmations);
+            }
+            if ($authorizationDetails instanceof AuthorizationDetailsReaderInterface && is_a($class, NeedsAuthorizationDetailTypesInterface::class, true)) {
+                $class::resolveWith($authorizationDetails);
             }
         }
     }

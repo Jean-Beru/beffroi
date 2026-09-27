@@ -61,6 +61,10 @@
         <source>consent.request</source>
         <target>{client} asks for access to:</target>
       </trans-unit>
+      <trans-unit id="57188e00f3" resname="consent.authorization_details">
+        <source>consent.authorization_details</source>
+        <target>{client} also asks to be allowed to:</target>
+      </trans-unit>
       <trans-unit id="271b1bd84f" resname="consent.allow">
         <source>consent.allow</source>
         <target>Allow</target>

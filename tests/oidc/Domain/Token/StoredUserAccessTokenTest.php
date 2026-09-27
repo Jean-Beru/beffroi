@@ -182,6 +182,7 @@ final class StoredUserAccessTokenTest extends TestCase
             $scopes ?? new Scopes([Scope::openid()]),
             null,
             null,
+            null,
             new AuthenticationSnapshot(Fixtures::now(), $methods ?? ['pwd'], '1'),
             Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+10 minutes'),

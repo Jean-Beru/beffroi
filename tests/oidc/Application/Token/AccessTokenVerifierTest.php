@@ -32,6 +32,7 @@ use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Exception\InvalidTokenException;
 use Heidi\Oidc\Tests\Fixture\Bindings;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Heidi\Oidc\Tests\Fixture\Shapes;
@@ -176,6 +177,74 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertSame('1', $signIn->authentication->contextClass);
         static::assertEquals(Fixtures::now(), $token->issuedAt);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $token->expiresAt);
+    }
+
+    /**
+     * RFC 9396 §7: the details of a self-contained token are read back through the types the provider is
+     * wired with, which are the only things that know what any of them means.
+     */
+    #[Test]
+    public function itReadsTheAuthorizationDetailsOfASelfContainedToken(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details('acct-4711', ['read']);
+        $this->knows(self::with([
+            'authorization_details' => $details->toClaim(),
+        ]));
+
+        // When
+        $token = $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertTrue($token->authorizationDetails?->equals($details));
+    }
+
+    /**
+     * A token naming a type the provider no longer serves is a token it can no longer describe, so it is
+     * refused rather than described without the part that says what it was for.
+     */
+    #[Test]
+    public function itRefusesASelfContainedTokenNamingATypeNobodyServes(): void
+    {
+        // Given
+        $this->knows(self::with([
+            'authorization_details' => [
+                [
+                    'type' => AuthorizationDetailTypes::UNSERVED,
+                    'account' => 'acct-4711',
+                ],
+            ],
+        ]));
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+
+        // When
+        $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now()->modify('+9 minutes'));
+    }
+
+    /**
+     * RFC 9396 §9: the record of an opaque token carries the details, which is what its introspection
+     * renders, so the two shapes say the same thing.
+     */
+    #[Test]
+    public function itReadsTheAuthorizationDetailsOfTheRecordOfAnOpaqueToken(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details('acct-4711', ['read']);
+        $this->storedTokens->save(Tokens::storedAccessToken(
+            $this->opaque,
+            $this->client,
+            Fixtures::session(Fixtures::user($this->tenant)),
+            Fixtures::now(),
+            authorizationDetails: $details,
+        ));
+
+        // When
+        $token = $this->verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertTrue($token->authorizationDetails?->equals($details));
     }
 
     /**
@@ -574,7 +643,9 @@ final class AccessTokenVerifierTest extends TestCase
                         'act' => [
                             'act' => [
                                 'act' => [
-                                    'sub' => 'gateway',
+                                    'act' => [
+                                        'sub' => 'gateway',
+                                    ],
                                 ],
                             ],
                         ],
@@ -980,7 +1051,7 @@ final class AccessTokenVerifierTest extends TestCase
         $clients->save($this->client);
         $verifier = new AccessTokenVerifier(
             [
-                new JwtAccessTokenVerifier($this->jws, $clients, Bindings::wired()),
+                new JwtAccessTokenVerifier($this->jws, $clients, Bindings::wired(), AuthorizationDetailTypes::served()),
                 new OpaqueAccessTokenVerifier($this->storedTokens, new PublicSubjectIdentifierResolver()),
             ],
             new ServedAccessTokenShapes([new FakeAccessTokenIssuer('jwt')]),

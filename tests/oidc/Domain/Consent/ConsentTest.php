@@ -8,10 +8,13 @@ use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
+use function array_column;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -148,7 +151,7 @@ final class ConsentTest extends TestCase
         $later = Fixtures::now()->modify('+1 day');
 
         // When
-        $extended = $this->consent->extendedWith(new Scopes([Scope::openid(), new Scope('email')]), Uuid::v7(), $later);
+        $extended = $this->consent->extendedWith(new Scopes([Scope::openid(), new Scope('email')]), null, Uuid::v7(), $later);
 
         // Then
         static::assertSame(['openid', 'profile', 'email'], $extended->scopes->values());
@@ -159,6 +162,113 @@ final class ConsentTest extends TestCase
         static::assertFalse($extended->id->equals($this->consent->id));
     }
 
+    /**
+     * RFC 9396 §2: a consent carries what the user agreed to beyond the scopes, and a consent given for
+     * nothing structured carries none.
+     */
+    #[Test]
+    public function aConsentCarriesTheAuthorizationDetailsItWasGiven(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details();
+
+        // When
+        $consent = new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([Scope::openid()]), Fixtures::now(), $details);
+
+        // Then
+        static::assertSame($details, $consent->authorizationDetails);
+        static::assertNull($this->consent->authorizationDetails);
+    }
+
+    /**
+     * Architecture §4.3: what a user agreed to is never taken back by a new agreement, the details no more
+     * than the scopes.
+     */
+    #[Test]
+    public function extendingItGivesANewConsentWithTheAuthorizationDetailsOfBothEachOnce(): void
+    {
+        // Given
+        $consent = new Consent(
+            Uuid::v7(),
+            $this->user,
+            $this->client,
+            new Scopes([Scope::openid()]),
+            Fixtures::now(),
+            AuthorizationDetailTypes::details('acct-4711'),
+        );
+
+        // When
+        $extended = $consent->extendedWith(
+            new Scopes([Scope::openid()]),
+            new AuthorizationDetails([AuthorizationDetailTypes::detail('acct-4711'), AuthorizationDetailTypes::detail('acct-0815')]),
+            Uuid::v7(),
+            Fixtures::now()->modify('+1 day'),
+        );
+
+        // Then
+        static::assertSame(
+            ['acct-4711', 'acct-0815'],
+            array_column($extended->authorizationDetails?->toClaim() ?? [], 'account'),
+        );
+    }
+
+    /**
+     * A request that asks for no detail takes nothing back from a consent that carries some.
+     */
+    #[Test]
+    public function extendingItWithNoDetailKeepsTheOnesItCarries(): void
+    {
+        // Given
+        $consent = new Consent(
+            Uuid::v7(),
+            $this->user,
+            $this->client,
+            new Scopes([Scope::openid()]),
+            Fixtures::now(),
+            AuthorizationDetailTypes::details('acct-4711'),
+        );
+
+        // When
+        $extended = $consent->extendedWith(new Scopes([Scope::openid()]), null, Uuid::v7(), Fixtures::now()->modify('+1 day'));
+
+        // Then
+        static::assertTrue($extended->authorizationDetails?->equals(AuthorizationDetailTypes::details('acct-4711')));
+    }
+
+    /**
+     * RFC 9396 §7: a request asking for a detail the consent does not carry is not covered by it, and a
+     * request asking for none is covered by every consent.
+     */
+    #[Test]
+    public function aConsentCoversTheDetailsItCarriesAndNoOther(): void
+    {
+        // Given
+        $consent = new Consent(
+            Uuid::v7(),
+            $this->user,
+            $this->client,
+            new Scopes([Scope::openid()]),
+            Fixtures::now(),
+            AuthorizationDetailTypes::details('acct-4711'),
+        );
+
+        // When / Then
+        static::assertTrue($consent->coversAuthorizationDetails(null));
+        static::assertTrue($consent->coversAuthorizationDetails(AuthorizationDetailTypes::details('acct-4711')));
+        static::assertFalse($consent->coversAuthorizationDetails(AuthorizationDetailTypes::details('acct-0815')));
+    }
+
+    /**
+     * A consent given for nothing structured covers no detail at all.
+     */
+    #[Test]
+    public function aConsentCarryingNoDetailCoversNone(): void
+    {
+        // When / Then
+        static::assertTrue($this->consent->coversAuthorizationDetails(null));
+        static::assertFalse($this->consent->coversAuthorizationDetails(AuthorizationDetailTypes::details()));
+    }
+
     #[Test]
     public function extendingItRevokesItAtThatMoment(): void
     {
@@ -166,7 +276,7 @@ final class ConsentTest extends TestCase
         $later = Fixtures::now()->modify('+1 day');
 
         // When
-        $this->consent->extendedWith(new Scopes([new Scope('email')]), Uuid::v7(), $later);
+        $this->consent->extendedWith(new Scopes([new Scope('email')]), null, Uuid::v7(), $later);
 
         // Then
         static::assertFalse($this->consent->isActive());
@@ -177,7 +287,7 @@ final class ConsentTest extends TestCase
     public function extendingItWithNothingNewStillSupersedesIt(): void
     {
         // When
-        $extended = $this->consent->extendedWith(new Scopes([Scope::openid()]), Uuid::v7(), Fixtures::now()->modify('+1 day'));
+        $extended = $this->consent->extendedWith(new Scopes([Scope::openid()]), null, Uuid::v7(), Fixtures::now()->modify('+1 day'));
 
         // Then
         static::assertSame(['openid', 'profile'], $extended->scopes->values());

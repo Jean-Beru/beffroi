@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 use function array_map;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
@@ -36,6 +37,7 @@ final class Requests
         ?string $nonce = 'n-0S6_WzA2Mj',
         ?ClaimsRequest $claims = null,
         array $acrValues = [],
+        ?AuthorizationDetails $authorizationDetails = null,
     ): AuthorizationRequest {
         return new AuthorizationRequest(
             $client,
@@ -49,6 +51,7 @@ final class Requests
             acrValues: $acrValues,
             idTokenHint: $idTokenHint,
             claims: $claims,
+            authorizationDetails: $authorizationDetails,
         );
     }
 }

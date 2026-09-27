@@ -28,10 +28,12 @@ use Heidi\Bundle\Doctrine\Type\GeoLocationType;
 use Heidi\Bundle\Doctrine\Type\IssuerType;
 use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
+use Heidi\Bundle\Doctrine\Type\AuthorizationDetailsType;
 use Heidi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\HeidiBundle;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Core\Domain\Credential\BackupCode;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
@@ -85,6 +87,7 @@ final class TypesTest extends TestCase
         ]);
         PasswordAlgorithmType::resolveWith($algorithms);
         BackupCodesType::resolveWith($algorithms);
+        AuthorizationDetailsType::resolveWith(AuthorizationDetailTypes::served());
     }
 
     /**
@@ -111,6 +114,11 @@ final class TypesTest extends TestCase
             ResourceIndicatorsType::class,
             ResourceIndicators::of(['https://cal.example.com/', 'https://contacts.example.com/']),
             'https://cal.example.com/ https://contacts.example.com/',
+        ];
+        yield 'authorization details' => [
+            AuthorizationDetailsType::class,
+            AuthorizationDetailTypes::details('acct-4711', ['read', 'write']),
+            '[{"type":"account_information","account":"acct-4711","actions":["read","write"]}]',
         ];
         yield 'proofs' => [
             AuthenticationProofsType::class,
@@ -262,6 +270,8 @@ final class TypesTest extends TestCase
         ];
         yield 'a string for backup codes' => [BackupCodesType::class, 'K7Q2M-X9PL4'];
         yield 'a list of strings for backup codes' => [BackupCodesType::class, ['K7Q2M-X9PL4']];
+        yield 'a string for authorization details' => [AuthorizationDetailsType::class, '[]'];
+        yield 'a detail alone for authorization details' => [AuthorizationDetailsType::class, AuthorizationDetailTypes::detail()];
     }
 
     /**
@@ -308,6 +318,14 @@ final class TypesTest extends TestCase
         yield 'an actor with no subject' => [ActorType::class, '{"client_id":"gateway"}'];
         yield 'an actor that is a JSON list' => [ActorType::class, '["gateway"]'];
         yield 'an actor whose nested one is not an object' => [ActorType::class, '{"sub":"backend","act":"gateway"}'];
+        yield 'authorization details that are not JSON' => [AuthorizationDetailsType::class, '['];
+        yield 'authorization details that are a JSON object' => [AuthorizationDetailsType::class, '{"type":"account_information"}'];
+        yield 'authorization details naming no type' => [AuthorizationDetailsType::class, '[{"account":"acct-4711"}]'];
+        yield 'authorization details of a type nobody serves' => [
+            AuthorizationDetailsType::class,
+            '[{"type":"payment_initiation","account":"acct-4711"}]',
+        ];
+        yield 'authorization details the type refuses' => [AuthorizationDetailsType::class, '[{"type":"account_information"}]'];
         yield 'a location with a bad country code' => [GeoLocationType::class, '{"country_code":"France"}'];
         yield 'a location with a string ASN' => [GeoLocationType::class, '{"asn":"3215"}'];
         yield 'a location with a string latitude' => [GeoLocationType::class, '{"latitude":"48.8","longitude":2.3}'];
@@ -438,10 +456,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTwentyTwoTypes(): void
+    public function theBundleDeclaresTwentyThreeTypes(): void
     {
         // When / Then
-        static::assertCount(22, HeidiBundle::DBAL_TYPES);
+        static::assertCount(23, HeidiBundle::DBAL_TYPES);
     }
 
     /**

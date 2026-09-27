@@ -33,6 +33,7 @@ use Heidi\Oidc\Exception\InvalidScopeException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
 use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
@@ -539,7 +540,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
             ),
             Proofs::verifier(),
             new Endpoints(),
-            new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost()),
+            new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost(), AuthorizationDetailTypes::served()),
             RequestObjects::resolver($this->clients, $this->clock, decrypter: $this->decrypter),
             $requests,
             Secrets::drawer(),

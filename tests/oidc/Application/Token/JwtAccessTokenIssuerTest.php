@@ -20,6 +20,7 @@ use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
+use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Exchange\Actor;
 use Heidi\Oidc\Domain\Exchange\MayAct;
 use Heidi\Oidc\Domain\Client\Client;
@@ -30,6 +31,7 @@ use Heidi\Oidc\Domain\Token\ClientAuthorization;
 use Heidi\Oidc\Domain\Token\SubjectAuthorization;
 use Heidi\Oidc\Domain\Token\TokenSignIn;
 use Heidi\Oidc\Domain\Token\UserAuthorization;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Jwts;
@@ -245,6 +247,81 @@ final class JwtAccessTokenIssuerTest extends TestCase
         // Then
         static::assertArrayNotHasKey('act', $claims);
         static::assertArrayNotHasKey('sid', $claims);
+    }
+
+    /**
+     * RFC 9396 §7: a token of a grant somebody agreed to details for carries the details of the response,
+     * the array as it travelled and as an introspection renders it.
+     */
+    #[Test]
+    public function aTokenOfAGrantWithDetailsCarriesThem(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details('acct-4711', ['read']);
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            authorizationDetails: $details,
+        ));
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, $this->client->registration->clientId, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame($details->toClaim(), $claims['authorization_details']);
+    }
+
+    /**
+     * A grant nobody agreed to a detail for carries none, so the token says nothing of one rather than
+     * saying it empty.
+     */
+    #[Test]
+    public function aTokenOfAGrantWithoutDetailsCarriesNone(): void
+    {
+        // Given
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, $this->client->registration->clientId, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertArrayNotHasKey('authorization_details', $claims);
+    }
+
+    /**
+     * RFC 9396 §7: the token carries the details of the response and not the ones the grant stands on, so a
+     * request that narrowed them gets a token that carries the subset it asked for.
+     */
+    #[Test]
+    public function aTokenNarrowedToASubsetOfTheDetailsCarriesThatSubset(): void
+    {
+        // Given
+        $granted = new AuthorizationDetails([
+            AuthorizationDetailTypes::detail('acct-4711'),
+            AuthorizationDetailTypes::detail('acct-0815'),
+        ]);
+        $narrowed = AuthorizationDetailTypes::details('acct-0815');
+        $authorization = UserAuthorization::fromAuthorizationCode(
+            Grants::authorizationCode(),
+            Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), authorizationDetails: $granted),
+            authorizationDetails: $narrowed,
+        );
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, $this->client->registration->clientId, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame($narrowed->toClaim(), $claims['authorization_details']);
     }
 
     /**

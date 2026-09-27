@@ -35,6 +35,7 @@ use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Token\UserAuthorization;
 use Heidi\Oidc\Domain\Token\RevokedTokenHashes;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -129,6 +130,7 @@ final class EventsLeaveTheProcessTest extends TestCase
             $consent->clientId,
             $consent->user->id,
             $consent->scopes,
+            AuthorizationDetailTypes::details(),
             null,
             $context,
         )];

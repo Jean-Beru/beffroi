@@ -715,6 +715,7 @@ final class InMemoryRepositoriesTest extends TestCase
             new Scopes([Scope::openid()]),
             null,
             null,
+            null,
             new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
             null,
             null,

@@ -84,6 +84,7 @@ final readonly class ConsentController
             'client' => $interaction->request->client,
             'user' => $decision->session->user,
             'scopes' => $decision->scopes,
+            'authorization_details' => $decision->authorizationDetails,
             'requirement' => $decision->requirement,
         ]);
     }

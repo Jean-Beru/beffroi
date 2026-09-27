@@ -22,6 +22,7 @@ use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Exception\UnsupportedResponseModeException;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use Heidi\Oidc\Tests\Fixture\WiredModes;
@@ -61,6 +62,7 @@ final class AuthorizationRequestParserTest extends TestCase
             $this->tenant,
             new FakePasswordHasher()->hash(Clients::SECRET),
             resources: Clients::resources(),
+            authorizationDetailsTypes: Clients::authorizationDetailsTypes(),
         );
         $this->clients->save($this->client);
         $this->clients->save(Clients::confidential(
@@ -68,7 +70,7 @@ final class AuthorizationRequestParserTest extends TestCase
             new FakePasswordHasher()->hash(Clients::SECRET),
             clientId: 'foreign',
         ));
-        $this->parser = new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost());
+        $this->parser = new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost(), AuthorizationDetailTypes::served());
     }
 
     /**
@@ -144,6 +146,7 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertNull($request->claims);
         static::assertSame('query', $request->responseMode);
         static::assertNull($request->resources);
+        static::assertNull($request->authorizationDetails);
     }
 
     /**
@@ -195,6 +198,94 @@ final class AuthorizationRequestParserTest extends TestCase
         yield 'a relative URI' => ['/calendar'];
         yield 'a fragment' => ['https://cal.example.com/#today'];
         yield 'one of several' => [[Clients::CALENDAR, 'cal.example.com']];
+    }
+
+    /**
+     * RFC 9396 §2: what the request asks for beyond its scopes, read by the types the provider is wired
+     * with, each validating its own members.
+     */
+    #[Test]
+    public function itReadsTheAuthorizationDetailsTheRequestAsksFor(): void
+    {
+        // When
+        $request = $this->parse([
+            'authorization_details' => AuthorizationDetailTypes::parameter('acct-4711', ['read', 'write']),
+        ]);
+
+        // Then
+        static::assertTrue($request->authorizationDetails?->equals(AuthorizationDetailTypes::details('acct-4711', ['read', 'write'])));
+    }
+
+    /**
+     * RFC 9396 §5: a malformed array, an object naming no type, a type nobody serves and a detail its own
+     * type refuses are one error, which the client reads at its redirect URI as it reads any refusal of
+     * this stage.
+     */
+    #[Test]
+    #[DataProvider('provideAuthorizationDetailsThatAreNotOne')]
+    public function itRefusesAnAuthorizationDetailsThatIsNotOne(string $authorizationDetails): void
+    {
+        // When
+        try {
+            $this->parse([
+                'authorization_details' => $authorizationDetails,
+            ]);
+            static::fail('The request should have been refused.');
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame('invalid_authorization_details', $exception->error);
+            static::assertSame(
+                'The authorization_details parameter is a JSON array of objects, each naming in type an authorization detail type this provider serves and holding what that type accepts (RFC 9396 section 2).',
+                $exception->errorDescription,
+            );
+            static::assertTrue($exception->redirectable);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAuthorizationDetailsThatAreNotOne(): iterable
+    {
+        yield 'not JSON' => ['[{'];
+        yield 'a JSON object' => ['{"type":"account_information","account":"acct-4711"}'];
+        yield 'an empty array' => ['[]'];
+        yield 'an element naming no type' => ['[{"account":"acct-4711"}]'];
+        yield 'a type nobody serves' => ['[{"type":"payment_initiation","account":"acct-4711"}]'];
+        yield 'a detail its own type refuses' => ['[{"type":"account_information","actions":["read"]}]'];
+    }
+
+    /**
+     * RFC 9396 §11: what a client may ask for is a closed list on its registration, as every other list of
+     * a client is. The refusal names no type: what the client registered is not something an error
+     * response teaches whoever sent the request.
+     */
+    #[Test]
+    public function itRefusesAnAuthorizationDetailTypeTheClientIsNotRegisteredFor(): void
+    {
+        // Given
+        $this->clients->save(Clients::confidential(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            clientId: 'no-details',
+        ));
+
+        // When
+        try {
+            $this->parse([
+                'client_id' => 'no-details',
+                'authorization_details' => AuthorizationDetailTypes::parameter(),
+            ]);
+            static::fail('The request should have been refused.');
+        } catch (OAuth2Exception $exception) {
+            // Then
+            static::assertSame('invalid_authorization_details', $exception->error);
+            static::assertSame(
+                'The requested authorization detail type is not one this client is registered for (RFC 9396 section 11).',
+                $exception->errorDescription,
+            );
+            static::assertTrue($exception->redirectable);
+        }
     }
 
     /**
@@ -285,7 +376,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function itResolvesTheJwtResponseModeToTheSignedQuery(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo());
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo(), AuthorizationDetailTypes::served());
         $parameters = self::parameters([
             'response_mode' => 'jwt',
         ]);
@@ -304,7 +395,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function itReadsTheSignedFormPostResponseMode(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo());
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo(), AuthorizationDetailTypes::served());
         $parameters = self::parameters([
             'response_mode' => 'form_post.jwt',
         ]);
@@ -344,7 +435,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aModeTheIntegrationDidNotWireIsRefused(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, ServedModes::queryOnly());
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::queryOnly(), AuthorizationDetailTypes::served());
         $parameters = self::parameters([
             'response_mode' => 'form_post',
         ]);
@@ -382,7 +473,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aDeploymentThatWiresNoQueryFallsBackToAModeItServes(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]));
+        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]), AuthorizationDetailTypes::served());
 
         // When
         $target = $parser->redirectTarget($this->tenant, self::parameters([
@@ -402,7 +493,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aRequestThatAsksForNoModeFallsBackToAModeItServes(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]));
+        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]), AuthorizationDetailTypes::served());
 
         // When
         $target = $parser->redirectTarget($this->tenant, self::parameters([]));

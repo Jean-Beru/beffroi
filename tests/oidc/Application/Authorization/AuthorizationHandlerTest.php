@@ -65,6 +65,7 @@ use Heidi\Oidc\Exception\InteractionExpiredException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\LoginRequiredException;
 use Heidi\Oidc\Exception\UnmetAuthenticationRequirementsException;
+use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Heidi\Oidc\Tests\Fixture\Logins;
@@ -1039,6 +1040,89 @@ final class AuthorizationHandlerTest extends TestCase
         // Then
         static::assertSame([], $this->consents->all());
         static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * RFC 9396 §7: a consent in force that covers the scopes but not the details the request asks for does
+     * not answer for it, and the page asks again.
+     */
+    #[Test]
+    public function itAsksAgainWhenTheConsentInForceDoesNotCoverTheDetailsAsked(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
+        $request = Requests::authorization($this->client, authorizationDetails: AuthorizationDetailTypes::details());
+
+        // When
+        $decision = $this->handler->begin($request, $this->session(), $this->context);
+
+        // Then
+        $this->consentRequired($decision, ConsentRequirement::NotGranted);
+    }
+
+    /**
+     * A consent in force that covers both is carried by the interaction, and no page is shown.
+     */
+    #[Test]
+    public function itAsksNothingWhenTheConsentInForceCoversTheDetailsAsked(): void
+    {
+        // Given
+        $this->consents->save(new Consent(
+            Uuid::v7(),
+            $this->alice,
+            $this->client,
+            new Scopes([Scope::openid()]),
+            Fixtures::now(),
+            AuthorizationDetailTypes::details(),
+        ));
+        $request = Requests::authorization($this->client, authorizationDetails: AuthorizationDetailTypes::details());
+
+        // When
+        $decision = $this->handler->begin($request, $this->session(), $this->context);
+
+        // Then
+        $this->granted($decision);
+    }
+
+    /**
+     * The page shows what the request asks for beyond its scopes, which is the part a user reads rather
+     * than recognises.
+     */
+    #[Test]
+    public function theConsentPageCarriesTheDetailsTheRequestAsksFor(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details();
+        $request = Requests::authorization($this->client, authorizationDetails: $details);
+
+        // When
+        $decision = $this->handler->begin($request, $this->session(), $this->context);
+
+        // Then
+        static::assertSame($details, $this->consentRequired($decision, ConsentRequirement::NotGranted)->authorizationDetails);
+    }
+
+    /**
+     * Architecture §4.3, RFC 9396 §2: what the user agreed to is recorded on the consent, and the code the
+     * interaction earns descends from it.
+     */
+    #[Test]
+    public function grantingTheConsentRecordsTheDetailsAndTheCodeCarriesThem(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details();
+        $session = $this->session();
+        $consent = $this->consentRequired(
+            $this->handler->begin(Requests::authorization($this->client, authorizationDetails: $details), $session, $this->context),
+            ConsentRequirement::NotGranted,
+        );
+
+        // When
+        $granted = $this->granted($this->handler->grantConsent($consent->interaction, $session, $this->context));
+
+        // Then
+        static::assertTrue($this->consents->all()[0]->authorizationDetails?->equals($details));
+        static::assertTrue($granted->code->authorizationDetails?->equals($details));
     }
 
     /**
