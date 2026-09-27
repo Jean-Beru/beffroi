@@ -5,7 +5,10 @@ declare(strict_types=1);
 /*
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
  * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
- * --logout-others, --resource-server, --dpop, --device, --service).
+ * --logout-others, --resource-server, --dpop, --ladder, --device, --service, --ciba, --assertion, --rar,
+ * --native). The last four need no oidc-demo: their clients are the CLIs of tests/demo/ and the walk itself,
+ * because what they play has no browser of the demonstration in it, or asks for something oidc_login does not
+ * send.
  */
 
 use Castor\Attribute\AsOption;
@@ -72,7 +75,7 @@ const DEMO_LADDER_KEYS = [
 const DEMO_LADDER_DIRECTORY = 'var/demo';
 
 #[AsTask(
-    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first',
+    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them',
 )]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
@@ -115,6 +118,22 @@ function demo(
         description: 'The second and third interoperability criteria of spike 6 (issue #228): a service obtains a token for itself for a resource it named, a gateway exchanges it to act on its behalf, and the resource server of the demonstration accepts the exchanged token, names the subject and the actor, and refuses a token addressed to another resource',
     )]
     bool $service = false,
+    #[AsOption(
+        description: 'Spike 6 (issue #299): a client asks for a user it names by login_hint, with a binding message, and that user finds the request on /approvals and allows it; both delivery modes, the client polling in one and called back on a listener of its own in the other (tests/demo/ciba-client.php)',
+    )]
+    bool $ciba = false,
+    #[AsOption(
+        description: 'Spike 6 (issue #299): an assertion signed by an issuer the tenant trusts, exchanged for an access token for the user it names (RFC 7523 §2.1), then the same assertion again, one about somebody no linked identity resolves, and one asking for "openid", all three refused the same way',
+    )]
+    bool $assertion = false,
+    #[AsOption(
+        description: 'Spike 6 (issue #299): a request carrying authorization_details, the detail read on the consent page before it is agreed to, then followed into the access token and into the introspection (RFC 9396), and a type nobody wired refused',
+    )]
+    bool $rar = false,
+    #[AsOption(
+        description: 'Spike 6 (issue #299): a program on the machine of its user, twice, on two ports of the loopback interface against one registration (RFC 8252 §7.3), and a redirection on a name rather than on the IP literal refused',
+    )]
+    bool $native = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -225,6 +244,42 @@ function demo(
             }
         }
         demo_service_check($dir, $env['HEIDI_ISSUER'], $env['DEMO_SERVICE_SECRET'], $env['DEMO_GATEWAY_SECRET'], $ca);
+    }
+    if ($ciba) {
+        $secrets = [];
+        foreach (DEMO_CIBA_CLIENTS as $registration) {
+            if (($env[$registration['secret']] ?? '') === '') {
+                io()->error(sprintf('%s is empty: run "castor provision" first.', $registration['secret']));
+                exit(1);
+            }
+            $secrets[$registration['secret']] = $env[$registration['secret']];
+        }
+        if (($env['HEIDI_DEV_USER_SUBJECT'] ?? '') === '') {
+            io()->error('HEIDI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user.');
+            exit(1);
+        }
+        demo_ciba_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['HEIDI_DEV_USER_SUBJECT'], $secrets);
+    }
+    if ($assertion) {
+        if (($env['DEMO_ASSERTION_SECRET'] ?? '') === '') {
+            io()->error('DEMO_ASSERTION_SECRET is empty: run "castor provision" first.');
+            exit(1);
+        }
+        if (! is_file(getcwd() . '/' . DEMO_ASSERTION_JWKS)) {
+            io()->error(sprintf('%s does not exist: run "castor provision" first, which generates the key of the trusted issuer.', DEMO_ASSERTION_JWKS));
+            exit(1);
+        }
+        demo_assertion_check($env['HEIDI_ISSUER'], $ca, $env['DEMO_ASSERTION_SECRET']);
+    }
+    if ($rar) {
+        if (($env['DEMO_RAR_SECRET'] ?? '') === '') {
+            io()->error('DEMO_RAR_SECRET is empty: run "castor provision" first.');
+            exit(1);
+        }
+        demo_rar_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['DEMO_RAR_SECRET']);
+    }
+    if ($native) {
+        demo_native_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
     }
     if ($logoutOthers) {
         if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
@@ -2155,14 +2210,14 @@ function demo_authenticate(array &$cookies, string $issuer, string $password, st
 }
 
 /**
- * The browser from an authorization request to the callback it is sent to, one request at a time: the OP
- * parks the request and asks for a login, the login page carries the form, the form is posted, and the
- * interaction resumes into the redirect the client registered. Returns that redirect, for the caller to
- * see what is on it; the authorization request is the caller's, whether the demo built it or the run did.
+ * The login the provider asks for before it can answer an authorization request, one request at a time: it
+ * parks the request, sends the browser to its login page, and that page carries the form. Returns where the
+ * login sent the browser, which is the interaction to resume; what the provider then answers the request
+ * with is the caller's to read, a redirection for most clients and a page for a response mode of its own.
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
-function demo_login_at(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
+function demo_login(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
 {
     // the OP parks the request and asks for a login
     [$status, $location] = demo_request($cookies, $ca, 'GET', $authorization);
@@ -2176,14 +2231,29 @@ function demo_login_at(array &$cookies, string $issuer, string $password, string
         'the login page carries the form',
     );
 
-    // the form, then the login page resumes the interaction and sends the browser back to the demo
+    // the form, then the login page resumes the interaction. The firewall sends the browser back to the
+    // very URL the form was posted to, whether it took the password or not (LoginController): what the
+    // outcome was is read where the interaction is resumed, not here (demo_resume).
     [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
         '_username' => DEV_USERNAME,
         '_password' => $password,
         '_csrf_token' => $csrf[1],
     ]);
     demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
-    [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
+
+    return $location;
+}
+
+/**
+ * The browser from an authorization request to the callback it is sent to: the login above, then the
+ * interaction resumed into the redirect the client registered. Returns that redirect, for the caller to
+ * see what is on it; the authorization request is the caller's, whether the demo built it or the run did.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_login_at(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
+{
+    [$status, $location] = demo_resume($cookies, $ca, $issuer, demo_login($cookies, $issuer, $password, $ca, $authorization));
     demo_expect(
         $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
         sprintf('the OP sends the browser to the callback of the demo (got %d %s)', $status, $location),
@@ -2205,11 +2275,20 @@ function demo_login_at(array &$cookies, string $issuer, string $password, string
  * a response mode of its own renders, so that every walk reads its answer where it already read it.
  *
  * @param array<string, array<string, string>> $cookies host => name => value
+ * @param (callable(string): void)|null $onConsent handed the consent page before it is answered, for a walk
+ *                                                that has something to read on it
  * @return array{int, string, string, array<string, list<string>>}
  */
-function demo_resume(array &$cookies, string $ca, string $issuer, string $url): array
+function demo_resume(array &$cookies, string $ca, string $issuer, string $url, ?callable $onConsent = null): array
 {
     [$status, $location, $page, $headers] = demo_request($cookies, $ca, 'GET', $url);
+    // A login that was refused brings the browser back to the form, which says so; a login that was taken
+    // resumes into what the provider answers the request with. The two are the same redirection, so this is
+    // where a refusal is named, rather than three requests later (LoginController, the page of the login).
+    demo_expect(! str_contains($page, 'data-error="authentication_failed"'), sprintf(
+        'the login page does not come back saying the sign-in was refused ("heidi:user:show %s" says which credentials that user holds, and a second factor is one no walk of this file answers)',
+        DEV_USERNAME,
+    ));
     if ($status !== 302 || ! str_starts_with($location, $issuer . '/consent?')) {
         return [$status, $location, $page, $headers];
     }
@@ -2221,6 +2300,9 @@ function demo_resume(array &$cookies, string $ca, string $issuer, string $url): 
         && preg_match('/action="([^"]+)"/', $page, $action) === 1,
         sprintf('the consent page carries the form (got %d)', $status),
     );
+    if ($onConsent !== null) {
+        $onConsent($page);
+    }
 
     return demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
         'interaction' => $interaction[1],
@@ -2418,6 +2500,14 @@ const DEMO_DEVICE_CLI = 'tests/demo/device-cli.php';
 const DEMO_DEVICE_CLIENT_ID = 'demo-appliance';
 
 /**
+ * What playing this walk found and the provider does not do yet: the appliance is handed the code in the form
+ * of RFC 8628 §6.1, "QGXM-VTSK", and the page where it is confirmed shows "QGXMVTSK", the form what was typed
+ * is compared in. The walk asserts the gap rather than quieting it, so that the day it closes the line fails
+ * and is deleted; it is the rule the "known" list of the conformance plans follows.
+ */
+const DEMO_DEVICE_CODE_GAP = 'https://github.com/beffroi-php/heidi/issues/302';
+
+/**
  * The resource the service and the gateway ask their tokens for, which is the one the resource server of the
  * demonstration answers for (its OIDC_RESOURCE), and the one it does not: a token addressed elsewhere is
  * refused there rather than described (RFC 8707 §2).
@@ -2456,7 +2546,7 @@ function demo_device_check(string $issuer, string $password, string $ca): void
 
     try {
         // RFC 8628 §3.2: what the appliance is given to show, read from the first line it writes
-        $asked = demo_device_step($cli, 'device_authorization');
+        $asked = demo_cli_step($cli, 'device_authorization');
         $userCode = (string) ($asked['user_code'] ?? '');
         demo_expect(
             preg_match('/^[A-Z0-9]{4}-[A-Z0-9]{4}$/', $userCode) === 1,
@@ -2484,7 +2574,7 @@ function demo_device_check(string $issuer, string $password, string $ca): void
         $verified[] = ['Confirmation in a browser', sprintf('%s signed in, read what the code asks for and allowed it', DEV_USERNAME)];
 
         // the CLI was polling all along, and answers itself once somebody has answered for it
-        $tokens = demo_device_step($cli, 'tokens');
+        $tokens = demo_cli_step($cli, 'tokens');
         demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf('the CLI holds a bearer token (got %s)', (string) ($tokens['token_type'] ?? '')));
         demo_expect(($tokens['sub'] ?? null) !== null, 'the token names the user who confirmed the code');
         demo_expect(($tokens['refresh_token'] ?? false) === true, 'it also holds a refresh token, so it never pairs again (RFC 8628 §3.5)');
@@ -2516,15 +2606,16 @@ function demo_device_check(string $issuer, string $password, string $ca): void
 }
 
 /**
- * The next step the CLI writes on its standard output, one JSON object per line (tests/demo/device-cli.php).
- * The CLI keeps polling while this walk works, so the lines are read as they come and never waited for all
- * at once; a line that says the flow ended is an error of the run and is reported as it is.
+ * The next step a CLI of tests/demo/ writes on its standard output, one JSON object per line: the device
+ * grant, the backchannel client and the native client all report that way, because all three keep working
+ * while the walk does something else. The lines are read as they come and never waited for all at once; a
+ * line that says the flow ended is an error of the run and is reported as it is.
  *
  * @throws RuntimeException when the CLI ends before the step, or says the flow ended without tokens
  *
  * @return array<string, mixed>
  */
-function demo_device_step(Process $cli, string $step, float $timeout = 150.0): array
+function demo_cli_step(Process $cli, string $step, float $timeout = 150.0): array
 {
     $deadline = microtime(true) + $timeout;
     $consumed = 0;
@@ -2590,7 +2681,21 @@ function demo_device_confirm(string $issuer, string $password, string $ca, strin
         $status === 200 && str_contains($approval, 'data-warning="unexpected"'),
         sprintf('the browser comes back to the page that asks about the code (got %d %s)', $status, $location),
     );
-    demo_expect(str_contains($approval, $userCode), 'the page shows the code that was typed, so the user can see it is theirs (BCP 10027 §2)');
+    // The gap playing this walk found, written down with the issue that closes it, as the refused rung of the
+    // ladder is (DEMO_LADDER_RUNGS): the appliance shows the code with the separator of RFC 8628 §6.1 and the
+    // page shows it without, so a user recognises it character by character rather than at a glance. The day
+    // the issue lands, this expectation is the one that fails, and the two lines below become one asserting
+    // the code as the appliance was handed it.
+    // castor loads no class of the monorepo, so the form what was typed is compared in is written here as the
+    // one rule it is: the separator gone (UserCode::normalize()).
+    demo_expect(
+        str_contains($approval, str_replace('-', '', $userCode)),
+        'the page shows the code that was typed, so the user can see it is theirs (BCP 10027 §2)',
+    );
+    demo_expect(
+        ! str_contains($approval, $userCode),
+        sprintf('and still shows it without the separator the appliance shows (%s, BCP 10027 §2)', DEMO_DEVICE_CODE_GAP),
+    );
     demo_expect(
         preg_match('/data-provider="([^"]+)"/', $approval) === 1 && preg_match('/data-origin="([^"]*)"/', $approval) === 1,
         'it names the provider that is asking and where the request came from (BCP 10027 §2)',
@@ -2789,4 +2894,700 @@ function demo_claims_of(mixed $accessToken): array
     $payload = json_decode((string) base64_decode(strtr($parts[1], '-_', '+/'), true), true, 8);
 
     return is_array($payload) ? $payload : [];
+}
+
+/**
+ * The client of the two backchannel walks, run under the autoloader of the monorepo, which castor does not
+ * load, and the two clients it is: one per delivery mode, because a client registers one and one only
+ * (CIBA Core §4).
+ */
+const DEMO_CIBA_CLIENT = 'tests/demo/ciba-client.php';
+
+const DEMO_CIBA_CLIENTS = [
+    'poll' => [
+        'client' => 'demo-ciba-poll',
+        'secret' => 'DEMO_CIBA_POLL_SECRET',
+        'asks' => 'the client asks the token endpoint again until the user has answered',
+    ],
+    'ping' => [
+        'client' => 'demo-ciba-ping',
+        'secret' => 'DEMO_CIBA_PING_SECRET',
+        'asks' => 'the provider calls the client back, and it asks once',
+    ],
+];
+
+/**
+ * Where the client of the "ping" walk listens, as the worker of the stack reaches it: the port is registered
+ * with that client (apps/op/config/packages/heidi.yaml), so it is fixed rather than drawn.
+ */
+const DEMO_CIBA_NOTIFICATION_PORT = 8004;
+
+/**
+ * CIBA Core §7.1: what the client writes for the user to read on the device where they answer, which is what
+ * ties the thing they are looking at to the thing that asked.
+ */
+const DEMO_CIBA_BINDING_MESSAGE = 'Invoice 4711';
+
+/**
+ * The first part of issue #299: a client asks for a user it names and waits, and that user answers on a
+ * device of their own. Both delivery modes, one after the other.
+ *
+ * What it looks at is the part no specification writes for us. The request reaches the user as a line on a
+ * page they went to themselves, found by who they are and never by a link they were sent (BCP 10027 §5.2),
+ * and it carries the message the client wrote, so that somebody who started nothing sees a message they do
+ * not recognise and refuses. The two modes differ in one thing and the walk measures exactly that: how many
+ * times the client had to ask.
+ *
+ * @param string $subject what a "login_hint" names for this tenant: the subject this provider issued, which is
+ *                        the reading the application wired (heidi.backchannel_authentication.login_hint) and
+ *                        what CIBA Core §15 asks for, an identifier that says nothing outside this provider
+ * @param array<string, string> $secrets apps/op/.env.local, by the name of the variable each client's is under
+ */
+function demo_ciba_check(string $issuer, string $password, string $ca, string $subject, array $secrets): void
+{
+    io()->section('A backchannel client, and the user who answers it elsewhere');
+    $verified = [];
+
+    foreach (DEMO_CIBA_CLIENTS as $mode => $registration) {
+        $cli = new Process(
+            [
+                'php',
+                DEMO_CIBA_CLIENT,
+                '--issuer=' . $issuer,
+                '--client-id=' . $registration['client'],
+                '--secret=' . $secrets[$registration['secret']],
+                '--mode=' . $mode,
+                '--login-hint=' . $subject,
+                '--binding-message=' . DEMO_CIBA_BINDING_MESSAGE,
+                '--notification-port=' . DEMO_CIBA_NOTIFICATION_PORT,
+                '--cafile=' . $ca,
+                '--timeout=120',
+            ],
+            timeout: 180.0,
+        );
+        $cli->start();
+
+        try {
+            // CIBA Core §7.3: the client is handed an identifier, a lifetime and an interval, and no token
+            $asked = demo_cli_step($cli, 'backchannel_authentication');
+            demo_expect(
+                ($asked['mode'] ?? null) === $mode && is_int($asked['expires_in'] ?? null) && $asked['expires_in'] > 0,
+                sprintf('%s: the request is accepted and lives for %s s', $mode, (string) ($asked['expires_in'] ?? '?')),
+            );
+            demo_expect(
+                is_int($asked['interval'] ?? null) && $asked['interval'] > 0,
+                sprintf('%s: the client is told how often it may ask (%s s)', $mode, (string) ($asked['interval'] ?? '?')),
+            );
+
+            // the other device: the browser of a user who holds nothing of the request and finds it by who
+            // they are
+            demo_ciba_approve($issuer, $password, $ca, $registration['client']);
+
+            if ($mode === 'ping') {
+                // CIBA Core §10.2: the provider posts the identifier to the endpoint that client registered,
+                // with the token that client gave it, and carries no token there
+                $notified = demo_cli_step($cli, 'notification');
+                demo_expect(
+                    ($notified['auth_req_id_matches'] ?? false) === true && ($notified['token_matches'] ?? false) === true,
+                    'ping: the provider calls the client back with the request it is waiting on and the token it gave (CIBA Core §10.2)',
+                );
+                $verified[] = ['ping: notification', sprintf('called back after %s s, on the token the client drew', (string) ($notified['waited'] ?? '?'))];
+            }
+
+            $tokens = demo_cli_step($cli, 'tokens');
+            demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf(
+                '%s: the client holds a bearer token (got %s)',
+                $mode,
+                (string) ($tokens['token_type'] ?? ''),
+            ));
+            demo_expect(($tokens['sub'] ?? null) !== null, sprintf('%s: the token names the user who approved it', $mode));
+            demo_expect(($tokens['id_token'] ?? false) === true, sprintf(
+                '%s: and an ID token, "openid" being required of every request of this flow (CIBA Core §7.1)',
+                $mode,
+            ));
+            $polls = is_int($tokens['polls'] ?? null) ? $tokens['polls'] : 0;
+            if ($mode === 'poll') {
+                demo_expect($polls >= 2, sprintf('poll: the client was told to wait before it was answered (%d requests)', $polls));
+            } else {
+                demo_expect($polls === 1, sprintf('ping: the client asked once, when it was told to (%d request)', $polls));
+            }
+            $verified[] = [
+                sprintf('%s: tokens', $mode),
+                sprintf('%s, "%s", after %d request(s) to the token endpoint', $registration['asks'], (string) ($tokens['scope'] ?? '?'), $polls),
+            ];
+
+            $cli->wait();
+            demo_expect($cli->isSuccessful(), sprintf('%s: the client ends without an error (exit %s)', $mode, (string) $cli->getExitCode()));
+        } finally {
+            if ($cli->isRunning()) {
+                $cli->stop();
+            }
+        }
+    }
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('A request made by somebody else was found, read and allowed by the user it named, in both delivery modes.');
+}
+
+/**
+ * The other device of the backchannel flow (CIBA Core §10.1, BCP 10027 §5.2): a browser that holds nothing of
+ * the request, signs its user in, finds what is waiting for them and allows it.
+ *
+ * There is no code to type here and no link that carries the request, which is what tells this page from the
+ * one of the device grant: what reaches a user from outside says that something is waiting, and what they
+ * find at the provider is found by who they are.
+ */
+function demo_ciba_approve(string $issuer, string $password, string $ca, string $clientId): void
+{
+    $cookies = [];
+    $page = $issuer . '/approvals';
+
+    // no session yet, so the page asks for a login and remembers where the browser was going
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $page);
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/login'),
+        sprintf('the page of the pending requests asks for a login first (got %d %s)', $status, $location),
+    );
+    [$status, , $login] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $login, $csrf) === 1 && preg_match('/action="([^"]+)"/', $login, $action) === 1,
+        'the login page carries the form',
+    );
+    [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
+        '_username' => DEV_USERNAME,
+        '_password' => $password,
+        '_csrf_token' => $csrf[1],
+    ]);
+    demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
+
+    // the login brings the browser back to the page it was going to (LoginTarget)
+    [$status, , $approvals] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200 && preg_match('/data-approval="([^"]+)"/', $approvals, $handle) === 1,
+        sprintf('the browser comes back to the page of what is waiting, which has something on it (got %d %s)', $status, $location),
+    );
+    demo_expect(
+        preg_match('/data-binding-message="([^"]*)"/', $approvals, $binding) === 1 && $binding[1] === DEMO_CIBA_BINDING_MESSAGE,
+        sprintf('the page shows the message the client wrote, as it was sent (CIBA Core §7.1: "%s")', $binding[1] ?? ''),
+    );
+    demo_expect(
+        str_contains($approvals, $clientId) || preg_match('/data-origin="([^"]*)"/', $approvals) === 1,
+        'it names where the request came from (BCP 10027 §5.2)',
+    );
+    demo_expect(
+        preg_match_all('/data-scope="([^"]+)"/', $approvals, $scopes) >= 1 && in_array('openid', $scopes[1], true),
+        sprintf('it names every scope of the request (%s)', implode(' ', $scopes[1] ?? [])),
+    );
+    demo_expect(str_contains($approvals, 'data-warning="unexpected"'), 'and tells whoever started nothing to refuse (BCP 10027 §5.2)');
+
+    // allow, with the token of the page and the handle of the request it named
+    $fields = demo_form_fields($approvals);
+    [$status, , $answered] = demo_request($cookies, $ca, 'POST', $page, [
+        ...$fields,
+        'answer' => 'allow',
+    ]);
+    demo_expect($status === 200, sprintf('the answer is accepted (got %d)', $status));
+    demo_expect(
+        str_contains($answered, 'data-answer="approved"'),
+        'and the page says the request was allowed, there being nothing left to do in this browser (CIBA Core §10.1)',
+    );
+}
+
+/**
+ * The signing client of the assertion walk, and the issuer it signs for: the "iss" its assertions carry, the
+ * subject the development user is known by over there, and one nobody resolves, which is what the walk gets
+ * the same refusal for. They are what "castor provision" registered and linked (.castor/stack/provision.php).
+ */
+const DEMO_ASSERTION_CLIENT = 'tests/demo/assertion-client.php';
+
+const DEMO_ASSERTION_CLIENT_ID = 'demo-assertion';
+
+const DEMO_ASSERTION_ISSUER = 'https://issuer.demo.localhost';
+
+const DEMO_ASSERTION_SUBJECT = 'alice@issuer.demo.localhost';
+
+const DEMO_ASSERTION_UNKNOWN_SUBJECT = 'nobody@issuer.demo.localhost';
+
+/**
+ * Where "castor provision" left the private half of the key of that issuer.
+ */
+const DEMO_ASSERTION_JWKS = 'var/demo/demo-issuer.jwks.json';
+
+/**
+ * The second part of issue #299: an assertion signed by an issuer the tenant trusts, exchanged for an access
+ * token for the user it names (RFC 7523 §2.1).
+ *
+ * It is one paragraph of a specification and a whole trust decision, so the walk plays the decision and not
+ * only the grant: the assertion that works, the same one again, one about somebody no linked identity
+ * resolves, and one asking for an authentication this grant performs for nobody. The three refusals say the
+ * same thing, which is what the walk checks last: what a tenant trusts is not something an error teaches.
+ */
+function demo_assertion_check(string $issuer, string $ca, string $secret): void
+{
+    io()->section('An assertion of a trusted issuer, exchanged for a token');
+    $verified = [];
+
+    $run = demo_assertion_client([
+        'token_endpoint' => $issuer . '/token',
+        'cafile' => $ca,
+        'client_id' => DEMO_ASSERTION_CLIENT_ID,
+        'client_secret' => $secret,
+        'trusted_issuer' => DEMO_ASSERTION_ISSUER,
+        // RFC 7523 §3, FAPI 2.0 §5.3.2.1: the issuer identifier of the provider is the one name an assertion
+        // may be addressed to (issue #267)
+        'audience' => $issuer,
+        'subject' => DEMO_ASSERTION_SUBJECT,
+        'unknown_subject' => DEMO_ASSERTION_UNKNOWN_SUBJECT,
+        'scope' => 'invoices.read',
+        'resource' => DEMO_SERVICE_RESOURCE,
+        'jwks_file' => DEMO_ASSERTION_JWKS,
+    ]);
+
+    $granted = is_array($run['granted'] ?? null) ? $run['granted'] : [];
+    demo_expect(($granted['status'] ?? 0) === 200, sprintf(
+        'the assertion is exchanged for a token (got %s %s)',
+        (string) ($granted['status'] ?? '?'),
+        (string) ($granted['error_description'] ?? ''),
+    ));
+    $claims = is_array($granted['claims'] ?? null) ? $granted['claims'] : [];
+    demo_expect(
+        is_string($claims['sub'] ?? null) && $claims['sub'] !== DEMO_ASSERTION_SUBJECT,
+        sprintf(
+            'the token names the user of this tenant and not the subject the issuer gave (got %s, the issuer said %s)',
+            (string) ($claims['sub'] ?? ''),
+            DEMO_ASSERTION_SUBJECT,
+        ),
+    );
+    demo_expect(($claims['aud'] ?? null) === DEMO_SERVICE_RESOURCE, sprintf(
+        'it is addressed to the resource the request named (RFC 8707 §2, got %s)',
+        json_encode($claims['aud'] ?? null),
+    ));
+    demo_expect(($granted['id_token'] ?? false) === false, 'and carries no ID token: this grant authenticated nobody (OIDC Core §2)');
+    demo_expect(! isset($claims['sid'], $claims['auth_time']), 'nor anything about a sign-in that happened somewhere else');
+    $verified[] = [
+        'The assertion',
+        sprintf('sub %s for %s, "%s"', (string) ($claims['sub'] ?? '?'), DEMO_SERVICE_RESOURCE, (string) ($granted['scope'] ?? '?')),
+    ];
+
+    // The three refusals, each one a rule of the grant, and all three the same words: an error response of
+    // this grant says that the assertion was not accepted and nothing else.
+    $refusals = [];
+    foreach (['replayed', 'unknown_subject', 'openid_refused'] as $attempt) {
+        $refused = is_array($run[$attempt] ?? null) ? $run[$attempt] : [];
+        demo_expect(($refused['status'] ?? 0) === 400, sprintf('%s: refused (got %s)', $attempt, (string) ($refused['status'] ?? '?')));
+        $refusals[$attempt] = (string) ($refused['error'] ?? '');
+        $verified[] = [$attempt, sprintf('%s, "%s"', (string) $refused['status'], $refusals[$attempt])];
+    }
+    demo_expect($refusals['replayed'] === 'invalid_grant', sprintf('an assertion is exchanged once (RFC 7523 §3, got %s)', $refusals['replayed']));
+    demo_expect(
+        $refusals['unknown_subject'] === $refusals['replayed'],
+        sprintf(
+            'an assertion about somebody no identity resolves is refused the same way as a replay, so neither says which (decision 0002: %s against %s)',
+            $refusals['unknown_subject'],
+            $refusals['replayed'],
+        ),
+    );
+    demo_expect($refusals['openid_refused'] === 'invalid_scope', sprintf('and "openid" is refused rather than dropped (got %s)', $refusals['openid_refused']));
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('A third party named a user of this tenant, once, and only the one it is trusted for.');
+}
+
+/**
+ * The assertion client of tests/demo/, run under the autoloader of the monorepo, which castor does not load.
+ *
+ * @param array<string, string> $input
+ * @return array<string, mixed>
+ */
+function demo_assertion_client(array $input): array
+{
+    $process = new Process(['php', DEMO_ASSERTION_CLIENT], input: (string) json_encode($input));
+    $process->setTimeout(120.0);
+    $process->run();
+    demo_expect($process->isSuccessful(), sprintf('the assertion client ran (exit %d): %s', $process->getExitCode() ?? -1, trim($process->getErrorOutput())));
+    $run = json_decode($process->getOutput(), true);
+    demo_expect(is_array($run), 'the assertion client answered a JSON object: ' . $process->getOutput());
+
+    return $run;
+}
+
+/**
+ * The client of the rich authorization request walk, the one type of detail this deployment wires
+ * (App\AuthorizationDetails\InvoicePaymentType) and a type it does not, which is what the refusal is asked
+ * for. The detail says what may be done, to what, and how much, which is the whole difference with a scope.
+ */
+const DEMO_RAR_CLIENT_ID = 'demo-rar';
+
+const DEMO_RAR_INVOICE = 'INV-4711';
+
+const DEMO_RAR_DETAILS = [
+    [
+        'type' => 'invoice_payment',
+        'locations' => [DEMO_SERVICE_RESOURCE],
+        'actions' => ['read', 'pay'],
+        'identifier' => DEMO_RAR_INVOICE,
+        'maximumAmount' => [
+            'currency' => 'EUR',
+            'amount' => '45.00',
+        ],
+    ],
+];
+
+/**
+ * The same detail as the type built it, which is what comes back everywhere it is rendered: the members in the
+ * order that type chose, and its lists sorted, where the request above wrote the two actions the other way
+ * round.
+ *
+ * It is not a detail of this walk. Two requests that ask for the same thing have to be the same detail whatever
+ * order they were written in, or a consent given for one would not cover the other
+ * (AuthorizationDetail::equals()), so what a token carries is what the type made of the request and never the
+ * request as it arrived.
+ */
+const DEMO_RAR_GRANTED = [
+    [
+        'type' => 'invoice_payment',
+        'locations' => [DEMO_SERVICE_RESOURCE],
+        'actions' => ['pay', 'read'],
+        'identifier' => DEMO_RAR_INVOICE,
+        'maximumAmount' => [
+            'currency' => 'EUR',
+            'amount' => '45.00',
+        ],
+    ],
+];
+
+/**
+ * What this walk found and the provider does not do yet: RFC 9396 §7 asks the token response to say what it
+ * granted, and it says nothing, so a client holding an opaque access token learns it by introspecting its own
+ * token. The walk asserts the gap rather than quieting it, so that the day it closes the line fails and is
+ * deleted; it is the rule the "known" list of the conformance plans and the refused rung of the ladder follow.
+ */
+const DEMO_RAR_RESPONSE_GAP = 'https://github.com/beffroi-php/heidi/issues/300';
+
+const DEMO_RAR_UNWIRED_DETAILS = [
+    [
+        'type' => 'account_information',
+        'actions' => ['read'],
+    ],
+];
+
+/**
+ * The third part of issue #299: a request that asks for what it may do, to what and how much (RFC 9396).
+ *
+ * A scope is a kind of thing and a detail is a thing, so a detail is the one part of an authorization a user
+ * has to be able to read before agreeing to it: the walk therefore reads the consent page before answering
+ * it, and only then follows the detail into the access token (§7) and into the introspection (§9), which is
+ * where a resource server finds it. Then a type nobody wired, refused at the endpoint the browser is on.
+ */
+function demo_rar_check(string $issuer, string $password, string $ca, string $secret): void
+{
+    io()->section('A request that asks for what it may do, to what and how much');
+    $verified = [];
+    $cookies = [];
+    $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    $redirectUri = DEMO_URL . '/oidc/callback';
+
+    // RFC 9396 §2: the parameter is the JSON of the array, in the query of the browser like every other
+    $authorization = demo_rar_authorization($issuer, $verifier, $redirectUri, DEMO_RAR_DETAILS);
+    $shown = null;
+    [$status, $location] = demo_resume(
+        $cookies,
+        $ca,
+        $issuer,
+        demo_login($cookies, $issuer, $password, $ca, $authorization),
+        static function (string $page) use (&$shown): void {
+            $shown = $page;
+        },
+    );
+    demo_expect(
+        is_string($shown),
+        sprintf(
+            'the provider shows the consent the request asked for, a detail being what a user has to agree to (RFC 9396 §5; it answered %d %s)',
+            $status,
+            $location,
+        ),
+    );
+    $page = (string) $shown;
+    demo_expect(
+        preg_match('/data-authorization-detail="([^"]+)"/', $page, $rendered) === 1 && $rendered[1] === 'invoice_payment',
+        sprintf('the consent page says the request carries a detail, and of which type (got "%s")', $rendered[1] ?? ''),
+    );
+    demo_expect(
+        str_contains($page, DEMO_RAR_INVOICE) && str_contains($page, '45.00') && str_contains($page, 'EUR'),
+        'and says what it asks for in words: the invoice, and the most that may be moved (the message of the type, apps/op/translations)',
+    );
+    $verified[] = ['Consent', sprintf('the detail rendered as "%s", invoice %s, at most 45.00 EUR', $rendered[1], DEMO_RAR_INVOICE)];
+
+    // the code, then the token it is spent for
+    demo_expect(
+        $status === 302 && str_starts_with($location, $redirectUri . '?'),
+        sprintf('the provider answers the request with a redirection to the client (got %d %s)', $status, $location),
+    );
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+    demo_expect(isset($callback['code']), 'which carries a code');
+    $tokens = demo_rar_exchange($issuer, $ca, $secret, (string) $callback['code'], $redirectUri, $verifier);
+    $claims = demo_claims_of($tokens['access_token'] ?? '');
+    demo_expect(
+        isset($claims['authorization_details']) && $claims['authorization_details'] === DEMO_RAR_GRANTED,
+        sprintf('the access token carries the detail, as the type built it (RFC 9396 §7: %s)', json_encode($claims['authorization_details'] ?? null)),
+    );
+    demo_expect(
+        DEMO_RAR_GRANTED[0]['actions'] !== DEMO_RAR_DETAILS[0]['actions'],
+        'and in the order of its type rather than of the request, which is what lets one consent cover two requests that ask for the same thing',
+    );
+    // The gap this walk measures, written down with the issue that closes it, as the refused rung of the
+    // ladder is (DEMO_LADDER_RUNGS): RFC 9396 §7 asks the response to say what it granted, and this one says
+    // nothing, so a client holding an opaque token has to introspect to learn it. The day the issue lands,
+    // this is the expectation that fails, and the line is deleted rather than carried.
+    demo_expect(
+        ! isset($tokens['authorization_details']),
+        sprintf('the token response still says nothing of what it granted (%s, RFC 9396 §7)', DEMO_RAR_RESPONSE_GAP),
+    );
+    $verified[] = ['Access token', sprintf('authorization_details of %d object(s), in the order of its type', count(DEMO_RAR_GRANTED))];
+    $verified[] = ['The token response', sprintf('carries none, %s', DEMO_RAR_RESPONSE_GAP)];
+
+    // RFC 9396 §9: where a resource server that does not read the token itself finds the same thing
+    $described = demo_rar_introspection($issuer, $ca, $secret, (string) ($tokens['access_token'] ?? ''));
+    demo_expect(
+        ($described['authorization_details'] ?? null) === DEMO_RAR_GRANTED,
+        sprintf(
+            'the introspection renders the detail to the client the token was issued to (§9: %s)',
+            json_encode($described['authorization_details'] ?? null),
+        ),
+    );
+    $verified[] = ['Introspection', 'the same detail, rendered for a resource server that asks'];
+
+    // RFC 9396 §11: what a client may ask for is the closed list of its registration, and a type nobody
+    // wired is a detail nothing could describe or show
+    $refused = [];
+    [$status, $location] = demo_request(
+        $refused,
+        $ca,
+        'GET',
+        demo_rar_authorization($issuer, $verifier, $redirectUri, DEMO_RAR_UNWIRED_DETAILS),
+    );
+    demo_expect(
+        $status === 302 && str_starts_with($location, $redirectUri . '?'),
+        sprintf('a request naming a type nobody wired is answered to the client and not on a page (got %d %s)', $status, $location),
+    );
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $error);
+    demo_expect(
+        ($error['error'] ?? null) === 'invalid_authorization_details',
+        sprintf('with the error RFC 9396 §5 names (got %s)', (string) ($error['error'] ?? '')),
+    );
+    demo_expect(
+        ! str_contains((string) ($error['error_description'] ?? ''), 'account_information'),
+        'and a description that names neither the type asked for nor what the client registered',
+    );
+    $verified[] = ['A type nobody wired', sprintf('%s, without naming it', (string) $error['error'])];
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('A user read what a request asked to do to one invoice, agreed to it, and it travelled into the token.');
+}
+
+/**
+ * RFC 9396 §2: the authorization request of that client, carrying the JSON of the details it asks for.
+ *
+ * @param list<array<string, mixed>> $details
+ */
+function demo_rar_authorization(string $issuer, string $verifier, string $redirectUri, array $details): string
+{
+    return $issuer
+    . '/authorize?'
+    . http_build_query([
+        'response_type' => 'code',
+        'client_id' => DEMO_RAR_CLIENT_ID,
+        'redirect_uri' => $redirectUri,
+        'scope' => 'openid profile',
+        'state' => bin2hex(random_bytes(16)),
+        'nonce' => bin2hex(random_bytes(16)),
+        'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='),
+        'code_challenge_method' => 'S256',
+        // OIDC Core §3.1.2.1: the page is what this walk reads, and a consent already in force would answer
+        // the request without showing one, so it is asked for rather than hoped for
+        'prompt' => 'consent',
+        'authorization_details' => json_encode($details, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES),
+    ]);
+}
+
+/**
+ * The code of that request, spent with the verifier of its challenge.
+ *
+ * @return array<string, mixed>
+ */
+function demo_rar_exchange(string $issuer, string $ca, string $secret, string $code, string $redirectUri, string $verifier): array
+{
+    $response = http_request('POST', $issuer . '/token', [
+        'cafile' => $ca,
+        'max_redirects' => 0,
+        'auth_basic' => DEMO_RAR_CLIENT_ID . ':' . $secret,
+        'body' => [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => $redirectUri,
+            'code_verifier' => $verifier,
+        ],
+    ]);
+    demo_expect($response->getStatusCode() === 200, sprintf(
+        'the code is exchanged (got %d %s)',
+        $response->getStatusCode(),
+        $response->getContent(false),
+    ));
+
+    return (array) json_decode($response->getContent(false), true, 8, \JSON_THROW_ON_ERROR);
+}
+
+/**
+ * RFC 7662 §2.2, RFC 9396 §9: the token described to the client it was issued to.
+ *
+ * @return array<string, mixed>
+ */
+function demo_rar_introspection(string $issuer, string $ca, string $secret, string $accessToken): array
+{
+    $response = http_request('POST', $issuer . '/introspect', [
+        'cafile' => $ca,
+        'max_redirects' => 0,
+        'auth_basic' => DEMO_RAR_CLIENT_ID . ':' . $secret,
+        'body' => [
+            'token' => $accessToken,
+            'token_type_hint' => 'access_token',
+        ],
+    ]);
+    $described = (array) json_decode($response->getContent(false), true);
+    demo_expect(($described['active'] ?? null) === true, sprintf('the introspection describes the token (got %d)', $response->getStatusCode()));
+
+    return $described;
+}
+
+/**
+ * The native client of the loopback walk, and the two runs it makes: the port is what varies between them,
+ * and it is the one thing of the redirection this provider does not compare byte for byte (RFC 8252 §7.3).
+ */
+const DEMO_NATIVE_CLI = 'tests/demo/native-cli.php';
+
+const DEMO_NATIVE_CLIENT_ID = 'demo-native';
+
+/**
+ * RFC 8252 §8.3: the loopback interface named by a name rather than by its IP literal, which a native client
+ * must not be sent back to, whatever resolves it on the machine of the user.
+ */
+const DEMO_NATIVE_REFUSED_REDIRECT = 'http://localhost/callback';
+
+/**
+ * The fourth part of issue #299: a program on the machine of its user, receiving the authorization response on
+ * the loopback interface (RFC 8252 §7.3).
+ *
+ * The walk is the run twice, because one run proves nothing: what is claimed is that the port varies and the
+ * provider serves it, so two runs on two ports are what says so. Then the exception is shown to be an
+ * exception and not a hole: a redirection on a name rather than on the IP literal is refused, the path is
+ * compared as it is for every other client, and the code is worth nothing without the verifier of its
+ * challenge, this client holding no secret at all.
+ */
+function demo_native_check(string $issuer, string $password, string $ca): void
+{
+    io()->section('A native client on the loopback interface');
+    $verified = [];
+    $ports = [];
+
+    foreach ([1, 2] as $run) {
+        $cli = new Process(
+            ['php', DEMO_NATIVE_CLI, '--issuer=' . $issuer, '--client-id=' . DEMO_NATIVE_CLIENT_ID, '--cafile=' . $ca, '--timeout=120'],
+            timeout: 180.0,
+        );
+        $cli->start();
+
+        try {
+            // the operating system hands it a port, and the redirection it gives the provider carries that
+            // port and nothing else of its own
+            $listening = demo_cli_step($cli, 'listening');
+            $port = is_int($listening['port'] ?? null) ? $listening['port'] : 0;
+            demo_expect($port > 0, sprintf('run %d: the client is listening on a port it was given (got %s)', $run, (string) $port));
+            demo_expect(
+                ($listening['redirect_uri'] ?? null) === sprintf('http://127.0.0.1:%d/callback', $port),
+                sprintf(
+                    'run %d: and names it by the IP literal it registered, with the port it was given (got %s)',
+                    $run,
+                    (string) ($listening['redirect_uri'] ?? ''),
+                ),
+            );
+            $ports[] = $port;
+
+            // the browser of the user: the provider serves the request, the login and the consent, and sends
+            // the browser back to the port of this run
+            $cookies = [];
+            [$status, $location] = demo_resume(
+                $cookies,
+                $ca,
+                $issuer,
+                demo_login($cookies, $issuer, $password, $ca, (string) $listening['authorization_url']),
+            );
+            demo_expect(
+                $status === 302 && str_starts_with($location, $listening['redirect_uri'] . '?'),
+                sprintf('run %d: the provider sends the browser back to the port of this run (got %d %s)', $run, $status, $location),
+            );
+            // the browser goes there, which is what hands the code to the program waiting behind it
+            demo_request($cookies, $ca, 'GET', $location);
+
+            $redirected = demo_cli_step($cli, 'redirected');
+            demo_expect(
+                ($redirected['state_matches'] ?? false) === true && ($redirected['iss_matches'] ?? false) === true,
+                sprintf('run %d: the client recognises its own flow, by its state and by the issuer (RFC 9207 §2.4)', $run),
+            );
+            $tokens = demo_cli_step($cli, 'tokens');
+            demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf(
+                'run %d: it holds a bearer token (got %s)',
+                $run,
+                (string) ($tokens['token_type'] ?? ''),
+            ));
+            demo_expect(($tokens['sub'] ?? null) !== null && ($tokens['id_token'] ?? false) === true, sprintf(
+                'run %d: the token names the user, and an ID token came with it',
+                $run,
+            ));
+            $verified[] = [sprintf('Run %d', $run), sprintf('port %d, "%s", signed in', $port, (string) ($tokens['scope'] ?? '?'))];
+
+            $cli->wait();
+            demo_expect($cli->isSuccessful(), sprintf('run %d: the client ends without an error (exit %s)', $run, (string) $cli->getExitCode()));
+        } finally {
+            if ($cli->isRunning()) {
+                $cli->stop();
+            }
+        }
+    }
+
+    demo_expect(
+        count($ports) === 2 && $ports[0] !== $ports[1],
+        sprintf('the two runs were given two different ports, and both were served (%s)', implode(' and ', $ports)),
+    );
+    $verified[] = ['The exception', sprintf('two ports served on one registration, %s', implode(' and ', $ports))];
+
+    // RFC 8252 §8.3: the exception is the port and nothing else. A name is resolved by whatever answers for
+    // it on the machine of the user, and a redirection carrying a code is not a thing to hand to that.
+    $cookies = [];
+    [$status, , $page] = demo_request(
+        $cookies,
+        $ca,
+        'GET',
+        $issuer . '/authorize?'
+            . http_build_query([
+                'response_type' => 'code',
+                'client_id' => DEMO_NATIVE_CLIENT_ID,
+                'redirect_uri' => DEMO_NATIVE_REFUSED_REDIRECT,
+                'scope' => 'openid profile',
+                'state' => bin2hex(random_bytes(16)),
+                'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', 'whatever', true)), '+/', '-_'), '='),
+                'code_challenge_method' => 'S256',
+            ]),
+    );
+    demo_expect(
+        $status === 400,
+        sprintf('a redirection on a name rather than on the IP literal is refused on a page, there being nowhere to send the browser (got %d)', $status),
+    );
+    demo_expect(
+        ! str_contains($page, DEMO_NATIVE_REFUSED_REDIRECT),
+        'and the page does not echo the URI it was given',
+    );
+    $verified[] = ['A name, not the literal', sprintf('%s refused with %d', DEMO_NATIVE_REFUSED_REDIRECT, $status)];
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('A program on somebody\'s machine signed its user in twice, on two ports, against one registration.');
 }

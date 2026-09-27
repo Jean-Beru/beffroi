@@ -547,6 +547,9 @@ services:
     test.heidi.credentials:
         alias: Heidi\Core\Port\CredentialRepositoryInterface
         public: true
+    test.heidi.linked_identities:
+        alias: Heidi\Core\Port\LinkedIdentityRepositoryInterface
+        public: true
     test.heidi.metadata_store:
         alias: Heidi\Core\Port\MetadataBlobStoreInterface
         public: true

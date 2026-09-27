@@ -110,10 +110,12 @@ services:
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
-    # The worker is what carries a logout token to a client (Back-Channel Logout 1.0 §2.5), so it is
-    # the one process of the stack that calls out to an application of the host. "localhost" is the
-    # container itself from in here, so the second instance of oidc-demo is registered under a name
-    # of its own, which resolves to the host ("castor demo --logout-others").
+    # The worker is what calls a client back: a logout token (Back-Channel Logout 1.0 §2.5) and the
+    # notification that a backchannel request has been answered (CIBA Core §10.2). It is therefore the
+    # one process of the stack that calls out to an application of the host. "localhost" is the
+    # container itself from in here, so a client the worker has to reach is registered under a name of
+    # its own, which resolves to the host: the second instance of oidc-demo ("castor demo
+    # --logout-others") and the listener of the ping client ("castor demo --ciba").
     extra_hosts:
       - "demo.localhost:host-gateway"
     volumes:
