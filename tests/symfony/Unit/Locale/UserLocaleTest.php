@@ -1,0 +1,62 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Tests\Unit\Locale;
+
+use Heidi\Bundle\Locale\ServedLocales;
+use Heidi\Bundle\Locale\UserLocale;
+use Heidi\Core\Domain\Identity\Profile;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Architecture §5.7: the language this provider writes to a user in when there is no request of theirs to
+ * read one from. The "locale" claim of OIDC Core §5.1 as they gave it, read against the locales this
+ * deployment serves, and the default locale when it names none of them.
+ */
+final class UserLocaleTest extends TestCase
+{
+    /**
+     * @param list<string> $enabled
+     */
+    #[Test]
+    #[DataProvider('provideClaims')]
+    public function theLanguageIsTheClaimWhenThisDeploymentHasItAndTheDefaultOtherwise(
+        array $enabled,
+        string $default,
+        ?string $claimed,
+        string $expected,
+    ): void {
+        // Given
+        $locales = new UserLocale(new ServedLocales($enabled, $default));
+
+        // When / Then
+        static::assertSame($expected, $locales->of(self::user($claimed)));
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, string, string|null, string}>
+     */
+    public static function provideClaims(): iterable
+    {
+        yield 'the claim, when this deployment serves it' => [['en', 'fr'], 'en', 'fr', 'fr'];
+        yield 'the language of a claim whose region this deployment does not serve' => [['en', 'fr'], 'en', 'en-GB', 'en'];
+        yield 'the region when this deployment serves it' => [['en', 'fr', 'fr_CA'], 'en', 'fr-CA', 'fr_CA'];
+        yield 'the default, for a user who said nothing' => [['en', 'fr'], 'fr', null, 'fr'];
+        yield 'the default, for a language this deployment does not have' => [['en', 'fr'], 'en', 'de-DE', 'en'];
+        yield 'the default, for a claim that names no language at all' => [['en', 'fr'], 'en', 'not a tag', 'en'];
+        yield 'the default, for a claim that is empty' => [['en', 'fr'], 'en', '', 'en'];
+    }
+
+    private static function user(?string $locale): User
+    {
+        $user = Fixtures::user();
+        $user->updateProfile(new Profile(locale: $locale), Fixtures::now());
+
+        return $user;
+    }
+}

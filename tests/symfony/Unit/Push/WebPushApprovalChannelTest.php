@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Unit\Push;
 
 use Heidi\Bundle\Ciba\WebPushApprovalChannel;
+use Heidi\Bundle\Locale\ServedLocales;
+use Heidi\Bundle\Locale\UserLocale;
 use Heidi\Bundle\Push\WebPushSender;
 use Heidi\Core\Application\Push\PushSubscriptionRevocation;
 use Heidi\Core\Bridge\InMemory\InMemoryPushSubscriptionRepository;
 use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
+use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Domain\Identity\PushSubscription;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Key\TenantKey;
@@ -57,6 +60,13 @@ final class WebPushApprovalChannelTest extends TestCase
      * @var list<MockResponse>
      */
     private array $requests = [];
+
+    /**
+     * The locale every string of the notification was asked of the translator in.
+     *
+     * @var list<string>
+     */
+    private array $askedIn = [];
 
     protected function setUp(): void
     {
@@ -107,6 +117,28 @@ final class WebPushApprovalChannelTest extends TestCase
         static::assertCount(1, $this->requests);
         static::assertSame(self::ENDPOINT, $this->requests[0]->getRequestUrl());
         static::assertNotNull($this->subscriptions->findActiveByUser($this->alice)[0]->lastPushedAt);
+    }
+
+    /**
+     * Architecture §5.7: a user who told this provider they read French is not told in English. There is
+     * no request of theirs to read a language from here, so what is left is the claim of OIDC Core §5.1
+     * they gave, which this deployment serves as "fr" and not as "fr_CA".
+     */
+    #[Test]
+    public function theNotificationIsWrittenInTheLanguageTheUserReads(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(locale: 'fr-CA'), $this->clock->now());
+        $this->subscribed();
+        $channel = $this->channel(new MockResponse('', [
+            'http_code' => 201,
+        ]));
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+
+        // Then
+        static::assertSame(['fr', 'fr'], $this->askedIn);
     }
 
     /**
@@ -219,15 +251,27 @@ final class WebPushApprovalChannelTest extends TestCase
                 1.0,
             ),
             $this->translator(),
+            new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
             $this->clock,
             new NullLogger(),
         );
     }
 
+    /**
+     * Keeps the language every string was asked in, so that a test reads back the locale the notification
+     * was written in, which is encrypted to the browser by the time it leaves.
+     */
     private function translator(): TranslatorInterface
     {
         $translator = self::createStub(TranslatorInterface::class);
-        $translator->method('trans')->willReturnArgument(0);
+        $translator
+            ->method('trans')
+            ->willReturnCallback(
+                function (string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string {
+                    $this->askedIn[] = (string) $locale;
+                    return $id;
+                },
+            );
 
         return $translator;
     }
