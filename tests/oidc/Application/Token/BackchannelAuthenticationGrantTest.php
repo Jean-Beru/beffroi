@@ -207,6 +207,27 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
+     * RFC 6749 §5.2: the refusal is answered in JSON and redirected nowhere, a client of this flow having
+     * no browser to send anywhere.
+     */
+    #[Test]
+    public function theRefusalOfThisGrantIsNotRedirected(): void
+    {
+        // Given
+        $record = $this->record();
+        $record->deny($this->clock->now());
+
+        // When
+        try {
+            $this->poll();
+            static::fail('A refused request is refused.');
+        } catch (AccessDeniedException $exception) {
+            // Then
+            static::assertFalse($exception->redirectable);
+        }
+    }
+
+    /**
      * §11: a client asking faster than the interval it was given is told to slow down.
      */
     #[Test]
@@ -219,6 +240,52 @@ final class BackchannelAuthenticationGrantTest extends TestCase
         // Then
         $this->expectException(SlowDownException::class);
         $this->expectExceptionMessageIs('slow_down: The client is polling faster than the interval it was given, which grows by five seconds (CIBA Core section 11).');
+
+        // When
+        $this->poll();
+    }
+
+    /**
+     * §10.2, §11: a client that was called back comes once, when it is told, which is sooner than the
+     * interval it was given to poll at; "slow_down" is a variant of "authorization_pending" and has
+     * nothing to say about a request that has been answered.
+     */
+    #[Test]
+    public function aRequestApprovedSinceTheLastPollIsServedHoweverSoonAfterIt(): void
+    {
+        // Given
+        $record = $this->record();
+        $this->pollQuietly();
+        $record->approve(
+            $this->session,
+            AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
+            $this->clock->now(),
+        );
+
+        // When
+        $issued = $this->poll();
+
+        // Then
+        $authorization = $issued->authorization;
+        static::assertInstanceOf(UserAuthorizationInterface::class, $authorization);
+        static::assertSame($this->session, $authorization->session);
+    }
+
+    /**
+     * §10.2, §11: the refusal is on the same clock as the acceptance, a client called back about one
+     * being told what it was called back about.
+     */
+    #[Test]
+    public function aRequestRefusedSinceTheLastPollIsAccessDeniedHoweverSoonAfterIt(): void
+    {
+        // Given
+        $record = $this->record();
+        $this->pollQuietly();
+        $record->deny($this->clock->now());
+
+        // Then
+        $this->expectException(AccessDeniedException::class);
+        $this->expectExceptionMessageIs('access_denied: The end user denied the request.');
 
         // When
         $this->poll();

@@ -320,18 +320,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     {
         // Given
         $alice = self::userWithPassword('alice', self::PASSWORD);
-        self::signingKey();
-        $this->browser->request(
-            'POST',
-            '/backchannel_authentication',
-            [
-                'scope' => 'openid profile',
-                'login_hint' => 'alice-subject',
-                'client_notification_token' => self::NOTIFICATION_TOKEN,
-            ],
-            server: self::credentials(self::PINGED_CLIENT_ID, self::PINGED_SECRET),
-        );
-        $authRequestId = self::string(self::json($this->browser->getResponse())['auth_req_id']);
+        $authRequestId = self::string(self::json($this->askToBeCalledBack())['auth_req_id']);
         $this->signIn($alice);
         self::queued();
 
@@ -346,6 +335,51 @@ final class BackchannelFlowTest extends BrowserTestCase
         static::assertSame('https://terminal.test/ciba', $message->notificationEndpoint);
         static::assertSame($authRequestId, $message->authRequestId, 'CIBA Core section 10.2: the identifier the client was handed');
         static::assertSame(self::NOTIFICATION_TOKEN, $message->notificationToken);
+    }
+
+    /**
+     * §10.2, §11: a client that registered to be called back comes when it is told, which is sooner than
+     * the interval it was given to poll at, and the one request it makes then is answered. "slow_down"
+     * is a variant of "authorization_pending" and says nothing about a request that has an answer.
+     */
+    #[Test]
+    public function aPingedClientIsServedOnTheRequestItMakesWhenItIsCalledBack(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $authRequestId = self::string(self::json($this->askToBeCalledBack())['auth_req_id']);
+        $this->comeCalledBack($authRequestId);
+        $this->signIn($alice);
+        $this->answer('Allow');
+
+        // When
+        $this->comeCalledBack($authRequestId);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertIsString(self::json($response)['access_token']);
+    }
+
+    /**
+     * §10.2, §11: the refusal is on the same clock as the acceptance, a client called back about a
+     * request the user ended being told that they ended it.
+     */
+    #[Test]
+    public function aPingedClientCalledBackOnARefusalIsToldTheUserRefused(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $authRequestId = self::string(self::json($this->askToBeCalledBack())['auth_req_id']);
+        $this->comeCalledBack($authRequestId);
+        $this->signIn($alice);
+        $this->answer('Refuse');
+
+        // When
+        $this->comeCalledBack($authRequestId);
+
+        // Then
+        static::assertSame('access_denied', self::json($this->browser->getResponse())['error']);
     }
 
     /**
@@ -405,6 +439,40 @@ final class BackchannelFlowTest extends BrowserTestCase
         );
 
         return $this->browser->getResponse();
+    }
+
+    /**
+     * A request of the client that registered to be called back (§7.1): it sends the token the provider
+     * will present back to it.
+     */
+    private function askToBeCalledBack(): Response
+    {
+        self::signingKey();
+        $this->browser->request(
+            'POST',
+            '/backchannel_authentication',
+            [
+                'scope' => 'openid profile',
+                'login_hint' => 'alice-subject',
+                'client_notification_token' => self::NOTIFICATION_TOKEN,
+            ],
+            server: self::credentials(self::PINGED_CLIENT_ID, self::PINGED_SECRET),
+        );
+
+        return $this->browser->getResponse();
+    }
+
+    private function comeCalledBack(string $authRequestId): void
+    {
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'urn:openid:params:grant-type:ciba',
+                'auth_req_id' => $authRequestId,
+            ],
+            server: self::credentials(self::PINGED_CLIENT_ID, self::PINGED_SECRET),
+        );
     }
 
     private function come(string $authRequestId): void
