@@ -135,6 +135,7 @@ final class Tokens
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             null,
             null,
+            [],
             null,
             null,
             Fixtures::context($issuedAt),

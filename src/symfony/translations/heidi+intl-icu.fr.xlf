@@ -21,6 +21,10 @@
         <source>login.step_up</source>
         <target>{client} exige une connexion plus forte que celle que vous avez.</target>
       </trans-unit>
+      <trans-unit id="bc176883bc" resname="login.step_up_alone">
+        <source>login.step_up_alone</source>
+        <target>Une connexion plus forte que celle que vous avez est exigée.</target>
+      </trans-unit>
       <trans-unit id="6282806c35" resname="login.step_up.passkey">
         <source>login.step_up.passkey</source>
         <target>Une passkey la satisferait.</target>

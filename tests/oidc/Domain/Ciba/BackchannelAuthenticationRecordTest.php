@@ -250,6 +250,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
             new Scopes([Scope::openid()]),
             null,
             null,
+            [],
             null,
             null,
             Fixtures::context(),
@@ -318,12 +319,16 @@ final class BackchannelAuthenticationRecordTest extends TestCase
         static::assertSame($record, $record->clientHolder());
     }
 
+    /**
+     * @param list<string> $acrValues
+     */
     private function record(
         ?User $user = null,
         bool $named = true,
         ?BindingMessage $bindingMessage = null,
         ?DateTimeImmutable $expiresAt = null,
         int $interval = 5,
+        array $acrValues = [],
     ): BackchannelAuthenticationRecord {
         return new BackchannelAuthenticationRecord(
             DrawnSecret::digestOf('the-auth-req-id'),
@@ -333,6 +338,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
             new Scopes([Scope::openid()]),
             null,
             $bindingMessage,
+            $acrValues,
             null,
             null,
             Fixtures::context(),

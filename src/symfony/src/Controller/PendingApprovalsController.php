@@ -11,6 +11,7 @@ use Heidi\Bundle\Http\LoginTarget;
 use Heidi\Bundle\Http\PendingApprovalsPage;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
+use Heidi\Bundle\Http\StepUpOffer;
 use Heidi\Oidc\Application\Ciba\BackchannelApproval;
 use function is_string;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,6 +31,14 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * Nothing is approved on a GET, and a request is named to the POST by a handle of that very list: a
  * request of somebody else is not in it, so it is not answerable, signed in or not.
+ *
+ * What the client asked the authentication to reach is answered here (CIBA Core §7.1, decision 0010), and
+ * it is answered by asking the user rather than by refusing the client: a session that proves none of the
+ * requested classes, when a credential of that user would, is sent to the login of this provider for one
+ * more proof and comes back here to answer. It is asked again at each attempt and never given up on, the
+ * page always offering the refusal that ends the request (§11) and the request expiring on its own
+ * otherwise; a class nothing of this user could ever reach is asked for by nobody, the demand being a
+ * request and not a condition (OIDC Core §5.5.1.1) and the "acr" of the tokens saying what was proven.
  */
 #[AsController]
 final readonly class PendingApprovalsController
@@ -95,9 +104,17 @@ final readonly class PendingApprovalsController
         }
         if ($answer === self::ANSWER_DENY) {
             $this->approval->deny($record, $this->contexts->fromRequest($request));
-        } else {
-            $this->approval->approve($record, $session, $this->contexts->fromRequest($request));
+
+            return $this->page->renderAnswer($record);
         }
+        $stepUp = $this->approval->stepUpFor($record, $session);
+        if ($stepUp !== null) {
+            // the client asked for a class this session does not prove and a credential of this user
+            // would: the login of the firewall is where one more proof is given, and this page is where
+            // the browser comes back to answer (decision 0010)
+            return $this->loginTargets->sendToLogin($request->getSession(), self::ROUTE, [], StepUpOffer::of($stepUp));
+        }
+        $this->approval->approve($record, $session, $this->contexts->fromRequest($request));
 
         return $this->page->renderAnswer($record);
     }

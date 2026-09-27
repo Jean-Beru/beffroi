@@ -7,7 +7,8 @@
    signed assertion is posted as a form to the passkey authenticator of the same firewall. On a step-up
    (decision 0010) the page names the classes the client accepts and says which of the credentials the
    user holds would satisfy one, by kind (login.step_up.<kind>: a passkey, the password, a TOTP after the
-   password), nothing of a kind they do not hold; both forms stay offered.
+   password), nothing of a kind they do not hold; both forms stay offered. A step-up asked for by a page
+   of the provider names no client, that page serving no request of a browser (CIBA Core §7.1).
    Overridable by an application under templates/bundles/HeidiBundle/. #}
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
@@ -21,7 +22,7 @@
 {% block content %}
     <p>{{ client is null ? 'login.prompt_alone'|trans : 'login.prompt'|trans({client: client.registration.name}) }}</p>
     {% if step_up is not null %}
-        <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|map(class => class.value)|join(' ') }}">{{ 'login.step_up'|trans({client: client.registration.name}) }}</p>
+        <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|join(' ') }}">{{ client is null ? 'login.step_up_alone'|trans : 'login.step_up'|trans({client: client.registration.name}) }}</p>
         {% for kind in step_up.kinds %}
             <p data-step-up="{{ kind }}">{{ ('login.step_up.' ~ kind)|trans }}</p>
         {% endfor %}

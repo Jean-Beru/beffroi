@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Http;
 
 use Heidi\Bundle\Controller\LoginController;
+use function array_is_list;
 use function is_array;
 use function is_string;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -19,6 +20,11 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
  * What is remembered is a route of this provider and the parameters our own code wrote, in the HTTP
  * session and never in the request: the login page reads no target path from a body, a query or a referer,
  * so a browser is never sent anywhere by whoever filled the form.
+ *
+ * A page that asks for one more proof rather than for a login says so, with the classes and the kinds of
+ * credential the login page names (StepUpOffer, decision 0010): the page where a user answers a request
+ * made for them somewhere else is not there when the browser reaches the login, so what it is asking for
+ * travels in the same place as where the browser goes back to.
  *
  * It is forgotten by the page that was waiting for it, and not by the login that answered: a password
  * verified for a user who holds a second factor is not a login yet (SecondFactorGate), and a page that let
@@ -39,12 +45,24 @@ final readonly class LoginTarget
      *
      * @param string $route a route of this provider
      * @param array<string, string> $parameters what our own code writes into it, never what a request carried
+     * @param StepUpOffer|null $stepUp what this login has to add, when the page asks for one more proof of a
+     *                                 user who is signed in already rather than for a login
      */
-    public function sendToLogin(SessionInterface $httpSession, string $route, array $parameters = []): RedirectResponse
-    {
+    public function sendToLogin(
+        SessionInterface $httpSession,
+        string $route,
+        array $parameters = [],
+        ?StepUpOffer $stepUp = null,
+    ): RedirectResponse {
         $httpSession->set(self::SESSION_KEY, [
             'route' => $route,
             'parameters' => $parameters,
+            'step_up' => $stepUp === null
+                ? null
+                : [
+                    'classes' => $stepUp->classes,
+                    'kinds' => $stepUp->kinds,
+                ],
         ]);
 
         return $this->pages->redirectToRoute(LoginController::ROUTE);
@@ -57,6 +75,20 @@ final readonly class LoginTarget
     public function isPending(SessionInterface $httpSession): bool
     {
         return self::remembered($httpSession) !== null;
+    }
+
+    /**
+     * What the page that is waiting asked this login to add, null when it asked for a login and not for one
+     * more proof.
+     */
+    public function pendingStepUp(SessionInterface $httpSession): ?StepUpOffer
+    {
+        $remembered = self::remembered($httpSession);
+        if ($remembered === null || $remembered['step_up'] === null) {
+            return null;
+        }
+
+        return new StepUpOffer($remembered['step_up']['classes'], $remembered['step_up']['kinds']);
     }
 
     public function forget(SessionInterface $httpSession): void
@@ -75,7 +107,7 @@ final readonly class LoginTarget
     }
 
     /**
-     * @return array{route: string, parameters: array<string, string>}|null
+     * @return array{route: string, parameters: array<string, string>, step_up: array{classes: non-empty-list<string>, kinds: non-empty-list<string>}|null}|null
      */
     private static function remembered(SessionInterface $httpSession): ?array
     {
@@ -94,10 +126,41 @@ final readonly class LoginTarget
                 $written[$name] = $value;
             }
         }
+        $stepUp = $remembered['step_up'] ?? null;
+        $classes = is_array($stepUp) ? self::words($stepUp['classes'] ?? null) : [];
+        $kinds = is_array($stepUp) ? self::words($stepUp['kinds'] ?? null) : [];
 
         return [
             'route' => $route,
             'parameters' => $written,
+            'step_up' =>
+                $classes === [] || $kinds === []
+                    ? null
+                    : [
+                        'classes' => $classes,
+                        'kinds' => $kinds,
+                    ],
         ];
+    }
+
+    /**
+     * A list of words this provider wrote, read back as one; anything else is nothing.
+     *
+     * @return list<string>
+     */
+    private static function words(mixed $value): array
+    {
+        if (! is_array($value) || ! array_is_list($value)) {
+            return [];
+        }
+        $words = [];
+        foreach ($value as $word) {
+            if (! is_string($word) || $word === '') {
+                return [];
+            }
+            $words[] = $word;
+        }
+
+        return $words;
     }
 }

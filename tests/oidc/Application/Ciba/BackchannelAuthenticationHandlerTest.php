@@ -196,6 +196,56 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
+     * §7.1 "acr_values": what the client would like the authentication to reach is kept on the record, in
+     * the order it preferred, for the page where its user answers (decision 0010); nothing is judged
+     * against it here, where the person it is about is not.
+     */
+    #[Test]
+    public function theClassesTheRequestAsksForAreKeptOnTheRecord(): void
+    {
+        // When
+        $response = $this->ask([
+            'acr_values' => 'phrh phr',
+        ]);
+
+        // Then
+        $record = $this->records->findByAuthRequestIdHash(DrawnSecret::digestOf($response->authRequestId)) ?? static::fail('No record.');
+        static::assertSame(['phrh', 'phr'], $record->acrValues);
+    }
+
+    /**
+     * §7.1: a request that asks for no class in particular asks for none, and the approval answers it
+     * with the class the session that approved proves.
+     */
+    #[Test]
+    public function aRequestThatNamesNoClassKeepsNone(): void
+    {
+        // When
+        $response = $this->ask();
+
+        // Then
+        $record = $this->records->findByAuthRequestIdHash(DrawnSecret::digestOf($response->authRequestId)) ?? static::fail('No record.');
+        static::assertSame([], $record->acrValues);
+    }
+
+    /**
+     * OIDC Core §2: a class is printable ASCII without space, and a space-separated list is what the
+     * parameter is; what is not one is refused here as it is at the endpoint a browser reaches.
+     */
+    #[Test]
+    public function aClassThatIsNotOneIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The acr_values parameter must be a space-separated list of printable ASCII values.');
+
+        // When
+        $this->ask([
+            'acr_values' => "phr\tphrh",
+        ]);
+    }
+
+    /**
      * Decision 0006, §13: a request naming a stranger is answered exactly as a request naming somebody
      * who never answers, and the record it leaves is answerable by nobody.
      */
