@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  * RFC 8705 end to end, through HTTP: a client authenticated by the certificate its connection proved
  * (§2.1), the tokens of that request bound to it (§3), and the provider's own resource refusing them to
  * anybody else (§3.2). The certificate reaches the application the way the edge hands it over
- * (docs/mtls-at-the-edge.md, issue #157): a server variable, filled by the listener that carried out the
+ * (architecture §6, issue #157): a server variable, filled by the listener that carried out the
  * handshake.
  */
 final class MutualTlsFlowTest extends BrowserTestCase

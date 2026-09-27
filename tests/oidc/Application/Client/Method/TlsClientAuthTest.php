@@ -79,7 +79,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * The chain is the edge's to judge (docs/mtls-at-the-edge.md), the name is the provider's: a
+     * The chain is the edge's to judge (architecture §6), the name is the provider's: a
      * certificate of the very same authority that names somebody else authenticates nobody.
      */
     #[Test]

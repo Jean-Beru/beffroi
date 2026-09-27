@@ -23,7 +23,7 @@ final readonly class MutualTlsSection extends ConfigurationSection
     {
         $children
             ->arrayNode('mutual_tls')
-            ->info('Where a client that presents a certificate reaches the endpoints (RFC 8705 §5). The certificate itself comes from the edge, which is infrastructure and not configuration (docs/mtls-at-the-edge.md); what a deployment says here is the host its listener asks for one on.')
+            ->info('Where a client that presents a certificate reaches the endpoints (RFC 8705 §5). The certificate itself comes from the edge, which is infrastructure and not configuration (architecture §6); what a deployment says here is the host its listener asks for one on.')
             ->addDefaultsIfNotSet()
             ->children()
             ->scalarNode('origin')

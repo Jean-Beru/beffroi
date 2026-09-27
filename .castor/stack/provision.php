@@ -90,7 +90,7 @@ const DEV_MTLS_CLIENT_NAME = 'heidi-dev-mtls-client';
 
 /**
  * The host of the listener that asks for a client certificate; MTLS_SERVER_NAME in compose.yaml is the
- * same value, and the ordinary host of the OP is not this one (docs/mtls-at-the-edge.md).
+ * same value, and the ordinary host of the OP is not this one (architecture §6).
  */
 const DEV_MTLS_SERVER_NAME = 'mtls.op.localhost';
 
@@ -663,7 +663,7 @@ function vault_cli(array $args, array $environment = []): Process
 
 /**
  * The certificate a test client presents to the listener that asks for one (issue #157,
- * docs/mtls-at-the-edge.md): one self-signed certificate on a P-256 key, with its private key, written
+ * architecture §6): one self-signed certificate on a P-256 key, with its private key, written
  * on the machine under var/mtls/. Self-signed because that is what the listener of the development stack
  * asks for and accepts: it asks without requiring and validates no chain, and RFC 8705 §2.2
  * ("self_signed_tls_client_auth") binds a token to exactly such a certificate. A deployment doing

@@ -11,8 +11,6 @@ An identity provider for the Symfony ecosystem. "Heidi" is the code name; the pr
 
 Requires PHP 8.4 and Symfony 8.2.
 
-See [docs/](docs/README.md) for the architecture, the security defaults and the conformance suite.
-
 ## Development
 
 ```bash

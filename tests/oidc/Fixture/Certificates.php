@@ -151,7 +151,7 @@ final class Certificates
     }
 
     /**
-     * What the edge hands over, envelope included (docs/mtls-at-the-edge.md).
+     * What the edge hands over, envelope included (architecture §6).
      */
     public static function pemOf(ClientCertificate $certificate): string
     {

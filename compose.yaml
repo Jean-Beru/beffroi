@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     environment:
       SERVER_NAME: ${SERVER_NAME:-op.localhost}
-      # The second host, the one that asks for a client certificate (issue #157, docs/mtls-at-the-edge.md):
+      # The second host, the one that asks for a client certificate (issue #157, architecture §6):
       # the same listener, another name, and the site block of apps/op/frankenphp/mtls.Caddyfile, imported
       # the way worker.Caddyfile is. The host of SERVER_NAME above is untouched and keeps asking for nothing.
       MTLS_SERVER_NAME: ${MTLS_SERVER_NAME:-mtls.op.localhost}

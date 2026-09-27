@@ -8,7 +8,7 @@ use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The certificate read from what the edge proves (docs/mtls-at-the-edge.md): a server variable the TLS
+ * The certificate read from what the edge proves (architecture §5.2): a server variable the TLS
  * listener fills from the handshake it carried out itself, never a header.
  *
  * The difference is the whole rule of decision 0006. A client controls every header of its request and

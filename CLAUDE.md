@@ -32,7 +32,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 
 **The conclusion is written on the end date, whatever the outcome, and a spike is not closed until every line below is done.** A green run that nobody wrote down is not a result, and a spike that stops without a conclusion is the failure mode decision 0005 exists to prevent.
 
-1. **Re-run the judge, on the maintenance branch, after the merge.** The six certification plans in `--strict` (`castor conformance`), plus whatever else judges this spike. A pull request run proves nothing about the plans: the conformance job does not run on pull requests, so a regression only shows up once merged.
+1. **Re-run the judge, on the maintenance branch, after the merge.** The certification plans in `--strict` (`castor conformance`), plus whatever else judges this spike. A pull request run proves nothing about the plans: the conformance job does not run on pull requests, so a regression only shows up once merged.
 2. **Name every red.** A module that stays red is listed in the `known` list of `CONFORMANCE_PLANS` with its reason and the issue that closes it, once the gap is written down, never to quiet a surprise. The run then fails the day it passes, so the line is deleted rather than carried.
 3. **Write the conclusion** in the spike README, in the parent repository, in its established shape: **the answer, yes or no**, then one line per success criterion with the number or the run that proves it, then what the spike cost and taught, then what it leaves open, each open item naming its issue.
 4. **Leave nothing unattached.** Everything the spike found and did not build is an issue on the spike that will need it, and the ones left over from the previous spike have moved on or been closed.
@@ -50,7 +50,7 @@ composer install                  # monorepo (packages, tests)
 (cd apps/op && composer install)  # the application, path repositories to ../../src/*
 ```
 
-**The stack.** `docs/getting-started.md` has the detail.
+**The stack.**
 
 ```bash
 castor start                      # https://op.localhost (FrankenPHP worker), PostgreSQL, RabbitMQ, and https://mtls.op.localhost behind a listener that asks for a client certificate
@@ -61,7 +61,7 @@ castor stop / castor logs / castor console <cmd>
 castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI), inside the op container
 ```
 
-**The judges.** `docs/conformance-suite.md` and `docs/mtls-at-the-edge.md`.
+**The judges.** `../docs/07-certifications.md` carries the state of each plan.
 
 ```bash
 castor conformance [--plan P] [--module X]  # the certification plans through the API of the suite: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, rotate-keys; result per module, the "known" list of CONFORMANCE_PLANS carrying the gaps left open with their issue
