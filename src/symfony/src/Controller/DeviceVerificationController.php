@@ -96,19 +96,23 @@ final readonly class DeviceVerificationController
         if ($typed === '') {
             return $this->page->renderForm();
         }
+        // What is compared and what is shown are two readings of one code (UserCode): the lookup is made by
+        // the bare value, and the page shows the code as the appliance shows it, so that the user sees at a
+        // glance that it is theirs (BCP 10027 §2).
+        $shown = UserCode::shown($typed);
         if (! $this->attempts->mayAttempt($session->user)) {
-            return $this->page->renderForm(DeviceApprovalPage::TOO_MANY_ATTEMPTS, $typed, Response::HTTP_TOO_MANY_REQUESTS);
+            return $this->page->renderForm(DeviceApprovalPage::TOO_MANY_ATTEMPTS, $shown, Response::HTTP_TOO_MANY_REQUESTS);
         }
         $record = $this->approval->awaitingAnAnswer($tenant, $typed);
         if ($record === null) {
             $this->attempts->attempt($session->user);
 
-            return $this->page->renderForm(DeviceApprovalPage::UNKNOWN_CODE, $typed, Response::HTTP_BAD_REQUEST);
+            return $this->page->renderForm(DeviceApprovalPage::UNKNOWN_CODE, $shown, Response::HTTP_BAD_REQUEST);
         }
 
         $answer = $parameters[self::ANSWER_PARAMETER] ?? null;
         if (! $request->isMethod('POST') || $answer !== self::ANSWER_ALLOW && $answer !== self::ANSWER_DENY) {
-            return $this->page->renderApproval($record, $session->user, $typed);
+            return $this->page->renderApproval($record, $session->user, $shown);
         }
         if ($answer === self::ANSWER_DENY) {
             $this->approval->deny($record);

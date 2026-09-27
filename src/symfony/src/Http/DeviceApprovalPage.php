@@ -38,21 +38,26 @@ final readonly class DeviceApprovalPage
 
     /**
      * @param string|null $refusal a code the template translates
-     * @param string|null $typed what was typed, shown back so that a wrong character can be corrected
+     * @param string|null $shown the code as the appliance shows it (UserCode::shown()), so that a wrong
+     *                          character can be corrected against the screen it was read from
      */
-    public function renderForm(?string $refusal = null, ?string $typed = null, int $status = Response::HTTP_OK): Response
+    public function renderForm(?string $refusal = null, ?string $shown = null, int $status = Response::HTTP_OK): Response
     {
         return $this->pages->render(
             'device.html.twig',
             [
                 'refusal' => $refusal,
-                'typed' => $typed,
+                'typed' => $shown,
             ],
             $status,
         );
     }
 
-    public function renderApproval(DeviceAuthorizationRecord $record, User $user, string $typed): Response
+    /**
+     * @param string $shown the code as the appliance shows it (UserCode::shown()), which is what the user
+     *                     compares with the screen they read it from before allowing anything (BCP 10027 §2)
+     */
+    public function renderApproval(DeviceAuthorizationRecord $record, User $user, string $shown): Response
     {
         return $this->pages->render('device_approval.html.twig', [
             'record' => $record,
@@ -61,7 +66,7 @@ final readonly class DeviceApprovalPage
             'user' => $user,
             'scopes' => $record->scopes,
             'requested_from' => $record->requestedFrom,
-            'typed' => $typed,
+            'typed' => $shown,
         ]);
     }
 
