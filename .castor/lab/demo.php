@@ -3916,9 +3916,9 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
     demo_browser_sign_in($cookies, $issuer, $password, $ca, $issuer . '/approvals');
     [$status, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
     demo_expect($status === 200, sprintf('the page of the browsers this provider may reach opens (got %d)', $status));
-    // a browser a previous run of this walk left behind is taken out first, this walk ending on a page that
-    // has to say it reaches nobody
-    $rendered = demo_push_forget($cookies, $ca, $issuer, $page, $rendered);
+    // this walk has to be the only browser this provider can reach; a browser of a previous run of itself is
+    // taken out here, one somebody else enrolled is not
+    $rendered = demo_push_alone($cookies, $ca, $issuer, $page, $rendered);
     demo_expect(
         preg_match('/data-application-server-key="([^"]+)"/', $rendered, $key) === 1,
         'the page hands this browser the application server key of the tenant, without which it cannot subscribe at all (RFC 8292 §3.2)',
@@ -3942,27 +3942,63 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
 }
 
 /**
- * Every browser the page lists taken out, which is what the user does with a browser they do not use any
- * more. The token of each row is read from the form of that row: the page carries one form per
- * subscription and one to subscribe, and the two are not signed for the same thing.
+ * This walk has to be the only browser this provider can reach. What it measures of a push service that
+ * answers 503 is the lane coming back, and the lane comes back only when **no** browser at all was reached
+ * (architecture §5.6): a second browser that took the message would answer that question instead of it.
+ *
+ * So a browser a run of this walk left behind is taken out here, recognised by the name it subscribes
+ * under, and a browser anybody else enrolled is not: it belongs to whoever enrolled it, taking one out is
+ * not something this walk can undo, and a real browser of a real user is exactly what somebody looking at
+ * this flow by hand has just registered. When one is still there the walk says which and stops.
  *
  * @param array<string, array<string, string>> $cookies
  *
- * @return string the page once nothing is left on it
+ * @return string the page once this walk is alone on it
  */
-function demo_push_forget(array &$cookies, string $ca, string $issuer, string $page, string $rendered): string
+function demo_push_alone(array &$cookies, string $ca, string $issuer, string $page, string $rendered): string
 {
-    if (preg_match_all('#<form method="post" action="([^"]*revoke)">(.*?)</form>#s', $rendered, $forms, \PREG_SET_ORDER) === 0) {
-        return $rendered;
-    }
-    foreach ($forms as $form) {
+    foreach (demo_push_rows($rendered, DEMO_PUSH_LABEL) as $row) {
+        if (preg_match('#<form method="post" action="([^"]*revoke)">(.*?)</form>#s', $row, $form) !== 1) {
+            continue;
+        }
         [$status] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($form[1]), demo_form_fields($form[2]));
-        demo_expect($status === 302, sprintf('a browser of an earlier run is taken out (got %d)', $status));
+        demo_expect($status === 302, sprintf('a browser of an earlier run of this walk is taken out (got %d)', $status));
     }
     [, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
+    $others = demo_push_rows($rendered, null);
+    if ($others !== []) {
+        io()->error(sprintf(
+            'This walk needs to be the only browser %s can reach, and %d other one(s) are subscribed there. Take them out on %s, or run this walk on a stack of its own: what it measures of a push service that cannot answer is the notifications lane coming back, which only happens when no browser at all was reached.',
+            $issuer,
+            count($others),
+            $page,
+        ));
+        exit(1);
+    }
     demo_expect(str_contains($rendered, 'data-subscriptions="none"'), 'and this walk starts on a provider that reaches nobody');
 
     return $rendered;
+}
+
+/**
+ * The rows of the page of the browsers, as the table renders one per subscription; those whose name is the
+ * one given, or every one of them when no name is.
+ *
+ * @return list<string>
+ */
+function demo_push_rows(string $page, ?string $label): array
+{
+    if (preg_match_all('#<tr data-subscription="[^"]+">(.*?)</tr>#s', $page, $rows) === 0) {
+        return [];
+    }
+    $matching = [];
+    foreach ($rows[0] as $row) {
+        if ($label === null || str_contains($row, $label)) {
+            $matching[] = $row;
+        }
+    }
+
+    return $matching;
 }
 
 /**
