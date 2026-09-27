@@ -171,68 +171,61 @@ final class AuthenticationSnapshotTest extends TestCase
         ];
         yield 'no auth_time' => [self::without($written, 'auth_time'), 'The auth_time claim is not a number of seconds.'];
         yield 'auth_time as a string' => [
-            [
-                ...$written,
-                'auth_time' => '1789473600',
-            ],
+            self::with($written, 'auth_time', '1789473600'),
             'The auth_time claim is not a number of seconds.',
         ];
         yield 'no amr' => [self::without($written, 'amr'), 'The amr claim is not a list.'];
         yield 'amr as a string' => [
-            [
-                ...$written,
-                'amr' => 'pwd',
-            ],
+            self::with($written, 'amr', 'pwd'),
             'The amr claim is not a list.',
         ];
         yield 'amr as a map' => [
-            [
-                ...$written,
-                'amr' => [
-                    'first' => 'pwd',
-                ],
-            ],
+            self::with($written, 'amr', ['first' => 'pwd']),
             'The amr claim is not a list.',
         ];
         yield 'amr with an empty value' => [
-            [
-                ...$written,
-                'amr' => [''],
-            ],
+            self::with($written, 'amr', ['']),
             'The amr claim is not a list of strings.',
         ];
         yield 'amr with a number' => [
-            [
-                ...$written,
-                'amr' => [1],
-            ],
+            self::with($written, 'amr', [1]),
             'The amr claim is not a list of strings.',
         ];
         yield 'amr empty' => [
-            [
-                ...$written,
-                'amr' => [],
-            ],
+            self::with($written, 'amr', []),
             'An authentication records at least one method (RFC 8176).',
         ];
         yield 'no acr' => [self::without($written, 'acr'), 'The acr claim is not a string.'];
         yield 'acr empty' => [
-            [
-                ...$written,
-                'acr' => '',
-            ],
+            self::with($written, 'acr', ''),
             'The acr claim is not a string.',
         ];
         yield 'acr as a number' => [
-            [
-                ...$written,
-                'acr' => 1,
-            ],
+            self::with($written, 'acr', 1),
             'The acr claim is not a string.',
         ];
     }
 
     /**
+     * The claims an authentication records, with one of them replaced by something it never writes. The
+     * value goes in by name and not after a spread of the whole: a key that follows an unpacked array
+     * overrides it, which is legal and is what the case means, but the literal then names one claim twice
+     * and nothing in it says which of the two wins.
+     *
+     * @param array<string, mixed> $claims
+     *
+     * @return array<string, mixed>
+     */
+    private static function with(array $claims, string $name, mixed $value): array
+    {
+        $claims[$name] = $value;
+
+        return $claims;
+    }
+
+    /**
+     * The same, with one of them missing.
+     *
      * @param array<string, mixed> $claims
      *
      * @return array<string, mixed>
