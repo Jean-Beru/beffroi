@@ -57,6 +57,7 @@ const DEMO_LADDER_SECRETS = [
     'OIDC_DEMO_SECRET' => 'DEMO_BASIC_SECRET',
     'OIDC_DEMO_OPAQUE_SECRET' => 'DEMO_OPAQUE_SECRET',
     'DEMO_FORM_POST_SECRET' => 'DEMO_FORM_POST_SECRET',
+    'DEMO_RAR_SECRET' => 'DEMO_RAR_SECRET',
 ];
 
 const DEMO_LADDER_KEYS = [
@@ -1215,6 +1216,13 @@ const DEMO_LADDER_RUNGS = [
         // real.
         'known' => 'https://github.com/beffroi-php/heidi/issues/204',
     ],
+    'rar' => [
+        // the literal, as the three rungs below it: the constant of this client is declared with the walk
+        // that plays it alone, further down this file
+        'client' => 'demo-rar',
+        'response' => 'query',
+        'adds' => 'authorization_details: the client asks what it may do, to what and how much, and not for a kind of thing',
+    ],
     'fapi' => [
         'client' => 'demo-fapi',
         'response' => 'jwt',
@@ -1451,6 +1459,22 @@ function demo_ladder_tokens(string $slug, array $tokens, string $page): string
     }
     $claims = demo_jwt($accessToken)['claims'];
     demo_expect(($claims['cnf'] ?? null) === null, sprintf('%s: the access token is a bearer token, bound to nothing', $slug));
+    if ($slug === 'rar') {
+        // RFC 9396 §7: what this rung asked for beyond its scopes, as the type of the detail built it; it is
+        // the one thing its token says that the tokens of the rungs above do not
+        demo_expect(
+            ($claims['authorization_details'] ?? null) === DEMO_RAR_GRANTED,
+            sprintf('rar: the access token carries the detail the rung asked for (%s)', json_encode($claims['authorization_details'] ?? null)),
+        );
+        // and the page of the rung shows it: a token carrying a detail buried inside it shows nobody anything,
+        // so the demonstration reads the claim and renders it (LadderController)
+        demo_expect(
+            preg_match('/data-authorization-detail="([^"]+)"/', $page, $shown) === 1 && $shown[1] === 'invoice_payment',
+            sprintf('rar: the page of the rung shows the detail its token carries (got "%s")', $shown[1] ?? ''),
+        );
+
+        return sprintf('an at+jwt carrying %d authorization detail(s)', count(DEMO_RAR_GRANTED));
+    }
 
     return sprintf('an at+jwt with no cnf, scope "%s"', $claims['scope'] ?? '?');
 }
@@ -3258,7 +3282,7 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
     $verified = [];
     $cookies = [];
     $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-    $redirectUri = DEMO_URL . '/oidc/callback';
+    $redirectUri = DEMO_URL . '/c/rar/callback';
 
     // RFC 9396 §2: the parameter is the JSON of the array, in the query of the browser like every other
     $authorization = demo_rar_authorization($issuer, $verifier, $redirectUri, DEMO_RAR_DETAILS);
