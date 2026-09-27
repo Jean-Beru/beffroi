@@ -43,7 +43,7 @@ The journal is written as the spike runs, one row per working day, `Fait` and `A
 
 ## Commands
 
-Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available; [Mago](https://mago.carthage.software/) is a Rust binary that image already carries (`/tools/mago`), so nothing is installed for it. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `demo.php`, `mtls.php`). A new task goes to the file of its side.
+Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available; [Mago](https://mago.carthage.software/) is a Rust binary that image already carries (`/tools/mago`), so nothing is installed for it. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `demo.php`, `mtls.php`), `.castor/tools/` what reads the repository itself and asks nothing of the stack (`graphify.php`). A new task goes to the file of its side.
 
 ```bash
 composer install                  # monorepo (packages, tests)

@@ -1,0 +1,7 @@
+# What the graph is about, on top of what .gitignore already removes. graphify merges this file after
+# .gitignore, so it can only ever exclude more, never put something back.
+
+# The code that ships, not what proves it. The tests carried about half the nodes of this repository and
+# every hub of the graph was a fixture, which buried the production code they exercise. Delete the line to
+# index them again, and rebuild: a build re-partitions the graph whatever the corpus.
+tests/
