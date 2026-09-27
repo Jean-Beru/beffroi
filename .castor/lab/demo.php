@@ -6,9 +6,9 @@ declare(strict_types=1);
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
  * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
  * --logout-others, --resource-server, --dpop, --ladder, --device, --service, --ciba, --assertion, --rar,
- * --native). The last four need no oidc-demo: their clients are the CLIs of tests/demo/ and the walk itself,
- * because what they play has no browser of the demonstration in it, or asks for something oidc_login does not
- * send.
+ * --native, --push). The last five need no oidc-demo: their clients are the CLIs of tests/demo/ and the walk
+ * itself, because what they play has no browser of the demonstration in it, or asks for something oidc_login
+ * does not send.
  */
 
 use Castor\Attribute\AsOption;
@@ -19,6 +19,7 @@ use function Castor\http_request;
 use function Castor\io;
 use function Castor\load_dot_env;
 use function Castor\run;
+use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 
 /**
@@ -76,7 +77,7 @@ const DEMO_LADDER_KEYS = [
 const DEMO_LADDER_DIRECTORY = 'var/demo';
 
 #[AsTask(
-    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them',
+    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to',
 )]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
@@ -135,6 +136,10 @@ function demo(
         description: 'Spike 6 (issue #299): a program on the machine of its user, twice, on two ports of the loopback interface against one registration (RFC 8252 §7.3), and a redirection on a name rather than on the IP literal refused',
     )]
     bool $native = false,
+    #[AsOption(
+        description: 'Spike 6 (issue #311): a push service of the lab takes the notification of a backchannel request, a browser of the lab opens it (RFC 8291) and verifies who signed it (RFC 8292), nothing in it names the request (BCP 10027 §5.2), then a 503 brings the message back and a 410 takes the browser out',
+    )]
+    bool $push = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -281,6 +286,18 @@ function demo(
     }
     if ($native) {
         demo_native_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($push) {
+        $registration = DEMO_CIBA_CLIENTS['poll'];
+        foreach ([$registration['secret'], 'HEIDI_DEV_USER_SUBJECT'] as $name) {
+            if (($env[$name] ?? '') === '') {
+                io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
+                exit(1);
+            }
+        }
+        demo_push_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['HEIDI_DEV_USER_SUBJECT'], [
+            $registration['secret'] => $env[$registration['secret']],
+        ]);
     }
     if ($logoutOthers) {
         if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
@@ -3047,29 +3064,11 @@ function demo_ciba_approve(string $issuer, string $password, string $ca, string 
     $cookies = [];
     $page = $issuer . '/approvals';
 
-    // no session yet, so the page asks for a login and remembers where the browser was going
-    [$status, $location] = demo_request($cookies, $ca, 'GET', $page);
+    // no session yet, so the page asks for a login and brings the browser back to it (LoginTarget)
+    $approvals = demo_browser_sign_in($cookies, $issuer, $password, $ca, $page);
     demo_expect(
-        $status === 302 && str_starts_with($location, $issuer . '/login'),
-        sprintf('the page of the pending requests asks for a login first (got %d %s)', $status, $location),
-    );
-    [$status, , $login] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect(
-        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $login, $csrf) === 1 && preg_match('/action="([^"]+)"/', $login, $action) === 1,
-        'the login page carries the form',
-    );
-    [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
-        '_username' => DEV_USERNAME,
-        '_password' => $password,
-        '_csrf_token' => $csrf[1],
-    ]);
-    demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
-
-    // the login brings the browser back to the page it was going to (LoginTarget)
-    [$status, , $approvals] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect(
-        $status === 200 && preg_match('/data-approval="([^"]+)"/', $approvals, $handle) === 1,
-        sprintf('the browser comes back to the page of what is waiting, which has something on it (got %d %s)', $status, $location),
+        preg_match('/data-approval="([^"]+)"/', $approvals) === 1,
+        'the page of what is waiting has something on it',
     );
     demo_expect(
         preg_match('/data-binding-message="([^"]*)"/', $approvals, $binding) === 1 && $binding[1] === DEMO_CIBA_BINDING_MESSAGE,
@@ -3583,4 +3582,459 @@ function demo_native_check(string $issuer, string $password, string $ca): void
 
     io()->table(['Step', 'Verified'], $verified);
     io()->success('A program on somebody\'s machine signed its user in twice, on two ports, against one registration.');
+}
+
+const DEMO_PUSH_SERVICE = 'tests/demo/push-service.php';
+
+const DEMO_PUSH_BROWSER = 'tests/demo/push-browser.php';
+
+/**
+ * Where the push service of the walk listens, and the name the containers of the stack reach it by: the
+ * same ".localhost" name the second instance of the demonstration and the listener of the ping client are
+ * reached by, since from inside a container "localhost" is the container (compose.yaml, extra_hosts).
+ */
+const DEMO_PUSH_PORT = 8005;
+
+const DEMO_PUSH_HOST = 'demo.localhost';
+
+/**
+ * The certificate that push service answers with, and where the container that pushes is made to trust
+ * it. Under var/, which the repository ignores, beside the key material of the other clients of the lab:
+ * an endpoint of a subscription is an absolute HTTPS URL (RFC 8030 §2), so there is no plain listener to
+ * fall back on as the ping client has.
+ */
+const DEMO_PUSH_CERTIFICATE = 'var/demo/push-service.crt';
+
+const DEMO_PUSH_KEY = 'var/demo/push-service.key';
+
+const DEMO_PUSH_TRUSTED_CERTIFICATE = '/usr/local/share/ca-certificates/heidi-lab-push.crt';
+
+/**
+ * What the user calls this browser of theirs on the page that subscribes it.
+ */
+const DEMO_PUSH_LABEL = 'Alice at her desk';
+
+/**
+ * The "sub" of every signed request this provider sends a push service (RFC 8292 §2.1), as the
+ * application wires it (apps/op/config/packages/heidi.yaml, heidi.web_push.subject).
+ */
+const DEMO_PUSH_SUBJECT = 'mailto:operator@op.localhost';
+
+/**
+ * The seconds the notifications lane waits before the first retry (NotificationRetryPolicy): the lower
+ * bound of what a walk may read between two attempts at the same message.
+ */
+const DEMO_PUSH_FIRST_RETRY = 2;
+
+/**
+ * Issue #311: the first notification this provider has ever had decrypted. The channel of issue #265 was
+ * verified against a mock and against nothing else, which is a channel nobody has sent through, and it is
+ * the argument issue #299 made about the grants no client of the lab played.
+ *
+ * Three things stand where a third party stands. A push service that keeps what it was POSTed and answers
+ * what it is told to (tests/demo/push-service.php), over HTTPS because nothing else is a subscription
+ * (RFC 8030 §2), trusted by the container that pushes for the time of the walk. A browser that draws the
+ * pair and the secret a subscription is made of and holds the private half (tests/demo/push-browser.php),
+ * which is all a browser is on this path. And the walk, which asks for an authorization for "alice" and
+ * then reads what the push service was handed: the signature of RFC 8292, the payload of RFC 8291, and
+ * the one rule the channel exists to keep, that nothing anywhere in it names the request or answers one
+ * (BCP 10027 §5.2).
+ *
+ * Then the two answers a push service gives that are not a yes: 503, and the message coming back under
+ * the patience of the notifications lane; 410, and the row taken out rather than tried for ever.
+ *
+ * @param string $subject the subject this provider issued the development user, which is what a
+ *                        "login_hint" names for this tenant
+ * @param array<string, string> $secrets apps/op/.env.local, by the name of the variable each client's is under
+ */
+function demo_push_check(string $issuer, string $password, string $ca, string $subject, array $secrets): void
+{
+    io()->section('A push service of the lab, and a notification opened');
+    $verified = [];
+    $registration = DEMO_CIBA_CLIENTS['poll'];
+    $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
+    $backchannel = is_string($metadata['backchannel_authentication_endpoint'] ?? null) ? $metadata['backchannel_authentication_endpoint'] : '';
+    demo_expect($backchannel !== '', 'the provider announces a backchannel authentication endpoint (CIBA Core §4)');
+    [$certificate, $privateKey] = demo_push_certificate();
+    demo_push_trust($certificate);
+    // a fresh path per run, as a push service hands a browser one: a row of a previous run is then not
+    // what this one measures
+    $endpoint = sprintf('https://%s:%d/push/%s', DEMO_PUSH_HOST, DEMO_PUSH_PORT, bin2hex(random_bytes(8)));
+    [$service, $told] = demo_push_service($certificate, $privateKey);
+
+    try {
+        // the browser: its own key pair, and the secret that makes holding the public half not enough
+        $browser = demo_push_browser([
+            'action' => 'draw',
+        ]);
+        demo_expect(
+            is_string($browser['p256dh'] ?? null) && is_string($browser['auth'] ?? null),
+            'the browser drew the key pair and the authentication secret of a subscription (RFC 8291 §3.1)',
+        );
+
+        // the page of the account hands out the application server key, and takes back the endpoint
+        $cookies = [];
+        $applicationServerKey = demo_push_subscribe($cookies, $issuer, $password, $ca, $browser, $endpoint);
+        $verified[] = ['Subscribed', sprintf('under the application server key %s… of the tenant', substr($applicationServerKey, 0, 12))];
+
+        // a client asks for something only that user can answer, and this is what has to reach them
+        $asked = demo_push_backchannel($backchannel, $ca, $registration['client'], $secrets[$registration['secret']], $subject);
+        $push = demo_cli_step($service, 'push', 60.0);
+        demo_expect(
+            ($push['method'] ?? null) === 'POST' && str_ends_with((string) ($push['path'] ?? ''), substr($endpoint, strrpos($endpoint, '/') + 1)),
+            sprintf('the provider posted to the endpoint the browser gave, and to no other (%s)', (string) ($push['path'] ?? '')),
+        );
+        demo_expect(
+            preg_match('/^content-encoding:\s*aes128gcm/im', (string) ($push['head'] ?? '')) === 1,
+            'the body is encrypted with the one content encoding of RFC 8291 §4, "aes128gcm" and not the draft before it',
+        );
+
+        // the browser opens it, which is the thing no double has ever done here
+        $opened = demo_push_browser([
+            'action' => 'open',
+            'private_key' => $browser['private_key'],
+            'auth' => $browser['auth'],
+            'p256dh' => $browser['p256dh'],
+            'body' => $push['body'],
+            'authorization' => demo_push_header((string) ($push['head'] ?? ''), 'authorization'),
+            'endpoint' => $endpoint,
+            'application_server_key' => $applicationServerKey,
+        ]);
+        $vapid = is_array($opened['vapid'] ?? null) ? $opened['vapid'] : [];
+        demo_expect(
+            ($vapid['key_matches'] ?? false) === true && ($vapid['algorithm'] ?? null) === 'ES256',
+            'the request is signed by the application server key the page handed this browser, and by no other (RFC 8292 §4.2)',
+        );
+        demo_expect(
+            ($vapid['aud'] ?? null) === ($vapid['expected_aud'] ?? null),
+            sprintf('the signature is addressed to the origin of this push service (%s)', (string) ($vapid['aud'] ?? '')),
+        );
+        demo_expect(
+            ($vapid['sub'] ?? null) === DEMO_PUSH_SUBJECT,
+            sprintf('and names somebody the push service can reach about it (RFC 8292 §2.1: %s)', (string) ($vapid['sub'] ?? '')),
+        );
+        $verified[] = ['Signed request', sprintf('ES256, aud %s, sub %s', (string) ($vapid['aud'] ?? ''), (string) ($vapid['sub'] ?? ''))];
+
+        demo_expect(
+            ($opened['title'] ?? null) === parse_url($issuer, \PHP_URL_HOST),
+            sprintf('the payload decrypts and names the provider that is asking (RFC 8291 §3.4: "%s")', (string) ($opened['title'] ?? '')),
+        );
+        demo_expect(
+            str_contains((string) ($opened['body'] ?? ''), DEMO_CIBA_BINDING_MESSAGE),
+            sprintf('and carries what the client wrote for the user to read (CIBA Core §7.1: "%s")', DEMO_CIBA_BINDING_MESSAGE),
+        );
+        demo_expect(
+            ($opened['url'] ?? null) === $issuer . '/approvals',
+            sprintf('and sends them to the page of the provider where requests are answered (%s)', (string) ($opened['url'] ?? '')),
+        );
+        demo_expect(
+            ($opened['members'] ?? []) === ['title', 'body', 'url'],
+            sprintf('three strings and nothing else (%s)', implode(', ', array_map(strval(...), (array) ($opened['members'] ?? [])))),
+        );
+        $verified[] = ['Opened', sprintf('"%s" / "%s"', (string) ($opened['title'] ?? ''), (string) ($opened['body'] ?? ''))];
+
+        // BCP 10027 §5.2: the rule the channel exists to keep, read on everything that left this provider
+        $authRequestId = (string) ($asked['auth_req_id'] ?? '');
+        $carried = ($push['head'] ?? '') . ($push['body'] ?? '') . ($opened['payload'] ?? '');
+        demo_expect(
+            $authRequestId !== '' && ! str_contains($carried, $authRequestId) && ! str_contains($carried, 'auth_req_id'),
+            'nothing of what reached that browser names the request, and nothing in it answers one (BCP 10027 §5.2)',
+        );
+        $verified[] = ['Names nothing', 'neither the identifier of the request nor a link that answers it'];
+
+        // RFC 8030 §5.2: what is worth delivering is the request it is about
+        $ttl = (int) demo_push_header((string) ($push['head'] ?? ''), 'ttl');
+        $expiresIn = is_int($asked['expires_in'] ?? null) ? $asked['expires_in'] : 0;
+        demo_expect(
+            $ttl > 0 && $ttl <= $expiresIn && $ttl >= ($expiresIn - 15),
+            sprintf('the push service is asked to keep it for what is left of the request, and not longer (TTL %d s of %d s)', $ttl, $expiresIn),
+        );
+        $verified[] = ['Worth delivering', sprintf('TTL %d s, the request living %d s', $ttl, $expiresIn)];
+
+        // a push service having a bad minute: the lane comes back, as it does for a logout token
+        demo_push_told($told, 503);
+        demo_push_backchannel($backchannel, $ca, $registration['client'], $secrets[$registration['secret']], $subject);
+        $refused = demo_cli_step($service, 'push', 60.0);
+        demo_expect(
+            ($refused['answer'] ?? null) === 503,
+            'a push service that cannot answer for a browser now is answered 503',
+        );
+        // and the row is taken out on the attempt that is told the browser is gone (RFC 8030 §7.3)
+        demo_push_told($told, 410);
+        $retried = demo_cli_step($service, 'push', 120.0);
+        demo_expect(
+            ($retried['answer'] ?? null) === 410 && (float) ($retried['since_previous'] ?? 0) >= DEMO_PUSH_FIRST_RETRY,
+            sprintf(
+                'the message came back %.1f s later under the patience of the notifications lane (architecture §5.6)',
+                (float) ($retried['since_previous'] ?? 0),
+            ),
+        );
+        $verified[] = ['Came back', sprintf('%.1f s after the 503, on the schedule of the lane', (float) ($retried['since_previous'] ?? 0))];
+
+        [, , $page] = demo_request($cookies, $ca, 'GET', $issuer . '/account/notifications');
+        demo_expect(
+            str_contains($page, 'data-subscriptions="none"'),
+            'and the browser the push service says is gone is out of the page of the account (RFC 8030 §7.3)',
+        );
+        $verified[] = ['Taken out', 'the row revoked on a 410, not tried for ever'];
+    } finally {
+        if ($service->isRunning()) {
+            $told->close();
+            $service->stop();
+        }
+    }
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('A notification of this provider was signed, encrypted, carried by a push service and opened by the browser it was for.');
+}
+
+/**
+ * The certificate the push service of the walk answers with: one self-signed certificate on a P-256 key,
+ * kept while it is valid, as the client certificate of "castor provision" is. It names the host the
+ * containers reach this machine by, in a subject alternative name, which is what a client verifies; and it
+ * is a certificate authority as well as a leaf, because what makes it verifiable inside a container is
+ * being installed there as a trust anchor and nothing signs above it.
+ *
+ * @return array{string, string} the certificate and its private key, absolute paths
+ */
+function demo_push_certificate(): array
+{
+    $certificateFile = getcwd() . '/' . DEMO_PUSH_CERTIFICATE;
+    $keyFile = getcwd() . '/' . DEMO_PUSH_KEY;
+    $directory = dirname($certificateFile);
+    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
+        io()->error(sprintf('Cannot create %s.', $directory));
+        exit(1);
+    }
+    if (provision_mtls_valid_certificate($certificateFile, $keyFile) === null) {
+        provision_self_signed_certificate(DEMO_PUSH_HOST, provision_p256_key(), $certificateFile, $keyFile, DEMO_PUSH_HOST);
+        io()->text(sprintf('Issued %s for https://%s:%d, self-signed.', DEMO_PUSH_CERTIFICATE, DEMO_PUSH_HOST, DEMO_PUSH_PORT));
+    }
+
+    return [$certificateFile, $keyFile];
+}
+
+/**
+ * What makes the worker able to push to that service at all: the certificate added to the trust store of
+ * the container, which is the same thing its entrypoint does for the certificate of the conformance
+ * suite (docker/worker/entrypoint.sh). The worker is the one process that pushes, the notification being a
+ * Notification and leaving on the lane of its own (apps/op/config/packages/messenger.yaml), so it is the
+ * one container this is done to.
+ *
+ * Replayed on every run, which is what a container recreated by "castor start" needs.
+ */
+function demo_push_trust(string $certificate): void
+{
+    run(['docker', 'compose', 'cp', $certificate, 'worker:' . DEMO_PUSH_TRUSTED_CERTIFICATE], context: context()->withQuiet());
+    run(['docker', 'compose', 'exec', '-T', 'worker', 'update-ca-certificates'], context: context()->withQuiet());
+    io()->text(sprintf('The worker trusts %s for the time of this walk.', DEMO_PUSH_TRUSTED_CERTIFICATE));
+}
+
+/**
+ * The push service of the walk, started and listening. Its standard input is kept open so that it can be
+ * told what to answer next: a push service that takes the message, one that says the subscription is gone
+ * and one that cannot answer now are the same service on the same port, a subscription being recognised by
+ * its endpoint.
+ *
+ * @return array{Process, InputStream}
+ */
+function demo_push_service(string $certificate, string $privateKey): array
+{
+    $told = new InputStream();
+    $service = new Process(
+        [
+            'php',
+            DEMO_PUSH_SERVICE,
+            '--port=' . DEMO_PUSH_PORT,
+            '--cert=' . $certificate,
+            '--key=' . $privateKey,
+            '--answer=201',
+        ],
+        timeout: null,
+    );
+    $service->setInput($told);
+    $service->start();
+    demo_cli_step($service, 'listening', 15.0);
+    io()->text(sprintf('A push service of the lab answers on https://%s:%d.', DEMO_PUSH_HOST, DEMO_PUSH_PORT));
+
+    return [$service, $told];
+}
+
+/**
+ * Tells the running push service what to answer the next push.
+ */
+function demo_push_told(InputStream $told, int $answer): void
+{
+    $told->write(
+        json_encode(
+            [
+                'answer' => $answer,
+            ],
+            \JSON_THROW_ON_ERROR,
+        )
+            . "\n",
+    );
+}
+
+/**
+ * The browser of the lab, in one process per question asked of it: it draws, and it opens. The private
+ * half travels on the standard input of that process and never on a command line.
+ *
+ * @param array<string, mixed> $input
+ *
+ * @return array<string, mixed>
+ */
+function demo_push_browser(array $input): array
+{
+    $browser = new Process(['php', DEMO_PUSH_BROWSER], timeout: 30.0);
+    $browser->setInput(json_encode($input, \JSON_THROW_ON_ERROR));
+    $browser->run();
+    if (! $browser->isSuccessful()) {
+        io()->error(sprintf('The browser of the lab gave up: %s', trim($browser->getErrorOutput())));
+        exit(1);
+    }
+    $answer = json_decode(trim($browser->getOutput()), true, 16, \JSON_THROW_ON_ERROR);
+
+    return is_array($answer) ? $answer : [];
+}
+
+/**
+ * The page of the account where a user says which of their browsers this provider may reach (Push API §4):
+ * the application server key it hands out, and the endpoint and the two keys it takes back.
+ *
+ * @param array<string, array<string, string>> $cookies
+ * @param array<string, mixed> $browser what the browser of the lab drew
+ *
+ * @return string the application server key the page handed out, base64url (RFC 8292 §3.2)
+ */
+function demo_push_subscribe(array &$cookies, string $issuer, string $password, string $ca, array $browser, string $endpoint): string
+{
+    $page = $issuer . '/account/notifications';
+    // a page of the account belongs to no client and to no interaction, so it answers a browser without a
+    // session 401 and sends it nowhere (AccountAccess): the browser signs in where a user of this flow goes
+    // by themselves, the page of what is waiting for them, and walks to the account from there
+    demo_browser_sign_in($cookies, $issuer, $password, $ca, $issuer . '/approvals');
+    [$status, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
+    demo_expect($status === 200, sprintf('the page of the browsers this provider may reach opens (got %d)', $status));
+    // a browser a previous run of this walk left behind is taken out first, this walk ending on a page that
+    // has to say it reaches nobody
+    $rendered = demo_push_forget($cookies, $ca, $issuer, $page, $rendered);
+    demo_expect(
+        preg_match('/data-application-server-key="([^"]+)"/', $rendered, $key) === 1,
+        'the page hands this browser the application server key of the tenant, without which it cannot subscribe at all (RFC 8292 §3.2)',
+    );
+    $fields = demo_form_fields($rendered);
+    [$status, $location] = demo_request($cookies, $ca, 'POST', $page, [
+        '_token' => $fields['_token'] ?? '',
+        'endpoint' => $endpoint,
+        'p256dh' => (string) ($browser['p256dh'] ?? ''),
+        'auth' => (string) ($browser['auth'] ?? ''),
+        'label' => DEMO_PUSH_LABEL,
+    ]);
+    demo_expect($status === 302 && $location === $page, sprintf('the subscription is recorded (got %d %s)', $status, $location));
+    [, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
+    demo_expect(
+        str_contains($rendered, 'data-subscriptions="1"') && str_contains($rendered, DEMO_PUSH_LABEL),
+        'and the page shows one browser, under the name the user gave it',
+    );
+
+    return $key[1];
+}
+
+/**
+ * Every browser the page lists taken out, which is what the user does with a browser they do not use any
+ * more. The token of each row is read from the form of that row: the page carries one form per
+ * subscription and one to subscribe, and the two are not signed for the same thing.
+ *
+ * @param array<string, array<string, string>> $cookies
+ *
+ * @return string the page once nothing is left on it
+ */
+function demo_push_forget(array &$cookies, string $ca, string $issuer, string $page, string $rendered): string
+{
+    if (preg_match_all('#<form method="post" action="([^"]*revoke)">(.*?)</form>#s', $rendered, $forms, \PREG_SET_ORDER) === 0) {
+        return $rendered;
+    }
+    foreach ($forms as $form) {
+        [$status] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($form[1]), demo_form_fields($form[2]));
+        demo_expect($status === 302, sprintf('a browser of an earlier run is taken out (got %d)', $status));
+    }
+    [, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
+    demo_expect(str_contains($rendered, 'data-subscriptions="none"'), 'and this walk starts on a provider that reaches nobody');
+
+    return $rendered;
+}
+
+/**
+ * A browser on a page of this provider it went to itself, which is where two walks of this task start: no
+ * session yet, so the page remembers where the browser was going, sends it to the login of the firewall
+ * and brings it back (LoginTarget). No client and no interaction anywhere in it.
+ *
+ * @param array<string, array<string, string>> $cookies
+ *
+ * @return string the page, once the browser is signed in and on it
+ */
+function demo_browser_sign_in(array &$cookies, string $issuer, string $password, string $ca, string $page): string
+{
+    [$status, $location, $rendered] = demo_request($cookies, $ca, 'GET', $page);
+    if ($status === 200) {
+        return $rendered;
+    }
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/login'),
+        sprintf('%s asks for a login first (got %d %s)', $page, $status, $location),
+    );
+    [$status, , $login] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $login, $csrf) === 1 && preg_match('/action="([^"]+)"/', $login, $action) === 1,
+        'the login page carries the form',
+    );
+    [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
+        '_username' => DEV_USERNAME,
+        '_password' => $password,
+        '_csrf_token' => $csrf[1],
+    ]);
+    demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
+    [$status, , $rendered] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200, sprintf('and the browser comes back to the page it was going to (got %d %s)', $status, $location));
+
+    return $rendered;
+}
+
+/**
+ * A backchannel authorization request for the development user, which is what has to reach them (CIBA Core
+ * §7.1). The walk makes it itself rather than through a client of tests/demo/: what is measured here is
+ * what leaves the provider towards the user, and nothing of this walk waits for a token.
+ *
+ * @param string $endpoint the backchannel authentication endpoint the provider announces
+ *
+ * @return array<string, mixed> the response of the backchannel authentication endpoint
+ */
+function demo_push_backchannel(string $endpoint, string $ca, string $clientId, string $secret, string $loginHint): array
+{
+    $response = http_request('POST', $endpoint, [
+        'cafile' => $ca,
+        'max_redirects' => 0,
+        'auth_basic' => $clientId . ':' . $secret,
+        'body' => [
+            'scope' => 'openid profile',
+            'login_hint' => $loginHint,
+            'binding_message' => DEMO_CIBA_BINDING_MESSAGE,
+        ],
+    ]);
+    $answer = json_decode($response->getContent(false), true, 8, \JSON_THROW_ON_ERROR);
+    demo_expect(
+        is_array($answer) && is_string($answer['auth_req_id'] ?? null) && is_int($answer['expires_in'] ?? null),
+        sprintf('a client asked for something only that user can answer (got %d)', $response->getStatusCode()),
+    );
+
+    return is_array($answer) ? $answer : [];
+}
+
+/**
+ * One header of a request the push service was handed, by its lowercased name; "" when it carries none.
+ */
+function demo_push_header(string $head, string $name): string
+{
+    return preg_match('/^' . preg_quote($name, '/') . ':\s*(.+)$/im', $head, $matches) === 1 ? trim($matches[1]) : '';
 }
