@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for looking at Heidi. The project is in its first spike: the scope is narrow on purpose, and the decisions that shape it are settled. Read `CLAUDE.md` for the conventions and `docs/` for the architecture.
+Thank you for looking at Heidi. The project is young: the scope is narrow on purpose, and the decisions that shape it are settled. Read `CLAUDE.md` for the conventions.
 
 ## Before opening a pull request
 

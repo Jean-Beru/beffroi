@@ -128,7 +128,7 @@ const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
 
 /**
  * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-27 and written whole in
- * docs/conformance-suite.md: rules of the profile, both of them the provider's, neither of them of this
+ * the issue each one names: rules of the profile, both of them the provider's, neither of them of this
  * flow alone and neither of them a gap anybody decided to leave. They are the runs' and not one
  * module's, which is why they are one line each here and not a "known" module apiece.
  */

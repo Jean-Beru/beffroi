@@ -516,7 +516,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
     $services->alias(MutualTlsEndpointLocatorInterface::class, RouterEndpointLocator::class);
     // the certificate a client presented at the handshake, read from what the edge proves and never from
-    // a header (decision 0006, docs/mtls-at-the-edge.md); a deployment behind another proxy replaces this
+    // a header (decision 0006); a deployment behind another proxy replaces this
     // implementation rather than teaching it a header to trust
     $services->set(EdgeClientCertificateResolver::class);
     $services->alias(ClientCertificateResolverInterface::class, EdgeClientCertificateResolver::class);

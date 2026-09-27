@@ -6,7 +6,7 @@ declare(strict_types=1);
  * The infrastructure unknown of spike 5 (issue #157), measured against the running stack: a client
  * certificate has to cross Caddy and FrankenPHP and reach PHP, and what arrives has to be the bytes the
  * client presented and nothing a client could have written itself. Everything mTLS waits on the answer,
- * so it is driven here rather than described (docs/mtls-at-the-edge.md).
+ * so it is driven here rather than described (architecture §6, §7).
  */
 
 use Castor\Attribute\AsOption;
@@ -118,7 +118,7 @@ function mtls(
         'The client certificate crosses Caddy and FrankenPHP and reaches PHP as the leaf in a PEM envelope, in the SSL_CLIENT_CERT variable of the mTLS site block, and nowhere else. Thumbprint %s.',
         $expected,
     ));
-    io()->note('The chain is not handed over, only the leaf: what has to be validated against a certificate authority is validated at the edge, with a "trust_pool" in apps/op/frankenphp/mtls.Caddyfile, never in PHP (docs/mtls-at-the-edge.md).');
+    io()->note('The chain is not handed over, only the leaf: what has to be validated against a certificate authority is validated at the edge, with a "trust_pool" in apps/op/frankenphp/mtls.Caddyfile, never in PHP (architecture §6, §7).');
 }
 
 /**

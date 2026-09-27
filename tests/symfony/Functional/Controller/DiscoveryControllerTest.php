@@ -87,7 +87,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     /**
      * RFC 8705 §3.3 and §5: the provider binds access tokens to certificates because the two mutual-TLS
      * methods are wired, and it says where a client presenting one reaches the endpoints, on the host
-     * the deployment configured (docs/mtls-at-the-edge.md).
+     * the deployment configured (architecture §5.2).
      */
     #[Test]
     public function theMetadataAnnouncesWhereAClientPresentingACertificateGoes(): void

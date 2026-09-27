@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
  * Where the certificate a client presented comes from, for whoever needs one (architecture §5.2). One
  * implementation per shape of edge; the shape this application is delivered with is
  * EdgeClientCertificateResolver, and a deployment behind another proxy brings its own rather than
- * teaching this one a header to trust (docs/mtls-at-the-edge.md, decision 0006).
+ * teaching this one a header to trust (decision 0006).
  */
 interface ClientCertificateResolverInterface
 {

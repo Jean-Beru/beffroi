@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
  * Which endpoint of the provider the request reached, and what the connection brought with it: the
- * certificate the edge handed over (RFC 8705 §2, docs/mtls-at-the-edge.md) and whether a DPoP proof was
+ * certificate the edge handed over (RFC 8705 §2) and whether a DPoP proof was
  * presented (RFC 9449 §4.1). Neither the certificate nor the proof is written down; what the panel shows
  * of a certificate is the thumbprint a token would be bound to, and of a proof, that there was one.
  *
