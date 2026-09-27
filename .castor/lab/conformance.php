@@ -128,14 +128,11 @@ const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
 
 /**
  * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-27 and written whole in
- * the issue each one names: rules of the profile, both of them the provider's, neither of them of this
- * flow alone and neither of them a gap anybody decided to leave. They are the runs' and not one
- * module's, which is why they are one line each here and not a "known" module apiece.
+ * the issue it names: a rule of the profile, the provider's, not of this flow alone and not a gap
+ * anybody decided to leave. It is the runs' and not one module's, which is why it is one line here and
+ * not a "known" module apiece.
  */
 const CONFORMANCE_CIBA_ISSUES = [
-    // a client called back reaches the token endpoint before it will answer, which is why every module
-    // of the ping run that needs an answer fails where the poll run is served
-    'heidi#318',
     // a token request that holds no certificate is answered authorization_pending rather than refused,
     // section 5.2.2 asking for a bound token whichever way the client authenticated
     'heidi#319',

@@ -251,8 +251,8 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a client polling sooner than the interval it was given is told to slow down, whatever
-     * the user has answered.
+     * RFC 8628 §3.5: a client polling sooner than the interval it was given, for an answer that is not
+     * there yet, is told to slow down.
      */
     #[Test]
     public function aClientPollingTooFastIsToldToSlowDown(): void
@@ -311,6 +311,49 @@ final class DeviceCodeGrantTest extends TestCase
         // Then
         static::assertTrue($record->isUsed());
         static::assertNotSame('', $issued->accessToken->value);
+    }
+
+    /**
+     * RFC 8628 §3.5: "slow_down" is a variant of "authorization_pending", so it has nothing to say about
+     * a request the user has answered; the interval bounds the wait and only the wait.
+     */
+    #[Test]
+    public function aRequestApprovedSinceTheLastPollIsServedHoweverSoonAfterIt(): void
+    {
+        // Given
+        $record = $this->record();
+        $this->pollQuietly();
+        $record->approve(
+            $this->session,
+            AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
+            $this->clock->now(),
+        );
+
+        // When
+        $this->poll();
+
+        // Then
+        static::assertTrue($record->isUsed());
+    }
+
+    /**
+     * RFC 8628 §3.5: the refusal is on the same clock as the acceptance, an answered request being over
+     * whichever way it was answered.
+     */
+    #[Test]
+    public function aRequestRefusedSinceTheLastPollIsAccessDeniedHoweverSoonAfterIt(): void
+    {
+        // Given
+        $record = $this->record();
+        $this->pollQuietly();
+        $record->deny($this->clock->now());
+
+        // Then
+        $this->expectException(AccessDeniedException::class);
+        $this->expectExceptionMessageIs('access_denied: The end user denied the request.');
+
+        // When
+        $this->poll();
     }
 
     /**
