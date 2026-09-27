@@ -56,6 +56,8 @@ use Heidi\Bundle\Http\AuthorizationResponder;
 use Heidi\Bundle\Http\AuthorizationResponderInterface;
 use Heidi\Bundle\Http\BrowserSession;
 use Heidi\Bundle\Http\InteractionLocale;
+use Heidi\Bundle\Locale\ServedLocales;
+use Heidi\Bundle\Locale\UserLocale;
 use Heidi\Bundle\Http\InteractionPages;
 use Heidi\Bundle\Http\ClientNotificationSender;
 use Heidi\Bundle\Http\PendingApprovalsPage;
@@ -459,10 +461,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(NotificationsSection::class)->tag('heidi.account_section');
     $services->set(AccountSections::class)->args([tagged_iterator('heidi.account_section')]);
     $services->set(AccountHomePage::class);
-    $services->set(InteractionLocale::class)->args([
+    // the languages this deployment has, read by the pages of the interaction plane and by whatever
+    // writes to a user out of any request of theirs: one list, or a translator is asked for a language
+    // that has no catalogue (architecture §5.7)
+    $services->set(ServedLocales::class)->args([
         '$enabledLocales' => '%kernel.enabled_locales%',
         '$defaultLocale' => '%kernel.default_locale%',
     ]);
+    $services->set(UserLocale::class);
+    $services->set(InteractionLocale::class);
     // how the answer of the authorization endpoint reaches the client (Multiple Response Type Encoding
     // Practices §2.1): one class per mode, and what is tagged is what the parser accepts and what the
     // discovery document announces, never an enumeration kept beside them

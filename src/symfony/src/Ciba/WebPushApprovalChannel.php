@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Ciba;
 
+use Heidi\Bundle\Locale\UserLocale;
 use Heidi\Bundle\Push\PushMessage;
 use Heidi\Bundle\Push\WebPushSender;
 use Heidi\Core\Application\Push\PushSubscriptionRevocation;
@@ -43,6 +44,7 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
         private PushSubscriptionRevocation $revocation,
         private WebPushSender $sender,
         private TranslatorInterface $translator,
+        private UserLocale $locales,
         private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {
@@ -56,7 +58,7 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
             // the page where requests are answered, which is where this notification would send them
             return;
         }
-        $message = $this->message($approval);
+        $message = $this->message($approval, $this->locales->of($user));
         $reached = false;
         $failures = [];
         foreach ($subscriptions as $subscription) {
@@ -86,11 +88,12 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
     }
 
     /**
-     * The words of the notification, in the language of the deployment: there is nobody in front of a
-     * browser to read an "Accept-Language" from and no interaction to take a "ui_locales" from, this
-     * being sent out of any request of the user (§5.7).
+     * The words of the notification, in the language that user reads (UserLocale): there is nobody in
+     * front of a browser to read an "Accept-Language" from and no interaction to take a "ui_locales"
+     * from, this being sent out of any request of theirs (§5.7), so what is left is what this provider
+     * knows of them.
      */
-    private function message(PendingApproval $approval): PushMessage
+    private function message(PendingApproval $approval, string $locale): PushMessage
     {
         $binding = $approval->bindingMessage;
 
@@ -101,6 +104,7 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
                     'provider' => $approval->tenant->name,
                 ],
                 self::TRANSLATION_DOMAIN,
+                $locale,
             ),
             $binding === null
                 ? $this->translator->trans(
@@ -109,6 +113,7 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
                         'client' => $approval->clientName,
                     ],
                     self::TRANSLATION_DOMAIN,
+                    $locale,
                 )
                 : $this->translator->trans(
                     'push.approval.body_with_message',
@@ -117,6 +122,7 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
                         'message' => $binding->value,
                     ],
                     self::TRANSLATION_DOMAIN,
+                    $locale,
                 ),
             $approval->approvalUri,
             $approval->expiresAt,

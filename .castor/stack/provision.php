@@ -742,37 +742,47 @@ function provision_p256_key(): OpenSSLAsymmetricKey
 }
 
 /**
- * A certificate a client signed itself on the key given, written beside its private key: what the
- * listener of the development stack asks for and accepts, and what RFC 8705 §2.2 authenticates a client
- * against.
+ * A certificate signed on the key given by whoever holds it, written beside its private key: what the
+ * listener of the development stack asks a client for and accepts, and what RFC 8705 §2.2 authenticates a
+ * client against.
+ *
+ * A certificate a client presents needs no name anybody checks, the listener validating no chain. One a
+ * server answers with does: whoever connects verifies the host against a subject alternative name, so
+ * $serverName names it, and the certificate is then its own authority as well, because what makes it
+ * verifiable at all is being installed as a trust anchor where the client runs and nothing signing above
+ * it.
+ *
+ * @param string|null $serverName the host a client will verify this certificate against, when it is a
+ *                                server that answers with it
  *
  * @return string the certificate, PEM
  */
-function provision_self_signed_certificate(string $commonName, OpenSSLAsymmetricKey $key, string $certificateFile, string $keyFile): string
-{
+function provision_self_signed_certificate(
+    string $commonName,
+    OpenSSLAsymmetricKey $key,
+    string $certificateFile,
+    string $keyFile,
+    ?string $serverName = null,
+): string {
+    $options = [
+        'digest_alg' => 'sha256',
+    ];
+    if ($serverName !== null) {
+        $options['config'] = provision_server_certificate_configuration($certificateFile, $serverName);
+        $options['x509_extensions'] = DEV_SERVER_CERTIFICATE_EXTENSIONS;
+    }
     $request = openssl_csr_new(
         [
             'commonName' => $commonName,
         ],
         $key,
-        [
-            'digest_alg' => 'sha256',
-        ],
+        $options,
     );
     $signed = $request === false
         ? false
-        : openssl_csr_sign(
-            $request,
-            null,
-            $key,
-            DEV_MTLS_CLIENT_DAYS,
-            [
-                'digest_alg' => 'sha256',
-            ],
-            random_int(1, \PHP_INT_MAX),
-        );
-    if ($signed === false || ! openssl_x509_export($signed, $certificate) || ! openssl_pkey_export($key, $privateKey)) {
-        io()->error(sprintf('Cannot issue a client certificate: %s', openssl_error_string() ?: 'no reason given by OpenSSL'));
+        : openssl_csr_sign($request, null, $key, DEV_MTLS_CLIENT_DAYS, $options, random_int(1, \PHP_INT_MAX));
+    if ($signed === false || ! openssl_x509_export($signed, $certificate) || ! openssl_pkey_export($key, $privateKey, null, $options)) {
+        io()->error(sprintf('Cannot issue a certificate: %s', openssl_error_string() ?: 'no reason given by OpenSSL'));
         exit(1);
     }
     // The private key of a client, even a development one, is readable by its owner and by nobody else.
@@ -781,6 +791,41 @@ function provision_self_signed_certificate(string $commonName, OpenSSLAsymmetric
     file_put_contents($certificateFile, $certificate);
 
     return $certificate;
+}
+
+/**
+ * The section of the OpenSSL configuration the extensions of a server certificate are read from.
+ */
+const DEV_SERVER_CERTIFICATE_EXTENSIONS = 'heidi_server';
+
+/**
+ * What OpenSSL has to be handed a file to be told: the extensions of a server certificate cannot be given
+ * as an array, so they are written next to the certificate they are for.
+ *
+ * @return string the path of the configuration
+ */
+function provision_server_certificate_configuration(string $certificateFile, string $serverName): string
+{
+    $path = $certificateFile . '.cnf';
+    file_put_contents($path, sprintf(
+        <<<'CONFIGURATION'
+            [ req ]
+            distinguished_name = heidi_dn
+
+            [ heidi_dn ]
+
+            [ %s ]
+            basicConstraints = critical, CA:TRUE
+            keyUsage = critical, digitalSignature, keyEncipherment, keyCertSign
+            extendedKeyUsage = serverAuth
+            subjectAltName = DNS:%s
+
+            CONFIGURATION,
+        DEV_SERVER_CERTIFICATE_EXTENSIONS,
+        $serverName,
+    ));
+
+    return $path;
 }
 
 /**
