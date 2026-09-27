@@ -1,10 +1,19 @@
 /*
  * The browser side of a push subscription (Push API §4, architecture §5.2, §5.6): the page of the
  * account names, in data-application-server-key, the public half of the application server key of the
- * tenant (RFC 8292 §3.2) and, in data-worker-url, the service worker that will receive. The script
- * registers the worker, asks the user for permission, subscribes to their own push service, writes the
- * endpoint and the two keys the subscription carries into the hidden fields of the form and submits it,
- * so that the answer is a redirection the browser follows, as with every other form of these pages.
+ * tenant (RFC 8292 §3.2) and, in data-worker-url, the service worker that will receive. Opening the page
+ * registers that worker; pressing the button asks the user for permission, subscribes to their own push
+ * service, writes the endpoint and the two keys the subscription carries into the hidden fields of the form
+ * and submits it, so that the answer is a redirection the browser follows, as with every other form of
+ * these pages.
+ *
+ * The worker is registered when the page opens and not only when somebody subscribes, because a
+ * registration can go without the subscription going with it: a browser whose site data was cleared keeps
+ * neither, but one where the worker alone was removed still holds its subscription, and its push service
+ * still takes messages for it. There is nothing then to show them: a push with no registered worker is
+ * dropped by the browser, and this provider is answered that the message was taken all the same. So the
+ * page whose subject is which browsers may be reached makes sure this one can receive, every time it is
+ * opened.
  *
  * Nothing is loaded from anywhere else, and nothing of a subscription reaches this provider but what the
  * form posts.
@@ -65,6 +74,23 @@
         }
     };
 
+    /* Registered once, whether the page was opened to subscribe or to read what is subscribed. */
+    let registering = null;
+    const worker = () => {
+        registering ??= navigator.serviceWorker
+            .register(form.dataset.workerUrl)
+            .then(async (registration) => {
+                await navigator.serviceWorker.ready;
+
+                return registration;
+            });
+
+        return registering;
+    };
+
+    /* A failure here is said when somebody presses the button, which is the only moment it is theirs to act on. */
+    worker().catch(() => {});
+
     form.querySelector('[data-push-button]').addEventListener('click', async () => {
         if (refused) {
             refused.hidden = true;
@@ -75,8 +101,7 @@
 
                 return;
             }
-            const registration = await navigator.serviceWorker.register(form.dataset.workerUrl);
-            await navigator.serviceWorker.ready;
+            const registration = await worker();
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: bytesOf(form.dataset.applicationServerKey),
