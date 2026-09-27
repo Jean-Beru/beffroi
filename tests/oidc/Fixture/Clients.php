@@ -293,6 +293,32 @@ final class Clients
     }
 
     /**
+     * The client of a FAPI-CIBA plan: it authenticates with an assertion, and the tokens it comes for
+     * are bound to the certificate it presents all the same (RFC 8705 §3.4, FAPI 1.0 Advanced Final
+     * §5.2.2). It registers neither a secret nor a redirect URI, as every client of that flow.
+     */
+    public static function boundToItsCertificate(Tenant $tenant, string $clientId = 'bound-terminal'): Client
+    {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                'Payment terminal holding a certificate',
+                Methods::privateKeyJwt(),
+                false,
+                [],
+                Shapes::jwt(),
+                grantTypes: [Grants::ciba(), Grants::refreshToken()],
+                allowedScopes: new Scopes([new Scope('openid'), new Scope('profile')]),
+                requiresConsent: false,
+                jwks: ClientAssertions::publishedKeys(),
+                backchannelTokenDeliveryMode: new PollDelivery(),
+                requiresCertificateBoundTokens: true,
+            ),
+        );
+    }
+
+    /**
      * A client whose only way of starting an authorization request is to push it (RFC 9126 §6), which is
      * what FAPI 2.0 asks of one.
      */

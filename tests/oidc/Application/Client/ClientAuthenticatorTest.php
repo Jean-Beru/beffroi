@@ -11,15 +11,19 @@ use Heidi\Core\Exception\LoadBudgetSpentException;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
+use Heidi\Oidc\Domain\Token\CertificateConfirmation;
 use Heidi\Oidc\Exception\InvalidClientException;
 use Heidi\Oidc\Exception\InvalidRequestException;
 use Heidi\Oidc\Exception\OAuth2Exception;
+use Heidi\Oidc\Tests\Fixture\Certificates;
 use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FakeClientLoadBudget;
@@ -895,6 +899,62 @@ final class ClientAuthenticatorTest extends TestCase
             return $exception;
         }
         static::fail('The client should not have been authenticated.');
+    }
+
+    /**
+     * RFC 8705 §3.4: a client that registered certificate-bound access tokens is bound to the
+     * certificate of its connection whichever way it authenticated, which is what FAPI 1.0 Advanced
+     * Final §5.2.2 asks of a client of a profile that binds and authenticates with an assertion.
+     */
+    #[Test]
+    public function aClientRegisteredForCertificateBoundTokensIsBoundToTheCertificateItPresented(): void
+    {
+        // Given
+        $this->clients->save(Clients::boundToItsCertificate($this->tenant));
+
+        // When
+        $authenticated = $this->authenticateWithAnAssertion('bound-terminal', Certificates::client());
+
+        // Then
+        static::assertEquals(CertificateConfirmation::ofCertificate(Certificates::client()), $authenticated->confirmation);
+    }
+
+    /**
+     * RFC 8705 §3: a client reaching the host whose listener asks for a certificate presents one
+     * because it was asked, and a client that registered no binding is not bound to it: binding a
+     * client that never asked for it would break the resource server it calls.
+     */
+    #[Test]
+    public function aClientRegisteredForNoBindingIsNotBoundToTheCertificateItPresented(): void
+    {
+        // Given
+        $this->clients->save(Clients::withKeys($this->tenant));
+
+        // When
+        $authenticated = $this->authenticateWithAnAssertion('key-client', Certificates::client());
+
+        // Then
+        static::assertNull($authenticated->confirmation);
+    }
+
+    /**
+     * OIDC Core §9: the client signs an assertion with the key it published, and presents whatever the
+     * handshake gave the provider beside it.
+     */
+    private function authenticateWithAnAssertion(string $clientId, ClientCertificate $certificate): AuthenticatedClient
+    {
+        $assertion = ClientAssertions::signedWithKey(
+            ClientAssertions::claims($clientId, $this->tenant->issuer->value, $this->context->receivedAt),
+        );
+
+        return $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            ClientAssertions::parameters($assertion),
+            $this->context,
+            $certificate,
+        );
     }
 
     private function assertFailureAnnounced(ClientAuthenticationFailureReason $reason, ?string $clientId, ?string $method): void
