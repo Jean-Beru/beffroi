@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
  * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
- * --logout-others, --resource-server, --dpop).
+ * --logout-others, --resource-server, --dpop, --device, --service).
  */
 
 use Castor\Attribute\AsOption;
@@ -107,6 +107,14 @@ function demo(
         description: 'The ladder of demonstration clients (issue #201): the five rungs played one after the other, from a client that puts the whole authorization request in the URL of the browser to one that pushes it signed, reads a signed response, holds a bound token and opens an encrypted ID token',
     )]
     bool $ladder = false,
+    #[AsOption(
+        description: 'The first interoperability criterion of spike 6 (issue #228): a PHP CLI with no browser and no secret obtains a token by the device grant (tests/demo/device-cli.php), the code it shows is confirmed in a browser meanwhile, and every step is asserted',
+    )]
+    bool $device = false,
+    #[AsOption(
+        description: 'The second and third interoperability criteria of spike 6 (issue #228): a service obtains a token for itself for a resource it named, a gateway exchanges it to act on its behalf, and the resource server of the demonstration accepts the exchanged token, names the subject and the actor, and refuses a token addressed to another resource',
+    )]
+    bool $service = false,
     #[AsOption(description: 'Stop the server of oidc-demo instead')]
     bool $stop = false,
 ): void {
@@ -205,6 +213,18 @@ function demo(
     }
     if ($ladder) {
         demo_ladder_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($device) {
+        demo_device_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($service) {
+        foreach (['DEMO_SERVICE_SECRET', 'DEMO_GATEWAY_SECRET'] as $name) {
+            if (($env[$name] ?? '') === '') {
+                io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
+                exit(1);
+            }
+        }
+        demo_service_check($dir, $env['HEIDI_ISSUER'], $env['DEMO_SERVICE_SECRET'], $env['DEMO_GATEWAY_SECRET'], $ca);
     }
     if ($logoutOthers) {
         if (($env['OIDC_DEMO_SECOND_SECRET'] ?? '') === '') {
@@ -2387,4 +2407,386 @@ function demo_jwt(string $jwt): array
         'header' => $decode($header),
         'claims' => $decode($payload),
     ];
+}
+
+/**
+ * The CLI of the device grant (issue #228): tests/demo/device-cli.php, the program of an appliance with no
+ * browser and no secret, and the client the application registers for it.
+ */
+const DEMO_DEVICE_CLI = 'tests/demo/device-cli.php';
+
+const DEMO_DEVICE_CLIENT_ID = 'demo-appliance';
+
+/**
+ * The resource the service and the gateway ask their tokens for, which is the one the resource server of the
+ * demonstration answers for (its OIDC_RESOURCE), and the one it does not: a token addressed elsewhere is
+ * refused there rather than described (RFC 8707 §2).
+ */
+const DEMO_SERVICE_RESOURCE = DEMO_URL . '/api/service';
+
+const DEMO_OTHER_RESOURCE = 'https://cal.example.com/';
+
+const DEMO_SERVICE_CLIENT_ID = 'demo-service';
+
+const DEMO_GATEWAY_CLIENT_ID = 'demo-gateway';
+
+const DEMO_ACCESS_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:access_token';
+
+/**
+ * The first interoperability criterion of spike 6 (issue #228): a PHP CLI obtains a token by the device
+ * grant (RFC 8628), with the code it displays confirmed in a browser. What makes it a demonstration rather
+ * than a test is that the two halves are really two: the CLI runs as its own process and polls the token
+ * endpoint, while this walk goes to the address it printed and answers as whoever is in front of the browser
+ * would, on a device that shares nothing with it but the code.
+ *
+ * Every step is asserted as the ladder asserts its rungs: what the provider hands the CLI to display
+ * (§3.2), what the page shows of the request before anybody agrees to it (BCP 10027 §2: the provider that
+ * asks, the client that asks, where it asked from, the code itself), and what the CLI ends up holding.
+ */
+function demo_device_check(string $issuer, string $password, string $ca): void
+{
+    io()->section('A CLI on the device grant');
+    $verified = [];
+
+    $cli = new Process(
+        ['php', DEMO_DEVICE_CLI, '--issuer=' . $issuer, '--client-id=' . DEMO_DEVICE_CLIENT_ID, '--cafile=' . $ca, '--timeout=120'],
+        timeout: 180.0,
+    );
+    $cli->start();
+
+    try {
+        // RFC 8628 §3.2: what the appliance is given to show, read from the first line it writes
+        $asked = demo_device_step($cli, 'device_authorization');
+        $userCode = (string) ($asked['user_code'] ?? '');
+        demo_expect(
+            preg_match('/^[A-Z0-9]{4}-[A-Z0-9]{4}$/', $userCode) === 1,
+            sprintf('the CLI is given a code a user can read out loud (got "%s")', $userCode),
+        );
+        demo_expect(
+            ($asked['verification_uri'] ?? null) === $issuer . '/device',
+            sprintf('the code is typed at %s (got %s)', $issuer . '/device', (string) ($asked['verification_uri'] ?? '')),
+        );
+        demo_expect(
+            is_string($asked['verification_uri_complete'] ?? null) && str_contains((string) $asked['verification_uri_complete'], $userCode),
+            'the provider also hands it an address that carries the code (RFC 8628 §3.3.1)',
+        );
+        demo_expect(
+            is_int($asked['interval'] ?? null) && $asked['interval'] > 0 && is_int($asked['expires_in'] ?? null),
+            sprintf('it is told how often to ask and for how long (%s s, %s s)', (string) ($asked['interval'] ?? '?'), (string) ($asked['expires_in'] ?? '?')),
+        );
+        $verified[] = [
+            'Device authorization',
+            sprintf('code %s at %s, every %d s for %d s', $userCode, (string) $asked['verification_uri'], (int) $asked['interval'], (int) $asked['expires_in']),
+        ];
+
+        // the other device: a browser that knows nothing of the CLI but the code it was read
+        demo_device_confirm($issuer, $password, $ca, $userCode);
+        $verified[] = ['Confirmation in a browser', sprintf('%s signed in, read what the code asks for and allowed it', DEV_USERNAME)];
+
+        // the CLI was polling all along, and answers itself once somebody has answered for it
+        $tokens = demo_device_step($cli, 'tokens');
+        demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf('the CLI holds a bearer token (got %s)', (string) ($tokens['token_type'] ?? '')));
+        demo_expect(($tokens['sub'] ?? null) !== null, 'the token names the user who confirmed the code');
+        demo_expect(($tokens['refresh_token'] ?? false) === true, 'it also holds a refresh token, so it never pairs again (RFC 8628 §3.5)');
+        demo_expect(($tokens['id_token'] ?? false) === true, 'and an ID token, the request having asked for "openid"');
+        demo_expect(
+            is_int($tokens['polls'] ?? null) && $tokens['polls'] >= 2,
+            sprintf('it asked more than once and was told to wait before it was answered (%s polls)', (string) ($tokens['polls'] ?? '?')),
+        );
+        $verified[] = [
+            'Tokens',
+            sprintf(
+                '%s token for "%s", with a refresh token, after %d polls',
+                (string) $tokens['token_type'],
+                (string) ($tokens['scope'] ?? '?'),
+                (int) $tokens['polls'],
+            ),
+        ];
+
+        $cli->wait();
+        demo_expect($cli->isSuccessful(), sprintf('the CLI ends without an error (exit %s)', (string) $cli->getExitCode()));
+    } finally {
+        if ($cli->isRunning()) {
+            $cli->stop();
+        }
+    }
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('A program with no browser and no secret signed a user in, on a code that user typed somewhere else.');
+}
+
+/**
+ * The next step the CLI writes on its standard output, one JSON object per line (tests/demo/device-cli.php).
+ * The CLI keeps polling while this walk works, so the lines are read as they come and never waited for all
+ * at once; a line that says the flow ended is an error of the run and is reported as it is.
+ *
+ * @throws RuntimeException when the CLI ends before the step, or says the flow ended without tokens
+ *
+ * @return array<string, mixed>
+ */
+function demo_device_step(Process $cli, string $step, float $timeout = 150.0): array
+{
+    $deadline = microtime(true) + $timeout;
+    $consumed = 0;
+    while (microtime(true) < $deadline) {
+        $lines = explode("\n", $cli->getIncrementalOutput());
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            ++$consumed;
+            $decoded = json_decode($line, true);
+            if (! is_array($decoded)) {
+                continue;
+            }
+            if (($decoded['step'] ?? null) === 'error') {
+                throw new RuntimeException(sprintf('the CLI gave up: %s', (string) ($decoded['error'] ?? '')));
+            }
+            if (($decoded['step'] ?? null) === $step) {
+                return $decoded;
+            }
+        }
+        if (! $cli->isRunning() && $consumed > 0 && $cli->getIncrementalOutput() === '') {
+            throw new RuntimeException(sprintf('the CLI ended before writing its "%s" step', $step));
+        }
+        usleep(200_000);
+    }
+
+    throw new RuntimeException(sprintf('the CLI did not write its "%s" step within %.0f s', $step, $timeout));
+}
+
+/**
+ * The other device of the device grant (RFC 8628 §3.3): a browser that holds nothing of the flow but the
+ * code, signs its user in at the provider, reads what the code is asking for and allows it. The page is
+ * asserted against BCP 10027 §2, which is what tells this flow from one where a code is enough.
+ */
+function demo_device_confirm(string $issuer, string $password, string $ca, string $userCode): void
+{
+    $cookies = [];
+    $page = $issuer . '/device?user_code=' . rawurlencode($userCode);
+
+    // no session yet, so the page asks for a login and remembers the code it was carrying
+    [$status, $location] = demo_request($cookies, $ca, 'GET', $page);
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/login'),
+        sprintf('the page of the code asks for a login first (got %d %s)', $status, $location),
+    );
+    [$status, , $login] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $login, $csrf) === 1 && preg_match('/action="([^"]+)"/', $login, $action) === 1,
+        'the login page carries the form',
+    );
+    [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
+        '_username' => DEV_USERNAME,
+        '_password' => $password,
+        '_csrf_token' => $csrf[1],
+    ]);
+    demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
+
+    // the login brings the browser back to the code it was carrying (LoginTarget)
+    [$status, , $approval] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200 && str_contains($approval, 'data-warning="unexpected"'),
+        sprintf('the browser comes back to the page that asks about the code (got %d %s)', $status, $location),
+    );
+    demo_expect(str_contains($approval, $userCode), 'the page shows the code that was typed, so the user can see it is theirs (BCP 10027 §2)');
+    demo_expect(
+        preg_match('/data-provider="([^"]+)"/', $approval) === 1 && preg_match('/data-origin="([^"]*)"/', $approval) === 1,
+        'it names the provider that is asking and where the request came from (BCP 10027 §2)',
+    );
+    demo_expect(
+        preg_match_all('/data-scope="([^"]+)"/', $approval, $scopes) >= 1 && in_array('openid', $scopes[1], true),
+        sprintf('it names every scope of the request (%s)', implode(' ', $scopes[1] ?? [])),
+    );
+
+    // allow, with the token of the page and the code it carried
+    $fields = demo_form_fields($approval);
+    [$status, , $answered] = demo_request($cookies, $ca, 'POST', $issuer . '/device', [
+        ...$fields,
+        'answer' => 'allow',
+    ]);
+    demo_expect($status === 200, sprintf('the answer is accepted (got %d)', $status));
+    demo_expect(
+        ! str_contains($answered, 'data-warning="unexpected"'),
+        'and the page no longer asks anything: the appliance is what continues the flow (RFC 8628 §3.3)',
+    );
+}
+
+/**
+ * The second and third interoperability criteria of spike 6 (issue #228): a service obtains a token for
+ * itself (RFC 6749 §4.4) for a resource it named (RFC 8707 §2), a gateway exchanges that token to act on its
+ * behalf (RFC 8693), and the resource server of the demonstration is handed the result.
+ *
+ * Three parties and no browser anywhere. What the resource server proves is what Symfony gives a resource
+ * server: its `access_token` authenticator compares the `aud` of the token with the identifier of the
+ * resource it answers for, so a token addressed to the other resource is refused there without the provider
+ * being asked anything. Who is acting for the subject is in the token and not in what the authenticator
+ * hands over, so the route reads it from the payload the firewall has already verified; that is the gap this
+ * criterion measures, and it is written down as `RS-16` of the Symfony status document.
+ */
+function demo_service_check(string $dir, string $issuer, string $serviceSecret, string $gatewaySecret, string $ca): void
+{
+    io()->section('A service, a gateway acting for it, and a resource server');
+    $verified = [];
+
+    // the resource server answers for one resource, which is what its firewall compares an "aud" with
+    demo_write_env_local($dir . '/.env.local', [
+        'OIDC_RESOURCE' => DEMO_SERVICE_RESOURCE,
+    ]);
+    run(['symfony', 'server:stop'], context: context()->withWorkingDirectory($dir)->withQuiet()->withAllowFailure());
+    run(
+        ['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'],
+        context: context()->withWorkingDirectory($dir)->withQuiet(),
+    );
+
+    // RFC 6749 §4.4: the service asks for itself, and names what the token is for
+    $service = demo_client_credentials($issuer, $ca, DEMO_SERVICE_CLIENT_ID, $serviceSecret, DEMO_SERVICE_RESOURCE);
+    $claims = demo_claims_of($service['access_token']);
+    demo_expect(($claims['sub'] ?? null) === DEMO_SERVICE_CLIENT_ID, sprintf(
+        'the token of the service names it in "sub" (got %s)',
+        (string) ($claims['sub'] ?? ''),
+    ));
+    demo_expect(($claims['aud'] ?? null) === DEMO_SERVICE_RESOURCE, sprintf(
+        'it is addressed to the resource it asked for (got %s)',
+        json_encode($claims['aud'] ?? null),
+    ));
+    demo_expect(! isset($claims['sid'], $claims['auth_time']), 'and says nothing of a sign-in: nobody signed in for it (RFC 6749 §4.4)');
+    demo_expect(! isset($service['refresh_token'], $service['id_token']), 'the response carries an access token and nothing else (§4.4.3)');
+    demo_expect(
+        ($claims['may_act']['sub'] ?? null) === DEMO_GATEWAY_CLIENT_ID,
+        sprintf('the token says who may act for its subject (RFC 8693 §4.4: %s)', (string) ($claims['may_act']['sub'] ?? '')),
+    );
+    $verified[] = ['client_credentials', sprintf('%s holds a token for %s, may_act %s', DEMO_SERVICE_CLIENT_ID, DEMO_SERVICE_RESOURCE, DEMO_GATEWAY_CLIENT_ID)];
+
+    // RFC 8693 §2.1: the gateway presents the token of the service and a token of its own, which is what
+    // makes the exchange a delegation rather than an impersonation (§1.3)
+    $gateway = demo_client_credentials($issuer, $ca, DEMO_GATEWAY_CLIENT_ID, $gatewaySecret, DEMO_SERVICE_RESOURCE);
+    $exchanged = demo_token_exchange($issuer, $ca, $gatewaySecret, $service['access_token'], $gateway['access_token'], DEMO_SERVICE_RESOURCE);
+    $claims = demo_claims_of($exchanged['access_token']);
+    demo_expect(
+        ($exchanged['issued_token_type'] ?? null) === DEMO_ACCESS_TOKEN_TYPE,
+        sprintf('the exchange says what it issued (got %s)', (string) ($exchanged['issued_token_type'] ?? '')),
+    );
+    demo_expect(
+        ($claims['sub'] ?? null) === DEMO_SERVICE_CLIENT_ID,
+        sprintf('the new token is about the service and not about the gateway (got %s)', (string) ($claims['sub'] ?? '')),
+    );
+    demo_expect(
+        ($claims['act']['sub'] ?? null) === DEMO_GATEWAY_CLIENT_ID,
+        sprintf('and "act" names the gateway that holds it for it (RFC 8693 §4.1: %s)', (string) ($claims['act']['sub'] ?? '')),
+    );
+    demo_expect(($claims['client_id'] ?? null) === DEMO_GATEWAY_CLIENT_ID, 'while "client_id" names the client that asked (RFC 9068 §2.2)');
+    $verified[] = ['Token exchange', sprintf('sub %s, act %s, client_id %s', DEMO_SERVICE_CLIENT_ID, DEMO_GATEWAY_CLIENT_ID, DEMO_GATEWAY_CLIENT_ID)];
+
+    // the resource server: the token is accepted because it is addressed to this resource
+    [$status, $answer] = demo_api_call(DEMO_SERVICE_RESOURCE, $exchanged['access_token']);
+    demo_expect($status === 200, sprintf('the resource server accepts the exchanged token (got %d)', $status));
+    demo_expect(
+        ($answer['sub'] ?? null) === DEMO_SERVICE_CLIENT_ID && ($answer['act']['sub'] ?? null) === DEMO_GATEWAY_CLIENT_ID,
+        sprintf('it names the subject and the actor (got %s acting for %s)', (string) ($answer['act']['sub'] ?? ''), (string) ($answer['sub'] ?? '')),
+    );
+    demo_expect(
+        ($answer['aud'] ?? null) === DEMO_SERVICE_RESOURCE,
+        sprintf('and the audience it answered for (got %s)', json_encode($answer['aud'] ?? null)),
+    );
+    $verified[] = ['Resource server', sprintf('%s accepted, sub %s, act %s', DEMO_SERVICE_RESOURCE, DEMO_SERVICE_CLIENT_ID, DEMO_GATEWAY_CLIENT_ID)];
+
+    // RFC 8707 §2: and refuses one addressed somewhere else, without asking the provider anything
+    $elsewhere = demo_client_credentials($issuer, $ca, DEMO_SERVICE_CLIENT_ID, $serviceSecret, DEMO_OTHER_RESOURCE);
+    [$status] = demo_api_call(DEMO_SERVICE_RESOURCE, $elsewhere['access_token']);
+    demo_expect($status === 401, sprintf('a token addressed to %s is refused there (got %d)', DEMO_OTHER_RESOURCE, $status));
+    $verified[] = ['Another audience', sprintf('a token for %s is refused with 401', DEMO_OTHER_RESOURCE)];
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('A service was reached through a gateway acting for it, and the resource server knew which was which.');
+}
+
+/**
+ * A token a client holds for itself (RFC 6749 §4.4), addressed to the resource it named.
+ *
+ * @return array<string, mixed>
+ */
+function demo_client_credentials(string $issuer, string $ca, string $clientId, string $secret, string $resource): array
+{
+    $response = http_request('POST', $issuer . '/token', [
+        'cafile' => $ca,
+        'auth_basic' => $clientId . ':' . $secret,
+        'body' => [
+            'grant_type' => 'client_credentials',
+            'scope' => 'invoices.read',
+            'resource' => $resource,
+        ],
+    ]);
+    demo_expect($response->getStatusCode() === 200, sprintf(
+        '%s obtains a token for itself (got %d %s)',
+        $clientId,
+        $response->getStatusCode(),
+        $response->getContent(false),
+    ));
+
+    return (array) json_decode($response->getContent(false), true, 8, \JSON_THROW_ON_ERROR);
+}
+
+/**
+ * RFC 8693 §2.1: the token of the service and a token of the gateway, exchanged for one the gateway holds on
+ * the service's behalf.
+ *
+ * @return array<string, mixed>
+ */
+function demo_token_exchange(string $issuer, string $ca, string $gatewaySecret, string $subjectToken, string $actorToken, string $resource): array
+{
+    $response = http_request('POST', $issuer . '/token', [
+        'cafile' => $ca,
+        'auth_basic' => DEMO_GATEWAY_CLIENT_ID . ':' . $gatewaySecret,
+        'body' => [
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:token-exchange',
+            'subject_token' => $subjectToken,
+            'subject_token_type' => DEMO_ACCESS_TOKEN_TYPE,
+            'actor_token' => $actorToken,
+            'actor_token_type' => DEMO_ACCESS_TOKEN_TYPE,
+            'resource' => $resource,
+            'scope' => 'invoices.read',
+        ],
+    ]);
+    demo_expect(
+        $response->getStatusCode() === 200,
+        sprintf('the gateway exchanges it (got %d %s)', $response->getStatusCode(), $response->getContent(false)),
+    );
+
+    return (array) json_decode($response->getContent(false), true, 8, \JSON_THROW_ON_ERROR);
+}
+
+/**
+ * The route of the demonstration that answers for a resource, called with the token it is handed.
+ *
+ * @return array{int, array<string, mixed>}
+ */
+function demo_api_call(string $url, string $accessToken): array
+{
+    $response = http_request('GET', $url, [
+        'verify_peer' => false,
+        'verify_host' => false,
+        'headers' => [
+            'Authorization' => 'Bearer ' . $accessToken,
+        ],
+    ]);
+    $decoded = json_decode($response->getContent(false), true);
+
+    return [$response->getStatusCode(), is_array($decoded) ? $decoded : []];
+}
+
+/**
+ * The claims of a self-contained access token (RFC 9068 §2.2), read to assert on them; nothing is verified
+ * here, the walk being the client and not a resource server.
+ *
+ * @return array<string, mixed>
+ */
+function demo_claims_of(mixed $accessToken): array
+{
+    $parts = explode('.', (string) $accessToken);
+    demo_expect(count($parts) === 3, 'the access token is a compact JWS (RFC 9068 §2.1)');
+    $payload = json_decode((string) base64_decode(strtr($parts[1], '-_', '+/'), true), true, 8);
+
+    return is_array($payload) ? $payload : [];
 }
