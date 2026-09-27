@@ -13,3 +13,4 @@
 /tests/symfony/config/reference.php
 /tests/symfony/config/schema.json
 /.deptrac.cache
+/graphify-out
