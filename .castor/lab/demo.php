@@ -1466,6 +1466,12 @@ function demo_ladder_tokens(string $slug, array $tokens, string $page): string
             ($claims['authorization_details'] ?? null) === DEMO_RAR_GRANTED,
             sprintf('rar: the access token carries the detail the rung asked for (%s)', json_encode($claims['authorization_details'] ?? null)),
         );
+        // and the page of the rung shows it: a token carrying a detail buried inside it shows nobody anything,
+        // so the demonstration reads the claim and renders it (LadderController)
+        demo_expect(
+            preg_match('/data-authorization-detail="([^"]+)"/', $page, $shown) === 1 && $shown[1] === 'invoice_payment',
+            sprintf('rar: the page of the rung shows the detail its token carries (got "%s")', $shown[1] ?? ''),
+        );
 
         return sprintf('an at+jwt carrying %d authorization detail(s)', count(DEMO_RAR_GRANTED));
     }
