@@ -98,6 +98,22 @@ const CONFORMANCE_CIBA_HINT_TYPE = 'login_hint';
 const CONFORMANCE_CIBA_HINT_VALUE = '{HEIDI_DEV_USER_SUBJECT}';
 
 /**
+ * The authentication context class a client of the FAPI-CIBA runs asks for (CIBA Core §7.1, the
+ * "acr_value" of the suite): one name, sent as the whole "acr_values" of a backchannel authentication
+ * request, which the suite refuses to send unless the discovery document announces it under
+ * "acr_values_supported".
+ *
+ * "1" is the single factor of the default policy (decision 0010) and the one of the four classes this
+ * tenant announces that these runs can be answered with. The user they name signs in with a password and
+ * holds nothing else, and the class a token names is what the session proved and never what the request
+ * asked for (OIDC Core §2): a class asking for more is approved all the same, a voluntary demand being
+ * refused to nobody (§5.5.1.1), and the module then reads an "acr" that is not the one it asked for. A
+ * user holding a credential that could reach it would be asked for one more proof instead, which the
+ * endpoint answering in place of a human refuses by design (AutomatedApprovalController).
+ */
+const CONFORMANCE_CIBA_ACR_VALUE = '1';
+
+/**
  * Where the suite posts the answer of the user when there is nobody to give one (its
  * "automated_ciba_approval_url"): the endpoint of the bundle an application imports in development only
  * (src/symfony/config/routes/ciba-conformance.php), which signs the user in with their password and
@@ -112,14 +128,11 @@ const CONFORMANCE_CIBA_APPROVAL_PATH = '/ciba/conformance/approval';
 
 /**
  * What the two FAPI-CIBA runs wait on, measured on suite 5.2.1 on 2026-09-27 and written whole in
- * docs/conformance-suite.md: rules of the profile, none of them of this flow alone and none of them a
- * gap anybody decided to leave. Two of them are the provider's and one is what this configuration hands
- * the suite, and they are the runs' and not one module's, which is why they are one line each here and
- * not a "known" module apiece.
+ * docs/conformance-suite.md: rules of the profile, both of them the provider's, neither of them of this
+ * flow alone and neither of them a gap anybody decided to leave. They are the runs' and not one
+ * module's, which is why they are one line each here and not a "known" module apiece.
  */
 const CONFORMANCE_CIBA_ISSUES = [
-    // this configuration names no acr_value, and a module sends one on a backchannel request
-    'heidi#317',
     // a client called back reaches the token endpoint before it will answer, which is why every module
     // of the ping run that needs an answer fails where the poll run is served
     'heidi#318',
@@ -828,8 +841,9 @@ function conformance_fapi_sections(array $configuration, array $clients, string 
  * never read and nothing of it is taken out; what replaces it is the URL the suite posts the answer of
  * the user to.
  *
- * Each client says how it names its user (CIBA Core §7.1). Both of them, and not the first only: a
- * module that asks as the second client reads the hint of that client.
+ * Each client says how it names its user and what class it asks of their authentication (CIBA Core
+ * §7.1). Both of them, and not the first only: the suite reads those out of the client the module is
+ * asking as, and a module that asks as the second client reads them of that client.
  *
  * @param array<string, mixed> $configuration
  * @param list<string> $clients the two clients of the run, "client" and "client2"
@@ -843,6 +857,7 @@ function conformance_ciba_sections(array $configuration, array $clients, array $
     foreach (['client', 'client2'] as $section) {
         $configuration[$section]['hint_type'] = CONFORMANCE_CIBA_HINT_TYPE;
         $configuration[$section]['hint_value'] = CONFORMANCE_CIBA_HINT_VALUE;
+        $configuration[$section]['acr_value'] = CONFORMANCE_CIBA_ACR_VALUE;
     }
     // The values of the user are put in here and not left as placeholders: a password is a value of a
     // query and is encoded for one, which the filling of the file does not do.
