@@ -60,6 +60,11 @@ deptrac:
         # spomky-labs/otphp and its base32, the TOTP brick (docs/09-briques.md): the Bridge of the core computes the codes and the provisioning URI on it, the core reads the steps
         - { type: classLike, value: '^OTPHP\\' }
         - { type: classLike, value: '^ParagonIE\\ConstantTime\\' }
+    - name: 'WebPush'
+      collectors:
+        # spomky-labs/web-push-lib, the Web Push brick (docs/09-briques.md): the bundle encrypts a
+        # notification to a browser and signs the request with it, nothing else speaks RFC 8291
+        - { type: classLike, value: '^WebPush\\' }
     - name: 'QrCode'
       collectors:
         # bacon/bacon-qr-code, what draws the QR code of a TOTP enrolment as an SVG in the bundle (architecture §5.2): the pages embed it, nothing else reads it
@@ -149,6 +154,7 @@ deptrac:
       - 'Jose'
       - 'Webauthn'
       - 'Otphp'
+      - 'WebPush'
       - 'QrCode'
       - 'Serializer'
       - 'Doctrine'

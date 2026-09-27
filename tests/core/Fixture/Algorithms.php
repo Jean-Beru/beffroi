@@ -14,6 +14,8 @@ use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
 use Heidi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
+use Heidi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
+use Heidi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
@@ -44,6 +46,10 @@ final class Algorithms
     private static ?JoseKeyEncryptionAlgorithms $keyEncryption = null;
 
     private static ?JoseContentEncryptionAlgorithms $contentEncryption = null;
+
+    private static ?Vapid $vapid = null;
+
+    private static ?JoseApplicationServerAlgorithms $applicationServer = null;
 
     private static ?JoseKeyAlgorithms $everyUse = null;
 
@@ -120,11 +126,32 @@ final class Algorithms
         return self::$encryption ??= new JoseEncryptionAlgorithms(self::keyEncryption(), self::contentEncryption());
     }
 
+    public static function vapid(): Vapid
+    {
+        return self::$vapid ??= new Vapid();
+    }
+
     /**
-     * Every algorithm a key may be generated for, the two lists read as one.
+     * A deployment that hands out no key of its own, which is the default (§5.6).
+     */
+    public static function noApplicationServer(): JoseApplicationServerAlgorithms
+    {
+        return new JoseApplicationServerAlgorithms([]);
+    }
+
+    /**
+     * The algorithms of the keys a tenant hands out itself (RFC 8292 §2).
+     */
+    public static function applicationServer(): JoseApplicationServerAlgorithms
+    {
+        return self::$applicationServer ??= new JoseApplicationServerAlgorithms([self::vapid()]);
+    }
+
+    /**
+     * Every algorithm a key may be generated for, the lists of one use read as one.
      */
     public static function everyUse(): JoseKeyAlgorithms
     {
-        return self::$everyUse ??= new JoseKeyAlgorithms(self::all(), self::keyEncryption());
+        return self::$everyUse ??= new JoseKeyAlgorithms(self::all(), self::keyEncryption(), self::applicationServer());
     }
 }

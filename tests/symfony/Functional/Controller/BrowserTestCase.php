@@ -215,6 +215,15 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
+     * The application server key the tenant hands to a browser that subscribes (RFC 8292 §2). Drawn like
+     * every other key of the tenant, and not published in its JWK Set.
+     */
+    protected static function applicationServerKey(): TenantKey
+    {
+        return self::rotator()->rotate(self::tenant(), Algorithms::vapid(), self::context());
+    }
+
+    /**
      * The "kid" a compact JWS names in its protected header (RFC 7515 §4.1.4).
      */
     protected static function kidOf(string $compactJws): string

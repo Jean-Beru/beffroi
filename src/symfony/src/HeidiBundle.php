@@ -33,6 +33,7 @@ use Heidi\Bundle\Configuration\TenantSection;
 use Heidi\Bundle\Configuration\TokensSection;
 use Heidi\Bundle\Configuration\TrustedIssuersSection;
 use Heidi\Bundle\Configuration\WebauthnSection;
+use Heidi\Bundle\Configuration\WebPushSection;
 use Heidi\Bundle\Doctrine\Type\ConfirmationType;
 use Heidi\Bundle\Doctrine\Type\AuthorizationDetailsType;
 use Heidi\Bundle\Doctrine\Type\NeedsAuthorizationDetailTypesInterface;
@@ -293,6 +294,7 @@ final class HeidiBundle extends AbstractBundle
             new LoadSection(),
             new BackChannelLogoutSection(),
             new BackchannelAuthenticationSection(),
+            new WebPushSection(),
             new ClientAuthenticationSection(),
             new RequestObjectsSection(),
             new DpopSection(),
