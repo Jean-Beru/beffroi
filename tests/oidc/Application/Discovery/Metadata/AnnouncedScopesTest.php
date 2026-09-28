@@ -8,16 +8,21 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
 use Heidi\Oidc\Application\Token\ServedGrants;
+use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Tests\Fixture\Clients;
+use Heidi\Oidc\Tests\Fixture\FakeClaimsProvider;
 use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenIssuingGrant;
 use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenSpendingGrant;
 use Heidi\Oidc\Tests\Fixture\Grants;
-use Heidi\Oidc\Tests\Fixture\ServedClaims;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Discovery §3: "scopes_supported" is "openid", what the claims provider serves, and
- * "offline_access" where the wired grants make good on it (OIDC Core §11).
+ * OIDC Discovery §3: "scopes_supported" is "openid", what the wired claims providers serve, what the
+ * clients of the tenant registered, and "offline_access" where the wired grants make good on it
+ * (OIDC Core §11).
  */
 final class AnnouncedScopesTest extends TestCase
 {
@@ -25,7 +30,7 @@ final class AnnouncedScopesTest extends TestCase
     public function theyAreOpenidThenWhatTheClaimsProviderServes(): void
     {
         // Given
-        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served());
+        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), new InMemoryClientRepository());
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -50,6 +55,7 @@ final class AnnouncedScopesTest extends TestCase
         $announced = new AnnouncedScopes(
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
+            new InMemoryClientRepository(),
         );
 
         // When
@@ -69,6 +75,7 @@ final class AnnouncedScopesTest extends TestCase
         $announced = new AnnouncedScopes(
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenSpendingGrant(Grants::refreshToken())]),
+            new InMemoryClientRepository(),
         );
 
         // When
@@ -87,8 +94,9 @@ final class AnnouncedScopesTest extends TestCase
     {
         // Given
         $announced = new AnnouncedScopes(
-            ServedClaims::of(['email', 'openid', 'email'], []),
+            FakeClaimsProvider::of(['email', 'openid', 'email'], []),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
+            new InMemoryClientRepository(),
         );
 
         // When
@@ -96,5 +104,103 @@ final class AnnouncedScopesTest extends TestCase
 
         // Then
         static::assertSame(['openid', 'email'], $members['scopes_supported']);
+    }
+
+    /**
+     * Issue #98: what a tenant announces is read from its clients, so a scope one of them registered is
+     * a scope of that tenant, each named once however many clients registered it.
+     */
+    #[Test]
+    public function itAnnouncesTheScopesTheClientsOfTheTenantRegistered(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $clients = new InMemoryClientRepository();
+        $clients->save(Clients::public($tenant, allowedScopes: self::billing()));
+        $clients->save(Clients::public($tenant, 'other-spa', allowedScopes: self::billing()));
+        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), $clients);
+
+        // When
+        $members = $announced->metadata($tenant);
+
+        // Then
+        static::assertSame(
+            ['openid', 'profile', 'email', 'address', 'phone', 'billing.read', 'billing.write', 'offline_access'],
+            $members['scopes_supported'],
+        );
+    }
+
+    /**
+     * The scopes of one tenant are no business of another: two tenants whose clients registered
+     * different scopes announce different documents.
+     */
+    #[Test]
+    public function itAnnouncesNoScopeOfAnotherTenant(): void
+    {
+        // Given
+        $clients = new InMemoryClientRepository();
+        $clients->save(Clients::public(Fixtures::tenant(), allowedScopes: self::billing()));
+        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), $clients);
+
+        // When
+        $members = $announced->metadata(Fixtures::tenant('other', 'https://id.other.example'));
+
+        // Then
+        static::assertSame(['openid', 'profile', 'email', 'address', 'phone', 'offline_access'], $members['scopes_supported']);
+    }
+
+    /**
+     * The scope of an API stands for no claim, and a registration is the only thing that says it exists:
+     * it is announced, as a resource a client registered is (RFC 9728 §4), and a typo is announced with
+     * it rather than granted in silence. What a client that registers itself may name is held to what
+     * this document already carries, where such a registration is read.
+     */
+    #[Test]
+    public function aScopeNoClaimsProviderServesIsAnnouncedBecauseAClientRegisteredIt(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $clients = new InMemoryClientRepository();
+        $clients->save(Clients::public($tenant, allowedScopes: new Scopes([new Scope('billing.read')])));
+        $announced = new AnnouncedScopes(FakeClaimsProvider::of([], []), Grants::served(), $clients);
+
+        // When
+        $members = $announced->metadata($tenant);
+
+        // Then
+        static::assertSame(['openid', 'billing.read', 'offline_access'], $members['scopes_supported']);
+    }
+
+    /**
+     * OIDC Core §11: "offline_access" is the one scope a registration does not put in the document. A
+     * client registered for it on a deployment whose grants cannot make it good would have the document
+     * promise a refresh token the token endpoint would refuse.
+     */
+    #[Test]
+    public function aClientRegisteredForOfflineAccessDoesNotAnnounceItWhereNoGrantMakesItGood(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $clients = new InMemoryClientRepository();
+        $clients->save(Clients::public($tenant, allowedScopes: new Scopes([Scope::openid(), Scope::offlineAccess()])));
+        $announced = new AnnouncedScopes(
+            new StandardClaimsProvider(),
+            new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
+            $clients,
+        );
+
+        // When
+        $members = $announced->metadata($tenant);
+
+        // Then
+        static::assertSame(['openid', 'profile', 'email', 'address', 'phone'], $members['scopes_supported']);
+    }
+
+    /**
+     * Two scopes an API of the deployment is protected by, which no claims provider serves.
+     */
+    private static function billing(): Scopes
+    {
+        return new Scopes([Scope::openid(), new Scope('billing.read'), new Scope('billing.write')]);
     }
 }

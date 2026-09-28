@@ -8,7 +8,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClaims;
 use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\ServedClaims;
+use Heidi\Oidc\Tests\Fixture\FakeClaimsProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -40,7 +40,7 @@ final class AnnouncedClaimsTest extends TestCase
     public function subComesFirstAndOnce(): void
     {
         // Given
-        $announced = new AnnouncedClaims(ServedClaims::of([], ['email', 'sub', 'email']));
+        $announced = new AnnouncedClaims(FakeClaimsProvider::of([], ['email', 'sub', 'email']));
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -53,7 +53,7 @@ final class AnnouncedClaimsTest extends TestCase
     public function subIsAnnouncedEvenWhenTheIntegrationListsNothing(): void
     {
         // Given
-        $announced = new AnnouncedClaims(ServedClaims::of([], []));
+        $announced = new AnnouncedClaims(FakeClaimsProvider::of([], []));
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -66,7 +66,7 @@ final class AnnouncedClaimsTest extends TestCase
     public function anEmptyClaimNameIsRefused(): void
     {
         // Given
-        $announced = new AnnouncedClaims(ServedClaims::of([], ['']));
+        $announced = new AnnouncedClaims(FakeClaimsProvider::of([], ['']));
 
         // Then
         $this->expectException(InvalidArgumentException::class);

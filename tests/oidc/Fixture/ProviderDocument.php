@@ -31,6 +31,7 @@ use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationRespon
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
 use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
 use Heidi\Oidc\Application\Token\ServedGrants;
+use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Token\GrantInterface;
@@ -40,6 +41,7 @@ use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
+use Heidi\Oidc\Port\RegisteredScopesInterface;
 use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
 use Heidi\Oidc\Port\UnsignedRequestObjectsInterface;
@@ -62,6 +64,7 @@ final class ProviderDocument
         ?ServedResponseModesInterface $responseModes = null,
         ?ClientAuthenticationMethodsInterface $methods = null,
         ?PushedAuthorizationRequirementInterface $pushedRequests = null,
+        ?RegisteredScopesInterface $registeredScopes = null,
         ?UnsignedRequestObjectsInterface $unsignedRequestObjects = null,
         ?ServedLogoutChannelsInterface $logoutChannels = null,
         ?SignatureAlgorithmsInterface $signing = null,
@@ -77,6 +80,7 @@ final class ProviderDocument
         $responseModes ??= ServedModes::queryAndFormPost();
         $methods ??= Methods::all();
         $pushedRequests ??= PushedRequests::requiredOfNobody();
+        $registeredScopes ??= new InMemoryClientRepository();
         $unsignedRequestObjects ??= RequestObjectSignings::everyClientSignsThem();
         $logoutChannels ??= ServedChannels::both();
         $signing ??= Algorithms::all();
@@ -89,7 +93,7 @@ final class ProviderDocument
 
         return new DiscoveryHandler([
             new ProviderIdentity($endpoints),
-            new AnnouncedScopes($claims, $grantTypes),
+            new AnnouncedScopes($claims, $grantTypes, $registeredScopes),
             new AnnouncedResponses($responseModes),
             new AnnouncedGrants($grantTypes),
             new AnnouncedAuthenticationContext($provable),
@@ -124,6 +128,7 @@ final class ProviderDocument
         ?ServedResponseModesInterface $responseModes = null,
         ?ClientAuthenticationMethodsInterface $methods = null,
         ?PushedAuthorizationRequirementInterface $pushedRequests = null,
+        ?RegisteredScopesInterface $registeredScopes = null,
         ?UnsignedRequestObjectsInterface $unsignedRequestObjects = null,
         ?ServedLogoutChannelsInterface $logoutChannels = null,
         ?SignatureAlgorithmsInterface $signing = null,
@@ -140,6 +145,7 @@ final class ProviderDocument
             $responseModes,
             $methods,
             $pushedRequests,
+            $registeredScopes,
             $unsignedRequestObjects,
             $logoutChannels,
             $signing,

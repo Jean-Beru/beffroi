@@ -212,6 +212,7 @@ use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
 use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
+use Heidi\Oidc\Application\Claims\ServedClaims;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\AcceptedAssertionAudiences;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
@@ -348,6 +349,7 @@ use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\RegisteredResourcesInterface;
+use Heidi\Oidc\Port\RegisteredScopesInterface;
 use Heidi\Oidc\Port\RegisteredAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
@@ -820,6 +822,9 @@ return static function (ContainerConfigurator $container): void {
     // require, read where they are declared and nowhere else (issue #98)
     $services->alias(PushedAuthorizationRequirementInterface::class, ConfigurationClientRepository::class);
     $services->alias(RegisteredResourcesInterface::class, ConfigurationClientRepository::class);
+    // OIDC Discovery §3: the scopes of a tenant beyond those a claims provider serves are what its
+    // clients registered, a scope that stands for no claim having nowhere else to come from (issue #278)
+    $services->alias(RegisteredScopesInterface::class, ConfigurationClientRepository::class);
     $services->alias(RegisteredAccessTokenShapesInterface::class, ConfigurationClientRepository::class);
     $services->alias(UnsignedRequestObjectsInterface::class, ConfigurationClientRepository::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
@@ -914,8 +919,12 @@ return static function (ContainerConfigurator $container): void {
     // The module: subject and claims
     $services->set(PublicSubjectIdentifierResolver::class);
     $services->alias(SubjectIdentifierResolverInterface::class, PublicSubjectIdentifierResolver::class);
-    $services->set(StandardClaimsProvider::class);
-    $services->alias(ClaimsProviderInterface::class, StandardClaimsProvider::class);
+    // the claims of OIDC Core §5.1 and the four scopes of §5.4, closed by the specification; a deployment
+    // that serves claims of its own, or a scope of its own that stands for them, wires a class beside this
+    // one and edits nothing, the document announcing what the wired providers serve (issue #278)
+    $services->set(StandardClaimsProvider::class)->tag('heidi.oidc.claims_provider');
+    $services->set(ServedClaims::class)->args([tagged_iterator('heidi.oidc.claims_provider')]);
+    $services->alias(ClaimsProviderInterface::class, ServedClaims::class);
 
     // The module: authorization endpoint, the pushed request the browser may come back with, and the
     // request object a client signs (RFC 9101), read with the very reader and verifier a client
