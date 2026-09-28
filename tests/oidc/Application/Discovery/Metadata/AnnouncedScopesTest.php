@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
@@ -30,7 +31,7 @@ final class AnnouncedScopesTest extends TestCase
     public function theyAreOpenidThenWhatTheClaimsProviderServes(): void
     {
         // Given
-        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), new InMemoryClientRepository());
+        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([new InMemoryClientRepository()]));
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -55,7 +56,7 @@ final class AnnouncedScopesTest extends TestCase
         $announced = new AnnouncedScopes(
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
-            new InMemoryClientRepository(),
+            new RegisteredClients([new InMemoryClientRepository()]),
         );
 
         // When
@@ -75,7 +76,7 @@ final class AnnouncedScopesTest extends TestCase
         $announced = new AnnouncedScopes(
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenSpendingGrant(Grants::refreshToken())]),
-            new InMemoryClientRepository(),
+            new RegisteredClients([new InMemoryClientRepository()]),
         );
 
         // When
@@ -96,7 +97,7 @@ final class AnnouncedScopesTest extends TestCase
         $announced = new AnnouncedScopes(
             FakeClaimsProvider::of(['email', 'openid', 'email'], []),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
-            new InMemoryClientRepository(),
+            new RegisteredClients([new InMemoryClientRepository()]),
         );
 
         // When
@@ -118,7 +119,7 @@ final class AnnouncedScopesTest extends TestCase
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public($tenant, allowedScopes: self::billing()));
         $clients->save(Clients::public($tenant, 'other-spa', allowedScopes: self::billing()));
-        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), $clients);
+        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([$clients]));
 
         // When
         $members = $announced->metadata($tenant);
@@ -140,7 +141,7 @@ final class AnnouncedScopesTest extends TestCase
         // Given
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public(Fixtures::tenant(), allowedScopes: self::billing()));
-        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), $clients);
+        $announced = new AnnouncedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([$clients]));
 
         // When
         $members = $announced->metadata(Fixtures::tenant('other', 'https://id.other.example'));
@@ -162,7 +163,7 @@ final class AnnouncedScopesTest extends TestCase
         $tenant = Fixtures::tenant();
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public($tenant, allowedScopes: new Scopes([new Scope('billing.read')])));
-        $announced = new AnnouncedScopes(FakeClaimsProvider::of([], []), Grants::served(), $clients);
+        $announced = new AnnouncedScopes(FakeClaimsProvider::of([], []), Grants::served(), new RegisteredClients([$clients]));
 
         // When
         $members = $announced->metadata($tenant);
@@ -186,7 +187,7 @@ final class AnnouncedScopesTest extends TestCase
         $announced = new AnnouncedScopes(
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
-            $clients,
+            new RegisteredClients([$clients]),
         );
 
         // When

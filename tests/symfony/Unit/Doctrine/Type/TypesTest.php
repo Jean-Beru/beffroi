@@ -21,6 +21,7 @@ use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Heidi\Bundle\Doctrine\Type\BackupCodesType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
+use Heidi\Bundle\Doctrine\Type\ClientSecretType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
@@ -55,7 +56,9 @@ use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Exchange\Actor;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
@@ -86,6 +89,7 @@ final class TypesTest extends TestCase
             new Pbkdf2Sha512(),
         ]);
         PasswordAlgorithmType::resolveWith($algorithms);
+        ClientSecretType::resolveWith($algorithms);
         BackupCodesType::resolveWith($algorithms);
         AuthorizationDetailsType::resolveWith(AuthorizationDetailTypes::served());
     }
@@ -182,6 +186,16 @@ final class TypesTest extends TestCase
             '[{"algorithm":"argon2id","encoded":"$argon2id$one","parameters":[],"used_at":null},{"algorithm":"pbkdf2-sha256","encoded":"two","parameters":{"salt":"c2FsdA","iterations":27500},"used_at":1789000060}]',
         ];
         yield 'no backup code' => [BackupCodesType::class, [], '[]'];
+        yield 'the secret of a client that presents it' => [
+            ClientSecretType::class,
+            new HashedClientSecret(new PasswordHash(new Argon2id(), '$argon2id$the-secret-of-a-client')),
+            '{"hash":{"algorithm":"argon2id","encoded":"$argon2id$the-secret-of-a-client","parameters":[]}}',
+        ];
+        yield 'the secret of a client that signs with it' => [
+            ClientSecretType::class,
+            new SharedClientSecret('a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3'),
+            '{"shared":"a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3"}',
+        ];
         yield 'one actor' => [ActorType::class, new Actor(new Subject('gateway')), '{"sub":"gateway"}'];
         yield 'a chain of actors' => [
             ActorType::class,
@@ -456,10 +470,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTwentyThreeTypes(): void
+    public function theBundleDeclaresTwentyFourTypes(): void
     {
         // When / Then
-        static::assertCount(23, HeidiBundle::DBAL_TYPES);
+        static::assertCount(24, HeidiBundle::DBAL_TYPES);
     }
 
     /**

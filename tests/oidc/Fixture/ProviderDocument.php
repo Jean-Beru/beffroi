@@ -8,6 +8,7 @@ use Heidi\Core\Port\ContentEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
@@ -80,7 +81,7 @@ final class ProviderDocument
         $responseModes ??= ServedModes::queryAndFormPost();
         $methods ??= Methods::all();
         $pushedRequests ??= PushedRequests::requiredOfNobody();
-        $registeredScopes ??= new InMemoryClientRepository();
+        $registeredScopes ??= new RegisteredClients([new InMemoryClientRepository()]);
         $unsignedRequestObjects ??= RequestObjectSignings::everyClientSignsThem();
         $logoutChannels ??= ServedChannels::both();
         $signing ??= Algorithms::all();

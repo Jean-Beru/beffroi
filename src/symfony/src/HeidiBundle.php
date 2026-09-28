@@ -18,6 +18,7 @@ use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
 use Heidi\Core\Port\PasswordAlgorithmsInterface;
 use Heidi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
 use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
+use Heidi\Bundle\Doctrine\Type\ClientSecretType;
 use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Configuration\BackchannelAuthenticationSection;
 use Heidi\Bundle\Configuration\BackChannelLogoutSection;
@@ -96,6 +97,7 @@ final class HeidiBundle extends AbstractBundle
         BindingMessageType::NAME => BindingMessageType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
+        ClientSecretType::NAME => ClientSecretType::class,
         ActorType::NAME => ActorType::class,
         ConfirmationType::NAME => ConfirmationType::class,
         KeyConfirmationType::NAME => KeyConfirmationType::class,

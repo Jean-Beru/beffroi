@@ -22,6 +22,7 @@ use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
+use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
@@ -102,7 +103,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new SymfonyUuidGenerator(),
                 new DateInterval('PT20M'),
             ),
-            $this->clients,
+            new RegisteredClients([$this->clients]),
         );
 
         // When / Then
@@ -168,7 +169,7 @@ final class KeyBoundArtifactsTest extends TestCase
                         new SymfonyUuidGenerator(),
                         new DateInterval('PT2M'),
                     ),
-                    $this->clients,
+                    new RegisteredClients([$this->clients]),
                 ),
                 new ResponseDocumentJwsKind($this->documents(new DateInterval('PT5M')), ServedModes::signedToo()),
             ],
@@ -247,7 +248,7 @@ final class KeyBoundArtifactsTest extends TestCase
                         new SymfonyUuidGenerator(),
                         new DateInterval('PT1M'),
                     ),
-                    $this->clients,
+                    new RegisteredClients([$this->clients]),
                 ),
                 new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::backChannelOnly()),
             ],
@@ -279,7 +280,7 @@ final class KeyBoundArtifactsTest extends TestCase
         ));
         $kind = new AccessTokenJwsKind(
             new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator()),
-            $this->clients,
+            new RegisteredClients([$this->clients]),
         );
 
         // When / Then
@@ -347,7 +348,7 @@ final class KeyBoundArtifactsTest extends TestCase
                         new SymfonyUuidGenerator(),
                         new DateInterval('PT2M'),
                     ),
-                    $this->clients,
+                    new RegisteredClients([$this->clients]),
                 ),
                 new RequestObjectJweKind(new RequestObjectValidator(new DateInterval('PT10M'), new DateInterval('PT30S'))),
                 new PushedRequestJweKind($this->pushedRequests(new DateInterval('PT90S'))),
