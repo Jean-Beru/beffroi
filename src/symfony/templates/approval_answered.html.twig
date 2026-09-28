@@ -9,5 +9,5 @@
 
 {% block content %}
     {{ include('@Heidi/account/back.html.twig') }}
-    <p data-answer="{{ approved ? 'approved' : 'denied' }}">{{ (approved ? 'approvals.answered.approved' : 'approvals.answered.denied')|trans({client: client.registration.name}) }}</p>
+    <p data-answer="{{ approved ? 'approved' : 'denied' }}">{{ (approved ? 'approvals.answered.approved' : 'approvals.answered.denied')|trans({client: client.registration.presentation.name}) }}</p>
 {% endblock %}

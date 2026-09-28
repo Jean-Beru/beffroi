@@ -11,13 +11,11 @@ use function array_map;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Token\ServedGrants;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
-use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
@@ -31,15 +29,13 @@ use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\DeliveryModes;
 use Heidi\Oidc\Tests\Fixture\FakeGrant;
 use Heidi\Oidc\Tests\Fixture\Grants;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Tests\Fixture\Registrations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
-use Heidi\Oidc\Tests\Fixture\Shapes;
 use Heidi\Oidc\Tests\Fixture\TokenTypes;
 
 final class ConfigurationClientRepositoryTest extends TestCase
@@ -59,11 +55,11 @@ final class ConfigurationClientRepositoryTest extends TestCase
      * @var array<string, mixed>
      */
     private const array SUITE = [
-        'name' => 'Conformance suite, second client',
+        'client_name' => 'Conformance suite, second client',
         'secret' => Clients::SECRET,
         'redirect_uris' => ['https://localhost:8443/test/a/heidi/callback', 'https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'],
         'grant_types' => ['authorization_code'],
-        'allowed_scopes' => ['openid', 'email'],
+        'scope' => 'openid email',
         'token_endpoint_auth_method' => 'client_secret_post',
     ];
 
@@ -289,7 +285,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
 
         // Then
         static::assertSame('oidc-demo', $demo->registration->clientId);
-        static::assertSame('oidc-demo', $demo->registration->name);
+        static::assertSame('oidc-demo', $demo->registration->presentation->name);
         static::assertTrue($demo->belongsTo($this->tenant));
         static::assertSame('client_secret_basic', $demo->registration->authenticationMethod->name());
         static::assertFalse($demo->registration->requiresConsent);
@@ -344,16 +340,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                     ],
             ],
             new FakePasswordHasher(),
-            Algorithms::all(),
-            Methods::all(),
-            Grants::served(),
-            Shapes::served(),
-            new PkiFrameworkCertificateReader(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            DeliveryModes::served(),
-            TokenTypes::served(),
-            AuthorizationDetailTypes::none(),
+            Registrations::reader(authorizationDetailTypes: AuthorizationDetailTypes::none()),
         );
     }
 
@@ -371,7 +358,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 'secret' => Clients::SECRET,
                 'token_endpoint_auth_method' => 'client_secret_basic',
                 'grant_types' => ['client_credentials'],
-                'allowed_scopes' => ['invoices.read'],
+                'scope' => 'invoices.read',
                 'resources' => [Clients::CALENDAR],
             ],
         ], grants: Grants::servedWithClientCredentials());
@@ -480,16 +467,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 ],
             ],
             new FakePasswordHasher(),
-            Algorithms::all(),
-            Methods::all(),
-            new ServedGrants([new FakeGrant(Grants::invented())]),
-            Shapes::served(),
-            new PkiFrameworkCertificateReader(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            DeliveryModes::served(),
-            TokenTypes::served(),
-            AuthorizationDetailTypes::served(),
+            Registrations::reader(grants: new ServedGrants([new FakeGrant(Grants::invented())])),
         );
 
         // When
@@ -536,7 +514,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $suite = self::find($repository, $this->tenant, 'suite-second');
 
         // Then
-        static::assertSame('Conformance suite, second client', $suite->registration->name);
+        static::assertSame('Conformance suite, second client', $suite->registration->presentation->name);
         static::assertSame('client_secret_post', $suite->registration->authenticationMethod->name());
         static::assertTrue($suite->registration->requiresConsent);
         static::assertTrue($suite->registration->hasRedirectUri('https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'));
@@ -830,16 +808,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 'bad' => $definition,
             ],
             new FakePasswordHasher(),
-            Algorithms::all(),
-            Methods::all(),
-            Grants::served(),
-            Shapes::served(),
-            new PkiFrameworkCertificateReader(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            DeliveryModes::served(),
-            TokenTypes::served(),
-            AuthorizationDetailTypes::served(),
+            Registrations::reader(),
         );
     }
 
@@ -1131,12 +1100,12 @@ final class ConfigurationClientRepositoryTest extends TestCase
             ],
             'is public and must use PKCE',
         ];
-        yield 'name not a string' => [
+        yield 'client_name not a string' => [
             $base
                 + [
-                    'name' => ['x'],
+                    'client_name' => ['x'],
                 ],
-            'name of the client "bad" must be a string',
+            'client_name option of the client "bad" must be a string',
         ];
         yield 'redirect_uris not a list' => [
             [
@@ -1190,24 +1159,24 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 ],
             'must be one of: authorization_code, refresh_token',
         ];
-        yield 'invalid scope' => [
+        yield 'a scope that is no scope token' => [
             $base
                 + [
-                    'allowed_scopes' => ['openid profile'],
+                    'scope' => 'openid "quoted"',
                 ],
             'scope token',
         ];
-        yield 'no scope' => [
+        yield 'scope not a string' => [
             $base
                 + [
-                    'allowed_scopes' => [],
+                    'scope' => ['openid'],
                 ],
-            'at least one scope',
+            'scope option of the client "bad" must be a string',
         ];
-        yield 'empty name' => [
+        yield 'empty client_name' => [
             $base
                 + [
-                    'name' => '',
+                    'client_name' => '',
                 ],
             'has a name',
         ];
@@ -1366,32 +1335,14 @@ final class ConfigurationClientRepositoryTest extends TestCase
             ClientDefinition::fromArray(
                 'spa',
                 self::SPA,
-                Algorithms::all(),
-                Methods::all(),
-                Grants::served(),
-                Shapes::served(),
-                new PkiFrameworkCertificateReader(),
-                Algorithms::keyEncryption(),
-                Algorithms::contentEncryption(),
-                DeliveryModes::served(),
-                TokenTypes::served(),
-                AuthorizationDetailTypes::served(),
+                Registrations::reader(),
             )->hasSecret(),
         );
         static::assertTrue(
             ClientDefinition::fromArray(
                 'oidc-demo',
                 self::DEMO,
-                Algorithms::all(),
-                Methods::all(),
-                Grants::served(),
-                Shapes::served(),
-                new PkiFrameworkCertificateReader(),
-                Algorithms::keyEncryption(),
-                Algorithms::contentEncryption(),
-                DeliveryModes::served(),
-                TokenTypes::served(),
-                AuthorizationDetailTypes::served(),
+                Registrations::reader(),
             )->hasSecret(),
         );
     }
@@ -1406,16 +1357,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         $definition = ClientDefinition::fromArray(
             'spa',
             self::SPA,
-            Algorithms::all(),
-            Methods::all(),
-            Grants::served(),
-            Shapes::served(),
-            new PkiFrameworkCertificateReader(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            DeliveryModes::served(),
-            TokenTypes::served(),
-            AuthorizationDetailTypes::served(),
+            Registrations::reader(),
         );
 
         // Then
@@ -1434,16 +1376,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             $this->tenant->slug,
             $clients,
             $hasher ?? new FakePasswordHasher(),
-            Algorithms::all(),
-            Methods::all(),
-            $grants ?? Grants::served(),
-            Shapes::served(),
-            new PkiFrameworkCertificateReader(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            DeliveryModes::served(),
-            TokenTypes::served(),
-            AuthorizationDetailTypes::served(),
+            Registrations::reader(grants: $grants ?? Grants::served()),
         );
     }
 

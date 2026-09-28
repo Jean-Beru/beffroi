@@ -8,6 +8,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Authorization\AuthorizationErrorResponse;
 use Heidi\Oidc\Domain\Authorization\RedirectTarget;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Exception\InvalidClientException;
@@ -73,7 +74,14 @@ final class AuthorizationErrorResponseTest extends TestCase
         // Given
         $client = new Client(
             Fixtures::tenant(),
-            new ClientRegistration('app', 'Application', Methods::none(), false, [new RedirectUri('https://rp.example/cb?app=1')], Shapes::jwt()),
+            new ClientRegistration(
+                'app',
+                new ClientPresentation('Application'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://rp.example/cb?app=1')],
+                Shapes::jwt(),
+            ),
         );
         $target = new RedirectTarget($client, new RedirectUri('https://rp.example/cb?app=1'), 'a state with spaces & ampersand');
 

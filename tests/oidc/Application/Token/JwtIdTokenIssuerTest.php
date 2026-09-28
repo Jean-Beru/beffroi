@@ -26,6 +26,7 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\ResponseFormat;
@@ -459,7 +460,7 @@ final class JwtIdTokenIssuerTest extends TestCase
             $this->session->tenant,
             new ClientRegistration(
                 'spa',
-                'Single page application',
+                new ClientPresentation('Single page application'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
@@ -502,7 +503,7 @@ final class JwtIdTokenIssuerTest extends TestCase
             $this->session->tenant,
             new ClientRegistration(
                 'spa',
-                'Single page application',
+                new ClientPresentation('Single page application'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],

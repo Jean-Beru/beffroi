@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit;
 
-use Heidi\Bundle\Configuration\ClientsSection;
 use Heidi\Bundle\Configuration\TenantSection;
 use Heidi\Bundle\Configuration\TokensSection;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
-use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Application\Discovery\JwksHandler;
 use Heidi\Oidc\Application\Token\GrantNames;
 use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
-use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
-use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
-use Heidi\Oidc\Tests\Fixture\DeliveryModes;
-use Heidi\Oidc\Tests\Fixture\Grants;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Heidi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
+use Heidi\Oidc\Tests\Fixture\Registrations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -32,8 +27,6 @@ use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\Definition\PrototypedArrayNode;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ConfigurationExtensionInterface;
-use Heidi\Oidc\Tests\Fixture\Shapes;
-use Heidi\Oidc\Tests\Fixture\TokenTypes;
 
 /**
  * The configuration tree of architecture §5.1, read through the Config component as the kernel reads it.
@@ -169,16 +162,7 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'redirect_uris' => ['https://demo.test/login/check'],
                 'token_endpoint_auth_method' => 'none',
             ],
-            Algorithms::all(),
-            Methods::all(),
-            Grants::served(),
-            Shapes::served(),
-            new PkiFrameworkCertificateReader(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            DeliveryModes::served(),
-            TokenTypes::served(),
-            AuthorizationDetailTypes::served(),
+            Registrations::reader(),
         );
 
         // When
@@ -201,20 +185,11 @@ final class HeidiBundleConfigurationTest extends TestCase
         $fromTree = ClientDefinition::fromArray(
             'oidc-demo',
             self::stringKeyed($config['clients']['oidc-demo']),
-            Algorithms::all(),
-            Methods::all(),
-            Grants::served(),
-            Shapes::served(),
-            new PkiFrameworkCertificateReader(),
-            Algorithms::keyEncryption(),
-            Algorithms::contentEncryption(),
-            DeliveryModes::served(),
-            TokenTypes::served(),
-            AuthorizationDetailTypes::served(),
+            Registrations::reader(),
         );
         static::assertEquals($fromModule, $fromTree);
-        static::assertSame(ClientDefinition::DEFAULT_GRANT_TYPES, GrantNames::of($fromTree->registration->grantTypes));
-        static::assertSame(ClientsSection::DEFAULT_ALLOWED_SCOPES, $fromTree->registration->allowedScopes->values());
+        static::assertSame(DeploymentDefaults::GRANT_TYPES, GrantNames::of($fromTree->registration->grantTypes));
+        static::assertSame(['openid', 'profile', 'email'], $fromTree->registration->allowedScopes->values());
     }
 
     /**

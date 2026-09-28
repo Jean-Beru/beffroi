@@ -11,6 +11,7 @@ use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
+use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClaims;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClientAuthentication;
@@ -97,7 +98,7 @@ final class ProviderDocument
             new AnnouncedScopes($claims, $grantTypes, $registeredScopes),
             new AnnouncedResponses($responseModes),
             new AnnouncedGrants($grantTypes),
-            new AnnouncedAuthenticationContext($provable),
+            new AnnouncedAuthenticationContext($provable, new PublicSubjectIdentifierResolver()),
             new AnnouncedIdToken($algorithms),
             new AnnouncedUserInfo($algorithms),
             new AnnouncedClientAuthentication($methods, $algorithms),

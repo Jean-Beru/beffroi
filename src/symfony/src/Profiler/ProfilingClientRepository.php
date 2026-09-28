@@ -40,7 +40,7 @@ final readonly class ProfilingClientRepository implements ClientRepositoryInterf
     {
         return new Observation('Client', 'Client', [
             'client_id' => $client->registration->clientId,
-            'name' => $client->registration->name,
+            'name' => $client->registration->presentation->name,
             'authentication method' => $client->registration->authenticationMethod->name(),
             'pushed authorization request' => $client->registration->requiresPushedAuthorizationRequests ? 'required' : 'not required',
             'PKCE' => $client->registration->requiresPkce ? 'required' : 'not required',

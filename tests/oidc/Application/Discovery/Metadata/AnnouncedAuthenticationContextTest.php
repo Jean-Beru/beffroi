@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
 use Heidi\Oidc\Tests\Fixture\Logins;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,7 +21,7 @@ final class AnnouncedAuthenticationContextTest extends TestCase
     public function theyAreTheClassesTheWiredMethodsCanProve(): void
     {
         // Given
-        $announced = new AnnouncedAuthenticationContext(Logins::passwordAndPasskey());
+        $announced = new AnnouncedAuthenticationContext(Logins::passwordAndPasskey(), new PublicSubjectIdentifierResolver());
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -43,7 +44,7 @@ final class AnnouncedAuthenticationContextTest extends TestCase
     public function aDeploymentThatOnlyTakesAPasswordAnnouncesWhatAPasswordProves(): void
     {
         // Given
-        $announced = new AnnouncedAuthenticationContext(Logins::passwordOnly());
+        $announced = new AnnouncedAuthenticationContext(Logins::passwordOnly(), new PublicSubjectIdentifierResolver());
 
         // When
         $members = $announced->metadata(Fixtures::tenant());

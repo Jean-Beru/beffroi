@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use Heidi\Core\Port\PasswordHasherInterface;
+use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Client\ClientSecretInterface;
+use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
@@ -14,6 +16,7 @@ use Heidi\Oidc\Port\ClientStoreInterface;
 use Heidi\Oidc\Tests\Fixture\ClientAssertions;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
+use function array_map;
 use function base64_encode;
 use Symfony\Component\Uid\Uuid;
 
@@ -41,7 +44,33 @@ final class RegisteredClientFlowTest extends BrowserTestCase
 
         // Then
         static::assertSame(self::CLIENT_ID, $client?->registration->clientId);
-        static::assertSame('A client that registered itself', $client->registration->name);
+        static::assertSame('A client that registered itself', $client->registration->presentation->name);
+    }
+
+    /**
+     * RFC 7591 §2, issue #335: a row is read behind the defaults of the specification and not behind those of
+     * a deployment. A client that registered nothing beyond its redirection URI is registered for the
+     * authorization code grant alone and authenticates with "client_secret_basic", where a declaration that
+     * writes nothing takes the renewal and the first wired method.
+     */
+    #[Test]
+    public function aClientThatRegisteredNothingTakesTheDefaultsOfTheSpecification(): void
+    {
+        // Given
+        $this->registerMembers([
+            'redirect_uris' => [self::REDIRECT_URI],
+        ]);
+
+        // When
+        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::CLIENT_ID);
+
+        // Then
+        static::assertInstanceOf(Client::class, $client);
+        static::assertSame(['authorization_code'], array_map(
+            static fn (GrantTypeName $grantType): string => $grantType->value,
+            $client->registration->grantTypes,
+        ));
+        static::assertSame('client_secret_basic', $client->registration->authenticationMethod->name());
     }
 
     /**
@@ -240,19 +269,29 @@ final class RegisteredClientFlowTest extends BrowserTestCase
      */
     private function register(string $method = 'client_secret_basic', ?ClientSecretInterface $secret = null): void
     {
+        $this->registerMembers([
+            'client_name' => 'A client that registered itself',
+            'redirect_uris' => [self::REDIRECT_URI],
+            'token_endpoint_auth_method' => $method,
+            'scope' => 'openid profile',
+            'requires_consent' => false,
+        ], $secret);
+    }
+
+    /**
+     * One row, holding exactly the members given and the secret the provider drew for it.
+     *
+     * @param array<string, mixed> $members
+     */
+    private function registerMembers(array $members, ?ClientSecretInterface $secret = null): void
+    {
         $secret ??= new HashedClientSecret(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->hash(self::SECRET));
         self::service('test.heidi.client_store', ClientStoreInterface::class)
             ->save(new ClientRecord(
                 Uuid::v7(),
                 self::tenant(),
                 self::CLIENT_ID,
-                [
-                    'name' => 'A client that registered itself',
-                    'redirect_uris' => [self::REDIRECT_URI],
-                    'token_endpoint_auth_method' => $method,
-                    'allowed_scopes' => ['openid', 'profile'],
-                    'requires_consent' => false,
-                ],
+                $members,
                 $secret,
                 self::now(),
             ));

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Configuration;
 
-use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Heidi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
 use function is_array;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
@@ -16,8 +16,6 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  */
 final readonly class ClientsSection extends ConfigurationSection
 {
-    public const array DEFAULT_ALLOWED_SCOPES = ['openid', 'profile', 'email'];
-
     public function name(): string
     {
         return 'clients';
@@ -32,9 +30,30 @@ final readonly class ClientsSection extends ConfigurationSection
             ->normalizeKeys(false)
             ->arrayPrototype()
             ->children()
-            ->scalarNode('name')
-            ->info('Shown on the consent page; the client identifier when absent.')
+            ->scalarNode('client_name')
+            ->info('Shown on the consent page (OIDC Registration §2); the client identifier when absent.')
             ->defaultNull()
+            ->end()
+            ->scalarNode('client_uri')
+            ->info('The home page of the client (OIDC Registration §2), linked from the consent page; HTTPS, or plain HTTP on a loopback host.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('logo_uri')
+            ->info('The logo the consent page shows for this client (OIDC Registration §2); HTTPS, or plain HTTP on a loopback host.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('policy_uri')
+            ->info('How this client uses the data it is given (OIDC Registration §2), linked from the consent page; HTTPS, or plain HTTP on a loopback host.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('tos_uri')
+            ->info('The terms of service of this client (OIDC Registration §2), linked from the consent page; HTTPS, or plain HTTP on a loopback host.')
+            ->defaultNull()
+            ->end()
+            ->arrayNode('contacts')
+            ->info('Ways to reach the people responsible for this client (OIDC Registration §2), typically email addresses. No page shows them.')
+            ->scalarPrototype()
+            ->end()
             ->end()
             ->scalarNode('secret')
             ->info('At least 32 visible ASCII characters, generated, never chosen; absent for a public client.')
@@ -52,14 +71,18 @@ final readonly class ClientsSection extends ConfigurationSection
             ->end()
             ->arrayNode('grant_types')
             ->info('What this client may ask for at the token endpoint (RFC 7591 §2), among the grants the provider is wired with; left out, it takes the browser flow and its renewal. A name nothing serves fails at boot.')
-            ->defaultValue(ClientDefinition::DEFAULT_GRANT_TYPES)
+            ->defaultValue(DeploymentDefaults::GRANT_TYPES)
             ->scalarPrototype()
             ->end()
             ->end()
-            ->arrayNode('allowed_scopes')
-            ->defaultValue(self::DEFAULT_ALLOWED_SCOPES)
+            ->arrayNode('response_types')
+            ->info('What this client asks the authorization endpoint to answer with (OIDC Registration §2): "code" and nothing else, decision 0006 admitting no implicit flow. Left out, it is the one that goes with the grants above, and a pair that contradicts itself fails at boot.')
             ->scalarPrototype()
             ->end()
+            ->end()
+            ->scalarNode('scope')
+            ->info('The closed list of scopes this client may ask for (RFC 7591 §2), space-delimited as a request writes it (RFC 6749 §3.3); a scope it did not register is refused with invalid_scope. Left out, it takes the three an application that signs a user in comes for.')
+            ->defaultValue(DeploymentDefaults::SCOPE)
             ->end()
             ->scalarNode('token_endpoint_auth_method')
             ->info('How this client authenticates at the endpoints that authenticate a client (OIDC Core §9), among the methods the provider is wired with; left out, it takes the first wired one. A name nothing authenticates with fails at boot.')
@@ -151,6 +174,18 @@ final readonly class ClientsSection extends ConfigurationSection
             ->end()
             ->scalarNode('jwks_uri')
             ->info('Where the JWK Set of the client is read back from (RFC 7591 §2); HTTPS, or plain HTTP on a loopback host, no redirect followed. Exclusive with jwks.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('subject_type')
+            ->info('The kind of "sub" this client sees for a user (OIDC Core §8), under the name the resolver of that kind gives itself, among the kinds this provider assigns one for, which is what subject_types_supported announces. Left out, the client registers none and sees the kind the provider assigns by default.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('sector_identifier_uri')
+            ->info('The document naming every redirection URI of the clients that share a "sub" with this one (OIDC Core §8.1); HTTPS, no redirect followed.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('initiate_login_uri')
+            ->info('Where a third party sends a user to have this provider begin a login at this client (OIDC Core §4, OIDC Registration §2); HTTPS, or plain HTTP on a loopback host.')
             ->defaultNull()
             ->end()
             ->scalarNode('request_object_signing_alg')

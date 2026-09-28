@@ -45,6 +45,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Consent\Consent;
@@ -121,7 +122,7 @@ final class AuthorizationHandlerTest extends TestCase
             $this->tenant,
             new ClientRegistration(
                 'portal',
-                'Portal',
+                new ClientPresentation('Portal'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://portal.acme.example/callback')],
@@ -1522,7 +1523,7 @@ final class AuthorizationHandlerTest extends TestCase
             $tenant,
             new ClientRegistration(
                 'portal',
-                'Portal',
+                new ClientPresentation('Portal'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://portal.acme.example/callback')],

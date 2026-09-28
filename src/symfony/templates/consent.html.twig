@@ -5,14 +5,14 @@
 {% extends '@Heidi/layout.html.twig' %}
 {% trans_default_domain 'heidi' %}
 
-{% block title %}{{ 'consent.title'|trans({client: client.registration.name}) }}{% endblock %}
+{% block title %}{{ 'consent.title'|trans({client: client.registration.presentation.name}) }}{% endblock %}
 
 {% block content %}
     <p>{{ 'consent.signed_in_as'|trans({username: user.username}) }}</p>
-    <p>{{ 'consent.request'|trans({client: client.registration.name}) }}</p>
+    <p>{{ 'consent.request'|trans({client: client.registration.presentation.name}) }}</p>
     {{ include('@Heidi/scopes.html.twig', {scopes: scopes}) }}
     {% if authorization_details is not null %}
-        <p>{{ 'consent.authorization_details'|trans({client: client.registration.name}) }}</p>
+        <p>{{ 'consent.authorization_details'|trans({client: client.registration.presentation.name}) }}</p>
         {{ include('@Heidi/authorization_details.html.twig', {details: authorization_details}) }}
     {% endif %}
     <form method="post" action="{{ path('heidi_interaction_consent') }}">

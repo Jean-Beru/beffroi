@@ -24,9 +24,9 @@
     {% else %}
         {% for record in records %}
             <section data-approval="{{ record.authRequestIdHash }}">
-                <p>{{ 'approvals.request'|trans({client: record.client.registration.name}) }}</p>
+                <p>{{ 'approvals.request'|trans({client: record.client.registration.presentation.name}) }}</p>
                 {% if record.bindingMessage is not null %}
-                    <p data-binding-message="{{ record.bindingMessage.value }}">{{ 'approvals.binding_message'|trans({client: record.client.registration.name, message: record.bindingMessage.value}) }}</p>
+                    <p data-binding-message="{{ record.bindingMessage.value }}">{{ 'approvals.binding_message'|trans({client: record.client.registration.presentation.name, message: record.bindingMessage.value}) }}</p>
                 {% endif %}
                 <p data-origin="{{ record.requestedFrom.ipAddress ?? '' }}">{{ 'approvals.origin'|trans({
                     address: record.requestedFrom.ipAddress ?? ('approvals.unknown_address'|trans),

@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Tests\Functional\Doctrine;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -148,7 +149,14 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         $alice = self::user();
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
+            new ClientRegistration(
+                'ghost',
+                new ClientPresentation('Removed client'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://ghost.example/callback')],
+                Shapes::jwt(),
+            ),
         );
         self::consents()->save(new Consent(Uuid::v7(), $alice, $ghost, new Scopes([new Scope('openid')]), self::now()));
         self::reload();

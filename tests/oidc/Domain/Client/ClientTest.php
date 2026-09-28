@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Domain\Client;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -87,7 +88,7 @@ final class ClientTest extends TestCase
             Fixtures::tenant(),
             new ClientRegistration(
                 'demo',
-                'Name',
+                new ClientPresentation('Name'),
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://rp.example/cb')],
@@ -105,7 +106,14 @@ final class ClientTest extends TestCase
     public function aClientCannotContradictWhatItsRegistrationDeclares(): void
     {
         // Given
-        $registration = new ClientRegistration('demo', 'Demo', Methods::clientSecretBasic(), true, [new RedirectUri('https://rp.example/cb')], Shapes::jwt());
+        $registration = new ClientRegistration(
+            'demo',
+            new ClientPresentation('Demo'),
+            Methods::clientSecretBasic(),
+            true,
+            [new RedirectUri('https://rp.example/cb')],
+            Shapes::jwt(),
+        );
 
         // Then
         $this->expectException(InvalidArgumentException::class);
