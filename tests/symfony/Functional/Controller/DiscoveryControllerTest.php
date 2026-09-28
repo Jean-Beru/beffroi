@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Tests\Functional\Controller;
 
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer;
+use Heidi\Oidc\Tests\Fixture\InventedClaimsProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -82,6 +83,54 @@ final class DiscoveryControllerTest extends BrowserTestCase
         $metadata = self::json($this->browser->getResponse());
         static::assertSame(['S256'], $metadata['code_challenge_methods_supported']);
         static::assertTrue($metadata['authorization_response_iss_parameter_supported']);
+    }
+
+    /**
+     * OIDC Discovery §3 "scopes_supported", issue #278: "openid" first, then what the wired claims
+     * providers serve, the four of OIDC Core §5.4 and the scope this kernel wires a provider of its own
+     * for, then the scopes the clients of the tenant registered, which is where a scope that stands for
+     * no claim comes from, and "offline_access" last because the wired grants make it good (§11). None of
+     * it is enumerated anywhere: a scope is announced because a class serves it or because a client
+     * registered it.
+     */
+    #[Test]
+    public function theMetadataAnnouncesTheScopesTheWiringAndTheClientsOfTheTenantHold(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $metadata = self::json($this->browser->getResponse());
+        static::assertSame(
+            [
+                'openid',
+                'profile',
+                'email',
+                'address',
+                'phone',
+                InventedClaimsProvider::SCOPE,
+                'invoices.read',
+                'invoices.write',
+                'offline_access',
+            ],
+            $metadata['scopes_supported'],
+        );
+    }
+
+    /**
+     * OIDC Discovery §3 "claims_supported", issue #278: what the wired claims providers hold together,
+     * the claim this kernel wires a provider of its own for included.
+     */
+    #[Test]
+    public function theMetadataAnnouncesTheClaimsTheWiredProvidersServe(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $claims = self::json($this->browser->getResponse())['claims_supported'];
+        static::assertIsArray($claims);
+        static::assertContains(InventedClaimsProvider::CLAIM, $claims);
     }
 
     /**

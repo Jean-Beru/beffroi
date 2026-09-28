@@ -427,6 +427,14 @@ services:
     Heidi\Oidc\Tests\Fixture\InventedAuthorizationDetailType:
         tags: ['heidi.oidc.authorization_detail_type']
 
+    # OIDC Core §5.1 (issue #278): a claims provider is a class and a line here, and the bundle wires the
+    # standard claims as one of them. This kernel is the deployment that adds a second, serving a scope of
+    # its own that the document announces beside the four of §5.4. Behind the standard one, so that the
+    # document reads the scopes of §5.4 first, as a deployment that adds a claim of its own would want.
+    Heidi\Oidc\Tests\Fixture\InventedClaimsProvider:
+        tags:
+            - { name: heidi.oidc.claims_provider, priority: -10 }
+
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
     heidi_test.kms:
         class: Symfony\Component\KeyManagement\EncrypterInterface

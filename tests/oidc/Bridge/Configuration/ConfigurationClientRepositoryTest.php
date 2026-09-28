@@ -22,6 +22,7 @@ use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Exchange\MayAct;
 use Heidi\Oidc\Domain\Resource\ResourceIndicator;
+use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
@@ -1636,6 +1637,51 @@ final class ConfigurationClientRepositoryTest extends TestCase
             [Clients::CALENDAR, Clients::CONTACTS],
             array_map(static fn (ResourceIndicator $resource): string => $resource->value, $repository->resourcesRegisteredIn($this->tenant)),
         );
+    }
+
+    /**
+     * OIDC Discovery §3: the tenant enumerates the scopes its clients registered, each named once
+     * whatever the number of clients that named it. A scope that stands for no claim, the one an API is
+     * protected by, has nowhere else to come from (issue #98).
+     */
+    #[Test]
+    public function theTenantEnumeratesTheScopesItsClientsRegistered(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'billing-client' => self::SPA
+                + [
+                    'allowed_scopes' => ['openid', 'billing.read'],
+                ],
+            'invoicing-client' => self::SPA
+                + [
+                    'allowed_scopes' => ['openid', 'billing.read', 'billing.write'],
+                ],
+        ]);
+
+        // When
+        $scopes = $repository->scopesRegisteredIn($this->tenant);
+
+        // Then
+        static::assertSame(
+            ['openid', 'billing.read', 'billing.write'],
+            array_map(static fn (Scope $scope): string => $scope->value, $scopes),
+        );
+    }
+
+    #[Test]
+    public function anotherTenantEnumeratesNoScopeOfTheClientsDeclaredHere(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'billing-client' => self::SPA
+                + [
+                    'allowed_scopes' => ['openid', 'billing.read'],
+                ],
+        ]);
+
+        // When / Then
+        static::assertSame([], $repository->scopesRegisteredIn(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
     /**

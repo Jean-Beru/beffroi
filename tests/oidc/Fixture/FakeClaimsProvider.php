@@ -12,32 +12,36 @@ use Heidi\Oidc\Port\ClaimsProviderInterface;
 
 /**
  * A claims provider that serves exactly what a test names, to say what the document announces of a
- * deployment whose integration lists this and not the standard set.
+ * deployment whose integration lists this and not the standard set, and what several of them wired
+ * together answer.
  */
-final readonly class ServedClaims implements ClaimsProviderInterface
+final readonly class FakeClaimsProvider implements ClaimsProviderInterface
 {
     /**
      * @param list<string> $scopes
      * @param list<string> $claims
+     * @param array<string, mixed> $values what this provider puts on a claim of a user, empty when the test only asks what it serves
      */
     private function __construct(
         private array $scopes,
         private array $claims,
+        private array $values,
     ) {
     }
 
     /**
      * @param list<string> $scopes
      * @param list<string> $claims
+     * @param array<string, mixed> $values
      */
-    public static function of(array $scopes, array $claims): self
+    public static function of(array $scopes, array $claims, array $values = []): self
     {
-        return new self($scopes, $claims);
+        return new self($scopes, $claims, $values);
     }
 
     public function claims(User $user, ?Scopes $scopes, array $requested): array
     {
-        return [];
+        return $this->values;
     }
 
     public function supportedScopes(): array

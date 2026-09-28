@@ -347,6 +347,7 @@ final class Clients
      * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow unless the test says otherwise
      * @param list<RedirectUri>|null $redirectUris where its browser is sent back to, an HTTPS URI unless the test says otherwise
      * @param list<RedirectUri> $postLogoutRedirectUris where it is sent back to at the end of a session (RP-Initiated Logout §2)
+     * @param Scopes|null $allowedScopes what this client may ask for, "openid" alone unless the test says otherwise
      */
     public static function public(
         Tenant $tenant,
@@ -355,6 +356,7 @@ final class Clients
         ?array $grantTypes = null,
         ?array $redirectUris = null,
         array $postLogoutRedirectUris = [],
+        ?Scopes $allowedScopes = null,
     ): Client {
         return new Client(
             $tenant,
@@ -367,6 +369,7 @@ final class Clients
                 Shapes::jwt(),
                 $postLogoutRedirectUris,
                 grantTypes: $grantTypes ?? [Grants::authorizationCode()],
+                allowedScopes: $allowedScopes,
                 resources: $resources,
             ),
         );
