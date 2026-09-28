@@ -8,6 +8,7 @@ use Heidi\Core\Port\ContentEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Client\ClientMetadataReader;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
@@ -22,6 +23,7 @@ use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
 use Heidi\Oidc\Port\ServedDeliveryModesInterface;
 use Heidi\Oidc\Port\ServedGrantsInterface;
+use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
 
 /**
  * The reader every registration of the tests goes through, wired with what the provider of the tests is
@@ -41,6 +43,7 @@ final class Registrations
         ?CertificateReaderInterface $certificates = null,
         ?KeyEncryptionAlgorithmsInterface $keyEncryption = null,
         ?ContentEncryptionAlgorithmsInterface $contentEncryption = null,
+        ?SubjectIdentifierResolverInterface $subjects = null,
     ): ClientMetadataReader {
         return new ClientMetadataReader(
             $algorithms ?? Algorithms::all(),
@@ -53,6 +56,7 @@ final class Registrations
             $deliveryModes ?? DeliveryModes::served(),
             $tokenTypes ?? TokenTypes::served(),
             $authorizationDetailTypes ?? AuthorizationDetailTypes::served(),
+            $subjects ?? new PublicSubjectIdentifierResolver(),
         );
     }
 

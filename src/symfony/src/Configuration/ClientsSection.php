@@ -177,7 +177,7 @@ final readonly class ClientsSection extends ConfigurationSection
             ->defaultNull()
             ->end()
             ->scalarNode('subject_type')
-            ->info('The kind of "sub" this client sees for a user (OIDC Core §8), among the kinds this provider assigns one for, which is what subject_types_supported announces. Left out, it takes the first of them.')
+            ->info('The kind of "sub" this client sees for a user (OIDC Core §8), under the name the resolver of that kind gives itself, among the kinds this provider assigns one for, which is what subject_types_supported announces. Left out, the client registers none and sees the kind the provider assigns by default.')
             ->defaultNull()
             ->end()
             ->scalarNode('sector_identifier_uri')

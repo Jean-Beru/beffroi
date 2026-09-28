@@ -6,10 +6,10 @@ namespace Heidi\Oidc\Tests\Application\Client;
 
 use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
 use Heidi\Oidc\Domain\Client\Metadata\RegisteredMembers;
-use Heidi\Oidc\Domain\Client\Metadata\RegistrationError;
 use Heidi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\SubjectType;
+use Heidi\Oidc\Exception\InvalidClientMetadataException;
+use Heidi\Oidc\Exception\InvalidRedirectUriException;
 use Heidi\Oidc\Exception\UnreadableClientMetadataException;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Registrations;
@@ -178,17 +178,17 @@ final class ClientMetadataReaderTest extends TestCase
         ]);
 
         // Then
-        static::assertSame(SubjectType::Public, $registration->subjectType);
+        static::assertSame('public', $registration->subjectType);
         static::assertSame('https://rp.example/sector.json', (string) $registration->sectorIdentifierUri);
         static::assertSame('https://rp.example/start', (string) $registration->initiateLoginUri);
     }
 
     /**
-     * OIDC Core §8: a client that registers no kind of "sub" sees the one this provider assigns, as it takes
-     * the first wired authentication method when it names none.
+     * OIDC Core §8: a client that registers no kind of "sub" registers none, and sees the kind the provider
+     * assigns by default; the registration holds what was registered and nothing it invents.
      */
     #[Test]
-    public function aClientThatRegistersNoSubjectTypeSeesTheOneTheProviderAssigns(): void
+    public function aClientThatRegistersNoSubjectTypeRegistersNone(): void
     {
         // When
         $registration = self::read([
@@ -196,20 +196,22 @@ final class ClientMetadataReaderTest extends TestCase
         ]);
 
         // Then
-        static::assertSame(SubjectType::Public, $registration->subjectType);
+        static::assertNull($registration->subjectType);
     }
 
     /**
-     * RFC 7591 §3.2.2: what the endpoint answers with, and the member it names. One case per rule the plan
-     * judges, read from a body and refused the same way it would be refused in a declaration.
+     * RFC 7591 §3.2.2: what the endpoint answers with, which is the class of the refusal, and the member it
+     * names. One case per rule the plan judges, read from a body and refused the same way it would be refused
+     * in a declaration.
      *
      * @param array<string, mixed> $members
+     * @param class-string<UnreadableClientMetadataException> $refusal
      */
     #[Test]
     #[DataProvider('provideRefusedRegistrations')]
     public function aRegistrationThatDoesNotHoldTogetherIsRefusedWithTheCodeOfTheSpecification(
         array $members,
-        RegistrationError $error,
+        string $refusal,
         ?string $member,
         string $message,
     ): void {
@@ -222,14 +224,14 @@ final class ClientMetadataReaderTest extends TestCase
             static::fail('The registration was read.');
         } catch (UnreadableClientMetadataException $exception) {
             // Then
-            static::assertSame($error, $exception->error);
+            static::assertInstanceOf($refusal, $exception);
             static::assertSame($member, $exception->member);
             static::assertStringContainsString($message, $exception->getMessage());
         }
     }
 
     /**
-     * @return iterable<string, array{array<string, mixed>, RegistrationError, string|null, string}>
+     * @return iterable<string, array{array<string, mixed>, class-string<UnreadableClientMetadataException>, string|null, string}>
      */
     public static function provideRefusedRegistrations(): iterable
     {
@@ -238,7 +240,7 @@ final class ClientMetadataReaderTest extends TestCase
                 'redirect_uris' => ['https://rp.example/cb'],
                 'application_type' => 'web',
             ],
-            RegistrationError::InvalidClientMetadata,
+            InvalidClientMetadataException::class,
             null,
             'has unknown keys: application_type',
         ];
@@ -246,7 +248,7 @@ final class ClientMetadataReaderTest extends TestCase
             [
                 'redirect_uris' => ['https://rp.example/cb#part'],
             ],
-            RegistrationError::InvalidRedirectUri,
+            InvalidRedirectUriException::class,
             'redirect_uris',
             'must not carry a fragment',
         ];
@@ -255,7 +257,7 @@ final class ClientMetadataReaderTest extends TestCase
                 'redirect_uris' => ['https://rp.example/cb'],
                 'logo_uri' => 'http://rp.example/logo.png',
             ],
-            RegistrationError::InvalidClientMetadata,
+            InvalidClientMetadataException::class,
             'logo_uri',
             'must use HTTPS',
         ];
@@ -265,7 +267,7 @@ final class ClientMetadataReaderTest extends TestCase
                 'jwks' => self::JWKS,
                 'jwks_uri' => 'https://rp.example/jwks.json',
             ],
-            RegistrationError::InvalidClientMetadata,
+            InvalidClientMetadataException::class,
             null,
             'either inline in "jwks" or behind a "jwks_uri", never both',
         ];
@@ -274,7 +276,7 @@ final class ClientMetadataReaderTest extends TestCase
                 'redirect_uris' => ['https://rp.example/cb'],
                 'response_types' => ['id_token token'],
             ],
-            RegistrationError::InvalidClientMetadata,
+            InvalidClientMetadataException::class,
             'response_types',
             'response_types option of the client "drawn" must be one of: code',
         ];
@@ -283,7 +285,7 @@ final class ClientMetadataReaderTest extends TestCase
                 'redirect_uris' => ['https://rp.example/cb'],
                 'scope' => 'openid "quoted"',
             ],
-            RegistrationError::InvalidClientMetadata,
+            InvalidClientMetadataException::class,
             'scope',
             'is not a scope token',
         ];
@@ -292,7 +294,7 @@ final class ClientMetadataReaderTest extends TestCase
                 'redirect_uris' => ['https://rp.example/cb'],
                 'subject_type' => 'pairwise',
             ],
-            RegistrationError::InvalidClientMetadata,
+            InvalidClientMetadataException::class,
             'subject_type',
             'subject_type option of the client "drawn" must be one of: public',
         ];
@@ -301,7 +303,7 @@ final class ClientMetadataReaderTest extends TestCase
                 'redirect_uris' => ['https://rp.example/cb'],
                 'initiate_login_uri' => 'http://rp.example/start',
             ],
-            RegistrationError::InvalidClientMetadata,
+            InvalidClientMetadataException::class,
             'initiate_login_uri',
             'must use HTTPS',
         ];
