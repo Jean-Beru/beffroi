@@ -15,6 +15,7 @@ use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
 use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\GrantTypeName;
 use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
@@ -78,7 +79,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'OIDC demo',
+                new ClientPresentation('OIDC demo'),
                 $method ?? Methods::clientSecretBasic(),
                 true,
                 $redirectUris ?? [new RedirectUri('https://demo.localhost/login/check')],
@@ -113,7 +114,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Nightly batch',
+                new ClientPresentation('Nightly batch'),
                 Methods::clientSecretBasic(),
                 true,
                 [],
@@ -150,7 +151,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'API gateway',
+                new ClientPresentation('API gateway'),
                 Methods::clientSecretBasic(),
                 true,
                 [],
@@ -185,7 +186,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Nightly job runner',
+                new ClientPresentation('Nightly job runner'),
                 Methods::clientSecretBasic(),
                 true,
                 [],
@@ -219,7 +220,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Television in the waiting room',
+                new ClientPresentation('Television in the waiting room'),
                 Methods::clientSecretBasic(),
                 true,
                 [],
@@ -259,7 +260,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Payment terminal at the counter',
+                new ClientPresentation('Payment terminal at the counter'),
                 Methods::clientSecretBasic(),
                 true,
                 [],
@@ -303,7 +304,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Payment terminal holding a certificate',
+                new ClientPresentation('Payment terminal holding a certificate'),
                 Methods::privateKeyJwt(),
                 false,
                 [],
@@ -328,7 +329,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'FAPI demo',
+                new ClientPresentation('FAPI demo'),
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://fapi.localhost/login/check')],
@@ -362,7 +363,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Single page application',
+                new ClientPresentation('Single page application'),
                 Methods::none(),
                 false,
                 $redirectUris ?? [new RedirectUri('https://spa.example/callback')],
@@ -430,7 +431,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Client with a key',
+                new ClientPresentation('Client with a key'),
                 $method ?? Methods::privateKeyJwt(),
                 false,
                 [new RedirectUri('https://key.example/callback')],
@@ -458,7 +459,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Client that is written to in private',
+                new ClientPresentation('Client that is written to in private'),
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://encrypted.example/callback')],
@@ -492,7 +493,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Client that signs its requests',
+                new ClientPresentation('Client that signs its requests'),
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://jar.example/callback')],
@@ -518,7 +519,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Client with a shared secret',
+                new ClientPresentation('Client with a shared secret'),
                 Methods::clientSecretJwt(),
                 true,
                 [new RedirectUri('https://mac.example/callback')],
@@ -542,7 +543,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Client with a certificate',
+                new ClientPresentation('Client with a certificate'),
                 Methods::tlsClientAuth(),
                 false,
                 [new RedirectUri('https://mtls.example/callback')],
@@ -564,7 +565,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Client with a self-signed certificate',
+                new ClientPresentation('Client with a self-signed certificate'),
                 Methods::selfSignedTlsClientAuth(),
                 false,
                 [new RedirectUri('https://self-signed.example/callback')],
@@ -591,7 +592,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Single page application',
+                new ClientPresentation('Single page application'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],
@@ -611,7 +612,7 @@ final class Clients
             $tenant,
             new ClientRegistration(
                 $clientId,
-                'Single page application',
+                new ClientPresentation('Single page application'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],

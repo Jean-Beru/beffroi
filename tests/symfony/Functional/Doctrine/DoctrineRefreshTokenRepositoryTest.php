@@ -14,6 +14,7 @@ use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -225,7 +226,14 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         $family = self::family();
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
+            new ClientRegistration(
+                'ghost',
+                new ClientPresentation('Removed client'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://ghost.example/callback')],
+                Shapes::jwt(),
+            ),
         );
         $orphan = self::token(Secrets::draw(), $ghost, $session, $family, null, self::now()->modify('+1 minute'));
         $kept = self::token(Secrets::draw(), self::client(), $session, $family, null, self::now()->modify('+2 minutes'));

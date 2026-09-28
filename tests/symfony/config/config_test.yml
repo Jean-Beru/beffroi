@@ -166,7 +166,7 @@ heidi:
         origin: 'https://mtls.op.test'
     clients:
         oidc-demo:
-            name: 'Demo application'
+            client_name: 'Demo application'
             secret: 'demo-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://demo.test/login/check']
             post_logout_redirect_uris: ['https://demo.test/']
@@ -178,7 +178,7 @@ heidi:
             redirect_uris: ['http://127.0.0.1/callback']
             token_endpoint_auth_method: none
         legacy-app:
-            name: 'Legacy application'
+            client_name: 'Legacy application'
             secret: 'legacy-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://legacy.test/callback']
             token_endpoint_auth_method: client_secret_post
@@ -186,14 +186,14 @@ heidi:
             backchannel_logout_uri: 'https://legacy.test/backchannel-logout'
             frontchannel_logout_uri: 'https://legacy.test/frontchannel-logout?app=1'
         mtls-app:
-            name: 'Application recognised by its certificate'
+            client_name: 'Application recognised by its certificate'
             redirect_uris: ['https://mtls.test/callback']
             token_endpoint_auth_method: tls_client_auth
             # the subject of the certificate of Heidi\Oidc\Tests\Fixture\Certificates, as openssl prints it
             tls_client_auth_subject_dn: 'C=FR,O=Heidi Test,CN=heidi mtls client'
             requires_consent: false
         mtls-opaque-app:
-            name: 'Application recognised by its certificate, with opaque tokens'
+            client_name: 'Application recognised by its certificate, with opaque tokens'
             redirect_uris: ['https://mtls.test/opaque']
             token_endpoint_auth_method: tls_client_auth
             tls_client_auth_san_dns: 'client.example.com'
@@ -202,12 +202,12 @@ heidi:
         # A client with no credentials at all, binding its tokens to a key of its own (RFC 9449): the
         # case binding proves the most for, and the one the FAPI 2 plan runs with "sender_constrain=dpop".
         dpop-app:
-            name: 'Application that binds its tokens to a key'
+            client_name: 'Application that binds its tokens to a key'
             redirect_uris: ['https://dpop.test/callback']
             token_endpoint_auth_method: none
             requires_consent: false
         fapi-app:
-            name: 'Application that only pushes its requests'
+            client_name: 'Application that only pushes its requests'
             secret: 'fapi-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://fapi.test/callback']
             token_endpoint_auth_method: client_secret_basic
@@ -219,7 +219,7 @@ heidi:
         # exception of decision 0006, which is what lets the Form Post plan of the conformance suite read
         # the response mode written inside an object (issue #142).
         jar-app:
-            name: 'Application that signs its requests'
+            client_name: 'Application that signs its requests'
             secret: 'jar-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://jar.test/callback']
             token_endpoint_auth_method: client_secret_basic
@@ -234,7 +234,7 @@ heidi:
                       x: f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU
                       y: x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0
         unsigned-jar-app:
-            name: 'Application that signs nothing'
+            client_name: 'Application that signs nothing'
             secret: 'unsigned-secret-of-at-least-32-characters'
             redirect_uris: ['https://unsigned.test/callback']
             token_endpoint_auth_method: client_secret_basic
@@ -243,7 +243,7 @@ heidi:
         # JARM §2.1 (issue #163): a client whose answers are a document the tenant signs, in the
         # algorithm it registered rather than the default one, so that the two are told apart.
         jarm-app:
-            name: 'Application that reads a signed answer'
+            client_name: 'Application that reads a signed answer'
             secret: 'jarm-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://jarm.test/callback']
             token_endpoint_auth_method: client_secret_basic
@@ -254,7 +254,7 @@ heidi:
         # tenant signs and encrypts. The key is the EC key of RFC 7515 appendix A.3, whose private half
         # the test suite holds.
         encrypted-app:
-            name: 'Application written to in private'
+            client_name: 'Application written to in private'
             secret: 'encrypted-secret-of-at-least-32-characters'
             redirect_uris: ['https://encrypted.test/callback']
             token_endpoint_auth_method: client_secret_basic
@@ -276,14 +276,14 @@ heidi:
         # registration. The same two resources on both, so that the audience of a self-contained token
         # and the audience its introspection renders are compared on one flow.
         resource-app:
-            name: 'Application that asks tokens for a resource'
+            client_name: 'Application that asks tokens for a resource'
             secret: 'resource-secret-of-at-least-32-characters'
             redirect_uris: ['https://resource.test/callback']
             token_endpoint_auth_method: client_secret_basic
             requires_consent: false
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
         resource-opaque-app:
-            name: 'Application that asks opaque tokens for a resource'
+            client_name: 'Application that asks opaque tokens for a resource'
             secret: 'resource-opaque-secret-of-at-least-32-chars'
             redirect_uris: ['https://resource.test/opaque']
             token_endpoint_auth_method: client_secret_basic
@@ -296,13 +296,13 @@ heidi:
         # one renders are compared on one flow. The first requires consent, the page being where the user
         # reads what they are about to agree to.
         rar-app:
-            name: 'Application that asks for more than a scope'
+            client_name: 'Application that asks for more than a scope'
             secret: 'rar-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://rar.test/callback']
             token_endpoint_auth_method: client_secret_basic
             authorization_details_types: ['account_information']
         rar-opaque-app:
-            name: 'Application that asks for more than a scope, with opaque tokens'
+            client_name: 'Application that asks for more than a scope, with opaque tokens'
             secret: 'rar-opaque-secret-of-at-least-32-character'
             redirect_uris: ['https://rar.test/opaque']
             token_endpoint_auth_method: client_secret_basic
@@ -314,11 +314,11 @@ heidi:
         # shapes again, so that what a self-contained token says and what the introspection of an opaque one
         # says are compared on one grant.
         service-app:
-            name: 'Service acting for itself'
+            client_name: 'Service acting for itself'
             secret: 'service-secret-of-at-least-32-characters-l'
             token_endpoint_auth_method: client_secret_basic
             grant_types: ['client_credentials']
-            allowed_scopes: ['invoices.read', 'invoices.write']
+            scope: 'invoices.read invoices.write'
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
             # RFC 8693 §4.4: who may act for the subject of a token of this service, written on every token
             # it receives; the gateway below and nobody else
@@ -331,21 +331,21 @@ heidi:
         # "actor_token" of the exchange: an "act" names who holds the new token for its subject, and a
         # client writes nothing into it but a token that names itself (RFC 8693 §2.1, §4.1).
         gateway-app:
-            name: 'Gateway acting for a service'
+            client_name: 'Gateway acting for a service'
             secret: 'gateway-secret-of-at-least-32-characters-l'
             token_endpoint_auth_method: client_secret_basic
             grant_types: ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
-            allowed_scopes: ['invoices.read', 'invoices.write']
+            scope: 'invoices.read invoices.write'
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
             token_exchange:
                 subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
                 may_act_for_a_user: false
         service-opaque-app:
-            name: 'Service acting for itself, with opaque tokens'
+            client_name: 'Service acting for itself, with opaque tokens'
             secret: 'service-opaque-secret-of-at-least-32-chars'
             token_endpoint_auth_method: client_secret_basic
             grant_types: ['client_credentials']
-            allowed_scopes: ['invoices.read', 'invoices.write']
+            scope: 'invoices.read invoices.write'
             access_token_format: opaque
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
         # RFC 8628 §3.1 (issue #219): a client with no browser. It registers no redirect URI, there being
@@ -353,52 +353,52 @@ heidi:
         # television not being asked to pair again every ten minutes. "appliance-public-app" is the same
         # client without a secret, which is what a television actually is.
         appliance-app:
-            name: 'Appliance with no keyboard'
+            client_name: 'Appliance with no keyboard'
             secret: 'appliance-secret-of-at-least-32-character'
             token_endpoint_auth_method: client_secret_basic
             grant_types: ['urn:ietf:params:oauth:grant-type:device_code', 'refresh_token']
-            allowed_scopes: ['openid', 'profile', 'offline_access']
+            scope: 'openid profile offline_access'
             requires_consent: false
             resources: ['https://cal.example.com/']
         appliance-public-app:
-            name: 'Public appliance with no keyboard'
+            client_name: 'Public appliance with no keyboard'
             token_endpoint_auth_method: none
             grant_types: ['urn:ietf:params:oauth:grant-type:device_code']
-            allowed_scopes: ['openid', 'profile']
+            scope: 'openid profile'
             requires_consent: false
         # CIBA Core §7 (issues #221, #222): a client that asks for a user it names and waits for them to
         # approve on a device they already hold. It registers no redirect URI, there being no browser of
         # its own anywhere in the flow, and a delivery mode, without which it is not a client of this flow
         # at all. "pinged-terminal" is the same client in the mode where this provider calls it back.
         terminal-app:
-            name: 'Payment terminal at the counter'
+            client_name: 'Payment terminal at the counter'
             secret: 'terminal-secret-of-at-least-32-characters'
             token_endpoint_auth_method: client_secret_basic
             grant_types: ['urn:openid:params:grant-type:ciba', 'refresh_token']
-            allowed_scopes: ['openid', 'profile', 'offline_access']
+            scope: 'openid profile offline_access'
             requires_consent: false
             resources: ['https://cal.example.com/']
             backchannel_token_delivery_mode: poll
         pinged-terminal:
-            name: 'Payment terminal that is called back'
+            client_name: 'Payment terminal that is called back'
             secret: 'pinged-secret-of-at-least-32-characters!'
             token_endpoint_auth_method: client_secret_basic
             grant_types: ['urn:openid:params:grant-type:ciba']
-            allowed_scopes: ['openid', 'profile']
+            scope: 'openid profile'
             requires_consent: false
             backchannel_token_delivery_mode: ping
             backchannel_client_notification_endpoint: 'https://terminal.test/ciba'
         # a shape no class of the module knows, wired below: what a deployment adds is two classes and
         # two tags, and the name it registers here is read from that wiring (issue #239)
         invented-app:
-            name: 'Application with tokens of an invented shape'
+            client_name: 'Application with tokens of an invented shape'
             secret: 'invented-secret-of-at-least-32-characters'
             redirect_uris: ['https://invented.test/callback']
             token_endpoint_auth_method: client_secret_basic
             requires_consent: false
             access_token_format: invented
         opaque-app:
-            name: 'Application with opaque tokens'
+            client_name: 'Application with opaque tokens'
             secret: 'opaque-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://opaque.test/callback']
             token_endpoint_auth_method: client_secret_basic

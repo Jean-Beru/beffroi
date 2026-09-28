@@ -217,6 +217,7 @@ use Heidi\Oidc\Application\Claims\ServedClaims;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\AcceptedAssertionAudiences;
 use Heidi\Oidc\Application\Client\ClientIdentifierDrawer;
+use Heidi\Oidc\Application\Client\ClientMetadataReader;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
 use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
@@ -819,7 +820,13 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ServedAuthorizationDetailTypesInterface::class, ServedAuthorizationDetailTypes::class);
     $services->alias('heidi.authorization_detail_types', AuthorizationDetailsReaderInterface::class)->public();
 
-    // The module: clients, from every source the deployment wires (issue #334). The configuration is the
+    // The module: clients. One reader of the metadata a client is registered with (issue #335): a member of
+    // RFC 7591 §2 is spelled there, whether a deployment declared it or a client sent it, and every source
+    // of clients goes through it. What differs between them is the sources of members each reads behind the
+    // ones it was given, and what each does with a refusal.
+    $services->set(ClientMetadataReader::class);
+
+    // The clients of a tenant come from every source the deployment wires (issue #334). The configuration is the
     // first of them and the clients that registered themselves are the second; a third is a class that
     // implements ClientSourceInterface and a line here, and nothing downstream learns there are several.
     // What a question about the set of clients of a tenant means is read once, in RegisteredClients: a

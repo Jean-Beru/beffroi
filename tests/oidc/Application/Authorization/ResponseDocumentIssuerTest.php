@@ -12,6 +12,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\ResponseFormat;
@@ -121,7 +122,7 @@ final class ResponseDocumentIssuerTest extends TestCase
             $this->tenant,
             new ClientRegistration(
                 'spa',
-                'Single page application',
+                new ClientPresentation('Single page application'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],

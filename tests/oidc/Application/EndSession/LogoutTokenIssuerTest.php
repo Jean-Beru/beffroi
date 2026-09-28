@@ -13,6 +13,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -86,7 +87,7 @@ final class LogoutTokenIssuerTest extends TestCase
             $this->session->tenant,
             new ClientRegistration(
                 'spa',
-                'Single page application',
+                new ClientPresentation('Single page application'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://spa.example/callback')],

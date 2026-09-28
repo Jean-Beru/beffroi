@@ -30,6 +30,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -108,7 +109,7 @@ final class AuthorizationCodeGrantTest extends TestCase
             $this->tenant,
             new ClientRegistration(
                 'mobile',
-                'Mobile application',
+                new ClientPresentation('Mobile application'),
                 Methods::none(),
                 false,
                 [new RedirectUri('https://mobile.example/callback')],
@@ -599,7 +600,7 @@ final class AuthorizationCodeGrantTest extends TestCase
             $this->tenant,
             new ClientRegistration(
                 'code-only',
-                'Code only',
+                new ClientPresentation('Code only'),
                 Methods::clientSecretBasic(),
                 true,
                 [new RedirectUri('https://demo.localhost/login/check')],

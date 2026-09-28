@@ -13,6 +13,7 @@ use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
@@ -152,7 +153,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
                 $this->tenant,
                 new ClientRegistration(
                     'remote-client',
-                    'Client publishing its certificate behind a URI',
+                    new ClientPresentation('Client publishing its certificate behind a URI'),
                     Methods::selfSignedTlsClientAuth(),
                     false,
                     $this->client->registration->redirectUris,

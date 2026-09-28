@@ -16,6 +16,7 @@ use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
 use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -136,7 +137,14 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         // Given
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
+            new ClientRegistration(
+                'ghost',
+                new ClientPresentation('Removed client'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://ghost.example/callback')],
+                Shapes::jwt(),
+            ),
         );
         $code = Secrets::draw();
         self::codes()->save(self::code($code, $ghost, self::session(self::user()), null));
@@ -196,7 +204,14 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         $session = self::session(self::user());
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
+            new ClientRegistration(
+                'ghost',
+                new ClientPresentation('Removed client'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://ghost.example/callback')],
+                Shapes::jwt(),
+            ),
         );
         self::used($session, $ghost, 'of-the-ghost');
         self::reload();
@@ -252,7 +267,14 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         $alice = self::user();
         $ghost = new Client(
             self::tenant(),
-            new ClientRegistration('ghost', 'Removed client', Methods::none(), false, [new RedirectUri('https://ghost.example/callback')], Shapes::jwt()),
+            new ClientRegistration(
+                'ghost',
+                new ClientPresentation('Removed client'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://ghost.example/callback')],
+                Shapes::jwt(),
+            ),
         );
         self::used(self::session($alice), $ghost, 'of-the-ghost');
         self::reload();

@@ -87,7 +87,7 @@ final class BundleBootTest extends DatabaseTestCase
         $demo = $clients->findByClientId(self::tenant(), 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
 
         // Then
-        static::assertSame('Demo application', $demo->registration->name);
+        static::assertSame('Demo application', $demo->registration->presentation->name);
         static::assertSame('client_secret_basic', $demo->registration->authenticationMethod->name());
         static::assertFalse($demo->registration->requiresConsent);
         static::assertTrue($demo->registration->requiresPkce);
@@ -139,7 +139,7 @@ final class BundleBootTest extends DatabaseTestCase
         $native = $clients->findByClientId(self::tenant(), 'native-app') ?? static::fail('The native-app client is configured.');
 
         // Then
-        static::assertSame('native-app', $native->registration->name);
+        static::assertSame('native-app', $native->registration->presentation->name);
         static::assertSame('none', $native->registration->authenticationMethod->name());
         static::assertTrue($native->registration->requiresConsent);
     }
