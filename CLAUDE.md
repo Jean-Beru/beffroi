@@ -84,7 +84,7 @@ The FIDO Conformance Tools are run by hand against `https://op.localhost/fido/co
 **Quality.**
 
 ```bash
-castor phpunit            # tests with coverage
+castor phpunit            # tests with coverage, which pcov produces (.ci-tools/php/coverage/pcov.ini, read only by this task)
 castor phpstan            # level max
 castor mago-format / castor mago-format-fix   # Mago, the formatter, in place of ECS; mago.toml at the root (where its editor integrations look for it)
 castor mago-lint / castor mago-lint-fix       # Mago, the linter, in place of the rules of ECS that are not whitespace

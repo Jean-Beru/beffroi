@@ -75,8 +75,10 @@ function check_licenses(
  *
  * @param array<string> $command
  * @param array<string, string> $environment
+ * @param string|null $phpIniDirectory a directory of the repository, read after the image's own conf.d, for
+ *                                     the one task that needs what it turns on (.ci-tools/php/)
  */
-function phpqa(array $command, array $environment = []): void
+function phpqa(array $command, array $environment = [], ?string $phpIniDirectory = null): void
 {
     $inContainer = file_exists('/.dockerenv');
     $hasDocker = trim(shell_exec('command -v docker') ?? '') !== '';
@@ -88,6 +90,11 @@ function phpqa(array $command, array $environment = []): void
     ];
 
     if (! $hasDocker || $inContainer) {
+        // A leading colon keeps the directory PHP was compiled to scan and adds ours after it, so the
+        // configuration of the image still applies and this only adds to it.
+        if ($phpIniDirectory !== null) {
+            $environment['PHP_INI_SCAN_DIR'] = ':' . getcwd() . '/' . $phpIniDirectory;
+        }
         run($command, context: context()->withEnvironment($environment));
         return;
     }
@@ -109,7 +116,9 @@ function phpqa(array $command, array $environment = []): void
         '-w',
         '/project',
         '-e',
-        'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d',
+        $phpIniDirectory === null
+            ? 'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d'
+            : 'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d:/project/' . $phpIniDirectory,
         '-e',
         'PHP_INI_ENTRY=sys_temp_dir=/project/tmp-phpqa',
     ];
@@ -153,9 +162,12 @@ function phpunit(#[AsRawTokens] array $args = []): void
             '--display-deprecations',
             ...$args,
         ],
-        [
-            'XDEBUG_MODE' => 'coverage',
-        ],
+        // XDEBUG_MODE stays at the "off" phpqa() defaults it to: the coverage comes from pcov, which
+        // php-code-coverage picks over Xdebug whenever it is enabled, and which the whole suite costs
+        // 275 s with against 404 s with Xdebug, 229 s being what it costs with no coverage at all. What
+        // reads this coverage is the mutation job, and line coverage is all it asks for.
+        [],
+        '.ci-tools/php/coverage',
     );
 }
 
