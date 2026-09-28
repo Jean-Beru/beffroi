@@ -32,7 +32,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 
 **The conclusion is written on the end date, whatever the outcome, and a spike is not closed until every line below is done.** A green run that nobody wrote down is not a result, and a spike that stops without a conclusion is the failure mode decision 0005 exists to prevent.
 
-1. **Re-run the judge, on the maintenance branch, after the merge.** The certification plans in `--strict` (`castor conformance`), plus whatever else judges this spike. A pull request run proves nothing about the plans: the conformance job does not run on pull requests, so a regression only shows up once merged.
+1. **Re-run the judge, on the maintenance branch, after the merge.** The certification plans in `--strict` (`gh workflow run conformance.yml --ref <branch>`), plus whatever else judges this spike. Nothing runs them for you at the merge: the workflow is asked for by hand and by a weekly schedule, so the run that closes a spike is a run somebody started and read.
 2. **Name every red.** A module that stays red is listed in the `known` list of `CONFORMANCE_PLANS` with its reason and the issue that closes it, once the gap is written down, never to quiet a surprise. The run then fails the day it passes, so the line is deleted rather than carried.
 3. **Write the conclusion** in the spike README, in the parent repository, in its established shape: **the answer, yes or no**, then one line per success criterion with the number or the run that proves it, then what the spike cost and taught, then what it leaves open, each open item naming its issue.
 4. **Leave nothing unattached.** Everything the spike found and did not build is an issue on the spike that will need it, and the ones left over from the previous spike have moved on or been closed.
@@ -65,6 +65,7 @@ castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + Dais
 
 ```bash
 castor conformance [--plan P] [--module X]  # the certification plans through the API of the suite: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, rotate-keys; result per module, the "known" list of CONFORMANCE_PLANS carrying the gaps left open with their issue
+gh workflow run conformance.yml [-f plan=P] [-f module=X] [-f strict=false]  # the same plans on a runner, the workflow that also runs them every Monday on the default branch
 castor mtls [--host H] [--ordinary-host H]  # the client certificate from the edge to PHP: presented, its x5t#S256 compared with the one the application computes, absent, and carried in a header (refused)
 castor demo [--check] [--rotate] [--passkey] [--form-post] [--logout-others] [--resource-server] [--dpop] [--ladder] [--device] [--service] [--ciba] [--assertion] [--rar] [--native] [--push]
 ```
@@ -83,7 +84,7 @@ The FIDO Conformance Tools are run by hand against `https://op.localhost/fido/co
 **Quality.**
 
 ```bash
-castor phpunit            # tests with coverage
+castor phpunit            # tests with coverage, which pcov produces (.ci-tools/php/coverage/pcov.ini, read only by this task)
 castor phpstan            # level max
 castor mago-format / castor mago-format-fix   # Mago, the formatter, in place of ECS; mago.toml at the root (where its editor integrations look for it)
 castor mago-lint / castor mago-lint-fix       # Mago, the linter, in place of the rules of ECS that are not whitespace

@@ -27,8 +27,8 @@ concurrency:
 # file comes back different, naming it and printing the diff ("castor config-reference", .castor/stack/qa.php).
 #
 # A workflow of its own rather than a step of the quality job of ci.yml, and the reason is the lean CI rule:
-# this is the only check of a pull request that needs the Composer install of apps/op (the conformance job is
-# the other place that installs it, and it runs on a maintenance branch alone), and "paths" is what keeps a
+# this is the only check of a pull request that needs the Composer install of apps/op ("conformance.yml" is
+# the other place that installs it, and nothing of a pull request reaches it), and "paths" is what keeps a
 # pull request that moves no configuration tree from paying for it. The list is narrow on purpose; the push to
 # a maintenance branch runs the check whatever changed, so a tree that moves somewhere the list does not name
 # is caught at the merge and not months later.

@@ -20,6 +20,10 @@ concurrency:
 # extracted) before its first step, out of reach of actions/cache. The quality checks therefore
 # share one job: one pull and one Composer install instead of one of each per tool. The steps run
 # to the end whatever the outcome of the previous ones, so that every tool reports its verdict.
+#
+# The certification plans are not here: they are "conformance.yml", asked for by hand and run once a
+# week. They drive a real browser through a real OP for twenty-odd minutes whatever the change, and
+# nothing of this workflow reads their result, so no merge waits on them.
 
 jobs:
   pre_checks:
@@ -116,7 +120,7 @@ jobs:
           if-no-files-found: error
 
   key_file:
-    name: "5️⃣ Key custody (key file)"
+    name: "4️⃣ Key custody (key file)"
     needs: [quality]
     # What seals and unseals, the kernel sealing with the sodium key read from a file instead of the
     # environment (issue #58, the self-hosted default without a KMS): the custody of the signing keys
@@ -145,53 +149,6 @@ jobs:
           echo "HEIDI_TEST_KMS_KEY_ID=heidi-{tenant}" >> "$GITHUB_ENV"
       - name: "Key custody against the key file"
         run: castor phpunit -- --no-coverage tests/symfony/Functional/Key tests/symfony/Functional/Security
-
-  conformance:
-    name: "4️⃣ OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs, the two FAPI-CIBA runs)"
-    needs: [tests]
-    # The plans drive a real browser through a real OP: the host runs Docker, not the phpqa image. On a
-    # maintenance branch only (and by hand): the twelve runs take the better part of an hour, and a pull
-    # request has the bundle suite; "castor conformance" runs the plans on the development stack before a
-    # merge that touches them.
-    #
-    # The two FAPI-CIBA runs are run and reported like every other, and do not fail this job while the
-    # provider does not pass them: the issues they wait on are in CONFORMANCE_PLANS ("waiting_on"), which
-    # is also where what they found is written. The ten runs the provider passes keep gating.
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          coverage: none
-      # The application is pinned by its own lock, the way a developer runs it; the monorepo jobs above
-      # are the ones that follow the dev branches of Symfony.
-      - uses: ramsey/composer-install@v4
-        with:
-          working-directory: apps/op
-          dependency-versions: locked
-          composer-options: --optimize-autoloader
-      - name: "Install Castor"
-        run: |
-          curl -fsSL -o "${RUNNER_TEMP}/castor" https://github.com/jolicode/castor/releases/download/v1.7.0/castor.linux-amd64
-          chmod +x "${RUNNER_TEMP}/castor"
-          echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
-      - name: "Start the OP and the conformance suite"
-        run: castor start --conformance --build
-      - name: "Provision the OP"
-        run: castor provision
-      # --strict makes a WARNING a failure: what the plans must look like before anything is submitted.
-      # REVIEW and SKIPPED stay accepted, no run of a plan can avoid them (tests/conformance/README.md).
-      - name: "Run the certification plans"
-        run: castor conformance --strict
-      - name: "Logs of the stack"
-        if: failure()
-        run: docker compose --profile conformance logs --no-color --tail 400
-      - name: "Stop the stack"
-        if: always()
-        run: castor stop
 
   infection:
     name: "3️⃣ Mutation Testing"
