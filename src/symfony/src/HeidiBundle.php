@@ -23,6 +23,7 @@ use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
 use Heidi\Bundle\Configuration\BackchannelAuthenticationSection;
 use Heidi\Bundle\Configuration\BackChannelLogoutSection;
 use Heidi\Bundle\Configuration\ClientAuthenticationSection;
+use Heidi\Bundle\Configuration\ClientRegistrationSection;
 use Heidi\Bundle\Configuration\ClientsSection;
 use Heidi\Bundle\Configuration\ConfigurationSectionInterface;
 use Heidi\Bundle\Configuration\DpopSection;
@@ -302,6 +303,7 @@ final class HeidiBundle extends AbstractBundle
             new DpopSection(),
             new TrustedIssuersSection(),
             new ClientsSection(),
+            new ClientRegistrationSection(),
         ];
     }
 }

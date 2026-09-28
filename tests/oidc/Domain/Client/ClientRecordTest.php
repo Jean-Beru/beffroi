@@ -27,7 +27,7 @@ final class ClientRecordTest extends TestCase
         ];
 
         // When
-        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', $metadata, null, Fixtures::now());
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', $metadata, [], null, Fixtures::now());
 
         // Then
         static::assertSame($metadata, $record->metadata);
@@ -40,7 +40,7 @@ final class ClientRecordTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $record = new ClientRecord(Uuid::v7(), $tenant, 'drawn-identifier', [], null, Fixtures::now());
+        $record = new ClientRecord(Uuid::v7(), $tenant, 'drawn-identifier', [], [], null, Fixtures::now());
 
         // When / Then
         static::assertFalse($record->belongsTo(Fixtures::tenant('other', 'https://id.other.example')));
@@ -54,7 +54,7 @@ final class ClientRecordTest extends TestCase
         $this->expectExceptionMessageIs('A registered client carries the identifier the provider drew for it (RFC 7591 section 3.2.1).');
 
         // When
-        new ClientRecord(Uuid::v7(), Fixtures::tenant(), '', [], null, Fixtures::now());
+        new ClientRecord(Uuid::v7(), Fixtures::tenant(), '', [], [], null, Fixtures::now());
     }
 
     /**
@@ -69,7 +69,7 @@ final class ClientRecordTest extends TestCase
         $this->expectExceptionMessageIs('The client "drawn-identifier" holds no secret, so nothing of it expires.');
 
         // When
-        new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], null, Fixtures::now(), Fixtures::now()->modify('+1 day'));
+        new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, Fixtures::now(), Fixtures::now()->modify('+1 day'));
     }
 
     #[Test]
@@ -88,6 +88,7 @@ final class ClientRecordTest extends TestCase
             Fixtures::tenant(),
             'drawn-identifier',
             [],
+            [],
             new SharedClientSecret('a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3'),
             $issuedAt,
             $issuedAt,
@@ -105,6 +106,7 @@ final class ClientRecordTest extends TestCase
             Uuid::v7(),
             Fixtures::tenant(),
             'drawn-identifier',
+            [],
             [],
             new SharedClientSecret('a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3'),
             Fixtures::now(),

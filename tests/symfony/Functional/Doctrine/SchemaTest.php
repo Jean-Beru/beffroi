@@ -42,6 +42,7 @@ final class SchemaTest extends DatabaseTestCase
         'heidi_subject_access_token',
         'heidi_consent',
         'heidi_client',
+        'heidi_initial_access_token',
     ];
 
     /**
@@ -71,7 +72,7 @@ final class SchemaTest extends DatabaseTestCase
      * Architecture §5.3: the tables of the bundle, every one prefixed "heidi_", and no other.
      */
     #[Test]
-    public function theBundleDeclaresItsTwentyPrefixedTables(): void
+    public function theBundleDeclaresItsTwentyTwoPrefixedTables(): void
     {
         // When
         $tables = array_keys(self::tablesOfTheBundle());

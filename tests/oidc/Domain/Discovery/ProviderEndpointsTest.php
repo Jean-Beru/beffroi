@@ -32,6 +32,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/device',
             'https://id.acme.example/backchannel_authentication',
             'https://id.acme.example/account/approvals',
+            'https://id.acme.example/register',
         );
 
         // Then
@@ -47,6 +48,7 @@ final class ProviderEndpointsTest extends TestCase
         static::assertSame('https://id.acme.example/device', $endpoints->deviceVerification);
         static::assertSame('https://id.acme.example/backchannel_authentication', $endpoints->backchannelAuthentication);
         static::assertSame('https://id.acme.example/account/approvals', $endpoints->backchannelApproval);
+        static::assertSame('https://id.acme.example/register', $endpoints->clientRegistration);
     }
 
     /**
@@ -70,6 +72,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/device',
             'https://op.localhost/backchannel_authentication',
             'https://op.localhost/account/approvals',
+            'https://op.localhost/register',
         );
 
         // Then
@@ -101,6 +104,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://op.localhost/device',
             'https://op.localhost/backchannel_authentication',
             'https://op.localhost/account/approvals',
+            'https://op.localhost/register',
         ];
         $urls[$position] = 'http://localhost/x';
 
@@ -124,6 +128,7 @@ final class ProviderEndpointsTest extends TestCase
         yield 'pushed authorization request' => ['pushed authorization request', 7];
         yield 'device authorization' => ['device authorization', 8];
         yield 'backchannel authentication' => ['backchannel authentication', 10];
+        yield 'client registration' => ['client registration', 12];
     }
 
     /**
@@ -152,6 +157,7 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/device',
             'https://id.acme.example/backchannel_authentication',
             'https://id.acme.example/account/approvals',
+            'https://id.acme.example/register',
         );
     }
 
@@ -178,7 +184,7 @@ final class ProviderEndpointsTest extends TestCase
     public function everyEndpointIsCheckedAndNamed(string $name, int $position, string $url): void
     {
         // Given
-        $urls = array_fill(0, 12, 'https://id.acme.example/x');
+        $urls = array_fill(0, 13, 'https://id.acme.example/x');
         $urls[$position] = $url;
 
         // Then
@@ -206,5 +212,6 @@ final class ProviderEndpointsTest extends TestCase
         yield 'device verification' => ['device verification', 9, 'https://id.acme.example/v#f'];
         yield 'backchannel authentication' => ['backchannel authentication', 10, 'https://id.acme.example/b#f'];
         yield 'backchannel approval' => ['backchannel approval', 11, 'https://id.acme.example/c#f'];
+        yield 'client registration' => ['client registration', 12, 'https://id.acme.example/g#f'];
     }
 }
