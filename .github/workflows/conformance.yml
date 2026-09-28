@@ -3,22 +3,24 @@ name: OpenID Conformance
 # The certification plans are the judge of the provider, and a judge nobody waits for. They drive a real
 # browser through a real OP: the host runs Docker, not the phpqa image, and the thirteen runs take twenty-one
 # to twenty-two minutes whatever the change (tests/conformance/README.md). So they are a workflow of their
-# own, asked for by hand and run every night, and no merge waits on them.
+# own, asked for by hand and run once a week, and no merge waits on them.
 #
 # It is the lean CI rule of "configuration-reference.yml" applied once more: what does not have to be paid
 # on every event is not. A pull request has the bundle suite, which is what judges a change before it
 # lands; "castor conformance" on the development stack is what judges a change that touches the protocol
-# before the merge, and "CLAUDE.md" asks for that run by hand when a spike is closed. The night is what
+# before the merge, and "CLAUDE.md" asks for that run by hand when a spike is closed. The week is what
 # catches what neither of them looked at.
 #
 # The schedule runs on the default branch, which "auto-switch-default-branch.yml" keeps pointed at the
-# newest maintenance branch; a dispatch runs on whatever branch it is given. Nightly and not weekly: a red
-# then names a day of commits instead of a week of them.
+# newest maintenance branch; a dispatch runs on whatever branch it is given. A red it finds names the week
+# of commits behind it, which is the price of a judge no merge waits on: what narrows a red down is the
+# run by hand, on the branch, of the person who has just merged something the plans touch.
 
 on:
   schedule:
-    # 03:17 UTC: off the top of the hour, which is when the scheduler of GitHub is at its busiest.
-    - cron: '17 3 * * *'
+    # Monday 03:17 UTC: the result of the week is there when the week starts, and the minute is off the top
+    # of the hour, which is when the scheduler of GitHub is at its busiest.
+    - cron: '17 3 * * 1'
   workflow_dispatch:
     inputs:
       plan:
@@ -36,8 +38,8 @@ on:
         default: true
 
 # One run at a time per branch, and a run already going is never cancelled: twenty-odd minutes of a real
-# browser against a real OP are not thrown away because somebody asked for a second one, and the night
-# does not kill what a human started.
+# browser against a real OP are not thrown away because somebody asked for a second one, and the weekly
+# run does not kill what a human started.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false

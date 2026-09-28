@@ -21,8 +21,8 @@ concurrency:
 # share one job: one pull and one Composer install instead of one of each per tool. The steps run
 # to the end whatever the outcome of the previous ones, so that every tool reports its verdict.
 #
-# The certification plans are not here: they are "conformance.yml", asked for by hand and run every
-# night. They drive a real browser through a real OP for twenty-odd minutes whatever the change, and
+# The certification plans are not here: they are "conformance.yml", asked for by hand and run once a
+# week. They drive a real browser through a real OP for twenty-odd minutes whatever the change, and
 # nothing of this workflow reads their result, so no merge waits on them.
 
 jobs:
