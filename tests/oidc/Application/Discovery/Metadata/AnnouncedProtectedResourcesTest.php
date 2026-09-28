@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedProtectedResources;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Resource\ResourceIndicator;
@@ -28,7 +29,7 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         $other = Fixtures::tenant('other', 'https://id.other.example');
         $clients->save(Clients::public($other, resources: [new ResourceIndicator('https://files.example.com/')]));
         $clients->save(Clients::public($tenant, resources: Clients::resources()));
-        $announced = new AnnouncedProtectedResources($clients);
+        $announced = new AnnouncedProtectedResources(new RegisteredClients([$clients]));
 
         // When
         $members = $announced->metadata($tenant);
@@ -48,7 +49,7 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public($tenant, resources: Clients::resources()));
         $clients->save(Clients::public($tenant, 'other-spa', Clients::resources()));
-        $announced = new AnnouncedProtectedResources($clients);
+        $announced = new AnnouncedProtectedResources(new RegisteredClients([$clients]));
 
         // When
         $members = $announced->metadata($tenant);
@@ -67,7 +68,7 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         $tenant = Fixtures::tenant();
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public($tenant));
-        $announced = new AnnouncedProtectedResources($clients);
+        $announced = new AnnouncedProtectedResources(new RegisteredClients([$clients]));
 
         // When
         $members = $announced->metadata($tenant);
@@ -86,7 +87,7 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         $tenant = Fixtures::tenant();
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public($tenant, resources: Clients::resources()));
-        $announced = new AnnouncedProtectedResources($clients);
+        $announced = new AnnouncedProtectedResources(new RegisteredClients([$clients]));
 
         // When
         $members = $announced->metadata(Fixtures::tenant('other', 'https://id.other.example'));

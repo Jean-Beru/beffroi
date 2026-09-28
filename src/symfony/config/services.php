@@ -19,6 +19,7 @@ use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineClientRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
@@ -215,7 +216,9 @@ use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\ServedClaims;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\AcceptedAssertionAudiences;
+use Heidi\Oidc\Application\Client\ClientIdentifierDrawer;
 use Heidi\Oidc\Application\Client\ClientAssertionValidator;
+use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
@@ -349,6 +352,7 @@ use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\RegisteredResourcesInterface;
+use Heidi\Oidc\Port\ClientStoreInterface;
 use Heidi\Oidc\Port\RegisteredScopesInterface;
 use Heidi\Oidc\Port\RegisteredAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
@@ -815,18 +819,29 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ServedAuthorizationDetailTypesInterface::class, ServedAuthorizationDetailTypes::class);
     $services->alias('heidi.authorization_detail_types', AuthorizationDetailsReaderInterface::class)->public();
 
-    // The module: clients
-    $services->set(ConfigurationClientRepository::class);
-    $services->alias(ClientRepositoryInterface::class, ConfigurationClientRepository::class);
+    // The module: clients, from every source the deployment wires (issue #334). The configuration is the
+    // first of them and the clients that registered themselves are the second; a third is a class that
+    // implements ClientSourceInterface and a line here, and nothing downstream learns there are several.
+    // What a question about the set of clients of a tenant means is read once, in RegisteredClients: a
+    // source says what it holds and never what the set of them makes true (issue #98).
+    $services->set(ConfigurationClientRepository::class)->tag('heidi.oidc.client_source');
+    $services->set(DoctrineClientRepository::class)->tag('heidi.oidc.client_source');
+    $services->set(RegisteredClients::class)->args([tagged_iterator('heidi.oidc.client_source')]);
+    $services->alias(ClientRepositoryInterface::class, RegisteredClients::class);
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
-    // require, read where they are declared and nowhere else (issue #98)
-    $services->alias(PushedAuthorizationRequirementInterface::class, ConfigurationClientRepository::class);
-    $services->alias(RegisteredResourcesInterface::class, ConfigurationClientRepository::class);
+    // require, read from the clients themselves and nowhere else (issue #98)
+    $services->alias(PushedAuthorizationRequirementInterface::class, RegisteredClients::class);
+    $services->alias(RegisteredResourcesInterface::class, RegisteredClients::class);
     // OIDC Discovery §3: the scopes of a tenant beyond those a claims provider serves are what its
     // clients registered, a scope that stands for no claim having nowhere else to come from (issue #278)
-    $services->alias(RegisteredScopesInterface::class, ConfigurationClientRepository::class);
-    $services->alias(RegisteredAccessTokenShapesInterface::class, ConfigurationClientRepository::class);
-    $services->alias(UnsignedRequestObjectsInterface::class, ConfigurationClientRepository::class);
+    $services->alias(RegisteredScopesInterface::class, RegisteredClients::class);
+    $services->alias(RegisteredAccessTokenShapesInterface::class, RegisteredClients::class);
+    $services->alias(UnsignedRequestObjectsInterface::class, RegisteredClients::class);
+    // RFC 7591 §3.2.1: where a client the provider registers is written, which is not the port one is
+    // looked up through, and the identifier it is given, drawn like every other value this provider hands
+    // out and looked up before it is served
+    $services->alias(ClientStoreInterface::class, DoctrineClientRepository::class);
+    $services->set(ClientIdentifierDrawer::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).

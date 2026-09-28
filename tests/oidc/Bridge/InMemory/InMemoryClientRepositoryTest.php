@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Bridge\InMemory;
 
 use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use function array_map;
 use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class InMemoryClientRepositoryTest extends TestCase
 {
@@ -24,13 +23,16 @@ final class InMemoryClientRepositoryTest extends TestCase
 
     private InMemoryClientRepository $repository;
 
+    private Tenant $other;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
+        $this->other = Fixtures::tenant('other', 'https://id.other.example');
         $this->repository = new InMemoryClientRepository();
         $this->client = Clients::public($this->tenant);
         $this->repository->save($this->client);
-        $this->repository->save(Clients::public(Fixtures::tenant('other', 'https://id.other.example'), 'elsewhere'));
+        $this->repository->save(Clients::public($this->other, 'elsewhere'));
     }
 
     #[Test]
@@ -70,106 +72,36 @@ final class InMemoryClientRepositoryTest extends TestCase
         ];
     }
 
-    #[Test]
-    public function theTenantIssuesTheFormatAClientOfItsIsRegisteredFor(): void
-    {
-        // When / Then
-        static::assertTrue($this->repository->issuesAccessTokensIn($this->tenant, Shapes::jwt()));
-    }
-
-    #[Test]
-    public function theTenantDoesNotIssueAFormatNoneOfItsClientsIsRegisteredFor(): void
-    {
-        // When / Then
-        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, Shapes::opaque()));
-    }
-
     /**
-     * RFC 9126 §5: a tenant requires a pushed request when every client registered there does.
+     * Issue #334: what this source holds for a tenant, which is what every question about the set of the
+     * clients of that tenant is answered from, in the order it was given them.
      */
     #[Test]
-    public function theTenantRequiresAPushedRequestWhenEveryClientOfItsDoes(): void
+    public function itHoldsTheRegistrationsOfItsTenant(): void
     {
         // Given
-        $repository = new InMemoryClientRepository();
-        $repository->save(Clients::pushingOnly($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET)));
+        $this->repository->save(Clients::public($this->tenant, 'second-spa'));
 
-        // When / Then
-        static::assertTrue($repository->requiresPushedAuthorizationRequests($this->tenant));
-    }
+        // When
+        $registrations = [...$this->repository->registrationsIn($this->tenant)];
 
-    /**
-     * One client that may still start an ordinary request is what makes the answer false, the
-     * requirement being carried by the clients and by nothing global.
-     */
-    #[Test]
-    public function oneClientThatDoesNotRequireItMakesTheTenantRequireNothing(): void
-    {
-        // Given
-        $this->repository->save(Clients::pushingOnly($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET)));
-
-        // When / Then
-        static::assertFalse($this->repository->requiresPushedAuthorizationRequests($this->tenant));
-    }
-
-    /**
-     * A tenant no client is registered for requires nothing of anybody.
-     */
-    #[Test]
-    public function aTenantWithoutClientsRequiresNothing(): void
-    {
-        // When / Then
-        static::assertFalse(new InMemoryClientRepository()->requiresPushedAuthorizationRequests($this->tenant));
+        // Then
+        static::assertSame(
+            ['spa', 'second-spa'],
+            array_map(static fn (ClientRegistration $registration): string => $registration->clientId, $registrations),
+        );
     }
 
     #[Test]
-    public function theClientsOfAnotherTenantDoNotCount(): void
+    public function itHoldsTheRegistrationsOfAnotherTenantForThatTenantAlone(): void
     {
-        // Given
-        $other = Fixtures::tenant('other', 'https://id.other.example');
-        $this->repository->save(Clients::confidential(
-            $other,
-            new FakePasswordHasher()->hash(Clients::SECRET),
-            clientId: 'api',
-            accessTokenShape: Shapes::opaque(),
-        ));
+        // When
+        $registrations = [...$this->repository->registrationsIn($this->other)];
 
-        // When / Then
-        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, Shapes::opaque()));
-    }
-
-    /**
-     * OIDC Registration §2: "none" is announced when a client of the tenant registered it, and by one
-     * client, not by all of them, since one is enough to send an unsigned object.
-     */
-    #[Test]
-    public function theTenantReadsUnsignedRequestObjectsWhenOneOfItsClientsRegisteredThem(): void
-    {
-        // Given
-        $this->repository->save(Clients::sendingRequestObjects($this->tenant, new UnsignedRequestObjects()));
-
-        // When / Then
-        static::assertTrue($this->repository->acceptsUnsignedRequestObjects($this->tenant));
-    }
-
-    #[Test]
-    public function aTenantWhoseClientsAllSignTheirRequestObjectsReadsNoUnsignedOne(): void
-    {
-        // Given
-        $this->repository->save(Clients::sendingRequestObjects($this->tenant));
-
-        // When / Then
-        static::assertFalse($this->repository->acceptsUnsignedRequestObjects($this->tenant));
-    }
-
-    #[Test]
-    public function theUnsignedRequestObjectsOfAnotherTenantDoNotCount(): void
-    {
-        // Given
-        $other = Fixtures::tenant('other', 'https://id.other.example');
-        $this->repository->save(Clients::sendingRequestObjects($other, new UnsignedRequestObjects()));
-
-        // When / Then
-        static::assertFalse($this->repository->acceptsUnsignedRequestObjects($this->tenant));
+        // Then
+        static::assertSame(
+            ['elsewhere'],
+            array_map(static fn (ClientRegistration $registration): string => $registration->clientId, $registrations),
+        );
     }
 }

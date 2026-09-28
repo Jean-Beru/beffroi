@@ -20,9 +20,8 @@ use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRegistration;
 use Heidi\Oidc\Domain\Exchange\MayAct;
-use Heidi\Oidc\Domain\Resource\ResourceIndicator;
-use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
@@ -40,7 +39,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
-use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
 use Heidi\Oidc\Tests\Fixture\Shapes;
 use Heidi\Oidc\Tests\Fixture\TokenTypes;
 
@@ -724,67 +722,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         // Then
         static::assertTrue($fapi->registration->requiresPushedAuthorizationRequests);
         static::assertFalse(self::find($repository, $this->tenant, 'demo')->registration->requiresPushedAuthorizationRequests);
-    }
-
-    /**
-     * RFC 9126 §5, issue #98: the document says a request must be pushed when every client declared for
-     * the tenant says so, read where the clients are declared and nowhere else.
-     *
-     * @param array<string, array<string, mixed>> $clients
-     */
-    #[Test]
-    #[DataProvider('provideDeclarationsOfTheRequirement')]
-    public function theTenantRequiresAPushedRequestWhenEveryDeclaredClientDoes(array $clients, bool $required): void
-    {
-        // Given
-        $repository = $this->repository($clients);
-
-        // When / Then
-        static::assertSame($required, $repository->requiresPushedAuthorizationRequests($this->tenant));
-    }
-
-    /**
-     * @return iterable<string, array{array<string, array<string, mixed>>, bool}>
-     */
-    public static function provideDeclarationsOfTheRequirement(): iterable
-    {
-        $pushing = self::DEMO
-        + [
-            'require_pushed_authorization_requests' => true,
-        ];
-        yield 'every client pushes' => [
-            [
-                'fapi' => $pushing,
-                'other' => $pushing,
-            ],
-            true,
-        ];
-        yield 'one client may still start an ordinary request' => [
-            [
-                'fapi' => $pushing,
-                'demo' => self::DEMO,
-            ],
-            false,
-        ];
-        yield 'no client at all' => [[], false];
-    }
-
-    /**
-     * The clients of another tenant are not this tenant's, and neither is what they require.
-     */
-    #[Test]
-    public function anotherTenantRequiresNothingOfTheClientsDeclaredHere(): void
-    {
-        // Given
-        $repository = $this->repository([
-            'fapi' => self::DEMO
-                + [
-                    'require_pushed_authorization_requests' => true,
-                ],
-        ]);
-
-        // When / Then
-        static::assertFalse($repository->requiresPushedAuthorizationRequests(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
     /**
@@ -1491,78 +1428,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
     /**
      * @param array<string, array<string, mixed>> $clients
      */
-    /**
-     * Architecture §4.6: what the tenant issues is read from its registrations, a rotation asks.
-     *
-     * @param array<string, array<string, mixed>> $clients
-     */
-    #[Test]
-    #[DataProvider('provideRegistrationsAndTheShapesTheyIssue')]
-    public function theTenantIssuesTheAccessTokenShapesItsClientsAreRegisteredFor(array $clients, AccessTokenShapeInterface $shape, bool $expected): void
-    {
-        // Given
-        $repository = $this->repository($clients);
-
-        // When / Then
-        static::assertSame($expected, $repository->issuesAccessTokensIn($this->tenant, $shape));
-    }
-
-    /**
-     * @return iterable<string, array{array<string, array<string, mixed>>, AccessTokenShapeInterface, bool}>
-     */
-    public static function provideRegistrationsAndTheShapesTheyIssue(): iterable
-    {
-        $opaque = [
-            ...self::SPA,
-            'access_token_format' => 'opaque',
-        ];
-        yield 'jwt by default' => [
-            [
-                'spa' => self::SPA,
-            ],
-            Shapes::jwt(),
-            true,
-        ];
-        yield 'no opaque client' => [
-            [
-                'spa' => self::SPA,
-            ],
-            Shapes::opaque(),
-            false,
-        ];
-        yield 'one opaque client among jwt ones' => [
-            [
-                'spa' => self::SPA,
-                'api' => $opaque,
-            ],
-            Shapes::opaque(),
-            true,
-        ];
-        yield 'every client opaque, no jwt' => [
-            [
-                'api' => $opaque,
-            ],
-            Shapes::jwt(),
-            false,
-        ];
-        yield 'no client at all' => [[], Shapes::jwt(), false];
-    }
-
-    #[Test]
-    public function anotherTenantIssuesNothingHere(): void
-    {
-        // Given
-        $repository = $this->repository([
-            'spa' => self::SPA,
-        ]);
-
-        // When / Then
-        static::assertFalse($repository->issuesAccessTokensIn(Fixtures::tenant('other', 'https://id.other.example'), Shapes::jwt()));
-    }
-
-    /**
-     * @param array<string, array<string, mixed>> $clients
-     */
     private function repository(array $clients, ?PasswordHasherInterface $hasher = null, ?ServedGrantsInterface $grants = null): ConfigurationClientRepository
     {
         return new ConfigurationClientRepository(
@@ -1613,8 +1478,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: what a client may ask a token for is read as it is written, and the tenant
-     * enumerates what its clients registered (RFC 9728 §4, issue #98).
+     * RFC 8707 §2: what a client may ask a token for is read as it is written.
      */
     #[Test]
     public function aClientRegistersTheResourcesItMayAskATokenFor(): void
@@ -1633,55 +1497,44 @@ final class ConfigurationClientRepositoryTest extends TestCase
         // Then
         static::assertTrue($client->registration->allowsResources(ResourceIndicators::of([Clients::CALENDAR])));
         static::assertFalse($client->registration->allowsResources(ResourceIndicators::of(['https://files.example.com/'])));
+    }
+
+    /**
+     * Issue #334: what this source holds for a tenant, which is what every question about the set of the
+     * clients of that tenant is answered from, in the order the deployment declared them.
+     */
+    #[Test]
+    public function itHoldsTheRegistrationsItReadForItsTenant(): void
+    {
+        // Given
+        $repository = $this->repository([
+            'spa' => self::SPA,
+            'demo' => self::DEMO,
+        ]);
+
+        // When
+        $registrations = [...$repository->registrationsIn($this->tenant)];
+
+        // Then
         static::assertSame(
-            [Clients::CALENDAR, Clients::CONTACTS],
-            array_map(static fn (ResourceIndicator $resource): string => $resource->value, $repository->resourcesRegisteredIn($this->tenant)),
+            ['spa', 'demo'],
+            array_map(static fn (ClientRegistration $registration): string => $registration->clientId, $registrations),
         );
     }
 
     /**
-     * OIDC Discovery §3: the tenant enumerates the scopes its clients registered, each named once
-     * whatever the number of clients that named it. A scope that stands for no claim, the one an API is
-     * protected by, has nowhere else to come from (issue #98).
+     * The clients declared here are those of one tenant: another is answered as if there were none.
      */
     #[Test]
-    public function theTenantEnumeratesTheScopesItsClientsRegistered(): void
+    public function itHoldsNoRegistrationOfAnotherTenant(): void
     {
         // Given
         $repository = $this->repository([
-            'billing-client' => self::SPA
-                + [
-                    'allowed_scopes' => ['openid', 'billing.read'],
-                ],
-            'invoicing-client' => self::SPA
-                + [
-                    'allowed_scopes' => ['openid', 'billing.read', 'billing.write'],
-                ],
-        ]);
-
-        // When
-        $scopes = $repository->scopesRegisteredIn($this->tenant);
-
-        // Then
-        static::assertSame(
-            ['openid', 'billing.read', 'billing.write'],
-            array_map(static fn (Scope $scope): string => $scope->value, $scopes),
-        );
-    }
-
-    #[Test]
-    public function anotherTenantEnumeratesNoScopeOfTheClientsDeclaredHere(): void
-    {
-        // Given
-        $repository = $this->repository([
-            'billing-client' => self::SPA
-                + [
-                    'allowed_scopes' => ['openid', 'billing.read'],
-                ],
+            'spa' => self::SPA,
         ]);
 
         // When / Then
-        static::assertSame([], $repository->scopesRegisteredIn(Fixtures::tenant('other', 'https://id.other.example')));
+        static::assertSame([], [...$repository->registrationsIn(Fixtures::tenant('other', 'https://id.other.example'))]);
     }
 
     /**
@@ -1842,62 +1695,5 @@ final class ConfigurationClientRepositoryTest extends TestCase
             ],
             'names a subject (OIDC Core section 2)',
         ];
-    }
-
-    /**
-     * Decision 0006: "none" is registered per client, and the tenant announces it because a client of
-     * its own registered it (issue #98).
-     *
-     * @param array<string, array<string, mixed>> $clients
-     */
-    #[Test]
-    #[DataProvider('provideRegistrationsAndWhatTheyAnnounce')]
-    public function theTenantReadsUnsignedRequestObjectsWhenAClientRegisteredThem(array $clients, bool $expected): void
-    {
-        // Given
-        $repository = $this->repository($clients);
-
-        // When / Then
-        static::assertSame($expected, $repository->acceptsUnsignedRequestObjects($this->tenant));
-    }
-
-    /**
-     * @return iterable<string, array{array<string, array<string, mixed>>, bool}>
-     */
-    public static function provideRegistrationsAndWhatTheyAnnounce(): iterable
-    {
-        $unsigned = self::SPA
-        + [
-            'request_object_signing_alg' => 'none',
-        ];
-        yield 'no client registers none' => [
-            [
-                'spa' => self::SPA,
-            ],
-            false,
-        ];
-        yield 'one client among others registers none' => [
-            [
-                'spa' => self::SPA,
-                'unsigned' => $unsigned,
-            ],
-            true,
-        ];
-        yield 'no client at all' => [[], false];
-    }
-
-    #[Test]
-    public function anotherTenantReadsNoUnsignedRequestObjectHere(): void
-    {
-        // Given
-        $repository = $this->repository([
-            'unsigned' => self::SPA
-                + [
-                    'request_object_signing_alg' => 'none',
-                ],
-        ]);
-
-        // When / Then
-        static::assertFalse($repository->acceptsUnsignedRequestObjects(Fixtures::tenant('other', 'https://id.other.example')));
     }
 }

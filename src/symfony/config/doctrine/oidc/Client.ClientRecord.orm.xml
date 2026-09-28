@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!-- A client this provider registered itself (RFC 7591 §3.2.1): one row per client, the metadata as it was registered in one column and the secret in another, so that the day the second is encrypted at rest is the day one column changes. The identifier is unique under its tenant, which is what makes the draw that assigns it answerable by the database as well as by the sources. -->
+    <entity name="Heidi\Oidc\Domain\Client\ClientRecord" table="heidi_client">
+        <unique-constraints>
+            <unique-constraint name="heidi_client_identifier" columns="tenant_id,client_id"/>
+        </unique-constraints>
+        <id name="id" type="uuid" column="id"/>
+        <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
+        <field name="clientId" type="string" column="client_id" length="255"/>
+        <field name="metadata" type="json" column="metadata">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="secret" type="heidi_client_secret" column="secret" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="issuedAt" type="datetime_immutable" column="client_id_issued_at"/>
+        <field name="secretExpiresAt" type="datetime_immutable" column="client_secret_expires_at" nullable="true"/>
+    </entity>
+</doctrine-mapping>

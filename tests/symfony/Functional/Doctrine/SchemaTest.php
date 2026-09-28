@@ -41,6 +41,7 @@ final class SchemaTest extends DatabaseTestCase
         'heidi_client_access_token',
         'heidi_subject_access_token',
         'heidi_consent',
+        'heidi_client',
     ];
 
     /**

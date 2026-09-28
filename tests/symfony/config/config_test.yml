@@ -459,6 +459,9 @@ services:
     test.heidi.clients:
         alias: Heidi\Oidc\Port\ClientRepositoryInterface
         public: true
+    test.heidi.client_store:
+        alias: Heidi\Oidc\Port\ClientStoreInterface
+        public: true
     test.heidi.client_authenticator:
         alias: Heidi\Oidc\Application\Client\ClientAuthenticator
         public: true
