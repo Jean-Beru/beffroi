@@ -136,6 +136,11 @@ parameters:
     # Decision 0017: the named exception a registration policy may carry, off for every test but the one
     # that plays a tenant carrying it, as the conformance tenant will.
     env(HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION): 'false'
+    # RFC 7591 §2.3: the keys the authority below is pinned by, which the test that plays the attested mode
+    # replaces with the ones it signs with. The default is a key no test signs anything with: the anchor is
+    # declared for every test because YAML cannot declare it only for one, and an anchor nothing verifies
+    # against is exactly a tenant that accepts no statement.
+    env(HEIDI_TEST_STATEMENT_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
 
 # The KMS clients of an application, where every application declares them: the bundle seals with the one
 # "heidi.keys.kms" names and builds none itself. One client here, whose DSN the environment gives, so that
@@ -167,6 +172,13 @@ heidi:
     client_registration:
         mode: '%env(HEIDI_TEST_REGISTRATION_MODE)%'
         exempt_confidential_clients_from_pkce: '%env(bool:HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION)%'
+        # The one authority the tenant of the tests pins the software statements of (RFC 7591 §2.3). Only
+        # the attested mode reads it, and a statement is verified against these keys and never against one
+        # it carries itself (RFC 8725 §3.10).
+        statement_issuers:
+            'https://store.example.com':
+                jwks: '%env(json:base64:HEIDI_TEST_STATEMENT_JWKS)%'
+                signing_algorithms: ['ES256']
     # Reaching a user through the push service of a browser they signed in with (RFC 8030): naming a
     # subject is what wires it, here as in any deployment (architecture §5.6).
     web_push:

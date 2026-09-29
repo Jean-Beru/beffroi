@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Application\Client\Registration;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Heidi\Oidc\Domain\Client\Registration\RegistrationRequest;
+use Heidi\Oidc\Tests\Fixture\Policies;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -29,7 +30,7 @@ final class OpenRegistrationAuthorizationTest extends TestCase
         $authorization = new OpenRegistrationAuthorization();
 
         // When
-        $sources = $authorization->authorize(Fixtures::tenant(), new RegistrationRequest([], $header));
+        $sources = $authorization->authorize(Fixtures::tenant(), new RegistrationRequest([], $header), Policies::open());
 
         // Then
         static::assertSame([], $sources);

@@ -210,8 +210,8 @@ final class HeidiBundle extends AbstractBundle
             ]);
         }
         if ($builder->hasExtension('framework')) {
-            // the keys of the clients, the assertions of a client and the assertions of a trusted issuer
-            // already seen, each in a pool of its own, the request objects already seen,
+            // the keys of the clients, the assertions of a client, the assertions of a trusted issuer and
+            // the software statements already seen, each in a pool of its own, the request objects already seen,
             // what DPoP remembers of a proof and what each budget of a load has been asked for live in
             // pools of their own, so that a deployment can point them at a shared store without
             // touching the rest of its cache
@@ -225,6 +225,9 @@ final class HeidiBundle extends AbstractBundle
                             'adapter' => 'cache.app',
                         ],
                         'heidi.issuer_assertions' => [
+                            'adapter' => 'cache.app',
+                        ],
+                        'heidi.software_statements' => [
                             'adapter' => 'cache.app',
                         ],
                         'heidi.request_objects' => [

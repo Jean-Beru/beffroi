@@ -9,6 +9,7 @@ use Heidi\Core\Bridge\Random\PlatformRandomness;
 use Heidi\Bundle\Ciba\QueuedPendingApprovalNotifier;
 use Heidi\Bundle\Cache\SeenOnce;
 use Heidi\Bundle\Client\ClientAssertionReplayGuard;
+use Heidi\Bundle\Client\SoftwareStatementReplayGuard;
 use Heidi\Bundle\Trust\IssuerAssertionReplayGuard;
 use Heidi\Bundle\Client\RequestObjectReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
@@ -351,6 +352,7 @@ use Heidi\Oidc\Port\CertificateReaderInterface;
 use Heidi\Oidc\Port\ClaimsProviderInterface;
 use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
 use Heidi\Oidc\Port\IssuerAssertionReplayGuardInterface;
+use Heidi\Oidc\Port\SoftwareStatementReplayGuardInterface;
 use Heidi\Oidc\Port\PresentedTokenTypesInterface;
 use Heidi\Oidc\Port\TrustedIssuersInterface;
 use Heidi\Oidc\Port\RequestObjectReplayGuardInterface;
@@ -382,6 +384,8 @@ use Heidi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
 use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
 use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
 use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
+use Heidi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
+use Heidi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
 use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
 use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
 use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
@@ -908,10 +912,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ConfigurationClientRegistrationPolicy::class);
     $services->alias(ClientRegistrationPolicyInterface::class, ConfigurationClientRegistrationPolicy::class);
     // what authorises a registration is a class per mode, tagged, and the policy of a tenant names one of
-    // them: the two modes of decision 0009 built so far are the initial access token of RFC 7591 §1.2 and
-    // the bare POST of §1.3, and the attested one is a class added here and nothing edited. Wiring a mode
-    // opens it for nobody: a tenant whose policy does not name it never reaches it, and closed is the
-    // policy a deployment that writes nothing has.
+    // them: the three modes of decision 0009 are the initial access token of RFC 7591 §1.2, the bare POST
+    // of §1.3 and the statement of §2.3, and the third was a class added here and nothing edited, which is
+    // what the first two were shaped for. Wiring a mode opens it for nobody: a tenant whose policy does not
+    // name it never reaches it, and closed is the policy a deployment that writes nothing has.
     $services->set(DoctrineInitialAccessTokenRepository::class);
     $services->alias(InitialAccessTokenRepositoryInterface::class, DoctrineInitialAccessTokenRepository::class);
     // and the same rows read by whoever issued them rather than by the endpoint: which tokens exist,
@@ -922,6 +926,16 @@ return static function (ContainerConfigurator $container): void {
     $services->set(InitialAccessTokenRevocation::class);
     $services->set(InitialAccessTokenAuthorization::class)->tag('heidi.oidc.registration_mode');
     $services->set(OpenRegistrationAuthorization::class)->tag('heidi.oidc.registration_mode');
+    // RFC 7591 §2.3: the mode that crosses the boundary of an organisation, a statement signed by an
+    // authority the tenant pinned in place of a credential this provider issued. Its "jti" is remembered
+    // in a pool of its own until the statement expires, so that one statement registers one client and so
+    // that nothing remembered here can satisfy the guard of an assertion (RFC 7523 §2.1)
+    $services->set(SoftwareStatementReplayGuard::class)->args([
+        inline_service(SeenOnce::class)->args([service('heidi.software_statements')]),
+    ]);
+    $services->alias(SoftwareStatementReplayGuardInterface::class, SoftwareStatementReplayGuard::class);
+    $services->set(SoftwareStatementVerifier::class);
+    $services->set(SoftwareStatementAuthorization::class)->tag('heidi.oidc.registration_mode');
     $services->set(RegistrationAuthorizations::class)->args([tagged_iterator('heidi.oidc.registration_mode')]);
     // what a client registering itself is held to beyond the wiring: the scopes its tenant hands out
     // tokens for, which are the ones its document announces (issue #278)
