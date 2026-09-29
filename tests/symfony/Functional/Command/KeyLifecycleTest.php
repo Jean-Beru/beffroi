@@ -8,6 +8,7 @@ use function array_map;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Heidi\Bundle\Message\AdvanceKeyLifecycle;
+use Heidi\Bundle\Message\RemoveUnusedClients;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Core\Domain\Event\TenantKeyRetired;
@@ -711,6 +712,22 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('heidi', $tester->getDisplay());
         static::assertStringContainsString('every 1 minute', $tester->getDisplay());
         static::assertStringContainsString(AdvanceKeyLifecycle::class, $tester->getDisplay());
+    }
+
+    /**
+     * Decision 0009: the removal of the clients nobody uses any more is a step of the same schedule, beside
+     * the two of the key lifecycle, on its own period.
+     */
+    #[Test]
+    public function theScheduleCarriesTheRemovalOfTheClientsNobodyUses(): void
+    {
+        // When
+        $tester = self::console('debug:scheduler');
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(RemoveUnusedClients::class, $tester->getDisplay());
+        static::assertStringContainsString('every 1 hour', $tester->getDisplay());
     }
 
     /**

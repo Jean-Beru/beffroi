@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Unit;
 
+use DateTimeImmutable;
+use Heidi\Bundle\Configuration\ClientRegistrationSection;
 use Heidi\Bundle\Configuration\TenantSection;
+use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use function sprintf;
 use Heidi\Bundle\Configuration\TokensSection;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Bundle\Tenant\TenantFactory;
@@ -115,6 +119,28 @@ final class HeidiBundleConfigurationTest extends TestCase
 
         // When / Then
         static::assertTrue(AuthenticationContextPolicy::default()->equals($factory->authenticationContextPolicy()));
+    }
+
+    /**
+     * Decision 0009: the two durations the tree carries are the ones the policy of the module defaults to, so
+     * that the reference a deployment reads and the default a deployment gets cannot say different things.
+     */
+    #[Test]
+    public function theDefaultRetentionOfAClientIsTheOneOfThePolicy(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode');
+        $now = new DateTimeImmutable('2026-09-20T12:00:00+00:00');
+
+        // When
+        $retention = $policy->retentionAt($now);
+
+        // Then
+        static::assertEquals($now->modify(sprintf('-%d seconds', ClientRegistrationSection::DEFAULT_KEEP_A_CLIENT_UNUSED_FOR)), $retention->usedSince);
+        static::assertEquals(
+            $now->modify(sprintf('-%d seconds', ClientRegistrationSection::DEFAULT_KEEP_A_CLIENT_NEVER_USED_FOR)),
+            $retention->registeredSince,
+        );
     }
 
     /**

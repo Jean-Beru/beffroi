@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Scheduler;
 
 use Heidi\Bundle\Message\AdvanceKeyLifecycle;
+use Heidi\Bundle\Message\RemoveUnusedClients;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
 use Symfony\Component\Scheduler\Schedule;
@@ -25,8 +26,19 @@ final readonly class HeidiSchedule implements ScheduleProviderInterface
      */
     public const string KEY_LIFECYCLE_EVERY = '1 minute';
 
+    /**
+     * What the removal of the clients nobody uses any more is worth waiting for (decision 0009): the
+     * durations it reads are days long, a run is bounded and the next one takes what it left, so an hour is
+     * short enough that a backlog is worked through and long enough that a deployment with nothing to drop
+     * reads its table once an hour and no more.
+     */
+    public const string UNUSED_CLIENTS_EVERY = '1 hour';
+
     public function getSchedule(): Schedule
     {
-        return new Schedule()->add(RecurringMessage::every(self::KEY_LIFECYCLE_EVERY, new AdvanceKeyLifecycle()));
+        return new Schedule()->add(RecurringMessage::every(self::KEY_LIFECYCLE_EVERY, new AdvanceKeyLifecycle()))->add(RecurringMessage::every(
+            self::UNUSED_CLIENTS_EVERY,
+            new RemoveUnusedClients(),
+        ));
     }
 }

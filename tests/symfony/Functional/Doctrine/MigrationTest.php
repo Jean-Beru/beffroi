@@ -37,6 +37,7 @@ use Heidi\Bundle\Migrations\Version20260927180000;
 use Heidi\Bundle\Migrations\Version20260928120000;
 use Heidi\Bundle\Migrations\Version20260929120000;
 use Heidi\Bundle\Migrations\Version20260929180000;
+use Heidi\Bundle\Migrations\Version20260930120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -86,6 +87,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20260928120000::class,
         Version20260929120000::class,
         Version20260929180000::class,
+        Version20260930120000::class,
     ];
 
     #[Test]

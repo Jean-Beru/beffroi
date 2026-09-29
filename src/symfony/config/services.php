@@ -357,6 +357,9 @@ use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\RegisteredResourcesInterface;
 use Heidi\Oidc\Port\ClientStoreInterface;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
+use Heidi\Oidc\Application\Client\Registration\ClientUseRecording;
+use Heidi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
+use Heidi\Oidc\Application\Client\Registration\UnusedClientRemoval;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReader;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationRemoval;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReplacement;
@@ -851,7 +854,9 @@ return static function (ContainerConfigurator $container): void {
     // What a question about the set of clients of a tenant means is read once, in RegisteredClients: a
     // source says what it holds and never what the set of them makes true (issue #98).
     $services->set(ConfigurationClientRepository::class)->tag('heidi.oidc.client_source');
-    $services->set(DoctrineClientRepository::class)->tag('heidi.oidc.client_source');
+    // the second source holds rows, so it is also the one thing the removal of the clients nobody uses
+    // any more asks (decision 0009); the first holds declarations and is asked nothing
+    $services->set(DoctrineClientRepository::class)->tag('heidi.oidc.client_source')->tag('heidi.oidc.unused_clients');
     $services->set(RegisteredClients::class)->args([tagged_iterator('heidi.oidc.client_source')]);
     $services->alias(ClientRepositoryInterface::class, RegisteredClients::class);
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
@@ -894,6 +899,16 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClientConfigurationReader::class);
     $services->set(ClientConfigurationReplacement::class);
     $services->set(ClientConfigurationRemoval::class);
+    // decision 0009: one thing removes a client and one event says it is gone, whichever way it went, the
+    // DELETE of RFC 7592 §2.3 or the timed step below
+    $services->set(RegisteredClientRemoval::class);
+    // the date a stored client carries of its last use, written on the events that say somebody is using it
+    $services->set(ClientUseRecording::class);
+    // and what follows from it: the clients nobody uses any more are dropped, asking each source that holds
+    // rows what it may drop. The source that holds declarations is not tagged and is therefore asked
+    // nothing, which is how "a client a deployment declared is never deleted" is the wiring and not a
+    // condition in the step.
+    $services->set(UnusedClientRemoval::class)->args([tagged_iterator('heidi.oidc.unused_clients')]);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).

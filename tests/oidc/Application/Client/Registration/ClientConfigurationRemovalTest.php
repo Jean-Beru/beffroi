@@ -9,6 +9,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationRemoval;
+use Heidi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientStore;
 use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Event\RegisteredClientDeleted;
@@ -121,11 +122,9 @@ final class ClientConfigurationRemovalTest extends TestCase
 
     private function remove(?string $header): void
     {
-        new ClientConfigurationRemoval(new ClientConfigurationAccess($this->clients), $this->clients, $this->events)->remove(
-            $this->tenant,
-            self::CLIENT_ID,
-            $header,
-            Fixtures::context(),
-        );
+        new ClientConfigurationRemoval(
+            new ClientConfigurationAccess($this->clients),
+            new RegisteredClientRemoval($this->clients, $this->events),
+        )->remove($this->tenant, self::CLIENT_ID, $header, Fixtures::context());
     }
 }

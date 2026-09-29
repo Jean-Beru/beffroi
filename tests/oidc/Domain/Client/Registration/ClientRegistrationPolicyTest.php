@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Oidc\Tests\Domain\Client\Registration;
 
+use DateInterval;
+use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Methods;
@@ -82,5 +84,52 @@ final class ClientRegistrationPolicyTest extends TestCase
 
         // Then
         static::assertSame([], $members);
+    }
+
+    /**
+     * Decision 0009: what a tenant still keeps at one instant, as the two dates a store can ask its rows.
+     */
+    #[Test]
+    public function aPolicyKeepsAClientUsedWithinTheDurationItNames(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode', keepsAClientUnusedFor: new DateInterval('P30D'));
+
+        // When
+        $retention = $policy->retentionAt(Fixtures::now());
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify('-30 days'), $retention->usedSince);
+    }
+
+    #[Test]
+    public function aPolicyKeepsAClientNeverUsedForTheShorterDurationItNames(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode', keepsAClientNeverUsedFor: new DateInterval('PT1H'));
+
+        // When
+        $retention = $policy->retentionAt(Fixtures::now());
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify('-1 hour'), $retention->registeredSince);
+    }
+
+    /**
+     * The defaults of decision 0009: ninety days of no use for a client that was used, seven days of life
+     * for one that never was.
+     */
+    #[Test]
+    public function aPolicyThatNamesNoDurationTakesTheDefaultsOfTheDecision(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode');
+
+        // When
+        $retention = $policy->retentionAt(Fixtures::now());
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify('-90 days'), $retention->usedSince);
+        static::assertEquals(Fixtures::now()->modify('-7 days'), $retention->registeredSince);
     }
 }
