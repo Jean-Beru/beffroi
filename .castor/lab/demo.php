@@ -439,7 +439,7 @@ const DEMO_PASSKEY_CLASS = 'phr';
  * The third success criterion of spike 3 (issue #93): oidc-demo, on Symfony's oidc_login without a patch,
  * requires a phishing-resistant login on /vault and gets one. From the command line, one request at a
  * time as demo_check: a password sign-in through the demo and /profile open, whose ID token says acr "1";
- * /vault, which access_control protects with IS_AUTHENTICATED_IN_CONTEXT:phr, sends the browser back to
+ * /vault, which access_control protects with REQUIRES_PHR, an attribute of the demonstration, sends the browser back to
  * the authorization endpoint with acr_values=phr, prompt=login and the previous ID token as id_token_hint
  * (the re-authentication entry point of oidc_login); the OP asks for a login, where the browser of
  * DEMO_PASSKEY_BROWSER enrols a passkey on the account of its session and signs the assertion; the OP
@@ -474,7 +474,7 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         ),
     ];
 
-    // /vault: the demo denies IS_AUTHENTICATED_IN_CONTEXT:phr and starts the re-authentication
+    // /vault: the demo denies REQUIRES_PHR and starts the re-authentication from its access denied handler
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/vault');
     demo_expect(
         $status === 302 && str_starts_with($location, $issuer . '/authorize?'),
