@@ -28,6 +28,7 @@ use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
 use Heidi\Oidc\Domain\Event\PushedRequestRefusalReason;
 use Heidi\Oidc\Domain\Event\PushedRequestRefused;
 use Heidi\Oidc\Domain\Event\RefreshTokenReuseDetected;
+use Heidi\Oidc\Domain\Event\RegisteredClientDeleted;
 use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
 use Heidi\Oidc\Domain\Event\TokenRevoked;
 use Heidi\Oidc\Domain\Event\TokensIssued;
@@ -145,6 +146,7 @@ final class EventsLeaveTheProcessTest extends TestCase
             RevokedTokenHashes::of([$accessToken]),
             $context,
         )];
+        yield 'a registered client deleted' => [new RegisteredClientDeleted($now, $client->tenant, $clientId, $context)];
         yield 'a logout token given up on' => [new LogoutTokenGivenUp(
             $now,
             $session->tenant,

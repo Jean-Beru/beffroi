@@ -10,10 +10,6 @@ use Heidi\Oidc\Application\Client\ClientMetadataReader;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\Metadata\AssignedMembers;
-use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
-use Heidi\Oidc\Domain\Client\Metadata\RegisteredMembers;
-use Heidi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
 use Heidi\Oidc\Port\ClientSourceInterface;
 use Heidi\Oidc\Port\ClientStoreInterface;
 
@@ -59,6 +55,22 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
         $this->store($record);
     }
 
+    public function findRecord(Tenant $tenant, string $clientId): ?ClientRecord
+    {
+        return $this->record($tenant, $clientId);
+    }
+
+    /**
+     * RFC 7592 §2.3: the row is gone. What names it elsewhere is left where it is, a record whose client
+     * no longer resolves being a record nobody finds.
+     */
+    public function remove(ClientRecord $record): void
+    {
+        $manager = $this->manager();
+        $manager->remove($record);
+        $manager->flush();
+    }
+
     private function record(Tenant $tenant, string $clientId): ?ClientRecord
     {
         return $this->repository()->findOneBy([
@@ -91,14 +103,6 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
      */
     private function registrationOf(ClientRecord $record): ClientRegistration
     {
-        return $this->reader->read(
-            $record->clientId,
-            new ClientMetadata([
-                new AssignedMembers($record->assigned),
-                new RegisteredMembers($record->metadata),
-                new SpecifiedDefaults(),
-            ]),
-            $record->secret !== null,
-        );
+        return $this->reader->read($record->clientId, $record->asRegistered(), $record->secret !== null);
     }
 }

@@ -25,6 +25,13 @@
                 <option name="default">{}</option>
             </options>
         </field>
+        <!-- The credential of this one client for its own configuration endpoint (RFC 7592 §2.3), kept as the digest of the value and never as the value. Its default, in the database, is the digest of nothing: a client registered before the column existed was handed no such token, and no value hashes to it. -->
+        <field name="registrationAccessTokenDigest" type="string" column="registration_access_token" length="64">
+            <options>
+                <option name="fixed">true</option>
+                <option name="default">0000000000000000000000000000000000000000000000000000000000000000</option>
+            </options>
+        </field>
         <field name="secret" type="heidi_client_secret" column="secret" nullable="true">
             <options>
                 <option name="jsonb">true</option>

@@ -356,7 +356,13 @@ use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\RegisteredResourcesInterface;
 use Heidi\Oidc\Port\ClientStoreInterface;
+use Heidi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
+use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReader;
+use Heidi\Oidc\Application\Client\Registration\ClientConfigurationRemoval;
+use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReplacement;
 use Heidi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
+use Heidi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
+use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
 use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
 use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
 use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
@@ -533,6 +539,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RouterEndpointLocator::class);
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
     $services->alias(MutualTlsEndpointLocatorInterface::class, RouterEndpointLocator::class);
+    // RFC 7592 §3: the URL of one client, which the router knows and nothing else writes down
+    $services->alias(ClientConfigurationEndpointInterface::class, RouterEndpointLocator::class);
     // the certificate a client presented at the handshake, read from what the edge proves and never from
     // a header (decision 0006); a deployment behind another proxy replaces this
     // implementation rather than teaching it a header to trust
@@ -875,7 +883,17 @@ return static function (ContainerConfigurator $container): void {
     // what a client registering itself is held to beyond the wiring: the scopes its tenant hands out
     // tokens for, which are the ones its document announces (issue #278)
     $services->set(RegistrationHeldToTheTenant::class);
+    // the one thing that reads a registration the provider is about to write, which is what makes the
+    // replacement of RFC 7592 §2.2 unable to reach what the creation of RFC 7591 §3.1 could not
+    $services->set(RegistrationUnderThePolicy::class);
     $services->set(ClientRegistrationHandler::class);
+    // RFC 7592: a client reads, replaces and deletes itself at a URI of its own, with the token the
+    // registration handed it and with nothing else. Three use cases, because a command that reads is not
+    // the command that writes, over one thing that says which client a request is for.
+    $services->set(ClientConfigurationAccess::class);
+    $services->set(ClientConfigurationReader::class);
+    $services->set(ClientConfigurationReplacement::class);
+    $services->set(ClientConfigurationRemoval::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).

@@ -6,20 +6,16 @@ namespace Heidi\Oidc\Tests\Application\Client\Registration;
 
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientIdentifierDrawer;
 use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
 use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
 use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
-use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
-use Heidi\Oidc\Application\Scope\OfferedScopes;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Bridge\InMemory\InMemoryClientStore;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
-use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationResponse;
+use Heidi\Oidc\Domain\Client\Registration\ClientInformationResponse;
 use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
 use Heidi\Oidc\Domain\Client\Registration\RegistrationRequest;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
@@ -29,8 +25,7 @@ use Heidi\Oidc\Exception\InvalidClientMetadataException;
 use Heidi\Oidc\Exception\UnauthorizedRegistrationException;
 use Heidi\Oidc\Exception\UnreadableClientMetadataException;
 use Heidi\Oidc\Port\ClientRegistrationPolicyInterface;
-use Heidi\Oidc\Port\ClientStoreInterface;
-use Heidi\Oidc\Tests\Fixture\Grants;
+use Heidi\Oidc\Tests\Fixture\Endpoints;
 use Heidi\Oidc\Tests\Fixture\RegistrationPolicies;
 use Heidi\Oidc\Tests\Fixture\Registrations;
 use Heidi\Oidc\Tests\Fixture\Secrets;
@@ -51,32 +46,13 @@ final class ClientRegistrationHandlerTest extends TestCase
 
     private InMemoryInitialAccessTokenRepository $tokens;
 
-    /**
-     * @var list<ClientRecord>
-     */
-    private array $written = [];
-
-    private ClientStoreInterface $store;
+    private InMemoryClientStore $store;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
         $this->tokens = new InMemoryInitialAccessTokenRepository();
-        $this->written = [];
-        $this->store = new class($this->written) implements ClientStoreInterface {
-            /**
-             * @param list<ClientRecord> $written
-             */
-            public function __construct(
-                public array &$written,
-            ) {
-            }
-
-            public function save(ClientRecord $record): void
-            {
-                $this->written[] = $record;
-            }
-        };
+        $this->store = new InMemoryClientStore();
     }
 
     /**
@@ -229,7 +205,7 @@ final class ClientRegistrationHandlerTest extends TestCase
         $this->handle(self::request($members));
 
         // Then
-        static::assertSame($members, $this->written[0]->metadata);
+        static::assertSame($members, $this->store->records[0]->metadata);
     }
 
     #[Test]
@@ -268,7 +244,7 @@ final class ClientRegistrationHandlerTest extends TestCase
 
         // Then
         static::assertTrue($token->isSpent());
-        static::assertSame([], $this->written);
+        static::assertSame([], $this->store->records);
     }
 
     /**
@@ -308,20 +284,18 @@ final class ClientRegistrationHandlerTest extends TestCase
         return $token;
     }
 
-    private function handle(RegistrationRequest $request, ?ClientRegistrationPolicyInterface $policies = null): ClientRegistrationResponse
+    private function handle(RegistrationRequest $request, ?ClientRegistrationPolicyInterface $policies = null): ClientInformationResponse
     {
         $clock = new MockClock(Fixtures::now());
-        $clients = new RegisteredClients([new InMemoryClientRepository()]);
 
         return new ClientRegistrationHandler(
             $policies ?? RegistrationPolicies::controlled(),
             new RegistrationAuthorizations([new InitialAccessTokenAuthorization($this->tokens, $clock)]),
-            Registrations::reader(),
-            new ClientIdentifierDrawer(Secrets::drawer(), $clients),
-            new RegistrationHeldToTheTenant(new OfferedScopes(new StandardClaimsProvider(), Grants::served(), $clients)),
+            Registrations::underThePolicy(),
+            new ClientIdentifierDrawer(Secrets::drawer(), new RegisteredClients([new InMemoryClientRepository()])),
             Secrets::drawer(),
-            new FakePasswordHasher(),
             $this->store,
+            new Endpoints(),
             $clock,
         )->handle($this->tenant, $request);
     }

@@ -8,7 +8,16 @@ use Heidi\Core\Port\ContentEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
+use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
+use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Client\RegisteredClients;
+use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
+use Heidi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
+use Heidi\Oidc\Application\Scope\OfferedScopes;
+use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Port\ClientSourceInterface;
+use Heidi\Oidc\Port\OfferedScopesInterface;
 use Heidi\Oidc\Application\Client\ClientMetadataReader;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
@@ -57,6 +66,33 @@ final class Registrations
             $tokenTypes ?? TokenTypes::served(),
             $authorizationDetailTypes ?? AuthorizationDetailTypes::served(),
             $subjects ?? new PublicSubjectIdentifierResolver(),
+        );
+    }
+
+    /**
+     * The one thing that reads a registration the provider is about to write, wired as the bundle wires
+     * it: the reader, what the tenant offers, and what draws and keeps a secret.
+     */
+    public static function underThePolicy(?ClientMetadataReader $reader = null, ?OfferedScopesInterface $scopes = null): RegistrationUnderThePolicy
+    {
+        return new RegistrationUnderThePolicy(
+            $reader ?? self::reader(),
+            new RegistrationHeldToTheTenant($scopes ?? self::offeredScopes()),
+            Secrets::drawer(),
+            new FakePasswordHasher(),
+        );
+    }
+
+    /**
+     * Every scope the tenant of the tests hands out tokens for: the four of OIDC Core §5.4 and whatever the
+     * clients given here registered.
+     */
+    public static function offeredScopes(?ClientSourceInterface $clients = null): OfferedScopesInterface
+    {
+        return new OfferedScopes(
+            new StandardClaimsProvider(),
+            Grants::served(),
+            new RegisteredClients([$clients ?? new InMemoryClientRepository()]),
         );
     }
 

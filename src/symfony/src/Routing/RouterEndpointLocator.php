@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Routing;
 
 use Heidi\Bundle\Controller\BackchannelAuthenticationController;
+use Heidi\Bundle\Controller\ClientConfigurationReadController;
 use Heidi\Bundle\Controller\ClientRegistrationController;
 use Heidi\Bundle\Controller\DeviceAuthorizationController;
 use Heidi\Bundle\Controller\DeviceVerificationController;
@@ -12,6 +13,7 @@ use Heidi\Bundle\Controller\PendingApprovalsController;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
 use Heidi\Oidc\Domain\Discovery\ProviderMetadata;
+use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use LogicException;
@@ -29,7 +31,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * another way in. The two sets are built here and not written down twice, so that a route that moves
  * moves in both.
  */
-final readonly class RouterEndpointLocator implements EndpointLocatorInterface, MutualTlsEndpointLocatorInterface
+final readonly class RouterEndpointLocator implements ClientConfigurationEndpointInterface, EndpointLocatorInterface, MutualTlsEndpointLocatorInterface
 {
     /**
      * @param string|null $mutualTlsOrigin the scheme and authority of the host that asks for a client
@@ -45,9 +47,18 @@ final readonly class RouterEndpointLocator implements EndpointLocatorInterface, 
 
     public function locate(Tenant $tenant): ProviderEndpoints
     {
+        $this->assertTheRoutesAreUnderTheIssuer($tenant);
+
+        return $this->endpointsUnder($tenant->issuer->origin());
+    }
+
+    /**
+     * @throws LogicException when the routes are not mounted where the issuer makes clients look for them
+     */
+    private function assertTheRoutesAreUnderTheIssuer(Tenant $tenant): void
+    {
         $issuer = $tenant->issuer->value;
-        $origin = $tenant->issuer->origin();
-        $discovery = $origin . $this->path('heidi_protocol_discovery');
+        $discovery = $tenant->issuer->origin() . $this->path('heidi_protocol_discovery');
         $expected = $issuer . ProviderMetadata::OPENID_CONFIGURATION_PATH;
         if ($discovery !== $expected) {
             throw new LogicException(sprintf(
@@ -57,8 +68,27 @@ final readonly class RouterEndpointLocator implements EndpointLocatorInterface, 
                 $expected,
             ));
         }
+    }
 
-        return $this->endpointsUnder($origin);
+    /**
+     * RFC 7592 §3: the URL of one client and not of the tenant, so it is answered on its own rather than
+     * among the endpoints of `ProviderEndpoints`. The path is the router's, as every other is, and the
+     * origin is the issuer's: a client reads itself where it registered itself.
+     */
+    public function clientConfigurationFor(Tenant $tenant, string $clientId): string
+    {
+        $this->assertTheRoutesAreUnderTheIssuer($tenant);
+
+        return (
+            $tenant->issuer->origin()
+            . $this->router->generate(
+                ClientConfigurationReadController::ROUTE,
+                [
+                    ClientConfigurationReadController::CLIENT_ID => $clientId,
+                ],
+                UrlGeneratorInterface::ABSOLUTE_PATH,
+            )
+        );
     }
 
     /**
