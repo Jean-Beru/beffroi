@@ -185,6 +185,26 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
+     * The one member held to "https" is held to it alone: plain HTTP on a loopback host is what the URIs of
+     * a client on a development stack are, and the exception stays where it is earned rather than being
+     * lifted or narrowed for every member at once (decision 0006).
+     */
+    #[Test]
+    public function theMembersThatAcceptPlainHttpOnALoopbackHostStillDo(): void
+    {
+        // When
+        $registration = self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'jwks_uri' => 'http://localhost:8000/jwks.json',
+            'frontchannel_logout_uri' => 'http://localhost:8000/logout',
+        ]);
+
+        // Then
+        static::assertSame('http://localhost:8000/jwks.json', (string) $registration->jwksUri);
+        static::assertSame('http://localhost:8000/logout', (string) $registration->frontChannelLogoutUri);
+    }
+
+    /**
      * OIDC Core §8: a client that registers no kind of "sub" registers none, and sees the kind the provider
      * assigns by default; the registration holds what was registered and nothing it invents.
      */
@@ -335,7 +355,19 @@ final class ClientMetadataReaderTest extends TestCase
             ],
             InvalidClientMetadataException::class,
             'initiate_login_uri',
-            'must use HTTPS',
+            'must use HTTPS, on a loopback host as anywhere else',
+        ];
+        // The module sends the URL of the run with its scheme replaced, and the suite runs on
+        // "localhost:8443": the member OIDC Registration §2 holds to "https" is held to it on the host a
+        // development stack is reached at as well (issue #377).
+        yield 'a login begun by a third party over plain HTTP on a loopback host' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'initiate_login_uri' => 'http://localhost:8443/test/a/heidi/initiate-login',
+            ],
+            InvalidClientMetadataException::class,
+            'initiate_login_uri',
+            'must use HTTPS, on a loopback host as anywhere else',
         ];
     }
 

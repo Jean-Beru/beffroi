@@ -23,6 +23,7 @@ use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
+use Heidi\Oidc\Domain\Client\InitiateLoginUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
 use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
@@ -438,7 +439,7 @@ final class Clients
                 Shapes::jwt(),
                 grantTypes: [Grants::authorizationCode()],
                 subjectType: $subjectType,
-                initiateLoginUri: new ClientUri($initiateLoginUri),
+                initiateLoginUri: new InitiateLoginUri($initiateLoginUri),
             ),
         );
     }
