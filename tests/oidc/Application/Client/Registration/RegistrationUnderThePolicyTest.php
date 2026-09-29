@@ -8,6 +8,8 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Client\Registration\KeptRegistration;
 use Heidi\Oidc\Domain\Client\ClientSecretInterface;
+use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Domain\Client\ClientUri;
@@ -122,6 +124,74 @@ final class RegistrationUnderThePolicyTest extends TestCase
 
         // Then
         static::assertSame([], $kept->assigned);
+    }
+
+    /**
+     * RFC 7591 §2 (modules oidcc-refresh-token and -refresh-token-rp-key-rotation): the registration
+     * request of the plan carries no "scope" member at all, and what such a client is registered with is
+     * the set its tenant wrote, read from the policy that wrote it.
+     */
+    #[Test]
+    public function aRegistrationThatNamesNoScopeTakesWhatTheTenantWrote(): void
+    {
+        // When
+        $kept = $this->read(
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+            ],
+            policy: new ClientRegistrationPolicy('a-mode', defaultScopes: Scopes::parse('openid offline_access')),
+        );
+
+        // Then
+        static::assertSame(
+            [
+                'scope' => 'openid offline_access',
+            ],
+            $kept->assigned,
+        );
+    }
+
+    /**
+     * A client that named its own scopes keeps them, and the policy wrote nothing on it: the row keeps what
+     * the policy wrote in front of what the client sent, so a default written over a named scope would
+     * outlive the request that refused to take it.
+     */
+    #[Test]
+    public function aRegistrationThatNamesItsOwnScopeKeepsIt(): void
+    {
+        // When
+        $kept = $this->read(
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+                'scope' => 'openid',
+            ],
+            policy: new ClientRegistrationPolicy('a-mode', defaultScopes: Scopes::parse('openid offline_access')),
+        );
+
+        // Then
+        static::assertSame([], $kept->assigned);
+        static::assertSame('openid', $kept->metadata['scope']);
+    }
+
+    /**
+     * Decision 0009: a default set of scopes is held to what the tenant hands out tokens for, like every
+     * scope a client registers, so a tenant that writes one it does not announce refuses every registration
+     * rather than granting one. The refusal names the policy as the source, there being no client to blame.
+     */
+    #[Test]
+    public function aDefaultSetOfScopesTheTenantDoesNotOfferIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('registers the scope "invoices.read", which this tenant does not hand out tokens for');
+
+        // When
+        $this->read(
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+            ],
+            policy: new ClientRegistrationPolicy('a-mode', defaultScopes: Scopes::parse('openid invoices.read')),
+        );
     }
 
     /**
@@ -319,10 +389,11 @@ final class RegistrationUnderThePolicyTest extends TestCase
         ?ClientSecretInterface $held = null,
         ?SectorIdentifierDocumentFetcherInterface $documents = null,
         ?ServedGrantsInterface $grants = null,
+        ?ClientRegistrationPolicy $policy = null,
     ): KeptRegistration {
         return Registrations::underThePolicy(
             Registrations::reader(grants: $grants, subjects: Subjects::bothKinds()),
             documents: $documents,
-        )->read(Fixtures::tenant(), 'drawn-identifier', [], $members, null, $held);
+        )->read(Fixtures::tenant(), 'drawn-identifier', [], $members, $policy, $held);
     }
 }

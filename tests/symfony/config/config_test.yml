@@ -136,6 +136,9 @@ parameters:
     # Decision 0017: the named exception a registration policy may carry, off for every test but the one
     # that plays a tenant carrying it, as the conformance tenant will.
     env(HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION): 'false'
+    # RFC 7591 §2: what a registration that names no scope is registered with here. Empty is none, which is
+    # what a tenant that writes none gets, and a test that wants one names it before it boots a kernel.
+    env(HEIDI_TEST_REGISTRATION_DEFAULT_SCOPE): ''
     # RFC 7591 §2.3: the keys the authority below is pinned by, which the test that plays the attested mode
     # replaces with the ones it signs with. The default is a key no test signs anything with: the anchor is
     # declared for every test because YAML cannot declare it only for one, and an anchor nothing verifies
@@ -172,6 +175,7 @@ heidi:
     client_registration:
         mode: '%env(HEIDI_TEST_REGISTRATION_MODE)%'
         exempt_confidential_clients_from_pkce: '%env(bool:HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION)%'
+        default_scope: '%env(HEIDI_TEST_REGISTRATION_DEFAULT_SCOPE)%'
         # The one authority the tenant of the tests pins the software statements of (RFC 7591 §2.3). Only
         # the attested mode reads it, and a statement is verified against these keys and never against one
         # it carries itself (RFC 8725 §3.10).

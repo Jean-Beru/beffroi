@@ -109,6 +109,10 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->defaultValue(self::DEFAULT_STATEMENT_LEEWAY)
             ->min(0)
             ->end()
+            ->scalarNode('default_scope')
+            ->info('What a client that registers itself and names no scope is registered with (RFC 7591 section 2: "If omitted, an authorization server MAY register a client with a default set of scopes"), space-delimited as a request writes one (RFC 6749 section 3.3). Left out, such a client is registered with "openid" alone, which is less than this tenant hands out and is a default nobody chose. It is held to what the tenant announces like every registered scope, so a scope written here that the tenant does not offer refuses every registration rather than granting one, and it is read at the boot that declares it. A client that names its own scopes keeps them.')
+            ->defaultNull()
+            ->end()
             ->booleanNode('exempt_confidential_clients_from_pkce')
             ->info('The named exception of decision 0017, for the tenant that writes it and no other: the confidential clients this policy registers are registered without the PKCE requirement, because the Dynamic OP profile of OIDC Core sends no code_challenge and offers no way to. A public client is never exempted whatever this says, "plain" never exists, and a code_challenge a client does send is verified like any other. Write it with the reason a tenant has for it beside it; a tenant with real users has none.')
             ->defaultFalse()
@@ -121,6 +125,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
     {
         $registration = $this->own($config);
         $mode = $registration['mode'] ?? null;
+        $defaultScope = $registration['default_scope'] ?? null;
         $services
             ->get(ConfigurationClientRegistrationPolicy::class)
             ->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))
@@ -129,6 +134,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
                 is_string($mode) ? $mode : null,
             )
             ->arg('$exemptsConfidentialClientsFromPkce', self::boolean($registration, 'exempt_confidential_clients_from_pkce'))
+            ->arg('$defaultScope', is_string($defaultScope) ? $defaultScope : null)
             ->arg(
                 '$keepsAClientUnusedFor',
                 self::seconds($registration, 'keep_a_client_unused_for'),
