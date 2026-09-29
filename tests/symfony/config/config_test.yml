@@ -433,6 +433,25 @@ heidi:
             requires_consent: false
             subject_type: pairwise
             sector_identifier_uri: 'https://pairwise.test/redirect_uris.json'
+        # OIDC Core §4 (issue #342): two clients this provider begins a login at. The first sees its users
+        # under the identifier the core keeps, the second under one of its own sector, so that what the
+        # hint of a redirection carries is read on both kinds and is never the stable one for a client
+        # that sees none.
+        launched-app:
+            client_name: 'Application a third party starts'
+            secret: 'launched-secret-of-at-least-32-characters'
+            redirect_uris: ['https://launched.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            initiate_login_uri: 'https://launched.test/start'
+        launched-pairwise-app:
+            client_name: 'Application of a sector a third party starts'
+            secret: 'launched-pairwise-secret-of-at-least-32-c'
+            redirect_uris: ['https://launched-pairwise.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            initiate_login_uri: 'https://launched-pairwise.test/start'
         # a shape no class of the module knows, wired below: what a deployment adds is two classes and
         # two tags, and the name it registers here is read from that wiring (issue #239)
         invented-app:

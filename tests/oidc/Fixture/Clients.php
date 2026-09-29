@@ -404,6 +404,38 @@ final class Clients
     }
 
     /**
+     * A client this provider begins a login at (OIDC Core §4): the "initiate_login_uri" it registered,
+     * which is where the browser is sent, and the redirection URIs a "target_link_uri" is held to.
+     *
+     * @param list<RedirectUri>|null $redirectUris where this client's browser comes back to, which is
+     *                                             also the set a landing page is named out of
+     * @param non-empty-string|null $subjectType the kind of "sub" this client sees, null for the one the
+     *                                           provider assigns by default
+     */
+    public static function withThirdPartyInitiatedLogin(
+        Tenant $tenant,
+        string $clientId = 'launched-app',
+        string $initiateLoginUri = 'https://rp.example/start',
+        ?array $redirectUris = null,
+        ?string $subjectType = null,
+    ): Client {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                new ClientPresentation('Application a third party starts'),
+                Methods::none(),
+                false,
+                $redirectUris ?? [new RedirectUri('https://rp.example/callback')],
+                Shapes::jwt(),
+                grantTypes: [Grants::authorizationCode()],
+                subjectType: $subjectType,
+                initiateLoginUri: new ClientUri($initiateLoginUri),
+            ),
+        );
+    }
+
+    /**
      * A native client (RFC 8252 §8.3): a public client whose browser comes back to the loopback interface,
      * on whatever port the operating system handed it, and which registers the IP literal without a port.
      *

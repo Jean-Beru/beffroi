@@ -274,6 +274,7 @@ use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
 use Heidi\Oidc\Application\EndSession\FrontChannelLogout;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
+use Heidi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
 use Heidi\Oidc\Application\Key\IdTokenJwsKind;
@@ -1101,6 +1102,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RequiredConsent::class);
     $services->set(AuthorizationHandler::class);
     $services->set(ConsentGranting::class);
+    // OIDC Core §4: the other direction, a login this provider begins at a client rather than one a
+    // client begins here. It is the authorization endpoint's counterpart and not one of its steps: what
+    // it answers is a redirection to the client, which then makes the request the handler above reads
+    $services->set(ThirdPartyInitiatedLoginHandler::class);
     // and its counterpart: a consent taken back takes back what was issued under it (issue #273)
     $services->set(ConsentRevocation::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
