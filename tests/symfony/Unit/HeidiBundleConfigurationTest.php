@@ -98,6 +98,15 @@ final class HeidiBundleConfigurationTest extends TestCase
             ],
             $config['tokens'],
         );
+        static::assertSame(
+            [
+                'mode' => null,
+                'keep_a_client_unused_for' => ClientRegistrationSection::DEFAULT_KEEP_A_CLIENT_UNUSED_FOR,
+                'keep_a_client_never_used_for' => ClientRegistrationSection::DEFAULT_KEEP_A_CLIENT_NEVER_USED_FOR,
+                'exempt_confidential_clients_from_pkce' => false,
+            ],
+            $config['client_registration'],
+        );
         static::assertSame([], $config['clients']);
     }
 

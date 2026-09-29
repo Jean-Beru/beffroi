@@ -367,6 +367,7 @@ use Heidi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
 use Heidi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
 use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
 use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
 use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
 use Heidi\Oidc\Application\Scope\OfferedScopes;
@@ -879,11 +880,14 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ConfigurationClientRegistrationPolicy::class);
     $services->alias(ClientRegistrationPolicyInterface::class, ConfigurationClientRegistrationPolicy::class);
     // what authorises a registration is a class per mode, tagged, and the policy of a tenant names one of
-    // them: the mode of decision 0009 built first is the initial access token of RFC 7591 §1.2, and the
-    // open and attested ones are a class added here and nothing edited
+    // them: the two modes of decision 0009 built so far are the initial access token of RFC 7591 §1.2 and
+    // the bare POST of §1.3, and the attested one is a class added here and nothing edited. Wiring a mode
+    // opens it for nobody: a tenant whose policy does not name it never reaches it, and closed is the
+    // policy a deployment that writes nothing has.
     $services->set(DoctrineInitialAccessTokenRepository::class);
     $services->alias(InitialAccessTokenRepositoryInterface::class, DoctrineInitialAccessTokenRepository::class);
     $services->set(InitialAccessTokenAuthorization::class)->tag('heidi.oidc.registration_mode');
+    $services->set(OpenRegistrationAuthorization::class)->tag('heidi.oidc.registration_mode');
     $services->set(RegistrationAuthorizations::class)->args([tagged_iterator('heidi.oidc.registration_mode')]);
     // what a client registering itself is held to beyond the wiring: the scopes its tenant hands out
     // tokens for, which are the ones its document announces (issue #278)

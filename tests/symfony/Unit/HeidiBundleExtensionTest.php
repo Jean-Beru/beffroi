@@ -12,6 +12,7 @@ use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Application\Key\TenantKeyRotator;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
+use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
@@ -19,6 +20,7 @@ use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\TokenIssuer;
+use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -125,6 +127,46 @@ final class HeidiBundleExtensionTest extends TestCase
         $delay = $container->getDefinition(TenantKeyRotator::class)->getArgument('$stagingDelay');
         static::assertInstanceOf(Definition::class, $delay);
         static::assertSame([30, 120], $delay->getArguments());
+    }
+
+    /**
+     * Decision 0009: what a tenant does with a client that registers itself reaches the bridge that
+     * answers for that tenant, the mode it names and the two durations it keeps a client for.
+     */
+    #[Test]
+    public function theRegistrationPolicyOfTheConfigurationReachesTheBridge(): void
+    {
+        // When
+        $container = self::load([
+            'client_registration' => [
+                'mode' => OpenRegistrationAuthorization::MODE,
+                'exempt_confidential_clients_from_pkce' => true,
+                'keep_a_client_unused_for' => 86400,
+                'keep_a_client_never_used_for' => 3600,
+            ],
+        ]);
+
+        // Then
+        $policies = $container->getDefinition(ConfigurationClientRegistrationPolicy::class);
+        static::assertSame(OpenRegistrationAuthorization::MODE, $policies->getArgument('$mode'));
+        static::assertTrue($policies->getArgument('$exemptsConfidentialClientsFromPkce'));
+        static::assertSame('PT86400S', self::interval($container, ConfigurationClientRegistrationPolicy::class, '$keepsAClientUnusedFor'));
+        static::assertSame('PT3600S', self::interval($container, ConfigurationClientRegistrationPolicy::class, '$keepsAClientNeverUsedFor'));
+    }
+
+    /**
+     * Decision 0009: closed is the default, and the mode is a value of one tenant's policy: there is no
+     * key here, whatever its name, that opens a registration endpoint for a deployment. What a deployment
+     * that writes nothing hands the bridge is no mode at all, which is no policy and no endpoint.
+     */
+    #[Test]
+    public function aDeploymentThatWritesNothingHandsTheBridgeNoMode(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertNull($container->getDefinition(ConfigurationClientRegistrationPolicy::class)->getArgument('$mode'));
     }
 
     #[Test]
