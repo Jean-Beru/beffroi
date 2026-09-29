@@ -298,8 +298,9 @@ use Heidi\Oidc\Application\Ciba\ApprovalAuthenticationRequirement;
 use Heidi\Oidc\Application\Ciba\BackchannelApproval;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
-use Heidi\Oidc\Application\Ciba\Hint\SubjectLoginHint;
-use Heidi\Oidc\Application\Ciba\Hint\UsernameLoginHint;
+use Heidi\Oidc\Application\Hint\LoginHints;
+use Heidi\Oidc\Application\Hint\SubjectLoginHint;
+use Heidi\Oidc\Application\Hint\UsernameLoginHint;
 use Heidi\Oidc\Application\Ciba\ServedDeliveryModes;
 use Heidi\Oidc\Application\Ciba\SignedBackchannelRequest;
 use Heidi\Oidc\Application\Ciba\UserHints;
@@ -1111,8 +1112,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ServedDeliveryModes::class)->args([tagged_iterator('heidi.oidc.ciba_delivery_mode')]);
     $services->alias(ServedDeliveryModesInterface::class, ServedDeliveryModes::class);
     $services->set(IdTokenUserHint::class)->tag('heidi.oidc.ciba_user_hint');
-    // the two ways of reading a "login_hint" the bundle ships, of which the deployment tags one: two
-    // things reading one parameter would be a wiring with two answers to one question
+    // the two ways of reading a "login_hint" the bundle ships, of which the deployment tags one per side
+    // it is read on, this one and the login page (InteractionSection, LoginHintReadings): two things
+    // reading one parameter would be a wiring with two answers to one question
     $services->set(SubjectLoginHint::class);
     $services->set(UsernameLoginHint::class);
     $services->set(UserHints::class)->args([tagged_iterator('heidi.oidc.ciba_user_hint')]);
@@ -1138,6 +1140,10 @@ return static function (ContainerConfigurator $container): void {
     // client begins here. It is the authorization endpoint's counterpart and not one of its steps: what
     // it answers is a redirection to the client, which then makes the request the handler above reads
     $services->set(ThirdPartyInitiatedLoginHandler::class);
+    // OIDC Core §3.1.2.1: and the way back, what the "login_hint" of that request names, read by the one
+    // reading the deployment tagged for this side (InteractionSection) so the page waiting for a login
+    // offers a name rather than the "sub" the client carried
+    $services->set(LoginHints::class)->args([tagged_iterator('heidi.oidc.login_hint')]);
     // and its counterpart: a consent taken back takes back what was issued under it (issue #273)
     $services->set(ConsentRevocation::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
