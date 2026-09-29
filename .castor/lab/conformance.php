@@ -236,12 +236,12 @@ const CONFORMANCE_DYNAMIC_CLIENT_NAME = 'OpenID conformance suite';
 const CONFORMANCE_DYNAMIC_SECOND_CLIENT_NAME = 'OpenID conformance suite, second client';
 
 /**
- * What the two runs whose clients register themselves wait on: the epic of the spike that builds them,
- * and not a list of issues measured against a run. What is missing is the spike and every issue under it,
- * which is what the first run of the two plans measured: most of their modules do not pass, and naming
- * each red here would write the one blocker of the day many times over and be wrong the day it is
- * lifted. The line is deleted the day both pass whole, which the task failing on a passing "waiting_on"
- * run forces; the one module no amount of building closes is written down under "known" instead.
+ * What the Dynamic OP run waits on: the epic of the spike that builds it, and not a list of issues
+ * measured against a run. What is missing is the spike and every issue under it, which is what the first
+ * run of the plan measured: most of its modules do not pass, and naming each red here would write the one
+ * blocker of the day many times over and be wrong the day it is lifted. The line is deleted the day the
+ * run passes whole, which the task failing on a passing "waiting_on" run forces; the one module no amount
+ * of building closes is written down under "known" instead.
  */
 const CONFORMANCE_DYNAMIC_ISSUES = ['heidi#79'];
 
@@ -424,14 +424,14 @@ const CONFORMANCE_PLANS = [
     ],
     // The second profile of the same spike, two modules: a client registers an "initiate_login_uri" and
     // the provider begins a login at it (OIDC Core §4), the second module registering one that is not
-    // "https" and expecting the registration to be refused.
+    // "https", on the loopback host the suite runs on, and expecting the registration to be refused. It
+    // passes whole, so it gates like the plans of the spikes before it and carries no "waiting_on" line.
     'third-party-init' => [
         'name' => 'oidcc-3rdparty-init-login-certification-test-plan',
         'variant' => [
             'response_type' => 'code',
         ],
         'registers_its_own_clients' => true,
-        'waiting_on' => CONFORMANCE_DYNAMIC_ISSUES,
     ],
     // The key rotation module of the Dynamic OP plan, run on its own and created without a plan since the
     // suite has none for a single module (architecture §3.3): it reads the JWK Set, waits for the
