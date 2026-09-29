@@ -9,15 +9,16 @@ use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Heidi\Core\Port\SignatureAlgorithmsInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\RegisteredClients;
+use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
 use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
 use Heidi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
 use Heidi\Oidc\Application\Scope\OfferedScopes;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Port\ClientSourceInterface;
 use Heidi\Oidc\Port\OfferedScopesInterface;
+use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
 use Heidi\Oidc\Application\Client\ClientMetadataReader;
 use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
@@ -32,7 +33,7 @@ use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
 use Heidi\Oidc\Port\ServedDeliveryModesInterface;
 use Heidi\Oidc\Port\ServedGrantsInterface;
-use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
+use Heidi\Oidc\Port\AssignedSubjectTypesInterface;
 
 /**
  * The reader every registration of the tests goes through, wired with what the provider of the tests is
@@ -52,7 +53,7 @@ final class Registrations
         ?CertificateReaderInterface $certificates = null,
         ?KeyEncryptionAlgorithmsInterface $keyEncryption = null,
         ?ContentEncryptionAlgorithmsInterface $contentEncryption = null,
-        ?SubjectIdentifierResolverInterface $subjects = null,
+        ?AssignedSubjectTypesInterface $subjects = null,
     ): ClientMetadataReader {
         return new ClientMetadataReader(
             $algorithms ?? Algorithms::all(),
@@ -65,19 +66,24 @@ final class Registrations
             $deliveryModes ?? DeliveryModes::served(),
             $tokenTypes ?? TokenTypes::served(),
             $authorizationDetailTypes ?? AuthorizationDetailTypes::served(),
-            $subjects ?? new PublicSubjectIdentifierResolver(),
+            $subjects ?? Subjects::ofAProvider(),
         );
     }
 
     /**
      * The one thing that reads a registration the provider is about to write, wired as the bundle wires
-     * it: the reader, what the tenant offers, and what draws and keeps a secret.
+     * it: the reader, what the tenant offers, what the sector of a client has to say of it, and what draws
+     * and keeps a secret.
      */
-    public static function underThePolicy(?ClientMetadataReader $reader = null, ?OfferedScopesInterface $scopes = null): RegistrationUnderThePolicy
-    {
+    public static function underThePolicy(
+        ?ClientMetadataReader $reader = null,
+        ?OfferedScopesInterface $scopes = null,
+        ?SectorIdentifierDocumentFetcherInterface $documents = null,
+    ): RegistrationUnderThePolicy {
         return new RegistrationUnderThePolicy(
             $reader ?? self::reader(),
             new RegistrationHeldToTheTenant($scopes ?? self::offeredScopes()),
+            new RegistrationHeldToItsSector($documents ?? new FakeSectorIdentifierDocumentFetcher()),
             Secrets::drawer(),
             new FakePasswordHasher(),
         );

@@ -21,7 +21,6 @@ use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
@@ -50,6 +49,7 @@ use Heidi\Oidc\Tests\Fixture\ServedModes;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
@@ -79,7 +79,7 @@ final class KeyBoundArtifactsTest extends TestCase
         $kind = new IdTokenJwsKind(
             new JwtIdTokenIssuer(
                 $this->jwts->documents,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
                 new StandardClaimsProvider(),
                 Algorithms::all(),
                 new DateInterval('PT1H'),
@@ -98,7 +98,7 @@ final class KeyBoundArtifactsTest extends TestCase
         $kind = new AccessTokenJwsKind(
             new JwtAccessTokenIssuer(
                 $this->jwts->signer,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
                 Algorithms::all(),
                 new SymfonyUuidGenerator(),
                 new DateInterval('PT20M'),
@@ -155,7 +155,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new IdTokenJwsKind(
                     new JwtIdTokenIssuer(
                         $this->jwts->documents,
-                        new PublicSubjectIdentifierResolver(),
+                        Subjects::publicKind(),
                         new StandardClaimsProvider(),
                         Algorithms::all(),
                         new DateInterval('PT2M'),
@@ -164,7 +164,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new AccessTokenJwsKind(
                     new JwtAccessTokenIssuer(
                         $this->jwts->signer,
-                        new PublicSubjectIdentifierResolver(),
+                        Subjects::publicKind(),
                         Algorithms::all(),
                         new SymfonyUuidGenerator(),
                         new DateInterval('PT2M'),
@@ -234,7 +234,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new IdTokenJwsKind(
                     new JwtIdTokenIssuer(
                         $this->jwts->documents,
-                        new PublicSubjectIdentifierResolver(),
+                        Subjects::publicKind(),
                         new StandardClaimsProvider(),
                         Algorithms::all(),
                         new DateInterval('PT1M'),
@@ -243,7 +243,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new AccessTokenJwsKind(
                     new JwtAccessTokenIssuer(
                         $this->jwts->signer,
-                        new PublicSubjectIdentifierResolver(),
+                        Subjects::publicKind(),
                         Algorithms::all(),
                         new SymfonyUuidGenerator(),
                         new DateInterval('PT1M'),
@@ -279,7 +279,7 @@ final class KeyBoundArtifactsTest extends TestCase
             accessTokenShape: Shapes::opaque(),
         ));
         $kind = new AccessTokenJwsKind(
-            new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator()),
+            new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator()),
             new RegisteredClients([$this->clients]),
         );
 
@@ -334,7 +334,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new IdTokenJwsKind(
                     new JwtIdTokenIssuer(
                         $this->jwts->documents,
-                        new PublicSubjectIdentifierResolver(),
+                        Subjects::publicKind(),
                         new StandardClaimsProvider(),
                         Algorithms::all(),
                         new DateInterval('PT2M'),
@@ -343,7 +343,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new AccessTokenJwsKind(
                     new JwtAccessTokenIssuer(
                         $this->jwts->signer,
-                        new PublicSubjectIdentifierResolver(),
+                        Subjects::publicKind(),
                         Algorithms::all(),
                         new SymfonyUuidGenerator(),
                         new DateInterval('PT2M'),

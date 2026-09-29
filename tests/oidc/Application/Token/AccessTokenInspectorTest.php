@@ -17,7 +17,6 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -39,6 +38,7 @@ use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -88,11 +88,11 @@ final class AccessTokenInspectorTest extends TestCase
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 $this->clients,
                 $this->tokens,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
             ),
             $this->sessions,
             $this->grants,
-            $users,
+            Subjects::ofAProvider($users),
         );
     }
 
@@ -209,11 +209,11 @@ final class AccessTokenInspectorTest extends TestCase
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 new InMemoryClientRepository(),
                 $this->tokens,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
             ),
             $this->sessions,
             $this->grants,
-            new InMemoryUserRepository(),
+            Subjects::ofAProvider(new InMemoryUserRepository()),
         );
         $token = $this->tokenOf($this->code());
 
@@ -288,11 +288,11 @@ final class AccessTokenInspectorTest extends TestCase
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 $clients,
                 $this->tokens,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
             ),
             $sessions,
             $this->grants,
-            $users,
+            Subjects::ofAProvider($users),
         );
 
         // Then
@@ -354,7 +354,7 @@ final class AccessTokenInspectorTest extends TestCase
             return $this->tokenOf($code);
         }
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         )->value;

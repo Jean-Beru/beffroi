@@ -15,7 +15,6 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
@@ -41,6 +40,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
 final class JwtAccessTokenIssuerTest extends TestCase
@@ -58,7 +58,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator());
+        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator());
     }
 
     /**
@@ -500,7 +500,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         ));
         $issuer = new JwtAccessTokenIssuer(
             $this->jwts->signer,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
             Algorithms::all(),
             new SymfonyUuidGenerator(),
             new DateInterval('PT1M'),
@@ -529,7 +529,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         ));
         $token = new JwtAccessTokenIssuer(
             $this->jwts->signer,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
             Algorithms::all(),
             new SymfonyUuidGenerator(),
             new DateInterval('PT1M'),

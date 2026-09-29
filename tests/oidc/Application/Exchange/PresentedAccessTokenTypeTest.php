@@ -14,7 +14,6 @@ use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Exchange\PresentedAccessTokenType;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
@@ -39,6 +38,7 @@ use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -81,11 +81,11 @@ final class PresentedAccessTokenTypeTest extends TestCase
                 new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()),
                 $this->clients,
                 $this->tokens,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
             ),
             $sessions,
             $this->grants,
-            $users,
+            Subjects::ofAProvider($users),
         ));
     }
 

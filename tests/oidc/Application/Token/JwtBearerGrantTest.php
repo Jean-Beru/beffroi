@@ -15,7 +15,6 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Client\AuthenticatedClient;
 use Heidi\Oidc\Application\Request\RequestParameters;
 use Heidi\Oidc\Application\Token\JwtBearerGrant;
@@ -44,6 +43,7 @@ use Heidi\Oidc\Tests\Fixture\TrustedIssuers;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -96,7 +96,7 @@ final class JwtBearerGrantTest extends TestCase
                 new DateInterval('PT30S'),
             ),
             $identities,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
             new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $refreshTokens, Secrets::drawer(), new RecordingEventDispatcher()),
             new SymfonyUuidGenerator(),
             $this->clock,

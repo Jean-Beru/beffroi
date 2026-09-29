@@ -137,6 +137,29 @@ final class BackChannelLogoutTest extends BrowserTestCase
         return $user;
     }
 
+    /**
+     * OIDC Core §8.1: the logout token is the fifth document the provider writes for a client, and it says
+     * who it is about the way the other four do, under the identifier that client's sector sees.
+     */
+    #[Test]
+    public function theTokenOfAPairwiseClientNamesTheUserUnderTheIdentifierThatClientSees(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        self::signingKey();
+        $this->signInClient('pairwise-app', 'https://pairwise.test/callback', 'pairwise-secret-of-at-least-32-characters');
+        $subject = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']))['sub'];
+
+        // When
+        $this->logOut();
+
+        // Then
+        [$issued] = self::logoutTokens();
+        static::assertSame('pairwise-app', $issued->clientId);
+        static::assertSame($subject, self::claimsOf($issued->token)['sub']);
+        static::assertNotSame('alice-subject', $subject);
+    }
+
     private function logOut(): void
     {
         $this->browser->submit($this->confirmationPage()->selectButton('Sign out')->form());

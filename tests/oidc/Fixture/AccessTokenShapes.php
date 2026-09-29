@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Fixture;
 
 use Heidi\Core\Port\JwsVerifierInterface;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
@@ -28,7 +27,7 @@ final class AccessTokenShapes
     ): AccessTokenVerifier {
         return new AccessTokenVerifier([
             new JwtAccessTokenVerifier($jws, $clients, Bindings::wired(), AuthorizationDetailTypes::served()),
-            new OpaqueAccessTokenVerifier($storedTokens ?? new InMemoryAccessTokenRepository(), $subjects ?? new PublicSubjectIdentifierResolver()),
+            new OpaqueAccessTokenVerifier($storedTokens ?? new InMemoryAccessTokenRepository(), $subjects ?? Subjects::publicKind()),
         ], Shapes::served());
     }
 }

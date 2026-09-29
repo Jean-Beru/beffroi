@@ -470,10 +470,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTwentyFourTypes(): void
+    public function theBundleDeclaresTwentyFiveTypes(): void
     {
         // When / Then
-        static::assertCount(24, HeidiBundle::DBAL_TYPES);
+        static::assertCount(25, HeidiBundle::DBAL_TYPES);
     }
 
     /**

@@ -19,7 +19,6 @@ use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\EndSession\EndSessionHandler;
 use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
@@ -50,6 +49,7 @@ use const PHP_QUERY_RFC3986;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 final class EndSessionHandlerTest extends TestCase
@@ -594,7 +594,7 @@ final class EndSessionHandlerTest extends TestCase
     {
         // Given
         $jwts = new Jwts($this->tenant);
-        $issuer = new JwtIdTokenIssuer($jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
+        $issuer = new JwtIdTokenIssuer($jwts->documents, Subjects::publicKind(), new StandardClaimsProvider(), Algorithms::all());
         $accessToken = new AccessToken('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $refreshToken = $this->refreshToken('current', $this->session);
         $authorization = $refreshed

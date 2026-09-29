@@ -19,7 +19,6 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
 use Heidi\Oidc\Application\Token\PresentedAccessTokenParser;
@@ -64,6 +63,7 @@ use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -113,7 +113,7 @@ final class UserInfoHandlerTest extends TestCase
         $this->jwts = new Jwts($this->tenant);
         $this->accessTokens = new JwtAccessTokenIssuer(
             $this->jwts->signer,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
             Algorithms::all(),
             new SymfonyUuidGenerator(),
         );
@@ -416,7 +416,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $authorization = $this->authorization(['openid', 'email']);
-        $idToken = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all())->issue(
+        $idToken = new JwtIdTokenIssuer($this->jwts->documents, Subjects::publicKind(), new StandardClaimsProvider(), Algorithms::all())->issue(
             $authorization,
             $this->accessTokens->issue($authorization, Fixtures::now()),
             Fixtures::now(),
@@ -827,16 +827,16 @@ final class UserInfoHandlerTest extends TestCase
                     new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                     $clients,
                     $this->storedTokens,
-                    new PublicSubjectIdentifierResolver(),
+                    Subjects::publicKind(),
                 ),
                 $this->sessions,
                 new RecordedGrants([$this->grants, $this->deviceRecords, $this->backchannelRecords]),
-                $users,
+                Subjects::ofAProvider($users),
             ),
             $this->jwts->documents,
             Proofs::verifier(),
             new Endpoints(),
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
             new StandardClaimsProvider(),
             new PresentedAccessTokenParser(Bindings::wired()),
         );

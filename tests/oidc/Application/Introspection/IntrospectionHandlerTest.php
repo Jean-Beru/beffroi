@@ -21,7 +21,6 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
 use Heidi\Oidc\Application\Token\AccessTokenInspector;
@@ -57,6 +56,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
@@ -127,11 +127,11 @@ final class IntrospectionHandlerTest extends TestCase
                     new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                     $clients,
                     $this->tokens,
-                    new PublicSubjectIdentifierResolver(),
+                    Subjects::publicKind(),
                 ),
                 $sessions,
                 new RecordedGrants([$this->grants, $this->deviceRecords, $this->backchannelRecords]),
-                $users,
+                Subjects::ofAProvider($users),
             ),
             $this->jwts->signer,
             Algorithms::all(),
@@ -230,7 +230,7 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $code = $this->code($this->other, ['openid']);
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        $token = new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $this->clock->now(),
         )->value;

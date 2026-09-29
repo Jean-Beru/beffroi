@@ -10,7 +10,6 @@ use function explode;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientPresentation;
@@ -24,6 +23,7 @@ use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Heidi\Oidc\Tests\Fixture\Shapes;
 
 /**
@@ -47,7 +47,7 @@ final class LogoutTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::withBackChannelLogout($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator());
+        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator());
     }
 
     /**
@@ -206,6 +206,6 @@ final class LogoutTokenIssuerTest extends TestCase
         ['claims' => $claims] = $this->jwts->verify($token, 'spa', Fixtures::now(), self::MANDATORY);
 
         // Then
-        static::assertSame(new PublicSubjectIdentifierResolver()->resolve($this->session->user, $this->client)->value, $claims['sub']);
+        static::assertSame(Subjects::publicKind()->resolve($this->session->user, $this->client)->value, $claims['sub']);
     }
 }

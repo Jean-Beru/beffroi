@@ -103,6 +103,8 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'mode' => null,
                 'keep_a_client_unused_for' => ClientRegistrationSection::DEFAULT_KEEP_A_CLIENT_UNUSED_FOR,
                 'keep_a_client_never_used_for' => ClientRegistrationSection::DEFAULT_KEEP_A_CLIENT_NEVER_USED_FOR,
+                'sector_identifier_timeout' => ClientRegistrationSection::DEFAULT_SECTOR_IDENTIFIER_TIMEOUT,
+                'sector_identifier_max_size' => ClientRegistrationSection::DEFAULT_SECTOR_IDENTIFIER_MAX_SIZE,
                 'exempt_confidential_clients_from_pkce' => false,
             ],
             $config['client_registration'],

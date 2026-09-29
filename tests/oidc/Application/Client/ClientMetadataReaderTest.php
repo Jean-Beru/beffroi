@@ -13,6 +13,7 @@ use Heidi\Oidc\Exception\InvalidRedirectUriException;
 use Heidi\Oidc\Exception\UnreadableClientMetadataException;
 use Heidi\Oidc\Tests\Fixture\Grants;
 use Heidi\Oidc\Tests\Fixture\Registrations;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -316,6 +317,8 @@ final class ClientMetadataReaderTest extends TestCase
             'scope',
             'is not a scope token',
         ];
+        // The provider of these cases is wired with the public kind alone, so a client that asks for a
+        // pairwise "sub" is refused by the same rule that refuses a grant nothing serves (issue #341).
         yield 'a kind of subject this provider assigns none' => [
             [
                 'redirect_uris' => ['https://rp.example/cb'],
@@ -334,6 +337,74 @@ final class ClientMetadataReaderTest extends TestCase
             'initiate_login_uri',
             'must use HTTPS',
         ];
+    }
+
+    /**
+     * OIDC Core §8: the kinds a client may name are the ones the provider is wired to assign, so the same
+     * registration that is refused on a provider wired with one kind is read on a provider wired with two,
+     * and nothing but the wiring says so.
+     */
+    #[Test]
+    public function aKindOfSubjectTheProviderAssignsIsRegistered(): void
+    {
+        // Given
+        $metadata = self::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'none',
+            'subject_type' => 'pairwise',
+        ]);
+
+        // When
+        $registration = Registrations::reader(subjects: Subjects::bothKinds())->read('drawn', $metadata);
+
+        // Then
+        static::assertSame('pairwise', $registration->subjectType);
+    }
+
+    /**
+     * OIDC Core §8.1: what the pairwise kind needs of a registration is read where a registration meets the
+     * wiring, so a client whose sector cannot be read from what it registered is refused at the moment it
+     * registers and not at the first token it asks for.
+     */
+    #[Test]
+    public function aClientOfAKindThatNeedsASectorAndNamesNoneIsRefused(): void
+    {
+        // Given
+        $metadata = self::registered([
+            'redirect_uris' => ['https://one.example/cb', 'https://other.example/cb'],
+            'token_endpoint_auth_method' => 'none',
+            'subject_type' => 'pairwise',
+        ]);
+
+        // When
+        try {
+            Registrations::reader(subjects: Subjects::bothKinds())->read('drawn', $metadata);
+            static::fail('The registration was read.');
+        } catch (InvalidClientMetadataException $exception) {
+            // Then
+            static::assertSame('sector_identifier_uri', $exception->member);
+            static::assertStringContainsString('registers redirection URIs on one.example and other.example', $exception->getMessage());
+        }
+    }
+
+    /**
+     * OIDC Registration §2: a client that registers no kind is not a client of no kind, it is a client of
+     * the kind the provider assigns by default, which is the first one wired.
+     */
+    #[Test]
+    public function aClientThatRegistersNoKindNamesNone(): void
+    {
+        // Given
+        $metadata = self::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'none',
+        ]);
+
+        // When
+        $registration = Registrations::reader(subjects: Subjects::bothKinds())->read('drawn', $metadata);
+
+        // Then
+        static::assertNull($registration->subjectType);
     }
 
     /**

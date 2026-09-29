@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Configuration;
 
+use Heidi\Bundle\Client\SectorIdentifierDocumentFetcher;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
@@ -24,6 +25,15 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
     public const int DEFAULT_KEEP_A_CLIENT_UNUSED_FOR = 7_776_000;
 
     public const int DEFAULT_KEEP_A_CLIENT_NEVER_USED_FOR = 604_800;
+
+    /**
+     * What one read of a sector identifier document is given (OIDC Registration §5), the same numbers one
+     * read of a "jwks_uri" is given: a client that hangs must not hold a worker, and a registration is
+     * waiting on this one.
+     */
+    public const float DEFAULT_SECTOR_IDENTIFIER_TIMEOUT = 3.0;
+
+    public const int DEFAULT_SECTOR_IDENTIFIER_MAX_SIZE = 65536;
 
     public function name(): string
     {
@@ -51,6 +61,16 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->defaultValue(self::DEFAULT_KEEP_A_CLIENT_NEVER_USED_FOR)
             ->min(1)
             ->end()
+            ->floatNode('sector_identifier_timeout')
+            ->info('Seconds one read of a sector_identifier_uri is given, connection included (OIDC Registration section 5). It is read once, when a client registers or replaces itself, and the registration waits for it.')
+            ->defaultValue(self::DEFAULT_SECTOR_IDENTIFIER_TIMEOUT)
+            ->min(0.1)
+            ->end()
+            ->integerNode('sector_identifier_max_size')
+            ->info('Bytes a sector_identifier_uri may answer before the read stops; the document is the JSON array of the redirection URIs of the clients of one sector.')
+            ->defaultValue(self::DEFAULT_SECTOR_IDENTIFIER_MAX_SIZE)
+            ->min(1)
+            ->end()
             ->booleanNode('exempt_confidential_clients_from_pkce')
             ->info('The named exception of decision 0017, for the tenant that writes it and no other: the confidential clients this policy registers are registered without the PKCE requirement, because the Dynamic OP profile of OIDC Core sends no code_challenge and offers no way to. A public client is never exempted whatever this says, "plain" never exists, and a code_challenge a client does send is verified like any other. Write it with the reason a tenant has for it beside it; a tenant with real users has none.')
             ->defaultFalse()
@@ -76,5 +96,9 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
                 self::seconds($registration, 'keep_a_client_unused_for'),
             )
             ->arg('$keepsAClientNeverUsedFor', self::seconds($registration, 'keep_a_client_never_used_for'));
+        $services->get(SectorIdentifierDocumentFetcher::class)->arg('$timeout', self::float(
+            $registration,
+            'sector_identifier_timeout',
+        ))->arg('$maximumSize', self::integer($registration, 'sector_identifier_max_size'));
     }
 }

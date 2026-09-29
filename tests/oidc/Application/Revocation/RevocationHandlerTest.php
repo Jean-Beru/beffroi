@@ -19,7 +19,6 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Application\Revocation\RevocationHandler;
 use Heidi\Oidc\Tests\Fixture\AccessTokenShapes;
@@ -44,6 +43,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 final class RevocationHandlerTest extends TestCase
@@ -430,7 +430,7 @@ final class RevocationHandlerTest extends TestCase
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 $clients,
                 $accessTokens,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
             ),
             $accessTokens,
             $this->refreshTokens,
@@ -448,7 +448,7 @@ final class RevocationHandlerTest extends TestCase
 
     private function jwt(Client $client, DateTimeImmutable $issuedAt): string
     {
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $issuedAt)),
             $issuedAt,
         )->value;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Configuration;
 
 use DateInterval;
+use Heidi\Bundle\Key\FilePairwiseSalt;
 use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\StagingDelay;
 use Heidi\Bundle\Profiler\KmsClient;
@@ -46,7 +47,7 @@ final readonly class KeysSection extends ConfigurationSection
             ->cannotBeEmpty()
             ->end()
             ->scalarNode('storage')
-            ->info('Directory of the sealed keys, one file per key and per tenant.')
+            ->info('Directory of the sealed keys, one file per key and per tenant, and of the pairwise salt of each tenant, one file beside them (OIDC Core section 8.1).')
             ->defaultValue('%kernel.project_dir%/var/keys')
             ->cannotBeEmpty()
             ->end()
@@ -76,6 +77,9 @@ final readonly class KeysSection extends ConfigurationSection
         $services->get(EnvelopeKeySealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(EnvelopeSecretSealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileTenantKeyRepository::class)->arg('$directory', self::string($keys, 'storage'));
+        // The pairwise salt of a tenant lives beside its sealed keys and is sealed like them (OIDC Core
+        // §8.1): one directory to back up, one KMS to lose.
+        $services->get(FilePairwiseSalt::class)->arg('$directory', self::string($keys, 'storage'));
         if ($debug) {
             $services->get(KmsClient::class)->arg('$name', self::string($keys, 'kms'));
         }
