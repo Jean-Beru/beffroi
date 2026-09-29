@@ -64,7 +64,7 @@ castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + Dais
 **The judges.** `../docs/07-certifications.md` carries the state of each plan.
 
 ```bash
-castor conformance [--plan P] [--module X]  # the certification plans through the API of the suite: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, rotate-keys; result per module, the "known" list of CONFORMANCE_PLANS carrying the gaps left open with their issue
+castor conformance [--plan P] [--module X]  # the certification plans through the API of the suite: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping, dynamic, third-party-init, rotate-keys; result per module, the "known" list of CONFORMANCE_PLANS carrying the gaps left open with their issue and its "waiting_on" list the runs that do not pass yet
 gh workflow run conformance.yml [-f plan=P] [-f module=X] [-f strict=false]  # the same plans on a runner, the workflow that also runs them every Monday on the default branch
 castor mtls [--host H] [--ordinary-host H]  # the client certificate from the edge to PHP: presented, its x5t#S256 compared with the one the application computes, absent, and carried in a header (refused)
 castor demo [--check] [--rotate] [--passkey] [--form-post] [--logout-others] [--resource-server] [--dpop] [--ladder] [--device] [--service] [--ciba] [--assertion] [--rar] [--native] [--push]

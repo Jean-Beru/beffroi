@@ -1,8 +1,8 @@
 name: OpenID Conformance
 
 # The certification plans are the judge of the provider, and a judge nobody waits for. They drive a real
-# browser through a real OP: the host runs Docker, not the phpqa image, and the thirteen runs take twenty-one
-# to twenty-two minutes whatever the change (tests/conformance/README.md). So they are a workflow of their
+# browser through a real OP: the host runs Docker, not the phpqa image, and the fifteen runs take more than
+# twenty minutes whatever the change (tests/conformance/README.md). So they are a workflow of their
 # own, asked for by hand and run once a week, and no merge waits on them.
 #
 # It is the lean CI rule of "configuration-reference.yml" applied once more: what does not have to be paid
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       plan:
-        description: 'Plans to run, separated by spaces or commas; every plan when empty (basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping, rotate-keys)'
+        description: 'Plans to run, separated by spaces or commas; every plan when empty (basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping, dynamic, third-party-init, rotate-keys)'
         type: string
         required: false
       module:
@@ -46,7 +46,7 @@ concurrency:
 
 jobs:
   conformance:
-    name: "OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs, the two FAPI-CIBA runs)"
+    name: "OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs, the two FAPI-CIBA runs, Dynamic OP and 3rd Party-Init OP)"
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:

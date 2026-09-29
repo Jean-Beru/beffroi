@@ -24,9 +24,11 @@ use Symfony\Component\Console\Input\InputOption;
  * One configuration serves them all: the file whose {PLACEHOLDERS} the task fills from
  * apps/op/.env.local, and the values that must be there for the plans to make sense. An entry with "module" is not a plan
  * of the suite but one module run on its own, the suite having no plan for a single module; "before_start"
- * names what the task does between its creation and its start, in place of a human. "known" names the
- * modules a run does not get past, whether the gap is the provider's or a check of the suite behind the
- * specifications the provider follows. A gap is written down whole: the result the module is known to end
+ * names, per module, what the task does between its creation and its start, in place of a human;
+ * "registers_its_own_clients" says the clients of a run register themselves, which replaces the client
+ * sections of the configuration with a name apiece and needs the tenant to have a registration policy.
+ * "known" names the modules a run does not get past, whether the gap is the provider's or a check of the
+ * suite behind the specifications the provider follows. A gap is written down whole: the result the module is known to end
  * in, the findings that result is made of, and the reason with the issue that closes it. Its result is
  * reported as KNOWN and accepted only when the run is exactly that gap, so that a gap we decided to leave
  * open does not keep the CI red for weeks; a failure where a warning was written down, a finding beside
@@ -183,6 +185,36 @@ const CONFORMANCE_FAPI_KNOWN_MODULES = [
     ],
 ];
 
+/**
+ * What the task does between the creation of a module and its start, in place of a human, by the module
+ * it is done for: the key rotation module reads the JWK Set, waits for the operator to rotate the keys
+ * and reads it again, and the suite has no other way of asking. It is named per module and not per run,
+ * a plan that carries that module carrying twenty-two others the operator is asked nothing for.
+ */
+const CONFORMANCE_ROTATE_KEYS_BEFORE_START = [
+    'oidcc-server-rotate-keys' => 'rotate',
+];
+
+/**
+ * What a client the suite registers calls itself (RFC 7591 §2, "client_name"): with an initial access
+ * token, the one thing the "dynamic_client" variant reads of a client section of the configuration, and
+ * the open mode of a tenant asks for no token (decision 0009). It is what the consent page prints of a
+ * client nobody declared, which is what the three modules that register a logo and two policy URIs read
+ * back.
+ */
+const CONFORMANCE_DYNAMIC_CLIENT_NAME = 'OpenID conformance suite';
+
+const CONFORMANCE_DYNAMIC_SECOND_CLIENT_NAME = 'OpenID conformance suite, second client';
+
+/**
+ * What the two runs whose clients register themselves wait on: the epic of the spike that builds them,
+ * and not a list of issues measured against a run. Neither plan has been played against this provider,
+ * the endpoint its clients register through having just been built, so what is missing is the spike and
+ * every issue under it. The line is replaced by what the runs measure and deleted the day both pass
+ * whole, which the task failing on a passing "waiting_on" run forces.
+ */
+const CONFORMANCE_DYNAMIC_ISSUES = ['heidi#79'];
+
 const CONFORMANCE_PLANS = [
     'basic' => [
         'name' => 'oidcc-basic-certification-test-plan',
@@ -338,18 +370,51 @@ const CONFORMANCE_PLANS = [
             'clients' => CONFORMANCE_CIBA_PING_CLIENTS,
         ],
     ],
-    // The one module of the Dynamic OP plan the OP answers, the judge of the key rotation (architecture
-    // §3.3): it reads the JWK Set, waits for the operator to rotate the keys, reads it again and wants a
-    // new key with the old one still there. The other plans of the suite are for response types and
-    // features the OP does not have (implicit and hybrid, dynamic registration, session management,
-    // third-party initiated login).
+    // The two runs of spike 7 (issue #79), whose clients this provider has never seen: each module
+    // registers its own with a POST that carries no credential at all, which is what the "dynamic_client"
+    // variant sends (RFC 7591 §1.3) and what the open mode of a tenant answers (decision 0009). Both
+    // plans fix "discovery", "dynamic_client", the client authentication and the default response mode
+    // themselves and leave the response type to whoever creates them, which is the one variant written
+    // here; both hide the secret and the key of a client section, the suite drawing the key of every
+    // client it registers and sending it in the registration request, so there is no client of
+    // heidi.yaml behind either run and nothing for "castor provision" to draw. What they need of the
+    // deployment is the registration policy of the tenant in its open mode, which the task reads in the
+    // document before it creates a plan: without it every module of both fails on the same line.
+    'dynamic' => [
+        'name' => 'oidcc-dynamic-certification-test-plan',
+        'variant' => [
+            'response_type' => 'code',
+        ],
+        'registers_its_own_clients' => true,
+        // The plan carries the key rotation module, which waits for the operator where the twenty-two
+        // others wait for nobody, so the rotation is named against that module and against no other.
+        'before_start' => CONFORMANCE_ROTATE_KEYS_BEFORE_START,
+        'waiting_on' => CONFORMANCE_DYNAMIC_ISSUES,
+    ],
+    // The second profile of the same spike, two modules: a client registers an "initiate_login_uri" and
+    // the provider begins a login at it (OIDC Core §4), the second module registering one that is not
+    // "https" and expecting the registration to be refused.
+    'third-party-init' => [
+        'name' => 'oidcc-3rdparty-init-login-certification-test-plan',
+        'variant' => [
+            'response_type' => 'code',
+        ],
+        'registers_its_own_clients' => true,
+        'waiting_on' => CONFORMANCE_DYNAMIC_ISSUES,
+    ],
+    // The key rotation module of the Dynamic OP plan, run on its own and created without a plan since the
+    // suite has none for a single module (architecture §3.3): it reads the JWK Set, waits for the
+    // operator to rotate the keys, reads it again and wants a new key with the old one still there. It is
+    // here as well as inside the "dynamic" run because that run does not gate while it waits on its
+    // issues and this one does. The plans of the suite nothing here runs are those of the response types
+    // and the features this provider does not have: implicit and hybrid, and session management.
     'rotate-keys' => [
         'name' => 'oidcc-server-rotate-keys',
         'module' => true,
         'variant' => [
             'server_metadata' => 'discovery',
         ],
-        'before_start' => 'rotate',
+        'before_start' => CONFORMANCE_ROTATE_KEYS_BEFORE_START,
     ],
 ];
 
@@ -403,11 +468,11 @@ const CONFORMANCE_OP_TIMEOUT = 180;
  * @param array<string> $module
  */
 #[AsTask(
-    description: 'Run the certification plans the OP answers (Basic OP, Config OP, Form Post OP, the three logout profiles, the four runs of FAPI 2, the two runs of FAPI-CIBA and the key rotation module of the Dynamic OP plan) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
+    description: 'Run the certification plans the OP answers (Basic OP, Config OP, Form Post OP, the three logout profiles, the four runs of FAPI 2, the two runs of FAPI-CIBA, the Dynamic OP and 3rd Party-Init OP plans whose clients register themselves, and the key rotation module run on its own) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
 )]
 function conformance(
     #[AsOption(
-        description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping or rotate-keys (repeatable); every plan by default',
+        description: 'Run only this plan: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping, dynamic, third-party-init or rotate-keys (repeatable); every plan by default',
         mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
     )]
     array $plan = [],
@@ -438,6 +503,12 @@ function conformance(
     }
     if ($reset) {
         conformance_reset($env['HEIDI_ISSUER']);
+    }
+    // What a run whose clients register themselves needs of the deployment is not a value of its
+    // environment but its registration policy, so it is read where the provider says what it does
+    // (CONFORMANCE_PLANS, "registers_its_own_clients").
+    if (array_any($plans, static fn (array $definition): bool => (bool) ($definition['registers_its_own_clients'] ?? false))) {
+        conformance_open_registration($env['HEIDI_ISSUER']);
     }
 
     $server = conformance_server($suite);
@@ -518,7 +589,7 @@ function conformance(
             io()->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
             conformance_forget_consents($name, conformance_clients_of($definition));
             $started = microtime(true);
-            $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, $definition['before_start'] ?? null);
+            $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, ($definition['before_start'] ?? [])[$name] ?? null);
             if ($planUrl === null) {
                 $planUrls[] = sprintf('%s: %s', $name, $run['url']);
             }
@@ -657,6 +728,36 @@ function conformance_beyond_known(array $known, array $run): array
 }
 
 /**
+ * What a run whose clients register themselves needs of the deployment and cannot draw for itself: a
+ * tenant whose registration policy registers them (RFC 7591 §1.3, decision 0009). The document is what
+ * says so, a tenant announcing where a client registers exactly when its policy registers one, so it is
+ * read there rather than kept beside it; without it every module of the run fails on the same line,
+ * which is the failure the check of CONFORMANCE_REQUIRED_VALUES saves the other runs from.
+ */
+function conformance_open_registration(string $issuer): void
+{
+    // The development OP is served by the internal CA of Caddy, which nothing on the host trusts.
+    $url = $issuer . '/.well-known/openid-configuration';
+    try {
+        $document = json_decode(http_request('GET', $url, [
+            'verify_peer' => false,
+            'verify_host' => false,
+        ])->getContent(), true, flags: \JSON_THROW_ON_ERROR);
+    } catch (Throwable $exception) {
+        io()->error(sprintf('%s could not be read: %s', $url, $exception->getMessage()));
+        exit(1);
+    }
+    if (! is_array($document) || ! is_string($document['registration_endpoint'] ?? null)) {
+        io()->error([
+            sprintf('%s announces no "registration_endpoint", so no client can register itself.', $url),
+            'The runs that register their own clients need the registration policy of the tenant, which apps/op/config/packages/heidi.yaml writes under "when@dev" (decision 0009).',
+        ]);
+        exit(1);
+    }
+    io()->text(sprintf('Clients register themselves on %s.', $document['registration_endpoint']));
+}
+
+/**
  * The suite, once it answers. Its container is healthy before its JVM serves the API, and nginx answers
  * 502 until then: a plan created in that window fails for nothing, which is the difference between a
  * developer who waits and a CI that does not.
@@ -757,7 +858,8 @@ function conformance_configuration(array $env, array $definition): string
     $client = $definition['client'] ?? [];
     $fapi = $definition['fapi'] ?? [];
     $ciba = $definition['ciba'] ?? [];
-    if ($client !== [] || $fapi !== [] || $ciba !== []) {
+    $dynamic = $definition['registers_its_own_clients'] ?? false;
+    if ($client !== [] || $fapi !== [] || $ciba !== [] || $dynamic) {
         $decoded = json_decode($template, true, 32, \JSON_THROW_ON_ERROR);
         if ($client !== []) {
             $decoded['client'] = $client;
@@ -767,6 +869,9 @@ function conformance_configuration(array $env, array $definition): string
         }
         if ($ciba !== []) {
             $decoded = conformance_ciba_sections($decoded, $ciba['clients'], $env);
+        }
+        if ($dynamic) {
+            $decoded = conformance_dynamic_sections($decoded);
         }
         $template = json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT);
     }
@@ -782,6 +887,33 @@ function conformance_configuration(array $env, array $definition): string
     }
     // Validates the JSON before the suite sees it.
     json_decode($configuration, flags: \JSON_THROW_ON_ERROR);
+
+    return $configuration;
+}
+
+/**
+ * The sections a run whose clients register themselves needs in place of those a declared client uses
+ * (RFC 7591 §1.3). The "dynamic_client" variant hides the secret and the key of a client section and
+ * reads two things of it, the name the client registers under and the initial access token it presents,
+ * of which the open mode of a tenant asks for none (decision 0009): the suite draws the key of every
+ * client it registers and sends it in the registration request, so a secret or a key written here would
+ * be read by nothing. The client that authenticates with a shared secret has no place in such a run, so
+ * it goes, as it goes from a FAPI one; the second client stays, under a name of its own, for a module
+ * that registers two.
+ *
+ * @param array<string, mixed> $configuration
+ *
+ * @return array<string, mixed>
+ */
+function conformance_dynamic_sections(array $configuration): array
+{
+    unset($configuration['client_secret_post']);
+    $configuration['client'] = [
+        'client_name' => CONFORMANCE_DYNAMIC_CLIENT_NAME,
+    ];
+    $configuration['client2'] = [
+        'client_name' => CONFORMANCE_DYNAMIC_SECOND_CLIENT_NAME,
+    ];
 
     return $configuration;
 }
