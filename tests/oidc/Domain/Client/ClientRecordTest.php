@@ -7,6 +7,8 @@ namespace Heidi\Oidc\Tests\Domain\Client;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +29,7 @@ final class ClientRecordTest extends TestCase
         ];
 
         // When
-        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', $metadata, [], null, Fixtures::now());
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', $metadata, [], null, self::digest(), Fixtures::now());
 
         // Then
         static::assertSame($metadata, $record->metadata);
@@ -40,7 +42,7 @@ final class ClientRecordTest extends TestCase
     {
         // Given
         $tenant = Fixtures::tenant();
-        $record = new ClientRecord(Uuid::v7(), $tenant, 'drawn-identifier', [], [], null, Fixtures::now());
+        $record = new ClientRecord(Uuid::v7(), $tenant, 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
 
         // When / Then
         static::assertFalse($record->belongsTo(Fixtures::tenant('other', 'https://id.other.example')));
@@ -54,7 +56,7 @@ final class ClientRecordTest extends TestCase
         $this->expectExceptionMessageIs('A registered client carries the identifier the provider drew for it (RFC 7591 section 3.2.1).');
 
         // When
-        new ClientRecord(Uuid::v7(), Fixtures::tenant(), '', [], [], null, Fixtures::now());
+        new ClientRecord(Uuid::v7(), Fixtures::tenant(), '', [], [], null, self::digest(), Fixtures::now());
     }
 
     /**
@@ -69,7 +71,7 @@ final class ClientRecordTest extends TestCase
         $this->expectExceptionMessageIs('The client "drawn-identifier" holds no secret, so nothing of it expires.');
 
         // When
-        new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, Fixtures::now(), Fixtures::now()->modify('+1 day'));
+        new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now(), Fixtures::now()->modify('+1 day'));
     }
 
     #[Test]
@@ -90,6 +92,7 @@ final class ClientRecordTest extends TestCase
             [],
             [],
             new SharedClientSecret('a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3'),
+            self::digest(),
             $issuedAt,
             $issuedAt,
         );
@@ -109,11 +112,139 @@ final class ClientRecordTest extends TestCase
             [],
             [],
             new SharedClientSecret('a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3'),
+            self::digest(),
             Fixtures::now(),
             $expiresAt,
         );
 
         // Then
         static::assertEquals($expiresAt, $record->secretExpiresAt);
+    }
+
+    /**
+     * RFC 7592 §2.3: the token is kept as the digest of its value, never as the value.
+     */
+    #[Test]
+    public function theRegistrationAccessTokenIsKeptAsItsDigest(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The registration access token of the client "drawn-identifier" is stored as the hex SHA-256 of its value, never as the value.');
+
+        // When
+        new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, Secrets::draw(), Fixtures::now());
+    }
+
+    /**
+     * RFC 7592 §2.3: a token drawn for another client is a token this one does not read with, which is the
+     * same answer as a value nobody was ever handed.
+     */
+    #[Test]
+    public function aRecordIsReadWithTheTokenItWasHanded(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+
+        // When / Then
+        static::assertFalse($record->isReadWith(DrawnSecret::digestOf('a value drawn for somebody else')));
+    }
+
+    /**
+     * RFC 7592 §2.2: a replacement is whole and never a patch, so a member the client left out is a member
+     * it no longer registers.
+     */
+    #[Test]
+    public function aReplacementIsTheWholeRegistration(): void
+    {
+        // Given
+        $record = new ClientRecord(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            'drawn-identifier',
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'client_name' => 'What it was called',
+            ],
+            [
+                'requires_pkce' => false,
+            ],
+            null,
+            self::digest(),
+            Fixtures::now(),
+        );
+
+        // When
+        $record->replaceWith(
+            [
+                'redirect_uris' => ['https://rp.example/elsewhere'],
+            ],
+            [],
+            null,
+        );
+
+        // Then
+        static::assertSame(
+            [
+                'redirect_uris' => ['https://rp.example/elsewhere'],
+            ],
+            $record->metadata,
+        );
+        static::assertSame([], $record->assigned);
+    }
+
+    /**
+     * What the provider assigned does not change when a client replaces its own registration (RFC 7592 §2.2).
+     */
+    #[Test]
+    public function aReplacementLeavesWhatTheProviderAssigned(): void
+    {
+        // Given
+        $digest = self::digest();
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, $digest, Fixtures::now());
+
+        // When
+        $record->replaceWith(
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+            ],
+            [],
+            null,
+        );
+
+        // Then
+        static::assertSame('drawn-identifier', $record->clientId);
+        static::assertSame($digest, $record->registrationAccessTokenDigest);
+        static::assertEquals(Fixtures::now(), $record->issuedAt);
+    }
+
+    /**
+     * The rules of a row are the rules of a replacement too: what is left has to hold together.
+     */
+    #[Test]
+    public function aReplacementThatLeavesNoSecretLeavesNothingThatExpires(): void
+    {
+        // Given
+        $record = new ClientRecord(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            'drawn-identifier',
+            [],
+            [],
+            new SharedClientSecret('a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3'),
+            self::digest(),
+            Fixtures::now(),
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The client "drawn-identifier" holds no secret, so nothing of it expires.');
+
+        // When
+        $record->replaceWith([], [], null, Fixtures::now()->modify('+1 day'));
+    }
+
+    private static function digest(): string
+    {
+        return DrawnSecret::digestOf(Secrets::draw());
     }
 }

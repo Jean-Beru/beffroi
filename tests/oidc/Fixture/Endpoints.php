@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
+use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
 use Heidi\Oidc\Port\EndpointLocatorInterface;
 use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 
@@ -14,7 +15,7 @@ use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
  * application routes them to, and on the host that asks for a client certificate when the test wires one
  * (RFC 8705 §5).
  */
-final readonly class Endpoints implements EndpointLocatorInterface, MutualTlsEndpointLocatorInterface
+final readonly class Endpoints implements ClientConfigurationEndpointInterface, EndpointLocatorInterface, MutualTlsEndpointLocatorInterface
 {
     public function __construct(
         private ?string $mutualTlsOrigin = null,
@@ -29,6 +30,11 @@ final readonly class Endpoints implements EndpointLocatorInterface, MutualTlsEnd
     public function locateMutualTls(Tenant $tenant): ?ProviderEndpoints
     {
         return $this->mutualTlsOrigin === null ? null : self::under($this->mutualTlsOrigin);
+    }
+
+    public function clientConfigurationFor(Tenant $tenant, string $clientId): string
+    {
+        return $tenant->issuer->value . '/register/' . $clientId;
     }
 
     public static function of(Tenant $tenant): ProviderEndpoints

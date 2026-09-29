@@ -13,7 +13,9 @@ use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
 use Heidi\Oidc\Port\ClientRepositoryInterface;
 use Heidi\Oidc\Port\ClientStoreInterface;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Tests\Fixture\ClientAssertions;
+use Heidi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use function array_map;
@@ -293,6 +295,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
                 $members,
                 [],
                 $secret,
+                DrawnSecret::digestOf(Secrets::draw()),
                 self::now(),
             ));
         self::reload();

@@ -64,7 +64,7 @@ security:
             id: Heidi\Bundle\Security\IdentityUserProvider
     firewalls:
         heidi_protocol:
-            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register)$
+            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register(/.+)?)$
             security: false
         heidi_interaction:
             lazy: true
