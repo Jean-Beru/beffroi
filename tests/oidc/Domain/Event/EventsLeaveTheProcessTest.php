@@ -8,6 +8,7 @@ use function array_map;
 use function array_unique;
 use function array_values;
 use function basename;
+use function class_exists;
 use function dirname;
 use function glob;
 use Heidi\Core\Domain\Event\DomainEventInterface;
@@ -274,7 +275,9 @@ final class EventsLeaveTheProcessTest extends TestCase
         foreach ($files as $candidate) {
             /** @var class-string $class */
             $class = $reflection->getNamespaceName() . '\\' . basename($candidate, '.php');
-            if (is_a($class, DomainEventInterface::class, true)) {
+            // an event is a class: an interface that says something of several of them is not one, and
+            // there is nothing of it to write to a queue
+            if (class_exists($class) && is_a($class, DomainEventInterface::class, true)) {
                 $declared[] = $class;
             }
         }

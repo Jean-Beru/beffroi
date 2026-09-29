@@ -8,6 +8,9 @@
         <unique-constraints>
             <unique-constraint name="heidi_client_identifier" columns="tenant_id,client_id"/>
         </unique-constraints>
+        <indexes>
+            <index name="heidi_client_last_used" columns="tenant_id,last_used_at"/>
+        </indexes>
         <id name="id" type="uuid" column="id"/>
         <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
@@ -38,6 +41,8 @@
             </options>
         </field>
         <field name="issuedAt" type="datetime_immutable" column="client_id_issued_at"/>
+        <!-- When somebody last used this client (decision 0009): null for one that never was, which is not kept for as long. Indexed with the tenant, because the step that drops what nobody uses asks exactly that. -->
+        <field name="lastUsedAt" type="datetime_immutable" column="last_used_at" nullable="true"/>
         <field name="secretExpiresAt" type="datetime_immutable" column="client_secret_expires_at" nullable="true"/>
     </entity>
 </doctrine-mapping>

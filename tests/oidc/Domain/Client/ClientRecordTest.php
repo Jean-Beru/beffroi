@@ -247,4 +247,72 @@ final class ClientRecordTest extends TestCase
     {
         return DrawnSecret::digestOf(Secrets::draw());
     }
+
+    /**
+     * Decision 0009: a client that was never used is not a client used long ago, and the two are not kept
+     * for as long.
+     */
+    #[Test]
+    public function aRecordKnowsNobodyHasUsedItYet(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+
+        // When / Then
+        static::assertNull($record->lastUsedAt);
+    }
+
+    #[Test]
+    public function aRecordKeepsWhenItWasUsed(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+
+        // When
+        $record->recordUse(Fixtures::now()->modify('+1 hour'));
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify('+1 hour'), $record->lastUsedAt);
+    }
+
+    /**
+     * The two events that say a client is being used are written to a queue and read from it, so they arrive
+     * in whatever order the queue gives them: a use recorded late must not make a client look older than it
+     * is.
+     */
+    #[Test]
+    public function theDateOfALastUseOnlyMovesForward(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+        $record->recordUse(Fixtures::now()->modify('+1 hour'));
+
+        // When
+        $record->recordUse(Fixtures::now()->modify('+1 minute'));
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify('+1 hour'), $record->lastUsedAt);
+    }
+
+    /**
+     * RFC 7592 §2.2: replacing a registration is not using the client, so it is not a use.
+     */
+    #[Test]
+    public function aReplacementIsNotAUse(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+
+        // When
+        $record->replaceWith(
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+            ],
+            [],
+            null,
+        );
+
+        // Then
+        static::assertNull($record->lastUsedAt);
+    }
 }
