@@ -15,6 +15,8 @@ use Heidi\Oidc\Exception\InvalidClientMetadataException;
 use Heidi\Oidc\Exception\SectorIdentifierUnavailableException;
 use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
 use Heidi\Oidc\Tests\Fixture\FakeSectorIdentifierDocumentFetcher;
+use Heidi\Oidc\Tests\Fixture\Grants;
+use Heidi\Oidc\Port\ServedGrantsInterface;
 use Heidi\Oidc\Tests\Fixture\Registrations;
 use Heidi\Oidc\Tests\Fixture\Subjects;
 use function array_map;
@@ -34,6 +36,10 @@ final class RegistrationUnderThePolicyTest extends TestCase
     private const string REDIRECT_URI = 'https://rp.example/cb';
 
     private const string SECTOR_IDENTIFIER_URI = 'https://sector.example/redirect_uris.json';
+
+    private const string JWKS_URI = 'https://terminal.example/jwks.json';
+
+    private const string BACKCHANNEL_GRANT = 'urn:openid:params:grant-type:ciba';
 
     #[Test]
     public function aClientWhoseMethodProvesNoSecretIsHandedNone(): void
@@ -181,7 +187,80 @@ final class RegistrationUnderThePolicyTest extends TestCase
             self::SECTOR_IDENTIFIER_URI,
             null,
             ['https://somebody-else.example/cb'],
-            'does not list the redirection URI "' . self::REDIRECT_URI . '"',
+            'does not list the URI "' . self::REDIRECT_URI . '"',
+        ];
+    }
+
+    /**
+     * CIBA Core §4: a client of the backchannel flow registers no redirection URI, so what its sector is
+     * read from is its "jwks_uri", and that is what the document of a sector it claims must list. The
+     * document of OIDC Registration §5 holds the "jwks_uris" of its clients as it holds their
+     * "redirect_uris", and a client whose keys it does not name has not backed its claim.
+     */
+    #[Test]
+    public function aBackchannelClientPublishesItsKeysInTheDocumentOfItsSector(): void
+    {
+        // Given
+        $documents = new FakeSectorIdentifierDocumentFetcher([self::JWKS_URI, 'https://another-terminal.example/jwks.json']);
+
+        // When
+        $kept = $this->read(self::backchannelClaimingASector(), documents: $documents, grants: Grants::servedWithCiba());
+
+        // Then
+        static::assertSame([self::SECTOR_IDENTIFIER_URI], array_map(
+            static fn (ClientUri $read): string => $read->value,
+            $documents->fetched,
+        ));
+        static::assertSame(self::JWKS_URI, $kept->metadata['jwks_uri']);
+    }
+
+    #[Test]
+    public function aBackchannelClientWhoseKeysTheDocumentOmitsIsRefused(): void
+    {
+        // Given
+        $documents = new FakeSectorIdentifierDocumentFetcher(['https://another-terminal.example/jwks.json']);
+
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('does not list the URI "' . self::JWKS_URI . '"');
+
+        // When
+        $this->read(self::backchannelClaimingASector(), documents: $documents, grants: Grants::servedWithCiba());
+    }
+
+    /**
+     * CIBA Core §4: a client registered for the backchannel grant and for a pairwise "sub" registers a
+     * "sector_identifier_uri" or a "jwks_uri", and one that registers neither is refused at registration
+     * rather than served a "sub" nobody can compute.
+     */
+    #[Test]
+    public function aBackchannelClientThatSaysItsSectorNoWayIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('CIBA Core section 4');
+
+        // When
+        $this->read([
+            'grant_types' => [self::BACKCHANNEL_GRANT],
+            'backchannel_token_delivery_mode' => 'poll',
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'subject_type' => 'pairwise',
+        ], grants: Grants::servedWithCiba());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function backchannelClaimingASector(): array
+    {
+        return [
+            'grant_types' => [self::BACKCHANNEL_GRANT],
+            'backchannel_token_delivery_mode' => 'poll',
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'subject_type' => 'pairwise',
+            'jwks_uri' => self::JWKS_URI,
+            'sector_identifier_uri' => self::SECTOR_IDENTIFIER_URI,
         ];
     }
 
@@ -239,9 +318,10 @@ final class RegistrationUnderThePolicyTest extends TestCase
         array $members,
         ?ClientSecretInterface $held = null,
         ?SectorIdentifierDocumentFetcherInterface $documents = null,
+        ?ServedGrantsInterface $grants = null,
     ): KeptRegistration {
         return Registrations::underThePolicy(
-            Registrations::reader(subjects: Subjects::bothKinds()),
+            Registrations::reader(grants: $grants, subjects: Subjects::bothKinds()),
             documents: $documents,
         )->read(Fixtures::tenant(), 'drawn-identifier', [], $members, null, $held);
     }

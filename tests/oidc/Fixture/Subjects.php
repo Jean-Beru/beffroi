@@ -44,6 +44,7 @@ final class Subjects
         ?ClockInterface $clock = null,
     ): PairwiseSubjectIdentifierResolver {
         return new PairwiseSubjectIdentifierResolver(
+            Sectors::ofAProvider(),
             $salts ?? new InMemoryPairwiseSalt(new PlatformRandomness()),
             $assigned ?? new InMemoryPairwiseSubjectRepository(),
             new SymfonyUuidGenerator(),

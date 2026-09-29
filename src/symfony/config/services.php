@@ -218,6 +218,10 @@ use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
 use Heidi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
 use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
+use Heidi\Oidc\Application\Claims\Sector\JwksUriSectorIdentifier;
+use Heidi\Oidc\Application\Claims\Sector\RedirectUriSectorIdentifier;
+use Heidi\Oidc\Application\Claims\Sector\RegisteredSectorIdentifier;
+use Heidi\Oidc\Application\Claims\SectorIdentifiers;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\ServedClaims;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
@@ -424,6 +428,7 @@ use Heidi\Oidc\Port\PairwiseSaltInterface;
 use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
 use Heidi\Oidc\Port\PresentedSubjectReaderInterface;
 use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
+use Heidi\Oidc\Port\SectorIdentifiersInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Heidi\Oidc\Port\UnsignedRequestObjectsInterface;
 use Jose\Component\Core\AlgorithmManager;
@@ -1040,6 +1045,17 @@ return static function (ContainerConfigurator $container): void {
     // one a client that registers none takes, so "public" stays what a client gets by writing nothing.
     // Pairwise (§8.1) is the kind a provider serving relying parties it did not choose exists to offer: a
     // deployment that wants none removes the service, and the document then names "public" alone.
+    // Which sector a client is of is a class per way of saying so, tagged and read in the order they are
+    // wired (issue #292): the URI it registered to say so, the host of its redirection URIs (OIDC Core
+    // §8.1), and, for a client that registers no redirection URI at all, its jwks_uri (CIBA Core §4). The
+    // notification endpoint of push mode is the class that would sit beside them the day this provider
+    // served push. A client no wired source reads a sector for is refused at its registration rather than
+    // served an identifier computed from whatever stood in.
+    $services->set(RegisteredSectorIdentifier::class)->tag('heidi.oidc.sector_identifier_source');
+    $services->set(RedirectUriSectorIdentifier::class)->tag('heidi.oidc.sector_identifier_source');
+    $services->set(JwksUriSectorIdentifier::class)->tag('heidi.oidc.sector_identifier_source');
+    $services->set(SectorIdentifiers::class)->args([tagged_iterator('heidi.oidc.sector_identifier_source')]);
+    $services->alias(SectorIdentifiersInterface::class, SectorIdentifiers::class);
     $services->set(PublicSubjectIdentifierResolver::class)->tag('heidi.oidc.subject_type');
     $services->set(PairwiseSubjectIdentifierResolver::class)->tag('heidi.oidc.subject_type');
     $services->set(AssignedSubjectIdentifiers::class)->args([tagged_iterator('heidi.oidc.subject_type')]);
