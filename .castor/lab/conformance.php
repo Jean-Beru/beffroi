@@ -806,8 +806,9 @@ function conformance_reset(string $issuer): void
     op_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
     provision();
     run(['docker', 'compose', ...compose_profiles(), 'restart', 'op', 'worker']);
-    // Last, and after the worker, or the back-channel plan would wait for a token that cannot arrive.
-    compose_recreate_worker_redirector();
+    // Last, and after the two containers they follow, or the back-channel plan would wait for a token
+    // that cannot arrive and the sector modules for a document that cannot be reached.
+    compose_recreate_redirectors(['op', 'worker']);
     conformance_wait_for_op($issuer);
 }
 

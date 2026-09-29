@@ -54,10 +54,17 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
 const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
 
 /**
- * The sidecar that carries the loopback port 8443 of the suite into the network namespace of the worker,
- * so that the worker reaches the back-channel logout URI the suite gives its clients (compose.yaml).
+ * The sidecars that carry the loopback port 8443 of the suite into the network namespace of another
+ * container (compose.yaml), by the container each one follows: the worker reaches the back-channel logout
+ * URI the suite gives its clients, and the op container reads the sector identifier documents the modules
+ * of the Dynamic plan serve (OIDC Registration §5).
+ *
+ * @var array<string, string>
  */
-const WORKER_REDIRECTOR_SERVICE = 'conformance-worker-redirector';
+const REDIRECTOR_SERVICES = [
+    'worker' => 'conformance-worker-redirector',
+    'op' => 'conformance-op-redirector',
+];
 
 #[AsTask(
     description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds LocalStack (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran',
@@ -84,6 +91,10 @@ function start(
         // A plan of a hundred requests has no use for a hundred profiles, and the toolbar has no place in
         // the pages the scripted browser of the suite reads.
         $environment['APP_PROFILER'] = '0';
+        // What tells the entrypoints of the op container and of the worker that there is a certificate of
+        // the suite to trust (docker/conformance/trust-nginx.sh). It is said here and not found by looking
+        // the name up: the op container starts before the suite does, and would find nothing.
+        $environment['CONFORMANCE_NGINX_HOST'] = 'conformance-nginx';
     }
     if ($backend['profile'] !== null) {
         $command = [...$command, '--profile', $backend['profile']];
@@ -153,23 +164,30 @@ function compose_running_services(): array
 }
 
 /**
- * Brings the sidecar that carries the port of the suite into the worker back up, and does nothing when the
- * stack runs without it (a run against a suite of its own has no sidecar to bring back).
+ * Brings the sidecars of the containers just restarted back up, and does nothing when the stack runs
+ * without them (a run against a suite of its own has no sidecar to bring back).
  *
- * It is created again, never restarted, and always after the worker it follows: it holds the identifier of
- * the container whose network namespace it joined, resolved once when Docker created it. A worker that
- * restarts leaves that namespace behind, and a worker that is recreated takes the identifier with it, so
- * restarting the sidecar forwards nothing at best and fails outright at worst ("joining network namespace
- * of container: No such container"). Nothing says so either way, and the only thing that notices is the
- * back-channel logout plan, five minutes later, on a logout token that never left.
+ * One is created again, never restarted, and always after the container it follows: it holds the
+ * identifier of the container whose network namespace it joined, resolved once when Docker created it. A
+ * container that restarts leaves that namespace behind, and one that is recreated takes the identifier
+ * with it, so restarting the sidecar forwards nothing at best and fails outright at worst ("joining
+ * network namespace of container: No such container"). Nothing says so either way, and the only things
+ * that notice are the back-channel logout plan, five minutes later, on a logout token that never left,
+ * and the two sector modules of the Dynamic plan, on a document that cannot be reached.
+ *
+ * @param list<string> $restarted the containers whose network namespace has just been left behind
  */
-function compose_recreate_worker_redirector(): void
+function compose_recreate_redirectors(array $restarted): void
 {
-    if (! in_array(WORKER_REDIRECTOR_SERVICE, compose_running_services(), true)) {
-        return;
-    }
+    $running = compose_running_services();
+    foreach ($restarted as $container) {
+        $sidecar = REDIRECTOR_SERVICES[$container] ?? null;
+        if ($sidecar === null || ! in_array($sidecar, $running, true)) {
+            continue;
+        }
 
-    run(['docker', 'compose', ...compose_profiles(), 'up', '-d', '--force-recreate', '--no-deps', WORKER_REDIRECTOR_SERVICE]);
+        run(['docker', 'compose', ...compose_profiles(), 'up', '-d', '--force-recreate', '--no-deps', $sidecar]);
+    }
 }
 
 #[AsTask(description: 'Stop the development stack')]
