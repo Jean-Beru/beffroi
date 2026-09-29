@@ -52,6 +52,11 @@ services:
     # ends in it, the other way round from the worker, because everything that entrypoint does for this
     # container it only does when the command it is given starts with "frankenphp".
     entrypoint: ["/bin/sh", "/entrypoint/entrypoint.sh"]
+    # Naming an entrypoint clears the command of the image, so the command of the development image is
+    # said again here. Without it docker-entrypoint is handed nothing, and everything it does for this
+    # container it only does when what it is handed starts with "frankenphp": the container comes up with
+    # no application in it and goes unhealthy.
+    command: ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch"]
     # The check of the image, whose sixty seconds are what this container takes to install, migrate and
     # build its stylesheet. Under "--conformance" the entrypoint waits for the certificate of the suite's
     # nginx before any of that, and the suite starts after this container: the window is wide enough for
