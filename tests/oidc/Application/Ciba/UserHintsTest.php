@@ -18,6 +18,7 @@ use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -48,7 +49,7 @@ final class UserHintsTest extends TestCase
     public function aLoginHintReadAsASubjectNamesItsUser(): void
     {
         // Given
-        $hints = new UserHints([new SubjectLoginHint($this->users)]);
+        $hints = new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
 
         // When
         $user = $hints->userNamedBy($this->client, RequestParameters::of([
@@ -87,7 +88,7 @@ final class UserHintsTest extends TestCase
     public function aHintThatNamesNobodyIsNoError(string $value): void
     {
         // Given
-        $hints = new UserHints([new SubjectLoginHint($this->users)]);
+        $hints = new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
 
         // When
         $user = $hints->userNamedBy($this->client, RequestParameters::of([
@@ -117,7 +118,7 @@ final class UserHintsTest extends TestCase
     public function aRequestNamesItsUserOnce(array $parameters): void
     {
         // Given
-        $hints = new UserHints([new SubjectLoginHint($this->users)]);
+        $hints = new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
 
         // Then
         $this->expectException(InvalidRequestException::class);
@@ -144,7 +145,7 @@ final class UserHintsTest extends TestCase
     public function aHintNothingIsWiredToReadIsRefused(): void
     {
         // Given
-        $hints = new UserHints([new SubjectLoginHint($this->users)]);
+        $hints = new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
 
         // Then
         $this->expectException(InvalidRequestException::class);
@@ -163,7 +164,7 @@ final class UserHintsTest extends TestCase
     public function aParameterIsReadOneWay(): void
     {
         // Given
-        $hints = new UserHints([new SubjectLoginHint($this->users), new UsernameLoginHint($this->users)]);
+        $hints = new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users)), new UsernameLoginHint($this->users)]);
 
         // Then
         $this->expectException(LogicException::class);
@@ -182,7 +183,7 @@ final class UserHintsTest extends TestCase
     public function aHintOfAnotherTenantNamesNobody(): void
     {
         // Given
-        $hints = new UserHints([new SubjectLoginHint($this->users)]);
+        $hints = new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
         $other = Clients::backchannel(
             Fixtures::tenant('other', 'https://id.other.example'),
             new FakePasswordHasher()->hash(Clients::SECRET),

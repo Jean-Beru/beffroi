@@ -11,7 +11,6 @@ use Heidi\Core\Domain\Session\SessionEnd;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\EndSession\BackChannelLogout;
 use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
@@ -22,6 +21,7 @@ use Heidi\Oidc\Tests\Fixture\Jwts;
 use Heidi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 /**
@@ -46,7 +46,7 @@ final class BackChannelLogoutTest extends TestCase
             $this->grants,
             new LogoutTokenIssuer(
                 new Jwts($this->session->tenant)->signer,
-                new PublicSubjectIdentifierResolver(),
+                Subjects::publicKind(),
                 Algorithms::all(),
                 new SymfonyUuidGenerator(),
             ),

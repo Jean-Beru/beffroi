@@ -7,6 +7,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
 use Heidi\Oidc\Domain\Ciba\DeliveryModeInterface;
 use Heidi\Oidc\Domain\Ciba\PingDelivery;
 use Heidi\Oidc\Domain\Ciba\PollDelivery;
@@ -372,6 +373,32 @@ final class Clients
                 grantTypes: $grantTypes ?? [Grants::authorizationCode()],
                 allowedScopes: $allowedScopes,
                 resources: $resources,
+            ),
+        );
+    }
+
+    /**
+     * A client registered for a pairwise "sub" (OIDC Core §8.1): the kind it names, where its browser comes
+     * back to, which says which sector it belongs to, and the document it registers to say so instead.
+     */
+    public static function pairwise(
+        Tenant $tenant,
+        string $clientId = 'pairwise-app',
+        string $redirectUri = 'https://rp.example/callback',
+        ?string $sectorIdentifierUri = null,
+    ): Client {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                new ClientPresentation('Application of a sector'),
+                Methods::none(),
+                false,
+                [new RedirectUri($redirectUri)],
+                Shapes::jwt(),
+                grantTypes: [Grants::authorizationCode()],
+                subjectType: PairwiseSubjectIdentifierResolver::SUBJECT_TYPE,
+                sectorIdentifierUri: $sectorIdentifierUri === null ? null : new ClientUri($sectorIdentifierUri),
             ),
         );
     }

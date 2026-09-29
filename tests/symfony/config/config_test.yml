@@ -399,6 +399,40 @@ heidi:
             requires_consent: false
             backchannel_token_delivery_mode: ping
             backchannel_client_notification_endpoint: 'https://terminal.test/ciba'
+        # OIDC Core §8.1 (issue #341): three clients and two sectors, said the two ways §8.1 says them. Two
+        # of them belong to the sector their redirection URI is on, which are two hosts and so two sectors;
+        # the third registers the document of the first one's host, so that two clients of two hosts are of
+        # one sector and see one user under one identifier. The document itself is never read here: a
+        # declaration of a deployment claims no sector, the deployment being the authority over what it
+        # declares, and what a client that registers itself has to prove is proved where it registers.
+        pairwise-app:
+            client_name: 'Application of a sector'
+            secret: 'pairwise-secret-of-at-least-32-characters'
+            redirect_uris: ['https://pairwise.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            # so that the fifth document the provider writes for a client, the logout token, is read under
+            # the identifier of its sector too (Back-Channel Logout 1.0 §2.4)
+            backchannel_logout_uri: 'https://pairwise.test/backchannel-logout'
+        pairwise-other-app:
+            client_name: 'Application of another sector'
+            secret: 'pairwise-other-secret-of-at-least-32-char'
+            redirect_uris: ['https://other-pairwise.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            # the other shape, so that the identifier a token carries and the identifier its introspection
+            # renders are read on both (architecture §4.6)
+            access_token_format: opaque
+        pairwise-sector-app:
+            client_name: 'Application that names its sector'
+            secret: 'pairwise-sector-secret-of-at-least-32-cha'
+            redirect_uris: ['https://sector-member.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            sector_identifier_uri: 'https://pairwise.test/redirect_uris.json'
         # a shape no class of the module knows, wired below: what a deployment adds is two classes and
         # two tags, and the name it registers here is read from that wiring (issue #239)
         invented-app:
@@ -478,6 +512,9 @@ services:
         public: true
     test.heidi.initial_access_tokens:
         alias: Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface
+        public: true
+    test.heidi.pairwise_subjects:
+        alias: Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface
         public: true
     test.heidi.password_hasher:
         alias: Heidi\Core\Port\PasswordHasherInterface

@@ -12,7 +12,6 @@ use Heidi\Core\Exception\InvalidJwsException;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Token\AccessTokenVerifier;
 use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
 use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
@@ -49,6 +48,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Throwable;
 
 final class AccessTokenVerifierTest extends TestCase
@@ -85,7 +85,7 @@ final class AccessTokenVerifierTest extends TestCase
         $this->jws = new FakeJwsVerifier();
         $this->storedTokens = new InMemoryAccessTokenRepository();
         $this->opaque = Secrets::draw();
-        $this->verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+        $this->verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, Subjects::publicKind());
     }
 
     /**
@@ -108,7 +108,7 @@ final class AccessTokenVerifierTest extends TestCase
             ['openid', 'email'],
             claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'),
         );
-        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        $minted = new JwtAccessTokenIssuer($jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         );
@@ -118,7 +118,7 @@ final class AccessTokenVerifierTest extends TestCase
             new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()),
             $clients,
             $this->storedTokens,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
         );
 
         // When
@@ -266,7 +266,7 @@ final class AccessTokenVerifierTest extends TestCase
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $minted = new JwtAccessTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        $minted = new JwtAccessTokenIssuer($jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
             $authorization,
             Fixtures::now(),
         );
@@ -274,7 +274,7 @@ final class AccessTokenVerifierTest extends TestCase
             new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all()),
             $clients,
             $this->storedTokens,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
         );
 
         // When
@@ -302,7 +302,7 @@ final class AccessTokenVerifierTest extends TestCase
         $this->storedTokens->save($record);
         $clients = new InMemoryClientRepository();
         $clients->save($service);
-        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, Subjects::publicKind());
 
         // When
         $token = $verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
@@ -337,7 +337,7 @@ final class AccessTokenVerifierTest extends TestCase
         $this->storedTokens->save($record);
         $clients = new InMemoryClientRepository();
         $clients->save($gateway);
-        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, Subjects::publicKind());
 
         // When
         $token = $verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
@@ -360,7 +360,7 @@ final class AccessTokenVerifierTest extends TestCase
         $this->storedTokens->save(Tokens::storedSubjectAccessToken($this->opaque, $gateway, new Subject('alice-subject'), Fixtures::now()));
         $clients = new InMemoryClientRepository();
         $clients->save($gateway);
-        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, new PublicSubjectIdentifierResolver());
+        $verifier = AccessTokenShapes::verifier($this->jws, $clients, $this->storedTokens, Subjects::publicKind());
 
         // When
         $token = $verifier->verify($this->tenant, $this->opaque, Fixtures::now()->modify('+9 minutes'));
@@ -1052,7 +1052,7 @@ final class AccessTokenVerifierTest extends TestCase
         $verifier = new AccessTokenVerifier(
             [
                 new JwtAccessTokenVerifier($this->jws, $clients, Bindings::wired(), AuthorizationDetailTypes::served()),
-                new OpaqueAccessTokenVerifier($this->storedTokens, new PublicSubjectIdentifierResolver()),
+                new OpaqueAccessTokenVerifier($this->storedTokens, Subjects::publicKind()),
             ],
             new ServedAccessTokenShapes([new FakeAccessTokenIssuer('jwt')]),
         );

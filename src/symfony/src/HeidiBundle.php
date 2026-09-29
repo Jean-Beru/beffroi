@@ -51,6 +51,7 @@ use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
 use Heidi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
+use Heidi\Bundle\Doctrine\Type\SectorIdentifierType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\Key\KmsClientPass;
 use Heidi\Bundle\Plane\Plane;
@@ -84,6 +85,7 @@ final class HeidiBundle extends AbstractBundle
      */
     public const array DBAL_TYPES = [
         IssuerType::NAME => IssuerType::class,
+        SectorIdentifierType::NAME => SectorIdentifierType::class,
         SubjectType::NAME => SubjectType::class,
         EmailAddressType::NAME => EmailAddressType::class,
         AddressType::NAME => AddressType::class,

@@ -14,6 +14,7 @@ use Heidi\Bundle\Client\RequestObjectReplayGuard;
 use Heidi\Bundle\Client\ClientJwksCache;
 use Heidi\Bundle\Client\ClientJwksFetcher;
 use Heidi\Bundle\Client\RequestObjectFetcher;
+use Heidi\Bundle\Client\SectorIdentifierDocumentFetcher;
 use Heidi\Bundle\Doctrine\Listener\ClientResolver;
 use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
@@ -24,6 +25,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineInitialAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrinePairwiseSubjectRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineBackchannelAuthenticationRecordRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordRepository;
@@ -84,6 +86,7 @@ use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
 use Heidi\Bundle\Http\TotpProvisioningSealer;
 use Heidi\Bundle\Http\TotpProvisioningStore;
 use Heidi\Bundle\Http\TwoFactorPage;
+use Heidi\Bundle\Key\FilePairwiseSalt;
 use Heidi\Bundle\Key\FileTenantKeyRepository;
 use Heidi\Bundle\Key\KmsUnavailableListener;
 use Heidi\Bundle\Load\LoadBudget;
@@ -213,6 +216,8 @@ use Heidi\Oidc\Application\Authorization\RequestObjectReader;
 use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
 use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
 use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
+use Heidi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
+use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\ServedClaims;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
@@ -369,6 +374,7 @@ use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
 use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
 use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
+use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
 use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
 use Heidi\Oidc\Application\Scope\OfferedScopes;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
@@ -407,6 +413,11 @@ use Heidi\Oidc\Port\RequestObjectFetcherInterface;
 use Heidi\Oidc\Port\LogoutTokenDeliveryInterface;
 use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
 use Heidi\Oidc\Port\ServedResponseModesInterface;
+use Heidi\Oidc\Port\AssignedSubjectTypesInterface;
+use Heidi\Oidc\Port\PairwiseSaltInterface;
+use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Heidi\Oidc\Port\PresentedSubjectReaderInterface;
+use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
 use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Heidi\Oidc\Port\UnsignedRequestObjectsInterface;
 use Jose\Component\Core\AlgorithmManager;
@@ -892,6 +903,11 @@ return static function (ContainerConfigurator $container): void {
     // what a client registering itself is held to beyond the wiring: the scopes its tenant hands out
     // tokens for, which are the ones its document announces (issue #278)
     $services->set(RegistrationHeldToTheTenant::class);
+    // OIDC Registration §5: the document behind a registered "sector_identifier_uri", read once, where a
+    // registration is written and nowhere else
+    $services->set(SectorIdentifierDocumentFetcher::class);
+    $services->alias(SectorIdentifierDocumentFetcherInterface::class, SectorIdentifierDocumentFetcher::class);
+    $services->set(RegistrationHeldToItsSector::class);
     // the one thing that reads a registration the provider is about to write, which is what makes the
     // replacement of RFC 7592 §2.2 unable to reach what the creation of RFC 7591 §3.1 could not
     $services->set(RegistrationUnderThePolicy::class);
@@ -1002,9 +1018,23 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DpopProofValidator::class);
     $services->set(DpopProofVerifier::class);
 
-    // The module: subject and claims
-    $services->set(PublicSubjectIdentifierResolver::class);
-    $services->alias(SubjectIdentifierResolverInterface::class, PublicSubjectIdentifierResolver::class);
+    // The module: subject and claims. One class per kind of "sub" (OIDC Core §8), tagged, and what is
+    // tagged is what a client may register and what the document announces; the first wired kind is the
+    // one a client that registers none takes, so "public" stays what a client gets by writing nothing.
+    // Pairwise (§8.1) is the kind a provider serving relying parties it did not choose exists to offer: a
+    // deployment that wants none removes the service, and the document then names "public" alone.
+    $services->set(PublicSubjectIdentifierResolver::class)->tag('heidi.oidc.subject_type');
+    $services->set(PairwiseSubjectIdentifierResolver::class)->tag('heidi.oidc.subject_type');
+    $services->set(AssignedSubjectIdentifiers::class)->args([tagged_iterator('heidi.oidc.subject_type')]);
+    $services->alias(SubjectIdentifierResolverInterface::class, AssignedSubjectIdentifiers::class);
+    $services->alias(PresentedSubjectReaderInterface::class, AssignedSubjectIdentifiers::class);
+    $services->alias(AssignedSubjectTypesInterface::class, AssignedSubjectIdentifiers::class);
+    // What a pairwise identifier is computed with and what it is read back from: a salt drawn once and
+    // kept sealed beside the keys of its tenant, and the identifiers each sector has been handed
+    $services->set(FilePairwiseSalt::class);
+    $services->alias(PairwiseSaltInterface::class, FilePairwiseSalt::class);
+    $services->set(DoctrinePairwiseSubjectRepository::class);
+    $services->alias(PairwiseSubjectRepositoryInterface::class, DoctrinePairwiseSubjectRepository::class);
     // the claims of OIDC Core §5.1 and the four scopes of §5.4, closed by the specification; a deployment
     // that serves claims of its own, or a scope of its own that stands for them, wires a class beside this
     // one and edits nothing, the document announcing what the wired providers serve (issue #278)

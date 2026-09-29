@@ -21,7 +21,6 @@ use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
 use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -47,6 +46,7 @@ use function rtrim;
 use function strtr;
 use function substr;
 use Symfony\Component\Uid\Uuid;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Heidi\Oidc\Tests\Fixture\Shapes;
 
 final class JwtIdTokenIssuerTest extends TestCase
@@ -68,7 +68,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
+        $this->issuer = new JwtIdTokenIssuer($this->jwts->documents, Subjects::publicKind(), new StandardClaimsProvider(), Algorithms::all());
         $this->accessToken = new AccessToken(self::ACCESS_TOKEN, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
@@ -288,7 +288,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 return [];
             }
         };
-        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, Subjects::publicKind(), $provider, Algorithms::all());
 
         // When
         $issuer->issue(
@@ -345,7 +345,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 return ['name'];
             }
         };
-        $issuer = new JwtIdTokenIssuer($this->jwts->documents, new PublicSubjectIdentifierResolver(), $provider, Algorithms::all());
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, Subjects::publicKind(), $provider, Algorithms::all());
         $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
             'the-code',
             $this->client,
@@ -373,7 +373,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         // Given
         $issuer = new JwtIdTokenIssuer(
             $this->jwts->documents,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
             new StandardClaimsProvider(),
             Algorithms::all(),
             new DateInterval('PT1H'),
@@ -393,7 +393,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         // Given
         $issuer = new JwtIdTokenIssuer(
             $this->jwts->documents,
-            new PublicSubjectIdentifierResolver(),
+            Subjects::publicKind(),
             new StandardClaimsProvider(),
             Algorithms::all(),
             new DateInterval('PT1H'),

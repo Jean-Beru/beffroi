@@ -45,6 +45,7 @@ use Heidi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Heidi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 /**
@@ -761,7 +762,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
             Grants::servedWithCiba(),
             RequestObjects::resolver($this->clients, $this->clock),
             new SignedBackchannelRequest($this->replays),
-            new UserHints([new SubjectLoginHint($this->users)]),
+            new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]),
             $this->records,
             Secrets::drawer(),
             new SymfonyUuidGenerator(),
