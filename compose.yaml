@@ -31,6 +31,9 @@ services:
       # Both documented in apps/op/.env; "castor start --conformance" sets them for a stack that serves the suite.
       APP_PROFILER: ${APP_PROFILER:-1}
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
+      # The name the suite's nginx answers on, set by "castor start --conformance" and by nothing else:
+      # it is what tells the entrypoint that there is a certificate to trust (docker/conformance/trust-nginx.sh).
+      CONFORMANCE_NGINX_HOST: ${CONFORMANCE_NGINX_HOST:-}
       # Worker mode, as in production (architecture §3.3, §6): the kernel, and with it the opened signing key,
       # lives for every request a worker serves; the KMS is asked once per key and per worker, not once per
       # signature. The workers restart when a source file of the application or of the packages changes,
@@ -44,7 +47,27 @@ services:
         watch /app/translations/**/*.xlf
         watch /app/.env*
         watch /src/**/*.{php,yaml,yml,twig,xlf}
+    # What this container needs from the machine around it before the image sets the application up: the
+    # certificate of the conformance suite when the suite is up. It runs in front of docker-entrypoint and
+    # ends in it, the other way round from the worker, because everything that entrypoint does for this
+    # container it only does when the command it is given starts with "frankenphp".
+    entrypoint: ["/bin/sh", "/entrypoint/entrypoint.sh"]
+    # Naming an entrypoint clears the command of the image, so the command of the development image is
+    # said again here. Without it docker-entrypoint is handed nothing, and everything it does for this
+    # container it only does when what it is handed starts with "frankenphp": the container comes up with
+    # no application in it and goes unhealthy.
+    command: ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch"]
+    # The check of the image, whose sixty seconds are what this container takes to install, migrate and
+    # build its stylesheet. Under "--conformance" the entrypoint waits for the certificate of the suite's
+    # nginx before any of that, and the suite starts after this container: the window is wide enough for
+    # that wait, or "up --wait" would call an OP that is still getting ready unhealthy. The test is
+    # repeated because a healthcheck without one is not an override of the image's, it is no check.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:2019/metrics || exit 1"]
+      start_period: 120s
     volumes:
+      - ./docker/op/entrypoint.sh:/entrypoint/entrypoint.sh:ro
+      - ./docker/conformance/trust-nginx.sh:/entrypoint/trust-nginx.sh:ro
       - ./apps/op:/app
       - ./src:/src
       - /app/var/
@@ -110,6 +133,7 @@ services:
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
+      CONFORMANCE_NGINX_HOST: ${CONFORMANCE_NGINX_HOST:-}
     # The worker is what calls a client back: a logout token (Back-Channel Logout 1.0 §2.5) and the
     # notification that a backchannel request has been answered (CIBA Core §10.2). It is therefore the
     # one process of the stack that calls out to an application of the host. "localhost" is the
@@ -120,6 +144,7 @@ services:
       - "demo.localhost:host-gateway"
     volumes:
       - ./docker/worker/entrypoint.sh:/entrypoint/entrypoint.sh:ro
+      - ./docker/conformance/trust-nginx.sh:/entrypoint/trust-nginx.sh:ro
       - ./apps/op:/app
       - ./src:/src
       - /app/var/
@@ -306,6 +331,22 @@ services:
     command: TCP-LISTEN:8443,fork,reuseaddr,bind=127.0.0.1 TCP:conformance-nginx:8443
     depends_on:
       - worker
+      - conformance-nginx
+
+  # The document behind a "sector_identifier_uri" is read by the registration endpoint, in the op container
+  # (OIDC Registration §5, issue #363), and the two modules of the Dynamic plan that judge it serve that
+  # document from the suite itself, at an address naming localhost:8443. Inside the op container that is
+  # the op container. This sidecar shares its network namespace and forwards that loopback port to nginx,
+  # as the two above do for the scripted browser and for the worker. What answers there is the self-signed
+  # certificate of nginx, which the entrypoint of the op container fetches and trusts
+  # (docker/conformance/trust-nginx.sh).
+  conformance-op-redirector:
+    image: alpine/socat:${CONFORMANCE_SOCAT_VERSION:-1.8.0.3}
+    profiles: [conformance]
+    network_mode: "service:op"
+    command: TCP-LISTEN:8443,fork,reuseaddr,bind=127.0.0.1 TCP:conformance-nginx:8443
+    depends_on:
+      - op
       - conformance-nginx
 
 volumes:
