@@ -51,6 +51,7 @@ final readonly class Endpoints implements EndpointLocatorInterface, MutualTlsEnd
             $origin . '/device',
             $origin . '/backchannel_authentication',
             $origin . '/account/approvals',
+            $origin . '/register',
         );
     }
 }

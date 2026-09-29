@@ -274,7 +274,6 @@ final class RegisteredClientFlowTest extends BrowserTestCase
             'redirect_uris' => [self::REDIRECT_URI],
             'token_endpoint_auth_method' => $method,
             'scope' => 'openid profile',
-            'requires_consent' => false,
         ], $secret);
     }
 
@@ -292,6 +291,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
                 self::tenant(),
                 self::CLIENT_ID,
                 $members,
+                [],
                 $secret,
                 self::now(),
             ));
@@ -328,13 +328,18 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * The code the registered client gets once alice signed in; it asks for no consent, so the
-     * authorization endpoint answers the moment she is known.
+     * The code the registered client gets once alice signed in and allowed. A client that registered
+     * itself asks for a consent like any other: the exemption of architecture §7 is a member only a
+     * deployment writes, and a registration that sent it would have been refused.
      */
     private function codeAllowedByAlice(): string
     {
         $this->signIn(self::user('alice'));
         $this->browser->request('GET', '/authorize', self::parameters());
+        $interaction = self::redirectedInteraction($this->browser->getResponse());
+        $this->browser->submit($this->browser->request('GET', '/consent', [
+            'interaction' => $interaction,
+        ])->selectButton('Allow')->form());
 
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
     }

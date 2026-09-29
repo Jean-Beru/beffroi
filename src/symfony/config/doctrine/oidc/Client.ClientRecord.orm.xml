@@ -18,6 +18,13 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
+        <!-- What the registration policy of the tenant wrote on this registration (decision 0017), beside what the client sent and never among it: the two would otherwise be one column a client could write half of. Its default, in the database, is what a client registered before the column existed carried: nothing written on it. -->
+        <field name="assigned" type="json" column="assigned_metadata">
+            <options>
+                <option name="jsonb">true</option>
+                <option name="default">{}</option>
+            </options>
+        </field>
         <field name="secret" type="heidi_client_secret" column="secret" nullable="true">
             <options>
                 <option name="jsonb">true</option>

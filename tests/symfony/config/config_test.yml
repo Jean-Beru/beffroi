@@ -64,7 +64,7 @@ security:
             id: Heidi\Bundle\Security\IdentityUserProvider
     firewalls:
         heidi_protocol:
-            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication)$
+            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register)$
             security: false
         heidi_interaction:
             lazy: true
@@ -130,6 +130,12 @@ parameters:
     env(HEIDI_TEST_CLIENT_BUDGET): 100000
     env(HEIDI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(HEIDI_TEST_KMS_KEY_ID): signing
+    # What authorises a registration on the tenant of the tests (decision 0009): a tenant that registers
+    # nobody is one the variable is emptied for, which is the closed default of any deployment.
+    env(HEIDI_TEST_REGISTRATION_MODE): initial_access_token
+    # Decision 0017: the named exception a registration policy may carry, off for every test but the one
+    # that plays a tenant carrying it, as the conformance tenant will.
+    env(HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION): 'false'
 
 # The KMS clients of an application, where every application declares them: the bundle seals with the one
 # "heidi.keys.kms" names and builds none itself. One client here, whose DSN the environment gives, so that
@@ -156,6 +162,11 @@ heidi:
         jwks_max_age: 120
     webauthn:
         metadata_storage: '%kernel.cache_dir%/webauthn'
+    # RFC 7591, decision 0009: the tenant of the tests registers the clients that present an initial
+    # access token it issued. A test that wants a closed tenant empties the variable.
+    client_registration:
+        mode: '%env(HEIDI_TEST_REGISTRATION_MODE)%'
+        exempt_confidential_clients_from_pkce: '%env(bool:HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION)%'
     # Reaching a user through the push service of a browser they signed in with (RFC 8030): naming a
     # subject is what wires it, here as in any deployment (architecture §5.6).
     web_push:
@@ -464,6 +475,9 @@ services:
         public: true
     test.heidi.client_authenticator:
         alias: Heidi\Oidc\Application\Client\ClientAuthenticator
+        public: true
+    test.heidi.initial_access_tokens:
+        alias: Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface
         public: true
     test.heidi.password_hasher:
         alias: Heidi\Core\Port\PasswordHasherInterface

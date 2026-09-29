@@ -10,6 +10,7 @@ use Heidi\Oidc\Application\Client\ClientMetadataReader;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
+use Heidi\Oidc\Domain\Client\Metadata\AssignedMembers;
 use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
 use Heidi\Oidc\Domain\Client\Metadata\RegisteredMembers;
 use Heidi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
@@ -23,8 +24,10 @@ use Heidi\Oidc\Port\ClientStoreInterface;
  *
  * A row keeps the metadata as the client registered it, so it is read back by the reader every registration
  * goes through, behind the defaults of RFC 7591 §2 and never those of a deployment: what the client did not
- * ask for is what the specification says it gets. The secret is the one thing the metadata does not carry:
- * the provider assigned it, and the row says by holding one that the registration declares one.
+ * ask for is what the specification says it gets. Beside it the row keeps what the registration policy of
+ * the tenant wrote on that registration (decision 0017), read in front of it. The secret is the one thing
+ * neither carries: the provider assigned it, and the row says by holding one that the registration
+ * declares one.
  *
  * @extends DoctrineRepository<ClientRecord>
  */
@@ -80,12 +83,21 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
      * The metadata read as a declaration is read, strictly and by the same reader: a member this
      * provider does not understand is refused here as it is there, so a row written by a version that
      * read more than this one says so instead of serving a client nobody can account for.
+     *
+     * What the registration policy of the tenant wrote is read in front of what the client sent
+     * (decision 0017), from the row and never from the policy: a policy is read where a registration is
+     * written, at the creation of RFC 7591 §3.1 and at the replacement of RFC 7592 §2.2, and never at
+     * the authorization request that looks this client up.
      */
     private function registrationOf(ClientRecord $record): ClientRegistration
     {
         return $this->reader->read(
             $record->clientId,
-            new ClientMetadata([new RegisteredMembers($record->metadata), new SpecifiedDefaults()]),
+            new ClientMetadata([
+                new AssignedMembers($record->assigned),
+                new RegisteredMembers($record->metadata),
+                new SpecifiedDefaults(),
+            ]),
             $record->secret !== null,
         );
     }

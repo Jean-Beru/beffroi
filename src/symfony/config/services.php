@@ -20,6 +20,7 @@ use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineClientRepository;
+use Heidi\Bundle\Doctrine\Repository\DoctrineInitialAccessTokenRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
 use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
@@ -234,6 +235,7 @@ use Heidi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
 use Heidi\Oidc\Application\Client\Method\TlsClientAuth;
 use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
 use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClientRegistration;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
@@ -354,6 +356,15 @@ use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Oidc\Port\ServedTokenSchemesInterface;
 use Heidi\Oidc\Port\RegisteredResourcesInterface;
 use Heidi\Oidc\Port\ClientStoreInterface;
+use Heidi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
+use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
+use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
+use Heidi\Oidc\Application\Scope\OfferedScopes;
+use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use Heidi\Oidc\Port\ClientRegistrationPolicyInterface;
+use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Heidi\Oidc\Port\OfferedScopesInterface;
 use Heidi\Oidc\Port\RegisteredScopesInterface;
 use Heidi\Oidc\Port\RegisteredAccessTokenShapesInterface;
 use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
@@ -849,6 +860,22 @@ return static function (ContainerConfigurator $container): void {
     // out and looked up before it is served
     $services->alias(ClientStoreInterface::class, DoctrineClientRepository::class);
     $services->set(ClientIdentifierDrawer::class);
+    // RFC 7591, decision 0009: what a tenant does with a client that registers itself. Closed is the
+    // default and closed is the absence of a policy, so a deployment that writes nothing has no
+    // registration endpoint, in its document as on the wire.
+    $services->set(ConfigurationClientRegistrationPolicy::class);
+    $services->alias(ClientRegistrationPolicyInterface::class, ConfigurationClientRegistrationPolicy::class);
+    // what authorises a registration is a class per mode, tagged, and the policy of a tenant names one of
+    // them: the mode of decision 0009 built first is the initial access token of RFC 7591 §1.2, and the
+    // open and attested ones are a class added here and nothing edited
+    $services->set(DoctrineInitialAccessTokenRepository::class);
+    $services->alias(InitialAccessTokenRepositoryInterface::class, DoctrineInitialAccessTokenRepository::class);
+    $services->set(InitialAccessTokenAuthorization::class)->tag('heidi.oidc.registration_mode');
+    $services->set(RegistrationAuthorizations::class)->args([tagged_iterator('heidi.oidc.registration_mode')]);
+    // what a client registering itself is held to beyond the wiring: the scopes its tenant hands out
+    // tokens for, which are the ones its document announces (issue #278)
+    $services->set(RegistrationHeldToTheTenant::class);
+    $services->set(ClientRegistrationHandler::class);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).
@@ -947,6 +974,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(StandardClaimsProvider::class)->tag('heidi.oidc.claims_provider');
     $services->set(ServedClaims::class)->args([tagged_iterator('heidi.oidc.claims_provider')]);
     $services->alias(ClaimsProviderInterface::class, ServedClaims::class);
+    // every scope the tenant hands out tokens for, assembled once: what the document announces and what a
+    // registration is held to are one set, and not two places that must agree (issues #278, #336)
+    $services->set(OfferedScopes::class);
+    $services->alias(OfferedScopesInterface::class, OfferedScopes::class);
 
     // The module: authorization endpoint, the pushed request the browser may come back with, and the
     // request object a client signs (RFC 9101), read with the very reader and verifier a client
@@ -1078,6 +1109,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AnnouncedAlgorithms::class);
     $services->set(ProviderIdentity::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedScopes::class)->tag('heidi.oidc.metadata');
+    $services->set(AnnouncedClientRegistration::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedResponses::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedGrants::class)->tag('heidi.oidc.metadata');
     $services->set(AnnouncedAuthenticationContext::class)->tag('heidi.oidc.metadata');

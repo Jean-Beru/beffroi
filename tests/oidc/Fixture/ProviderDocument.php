@@ -28,7 +28,10 @@ use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedPushedAuthorization;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedRequestObjects;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedRevocation;
+use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClientRegistration;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
+use Heidi\Oidc\Application\Scope\OfferedScopes;
+use Heidi\Oidc\Port\ClientRegistrationPolicyInterface;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
 use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
 use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
@@ -74,6 +77,7 @@ final class ProviderDocument
         ?ContentEncryptionAlgorithmsInterface $contentEncryption = null,
         ?iterable $grants = null,
         int $maxAge = 3600,
+        ?ClientRegistrationPolicyInterface $registrationPolicy = null,
     ): DiscoveryHandler {
         $endpoints ??= new Endpoints();
         $mutualTlsEndpoints ??= $endpoints instanceof MutualTlsEndpointLocatorInterface ? $endpoints : new Endpoints();
@@ -95,7 +99,7 @@ final class ProviderDocument
 
         return new DiscoveryHandler([
             new ProviderIdentity($endpoints),
-            new AnnouncedScopes($claims, $grantTypes, $registeredScopes),
+            new AnnouncedScopes(new OfferedScopes($claims, $grantTypes, $registeredScopes)),
             new AnnouncedResponses($responseModes),
             new AnnouncedGrants($grantTypes),
             new AnnouncedAuthenticationContext($provable, new PublicSubjectIdentifierResolver()),
@@ -114,6 +118,7 @@ final class ProviderDocument
             new AnnouncedDpop($algorithms),
             new AnnouncedSignedAuthorizationResponse($responseModes, $algorithms),
             new AnnouncedMutualTlsEndpoints($mutualTlsEndpoints),
+            new AnnouncedClientRegistration($endpoints, $registrationPolicy ?? RegistrationPolicies::closed()),
         ], $maxAge);
     }
 
@@ -138,6 +143,7 @@ final class ProviderDocument
         ?ContentEncryptionAlgorithmsInterface $contentEncryption = null,
         ?iterable $grants = null,
         int $maxAge = 3600,
+        ?ClientRegistrationPolicyInterface $registrationPolicy = null,
     ): array {
         return self::handler(
             $endpoints,
@@ -155,6 +161,7 @@ final class ProviderDocument
             $contentEncryption,
             $grants,
             $maxAge,
+            $registrationPolicy,
         )
             ->handle(Fixtures::tenant())
             ->toArray();

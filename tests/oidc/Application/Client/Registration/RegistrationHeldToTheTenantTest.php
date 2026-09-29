@@ -1,0 +1,96 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Oidc\Tests\Application\Client\Registration;
+
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
+use Heidi\Oidc\Application\Client\RegisteredClients;
+use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
+use Heidi\Oidc\Application\Scope\OfferedScopes;
+use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Heidi\Oidc\Exception\InvalidClientMetadataException;
+use Heidi\Oidc\Tests\Fixture\Grants;
+use Heidi\Oidc\Tests\Fixture\Registrations;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Decision 0009: a client that registers itself gets nothing a declared client does not get. What the
+ * wiring does not already say is what the tenant hands out tokens for, which is what its document
+ * announces (issue #278).
+ */
+final class RegistrationHeldToTheTenantTest extends TestCase
+{
+    #[Test]
+    public function aScopeTheTenantOffersHolds(): void
+    {
+        // Given
+        $metadata = Registrations::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'scope' => 'openid profile',
+        ]);
+        $registration = Registrations::reader()->read('drawn-identifier', $metadata, true);
+
+        // When
+        $this->offer()->assertHolds(Fixtures::tenant(), $registration, $metadata);
+
+        // Then
+        static::assertSame(['openid', 'profile'], $registration->allowedScopes->values());
+    }
+
+    /**
+     * A scope no claims provider serves and no client of the tenant registered does not exist for that
+     * tenant: a client that registers itself cannot write it into the document by asking for it.
+     */
+    #[Test]
+    public function aScopeTheTenantDoesNotHandOutTokensForIsRefused(): void
+    {
+        // Given
+        $metadata = Registrations::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'scope' => 'openid billing.read',
+        ]);
+        $registration = Registrations::reader()->read('drawn-identifier', $metadata, true);
+
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIs('The client "drawn-identifier" registers the scope "billing.read", which this tenant does not hand out tokens for (decision 0009).');
+
+        // When
+        $this->offer()->assertHolds(Fixtures::tenant(), $registration, $metadata);
+    }
+
+    /**
+     * The refusal names the member and where it came from, as every refusal of a registration does.
+     */
+    #[Test]
+    public function theRefusalNamesTheMemberAndItsSource(): void
+    {
+        // Given
+        $metadata = Registrations::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'scope' => 'openid billing.read',
+        ]);
+        $registration = Registrations::reader()->read('drawn-identifier', $metadata, true);
+
+        // When
+        try {
+            $this->offer()->assertHolds(Fixtures::tenant(), $registration, $metadata);
+            static::fail('The tenant hands out no token for that scope.');
+        } catch (InvalidClientMetadataException $exception) {
+            // Then
+            static::assertSame('invalid_client_metadata', $exception->error);
+            static::assertSame('scope', $exception->member);
+            static::assertSame('the registration the client sent', $exception->source);
+        }
+    }
+
+    private function offer(): RegistrationHeldToTheTenant
+    {
+        return new RegistrationHeldToTheTenant(
+            new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([new InMemoryClientRepository()])),
+        );
+    }
+}

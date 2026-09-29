@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Configuration;
 
 use DateInterval;
 use function is_array;
+use function is_bool;
 use function is_float;
 use function is_int;
 use function is_string;
@@ -67,6 +68,21 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
         $value = $section[$key] ?? null;
         if (! is_int($value) && ! is_string($value)) {
             throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a number.', $key));
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $section
+     *
+     * @return bool|string a flag, or the environment placeholder the container resolves into one
+     */
+    protected static function boolean(array $section, string $key): bool|string
+    {
+        $value = $section[$key] ?? null;
+        if (! is_bool($value) && ! is_string($value)) {
+            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be true or false.', $key));
         }
 
         return $value;
