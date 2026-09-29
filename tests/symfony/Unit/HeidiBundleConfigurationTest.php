@@ -108,6 +108,7 @@ final class HeidiBundleConfigurationTest extends TestCase
                 'statement_issuers' => [],
                 'statement_max_lifetime' => ClientRegistrationSection::DEFAULT_STATEMENT_MAX_LIFETIME,
                 'statement_leeway' => ClientRegistrationSection::DEFAULT_STATEMENT_LEEWAY,
+                'default_scope' => null,
                 'exempt_confidential_clients_from_pkce' => false,
             ],
             $config['client_registration'],

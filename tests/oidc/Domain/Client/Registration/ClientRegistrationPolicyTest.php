@@ -6,7 +6,10 @@ namespace Heidi\Oidc\Tests\Domain\Client\Registration;
 
 use DateInterval;
 use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
+use Heidi\Oidc\Domain\Client\Metadata\RegisteredMembers;
 use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Exception\InvalidArgumentException;
 use Heidi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
@@ -43,7 +46,7 @@ final class ClientRegistrationPolicyTest extends TestCase
         $policy = new ClientRegistrationPolicy('a-mode', true);
 
         // When
-        $members = $policy->membersWrittenOn(Methods::clientSecretBasic());
+        $members = $policy->membersWrittenOn(Methods::clientSecretBasic(), self::naming([]));
 
         // Then
         static::assertSame(
@@ -64,7 +67,7 @@ final class ClientRegistrationPolicyTest extends TestCase
         $policy = new ClientRegistrationPolicy('a-mode', true);
 
         // When
-        $members = $policy->membersWrittenOn(Methods::none());
+        $members = $policy->membersWrittenOn(Methods::none(), self::naming([]));
 
         // Then
         static::assertSame([], $members);
@@ -80,10 +83,92 @@ final class ClientRegistrationPolicyTest extends TestCase
         $policy = new ClientRegistrationPolicy('a-mode');
 
         // When
-        $members = $policy->membersWrittenOn(Methods::clientSecretBasic());
+        $members = $policy->membersWrittenOn(Methods::clientSecretBasic(), self::naming([]));
 
         // Then
         static::assertSame([], $members);
+    }
+
+    /**
+     * RFC 7591 §2: a registration that names no scope is registered with the set the tenant wrote, which is
+     * the one thing that makes such a client worth as much as a declared one of the same tenant.
+     */
+    #[Test]
+    public function itWritesTheDefaultScopesOnARegistrationThatNamesNone(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode', defaultScopes: Scopes::parse('openid offline_access'));
+
+        // When
+        $written = $policy->membersWrittenOn(Methods::clientSecretBasic(), self::naming([]));
+
+        // Then
+        static::assertSame(
+            [
+                'scope' => 'openid offline_access',
+            ],
+            $written,
+        );
+    }
+
+    /**
+     * A client that named its own scopes keeps them: what the policy writes is what the registration did
+     * not say, and the row keeps what the policy wrote in front of what the client sent.
+     */
+    #[Test]
+    public function itWritesNoScopeOnARegistrationThatNamesItsOwn(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode', defaultScopes: Scopes::parse('openid offline_access'));
+
+        // When
+        $written = $policy->membersWrittenOn(Methods::clientSecretBasic(), self::naming([
+            'scope' => 'openid',
+        ]));
+
+        // Then
+        static::assertSame([], $written);
+    }
+
+    /**
+     * A policy carries both of the things it may write, and writes both on the same registration: the
+     * exemption of decision 0017 and the default set of scopes of RFC 7591 §2 answer two questions, and
+     * neither is read in place of the other.
+     */
+    #[Test]
+    public function itWritesEverythingItCarriesOnTheSameRegistration(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode', true, defaultScopes: Scopes::parse('openid offline_access'));
+
+        // When
+        $written = $policy->membersWrittenOn(Methods::clientSecretBasic(), self::naming([]));
+
+        // Then
+        static::assertSame(
+            [
+                'scope' => 'openid offline_access',
+                'requires_pkce' => false,
+            ],
+            $written,
+        );
+    }
+
+    /**
+     * A tenant that writes no default set of scopes writes none: its registrations take the "openid" the
+     * registration itself takes when nobody says otherwise.
+     */
+    #[Test]
+    public function aPolicyThatWritesNoDefaultScopesWritesNone(): void
+    {
+        // Given
+        $policy = new ClientRegistrationPolicy('a-mode');
+
+        // When
+        $written = $policy->membersWrittenOn(Methods::clientSecretBasic(), self::naming([]));
+
+        // Then
+        static::assertSame([], $written);
     }
 
     /**
@@ -131,5 +216,15 @@ final class ClientRegistrationPolicyTest extends TestCase
         // Then
         static::assertEquals(Fixtures::now()->modify('-90 days'), $retention->usedSince);
         static::assertEquals(Fixtures::now()->modify('-7 days'), $retention->registeredSince);
+    }
+
+    /**
+     * What a registration names of itself, which is what the policy leaves alone.
+     *
+     * @param array<string, mixed> $members
+     */
+    private static function naming(array $members): ClientMetadata
+    {
+        return new ClientMetadata([new RegisteredMembers($members)]);
     }
 }
