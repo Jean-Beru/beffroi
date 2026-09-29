@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Fixture;
 
 use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Heidi\Oidc\Port\ClientRegistrationPolicyInterface;
 
@@ -22,5 +23,10 @@ final class RegistrationPolicies
     public static function controlled(bool $exemptsConfidentialClientsFromPkce = false): ClientRegistrationPolicyInterface
     {
         return new ConfigurationClientRegistrationPolicy('acme', InitialAccessTokenAuthorization::MODE, $exemptsConfidentialClientsFromPkce);
+    }
+
+    public static function open(bool $exemptsConfidentialClientsFromPkce = false): ClientRegistrationPolicyInterface
+    {
+        return new ConfigurationClientRegistrationPolicy('acme', OpenRegistrationAuthorization::MODE, $exemptsConfidentialClientsFromPkce);
     }
 }

@@ -38,7 +38,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->addDefaultsIfNotSet()
             ->children()
             ->scalarNode('mode')
-            ->info('What authorises a registration, by the name the class that is that mode gives itself; "initial_access_token" is the one this provider is wired with. Left out, the tenant has no registration endpoint at all: it is not a mode of refusing, it is the absence of the endpoint.')
+            ->info('What authorises a registration, by the name the class that is that mode gives itself. This provider is wired with "initial_access_token", a credential the tenant issues, names, limits in number and duration and revokes (RFC 7591 section 1.2), and with "open", which registers whoever asks with no credential at all (RFC 7591 section 1.3) and is written by a tenant that has no real user. Left out, the tenant has no registration endpoint at all: it is not a mode of refusing, it is the absence of the endpoint. It is named per tenant and nothing here opens a mode for more than the tenant that names it.')
             ->defaultNull()
             ->end()
             ->integerNode('keep_a_client_unused_for')

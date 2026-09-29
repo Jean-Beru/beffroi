@@ -10,6 +10,7 @@ use Heidi\Oidc\Application\Client\ClientIdentifierDrawer;
 use Heidi\Oidc\Application\Client\RegisteredClients;
 use Heidi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
 use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientStore;
@@ -224,6 +225,23 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
+     * RFC 7591 §1.3, decision 0009: the request the controlled mode refuses is the request the open mode
+     * registers. The handler runs the mode the policy of the tenant names, and reads the same metadata
+     * behind whichever of them ran.
+     */
+    #[Test]
+    public function aTenantWhosePolicyIsOpenRegistersARequestThatPresentsNothing(): void
+    {
+        // When
+        $response = $this->handle(new RegistrationRequest([
+            'redirect_uris' => ['https://rp.example/cb'],
+        ]), RegistrationPolicies::open());
+
+        // Then
+        static::assertSame(['https://rp.example/cb'], $response->parameters()['redirect_uris']);
+    }
+
+    /**
      * RFC 7591 §1.2: a token worth one registration registers one, and what it was worth is spent in the
      * request it authorised, whether the registration that followed it was written or refused on its
      * metadata.
@@ -290,7 +308,7 @@ final class ClientRegistrationHandlerTest extends TestCase
 
         return new ClientRegistrationHandler(
             $policies ?? RegistrationPolicies::controlled(),
-            new RegistrationAuthorizations([new InitialAccessTokenAuthorization($this->tokens, $clock)]),
+            new RegistrationAuthorizations([new InitialAccessTokenAuthorization($this->tokens, $clock), new OpenRegistrationAuthorization()]),
             Registrations::underThePolicy(),
             new ClientIdentifierDrawer(Secrets::drawer(), new RegisteredClients([new InMemoryClientRepository()])),
             Secrets::drawer(),
