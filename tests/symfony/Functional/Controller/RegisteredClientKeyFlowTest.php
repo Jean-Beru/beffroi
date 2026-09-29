@@ -124,11 +124,15 @@ final class RegisteredClientKeyFlowTest extends BrowserTestCase
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_AUTHORIZATION' => 'Bearer ' . self::TOKEN,
             ],
-            content: json_encode($published + [
-                'redirect_uris' => [self::REDIRECT_URI],
-                'token_endpoint_auth_method' => 'private_key_jwt',
-                'scope' => 'openid profile',
-            ], JSON_THROW_ON_ERROR),
+            content: json_encode(
+                $published
+                + [
+                    'redirect_uris' => [self::REDIRECT_URI],
+                    'token_endpoint_auth_method' => 'private_key_jwt',
+                    'scope' => 'openid profile',
+                ],
+                JSON_THROW_ON_ERROR,
+            ),
         );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_CREATED, $response->getStatusCode(), self::string($response->getContent()));
