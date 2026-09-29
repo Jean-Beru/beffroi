@@ -292,6 +292,15 @@ final class ClientRegistrationTest extends BrowserTestCase
             'requires_consent',
         ];
 
+        yield 'a page of the client served in plain HTTP (OIDC Registration section 2)' => [
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+                'logo_uri' => 'http://registered.test/logo.png',
+            ],
+            'invalid_client_metadata',
+            'http://registered.test/logo.png',
+        ];
+
         yield 'a redirection URI with a fragment' => [
             [
                 'redirect_uris' => ['https://registered.test/callback#here'],

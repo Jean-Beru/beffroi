@@ -74,6 +74,12 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected const string CODE_VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 
+    /**
+     * Architecture §5.2: the Content-Security-Policy every response of the interaction plane carries
+     * unless the page builds one of its own.
+     */
+    protected const string INTERACTION_POLICY = "frame-ancestors 'none'";
+
     protected KernelBrowser $browser;
 
     protected function setUp(): void
@@ -388,11 +394,15 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     /**
      * Architecture §5.2: what every response of the interaction plane carries.
+     *
+     * @param string $contentSecurityPolicy what this page carries over the policy of the plane, which a
+     *                                      page whose policy is part of its answer names in full (the
+     *                                      consent page, ConsentPage)
      */
-    protected static function assertInteractionHeaders(Response $response): void
+    protected static function assertInteractionHeaders(Response $response, string $contentSecurityPolicy = self::INTERACTION_POLICY): void
     {
         static::assertSame('DENY', $response->headers->get('X-Frame-Options'));
-        static::assertSame("frame-ancestors 'none'", $response->headers->get('Content-Security-Policy'));
+        static::assertSame($contentSecurityPolicy, $response->headers->get('Content-Security-Policy'));
         static::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
     }
