@@ -11,8 +11,10 @@ use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
 use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Heidi\Oidc\Port\IssuedInitialAccessTokensInterface;
 use function is_numeric;
 use function sprintf;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The initial access tokens of a tenant, in heidi_initial_access_token (RFC 7591 §1.2). The value is
@@ -21,7 +23,9 @@ use function sprintf;
  *
  * @extends DoctrineRepository<InitialAccessToken>
  */
-final readonly class DoctrineInitialAccessTokenRepository extends DoctrineRepository implements InitialAccessTokenRepositoryInterface
+final readonly class DoctrineInitialAccessTokenRepository extends DoctrineRepository implements
+    InitialAccessTokenRepositoryInterface,
+    IssuedInitialAccessTokensInterface
 {
     public function __construct(EntityManagers $managers)
     {
@@ -72,6 +76,28 @@ final readonly class DoctrineInitialAccessTokenRepository extends DoctrineReposi
         $token->recordRegistrationsServed($this->registrationsServed($token, $metadata->getTableName(), $served, $metadata->getColumnName('digest')));
 
         return $claimed;
+    }
+
+    public function find(Tenant $tenant, Uuid $id): ?InitialAccessToken
+    {
+        return $this->repository()->findOneBy([
+            'tenant' => $tenant,
+            'id' => $id,
+        ]);
+    }
+
+    /**
+     * The most recently issued first, which is the order whoever issued one looks for it in.
+     *
+     * @return list<InitialAccessToken>
+     */
+    public function issuedIn(Tenant $tenant): iterable
+    {
+        return $this->repository()->findBy([
+            'tenant' => $tenant,
+        ], [
+            'issuedAt' => 'DESC',
+        ]);
     }
 
     public function save(InitialAccessToken $token): void

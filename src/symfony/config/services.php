@@ -364,6 +364,9 @@ use Heidi\Oidc\Port\RegisteredResourcesInterface;
 use Heidi\Oidc\Port\ClientStoreInterface;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
 use Heidi\Oidc\Application\Client\Registration\ClientUseRecording;
+use Heidi\Oidc\Application\Client\ClientInventory;
+use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
+use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenRevocation;
 use Heidi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
 use Heidi\Oidc\Application\Client\Registration\UnusedClientRemoval;
 use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReader;
@@ -380,7 +383,9 @@ use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
 use Heidi\Oidc\Application\Scope\OfferedScopes;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Heidi\Oidc\Port\ClientRegistrationPolicyInterface;
+use Heidi\Oidc\Port\ClientInventoryInterface;
 use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Heidi\Oidc\Port\IssuedInitialAccessTokensInterface;
 use Heidi\Oidc\Port\OfferedScopesInterface;
 use Heidi\Oidc\Port\RegisteredScopesInterface;
 use Heidi\Oidc\Port\RegisteredAccessTokenShapesInterface;
@@ -866,10 +871,10 @@ return static function (ContainerConfigurator $container): void {
     // implements ClientSourceInterface and a line here, and nothing downstream learns there are several.
     // What a question about the set of clients of a tenant means is read once, in RegisteredClients: a
     // source says what it holds and never what the set of them makes true (issue #98).
-    $services->set(ConfigurationClientRepository::class)->tag('heidi.oidc.client_source');
+    $services->set(ConfigurationClientRepository::class)->tag('heidi.oidc.client_source')->tag('heidi.oidc.client_inventory');
     // the second source holds rows, so it is also the one thing the removal of the clients nobody uses
     // any more asks (decision 0009); the first holds declarations and is asked nothing
-    $services->set(DoctrineClientRepository::class)->tag('heidi.oidc.client_source')->tag('heidi.oidc.unused_clients');
+    $services->set(DoctrineClientRepository::class)->tag('heidi.oidc.client_source')->tag('heidi.oidc.client_inventory')->tag('heidi.oidc.unused_clients');
     $services->set(RegisteredClients::class)->args([tagged_iterator('heidi.oidc.client_source')]);
     $services->alias(ClientRepositoryInterface::class, RegisteredClients::class);
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
@@ -881,6 +886,11 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(RegisteredScopesInterface::class, RegisteredClients::class);
     $services->alias(RegisteredAccessTokenShapesInterface::class, RegisteredClients::class);
     $services->alias(UnsignedRequestObjectsInterface::class, RegisteredClients::class);
+    // decision 0009: the same sources read for a person rather than for a request, which is what the
+    // console lists. The two callers are disjoint, so the ports are: what resolves a client for a request
+    // answers one identifier and knows no dates, and what lists them answers every client of a tenant
+    $services->set(ClientInventory::class)->args([tagged_iterator('heidi.oidc.client_inventory')]);
+    $services->alias(ClientInventoryInterface::class, ClientInventory::class);
     // RFC 7591 §3.2.1: where a client the provider registers is written, which is not the port one is
     // looked up through, and the identifier it is given, drawn like every other value this provider hands
     // out and looked up before it is served
@@ -898,6 +908,12 @@ return static function (ContainerConfigurator $container): void {
     // policy a deployment that writes nothing has.
     $services->set(DoctrineInitialAccessTokenRepository::class);
     $services->alias(InitialAccessTokenRepositoryInterface::class, DoctrineInitialAccessTokenRepository::class);
+    // and the same rows read by whoever issued them rather than by the endpoint: which tokens exist,
+    // what each has served, and taking one back (decision 0009). A value is in neither: the rows hold
+    // digests, so what issues one is the only thing that ever sees it
+    $services->alias(IssuedInitialAccessTokensInterface::class, DoctrineInitialAccessTokenRepository::class);
+    $services->set(InitialAccessTokenIssuance::class);
+    $services->set(InitialAccessTokenRevocation::class);
     $services->set(InitialAccessTokenAuthorization::class)->tag('heidi.oidc.registration_mode');
     $services->set(OpenRegistrationAuthorization::class)->tag('heidi.oidc.registration_mode');
     $services->set(RegistrationAuthorizations::class)->args([tagged_iterator('heidi.oidc.registration_mode')]);

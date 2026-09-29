@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Command;
+
+use function array_map;
+use DateTimeImmutable;
+use Heidi\Oidc\Application\Client\ClientInventory;
+use Heidi\Oidc\Domain\Client\InventoriedClient;
+use function sprintf;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Style\SymfonyStyle;
+
+/**
+ * Every client of the tenant, whatever holds it (decision 0009): the ones the deployment declared and the
+ * ones that registered themselves, each saying which. Reads, writes nothing.
+ *
+ * What it shows is what is wired: a source of clients added to the deployment is in this list by being
+ * wired, and this holds no list of how many there are (`ClientInventory`).
+ */
+#[AsCommand(
+    name: self::NAME,
+    description: 'List the clients of the tenant: where each came from, when it was registered and when it was last used.',
+)]
+final readonly class ClientListCommand
+{
+    public const string NAME = 'heidi:client:list';
+
+    public function __construct(
+        private ConfiguredTenant $tenant,
+        private ClientInventory $clients,
+    ) {
+    }
+
+    public function __invoke(SymfonyStyle $io): int
+    {
+        $tenant = $this->tenant->orTold($io);
+        if ($tenant === null) {
+            return Command::FAILURE;
+        }
+
+        $clients = [...$this->clients->inventoryIn($tenant)];
+        if ($clients === []) {
+            $io->text(sprintf('The tenant "%s" has no client.', $tenant->slug));
+
+            return Command::SUCCESS;
+        }
+
+        $io->table(
+            ['Client id', 'Name', 'Source', 'Registered', 'Last used'],
+            array_map(static fn (InventoriedClient $client): array => [
+                $client->clientId,
+                $client->clientName ?? '',
+                $client->source,
+                self::date($client->registeredAt),
+                self::date($client->lastUsedAt),
+            ], $clients),
+        );
+
+        return Command::SUCCESS;
+    }
+
+    private static function date(?DateTimeImmutable $date): string
+    {
+        return $date?->format('Y-m-d H:i:s') ?? '';
+    }
+}
