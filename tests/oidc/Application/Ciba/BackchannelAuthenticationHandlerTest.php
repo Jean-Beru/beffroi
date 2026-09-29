@@ -17,7 +17,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Heidi\Oidc\Application\Ciba\SignedBackchannelRequest;
-use Heidi\Oidc\Application\Ciba\Hint\SubjectLoginHint;
+use Heidi\Oidc\Application\Hint\SubjectLoginHint;
 use Heidi\Oidc\Application\Ciba\UserHints;
 use Heidi\Oidc\Application\Client\ClientAuthenticator;
 use Heidi\Oidc\Bridge\InMemory\InMemoryBackchannelAuthenticationRecordRepository;

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Configuration;
 
 use Heidi\Bundle\Http\ClientNotificationSender;
-use Heidi\Oidc\Application\Ciba\Hint\SubjectLoginHint;
-use Heidi\Oidc\Application\Ciba\Hint\UsernameLoginHint;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
@@ -16,28 +14,10 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
 final readonly class BackchannelAuthenticationSection extends ConfigurationSection
 {
     /**
-     * CIBA Core §15: the subject, which says who somebody is to this provider and to this client, and
-     * nowhere else.
-     */
-    public const string DEFAULT_LOGIN_HINT = 'sub';
-
-    /**
      * Seconds one call to a client notification endpoint is given, connection included. Nobody is waiting
      * on it, but a client that hangs must not hold a worker.
      */
     public const float DEFAULT_NOTIFICATION_TIMEOUT = 3.0;
-
-    /**
-     * The ways the bundle ships of reading a "login_hint", by the name a deployment picks one with. A
-     * deployment whose clients name their users some other way tags a UserHintInterface of its own and
-     * says "none" here; two things reading one parameter is a wiring with two answers and is refused.
-     *
-     * @var array<string, class-string>
-     */
-    private const array LOGIN_HINTS = [
-        'sub' => SubjectLoginHint::class,
-        'username' => UsernameLoginHint::class,
-    ];
 
     public function name(): string
     {
@@ -52,9 +32,9 @@ final readonly class BackchannelAuthenticationSection extends ConfigurationSecti
             ->addDefaultsIfNotSet()
             ->children()
             ->enumNode('login_hint')
-            ->info('What a "login_hint" names for this tenant, read one way and never searched for (CIBA Core §7.1): "sub" the subject this provider issued to that client, "username" the name the user signs in with, "none" for a deployment that tags a reader of its own. CIBA Core §15 asks for an identifier that says nothing outside this provider, which "sub" is and a username is not.')
-            ->values(['sub', 'username', 'none'])
-            ->defaultValue(self::DEFAULT_LOGIN_HINT)
+            ->info('What a "login_hint" of a backchannel authentication request names for this tenant, read one way and never searched for (CIBA Core §7.1): "sub" the subject this provider issued to that client, "username" the name the user signs in with, "none" for a deployment that tags a reader of its own. CIBA Core §15 asks for an identifier that says nothing outside this provider, which "sub" is and a username is not. These are the names the login page reads its own hint by.')
+            ->values(LoginHintReadings::names())
+            ->defaultValue(LoginHintReadings::DEFAULT)
             ->end()
             ->floatNode('client_notification_timeout')
             ->info('Seconds one call to a client notification endpoint is given, connection included (CIBA Core §10.2). A client that hangs must not hold a worker; how many times the call is tried again is the retry policy of the notifications lane, as it is for a logout token.')
@@ -69,9 +49,6 @@ final readonly class BackchannelAuthenticationSection extends ConfigurationSecti
     {
         $backchannel = $this->own($config);
         $services->get(ClientNotificationSender::class)->arg('$timeout', self::float($backchannel, 'client_notification_timeout'));
-        $hint = self::LOGIN_HINTS[self::string($backchannel, 'login_hint')] ?? null;
-        if ($hint !== null) {
-            $services->get($hint)->tag('heidi.oidc.ciba_user_hint');
-        }
+        LoginHintReadings::tag($services, self::string($backchannel, 'login_hint'), 'heidi.oidc.ciba_user_hint');
     }
 }

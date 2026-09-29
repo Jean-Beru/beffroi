@@ -14,6 +14,7 @@ use Heidi\Bundle\Http\LoginTarget;
 use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\StepUpOffer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
+use Heidi\Oidc\Application\Hint\LoginHints;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\Interaction\LoginRequired;
 use Heidi\Oidc\Domain\Interaction\LoginRequirement;
@@ -54,6 +55,7 @@ final readonly class LoginController
         private AuthenticationUtils $authentication,
         private InteractionLocale $locale,
         private LoginTarget $loginTargets,
+        private LoginHints $hints,
     ) {
     }
 
@@ -96,17 +98,23 @@ final readonly class LoginController
      * The form, for the interaction that is waiting for a login or for the page that is: what the page says
      * of a client and of what is missing, it says of the request it serves, and a login asked for by a page
      * of the provider serves none.
+     *
+     * OIDC Core §3.1.2.1: the name offered is the one the person types, so a "login_hint" is read into the
+     * user it names and the field carries that user's name; a hint that names nobody leaves the field
+     * empty rather than asking somebody to delete a "sub" they never wrote. What the browser last tried
+     * comes first, a login just refused being what the person was correcting.
      */
     private function form(?Interaction $interaction, ?LoginRequirement $requirement, ?StepUpOffer $stepUp): Response
     {
         $lastUsername = $this->authentication->getLastUsername();
+        $hinted = $interaction === null ? null : $this->hints->userNamedBy($interaction->request);
 
         return $this->pages->render('login.html.twig', [
             'interaction' => $interaction,
             'client' => $interaction?->request->client,
             'requirement' => $requirement,
             'step_up' => $stepUp,
-            'username' => $lastUsername === '' ? $interaction?->request->loginHint : $lastUsername,
+            'username' => $lastUsername === '' ? $hinted?->username : $lastUsername,
             'failed' => $this->authentication->getLastAuthenticationError() !== null,
         ]);
     }
