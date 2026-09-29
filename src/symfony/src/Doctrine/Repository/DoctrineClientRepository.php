@@ -12,10 +12,13 @@ use Heidi\Oidc\Application\Client\ClientMetadataReader;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
+use Heidi\Oidc\Domain\Client\InventoriedClient;
 use Heidi\Oidc\Domain\Client\Registration\ClientRetention;
+use Heidi\Oidc\Port\ClientInventoryInterface;
 use Heidi\Oidc\Port\ClientSourceInterface;
 use Heidi\Oidc\Port\ClientStoreInterface;
 use Heidi\Oidc\Port\UnusedClientsInterface;
+use function is_string;
 
 /**
  * The clients this provider registered itself, in heidi_client (RFC 7591 §3.2.1): a source of clients
@@ -31,8 +34,18 @@ use Heidi\Oidc\Port\UnusedClientsInterface;
  *
  * @extends DoctrineRepository<ClientRecord>
  */
-final readonly class DoctrineClientRepository extends DoctrineRepository implements ClientSourceInterface, ClientStoreInterface, UnusedClientsInterface
+final readonly class DoctrineClientRepository extends DoctrineRepository implements
+    ClientInventoryInterface,
+    ClientSourceInterface,
+    ClientStoreInterface,
+    UnusedClientsInterface
 {
+    /**
+     * What this source calls itself where a person is shown where a client came from: these are the
+     * clients that registered themselves, and one goes away when its row does.
+     */
+    public const string SOURCE = 'registration';
+
     public function __construct(
         EntityManagers $managers,
         private ClientMetadataReader $reader,
@@ -51,6 +64,25 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
     {
         foreach ($this->recordsIn($tenant) as $record) {
             yield $this->registrationOf($record);
+        }
+    }
+
+    /**
+     * Decision 0009: the two dates a client that registered itself has, read from the row and not from the
+     * registration, because neither is anything the client sent. The name is the one it registered
+     * (OIDC Registration §2), read from the members as it sent them rather than through the reader: a list
+     * of clients is a list of rows and does not need every rule of every one of them to be read again.
+     */
+    public function inventoryIn(Tenant $tenant): iterable
+    {
+        foreach ($this->recordsIn($tenant) as $record) {
+            yield new InventoriedClient(
+                self::SOURCE,
+                $record->clientId,
+                self::registeredName($record),
+                $record->issuedAt,
+                $record->lastUsedAt,
+            );
         }
     }
 
@@ -101,6 +133,17 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
         $manager = $this->manager();
         $manager->remove($record);
         $manager->flush();
+    }
+
+    /**
+     * OIDC Registration §2: what a client called itself, or null for one that registered no name. A member
+     * of another shape is a row this provider will refuse when it resolves it, and is not named here.
+     */
+    private static function registeredName(ClientRecord $record): ?string
+    {
+        $name = $record->metadata['client_name'] ?? null;
+
+        return is_string($name) && $name !== '' ? $name : null;
     }
 
     private function record(Tenant $tenant, string $clientId): ?ClientRecord
