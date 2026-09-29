@@ -189,6 +189,10 @@
         <source>error.too_many_requests</source>
         <target>Ce fournisseur a reçu trop de requêtes et n’a pas servi celle-ci. Patientez un instant, puis recommencez depuis l’application.</target>
       </trans-unit>
+      <trans-unit id="0357cea9c3" resname="error.no_login_to_begin">
+        <source>error.no_login_to_begin</source>
+        <target>Aucune application de ce fournisseur n’ouvre une connexion depuis cette page. Recommencez depuis l’application.</target>
+      </trans-unit>
       <trans-unit id="276b888c75" resname="login.passkey">
         <source>login.passkey</source>
         <target>Utiliser une passkey</target>

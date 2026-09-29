@@ -189,6 +189,10 @@
         <source>error.too_many_requests</source>
         <target>This provider has taken too many requests and did not serve this one. Wait a moment and start again from the application.</target>
       </trans-unit>
+      <trans-unit id="0357cea9c3" resname="error.no_login_to_begin">
+        <source>error.no_login_to_begin</source>
+        <target>No application of this provider begins a sign-in from here. Start again from the application.</target>
+      </trans-unit>
       <trans-unit id="276b888c75" resname="login.passkey">
         <source>login.passkey</source>
         <target>Use a passkey</target>
