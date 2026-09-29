@@ -191,6 +191,35 @@ const CONFORMANCE_FAPI_KNOWN_MODULES = [
  * and reads it again, and the suite has no other way of asking. It is named per module and not per run,
  * a plan that carries that module carrying twenty-two others the operator is asked nothing for.
  */
+/**
+ * OIDC Core §3.1, decision 0006: the Dynamic OP profile asks the discovery document for the two flows this
+ * provider refuses, and the module that reads it is the one module of the plan no amount of building
+ * closes. "OIDCCCheckDiscEndpointGrantTypesSupportedDynamic" wants "grant_types_supported" to carry
+ * "implicit" beside "authorization_code", and "OIDCCCheckDiscEndpointResponseTypesSupportedDynamic" wants
+ * "response_types_supported" to carry "id_token" and "token id_token" beside "code" (OIDCD-3), which it
+ * checks unconditionally. Both were read in the source of the suite at the tag compose.yaml pins.
+ *
+ * The first of the two passes on a document that does not carry "grant_types_supported" at all, the suite
+ * reading its absence as both being served. This provider carries it, what it announces being derived from
+ * what is wired, and dropping the member to buy half a module would say the opposite of what it serves and
+ * would leave the other check failing.
+ *
+ * It is therefore a check of the suite behind a decision this provider keeps, like the "sid" of the FAPI
+ * runs above, and the profile stays out of certification (../../docs/07-certifications.md).
+ */
+const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
+    'oidcc-discovery-endpoint-verification' => [
+        'result' => 'FAILED',
+        // The two conditions that fail, by the names the log gives them. The sentences they write after
+        // the name are the suite's own wording and are not matched: what is known is which checks fail.
+        'findings' => [
+            'FAILURE OIDCCCheckDiscEndpointResponseTypesSupportedDynamic:',
+            'FAILURE OIDCCCheckDiscEndpointGrantTypesSupportedDynamic:',
+        ],
+        'reason' => 'the Dynamic OP profile requires the implicit grant and the hybrid response types, which decision 0006 refuses; heidi#371',
+    ],
+];
+
 const CONFORMANCE_ROTATE_KEYS_BEFORE_START = [
     'oidcc-server-rotate-keys' => 'rotate',
 ];
@@ -208,10 +237,11 @@ const CONFORMANCE_DYNAMIC_SECOND_CLIENT_NAME = 'OpenID conformance suite, second
 
 /**
  * What the two runs whose clients register themselves wait on: the epic of the spike that builds them,
- * and not a list of issues measured against a run. Neither plan has been played against this provider,
- * the endpoint its clients register through having just been built, so what is missing is the spike and
- * every issue under it. The line is replaced by what the runs measure and deleted the day both pass
- * whole, which the task failing on a passing "waiting_on" run forces.
+ * and not a list of issues measured against a run. What is missing is the spike and every issue under it,
+ * which is what the first run of the two plans measured: most of their modules do not pass, and naming
+ * each red here would write the one blocker of the day many times over and be wrong the day it is
+ * lifted. The line is deleted the day both pass whole, which the task failing on a passing "waiting_on"
+ * run forces; the one module no amount of building closes is written down under "known" instead.
  */
 const CONFORMANCE_DYNAMIC_ISSUES = ['heidi#79'];
 
@@ -389,6 +419,7 @@ const CONFORMANCE_PLANS = [
         // The plan carries the key rotation module, which waits for the operator where the twenty-two
         // others wait for nobody, so the rotation is named against that module and against no other.
         'before_start' => CONFORMANCE_ROTATE_KEYS_BEFORE_START,
+        'known' => CONFORMANCE_DYNAMIC_KNOWN_MODULES,
         'waiting_on' => CONFORMANCE_DYNAMIC_ISSUES,
     ],
     // The second profile of the same spike, two modules: a client registers an "initiate_login_uri" and
