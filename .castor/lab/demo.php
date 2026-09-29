@@ -141,6 +141,10 @@ function demo(
     )]
     bool $push = false,
     #[AsOption(
+        description: 'Spike 7 (issue #345): a client this provider never saw registers itself with an initial access token the console issued (RFC 7591), signs the development user in with the credentials it was answered, reads and replaces itself at the URI it was handed and is refused a member the provider does not offer (RFC 7592), then a second client registers on another host and the two pairwise "sub" of the same user are printed side by side; the token spent buys nothing more, and the client deletes itself',
+    )]
+    bool $register = false,
+    #[AsOption(
         description: 'Nobody answers for you, and nothing of the laboratory stands in for anybody. With --ciba the request is made for the development user, in poll mode, and the run waits while you read the notification your own browser received and answer on /account/approvals yourself. With --push there is no push service and no browser of the laboratory at all: the notification goes to the browsers you subscribed, through their own push services, and the run says which of them this provider reached and when',
     )]
     bool $byHand = false,
@@ -290,6 +294,9 @@ function demo(
     }
     if ($native) {
         demo_native_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($register) {
+        demo_register_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
     }
     if ($push) {
         $registration = DEMO_CIBA_CLIENTS['poll'];
@@ -4341,4 +4348,492 @@ function demo_push_backchannel(string $endpoint, string $ca, string $clientId, s
 function demo_push_header(string $head, string $name): string
 {
     return preg_match('/^' . preg_quote($name, '/') . ':\s*(.+)$/im', $head, $matches) === 1 ? trim($matches[1]) : '';
+}
+
+/**
+ * The self-registering client of the walk below, and the mode the tenant has to be in for it to exist at
+ * all: a credential this provider issued, named, limited in number and revocable (RFC 7591 §1.2). The
+ * development tenant serves the conformance suite in "open" mode the rest of the time, so the walk asks
+ * for the mode it needs and gives it back.
+ */
+const DEMO_REGISTER_CLIENT = 'tests/demo/registration-client.php';
+
+const DEMO_REGISTER_ENV_MARKER = 'castor demo --register';
+
+const DEMO_REGISTER_MODE = 'initial_access_token';
+
+/**
+ * What the initial access token of the run is called and what it is worth: two registrations, which is the
+ * number the walk needs and therefore the number the third one is refused for.
+ */
+const DEMO_REGISTER_TOKEN_NAME = 'castor demo --register';
+
+const DEMO_REGISTER_REGISTRATIONS = 2;
+
+/**
+ * The two clients that write themselves, on two hosts. The host is the whole point of the pair: with
+ * "subject_type=pairwise" and no "sector_identifier_uri", the sector of a client is the host of its
+ * redirection URI (OIDC Core §8.1), so these two are two sectors and the same user is two subjects. Both
+ * are loopback names, which is what the provider allows plain HTTP for (RFC 8252 §7.3), and nothing ever
+ * connects to them: the walk reads the code off the redirection, as every walk of this file does.
+ */
+const DEMO_REGISTER_CLIENTS = [
+    'first' => [
+        'client_name' => 'A client that registered itself',
+        'redirect_uri' => 'http://127.0.0.1:9101/callback',
+    ],
+    'second' => [
+        'client_name' => 'Another client, another sector',
+        'redirect_uri' => 'http://second.localhost:9102/callback',
+    ],
+];
+
+/**
+ * The scopes the pair asks for, all of them announced by the tenant: a registration is held to what the
+ * provider says it serves (issue #278), so asking for these is asking for nothing of its own.
+ */
+const DEMO_REGISTER_SCOPE = 'openid profile email';
+
+/**
+ * Issue #345, the third success criterion of spike 7 played rather than asserted: a client this provider
+ * had never seen registers itself and gets exactly what a declared client gets, and exactly the same
+ * refusals.
+ *
+ * Every other client of this demonstration is a registration in apps/op/config/packages/heidi.yaml. This
+ * walk is the one that declares nothing: the console issues a credential, a program of tests/demo/ spends
+ * it, and what it is answered is what it signs a user in with. The pairwise pair is the property of the
+ * spike that a unit test proves and a walk shows: the same user, two clients, two subjects, printed side
+ * by side.
+ */
+function demo_register_check(string $issuer, string $password, string $ca): void
+{
+    io()->section('A client nobody declared registers itself, signs in, and is two subjects');
+    $verified = [];
+
+    // The mode first, and given back whatever ends the run: the tenant registers whoever asks the rest of
+    // the time, which is what the conformance plans need and what this walk must not leave behind.
+    demo_register_mode($issuer, $ca, true);
+
+    $token = demo_register_token();
+    $verified[] = [
+        'Initial access token',
+        sprintf('"%s", worth %d registrations (heidi:client:token:issue)', DEMO_REGISTER_TOKEN_NAME, DEMO_REGISTER_REGISTRATIONS),
+    ];
+
+    // Phase one: the two registrations, then one more than the credential was issued for.
+    $clients = [];
+    foreach (DEMO_REGISTER_CLIENTS as $key => $wanted) {
+        $clients[$key] = [
+            'metadata' => [
+                'client_name' => $wanted['client_name'],
+                'redirect_uris' => [$wanted['redirect_uri']],
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['authorization_code'],
+                'response_types' => ['code'],
+                'scope' => DEMO_REGISTER_SCOPE,
+                // OIDC Core §8.1: what makes the two of them two subjects of the same user
+                'subject_type' => 'pairwise',
+            ],
+        ];
+    }
+    $run = demo_register_client([
+        'action' => 'register',
+        'cafile' => $ca,
+        'registration_endpoint' => $issuer . '/register',
+        'authorization_endpoint' => $issuer . '/authorize',
+        'initial_access_token' => $token,
+        'clients' => $clients,
+        // the registration the spent credential does not buy
+        'beyond' => [
+            'client_name' => 'One registration too many',
+            'redirect_uris' => ['http://127.0.0.1:9103/callback'],
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'grant_types' => ['authorization_code'],
+            'response_types' => ['code'],
+            'scope' => DEMO_REGISTER_SCOPE,
+        ],
+        // and the one no credential at all buys, which is the mode this tenant is not in
+        'without_token' => [
+            'client_name' => 'A client presenting nothing',
+            'redirect_uris' => ['http://127.0.0.1:9104/callback'],
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'grant_types' => ['authorization_code'],
+            'response_types' => ['code'],
+            'scope' => DEMO_REGISTER_SCOPE,
+        ],
+    ]);
+
+    $registered = is_array($run['registered'] ?? null) ? $run['registered'] : [];
+    foreach (array_keys(DEMO_REGISTER_CLIENTS) as $key) {
+        $each = is_array($registered[$key] ?? null) ? $registered[$key] : [];
+        $body = is_array($each['body'] ?? null) ? $each['body'] : [];
+        demo_expect(($each['status'] ?? 0) === 201, sprintf(
+            '%s: the registration is answered 201 (got %s %s)',
+            $key,
+            (string) ($each['status'] ?? '?'),
+            (string) ($body['error_description'] ?? $body['error'] ?? ''),
+        ));
+        demo_expect(
+            is_string($body['client_id'] ?? null) && is_string($body['client_secret'] ?? null),
+            sprintf('%s: it is answered a client_id and a secret it never chose (RFC 7591 §3.2.1)', $key),
+        );
+        demo_expect(
+            is_string($body['registration_access_token'] ?? null) && is_string($body['registration_client_uri'] ?? null),
+            sprintf('%s: and the token and the URI it is now at (RFC 7592 §3)', $key),
+        );
+        demo_expect(($body['subject_type'] ?? null) === 'pairwise', sprintf(
+            '%s: registered for a pairwise subject (got %s)',
+            $key,
+            json_encode($body['subject_type'] ?? null),
+        ));
+    }
+    $verified[] = [
+        'Two registrations',
+        sprintf(
+            '%s on %s, %s on %s',
+            substr((string) $registered['first']['body']['client_id'], 0, 12) . '…',
+            parse_url(DEMO_REGISTER_CLIENTS['first']['redirect_uri'], \PHP_URL_HOST),
+            substr((string) $registered['second']['body']['client_id'], 0, 12) . '…',
+            parse_url(DEMO_REGISTER_CLIENTS['second']['redirect_uri'], \PHP_URL_HOST),
+        ),
+    ];
+
+    $beyond = is_array($run['beyond'] ?? null) ? $run['beyond'] : [];
+    demo_expect(($beyond['status'] ?? 0) >= 400, sprintf(
+        'the credential is spent: a registration beyond the two it was issued for is refused (got %s)',
+        (string) ($beyond['status'] ?? '?'),
+    ));
+    $verified[] = [
+        'Token spent',
+        sprintf('%s "%s"', (string) ($beyond['status'] ?? '?'), (string) ($beyond['body']['error'] ?? null ?? '')),
+    ];
+
+    $without = is_array($run['without_token'] ?? null) ? $run['without_token'] : [];
+    demo_expect(($without['status'] ?? 0) >= 400, sprintf(
+        'and a registration presenting no credential at all is refused: this tenant is not the one the suite registers on (got %s)',
+        (string) ($without['status'] ?? '?'),
+    ));
+    $verified[] = [
+        'No credential',
+        sprintf('%s "%s"', (string) ($without['status'] ?? '?'), (string) ($without['body']['error'] ?? null ?? '')),
+    ];
+
+    // Phase two: each client signs the development user in, with what its registration was answered. One
+    // browser per client, so that each sees its own subject and not the session of the other.
+    $exchange = [];
+    foreach (array_keys(DEMO_REGISTER_CLIENTS) as $key) {
+        $each = $registered[$key];
+        $body = $each['body'];
+        $cookies = [];
+        [$status, $location] = demo_resume(
+            $cookies,
+            $ca,
+            $issuer,
+            demo_login($cookies, $issuer, $password, $ca, (string) $each['authorization_url']),
+        );
+        $redirect = DEMO_REGISTER_CLIENTS[$key]['redirect_uri'];
+        demo_expect($status === 302 && str_starts_with($location, $redirect . '?'), sprintf(
+            '%s: the OP sends the browser to the redirection this client registered and to no other (got %d %s)',
+            $key,
+            $status,
+            $location,
+        ));
+        parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+        demo_expect(
+            isset($callback['code']) && ($callback['state'] ?? null) === $each['state'] && ($callback['iss'] ?? null) === $issuer,
+            sprintf('%s: the callback carries a code, the state this client sent, and iss (RFC 9207)', $key),
+        );
+        $exchange[$key] = [
+            'client_id' => (string) $body['client_id'],
+            'client_secret' => (string) $body['client_secret'],
+            'code' => (string) $callback['code'],
+            'redirect_uri' => $redirect,
+            'code_verifier' => (string) $each['code_verifier'],
+        ];
+    }
+
+    $exchanged = demo_register_client([
+        'action' => 'exchange',
+        'cafile' => $ca,
+        'token_endpoint' => $issuer . '/token',
+        'clients' => $exchange,
+    ]);
+    $tokens = is_array($exchanged['exchanged'] ?? null) ? $exchanged['exchanged'] : [];
+    $subjects = [];
+    foreach (array_keys(DEMO_REGISTER_CLIENTS) as $key) {
+        $each = is_array($tokens[$key] ?? null) ? $tokens[$key] : [];
+        demo_expect(($each['status'] ?? 0) === 200, sprintf(
+            '%s: the code is exchanged with the secret the registration gave (got %s %s)',
+            $key,
+            (string) ($each['status'] ?? '?'),
+            (string) ($each['error_description'] ?? ''),
+        ));
+        demo_expect(is_string($each['sub'] ?? null) && $each['sub'] !== '', sprintf('%s: the ID token names a subject', $key));
+        demo_expect(($each['nonce'] ?? null) === $registered[$key]['nonce'], sprintf(
+            '%s: it carries the nonce this client sent (OIDC Core §3.1.3.7)',
+            $key,
+        ));
+        demo_expect(($each['aud'] ?? null) === $exchange[$key]['client_id'], sprintf(
+            '%s: and is addressed to this client and to no other (got %s)',
+            $key,
+            json_encode($each['aud'] ?? null),
+        ));
+        $subjects[$key] = (string) $each['sub'];
+    }
+
+    // The property of the spike, shown: the same user, two sectors, two subjects.
+    demo_expect($subjects['first'] !== $subjects['second'], sprintf(
+        'the same user is a different subject to each of the two clients (OIDC Core §8.1): "%s" and "%s"',
+        $subjects['first'],
+        $subjects['second'],
+    ));
+    io()->text(sprintf(' <info>✓</info> %s sees sub %s', parse_url(DEMO_REGISTER_CLIENTS['first']['redirect_uri'], \PHP_URL_HOST), $subjects['first']));
+    io()->text(sprintf(' <info>✓</info> %s sees sub %s', parse_url(DEMO_REGISTER_CLIENTS['second']['redirect_uri'], \PHP_URL_HOST), $subjects['second']));
+    $verified[] = ['Pairwise', sprintf('%s and %s, the same "alice"', $subjects['first'], $subjects['second'])];
+
+    // Phase three: the client reads and replaces itself, and is refused what the provider does not offer.
+    $first = $registered['first'];
+    $configured = demo_register_client([
+        'action' => 'configure',
+        'cafile' => $ca,
+        'registration_client_uri' => (string) $first['body']['registration_client_uri'],
+        'registration_access_token' => (string) $first['body']['registration_access_token'],
+        'another_token' => (string) $registered['second']['body']['registration_access_token'],
+        'replacement' => [
+            'client_id' => (string) $first['body']['client_id'],
+            'client_name' => 'The name it chose for itself',
+            'redirect_uris' => [DEMO_REGISTER_CLIENTS['first']['redirect_uri']],
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'grant_types' => ['authorization_code'],
+            'response_types' => ['code'],
+            'scope' => DEMO_REGISTER_SCOPE,
+            'subject_type' => 'pairwise',
+        ],
+        // a grant nobody wired: the member exists, the value is not one this provider has (RFC 7591 §3.2.2)
+        'refused' => [
+            'client_id' => (string) $first['body']['client_id'],
+            'redirect_uris' => [DEMO_REGISTER_CLIENTS['first']['redirect_uri']],
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'grant_types' => ['password'],
+            'response_types' => ['code'],
+            'scope' => DEMO_REGISTER_SCOPE,
+            'subject_type' => 'pairwise',
+        ],
+    ]);
+
+    $read = is_array($configured['read'] ?? null) ? $configured['read'] : [];
+    demo_expect(($read['status'] ?? 0) === 200, sprintf('the client reads itself back (RFC 7592 §2.1, got %s)', (string) ($read['status'] ?? '?')));
+    demo_expect(
+        ($read['body']['client_id'] ?? null) === (string) $first['body']['client_id'],
+        'and what it reads is itself',
+    );
+    demo_expect(
+        ! isset($read['body']['client_secret']),
+        'the read gives back no secret: a credential this provider showed once is not shown again',
+    );
+
+    $withoutToken = is_array($configured['read_without_token'] ?? null) ? $configured['read_without_token'] : [];
+    demo_expect(($withoutToken['status'] ?? 0) === 401, sprintf(
+        'the same read with no registration access token is refused (got %s)',
+        (string) ($withoutToken['status'] ?? '?'),
+    ));
+    $another = is_array($configured['read_with_another_token'] ?? null) ? $configured['read_with_another_token'] : [];
+    demo_expect(($another['status'] ?? 0) >= 400, sprintf(
+        'and with the token of the other client, which is a client reading a client that is not itself (got %s)',
+        (string) ($another['status'] ?? '?'),
+    ));
+
+    $updated = is_array($configured['updated'] ?? null) ? $configured['updated'] : [];
+    demo_expect(($updated['status'] ?? 0) === 200, sprintf('it replaces itself (RFC 7592 §2.2, got %s)', (string) ($updated['status'] ?? '?')));
+    demo_expect(
+        ($updated['body']['client_name'] ?? null) === 'The name it chose for itself',
+        sprintf('and the member it changed is what it changed it to (got %s)', json_encode($updated['body']['client_name'] ?? null)),
+    );
+
+    $refused = is_array($configured['refused'] ?? null) ? $configured['refused'] : [];
+    demo_expect(($refused['status'] ?? 0) === 400, sprintf(
+        'a replacement asking for a grant nobody wired is refused (got %s)',
+        (string) ($refused['status'] ?? '?'),
+    ));
+    demo_expect(($refused['body']['error'] ?? null) === 'invalid_client_metadata', sprintf(
+        'and says which member it was (RFC 7591 §3.2.2, got %s)',
+        json_encode($refused['body']['error'] ?? null),
+    ));
+    $verified[] = [
+        'Itself',
+        sprintf(
+            'read 200, replaced 200, a grant nobody wired %s "%s", no token 401',
+            (string) ($refused['status'] ?? '?'),
+            (string) ($refused['body']['error'] ?? ''),
+        ),
+    ];
+
+    // Phase four: the client removes itself, and what it held is worth nothing.
+    $gone = demo_register_client([
+        'action' => 'delete',
+        'cafile' => $ca,
+        'registration_client_uri' => (string) $first['body']['registration_client_uri'],
+        'registration_access_token' => (string) $first['body']['registration_access_token'],
+    ]);
+    $deleted = is_array($gone['deleted'] ?? null) ? $gone['deleted'] : [];
+    demo_expect(($deleted['status'] ?? 0) === 204, sprintf('the client deletes itself (RFC 7592 §2.3, got %s)', (string) ($deleted['status'] ?? '?')));
+    $after = is_array($gone['read_after'] ?? null) ? $gone['read_after'] : [];
+    demo_expect(($after['status'] ?? 0) >= 400, sprintf(
+        'and the token it held is worth nothing afterwards (got %s)',
+        (string) ($after['status'] ?? '?'),
+    ));
+    $verified[] = ['Deleted', sprintf('204, then %s on the same URI', (string) ($after['status'] ?? '?'))];
+
+    // The second client is left to the purge that decision 0009 put on the scheduled step: it was used, so
+    // it lives as long as the tenant said a used client does. The walk says so rather than tidying, because
+    // what removes a dynamic client here is the provider and not the run.
+    demo_register_mode($issuer, $ca, false);
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success(sprintf(
+        'A client this provider had never seen registered itself, signed "%s" in, read and replaced itself, and deleted itself; the same user is two subjects to two sectors.',
+        DEV_USERNAME,
+    ));
+    io()->note(sprintf(
+        'The client on %s is left registered: it was used, so the scheduled step deletes it after the period this tenant named (decision 0009, keep_a_client_unused_for). "heidi:client:list" shows it until then.',
+        parse_url(DEMO_REGISTER_CLIENTS['second']['redirect_uri'], \PHP_URL_HOST),
+    ));
+}
+
+/**
+ * Writes the registration mode of the run into apps/op/.env.local, or takes it back out: the same block
+ * the rotation walk owns, rewritten every time, restored by a shutdown function because demo_expect()
+ * exits and an exit skips a finally. The tenant serves the conformance plans in "open" mode, so a run that
+ * left "initial_access_token" behind would turn every registration module red.
+ *
+ * What says the mode is in force is the endpoint itself: a registration presenting no credential is
+ * refused in the controlled mode and answered 201 in the open one, so the walk polls on that and on
+ * nothing else.
+ */
+function demo_register_mode(string $issuer, string $ca, bool $controlled): void
+{
+    $path = getcwd() . '/' . DEV_ENV_LOCAL;
+    $block = sprintf('/\n*###> %1$s ###\n.*?###< %1$s ###\n/s', preg_quote(DEMO_REGISTER_ENV_MARKER, '/'));
+    $content = rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n";
+    if ($controlled) {
+        $content .= sprintf(
+            "\n###> %1\$s ###\nHEIDI_REGISTRATION_MODE=%2\$s\n###< %1\$s ###\n",
+            DEMO_REGISTER_ENV_MARKER,
+            DEMO_REGISTER_MODE,
+        );
+        register_shutdown_function(static function () use ($path, $block): void {
+            file_put_contents($path, rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n");
+        });
+    }
+    file_put_contents($path, $content);
+    $deadline = time() + 60;
+    do {
+        $response = http_request('POST', $issuer . '/register', [
+            'cafile' => $ca,
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => (string) json_encode([
+                'redirect_uris' => ['http://127.0.0.1:9109/probe'],
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['authorization_code'],
+                'response_types' => ['code'],
+            ]),
+        ]);
+        $status = $response->getStatusCode();
+        if ($status >= 400 === $controlled) {
+            io()->text(sprintf(
+                ' <info>✓</info> the tenant registers %s (a registration with no credential is answered %d)',
+                $controlled ? 'only whoever presents a credential it issued' : 'whoever asks again',
+                $status,
+            ));
+            // The open mode answers the probe with a client; it is not left behind.
+            if (! $controlled && $status === 201) {
+                $body = json_decode($response->getContent(false), true);
+                if (is_array($body) && is_string($body['registration_client_uri'] ?? null) && is_string($body['registration_access_token'] ?? null)) {
+                    http_request('DELETE', $body['registration_client_uri'], [
+                        'cafile' => $ca,
+                        'headers' => ['Authorization' => 'Bearer ' . $body['registration_access_token']],
+                    ])->getStatusCode();
+                }
+            }
+
+            return;
+        }
+        sleep(1);
+    } while (time() < $deadline);
+    io()->error(sprintf(
+        'The registration endpoint still answers %d a minute after %s changed: do the workers of the op container watch it (compose.yaml)?',
+        $status,
+        DEV_ENV_LOCAL,
+    ));
+    exit(1);
+}
+
+/**
+ * An initial access token of the tenant, issued by the console command a tenant issues them with (#344):
+ * the value is printed once, on the last line, and this provider cannot show it again.
+ */
+function demo_register_token(): string
+{
+    $process = new Process([
+        'docker',
+        'compose',
+        'exec',
+        '-T',
+        'op',
+        'php',
+        'bin/console',
+        'heidi:client:token:issue',
+        DEMO_REGISTER_TOKEN_NAME,
+        '--registrations',
+        (string) DEMO_REGISTER_REGISTRATIONS,
+        '--days',
+        '1',
+    ]);
+    $process->setTimeout(120.0);
+    $process->run();
+    demo_expect($process->isSuccessful(), sprintf(
+        'the console issues an initial access token (exit %d): %s',
+        $process->getExitCode() ?? -1,
+        trim($process->getErrorOutput() . $process->getOutput()),
+    ));
+    $lines = array_values(array_filter(array_map(trim(...), explode("\n", $process->getOutput())), static fn (string $line): bool => $line !== ''));
+    $token = $lines === [] ? '' : end($lines);
+    demo_expect(
+        preg_match('/^[A-Za-z0-9_-]{20,}$/', $token) === 1,
+        'and prints it once, on its last line: ' . $process->getOutput(),
+    );
+
+    return $token;
+}
+
+/**
+ * The self-registering client of tests/demo/, one phase per call: it holds nothing between them, because
+ * the browser step in the middle is the walk's.
+ *
+ * @param array<string, mixed> $input
+ * @return array<string, mixed>
+ */
+function demo_register_client(array $input): array
+{
+    $phase = (string) ($input['action'] ?? '?');
+    $process = new Process(['php', DEMO_REGISTER_CLIENT], input: (string) json_encode($input));
+    $process->setTimeout(120.0);
+    $process->run();
+    // What the phase answered belongs in the message only when there is something wrong with it: three
+    // phases printing their whole JSON on success would bury the assertions that follow them.
+    demo_expect($process->isSuccessful(), sprintf(
+        'the registration client ran its "%s" phase%s',
+        $phase,
+        $process->isSuccessful() ? '' : sprintf(' (exit %d): %s', $process->getExitCode() ?? -1, trim($process->getErrorOutput())),
+    ));
+    $run = json_decode($process->getOutput(), true);
+    demo_expect(
+        is_array($run),
+        sprintf(
+            'and answered a JSON object%s',
+            is_array($run) ? '' : ': ' . $process->getOutput(),
+        ),
+    );
+
+    return $run;
 }
