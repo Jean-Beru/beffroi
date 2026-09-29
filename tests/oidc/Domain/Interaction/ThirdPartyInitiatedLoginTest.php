@@ -6,7 +6,7 @@ namespace Heidi\Oidc\Tests\Domain\Interaction;
 
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Client\ClientUri;
+use Heidi\Oidc\Domain\Client\InitiateLoginUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Interaction\ThirdPartyInitiatedLogin;
 use PHPUnit\Framework\Attributes\Test;
@@ -27,7 +27,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     {
         // Given
         $login = new ThirdPartyInitiatedLogin(
-            new ClientUri('https://rp.example/start'),
+            new InitiateLoginUri('https://rp.example/start'),
             Fixtures::tenant()->issuer,
         );
 
@@ -44,7 +44,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     {
         // Given
         $login = new ThirdPartyInitiatedLogin(
-            new ClientUri('https://rp.example/start'),
+            new InitiateLoginUri('https://rp.example/start'),
             Fixtures::tenant()->issuer,
         );
 
@@ -61,7 +61,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     {
         // Given
         $login = new ThirdPartyInitiatedLogin(
-            new ClientUri('https://rp.example/start'),
+            new InitiateLoginUri('https://rp.example/start'),
             Fixtures::tenant()->issuer,
             new Subject('the-one-this-client-was-handed'),
         );
@@ -80,7 +80,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     {
         // Given
         $login = new ThirdPartyInitiatedLogin(
-            new ClientUri('https://rp.example/start'),
+            new InitiateLoginUri('https://rp.example/start'),
             Fixtures::tenant()->issuer,
             null,
             new RedirectUri('https://rp.example/callback'),
@@ -99,7 +99,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     {
         // Given
         $login = new ThirdPartyInitiatedLogin(
-            new ClientUri('https://rp.example/start?tenant=acme'),
+            new InitiateLoginUri('https://rp.example/start?tenant=acme'),
             Fixtures::tenant()->issuer,
             null,
             new RedirectUri('https://rp.example/callback'),

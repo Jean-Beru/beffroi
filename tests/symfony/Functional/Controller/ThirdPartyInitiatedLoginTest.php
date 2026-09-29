@@ -245,9 +245,14 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     /**
      * OIDCC-3rd_party-init-login-nohttps: OIDC Registration §2 makes it an "https" URL, and a
      * registration that sends any other is refused with the error and the status of RFC 7591 §3.2.2.
+     *
+     * The module sends the URL of the run with its scheme replaced, and the suite runs on
+     * "localhost:8443": the member is held to "https" on the host a development stack is reached at as
+     * well as on a name, which is the rule of no environment (issue #377).
      */
     #[Test]
-    public function aUriInPlainHttpIsRefused(): void
+    #[DataProvider('provideUrisInPlainHttp')]
+    public function aUriInPlainHttpIsRefused(string $initiateLoginUri): void
     {
         // Given
         $this->issue();
@@ -255,7 +260,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         // When
         $this->send([
             'redirect_uris' => [self::REDIRECT_URI],
-            'initiate_login_uri' => 'http://launched.test/start',
+            'initiate_login_uri' => $initiateLoginUri,
         ]);
 
         // Then
@@ -263,6 +268,16 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertSame('application/json', $response->headers->get('Content-Type'));
         static::assertSame('invalid_client_metadata', self::json($response)['error']);
+        static::assertStringContainsString('initiate_login_uri', self::string(self::json($response)['error_description']));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideUrisInPlainHttp(): iterable
+    {
+        yield 'on the host the client registered' => ['http://launched.test/start'];
+        yield 'on the loopback host the suite runs on' => ['http://localhost:8443/test/a/heidi/initiate-login'];
     }
 
     /**

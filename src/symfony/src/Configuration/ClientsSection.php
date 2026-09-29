@@ -185,7 +185,7 @@ final readonly class ClientsSection extends ConfigurationSection
             ->defaultNull()
             ->end()
             ->scalarNode('initiate_login_uri')
-            ->info('Where a third party sends a user to have this provider begin a login at this client (OIDC Core §4, OIDC Registration §2); HTTPS, or plain HTTP on a loopback host.')
+            ->info('Where a third party sends a user to have this provider begin a login at this client (OIDC Core §4, OIDC Registration §2); HTTPS, on a loopback host as anywhere else: §2 gives this member none of the tolerance the other URIs of a client keep.')
             ->defaultNull()
             ->end()
             ->scalarNode('request_object_signing_alg')
