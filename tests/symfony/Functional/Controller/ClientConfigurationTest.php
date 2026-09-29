@@ -349,6 +349,27 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
+     * RFC 7592 §2: the operations of this endpoint are switched through the HTTP method, and an operation
+     * the provider does not switch on is answered with the error code that says so. The three it serves are
+     * three routes on one path, so the router answers that for a fourth without anything written for it.
+     */
+    #[Test]
+    public function aMethodTheEndpointDoesNotSwitchOnIsAnsweredAsSuch(): void
+    {
+        // When
+        $this->browser->request(
+            'PATCH',
+            self::string($this->registered['registration_client_uri']),
+            server: $this->headers(
+                self::string($this->registered['registration_access_token']),
+            ),
+        );
+
+        // Then
+        static::assertSame(Response::HTTP_METHOD_NOT_ALLOWED, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
      * A client of the same tenant, registered with a token of its own, whose URI this client's token does
      * not read.
      */
