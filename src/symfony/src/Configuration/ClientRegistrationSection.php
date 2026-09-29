@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Configuration;
 
 use Heidi\Bundle\Client\SectorIdentifierDocumentFetcher;
+use Heidi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
 use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use function is_array;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -35,6 +37,14 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
 
     public const int DEFAULT_SECTOR_IDENTIFIER_MAX_SIZE = 65536;
 
+    /**
+     * RFC 7591 §2.3: a statement is signed for one registration. The default is the one an assertion of a
+     * trusted issuer takes, for the same reason.
+     */
+    public const int DEFAULT_STATEMENT_MAX_LIFETIME = 300;
+
+    public const int DEFAULT_STATEMENT_LEEWAY = 30;
+
     public function name(): string
     {
         return 'client_registration';
@@ -48,7 +58,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->addDefaultsIfNotSet()
             ->children()
             ->scalarNode('mode')
-            ->info('What authorises a registration, by the name the class that is that mode gives itself. This provider is wired with "initial_access_token", a credential the tenant issues, names, limits in number and duration and revokes (RFC 7591 section 1.2), and with "open", which registers whoever asks with no credential at all (RFC 7591 section 1.3) and is written by a tenant that has no real user. Left out, the tenant has no registration endpoint at all: it is not a mode of refusing, it is the absence of the endpoint. It is named per tenant and nothing here opens a mode for more than the tenant that names it.')
+            ->info('What authorises a registration, by the name the class that is that mode gives itself. This provider is wired with "initial_access_token", a credential the tenant issues, names, limits in number and duration and revokes (RFC 7591 section 1.2), with "open", which registers whoever asks with no credential at all (RFC 7591 section 1.3) and is written by a tenant that has no real user, and with "software_statement", a statement signed by an authority this tenant pins under "statement_issuers" below (RFC 7591 section 2.3), which is the mode that crosses the boundary of an organisation since the provider issues nothing. Left out, the tenant has no registration endpoint at all: it is not a mode of refusing, it is the absence of the endpoint. It is named per tenant and nothing here opens a mode for more than the tenant that names it.')
             ->defaultNull()
             ->end()
             ->integerNode('keep_a_client_unused_for')
@@ -70,6 +80,34 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->info('Bytes a sector_identifier_uri may answer before the read stops; the document is the JSON array of the redirection URIs of the clients of one sector.')
             ->defaultValue(self::DEFAULT_SECTOR_IDENTIFIER_MAX_SIZE)
             ->min(1)
+            ->end()
+            ->arrayNode('statement_issuers')
+            ->info('The authorities whose software statements this tenant accepts (RFC 7591 section 2.3), keyed by the "iss" they sign with. They are what the "software_statement" mode reads, and a tenant that pins none has that mode closed rather than open to whoever signs. Each one is a closed declaration: nothing about it is inferred, and no key a statement carries is ever read.')
+            ->useAttributeAsKey('issuer')
+            ->normalizeKeys(false)
+            ->arrayPrototype()
+            ->children()
+            ->variableNode('jwks')
+            ->info('The JWK Set of the authority, inline (RFC 7517 section 5): public keys only, and the only keys a statement of this authority is ever verified against, whatever its header names (RFC 8725 section 3.10).')
+            ->defaultNull()
+            ->end()
+            ->arrayNode('signing_algorithms')
+            ->info('The JWS algorithms a statement of this authority may be signed with (RFC 7515 section 4.1.1), among those the provider is wired with; at least one. A name nothing verifies fails at boot.')
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->end()
+            ->end()
+            ->end()
+            ->integerNode('statement_max_lifetime')
+            ->info('Seconds ahead of the request the "exp" of a software statement may be (RFC 7591 section 2.3). A statement is signed for one registration, so it is not a credential for a year; RFC 7591 requires no "exp" at all, and this provider requires one as it does of every signed thing it takes back (decision 0006).')
+            ->defaultValue(self::DEFAULT_STATEMENT_MAX_LIFETIME)
+            ->min(1)
+            ->end()
+            ->integerNode('statement_leeway')
+            ->info('Seconds allowed of the clock of the authority, both ways, when its statement is judged.')
+            ->defaultValue(self::DEFAULT_STATEMENT_LEEWAY)
+            ->min(0)
             ->end()
             ->booleanNode('exempt_confidential_clients_from_pkce')
             ->info('The named exception of decision 0017, for the tenant that writes it and no other: the confidential clients this policy registers are registered without the PKCE requirement, because the Dynamic OP profile of OIDC Core sends no code_challenge and offers no way to. A public client is never exempted whatever this says, "plain" never exists, and a code_challenge a client does send is verified like any other. Write it with the reason a tenant has for it beside it; a tenant with real users has none.')
@@ -95,7 +133,12 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
                 '$keepsAClientUnusedFor',
                 self::seconds($registration, 'keep_a_client_unused_for'),
             )
-            ->arg('$keepsAClientNeverUsedFor', self::seconds($registration, 'keep_a_client_never_used_for'));
+            ->arg('$keepsAClientNeverUsedFor', self::seconds($registration, 'keep_a_client_never_used_for'))
+            ->arg('$statementIssuers', is_array($registration['statement_issuers'] ?? null) ? $registration['statement_issuers'] : []);
+        $services->get(SoftwareStatementVerifier::class)->arg('$maximumLifetime', self::seconds(
+            $registration,
+            'statement_max_lifetime',
+        ))->arg('$leeway', self::seconds($registration, 'statement_leeway'));
         $services->get(SectorIdentifierDocumentFetcher::class)->arg('$timeout', self::float(
             $registration,
             'sector_identifier_timeout',

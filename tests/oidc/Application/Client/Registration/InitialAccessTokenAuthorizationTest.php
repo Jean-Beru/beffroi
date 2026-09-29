@@ -11,6 +11,7 @@ use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
 use Heidi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
 use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
 use Heidi\Oidc\Domain\Client\Registration\RegistrationRequest;
+use Heidi\Oidc\Tests\Fixture\Policies;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Exception\UnauthorizedRegistrationException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -172,7 +173,7 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
         return new InitialAccessTokenAuthorization(
             $this->tokens,
             new MockClock($now ?? Fixtures::now()),
-        )->authorize($this->tenant, $request);
+        )->authorize($this->tenant, $request, Policies::controlled());
     }
 
     private static function presenting(string $value, string $scheme = 'Bearer'): RegistrationRequest
