@@ -244,6 +244,8 @@ final class Clients
      *
      * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
      * @param list<GrantTypeName>|null $grantTypes what this client registered for, the backchannel grant and its renewal unless the test says otherwise
+     * @param string|null $jwksUri where this client publishes its keys, which is also what says which sector it is of, a client of this flow registering no redirection URI (CIBA Core §4)
+     * @param non-empty-string|null $subjectType the kind of "sub" it sees, null for the one the provider assigns by default
      */
     public static function backchannel(
         Tenant $tenant,
@@ -256,6 +258,9 @@ final class Clients
         ?Scopes $allowedScopes = null,
         ?ClientJwks $jwks = null,
         bool $requiresSignedRequestObject = false,
+        ?string $jwksUri = null,
+        ?string $sectorIdentifierUri = null,
+        ?string $subjectType = null,
     ): Client {
         return new Client(
             $tenant,
@@ -275,6 +280,9 @@ final class Clients
                 resources: $resources,
                 backchannelTokenDeliveryMode: $delivery,
                 backchannelClientNotificationEndpoint: $notificationEndpoint,
+                jwksUri: $jwksUri === null ? null : new ClientUri($jwksUri),
+                subjectType: $subjectType,
+                sectorIdentifierUri: $sectorIdentifierUri === null ? null : new ClientUri($sectorIdentifierUri),
             ),
             new HashedClientSecret($secretHash),
         );
@@ -485,6 +493,7 @@ final class Clients
         ?ClientUri $jwksUri = null,
         ?ClientAuthenticationMethodInterface $method = null,
         ?array $grantTypes = null,
+        ?string $sectorIdentifierUri = null,
     ): Client {
         return new Client(
             $tenant,
@@ -498,6 +507,7 @@ final class Clients
                 grantTypes: $grantTypes ?? [Grants::authorizationCode()],
                 jwks: $jwksUri === null ? $jwks ?? ClientAssertions::publishedKeys() : null,
                 jwksUri: $jwksUri,
+                sectorIdentifierUri: $sectorIdentifierUri === null ? null : new ClientUri($sectorIdentifierUri),
             ),
         );
     }

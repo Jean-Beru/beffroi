@@ -6,10 +6,12 @@ namespace Heidi\Oidc\Tests\Application\Claims;
 
 use function base64_encode;
 use Heidi\Core\Domain\Identity\Subject;
+use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Tests\Fixture\FakePasswordHasher;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
 use Heidi\Oidc\Bridge\InMemory\InMemoryPairwiseSubjectRepository;
+use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Exception\InvalidClientMetadataException;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\FixedPairwiseSalt;
@@ -66,6 +68,79 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
 
         // Then
         static::assertNotSame($here->value, $there->value);
+    }
+
+    /**
+     * CIBA Core §4: a client of the backchannel flow registers no redirection URI, so the sector its "sub"
+     * is computed per is the host of its "jwks_uri". Two such clients publishing their keys on one host are
+     * one sector and see one user under one identifier, exactly as two clients of one redirection host are.
+     */
+    #[Test]
+    public function twoBackchannelClientsOfOneHostSeeOneUserUnderOneIdentifier(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $user = Fixtures::user($tenant);
+        $resolver = self::resolver();
+
+        // When
+        $here = $resolver->resolve($user, self::backchannel($tenant, 'one', 'https://terminal.example/jwks.json'));
+        $there = $resolver->resolve($user, self::backchannel($tenant, 'other', 'https://terminal.example/keys.json'));
+
+        // Then
+        $digest = hash('sha256', 'terminal.example' . $user->subject->value . self::SALT, true);
+        static::assertSame(rtrim(strtr(base64_encode($digest), '+/', '-_'), '='), $here->value);
+        static::assertSame($here->value, $there->value);
+    }
+
+    #[Test]
+    public function twoBackchannelClientsOfTwoHostsSeeOneUserUnderTwoIdentifiers(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $user = Fixtures::user($tenant);
+        $resolver = self::resolver();
+
+        // When
+        $here = $resolver->resolve($user, self::backchannel($tenant, 'one', 'https://terminal.example/jwks.json'));
+        $there = $resolver->resolve($user, self::backchannel($tenant, 'other', 'https://other.example/jwks.json'));
+
+        // Then
+        static::assertNotSame($here->value, $there->value);
+    }
+
+    /**
+     * And the way back holds for them too: the identifier a backchannel client was handed names its user
+     * to that client's sector, and to no other.
+     */
+    #[Test]
+    public function theIdentifierOfABackchannelClientNamesItsUserInThatSector(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $user = Fixtures::user($tenant);
+        $resolver = self::resolver();
+        $client = self::backchannel($tenant, 'one', 'https://terminal.example/jwks.json');
+        $subject = $resolver->resolve($user, $client);
+
+        // When
+        $found = $resolver->findUser($client, $subject);
+        $elsewhere = $resolver->findUser(self::backchannel($tenant, 'other', 'https://other.example/jwks.json'), $subject);
+
+        // Then
+        static::assertSame($user, $found);
+        static::assertNull($elsewhere);
+    }
+
+    private static function backchannel(Tenant $tenant, string $clientId, string $jwksUri): Client
+    {
+        return Clients::backchannel(
+            $tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            $clientId,
+            jwksUri: $jwksUri,
+            subjectType: PairwiseSubjectIdentifierResolver::SUBJECT_TYPE,
+        );
     }
 
     /**
@@ -203,7 +278,7 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
 
         // Then
         $this->expectException(InvalidClientMetadataException::class);
-        $this->expectExceptionMessageIsOrContains('registers no redirection URI and no sector_identifier_uri');
+        $this->expectExceptionMessageIsOrContains('registers nothing that says which sector its subject identifiers belong to');
 
         // When
         self::resolver()->assertAssignable($service->registration);

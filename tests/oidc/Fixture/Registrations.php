@@ -83,7 +83,7 @@ final class Registrations
         return new RegistrationUnderThePolicy(
             $reader ?? self::reader(),
             new RegistrationHeldToTheTenant($scopes ?? self::offeredScopes()),
-            new RegistrationHeldToItsSector($documents ?? new FakeSectorIdentifierDocumentFetcher()),
+            new RegistrationHeldToItsSector($documents ?? new FakeSectorIdentifierDocumentFetcher(), Sectors::ofAProvider()),
             Secrets::drawer(),
             new FakePasswordHasher(),
         );

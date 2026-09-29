@@ -399,6 +399,19 @@ heidi:
             requires_consent: false
             backchannel_token_delivery_mode: ping
             backchannel_client_notification_endpoint: 'https://terminal.test/ciba'
+        # CIBA Core §4 (issue #292): a client of the backchannel flow that sees its users under a "sub" of
+        # its own sector. It registers no redirection URI, as every client of this flow does, so what says
+        # which sector it is of is the host of its jwks_uri.
+        pairwise-terminal:
+            client_name: 'Payment terminal of a sector'
+            secret: 'pairwise-terminal-secret-of-at-least-32-c'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:openid:params:grant-type:ciba']
+            scope: 'openid profile'
+            requires_consent: false
+            backchannel_token_delivery_mode: poll
+            subject_type: pairwise
+            jwks_uri: 'https://terminal-sector.test/jwks.json'
         # OIDC Core §8.1 (issue #341): three clients and two sectors, said the two ways §8.1 says them. Two
         # of them belong to the sector their redirection URI is on, which are two hosts and so two sectors;
         # the third registers the document of the first one's host, so that two clients of two hosts are of
@@ -534,6 +547,9 @@ services:
         public: true
     test.heidi.pairwise_subjects:
         alias: Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface
+        public: true
+    test.heidi.sector_identifiers:
+        alias: Heidi\Oidc\Port\SectorIdentifiersInterface
         public: true
     test.heidi.password_hasher:
         alias: Heidi\Core\Port\PasswordHasherInterface

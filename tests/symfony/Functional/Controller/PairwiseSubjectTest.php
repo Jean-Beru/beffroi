@@ -8,6 +8,7 @@ use function base64_encode;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Oidc\Domain\Claims\SectorIdentifier;
 use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Heidi\Oidc\Port\SectorIdentifiersInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -202,6 +203,41 @@ final class PairwiseSubjectTest extends BrowserTestCase
         // Then
         static::assertSame($alice->subject->value, $found?->subject->value);
         static::assertNull($elsewhere);
+    }
+
+    /**
+     * CIBA Core §4: the three ways of saying which sector a client is of are wired, and the third is what
+     * answers for a client that registers no redirection URI. What no unit test can say is that they are
+     * really tagged and composed in the container of a deployment, which is what this reads.
+     */
+    #[Test]
+    public function theSectorOfABackchannelClientIsTheHostOfItsKeys(): void
+    {
+        // Given
+        $client = self::client('pairwise-terminal');
+
+        // When
+        $sector = self::service('test.heidi.sector_identifiers', SectorIdentifiersInterface::class)->sectorOf($client->registration);
+
+        // Then
+        static::assertSame('terminal-sector.test', $sector->host);
+    }
+
+    /**
+     * And a client that registers a redirection URI is of the host it comes back to, whatever its keys
+     * say: the source of CIBA Core §4 answers of a client that registered none, and of no other.
+     */
+    #[Test]
+    public function theSectorOfAnOrdinaryClientIsStillTheHostItComesBackTo(): void
+    {
+        // Given
+        $client = self::client('pairwise-app');
+
+        // When
+        $sector = self::service('test.heidi.sector_identifiers', SectorIdentifiersInterface::class)->sectorOf($client->registration);
+
+        // Then
+        static::assertSame('pairwise.test', $sector->host);
     }
 
     /**
