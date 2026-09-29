@@ -528,6 +528,14 @@ services:
         tags:
             - { name: heidi.oidc.claims_provider, priority: -10 }
 
+    # RFC 7591 §2: the keys a client of the tests publishes behind its "jwks_uri", answered without a
+    # request. Nothing of this kernel reaches a host, so the fetcher that makes one is replaced rather than
+    # pointed somewhere: it has its own unit test, and what a functional test needs is the client whose keys
+    # are read back rather than the reading. Every URI but the one the fixture names is unavailable.
+    Heidi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri: ~
+    Heidi\Oidc\Port\ClientJwksFetcherInterface:
+        alias: Heidi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri
+
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
     heidi_test.kms:
         class: Symfony\Component\KeyManagement\EncrypterInterface
