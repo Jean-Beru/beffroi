@@ -15,6 +15,7 @@ use Heidi\Bundle\Http\RequestContextFactory;
 use Heidi\Bundle\Http\RequestParameters;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Heidi\Oidc\Domain\Interaction\ConsentPage;
 use Heidi\Oidc\Domain\Interaction\ConsentRequired;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Exception\InteractionCompletedException;
@@ -29,6 +30,10 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * The consent page of an interaction (architecture §4.3, §5.2): GET shows it, POST carries "allow" or
  * "deny" with the CSRF token.
+ *
+ * What the page says of the client that is asking, and the Content-Security-Policy that goes with it,
+ * are the module's (ConsentPage); this renders them from a template an application may override, as the
+ * form post response and the front-channel logout page are rendered.
  */
 #[AsController]
 final readonly class ConsentController
@@ -79,14 +84,23 @@ final readonly class ConsentController
             return $this->responder->respond($request, $decision);
         }
 
-        return $this->pages->render('consent.html.twig', [
-            'interaction' => $interaction,
-            'client' => $interaction->request->client,
-            'user' => $decision->session->user,
-            'scopes' => $decision->scopes,
-            'authorization_details' => $decision->authorizationDetails,
-            'requirement' => $decision->requirement,
-        ]);
+        $page = new ConsentPage($interaction->request->client->registration->presentation);
+
+        return $this->pages->render(
+            'consent.html.twig',
+            [
+                'interaction' => $interaction,
+                'client' => $interaction->request->client,
+                'page' => $page,
+                'user' => $decision->session->user,
+                'scopes' => $decision->scopes,
+                'authorization_details' => $decision->authorizationDetails,
+                'requirement' => $decision->requirement,
+            ],
+            headers: [
+                'Content-Security-Policy' => $page->contentSecurityPolicy(),
+            ],
+        );
     }
 
     /**

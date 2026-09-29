@@ -261,6 +261,33 @@ final class ClientMetadataReaderTest extends TestCase
             'logo_uri',
             'must use HTTPS',
         ];
+        yield 'a policy served in plain HTTP' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'policy_uri' => 'http://rp.example/privacy',
+            ],
+            InvalidClientMetadataException::class,
+            'policy_uri',
+            'must use HTTPS',
+        ];
+        yield 'terms served in plain HTTP' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'tos_uri' => 'http://rp.example/terms',
+            ],
+            InvalidClientMetadataException::class,
+            'tos_uri',
+            'must use HTTPS',
+        ];
+        yield 'a home page served in plain HTTP' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'client_uri' => 'http://rp.example/',
+            ],
+            InvalidClientMetadataException::class,
+            'client_uri',
+            'must use HTTPS',
+        ];
         yield 'keys published inline and behind a URL' => [
             [
                 'redirect_uris' => ['https://rp.example/cb'],

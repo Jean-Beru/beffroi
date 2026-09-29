@@ -57,6 +57,10 @@
         <source>consent.title</source>
         <target>Autoriser {client}</target>
       </trans-unit>
+      <trans-unit id="732d4a5e7a" resname="consent.logo">
+        <source>consent.logo</source>
+        <target>Logo de {client}</target>
+      </trans-unit>
       <trans-unit id="db56775db9" resname="consent.signed_in_as">
         <source>consent.signed_in_as</source>
         <target>Session ouverte pour {username}.</target>
@@ -68,6 +72,18 @@
       <trans-unit id="57188e00f3" resname="consent.authorization_details">
         <source>consent.authorization_details</source>
         <target>{client} demande en outre l’autorisation de :</target>
+      </trans-unit>
+      <trans-unit id="dd97b47622" resname="consent.policy_uri">
+        <source>consent.policy_uri</source>
+        <target>Comment {client} utilise vos données</target>
+      </trans-unit>
+      <trans-unit id="c7a5045153" resname="consent.tos_uri">
+        <source>consent.tos_uri</source>
+        <target>Conditions d’utilisation de {client}</target>
+      </trans-unit>
+      <trans-unit id="8043c439f3" resname="consent.client_uri">
+        <source>consent.client_uri</source>
+        <target>Site de {client}</target>
       </trans-unit>
       <trans-unit id="271b1bd84f" resname="consent.allow">
         <source>consent.allow</source>
