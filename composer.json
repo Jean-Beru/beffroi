@@ -37,6 +37,8 @@
         "symfony/console": "^8.1",
         "symfony/dependency-injection": "8.2.*",
         "symfony/doctrine-bridge": "8.2.*",
+        "symfony/doctrine-dbal-key-management": "8.2.*",
+        "symfony/doctrine-orm-key-management": "8.2.*",
         "symfony/framework-bundle": "8.2.*",
         "symfony/http-client": "8.2.*",
         "symfony/http-foundation": "8.2.*",

@@ -61,7 +61,9 @@ use Heidi\Bundle\Plane\Plane;
 use Heidi\Bundle\Security\CorePasswordHasher;
 use Heidi\Bundle\Security\RateLimitedAttempts;
 use Heidi\Bundle\Security\SecurityUser;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
+use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Kernel\AbstractBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -145,6 +147,37 @@ final class HeidiBundle extends AbstractBundle
             if ($codeChallengeMethods instanceof CodeChallengeMethodsInterface && is_a($class, NeedsCodeChallengeMethodsInterface::class, true)) {
                 $class::resolveWith($codeChallengeMethods);
             }
+        }
+        $this->registerEncryptedTypes();
+    }
+
+    /**
+     * The encrypted types of the columns that carry a personal datum (decisions 0011 and 0018,
+     * EncryptedColumnTypes), declared as one service because each one holds an encrypter, which a class
+     * DoctrineBundle instantiates with no argument cannot. Booting is where the bridge asks for it, and it
+     * is early enough for every entry point at once: the front controller, the console with its schema
+     * tool and its migrations, and the test kernel. Registering twice is safe, which is what a rebooted
+     * kernel does.
+     *
+     * A connection is asked for first, and this is the ordering nobody can see from the call: an encrypted
+     * type resolves the type it decorates by name, in the global registry, at the moment it is registered,
+     * and ten of them decorate a type of DBAL_TYPES above, which DoctrineBundle only puts in that
+     * registry when a connection is first created (ConnectionFactory::initializeTypes). Asking opens
+     * nothing, a DBAL connection reaching the database on its first query and not before.
+     */
+    private function registerEncryptedTypes(): void
+    {
+        $container = $this->container;
+        if ($container === null || ! $container->has('heidi.encrypted_types')) {
+            return;
+        }
+        $doctrine = $container->has('doctrine') ? $container->get('doctrine') : null;
+        if ($doctrine instanceof ManagerRegistry) {
+            $doctrine->getConnection();
+        }
+        $types = $container->get('heidi.encrypted_types');
+        if ($types instanceof EncryptedTypes) {
+            $types->register();
         }
     }
 

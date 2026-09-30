@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
+use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+
 /**
  * Every column of every table of the two pure-PHP packages, and what it is: a column a dump gives away
  * with the reason that gives nothing away, a column sealed under the data key of its tenant, or a
@@ -52,17 +54,19 @@ final readonly class SchemaColumns
     public const string AN_ENVELOPE = 'the envelope the KMS of the tenant sealed, and nothing else';
 
     /**
-     * The Doctrine types of the bundle that seal what they store, by the name a mapping gives them.
+     * The Doctrine types of the bundle that seal what they store, by the name a mapping gives them, read
+     * from the declaration of the bundle and not kept here: a second list would be a second thing to be
+     * wrong, and what a column seals under is what its mapping names.
      *
-     * Empty until issue #400 registers the encrypted types of the bundle, which is the day a column can
-     * be declared sealed at all. A name is added here by the issue that registers the type and used by
-     * the mapping of the columns it seals; the walk refuses a column declared sealed that does not carry
-     * one, and a column that carries one whose line still owes it, so the list and the mappings cannot
-     * drift apart.
+     * The walk refuses a column declared sealed that carries none of them, and a column that carries one
+     * whose line still owes it, so the declaration and the mappings cannot drift apart.
      *
-     * @var list<string>
+     * @return list<string>
      */
-    public const array SEALING_TYPES = [];
+    public static function sealingTypes(): array
+    {
+        return EncryptedColumnTypes::names();
+    }
 
     /**
      * @return array<string, array<string, ColumnClassificationInterface>> table, then column
