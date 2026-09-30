@@ -71,7 +71,12 @@ final class AuthorizationRequestParserTest extends TestCase
             new FakePasswordHasher()->hash(Clients::SECRET),
             clientId: 'foreign',
         ));
-        $this->parser = new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost(), AuthorizationDetailTypes::served(), ChallengeMethods::s256());
+        $this->parser = new AuthorizationRequestParser(
+            $this->clients,
+            ServedModes::queryAndFormPost(),
+            AuthorizationDetailTypes::served(),
+            ChallengeMethods::s256(),
+        );
     }
 
     /**
@@ -474,7 +479,12 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aDeploymentThatWiresNoQueryFallsBackToAModeItServes(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]), AuthorizationDetailTypes::served(), ChallengeMethods::s256());
+        $parser = new AuthorizationRequestParser(
+            $this->clients,
+            WiredModes::of([ServedModes::FORM_POST]),
+            AuthorizationDetailTypes::served(),
+            ChallengeMethods::s256(),
+        );
 
         // When
         $target = $parser->redirectTarget($this->tenant, self::parameters([
@@ -494,7 +504,12 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aRequestThatAsksForNoModeFallsBackToAModeItServes(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]), AuthorizationDetailTypes::served(), ChallengeMethods::s256());
+        $parser = new AuthorizationRequestParser(
+            $this->clients,
+            WiredModes::of([ServedModes::FORM_POST]),
+            AuthorizationDetailTypes::served(),
+            ChallengeMethods::s256(),
+        );
 
         // When
         $target = $parser->redirectTarget($this->tenant, self::parameters([]));
