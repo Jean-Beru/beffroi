@@ -238,6 +238,22 @@ const DEV_DEMO_ISSUER = [
     'subject' => 'alice@issuer.demo.localhost',
 ];
 
+/**
+ * The authority of the development stack whose software statements the tenant accepts (RFC 7591 §2.3, issue
+ * #347), which "castor demo --attested" signs with. Its key lives beside the one of the trusted issuer above
+ * and under the same rule: what a development stack generates is not committed, the provider is given the
+ * public half through apps/op/.env.local, and the lab reads the private one from var/demo/.
+ *
+ * It is not the trusted issuer of RFC 7523 §3 and it is not a client: one signs about a user, the other
+ * attests a piece of software, the tenant pins them apart, and a key that attests nothing about users is a
+ * key an authority can hand to a store without handing it a way to name somebody.
+ */
+const DEV_DEMO_ATTESTATION_AUTHORITY = [
+    'issuer' => 'https://attestation.demo.localhost',
+    'env' => 'DEMO_ATTESTATION_JWKS',
+    'file' => 'demo-attestation',
+];
+
 const DEV_CLIENT_SECRETS = [
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
@@ -350,11 +366,12 @@ function provision(
         ], DEV_CLIENT_SECRETS),
     );
     io()->note(sprintf(
-        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the %d clients of the FAPI 2 and FAPI-CIBA plans are in %s, whole, and their public half in the same file; the keys of the ladder and of the trusted issuer %s are in %s, the same way.',
+        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the %d clients of the FAPI 2 and FAPI-CIBA plans are in %s, whole, and their public half in the same file; the keys of the ladder, of the trusted issuer %s and of the attestation authority %s are in %s, the same way.',
         DEV_ENV_LOCAL,
         count(DEV_FAPI_CLIENTS),
         DEV_CONFORMANCE_DIRECTORY,
         DEV_DEMO_ISSUER['issuer'],
+        DEV_DEMO_ATTESTATION_AUTHORITY['issuer'],
         DEV_DEMO_DIRECTORY,
     ));
 }
@@ -504,7 +521,12 @@ function provision_env_local(?string $kms): array
     // public half of what var/conformance/ holds whole, so the key material is the source and the
     // variable follows it. A key generated again there is published again here, and a variable edited
     // by hand is put back to what the suite will actually sign with.
-    $published = [...provision_fapi_clients($path), ...provision_demo_clients($path), ...provision_demo_issuer($path)];
+    $published = [
+        ...provision_fapi_clients($path),
+        ...provision_demo_clients($path),
+        ...provision_demo_issuer($path),
+        ...provision_demo_attestation_authority($path),
+    ];
 
     if ($lines === [] && $published === []) {
         io()->note(sprintf('%s carries every development value already.', DEV_ENV_LOCAL));
@@ -911,6 +933,67 @@ function provision_demo_clients(string $path): array
 }
 
 /**
+ * The signing key of the attestation authority of the development stack, published to the provider as its
+ * public half (RFC 7591 §2.3): the tenant pins the authority and reads no key a statement names, so what
+ * this writes is the pin, and var/demo/ keeps the half the lab signs statements with.
+ *
+ * @return list<string> the authority, when its public half was written or rewritten
+ */
+function provision_demo_attestation_authority(string $path): array
+{
+    $keys = provision_demo_authority_keys(DEV_DEMO_ATTESTATION_AUTHORITY['file']);
+    if (! provision_env_local_set($path, DEV_DEMO_ATTESTATION_AUTHORITY['env'], base64_encode(provision_public_set($keys)))) {
+        return [];
+    }
+    io()->text(sprintf(
+        'Published the public JWK Set of the attestation authority %s into %s.',
+        DEV_DEMO_ATTESTATION_AUTHORITY['issuer'],
+        DEV_ENV_LOCAL,
+    ));
+
+    return [DEV_DEMO_ATTESTATION_AUTHORITY['issuer']];
+}
+
+/**
+ * The keys of one authority of the laboratory, in var/demo/ and private halves included: the directory is
+ * made when it is missing, which is the one thing the two authorities need of the machine.
+ *
+ * @return list<array<string, mixed>>
+ */
+function provision_demo_authority_keys(string $file): array
+{
+    $directory = getcwd() . '/' . DEV_DEMO_DIRECTORY;
+    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
+        io()->error(sprintf('Cannot create %s.', $directory));
+        exit(1);
+    }
+
+    return provision_demo_keys($directory, $file, false);
+}
+
+/**
+ * The public half of a set the lab holds whole: what the provider is given of an authority, and never more
+ * (RFC 7517 §5).
+ *
+ * @param list<array<string, mixed>> $keys
+ */
+function provision_public_set(array $keys): string
+{
+    $public = array_map(static function (array $key): array {
+        unset($key['d']);
+
+        return $key;
+    }, $keys);
+
+    return json_encode(
+        [
+            'keys' => $public,
+        ],
+        \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES,
+    );
+}
+
+/**
  * The signing key of the trusted issuer of the development stack, published to the provider as its public
  * half (RFC 7523 §3): the tenant holds the keys of an issuer it trusts and reads no key an assertion names,
  * so the registration is what this writes, and var/demo/ keeps the half the lab signs with.
@@ -919,24 +1002,8 @@ function provision_demo_clients(string $path): array
  */
 function provision_demo_issuer(string $path): array
 {
-    $directory = getcwd() . '/' . DEV_DEMO_DIRECTORY;
-    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
-        io()->error(sprintf('Cannot create %s.', $directory));
-        exit(1);
-    }
-    $keys = provision_demo_keys($directory, DEV_DEMO_ISSUER['file'], false);
-    $public = array_map(static function (array $key): array {
-        unset($key['d']);
-
-        return $key;
-    }, $keys);
-    $set = json_encode(
-        [
-            'keys' => $public,
-        ],
-        \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES,
-    );
-    if (! provision_env_local_set($path, DEV_DEMO_ISSUER['env'], base64_encode($set))) {
+    $keys = provision_demo_authority_keys(DEV_DEMO_ISSUER['file']);
+    if (! provision_env_local_set($path, DEV_DEMO_ISSUER['env'], base64_encode(provision_public_set($keys)))) {
         return [];
     }
     io()->text(sprintf('Published the public JWK Set of the trusted issuer %s into %s.', DEV_DEMO_ISSUER['issuer'], DEV_ENV_LOCAL));

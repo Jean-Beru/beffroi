@@ -145,6 +145,10 @@ function demo(
     )]
     bool $register = false,
     #[AsOption(
+        description: 'Spike 7 (issue #347): a client nothing of this provider authorises registers on a statement an authority the tenant pinned signed (RFC 7591 §2.3), what that authority says of it outranking what it said of itself, then signs the development user in like any other client; the same statement again, one signed by an authority pinned for something else, one addressed elsewhere and a request carrying none are refused',
+    )]
+    bool $attested = false,
+    #[AsOption(
         description: 'Nobody answers for you, and nothing of the laboratory stands in for anybody. With --ciba the request is made for the development user, in poll mode, and the run waits while you read the notification your own browser received and answer on /account/approvals yourself. With --push there is no push service and no browser of the laboratory at all: the notification goes to the browsers you subscribed, through their own push services, and the run says which of them this provider reached and when',
     )]
     bool $byHand = false,
@@ -293,6 +297,9 @@ function demo(
     }
     if ($register) {
         demo_register_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($attested) {
+        demo_attested_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
     }
     if ($push) {
         $registration = DEMO_CIBA_CLIENTS['poll'];
@@ -3396,7 +3403,7 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
     );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
     demo_expect(isset($callback['code']), 'which carries a code');
-    $tokens = demo_rar_exchange($issuer, $ca, $secret, (string) $callback['code'], $redirectUri, $verifier);
+    $tokens = demo_exchange_code($issuer, $ca, DEMO_RAR_CLIENT_ID, $secret, (string) $callback['code'], $redirectUri, $verifier);
     $claims = demo_claims_of($tokens['access_token'] ?? '');
     demo_expect(
         isset($claims['authorization_details']) && $claims['authorization_details'] === DEMO_RAR_GRANTED,
@@ -3478,27 +3485,41 @@ function demo_rar_authorization(string $issuer, string $verifier, string $redire
 }
 
 /**
- * The code of that request, spent with the verifier of its challenge.
+ * A code spent by the client it was issued to, with the verifier of its challenge when it sent one
+ * (RFC 6749 §4.1.3, RFC 7636 §4.5): the one exchange of the laboratory, whatever the walk asks for it,
+ * because a client that registered itself spends a code exactly as a declared one does.
  *
  * @return array<string, mixed>
  */
-function demo_rar_exchange(string $issuer, string $ca, string $secret, string $code, string $redirectUri, string $verifier): array
-{
+function demo_exchange_code(
+    string $issuer,
+    string $ca,
+    string $clientId,
+    string $secret,
+    string $code,
+    string $redirectUri,
+    ?string $verifier = null,
+): array {
+    $body = [
+        'grant_type' => 'authorization_code',
+        'code' => $code,
+        'redirect_uri' => $redirectUri,
+    ];
+    if ($verifier !== null) {
+        $body['code_verifier'] = $verifier;
+    }
     $response = http_request('POST', $issuer . '/token', [
         'cafile' => $ca,
         'max_redirects' => 0,
-        'auth_basic' => DEMO_RAR_CLIENT_ID . ':' . $secret,
-        'body' => [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => $redirectUri,
-            'code_verifier' => $verifier,
-        ],
+        'auth_basic' => $clientId . ':' . $secret,
+        'body' => $body,
     ]);
-    demo_expect($response->getStatusCode() === 200, sprintf(
-        'the code is exchanged (got %d %s)',
-        $response->getStatusCode(),
-        $response->getContent(false),
+    // What the endpoint answered belongs in the message only when there is something wrong with it: a token
+    // response printed on success buries the assertions that read it.
+    $exchanged = $response->getStatusCode() === 200;
+    demo_expect($exchanged, sprintf(
+        'the code is exchanged%s',
+        $exchanged ? '' : sprintf(' (got %d %s)', $response->getStatusCode(), $response->getContent(false)),
     ));
 
     return (array) json_decode($response->getContent(false), true, 8, \JSON_THROW_ON_ERROR);
@@ -4408,7 +4429,7 @@ function demo_register_check(string $issuer, string $password, string $ca): void
 
     // The mode first, and given back whatever ends the run: the tenant registers whoever asks the rest of
     // the time, which is what the conformance plans need and what this walk must not leave behind.
-    demo_register_mode($issuer, $ca, true);
+    demo_registration_mode($issuer, $ca, DEMO_REGISTER_ENV_MARKER, DEMO_REGISTER_MODE);
 
     $token = demo_register_token();
     $verified[] = [
@@ -4683,7 +4704,7 @@ function demo_register_check(string $issuer, string $password, string $ca): void
     // The second client is left to the purge that decision 0009 put on the scheduled step: it was used, so
     // it lives as long as the tenant said a used client does. The walk says so rather than tidying, because
     // what removes a dynamic client here is the provider and not the run.
-    demo_register_mode($issuer, $ca, false);
+    demo_registration_mode($issuer, $ca, DEMO_REGISTER_ENV_MARKER, null);
 
     io()->table(['Step', 'Verified'], $verified);
     io()->success(sprintf(
@@ -4697,25 +4718,25 @@ function demo_register_check(string $issuer, string $password, string $ca): void
 }
 
 /**
- * Writes the registration mode of the run into apps/op/.env.local, or takes it back out: the same block
- * the rotation walk owns, rewritten every time, restored by a shutdown function because demo_expect()
- * exits and an exit skips a finally. The tenant serves the conformance plans in "open" mode, so a run that
- * left "initial_access_token" behind would turn every registration module red.
+ * Writes the registration mode a walk asks the tenant for into apps/op/.env.local, or takes it back out: a
+ * block named after the walk that owns it, rewritten every time, restored by a shutdown function because
+ * demo_expect() exits and an exit skips a finally. The tenant serves the conformance plans in "open" mode, so
+ * a run that left another mode behind would turn every registration module red.
  *
- * What says the mode is in force is the endpoint itself: a registration presenting no credential is
- * refused in the controlled mode and answered 201 in the open one, so the walk polls on that and on
- * nothing else.
+ * What says the mode is in force is the endpoint itself: a registration presenting no credential is refused
+ * in every mode but the open one, and answered 201 in that one, so the walk polls on that and on nothing
+ * else. A mode of null is the default the tenant is given back.
  */
-function demo_register_mode(string $issuer, string $ca, bool $controlled): void
+function demo_registration_mode(string $issuer, string $ca, string $marker, ?string $mode): void
 {
     $path = getcwd() . '/' . DEV_ENV_LOCAL;
-    $block = sprintf('/\n*###> %1$s ###\n.*?###< %1$s ###\n/s', preg_quote(DEMO_REGISTER_ENV_MARKER, '/'));
+    $block = sprintf('/\n*###> %1$s ###\n.*?###< %1$s ###\n/s', preg_quote($marker, '/'));
     $content = rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n";
-    if ($controlled) {
+    if ($mode !== null) {
         $content .= sprintf(
             "\n###> %1\$s ###\nHEIDI_REGISTRATION_MODE=%2\$s\n###< %1\$s ###\n",
-            DEMO_REGISTER_ENV_MARKER,
-            DEMO_REGISTER_MODE,
+            $marker,
+            $mode,
         );
         register_shutdown_function(static function () use ($path, $block): void {
             file_put_contents($path, rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n");
@@ -4735,14 +4756,14 @@ function demo_register_mode(string $issuer, string $ca, bool $controlled): void
             ]),
         ]);
         $status = $response->getStatusCode();
-        if ($status >= 400 === $controlled) {
+        if ($status >= 400 === ($mode !== null)) {
             io()->text(sprintf(
                 ' <info>✓</info> the tenant registers %s (a registration with no credential is answered %d)',
-                $controlled ? 'only whoever presents a credential it issued' : 'whoever asks again',
+                $mode === null ? 'whoever asks again' : 'only whoever presents what "' . $mode . '" asks for',
                 $status,
             ));
             // The open mode answers the probe with a client; it is not left behind.
-            if (! $controlled && $status === 201) {
+            if ($mode === null && $status === 201) {
                 $body = json_decode($response->getContent(false), true);
                 if (is_array($body) && is_string($body['registration_client_uri'] ?? null) && is_string($body['registration_access_token'] ?? null)) {
                     http_request('DELETE', $body['registration_client_uri'], [
@@ -4830,6 +4851,279 @@ function demo_register_client(array $input): array
             is_array($run) ? '' : ': ' . $process->getOutput(),
         ),
     );
+
+    return $run;
+}
+
+/**
+ * The client of the attested mode, run under the autoloader of the monorepo: it is the only party of this
+ * walk that signs anything, the statements being the authority's and the browser and the token the walk's.
+ */
+const DEMO_ATTESTED_CLIENT = 'tests/demo/attestation-client.php';
+
+/**
+ * The block this walk writes in apps/op/.env.local while it runs, and the mode it asks the tenant for: the
+ * conformance plans need the open mode the rest of the time, so the block is named and taken back out.
+ */
+const DEMO_ATTESTED_ENV_MARKER = 'castor demo --attested';
+
+const DEMO_ATTESTED_MODE = 'software_statement';
+
+/**
+ * The authority this tenant pinned for statements, and the key of it the laboratory holds whole, which
+ * "castor provision" generates and publishes the public half of (DEV_DEMO_ATTESTATION_AUTHORITY).
+ */
+const DEMO_ATTESTED_AUTHORITY = 'https://attestation.demo.localhost';
+
+const DEMO_ATTESTED_AUTHORITY_KEYS = 'var/demo/demo-attestation.jwks.json';
+
+/**
+ * An authority this tenant pinned for something else: it signs the assertions of "castor demo --assertion"
+ * about the users it knows, and a tenant that trusts it about a user has not pinned it about a piece of
+ * software. Its statement is refused for that reason and for no other, which is what makes it the right
+ * stranger to play.
+ */
+const DEMO_ATTESTED_STRANGER = 'https://issuer.demo.localhost';
+
+const DEMO_ATTESTED_STRANGER_KEYS = 'var/demo/demo-issuer.jwks.json';
+
+/**
+ * The provider a statement of the walk names when it is addressed to somebody else (RFC 7591 §2.3): a name
+ * no tenant of this stack answers to.
+ */
+const DEMO_ATTESTED_ELSEWHERE = 'https://another.op.example';
+
+const DEMO_ATTESTED_REDIRECT_URI = 'http://127.0.0.1:9105/callback';
+
+const DEMO_ATTESTED_SCOPE = 'openid profile email';
+
+/**
+ * What the authority says of the software: the identifier it calls the product by across every installation
+ * of it, the version of this one, and the name a user will read on the consent page. The client sends a name
+ * of its own, which the statement outranks (RFC 7591 §3.1.1), and that is the whole point of an attestation:
+ * what a stranger says of itself is not what its publisher signed.
+ */
+const DEMO_ATTESTED_SOFTWARE_ID = 'invoice-reader';
+
+const DEMO_ATTESTED_SOFTWARE_VERSION = '2.1.0';
+
+const DEMO_ATTESTED_NAME = 'Invoice reader, attested by its publisher';
+
+const DEMO_ATTESTED_CLAIMED_NAME = 'The name the client wrote for itself';
+
+/**
+ * RFC 7591 §2.3, the fourth mode of decision 0009: a registration this provider authorises on nothing it
+ * issued. No initial access token, no credential in any header, and a statement signed by an authority the
+ * policy of the tenant pinned; the client is answered credentials it never had before and is a client like
+ * any other from that moment, which the sign-in below is what proves.
+ *
+ * The refusals are played as the acceptance is, because a mode that crosses the boundary of an organisation
+ * is only as good as what it turns away: the same statement twice, one signed by an authority pinned for
+ * something else, one an authority signed for another provider, and a body carrying none at all.
+ */
+function demo_attested_check(string $issuer, string $password, string $ca): void
+{
+    io()->section('A client an authority attested registers, and nothing of this provider authorises it');
+    $verified = [];
+
+    // The mode first, and given back whatever ends the run: the tenant registers whoever asks the rest of
+    // the time, which is what the conformance plans need and what this walk must not leave behind.
+    demo_registration_mode($issuer, $ca, DEMO_ATTESTED_ENV_MARKER, DEMO_ATTESTED_MODE);
+
+    $run = demo_attested_client([
+        'cafile' => $ca,
+        'registration_endpoint' => $issuer . '/register',
+        'audience' => $issuer,
+        'authority' => DEMO_ATTESTED_AUTHORITY,
+        'jwks_file' => getcwd() . '/' . DEMO_ATTESTED_AUTHORITY_KEYS,
+        'stranger_authority' => DEMO_ATTESTED_STRANGER,
+        'stranger_jwks_file' => getcwd() . '/' . DEMO_ATTESTED_STRANGER_KEYS,
+        'elsewhere' => DEMO_ATTESTED_ELSEWHERE,
+        'metadata' => [
+            'client_name' => DEMO_ATTESTED_CLAIMED_NAME,
+            'redirect_uris' => [DEMO_ATTESTED_REDIRECT_URI],
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'grant_types' => ['authorization_code'],
+            'response_types' => ['code'],
+            'scope' => DEMO_ATTESTED_SCOPE,
+        ],
+        'attested' => [
+            'software_id' => DEMO_ATTESTED_SOFTWARE_ID,
+            'software_version' => DEMO_ATTESTED_SOFTWARE_VERSION,
+            'client_name' => DEMO_ATTESTED_NAME,
+        ],
+    ]);
+
+    $registered = is_array($run['registered'] ?? null) ? $run['registered'] : [];
+    $body = is_array($registered['body'] ?? null) ? $registered['body'] : [];
+    demo_expect(($registered['status'] ?? 0) === 201, sprintf(
+        'the statement of the pinned authority registers a client, with no credential of this provider presented (got %s %s)',
+        (string) ($registered['status'] ?? '?'),
+        (string) ($body['error_description'] ?? $body['error'] ?? ''),
+    ));
+    $clientId = (string) ($body['client_id'] ?? '');
+    $secret = (string) ($body['client_secret'] ?? '');
+    demo_expect($clientId !== '' && $secret !== '', 'and answers credentials this client never had before (RFC 7591 §3.2.1)');
+    demo_expect(($body['client_name'] ?? null) === DEMO_ATTESTED_NAME, sprintf(
+        'what the authority signed outranks what the client said of itself (RFC 7591 §3.1.1: got "%s" for a client that sent "%s")',
+        (string) ($body['client_name'] ?? ''),
+        DEMO_ATTESTED_CLAIMED_NAME,
+    ));
+    demo_expect(
+        ($body['software_id'] ?? null) === DEMO_ATTESTED_SOFTWARE_ID && ($body['software_version'] ?? null) === DEMO_ATTESTED_SOFTWARE_VERSION,
+        sprintf(
+            'and the software the statement names is kept on the client (RFC 7591 §2: %s %s)',
+            (string) ($body['software_id'] ?? ''),
+            (string) ($body['software_version'] ?? ''),
+        ),
+    );
+    $verified[] = [
+        'Registration',
+        sprintf('%s… on a statement of %s, no credential of this provider presented', substr($clientId, 0, 12), DEMO_ATTESTED_AUTHORITY),
+    ];
+    $verified[] = [
+        'Attested members',
+        sprintf('"%s" and %s %s, over the name the client sent', DEMO_ATTESTED_NAME, DEMO_ATTESTED_SOFTWARE_ID, DEMO_ATTESTED_SOFTWARE_VERSION),
+    ];
+
+    // Every refusal about a statement is the same refusal, and whoever presents one learns nothing else
+    // (SoftwareStatementVerifier, decision 0006).
+    foreach (DEMO_ATTESTED_REFUSALS as $key => $what) {
+        $refused = is_array($run[$key] ?? null) ? $run[$key] : [];
+        $answered = is_array($refused['body'] ?? null) ? $refused['body'] : [];
+        demo_expect(($refused['status'] ?? 0) === $what['status'] && ($answered['error'] ?? null) === $what['error'], sprintf(
+            '%s (got %s "%s")',
+            $what['says'],
+            (string) ($refused['status'] ?? '?'),
+            (string) ($answered['error'] ?? ''),
+        ));
+    }
+    $verified[] = [
+        'Refused',
+        'the same statement again, an authority pinned for something else, one addressed elsewhere, and none at all',
+    ];
+
+    // And it is a client like any other from there: the code flow of every other walk, with the credentials
+    // the registration handed it and the name its publisher signed on the page the user reads.
+    $cookies = [];
+    $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    $state = bin2hex(random_bytes(16));
+    $authorization =
+        $issuer
+        . '/authorize?'
+        . http_build_query([
+            'response_type' => 'code',
+            'client_id' => $clientId,
+            'redirect_uri' => DEMO_ATTESTED_REDIRECT_URI,
+            'scope' => DEMO_ATTESTED_SCOPE,
+            'state' => $state,
+            'nonce' => bin2hex(random_bytes(16)),
+            'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='),
+            'code_challenge_method' => 'S256',
+        ]);
+    [$status, $location] = demo_resume(
+        $cookies,
+        $ca,
+        $issuer,
+        demo_login($cookies, $issuer, $password, $ca, $authorization),
+        static function (string $page): void {
+            demo_expect(
+                str_contains($page, DEMO_ATTESTED_NAME),
+                sprintf('the consent page shows the name the authority signed and not the one the client sent ("%s")', DEMO_ATTESTED_NAME),
+            );
+        },
+    );
+    demo_expect($status === 302 && str_starts_with($location, DEMO_ATTESTED_REDIRECT_URI . '?'), sprintf(
+        'the OP sends the browser to the redirection the statement registered (got %d %s)',
+        $status,
+        $location,
+    ));
+    $callback = [];
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+    demo_expect(
+        is_string($callback['code'] ?? null) && ($callback['state'] ?? null) === $state && ($callback['iss'] ?? null) === $issuer,
+        'and the callback carries a code, the state this client sent, and iss (RFC 9207)',
+    );
+
+    $tokens = demo_exchange_code($issuer, $ca, $clientId, $secret, (string) $callback['code'], DEMO_ATTESTED_REDIRECT_URI, $verifier);
+    $claims = demo_claims_of((string) ($tokens['id_token'] ?? ''));
+    demo_expect(
+        is_string($claims['sub'] ?? null) && $claims['sub'] !== '',
+        sprintf('the ID token names a subject (got "%s")', (string) ($claims['sub'] ?? '')),
+    );
+    demo_expect(($claims['aud'] ?? null) === $clientId, sprintf(
+        'and is addressed to the client the statement registered and to no other (got "%s")',
+        is_string($claims['aud'] ?? null) ? $claims['aud'] : '',
+    ));
+    $verified[] = [
+        'Signed in',
+        sprintf('"%s" is %s… to it, on a code spent with the secret the registration gave', DEV_USERNAME, substr((string) $claims['sub'], 0, 12)),
+    ];
+
+    // Given back before the table rather than by the shutdown function alone, so that what the next run of a
+    // conformance plan finds is asserted here and not hoped for.
+    demo_registration_mode($issuer, $ca, DEMO_ATTESTED_ENV_MARKER, null);
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success(sprintf(
+        'A client this provider authorises on nothing of its own registered on a statement of %s, was given the name its publisher signed, and signed "%s" in.',
+        DEMO_ATTESTED_AUTHORITY,
+        DEV_USERNAME,
+    ));
+    io()->note(sprintf(
+        'The client is left registered: it was used, so the scheduled step deletes it after the period this tenant named (decision 0009, keep_a_client_unused_for). "heidi:client:list" shows it until then, and "heidi:client:delete %s" now.',
+        $clientId,
+    ));
+}
+
+/**
+ * What each refused registration of the walk must answer, by the key the client program returns it under.
+ * A statement this tenant does not accept, whatever is wrong with it, is one refusal and one message
+ * (`invalid_software_statement`); a body carrying none at all presents nothing this mode acts on, which is
+ * not a bad statement but an unauthorized request.
+ */
+const DEMO_ATTESTED_REFUSALS = [
+    'replayed' => [
+        'status' => 400,
+        'error' => 'invalid_software_statement',
+        'says' => 'the same statement again registers nothing: one statement registers one client (RFC 7591 §2.3)',
+    ],
+    'stranger' => [
+        'status' => 400,
+        'error' => 'invalid_software_statement',
+        'says' => 'a statement signed by an authority this tenant pinned for assertions and not for statements is refused',
+    ],
+    'elsewhere' => [
+        'status' => 400,
+        'error' => 'invalid_software_statement',
+        'says' => 'and one its authority addressed to another provider, refused the same way and with the same message',
+    ],
+    'without_statement' => [
+        'status' => 401,
+        'error' => 'invalid_token',
+        'says' => 'a registration carrying no statement at all is unauthorized, this tenant being in no other mode',
+    ],
+];
+
+/**
+ * The attestation client of tests/demo/, which castor cannot run itself: it holds the key of the authority
+ * and is the only thing here that signs.
+ *
+ * @param array<string, mixed> $input
+ *
+ * @return array<string, mixed>
+ */
+function demo_attested_client(array $input): array
+{
+    $process = new Process(['php', DEMO_ATTESTED_CLIENT], input: (string) json_encode($input));
+    $process->setTimeout(120.0);
+    $process->run();
+    demo_expect($process->isSuccessful(), sprintf(
+        'the attestation client ran%s',
+        $process->isSuccessful() ? '' : sprintf(' (exit %d): %s', $process->getExitCode() ?? -1, trim($process->getErrorOutput())),
+    ));
+    $run = json_decode($process->getOutput(), true);
+    demo_expect(is_array($run), sprintf('and answered a JSON object%s', is_array($run) ? '' : ': ' . $process->getOutput()));
 
     return $run;
 }
