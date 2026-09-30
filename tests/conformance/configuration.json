@@ -254,6 +254,168 @@
                 }
             ]
         },
+        "oidcc-registration-logo-uri": {
+            "browser": [
+                {
+                    "comment": "The logo a client registers is an image of the consent page, which is where this provider shows what a client says about itself (OIDC Registration §2): the browser signs in, waits for that image, and the text of the page fills the screenshot placeholder of the module. It ends there, on the page the module asks a capture of, since this module reads no callback.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{HEIDI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{HEIDI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Expect the consent page with the logo",
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "css",
+                                    "img[data-client=logo]",
+                                    10
+                                ],
+                                [
+                                    "wait",
+                                    "css",
+                                    "button[name=answer][value=allow]",
+                                    10,
+                                    "Allow|Autoriser",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-registration-policy-uri": {
+            "browser": [
+                {
+                    "comment": "The policy a client registers is a link of the consent page, which is where this provider shows what a client says about itself (OIDC Registration §2): the browser signs in, waits for that link, and the text of the page fills the screenshot placeholder of the module. It ends there, on the page the module asks a capture of, since this module reads no callback.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{HEIDI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{HEIDI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Expect the consent page with the link to the policy",
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "css",
+                                    "a[data-client=policy_uri]",
+                                    10
+                                ],
+                                [
+                                    "wait",
+                                    "css",
+                                    "button[name=answer][value=allow]",
+                                    10,
+                                    "Allow|Autoriser",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-registration-tos-uri": {
+            "browser": [
+                {
+                    "comment": "The terms of service a client registers are a link of the consent page, which is where this provider shows what a client says about itself (OIDC Registration §2): the browser signs in, waits for that link, and the text of the page fills the screenshot placeholder of the module. It ends there, on the page the module asks a capture of, since this module reads no callback.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{HEIDI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{HEIDI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{HEIDI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Expect the consent page with the link to the terms of service",
+                            "match": "{HEIDI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "css",
+                                    "a[data-client=tos_uri]",
+                                    10
+                                ],
+                                [
+                                    "wait",
+                                    "css",
+                                    "button[name=answer][value=allow]",
+                                    10,
+                                    "Allow|Autoriser",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
         "oidcc-rp-initiated-logout-no-params": {
             "browser": [
                 {
