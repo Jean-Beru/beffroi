@@ -23,6 +23,7 @@ use Heidi\Oidc\Exception\LogicException;
 use Heidi\Oidc\Exception\OAuth2Exception;
 use Heidi\Oidc\Exception\UnsupportedResponseModeException;
 use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Heidi\Oidc\Tests\Fixture\ChallengeMethods;
 use Heidi\Oidc\Tests\Fixture\Clients;
 use Heidi\Oidc\Tests\Fixture\ServedModes;
 use Heidi\Oidc\Tests\Fixture\WiredModes;
@@ -70,7 +71,12 @@ final class AuthorizationRequestParserTest extends TestCase
             new FakePasswordHasher()->hash(Clients::SECRET),
             clientId: 'foreign',
         ));
-        $this->parser = new AuthorizationRequestParser($this->clients, ServedModes::queryAndFormPost(), AuthorizationDetailTypes::served());
+        $this->parser = new AuthorizationRequestParser(
+            $this->clients,
+            ServedModes::queryAndFormPost(),
+            AuthorizationDetailTypes::served(),
+            ChallengeMethods::s256(),
+        );
     }
 
     /**
@@ -100,7 +106,7 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertSame('https://demo.localhost/login/check', (string) $request->redirectUri);
         static::assertEquals([Scope::openid(), new Scope('profile')], $request->scopes->all);
         static::assertSame(self::CHALLENGE, $request->codeChallenge?->value);
-        static::assertSame('S256', $request->codeChallenge->method->value);
+        static::assertSame('S256', $request->codeChallenge->method->name());
         static::assertSame('af0ifjsldkj', $request->state);
         static::assertSame('n-0S6_WzA2Mj', $request->nonce);
         static::assertSame([Prompt::Login, Prompt::Consent], $request->prompts);
@@ -376,7 +382,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function itResolvesTheJwtResponseModeToTheSignedQuery(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo(), AuthorizationDetailTypes::served());
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo(), AuthorizationDetailTypes::served(), ChallengeMethods::s256());
         $parameters = self::parameters([
             'response_mode' => 'jwt',
         ]);
@@ -395,7 +401,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function itReadsTheSignedFormPostResponseMode(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo(), AuthorizationDetailTypes::served());
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::signedToo(), AuthorizationDetailTypes::served(), ChallengeMethods::s256());
         $parameters = self::parameters([
             'response_mode' => 'form_post.jwt',
         ]);
@@ -435,7 +441,7 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aModeTheIntegrationDidNotWireIsRefused(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, ServedModes::queryOnly(), AuthorizationDetailTypes::served());
+        $parser = new AuthorizationRequestParser($this->clients, ServedModes::queryOnly(), AuthorizationDetailTypes::served(), ChallengeMethods::s256());
         $parameters = self::parameters([
             'response_mode' => 'form_post',
         ]);
@@ -473,7 +479,12 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aDeploymentThatWiresNoQueryFallsBackToAModeItServes(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]), AuthorizationDetailTypes::served());
+        $parser = new AuthorizationRequestParser(
+            $this->clients,
+            WiredModes::of([ServedModes::FORM_POST]),
+            AuthorizationDetailTypes::served(),
+            ChallengeMethods::s256(),
+        );
 
         // When
         $target = $parser->redirectTarget($this->tenant, self::parameters([
@@ -493,7 +504,12 @@ final class AuthorizationRequestParserTest extends TestCase
     public function aRequestThatAsksForNoModeFallsBackToAModeItServes(): void
     {
         // Given
-        $parser = new AuthorizationRequestParser($this->clients, WiredModes::of([ServedModes::FORM_POST]), AuthorizationDetailTypes::served());
+        $parser = new AuthorizationRequestParser(
+            $this->clients,
+            WiredModes::of([ServedModes::FORM_POST]),
+            AuthorizationDetailTypes::served(),
+            ChallengeMethods::s256(),
+        );
 
         // When
         $target = $parser->redirectTarget($this->tenant, self::parameters([]));

@@ -14,7 +14,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\ClientPresentation;
 use Heidi\Oidc\Domain\Client\ClientRegistration;
@@ -310,7 +310,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
             null,
             null,
             'n-0S6_WzA2Mj',
-            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
             null,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),

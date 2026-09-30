@@ -16,7 +16,7 @@ use Heidi\Oidc\Domain\Authorization\AuthenticationContextRequest;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Tests\Fixture\Clients;
@@ -300,7 +300,7 @@ final class AuthenticationContextRequestTest extends TestCase
             $this->client,
             $this->client->registration->redirectUris[0],
             new Scopes([Scope::openid()]),
-            new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(Requests::CHALLENGE, new Sha256CodeChallengeMethod()),
             acrValues: $acrValues,
             claims: $claims === null ? null : ClaimsRequest::fromJson($claims),
         );

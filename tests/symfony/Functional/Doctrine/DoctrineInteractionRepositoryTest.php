@@ -11,7 +11,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Authorization\Display;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
@@ -53,7 +53,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             $client,
             $client->registration->redirectUris[0],
             new Scopes([new Scope('openid'), new Scope('profile')]),
-            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
             'af0ifjsldkj',
             'n-0S6_WzA2Mj',
             [Prompt::Login, Prompt::Consent],
@@ -91,7 +91,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertSame((string) $client->registration->redirectUris[0], (string) $parked->redirectUri);
         static::assertEquals([new Scope('openid'), new Scope('profile')], $parked->scopes->all);
         static::assertSame(self::CHALLENGE, $parked->codeChallenge?->value);
-        static::assertSame('S256', $parked->codeChallenge->method->value);
+        static::assertSame('S256', $parked->codeChallenge->method->name());
         static::assertSame('af0ifjsldkj', $parked->state);
         static::assertSame('n-0S6_WzA2Mj', $parked->nonce);
         static::assertSame([Prompt::Login, Prompt::Consent], $parked->prompts);
@@ -115,7 +115,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             $client,
             $client->registration->redirectUris[0],
             new Scopes([new Scope('openid')]),
-            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
         );
         $id = Secrets::draw();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));
@@ -154,7 +154,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             $client,
             $client->registration->redirectUris[0],
             new Scopes([new Scope('openid')]),
-            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
         );
         $interaction = new Interaction(Secrets::draw(), self::tenant(), $request, 'en', self::now(), self::now()->modify('+10 minutes'));
         self::interactions()->save($interaction);
@@ -199,7 +199,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
             $ghost,
             $ghost->registration->redirectUris[0],
             new Scopes([new Scope('openid')]),
-            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
         );
         $id = Secrets::draw();
         self::interactions()->save(new Interaction($id, self::tenant(), $request, null, self::now(), self::now()->modify('+10 minutes')));

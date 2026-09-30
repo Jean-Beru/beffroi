@@ -212,6 +212,7 @@ use Heidi\Oidc\Application\Authorization\AuthenticationRequirement;
 use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
 use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
+use Heidi\Oidc\Application\Authorization\CodeChallengeMethods;
 use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Heidi\Oidc\Application\Authorization\RequestObjectReader;
 use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
@@ -358,6 +359,7 @@ use Heidi\Oidc\Port\TrustedIssuersInterface;
 use Heidi\Oidc\Port\RequestObjectReplayGuardInterface;
 use Heidi\Oidc\Port\ClientAssertionSecretVerifierInterface;
 use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
+use Heidi\Oidc\Port\CodeChallengeMethodsInterface;
 use Heidi\Oidc\Port\ClientJwksCacheInterface;
 use Heidi\Oidc\Port\ClientJwksFetcherInterface;
 use Heidi\Oidc\Domain\Token\CertificateConfirmationKind;
@@ -416,6 +418,7 @@ use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use Heidi\Oidc\Port\ProofKeyVerifierInterface;
 use Heidi\Oidc\Port\ProvableMethodsInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Ciba\PingDelivery;
 use Heidi\Oidc\Domain\Ciba\PollDelivery;
 use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
@@ -1093,6 +1096,17 @@ return static function (ContainerConfigurator $container): void {
     // registration is held to are one set, and not two places that must agree (issues #278, #336)
     $services->set(OfferedScopes::class);
     $services->alias(OfferedScopesInterface::class, OfferedScopes::class);
+
+    // RFC 7636 §4.2: the transformations a challenge may be made with, one class each, in the order they
+    // are wired. What the document announces, what a request may name in "code_challenge_method" and what
+    // a stored challenge is read back as all read this one list. "plain" is no class of the module,
+    // decision 0006 refusing it, so no deployment can wire it.
+    $services->set(Sha256CodeChallengeMethod::class)->tag('heidi.oidc.code_challenge_method');
+    $services->set(CodeChallengeMethods::class)->args([tagged_iterator('heidi.oidc.code_challenge_method')]);
+    $services->alias(CodeChallengeMethodsInterface::class, CodeChallengeMethods::class);
+    // Public on purpose: the DBAL type that reads a stored challenge back cannot be injected into, and the
+    // bundle hands it the wiring when it boots (HeidiBundle::boot()).
+    $services->alias('heidi.code_challenge_methods', CodeChallengeMethodsInterface::class)->public();
 
     // The module: authorization endpoint, the pushed request the browser may come back with, and the
     // request object a client signs (RFC 9101), read with the very reader and verifier a client

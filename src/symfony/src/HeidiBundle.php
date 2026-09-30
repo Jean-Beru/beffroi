@@ -40,8 +40,10 @@ use Heidi\Bundle\Configuration\WebPushSection;
 use Heidi\Bundle\Doctrine\Type\ConfirmationType;
 use Heidi\Bundle\Doctrine\Type\AuthorizationDetailsType;
 use Heidi\Bundle\Doctrine\Type\NeedsAuthorizationDetailTypesInterface;
+use Heidi\Bundle\Doctrine\Type\NeedsCodeChallengeMethodsInterface;
 use Heidi\Bundle\Doctrine\Type\NeedsConfirmationReaderInterface;
 use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
+use Heidi\Oidc\Port\CodeChallengeMethodsInterface;
 use Heidi\Oidc\Port\ConfirmationReaderInterface;
 use Heidi\Bundle\Doctrine\Type\DeviceType;
 use Heidi\Bundle\Doctrine\Type\EmailAddressType;
@@ -115,7 +117,8 @@ final class HeidiBundle extends AbstractBundle
     /**
      * The types that read a wiring back are told what the deployment is wired with, as soon as the
      * container can answer: which algorithm a stored password hash names, which kind of confirmation a
-     * stored "cnf" names, what an "authorization_details" a user agreed to asks for. It goes to the class and not to an instance: Doctrine builds its types itself,
+     * stored "cnf" names, what an "authorization_details" a user agreed to asks for, which method a stored
+     * PKCE challenge was made with. It goes to the class and not to an instance: Doctrine builds its types itself,
      * when a connection is first made, so no instance of one exists while the bundles boot. A deployment
      * has one wiring, and a kernel booted after another hands over the same one.
      */
@@ -128,6 +131,7 @@ final class HeidiBundle extends AbstractBundle
         $algorithms = $container->has('heidi.password_algorithms') ? $container->get('heidi.password_algorithms') : null;
         $confirmations = $container->has('heidi.confirmations') ? $container->get('heidi.confirmations') : null;
         $authorizationDetails = $container->has('heidi.authorization_detail_types') ? $container->get('heidi.authorization_detail_types') : null;
+        $codeChallengeMethods = $container->has('heidi.code_challenge_methods') ? $container->get('heidi.code_challenge_methods') : null;
         foreach (self::DBAL_TYPES as $class) {
             if ($algorithms instanceof PasswordAlgorithmsInterface && is_a($class, NeedsPasswordAlgorithmsInterface::class, true)) {
                 $class::resolveWith($algorithms);
@@ -137,6 +141,9 @@ final class HeidiBundle extends AbstractBundle
             }
             if ($authorizationDetails instanceof AuthorizationDetailsReaderInterface && is_a($class, NeedsAuthorizationDetailTypesInterface::class, true)) {
                 $class::resolveWith($authorizationDetails);
+            }
+            if ($codeChallengeMethods instanceof CodeChallengeMethodsInterface && is_a($class, NeedsCodeChallengeMethodsInterface::class, true)) {
+                $class::resolveWith($codeChallengeMethods);
             }
         }
     }

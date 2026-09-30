@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Heidi\Oidc\Tests\Domain\Authorization;
 
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Exception\InvalidArgumentException;
+use Heidi\Oidc\Tests\Fixture\FakeCodeChallengeMethod;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -22,11 +23,11 @@ final class CodeChallengeTest extends TestCase
     public function itAcceptsFortyThreeToOneHundredAndTwentyEightUnreservedCharacters(string $value): void
     {
         // When
-        $challenge = new CodeChallenge($value, CodeChallengeMethod::S256);
+        $challenge = new CodeChallenge($value, new Sha256CodeChallengeMethod());
 
         // Then
         static::assertSame($value, $challenge->value);
-        static::assertSame('S256', $challenge->method->value);
+        static::assertSame('S256', $challenge->method->name());
     }
 
     /**
@@ -49,7 +50,7 @@ final class CodeChallengeTest extends TestCase
         $this->expectExceptionMessageIsOrContains('RFC 7636 §4.2');
 
         // When
-        new CodeChallenge($value, CodeChallengeMethod::S256);
+        new CodeChallenge($value, new Sha256CodeChallengeMethod());
     }
 
     /**
@@ -66,41 +67,36 @@ final class CodeChallengeTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6 with the vector of appendix B: BASE64URL(SHA256(verifier)) is the challenge.
+     * RFC 7636 §4.6: the challenge asks the method it was made with, hands it what it holds and what the
+     * token endpoint received, and answers what the method answered. The transformation is the method's,
+     * and it is tested where it is written (Sha256CodeChallengeMethodTest).
      */
     #[Test]
-    public function itVerifiesTheCodeVerifierOfRfc7636AppendixB(): void
+    public function itAsksTheMethodItWasMadeWith(): void
     {
         // Given
-        $challenge = new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256);
+        $method = new FakeCodeChallengeMethod();
+        $challenge = new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', $method);
 
-        // When / Then
-        static::assertTrue($challenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
+        // When
+        $verified = $challenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
+
+        // Then
+        static::assertTrue($verified);
+        static::assertSame('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', $method->challengeItWasHanded);
+        static::assertSame('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk', $method->verifierItWasHanded);
     }
 
     /**
-     * RFC 7636 §4.6: one character off, the empty string, or the challenge itself (a "plain" attempt)
-     * are refused.
+     * RFC 7636 §4.6: what the method refuses, the challenge refuses.
      */
     #[Test]
-    #[DataProvider('provideWrongVerifiers')]
-    public function itRefusesAVerifierThatDoesNotHashToTheChallenge(string $verifier): void
+    public function itRefusesWhatTheMethodRefuses(): void
     {
         // Given
-        $challenge = new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256);
+        $challenge = new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', new FakeCodeChallengeMethod(answer: false));
 
         // When / Then
-        static::assertFalse($challenge->verifies($verifier));
-    }
-
-    /**
-     * @return iterable<string, array{string}>
-     */
-    public static function provideWrongVerifiers(): iterable
-    {
-        yield 'one character off' => ['dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'];
-        yield 'empty' => [''];
-        yield 'the challenge itself' => ['E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
-        yield 'padded' => ['dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk='];
+        static::assertFalse($challenge->verifies('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
     }
 }

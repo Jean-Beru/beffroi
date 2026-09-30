@@ -13,7 +13,7 @@ use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Heidi\Oidc\Domain\Client\Client;
@@ -76,7 +76,7 @@ final class Tokens
             $resources,
             $authorizationDetails,
             $nonce,
-            $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
+            $pkce ? new CodeChallenge(Requests::CHALLENGE, new Sha256CodeChallengeMethod()) : null,
             $dpopKey,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
