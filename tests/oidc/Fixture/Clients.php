@@ -25,6 +25,7 @@ use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\InitiateLoginUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\RequestUri;
 use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
 use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
 use Heidi\Oidc\Domain\Resource\ResourceIndicator;
@@ -551,7 +552,7 @@ final class Clients
      * signature is verified against and registers, or not, the algorithm it signs with and the URLs its
      * objects are published at.
      *
-     * @param list<ClientUri> $requestUris
+     * @param list<RequestUri> $requestUris
      */
     public static function sendingRequestObjects(
         Tenant $tenant,

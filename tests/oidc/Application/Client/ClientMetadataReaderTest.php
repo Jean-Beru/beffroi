@@ -185,6 +185,27 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
+     * OIDC Core §6.2, OIDC Registration §2: a "request_uris" a client registers may carry the fragment §6.2
+     * defines, and the value is kept byte for byte, hash included, because that is what a request naming it
+     * is compared with (modules `oidcc-request-uri-unsigned` and `-request-uri-signed-rs256`).
+     */
+    #[Test]
+    public function aRequestUriMayCarryTheFragmentOfTheSpecification(): void
+    {
+        // When
+        $registration = self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'request_uris' => ['https://rp.example/request.jwt#ZmFrZS1oYXNoLW9mLXRoZS1jb250ZW50'],
+        ]);
+
+        // Then
+        static::assertSame(
+            ['https://rp.example/request.jwt#ZmFrZS1oYXNoLW9mLXRoZS1jb250ZW50'],
+            array_map(static fn (object $uri): string => (string) $uri, $registration->requestUris),
+        );
+    }
+
+    /**
      * The one member held to "https" is held to it alone: plain HTTP on a loopback host is what the URIs of
      * a client on a development stack are, and the exception stays where it is earned rather than being
      * lifted or narrowed for every member at once (decision 0006).
@@ -347,6 +368,16 @@ final class ClientMetadataReaderTest extends TestCase
             InvalidClientMetadataException::class,
             'subject_type',
             'subject_type option of the client "drawn" must be one of: public',
+        ];
+        // RFC 6749 §3.1.2: a redirection carries no fragment, and the kind that accepts one is the kind
+        // "request_uris" is read as, never a member name read inside ClientUri (issue #376).
+        yield 'a redirection URI that carries a fragment (oidcc-redirect-uri-regfrag)' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb#frag'],
+            ],
+            InvalidRedirectUriException::class,
+            'redirect_uris',
+            'must not carry a fragment',
         ];
         yield 'a login begun by a third party over plain HTTP (oidcc-3rd_party-init-login-nohttps)' => [
             [

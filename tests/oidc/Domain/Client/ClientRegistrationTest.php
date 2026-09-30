@@ -20,6 +20,7 @@ use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Heidi\Oidc\Domain\Client\ClientJwks;
 use Heidi\Oidc\Domain\Client\ClientUri;
 use Heidi\Oidc\Domain\Client\RedirectUri;
+use Heidi\Oidc\Domain\Client\RequestUri;
 use Heidi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
 use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -665,8 +666,8 @@ final class ClientRegistrationTest extends TestCase
     {
         // Given
         $client = Clients::sendingRequestObjects(Fixtures::tenant(), requestUris: [
-            new ClientUri('https://jar.example/request.jwt'),
-            new ClientUri('https://jar.example/request.jwt'),
+            new RequestUri('https://jar.example/request.jwt'),
+            new RequestUri('https://jar.example/request.jwt'),
         ]);
 
         // When / Then

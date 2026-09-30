@@ -12,6 +12,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
 use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Heidi\Oidc\Domain\Client\ClientUri;
+use Heidi\Oidc\Domain\Client\RequestUri;
 use Heidi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
 use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use Heidi\Oidc\Exception\ClientKeysUnavailableException;
@@ -321,7 +322,7 @@ final class RequestObjectResolverTest extends TestCase
     public function theObjectBehindARegisteredReferenceIsReadBack(): void
     {
         // Given
-        $this->clients->save(Clients::sendingRequestObjects($this->tenant, requestUris: [new ClientUri(self::PUBLISHED)], clientId: 'reference-client'));
+        $this->clients->save(Clients::sendingRequestObjects($this->tenant, requestUris: [new RequestUri(self::PUBLISHED)], clientId: 'reference-client'));
         $object = RequestObjects::signed(RequestObjects::claims('reference-client', $this->tenant->issuer->value, $this->clock->now(), [
             'scope' => 'openid profile',
         ]));
@@ -347,7 +348,7 @@ final class RequestObjectResolverTest extends TestCase
     public function aReferenceThatCannotBeReadBackIsRefused(): void
     {
         // Given
-        $this->clients->save(Clients::sendingRequestObjects($this->tenant, requestUris: [new ClientUri(self::PUBLISHED)], clientId: 'reference-client'));
+        $this->clients->save(Clients::sendingRequestObjects($this->tenant, requestUris: [new RequestUri(self::PUBLISHED)], clientId: 'reference-client'));
         $fetcher = new FakeRequestObjectFetcher();
         $fetcher->failure = new RequestObjectUnavailableException('The client answered 500.');
         $resolver = RequestObjects::resolver($this->clients, $this->clock, $fetcher);
