@@ -592,9 +592,11 @@ const CONFORMANCE_PLANS = [
     // The key rotation module of the Dynamic OP plan, run on its own and created without a plan since the
     // suite has none for a single module (architecture §3.3): it reads the JWK Set, waits for the
     // operator to rotate the keys, reads it again and wants a new key with the old one still there. It is
-    // here as well as inside the "dynamic" run because that run does not gate while it waits on its
-    // issues and this one does. The plans of the suite nothing here runs are those of the response types
-    // and the features this provider does not have: implicit and hybrid, and session management.
+    // here as well as inside the "dynamic" run because it is the outside judge of spike 2 and the run an
+    // operator replays after a rotation, without the twenty-two other modules of the plan; both gate, and a
+    // module that fails in either fails the task. The plans of the suite nothing here runs are those of the
+    // response types and the features this provider does not have: implicit and hybrid, and session
+    // management.
     'rotate-keys' => [
         'name' => 'oidcc-server-rotate-keys',
         'module' => true,
