@@ -31,5 +31,15 @@ vault write "transit/keys/${KEY}/config" deletion_allowed=false >/dev/null
 # What the OP may do, and nothing else (heidi-op.hcl, next to this script).
 vault policy write heidi-op "$(dirname "$0")/heidi-op.hcl" >/dev/null
 
-echo "Vault ready: key ${KEY}, policy heidi-op"
+# The audit device, on the standard output of the container, so that the log of this container says what it
+# was asked for. A dev server has none until it is asked for one, and a production Vault has one: it is
+# where the count of the third success criterion of spike 8 is read, one opening per data key and per thread
+# and never one per row (decision 0018, "castor login-cost"), and a count read in the application would be
+# a count the application decides. Sensitive values are hashed, which is the default: what is counted is
+# the path and the policy of the token, never what crossed. Idempotent, the device being enabled once.
+if ! vault audit list -format=json 2>/dev/null | grep -q '"file/"'; then
+    vault audit enable file file_path=stdout >/dev/null
+fi
+
+echo "Vault ready: key ${KEY}, policy heidi-op, audit device on stdout"
 vault read -format=json "transit/keys/${KEY}" | grep -E '"(name|type|derived|exportable|allow_plaintext_backup|deletion_allowed|latest_version)"'

@@ -9,8 +9,8 @@ declare(strict_types=1);
  *   .castor/stack/   what builds and checks the stack and what the CI runs: the stack itself (stack.php), its
  *                    provisioning (provision.php) and the quality tools (qa.php);
  *   .castor/lab/     the tests and the experiments played against the running stack: the OpenID conformance
- *                    suite (conformance.php), oidc-demo, Symfony's oidc_login (demo.php), and the client
- *                    certificate at the edge (mtls.php);
+ *                    suite (conformance.php), oidc-demo, Symfony's oidc_login (demo.php), the client
+ *                    certificate at the edge (mtls.php), and what a login costs (cost.php);
  *   .castor/tools/   what reads the repository itself and asks nothing of the stack: the knowledge graph of
  *                    the sources (graphify.php).
  */
