@@ -38,7 +38,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
     public function everyColumnOfEveryTableIsClassified(): void
     {
         // Given
-        $schema = BundleSchema::columns(self::entityManager(), SchemaColumns::SEALING_TYPES);
+        $schema = BundleSchema::columns(self::entityManager(), SchemaColumns::sealingTypes());
 
         // When / Then
         static::assertSame([], new ClassifiedSchema(SchemaColumns::all())->findings($schema));

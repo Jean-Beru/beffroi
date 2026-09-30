@@ -783,3 +783,24 @@ services:
     Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits:
         arguments:
             $value: 2048
+
+    # Decisions 0011 and 0018 (issue #400): an encrypted type holds an encrypter, which is a service, so
+    # the types of the bundle are declared as one service and registered while the bundles boot
+    # (HeidiBundle::boot). What a deployment chooses is that encrypter, and nothing else, because that
+    # choice is what decides where the data key of a scope comes from: the one that composes the scope with
+    # the ambient tenant and reads its keys from a table of the database is issue #401. This kernel is the
+    # deployment that gives them a store in the memory of the process, so that what is tested here is the
+    # registration and the round trip and not a table.
+    heidi.test.data_keys:
+        class: Symfony\Component\KeyManagement\Test\InMemoryDataKeyStore
+
+    heidi.test.stored_envelopes:
+        class: Symfony\Component\KeyManagement\StoredEnvelopeEncrypter
+        arguments:
+            $store: '@heidi.test.data_keys'
+
+    heidi.encrypted_types:
+        class: Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes
+        public: true
+        factory: ['Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes', 'service']
+        arguments: ['@heidi.test.stored_envelopes']

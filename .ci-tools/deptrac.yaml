@@ -39,7 +39,14 @@ deptrac:
         - { type: classLike, value: '^Psr\\' }
     - name: 'KeyManagement'
       collectors:
-        - { type: classLike, value: '^Symfony\\Component\\KeyManagement\\' }
+        - { type: classLike, value: '^Symfony\\Component\\KeyManagement\\(?!Bridge\\Doctrine)' }
+    # The two Doctrine bridges of the component are a layer of their own, and only the bundle may see it:
+    # they carry a DBAL type, a DBAL table and an ORM listener, which is exactly what the core and the
+    # module are forbidden. Everything else of the component stays in the layer above, which the core's
+    # Bridge reads to seal a key and a secret.
+    - name: 'KeyManagementDoctrine'
+      collectors:
+        - { type: classLike, value: '^Symfony\\Component\\KeyManagement\\Bridge\\Doctrine' }
     - name: 'Uid'
       collectors:
         - { type: classLike, value: '^Symfony\\Component\\Uid\\' }
@@ -150,6 +157,7 @@ deptrac:
       - 'Psr'
       - 'Symfony'
       - 'KeyManagement'
+      - 'KeyManagementDoctrine'
       - 'Uid'
       - 'Jose'
       - 'Webauthn'

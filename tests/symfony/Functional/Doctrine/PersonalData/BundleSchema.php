@@ -16,9 +16,10 @@ use function ksort;
  * A sealing type is an EncryptedType of "symfony/doctrine-dbal-key-management" registered by the bundle,
  * which decorates the type the column would otherwise have carried and stores an envelope referring to
  * the data key of its scope (decision 0011, decision 0018). It is read by the name the mapping gives it,
- * and the names are SchemaColumns::SEALING_TYPES, which is empty until issue #400 registers the first of
- * them. The two cannot drift apart: a column declared sealed whose type is not one of those names is a
- * finding, and so is a column whose type is one of them and whose line still owes it.
+ * and the names are the ones the bundle declares (EncryptedColumnTypes, read through
+ * SchemaColumns::sealingTypes()). The two cannot drift apart: a column declared sealed whose type is not
+ * one of those names is a finding, and so is a column whose type is one of them and whose line still owes
+ * it.
  */
 final readonly class BundleSchema
 {
