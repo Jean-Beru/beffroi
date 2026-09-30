@@ -207,6 +207,34 @@ const CONFORMANCE_FAPI_KNOWN_MODULES = [
  * It is therefore a check of the suite behind a decision this provider keeps, like the "sid" of the FAPI
  * runs above, and the profile stays out of certification (../../docs/07-certifications.md).
  */
+/**
+ * The audience every client assertion of this plan carries, and why no building makes it acceptable
+ * (issue #379). "CreateClientAuthenticationAssertionClaims" signs the URL of the token endpoint, read in
+ * the source of the suite at the tag compose.yaml pins, and "OIDCCDynamicTestPlan" fixes
+ * "private_key_jwt" for every module but the discovery one and the key rotation: so every module that
+ * reaches a token sends an assertion this provider refuses, and reads the refusal as a token endpoint that
+ * did not answer 200.
+ *
+ * Decision 0016 is what refuses it, and "draft-ietf-oauth-rfc7523bis" §4 is why: it updates RFC 7523 so
+ * that the "aud" of a client assertion must be the issuer identifier as a single value, must not be the URL
+ * of the token endpoint, and must be rejected when it is anything else. FAPI 2.0 Security Profile §5.3.2.1
+ * clause 8 asked for the same rule first, and the module
+ * "fapi2-security-profile-final-ensure-invalid-client-assertions-fail" of the four green FAPI 2 runs
+ * requires that exact refusal: accepting the URL here would turn four passing runs red to buy these.
+ *
+ * The one module of this plan that names the issuer, "oidcc-ensure-client-assertion-with-iss-aud-succeeds",
+ * passes. So what is written down is a check of the suite behind a specification this provider follows, as
+ * the two above are, and the profile stays out of certification (../../docs/07-certifications.md).
+ */
+const CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE = 'the plan signs the URL of the token endpoint as the "aud" of its client assertions, which draft-ietf-oauth-rfc7523bis section 4 forbids and decision 0016 refuses; heidi#379';
+
+/**
+ * What such a module ends on: the status the exchange did not answer, and its own interruption, which
+ * quotes that failure. A module interrupted for any other reason carries that reason as a finding of its
+ * own, so the run still fails on it.
+ */
+const CONFORMANCE_TOKEN_ENDPOINT_STATUS = 'FAILURE CheckTokenEndpointHttpStatus200:';
+
 const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
     'oidcc-discovery-endpoint-verification' => [
         'result' => 'FAILED',
@@ -217,6 +245,62 @@ const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
             'FAILURE OIDCCCheckDiscEndpointGrantTypesSupportedDynamic:',
         ],
         'reason' => 'the Dynamic OP profile requires the implicit grant and the hybrid response types, which decision 0006 refuses; heidi#371',
+    ],
+    'oidcc-server' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_TOKEN_ENDPOINT_STATUS,
+            'INTERRUPTED oidcc-server:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
+    ],
+    'oidcc-idtoken-rs256' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_TOKEN_ENDPOINT_STATUS,
+            'INTERRUPTED oidcc-idtoken-rs256:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
+    ],
+    'oidcc-userinfo-rs256' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_TOKEN_ENDPOINT_STATUS,
+            'INTERRUPTED oidcc-userinfo-rs256:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
+    ],
+    'oidcc-redirect-uri-query-OK' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_TOKEN_ENDPOINT_STATUS,
+            'INTERRUPTED oidcc-redirect-uri-query-OK:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
+    ],
+    'oidcc-registration-jwks-uri' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_TOKEN_ENDPOINT_STATUS,
+            'INTERRUPTED oidcc-registration-jwks-uri:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
+    ],
+    'oidcc-refresh-token' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_TOKEN_ENDPOINT_STATUS,
+            'INTERRUPTED oidcc-refresh-token:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
+    ],
+    'oidcc-refresh-token-rp-key-rotation' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_TOKEN_ENDPOINT_STATUS,
+            'INTERRUPTED oidcc-refresh-token-rp-key-rotation:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
     ],
 ];
 

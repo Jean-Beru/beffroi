@@ -6,6 +6,7 @@ namespace Heidi\Oidc\Tests\Fixture;
 
 use function base64_encode;
 use DateTimeImmutable;
+use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
 use Heidi\Core\Tests\Fixture\Algorithms;
 use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
 use Heidi\Oidc\Domain\Client\ClientJwks;
@@ -20,22 +21,31 @@ use function rtrim;
 use function strtr;
 
 /**
- * The client side of "private_key_jwt" and of "client_secret_jwt": one ES256 key pair for the suite, the
- * claims RFC 7523 §3 asks for, and the compact JWS a client would send. Never leaves the test suite.
+ * The client side of "private_key_jwt" and of "client_secret_jwt": one key pair per algorithm asked for,
+ * the claims RFC 7523 §3 asks for, and the compact JWS a client would send. ES256 is what a caller that
+ * names no algorithm gets; RS256 is what the Dynamic OP plan signs with, so a test that reproduces a module
+ * names it. Never leaves the test suite.
  */
 final class ClientAssertions
 {
     public const string KEY_ID = 'client-key';
 
-    private static ?JWK $privateKey = null;
+    /**
+     * One pair per algorithm, drawn once: generating an RSA key is slow enough to be worth keeping.
+     *
+     * @var array<non-empty-string, JWK>
+     */
+    private static array $privateKeys = [];
 
     /**
-     * The private key of the client, ES256, with a "kid".
+     * The private key of the client, with a "kid".
      */
-    public static function privateKey(): JWK
+    public static function privateKey(?JoseSignatureAlgorithmInterface $algorithm = null): JWK
     {
-        return self::$privateKey ??= new JWK([
-            ...Algorithms::es256()->generateKey()->all(),
+        $algorithm ??= Algorithms::es256();
+
+        return self::$privateKeys[$algorithm->name()] ??= new JWK([
+            ...$algorithm->generateKey()->all(),
             'kid' => self::KEY_ID,
         ]);
     }
@@ -43,10 +53,10 @@ final class ClientAssertions
     /**
      * What the client publishes, inline or behind its "jwks_uri".
      */
-    public static function publishedKeys(): ClientJwks
+    public static function publishedKeys(?JoseSignatureAlgorithmInterface $algorithm = null): ClientJwks
     {
         /** @var list<array<string, mixed>> $keys */
-        $keys = [self::privateKey()->toPublic()->all()];
+        $keys = [self::privateKey($algorithm)->toPublic()->all()];
 
         return new ClientJwks($keys);
     }
@@ -75,13 +85,18 @@ final class ClientAssertions
     /**
      * @param array<string, mixed> $claims
      * @param array<string, mixed> $header
+     * @param JWK|null $key the key to sign with, null for the pair this algorithm publishes
      */
-    public static function signedWithKey(array $claims, array $header = [], ?JWK $key = null): string
-    {
-        $key ??= self::privateKey();
+    public static function signedWithKey(
+        array $claims,
+        array $header = [],
+        ?JWK $key = null,
+        ?JoseSignatureAlgorithmInterface $algorithm = null,
+    ): string {
+        $algorithm ??= Algorithms::es256();
 
-        return self::sign(new AlgorithmManager([Algorithms::es256()->joseAlgorithm()]), $key, $claims, [
-            'alg' => 'ES256',
+        return self::sign(new AlgorithmManager([$algorithm->joseAlgorithm()]), $key ?? self::privateKey($algorithm), $claims, [
+            'alg' => $algorithm->name(),
             'kid' => self::KEY_ID,
             ...$header,
         ]);
