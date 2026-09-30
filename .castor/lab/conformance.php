@@ -235,6 +235,51 @@ const CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE = 'the plan signs the URL of the to
  */
 const CONFORMANCE_TOKEN_ENDPOINT_STATUS = 'FAILURE CheckTokenEndpointHttpStatus200:';
 
+/**
+ * The two modules of the plan that play a request object published behind a "request_uri", and why no
+ * building closes either (issue #385). Both must complete the authorization, and both are refused before
+ * the request is read: an object that is refused is an object that was not read, so the answer is a page
+ * and never a redirection (RequestObjectResolver::resolve()), the browser of the suite waits for a
+ * callback that never comes, and the provider's own answer is in no artefact of a run. What each one is
+ * answered is read in a functional test of the bundle and nowhere else
+ * (RegisteredClientRequestObjectTest).
+ *
+ * "oidcc-request-uri-signed-rs256" signs the parameters of the authorization request plus "aud" and "iss"
+ * and nothing more (ConvertAuthorizationEndpointRequestToRequestObject, AddAudToRequestObject,
+ * AddIssToRequestObject, read in the source of the suite at the tag compose.yaml pins), so its object
+ * carries neither "exp" nor "nbf", which RFC 9101 §4 asks of none: it makes "iss" and "aud" a SHOULD and
+ * names neither of the other two. Decision 0012 asks for the four of an object that carries a signature,
+ * FAPI 2.0 Message Signing being what bounds them, and opens an exemption on them to no client; the
+ * modules "fapi2-security-profile-final-ensure-request-object-without-exp-fails" and
+ * "-without-nbf-fails" of the four green FAPI 2 runs require that exact refusal, so accepting the object
+ * here would turn passing runs red to buy this one.
+ *
+ * "oidcc-request-uri-unsigned" registers a client that says nothing about "request_object_signing_alg"
+ * and publishes an object with "alg": "none" (SerializeRequestObjectWithNullAlgorithm). A client that
+ * registered nothing is read under any algorithm the provider is wired with and never unsigned
+ * (AnyRegisteredAlgorithm): decision 0012 has an unsigned object registered per client, never fallen
+ * into, and by the tenant or by a global setting never at all. The module skips itself where "none" is
+ * not announced, and this tenant announces it because one client of it registered it
+ * (AnnouncedRequestObjects, and the comment that member carries in apps/op/config/packages/heidi.yaml):
+ * dropping that registration to buy the skip would cost the module of the Basic and Form Post plans
+ * decision 0012 exists for.
+ *
+ * So both are checks of the suite behind a decision this provider keeps, like the "sid" of the FAPI runs
+ * and the assertion audience above, and the profile stays out of certification
+ * (../../docs/07-certifications.md).
+ */
+const CONFORMANCE_DYNAMIC_SIGNED_REQUEST_OBJECT_CLAIMS = 'the plan signs a request object carrying neither exp nor nbf, which decision 0012 asks of every signed object and which two modules of the FAPI 2 security runs require to be refused; heidi#385';
+
+const CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT = 'the plan publishes an unsigned request object from a client that registered no request_object_signing_alg, which decision 0012 reads from the client that registered "none" and from no other; heidi#385';
+
+/**
+ * What a module the scripted browser never gets a callback for ends on. The wording is matched here, where
+ * the two entries above name a condition of the suite instead: the condition that fails is the module
+ * itself, so the failure is all that tells this gap from any other of the same module, and one that fails
+ * for another reason must fail the run.
+ */
+const CONFORMANCE_BROWSER_TIMEOUT = 'Web Runner Exception: Timed out waiting:';
+
 const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
     'oidcc-discovery-endpoint-verification' => [
         'result' => 'FAILED',
@@ -301,6 +346,22 @@ const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
             'INTERRUPTED oidcc-refresh-token-rp-key-rotation:',
         ],
         'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
+    ],
+    'oidcc-request-uri-signed-rs256' => [
+        'result' => 'FAILED',
+        'findings' => [
+            'FAILURE oidcc-request-uri-signed-rs256: ' . CONFORMANCE_BROWSER_TIMEOUT,
+            'INTERRUPTED oidcc-request-uri-signed-rs256:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_SIGNED_REQUEST_OBJECT_CLAIMS,
+    ],
+    'oidcc-request-uri-unsigned' => [
+        'result' => 'FAILED',
+        'findings' => [
+            'FAILURE oidcc-request-uri-unsigned: ' . CONFORMANCE_BROWSER_TIMEOUT,
+            'INTERRUPTED oidcc-request-uri-unsigned:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT,
     ],
 ];
 

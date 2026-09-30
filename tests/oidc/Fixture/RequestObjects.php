@@ -8,6 +8,7 @@ use function base64_encode;
 use DateInterval;
 use DateTimeImmutable;
 use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
 use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
 use Heidi\Core\Bridge\Key\SealedKeyProvider;
 use Heidi\Core\Port\JweDecrypterInterface;
@@ -68,10 +69,17 @@ final class RequestObjects
     /**
      * @param array<string, mixed> $claims
      * @param array<string, mixed> $header
+     * @param JoseSignatureAlgorithmInterface|null $algorithm what the client registered in
+     *                                                        "request_object_signing_alg", null for the
+     *                                                        ES256 every client of the tests signs with
      */
-    public static function signed(array $claims, array $header = [], ?JWK $key = null): string
-    {
-        return ClientAssertions::signedWithKey($claims, $header, $key);
+    public static function signed(
+        array $claims,
+        array $header = [],
+        ?JWK $key = null,
+        ?JoseSignatureAlgorithmInterface $algorithm = null,
+    ): string {
+        return ClientAssertions::signedWithKey($claims, $header, $key, $algorithm);
     }
 
     /**
