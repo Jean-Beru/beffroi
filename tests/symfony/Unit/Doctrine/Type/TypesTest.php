@@ -35,6 +35,7 @@ use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SubjectType;
 use Heidi\Bundle\HeidiBundle;
 use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Heidi\Oidc\Tests\Fixture\ChallengeMethods;
 use Heidi\Core\Domain\Credential\BackupCode;
 use Heidi\Core\Domain\Credential\PasskeyUserHandle;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
@@ -55,7 +56,7 @@ use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Oidc\Domain\Authorization\ClaimRequest;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\RedirectUri;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
@@ -92,6 +93,7 @@ final class TypesTest extends TestCase
         ClientSecretType::resolveWith($algorithms);
         BackupCodesType::resolveWith($algorithms);
         AuthorizationDetailsType::resolveWith(AuthorizationDetailTypes::served());
+        CodeChallengeType::resolveWith(ChallengeMethods::s256());
     }
 
     /**
@@ -110,7 +112,7 @@ final class TypesTest extends TestCase
         ];
         yield 'code challenge' => [
             CodeChallengeType::class,
-            new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256),
+            new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', new Sha256CodeChallengeMethod()),
             'S256:E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
         ];
         yield 'scopes' => [ScopesType::class, new Scopes([new Scope('openid'), new Scope('profile')]), 'openid profile'];

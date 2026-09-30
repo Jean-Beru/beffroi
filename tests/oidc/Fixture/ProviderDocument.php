@@ -107,7 +107,7 @@ final class ProviderDocument
             new AnnouncedClientAuthentication($methods, $algorithms),
             new AnnouncedClaims($claims),
             new AnnouncedRequestObjects($unsignedRequestObjects, $algorithms),
-            new AnnouncedPkce(),
+            new AnnouncedPkce(ChallengeMethods::s256()),
             new AnnouncedRevocation($endpoints, $methods, $algorithms),
             new AnnouncedPushedAuthorization($endpoints, $pushedRequests),
             new AnnouncedIntrospection($endpoints, $methods, $algorithms),

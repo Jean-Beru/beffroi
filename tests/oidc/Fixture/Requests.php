@@ -10,7 +10,7 @@ use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
@@ -44,7 +44,7 @@ final class Requests
             $client,
             $client->registration->redirectUris[0],
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
-            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
             $state,
             $nonce,
             $prompts,

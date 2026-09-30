@@ -62,7 +62,7 @@ final readonly class ProfilingInteractionRepository implements InteractionReposi
             'redirect_uri' => $request->redirectUri->value,
             'response mode' => $request->responseMode,
             'scopes requested' => (string) $request->scopes,
-            'PKCE' => $challenge === null ? 'none: the client is exempt (decision 0008)' : $challenge->method->value,
+            'PKCE' => $challenge === null ? 'none: the client is exempt (decision 0008)' : $challenge->method->name(),
             'state' => $request->state === null ? 'none' : 'carried',
             'nonce' => $request->nonce === null ? 'none' : 'carried',
             'prompt' => $request->prompts === [] ? 'none' : implode(' ', array_map(static fn (Prompt $prompt): string => $prompt->value, $request->prompts)),

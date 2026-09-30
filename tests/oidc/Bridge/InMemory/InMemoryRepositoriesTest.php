@@ -21,7 +21,7 @@ use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Consent\Consent;
 use Heidi\Oidc\Domain\Interaction\Interaction;
@@ -716,7 +716,7 @@ final class InMemoryRepositoriesTest extends TestCase
             null,
             null,
             null,
-            new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(Requests::CHALLENGE, new Sha256CodeChallengeMethod()),
             null,
             null,
             new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'),

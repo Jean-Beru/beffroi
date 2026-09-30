@@ -8,7 +8,7 @@ use Heidi\Core\Tests\Fixture\Fixtures;
 use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Authorization\Prompt;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Client\RedirectUri;
@@ -37,7 +37,7 @@ final class AuthorizationRequestTest extends TestCase
             $this->client,
             $this->redirectUri,
             new Scopes([Scope::openid(), new Scope('profile')]),
-            new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256),
+            new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', new Sha256CodeChallengeMethod()),
             'af0ifjsldkj',
             'n-0S6_WzA2Mj',
             [Prompt::Login],

@@ -14,7 +14,7 @@ use Heidi\Oidc\Domain\Scope\Scopes;
 use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
 use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Heidi\Oidc\Domain\Client\Client;
 use Heidi\Oidc\Domain\Scope\Scope;
 use Heidi\Oidc\Exception\InvalidArgumentException;
@@ -100,7 +100,7 @@ final class AuthorizationCodeTest extends TestCase
             null,
             null,
             null,
-            new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(Requests::CHALLENGE, new Sha256CodeChallengeMethod()),
             null,
             null,
             new AuthenticationSnapshot(Fixtures::now(), ['pwd'], '1'),
@@ -285,7 +285,7 @@ final class AuthorizationCodeTest extends TestCase
             null,
             null,
             'n-0S6_WzA2Mj',
-            new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256),
+            new CodeChallenge(Requests::CHALLENGE, new Sha256CodeChallengeMethod()),
             null,
             null,
             AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
