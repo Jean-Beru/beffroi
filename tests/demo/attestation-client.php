@@ -123,7 +123,7 @@ final readonly class AttestedClient
         try {
             $response = $this->http->request('POST', $this->endpoint, [
                 'headers' => ['Content-Type' => 'application/json'],
-                'body' => (string) json_encode($metadata, JSON_THROW_ON_ERROR),
+                'body' => json_encode($metadata, JSON_THROW_ON_ERROR),
             ]);
             $status = $response->getStatusCode();
             $body = json_decode($response->getContent(false), true, 8, JSON_THROW_ON_ERROR);
@@ -136,7 +136,7 @@ final readonly class AttestedClient
 
         return [
             'status' => $status,
-            'body' => is_array($body) ? $body : [],
+            'body' => is_array($body) ? attestation_cli_named($body) : [],
         ];
     }
 }
