@@ -54,6 +54,12 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
 const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
 
 /**
+ * Where Caddy keeps the root of the authority it signs the certificates of the stack with, inside the op
+ * container (its data directory, XDG_DATA_HOME of the FrankenPHP image).
+ */
+const CADDY_ROOT_CERTIFICATE = '/data/caddy/pki/authorities/local/root.crt';
+
+/**
  * The sidecars that carry the loopback port 8443 of the suite into the network namespace of another
  * container (compose.yaml), by the container each one follows: the worker reaches the back-channel logout
  * URI the suite gives its clients, and the op container reads the sector identifier documents the modules
@@ -161,6 +167,37 @@ function compose_running_services(): array
     );
 
     return $running->isSuccessful() ? explode("\n", trim($running->getOutput())) : [];
+}
+
+/**
+ * The internal CA of Caddy, copied out of the op container to a file of the host and left there: the
+ * certificate the stack serves on https://op.localhost is signed by an authority that exists only inside
+ * it, so curl and the PHP of the machine trust that file and nothing else (mtls.php, demo.php). Every walk
+ * of the laboratory asks for it here, so that the path is written once and a stack that is not up is said
+ * in one wording instead of being an exit code under a quiet process.
+ */
+function caddy_ca(string $destination): string
+{
+    $directory = dirname($destination);
+    if (! is_dir($directory) && ! mkdir($directory, 0o777, true) && ! is_dir($directory)) {
+        io()->error(sprintf('Cannot create %s.', $directory));
+        exit(1);
+    }
+    if (! in_array('op', compose_running_services(), true)) {
+        io()->error('The op container is not running, so there is no internal CA of Caddy to read: run "castor start" first.');
+        exit(1);
+    }
+    $copy = run(['docker', 'compose', 'cp', 'op:' . CADDY_ROOT_CERTIFICATE, $destination], context: context()->withQuiet()->withAllowFailure());
+    if (! $copy->isSuccessful() || ! is_file($destination)) {
+        io()->error(sprintf(
+            'Cannot read %s from the op container, which is running: "docker compose exec op ls %s" says what it holds.',
+            CADDY_ROOT_CERTIFICATE,
+            dirname(CADDY_ROOT_CERTIFICATE),
+        ));
+        exit(1);
+    }
+
+    return $destination;
 }
 
 /**
