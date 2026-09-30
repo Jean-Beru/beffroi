@@ -195,11 +195,7 @@ function demo(
     // The OP serves a certificate of Caddy's internal CA, which the PHP of the host does not know unless
     // the CA was installed on the machine: the demo runs with a php.ini of its own that trusts it, which
     // the Symfony CLI reads from the root of the project.
-    $ca = $dir . '/var/caddy-root.crt';
-    if (! is_dir($dir . '/var')) {
-        mkdir($dir . '/var', 0o777, true);
-    }
-    run(['docker', 'compose', 'cp', 'op:/data/caddy/pki/authorities/local/root.crt', $ca], context: context()->withQuiet());
+    $ca = caddy_ca($dir . '/var/caddy-root.crt');
     file_put_contents($dir . '/php.ini', sprintf(
         "; written by \"castor demo\" of the OP: trust the CA of Caddy for https://op.localhost\nopenssl.cafile=%s\ncurl.cainfo=%s\n",
         $ca,

@@ -52,7 +52,7 @@ function mtls(
         exit(1);
     }
     $expected = mtls_thumbprint((string) file_get_contents($certificateFile));
-    $ca = mtls_caddy_ca();
+    $ca = caddy_ca(getcwd() . '/' . MTLS_CA_FILE);
     $client = ['--cert', $certificateFile, '--key', $keyFile];
     $measured = [];
 
@@ -119,27 +119,6 @@ function mtls(
         $expected,
     ));
     io()->note('The chain is not handed over, only the leaf: what has to be validated against a certificate authority is validated at the edge, with a "trust_pool" in apps/op/frankenphp/mtls.Caddyfile, never in PHP (architecture §6, §7).');
-}
-
-/**
- * The internal CA of Caddy, copied out of the op container for curl, as "castor demo" copies it for the
- * PHP of the host.
- */
-function mtls_caddy_ca(): string
-{
-    $ca = getcwd() . '/' . MTLS_CA_FILE;
-    $directory = dirname($ca);
-    if (! is_dir($directory) && ! mkdir($directory, 0o777, true) && ! is_dir($directory)) {
-        io()->error(sprintf('Cannot create %s.', $directory));
-        exit(1);
-    }
-    $copy = run(['docker', 'compose', 'cp', 'op:/data/caddy/pki/authorities/local/root.crt', $ca], context: context()->withQuiet()->withAllowFailure());
-    if (! $copy->isSuccessful() || ! is_file($ca)) {
-        io()->error('Cannot read the internal CA of Caddy from the op container: is the stack up ("castor start")?');
-        exit(1);
-    }
-
-    return $ca;
 }
 
 /**
