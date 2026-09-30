@@ -43,7 +43,7 @@ The journal is written as the spike runs, one row per working day, `Fait` and `A
 
 ## Commands
 
-Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available; [Mago](https://mago.carthage.software/) is a Rust binary that image already carries (`/tools/mago`), so nothing is installed for it. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `demo.php`, `mtls.php`), `.castor/tools/` what reads the repository itself and asks nothing of the stack (`graphify.php`). A new task goes to the file of its side.
+Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available; [Mago](https://mago.carthage.software/) is a Rust binary that image already carries (`/tools/mago`), so nothing is installed for it. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `cost.php`, `demo.php`, `mtls.php`), `.castor/tools/` what reads the repository itself and asks nothing of the stack (`graphify.php`). A new task goes to the file of its side.
 
 ```bash
 composer install                  # monorepo (packages, tests)
@@ -67,6 +67,7 @@ castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + Dais
 castor conformance [--plan P] [--module X]  # the certification plans through the API of the suite: basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping, dynamic, third-party-init, rotate-keys; result per module, the "known" list of CONFORMANCE_PLANS carrying the gaps left open with their issue and its "waiting_on" list the runs that do not pass yet
 gh workflow run conformance.yml [-f plan=P] [-f module=X] [-f strict=false]  # the same plans on a runner, the workflow that also runs them every Monday on the default branch
 castor mtls [--host H] [--ordinary-host H]  # the client certificate from the edge to PHP: presented, its x5t#S256 compared with the one the application computes, absent, and carried in a header (refused)
+castor login-cost [--journeys N] [--baseline MS]  # complete logins played one after another against the stack: the p95 of the journey and the count of what the KMS was asked, read in the audit device of Vault and never in the application, against the threshold of the decision that fixed it; taken by hand, twice, on one machine, and written in the journal of the spike with its commit
 castor demo [--check] [--rotate] [--passkey] [--form-post] [--logout-others] [--resource-server] [--dpop] [--ladder] [--device] [--service] [--ciba] [--assertion] [--rar] [--native] [--push] [--register] [--attested]
 ```
 

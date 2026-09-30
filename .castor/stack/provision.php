@@ -272,6 +272,15 @@ const DEV_CLIENT_SECRETS = [
     'DEMO_RAR_SECRET',
 ];
 
+/**
+ * The policy the credential of the OP is cut from, written by docker/vault/init.sh from
+ * docker/vault/heidi-op.hcl: data keys and decryption under the Transit keys of the tenants, the
+ * configuration of those keys, nothing else. It is also what tells a request of the OP from a request of
+ * the root token in the audit device of Vault, which is where the count of a measurement is read
+ * (cost.php).
+ */
+const VAULT_OP_POLICY = 'heidi-op';
+
 #[AsTask(
     description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password',
 )]
@@ -628,13 +637,12 @@ function vault_token_of(string $dsn): string
 }
 
 /**
- * Mints the credential of the OP on the Vault of the stack: a token under the policy "heidi-op" written by
- * docker/vault/init.sh (data keys and decryption under the Transit keys of the tenants, the configuration
- * of those keys, nothing else), with the root token of the dev server, which never reaches the OP.
+ * Mints the credential of the OP on the Vault of the stack: a token under the policy above, with the root
+ * token of the dev server, which never reaches the OP.
  */
 function vault_mint_op_token(): string
 {
-    $minted = vault_cli(['token', 'create', '-policy=heidi-op', '-no-default-policy', '-display-name=heidi-op', '-format=json']);
+    $minted = vault_cli(['token', 'create', '-policy=' . VAULT_OP_POLICY, '-no-default-policy', '-display-name=' . VAULT_OP_POLICY, '-format=json']);
     if (! $minted->isSuccessful()) {
         io()->error([
             'The token of the OP could not be minted: is Vault running? "castor start --kms vault" starts it and initialises it.',
@@ -647,7 +655,7 @@ function vault_mint_op_token(): string
         io()->error('Vault answered without a token.');
         exit(1);
     }
-    io()->text('Minted a token for the OP on Vault, under the policy "heidi-op".');
+    io()->text(sprintf('Minted a token for the OP on Vault, under the policy "%s".', VAULT_OP_POLICY));
 
     return $token;
 }
