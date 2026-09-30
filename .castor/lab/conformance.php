@@ -273,12 +273,13 @@ const CONFORMANCE_DYNAMIC_SIGNED_REQUEST_OBJECT_CLAIMS = 'the plan signs a reque
 const CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT = 'the plan publishes an unsigned request object from a client that registered no request_object_signing_alg, which decision 0012 reads from the client that registered "none" and from no other; heidi#385';
 
 /**
- * What a module the scripted browser never gets a callback for ends on. The wording is matched here, where
- * the two entries above name a condition of the suite instead: the condition that fails is the module
- * itself, so the failure is all that tells this gap from any other of the same module, and one that fails
- * for another reason must fail the run.
+ * The first of the three findings a module whose browser never reached the callback ends on: the runner
+ * says the wait ran out, the module says it again as an exception of its own, and the module is interrupted.
+ * The wording is matched here, where the two entries above name a condition of the suite instead: the
+ * condition that fails is the module itself, so the wait is all that tells this gap from any other of the
+ * same module, and one that fails for another reason must fail the run.
  */
-const CONFORMANCE_BROWSER_TIMEOUT = 'Web Runner Exception: Timed out waiting:';
+const CONFORMANCE_BROWSER_TIMEOUT = 'FAILURE WebRunner: Timed out waiting:';
 
 const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
     'oidcc-discovery-endpoint-verification' => [
@@ -350,7 +351,8 @@ const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
     'oidcc-request-uri-signed-rs256' => [
         'result' => 'FAILED',
         'findings' => [
-            'FAILURE oidcc-request-uri-signed-rs256: ' . CONFORMANCE_BROWSER_TIMEOUT,
+            CONFORMANCE_BROWSER_TIMEOUT,
+            'FAILURE oidcc-request-uri-signed-rs256: Web Runner Exception: Timed out waiting:',
             'INTERRUPTED oidcc-request-uri-signed-rs256:',
         ],
         'reason' => CONFORMANCE_DYNAMIC_SIGNED_REQUEST_OBJECT_CLAIMS,
@@ -358,7 +360,8 @@ const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
     'oidcc-request-uri-unsigned' => [
         'result' => 'FAILED',
         'findings' => [
-            'FAILURE oidcc-request-uri-unsigned: ' . CONFORMANCE_BROWSER_TIMEOUT,
+            CONFORMANCE_BROWSER_TIMEOUT,
+            'FAILURE oidcc-request-uri-unsigned: Web Runner Exception: Timed out waiting:',
             'INTERRUPTED oidcc-request-uri-unsigned:',
         ],
         'reason' => CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT,
