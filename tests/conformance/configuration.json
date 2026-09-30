@@ -416,6 +416,78 @@
                 }
             ]
         },
+        "oidcc-ensure-redirect-uri-in-authorization-request": {
+            "browser": [
+                {
+                    "comment": "A client that registered two redirect URIs and a request that names none: the OP shows its error page, a redirection URI being required of every request and never defaulted to (OIDC Core §3.1.2.1); the page fills the screenshot placeholder. The flow ends there, the module expecting no callback at all.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect the error page",
+                            "match": "{HEIDI_ISSUER}/authorize*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-redirect-uri-query-mismatch": {
+            "browser": [
+                {
+                    "comment": "A redirect_uri whose query is not the query that was registered: the OP compares byte for byte and shows its error page (RFC 6749 §3.1.2.3, decision 0006); the page fills the screenshot placeholder. Reaching the registered URI would fail the module, which is what an exact match is for.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect the error page",
+                            "match": "{HEIDI_ISSUER}/authorize*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-redirect-uri-query-added": {
+            "browser": [
+                {
+                    "comment": "A redirect_uri with a query added to the one that was registered, which has none: the same exact match and the same error page (RFC 6749 §3.1.2.3); the page fills the screenshot placeholder.",
+                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect the error page",
+                            "match": "{HEIDI_ISSUER}/authorize*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
         "oidcc-rp-initiated-logout-no-params": {
             "browser": [
                 {

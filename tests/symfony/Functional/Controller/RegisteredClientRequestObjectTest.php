@@ -26,7 +26,8 @@ use Symfony\Component\Uid\Uuid;
  * registered, and the authorization endpoint reads it back. It is what the two modules of the Dynamic OP
  * plan that play an object by reference do, `oidcc-request-uri-unsigned` with an unsigned object and
  * `oidcc-request-uri-signed-rs256` with one signed under the algorithm it registered, and both must
- * complete the authorization.
+ * complete the authorization. A third module sends an unsigned object by value
+ * (`oidcc-ensure-request-object-with-redirect-uri`) and is refused for the same reason as the first.
  *
  * A run names neither refusal: an object that is refused is an object that was not read, so the answer is
  * a page and never a redirection (`RequestObjectResolver::resolve()`), the scripted browser of the suite
@@ -147,6 +148,35 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
 
         // When
         $crawler = $this->authorize($clientId);
+
+        // Then
+        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
+        static::assertSame(
+            'invalid_request_object: The request object is not signed with the algorithm the client registered in request_object_signing_alg (OIDC Registration section 2).',
+            self::refusal($crawler),
+        );
+    }
+
+    /**
+     * The object of `oidcc-ensure-request-object-with-redirect-uri`, the third module of the plan to send an
+     * unsigned object: it sends it by value, with an invalid `redirect_uri` in the query beside the valid one
+     * the object carries, and asks the provider to honour the object's or to show an error page (OIDC Core
+     * §6.1). The refusal it gets is the algorithm its client registered nothing for, so the query is never
+     * read that far, which is why the module is written into the `known` list of the plan rather than
+     * captured from the browser: the page names an algorithm and not the redirect URI the module is about.
+     */
+    #[Test]
+    public function theUnsignedObjectSentByValueIsRefusedBeforeTheRedirectUriOfTheQuery(): void
+    {
+        // Given
+        $clientId = $this->register();
+
+        // When
+        $crawler = $this->browser->request('GET', '/authorize', [
+            'client_id' => $clientId,
+            'redirect_uri' => 'https://registered.test/somewhere-else',
+            'request' => RequestObjects::unsigned(self::asTheModuleSendsIt($clientId)),
+        ]);
 
         // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());

@@ -264,13 +264,23 @@ const CONFORMANCE_TOKEN_ENDPOINT_STATUS = 'FAILURE CheckTokenEndpointHttpStatus2
  * dropping that registration to buy the skip would cost the module of the Basic and Form Post plans
  * decision 0012 exists for.
  *
+ * "oidcc-ensure-request-object-with-redirect-uri" sends that same unsigned object by value, with an
+ * invalid "redirect_uri" beside the valid one the object carries, and is refused on the object before the
+ * query is looked at (AbstractOIDCCRequestObjectServerTest, which serializes with a null algorithm and
+ * skips itself where "none" is not announced, read in the same source). It ends on the error page the
+ * module accepts, and it is written down here rather than captured from the browser: what the page says
+ * is the algorithm the client registered, not the redirect URI the module is about, and the same module of
+ * the Basic and Form Post plans completes the authorization, the client of those plans having registered
+ * "none". A "browser" block is named by module and shared by every plan, so one written for this module
+ * would answer for a run where the provider redirects.
+ *
  * So both are checks of the suite behind a decision this provider keeps, like the "sid" of the FAPI runs
  * and the assertion audience above, and the profile stays out of certification
  * (../../docs/07-certifications.md).
  */
 const CONFORMANCE_DYNAMIC_SIGNED_REQUEST_OBJECT_CLAIMS = 'the plan signs a request object carrying neither exp nor nbf, which decision 0012 asks of every signed object and which two modules of the FAPI 2 security runs require to be refused; heidi#385';
 
-const CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT = 'the plan publishes an unsigned request object from a client that registered no request_object_signing_alg, which decision 0012 reads from the client that registered "none" and from no other; heidi#385';
+const CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT = 'the plan sends an unsigned request object from a client that registered no request_object_signing_alg, which decision 0012 reads from the client that registered "none" and from no other; heidi#385';
 
 /**
  * The first of the three findings a module whose browser never reached the callback ends on: the runner
@@ -366,6 +376,15 @@ const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
         ],
         'reason' => CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT,
     ],
+    'oidcc-ensure-request-object-with-redirect-uri' => [
+        'result' => 'FAILED',
+        'findings' => [
+            CONFORMANCE_BROWSER_TIMEOUT,
+            'FAILURE oidcc-ensure-request-object-with-redirect-uri: Web Runner Exception: Timed out waiting:',
+            'INTERRUPTED oidcc-ensure-request-object-with-redirect-uri:',
+        ],
+        'reason' => CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT,
+    ],
 ];
 
 const CONFORMANCE_ROTATE_KEYS_BEFORE_START = [
@@ -382,16 +401,6 @@ const CONFORMANCE_ROTATE_KEYS_BEFORE_START = [
 const CONFORMANCE_DYNAMIC_CLIENT_NAME = 'OpenID conformance suite';
 
 const CONFORMANCE_DYNAMIC_SECOND_CLIENT_NAME = 'OpenID conformance suite, second client';
-
-/**
- * What the Dynamic OP run waits on: the epic of the spike that builds it, and not a list of issues
- * measured against a run. What is missing is the spike and every issue under it, which is what the first
- * run of the plan measured: most of its modules do not pass, and naming each red here would write the one
- * blocker of the day many times over and be wrong the day it is lifted. The line is deleted the day the
- * run passes whole, which the task failing on a passing "waiting_on" run forces; the one module no amount
- * of building closes is written down under "known" instead.
- */
-const CONFORMANCE_DYNAMIC_ISSUES = ['heidi#79'];
 
 const CONFORMANCE_PLANS = [
     'basic' => [
@@ -568,7 +577,6 @@ const CONFORMANCE_PLANS = [
         // others wait for nobody, so the rotation is named against that module and against no other.
         'before_start' => CONFORMANCE_ROTATE_KEYS_BEFORE_START,
         'known' => CONFORMANCE_DYNAMIC_KNOWN_MODULES,
-        'waiting_on' => CONFORMANCE_DYNAMIC_ISSUES,
     ],
     // The second profile of the same spike, two modules: a client registers an "initiate_login_uri" and
     // the provider begins a login at it (OIDC Core §4), the second module registering one that is not
