@@ -17,6 +17,28 @@ final class DeviceType extends JsonObjectType
 {
     public const string NAME = 'heidi_device';
 
+    /**
+     * The document of a device, and the device of a document, for the type that nests this one
+     * rather than holding it in a column of its own (`RequestContextType`): one encoding, named here, so
+     * that a nested document and a column of this type cannot drift apart.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function document(?Device $value): ?array
+    {
+        return $value === null ? null : $this->encode($value);
+    }
+
+    /**
+     * @param array<array-key, mixed>|null $data
+     */
+    public function of(?array $data): ?Device
+    {
+        $value = $data === null ? null : $this->decode($data);
+
+        return $value instanceof Device ? $value : null;
+    }
+
     protected function encode(object $value): array
     {
         return [

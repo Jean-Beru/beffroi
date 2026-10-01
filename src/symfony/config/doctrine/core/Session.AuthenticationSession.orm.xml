@@ -3,7 +3,7 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- Who is authenticated, since when, how and from where (architecture §3.2, §3.5): the proofs as one document, the provenance of the first and of the last request as columns. -->
+    <!-- Who is authenticated, since when, how and from where (architecture §3.2, §3.5): the proofs as one document, the provenance of the first and of the last request as one sealed column each. -->
     <entity name="Heidi\Core\Domain\Session\AuthenticationSession" table="heidi_authentication_session">
         <id name="id" type="uuid" column="id"/>
         <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
@@ -18,8 +18,16 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <embedded name="createdFrom" class="Heidi\Core\Domain\Session\RequestContext" column-prefix="created_from_"/>
-        <embedded name="lastSeenFrom" class="Heidi\Core\Domain\Session\RequestContext" column-prefix="last_seen_from_"/>
+        <!--
+          The provenance of a request, one column and one JSON document, sealed under the data key of its
+          tenant (decisions 0011 and 0018). It was five columns of an embeddable, which could not seal: an
+          embeddable fixes the type of each of its fields once for the whole model, so the same field could
+          not carry the type of each of the three tables that hold a context. Nothing is lost, the object
+          being immutable and replaced whole by the asynchronous enrichment, and no query reading a column
+          of a context on its own.
+        -->
+        <field name="createdFrom" type="heidi_encrypted_authentication_session_request_context" column="created_from"/>
+        <field name="lastSeenFrom" type="heidi_encrypted_authentication_session_request_context" column="last_seen_from"/>
         <field name="lastSeenAt" type="datetime_immutable" column="last_seen_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="endedAt" type="datetime_immutable" column="ended_at" nullable="true"/>

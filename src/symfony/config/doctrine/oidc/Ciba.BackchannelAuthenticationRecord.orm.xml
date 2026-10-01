@@ -26,7 +26,12 @@
         </many-to-one>
         <field name="scopes" type="heidi_scopes" column="scopes"/>
         <field name="resources" type="heidi_resources" column="resources" nullable="true"/>
-        <field name="bindingMessage" type="heidi_binding_message" column="binding_message" length="255" nullable="true"/>
+        <!--
+          The sentence a person reads on the device that asks them to confirm, which a client wrote and
+          which is read by a person about a person: sealed here rather than with the other hints of a
+          request, because it is this migration that touches this table.
+        -->
+        <field name="bindingMessage" type="heidi_encrypted_backchannel_authentication_request_binding_message" column="binding_message" length="255" nullable="true"/>
         <field name="acrValues" type="json" column="acr_values">
             <options>
                 <option name="jsonb">true</option>
@@ -34,7 +39,15 @@
         </field>
         <field name="sealedAuthRequestId" type="heidi_bytes" column="sealed_auth_request_id" nullable="true"/>
         <field name="sealedNotificationToken" type="heidi_bytes" column="sealed_notification_token" nullable="true"/>
-        <embedded name="requestedFrom" class="Heidi\Core\Domain\Session\RequestContext" column-prefix="requested_from_"/>
+        <!--
+          The provenance of a request, one column and one JSON document, sealed under the data key of its
+          tenant (decisions 0011 and 0018). It was five columns of an embeddable, which could not seal: an
+          embeddable fixes the type of each of its fields once for the whole model, so the same field could
+          not carry the type of each of the three tables that hold a context. Nothing is lost, the object
+          being immutable and replaced whole by the asynchronous enrichment, and no query reading a column
+          of a context on its own.
+        -->
+        <field name="requestedFrom" type="heidi_encrypted_backchannel_authentication_request_request_context" column="requested_from"/>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="interval" type="integer" column="poll_interval"/>
