@@ -391,13 +391,10 @@ final readonly class SchemaColumns
             ],
             'heidi_client' => [
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
-                'metadata' => new Owed(
-                    'heidi#407',
-                    'the metadata a client registered, the "contacts" of RFC 7591 §2 among them, which are the electronic addresses of people',
-                ),
-                'assigned_metadata' => new Owed('heidi#407', 'what the provider assigned a registration, read back beside what the client said of itself'),
+                'metadata' => new Sealed('client'),
+                'assigned_metadata' => new Sealed('client'),
                 'registration_access_token' => new NoPersonalDatum(self::HASHED),
-                'secret' => new Owed('heidi#407', 'a digest for a method that receives a secret, and a shared secret in the clear for "client_secret_jwt"'),
+                'secret' => new Sealed('client'),
                 'client_id_issued_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'last_used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'client_secret_expires_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),

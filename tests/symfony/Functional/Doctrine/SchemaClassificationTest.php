@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
+use function array_keys;
 use function count;
 use function explode;
+use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\BundleSchema;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedSchema;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\NoPersonalDatum;
@@ -15,6 +17,7 @@ use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
+use function sort;
 
 /**
  * Decision 0011: "Toute colonne à venir qui porte une donnée personnelle, par construction : un test
@@ -288,6 +291,39 @@ final class SchemaClassificationTest extends DatabaseTestCase
         yield 'public by construction' => [SchemaColumns::PUBLIC_BY_CONSTRUCTION];
 
         yield 'names no person' => [SchemaColumns::NAMES_NO_PERSON];
+    }
+
+    /**
+     * Every family the bundle declares seals at least one column of the schema. A family is a scope, and a
+     * scope is a data key per tenant: one that no column seals under is a key minted for nothing, or a
+     * declaration left behind by a column that moved. The count is read from the declaration and the
+     * families from the classification, so neither can be the only one to know.
+     */
+    #[Test]
+    public function everyFamilyTheBundleDeclaresSealsAColumn(): void
+    {
+        // Given
+        $sealing = [];
+        foreach (SchemaColumns::all() as $columns) {
+            foreach ($columns as $line) {
+                if ($line instanceof Sealed) {
+                    $sealing[$line->family] = true;
+                }
+            }
+        }
+
+        // When
+        $families = array_keys($sealing);
+        sort($families);
+
+        // Then
+        $declared = array_keys(EncryptedColumnTypes::FAMILIES);
+        sort($declared);
+        static::assertSame(
+            $declared,
+            $families,
+            'A family is declared and no column seals under it, or a column seals under a family nothing declares.',
+        );
     }
 
     /**
