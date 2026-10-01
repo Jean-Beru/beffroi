@@ -8,16 +8,24 @@ use Doctrine\DBAL\Connection;
 use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
 use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
 use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Heidi\Core\Domain\Event\TenantDataKeysDestroyed;
 use Heidi\Core\Domain\Event\TenantDataKeysRewrapped;
+use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Tenant\Issuer;
+use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
+use function count;
 use function sprintf;
+use Throwable;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Uid\Uuid;
 
@@ -291,6 +299,174 @@ final class DataKeysTest extends ConsoleTestCase
     }
 
     /**
+     * The promise the bridge makes, and the one "it still reads" does not prove: a rewrap changes how a
+     * data key is wrapped and never the key, so every sealed column keeps the exact bytes it had. A rewrap
+     * that had rewritten a payload would have had to read one, which is the round trip a store exists to
+     * spare.
+     *
+     * Compared column by column, over the columns the classification declares sealed rather than over a
+     * list of its own, so a column sealed later is compared without this test being touched.
+     */
+    #[Test]
+    public function everySealedColumnIsByteIdenticalBeforeAndAfterTheRewrap(): void
+    {
+        // Given
+        self::sealSomething();
+        $before = self::sealedColumns();
+
+        // When
+        $tester = self::console('heidi:data-keys:rewrap', [
+            '--to' => 'second',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        static::assertGreaterThanOrEqual(4, count($before), 'a comparison of nothing would pass for nothing.');
+        static::assertSame($before, self::sealedColumns(), 'a rewrap that moved a payload would be a rewrap that read one.');
+    }
+
+    /**
+     * The fourth success criterion of the spike: destroying the data keys of a tenant makes what they
+     * sealed unreadable. The row stays untouched, what is gone is the means of opening it, so the read is
+     * refused rather than answered with something.
+     *
+     * The tenant here is the configured one, which is the only one a unit of work can read through: an
+     * encrypter composes its scope from the ambient tenant, so a row of another tenant read while this one
+     * is ambient is not a row this provider ever tries to open. What reaches one tenant and not the other
+     * is the test below.
+     */
+    #[Test]
+    public function aRowWhoseDataKeyWasDestroyedNoLongerOpens(): void
+    {
+        // Given
+        $user = self::sealSomething();
+        self::console('heidi:data-keys:destroy', [
+            'slug' => self::tenant()->slug,
+        ]);
+        self::reload();
+
+        // When
+        $thrown = null;
+        try {
+            self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id);
+        } catch (Throwable $caught) {
+            $thrown = $caught;
+        }
+
+        // Then
+        static::assertNotNull($thrown, 'a row whose data key is gone read back as something, which is worse than refusing.');
+        static::assertStringContainsString(
+            'Data key',
+            self::reasonOf($thrown),
+            'the refusal names the data key the row refers to, which is what an operator needs to know.',
+        );
+        static::assertStringContainsString('was not found in the store', self::reasonOf($thrown));
+    }
+
+    /**
+     * And nothing else: a destruction that took both tenants down is the failure this criterion exists to
+     * catch, so the tenant that was left alone is read in a test of its own.
+     */
+    #[Test]
+    public function aRowOfTheOtherTenantStillOpens(): void
+    {
+        // Given
+        $mine = self::sealSomething();
+        $other = self::anotherTenant();
+        self::sealSomethingFor($other, 'bob-of-the-other-tenant');
+
+        // When
+        self::destroyTheKeysOf($other);
+
+        // Then
+        $read = self::service('test.heidi.users', UserRepositoryInterface::class)->find($mine->id);
+        static::assertInstanceOf(User::class, $read);
+        static::assertSame(self::USERNAME, $read->username);
+    }
+
+    /**
+     * What every sealed column of the user table holds, as the database holds it.
+     *
+     * A column the fixture left empty is left out, a null having no bytes to compare, and the count of what
+     * is compared is asserted where the comparison is.
+     *
+     * @return array<string, string>
+     */
+    private static function sealedColumns(): array
+    {
+        $columns = [];
+        foreach (SchemaColumns::all()['heidi_user'] as $column => $line) {
+            if ($line instanceof Sealed) {
+                $columns[] = $column;
+            }
+        }
+
+        $rows = RawRows::of(self::connection(), 'heidi_user', $columns);
+        static::assertCount(1, $rows);
+
+        $held = [];
+        foreach ($rows[0] as $column => $value) {
+            if ($value !== null) {
+                $held[$column] = $value;
+            }
+        }
+
+        return $held;
+    }
+
+    private static function anotherTenant(): Tenant
+    {
+        $other = new Tenant(Uuid::v7(), 'other', new Issuer('https://other.test'), 'Other', self::now());
+        self::entityManager()->persist($other);
+        self::entityManager()->flush();
+
+        return $other;
+    }
+
+    private static function destroyTheKeysOf(Tenant $tenant): void
+    {
+        self::service(TenantDataKeyDestruction::class, TenantDataKeyDestruction::class)->destroy($tenant, 'the test');
+        self::reload();
+    }
+
+    /**
+     * The message of a failure and of whatever it was wrapped in, a Doctrine type reporting the conversion
+     * and carrying the cause under it.
+     */
+    private static function reasonOf(Throwable $thrown): string
+    {
+        $reason = $thrown->getMessage();
+        $cause = $thrown->getPrevious();
+        while ($cause !== null) {
+            $reason .= ' ' . $cause->getMessage();
+            $cause = $cause->getPrevious();
+        }
+
+        return $reason;
+    }
+
+    /**
+     * A user of another tenant with the same sealed columns written, so that what is compared between the
+     * two tenants is the same thing.
+     */
+    private static function sealSomethingFor(Tenant $tenant, string $username): User
+    {
+        $user = User::create(
+            Uuid::v7(),
+            $tenant,
+            new Subject($username . '-subject'),
+            $username,
+            self::now(),
+            new EmailAddress('bob@example.org'),
+        );
+        $user->changePhoneNumber('+441632960542', false, self::now());
+        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        self::reload();
+
+        return $user;
+    }
+
+    /**
      * A user with a sealed column written, which is what mints the data key of its family and the index
      * key of the tenant.
      */
@@ -304,6 +480,8 @@ final class DataKeysTest extends ConsoleTestCase
             self::now(),
             new EmailAddress('ada@example.org'),
         );
+        $user->changePhoneNumber('+441632960541', false, self::now());
+        $user->changeAddress(new Address('12 Grand Rue, Saint-Germain'), self::now());
         self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
         self::reload();
 
