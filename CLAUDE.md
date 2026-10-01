@@ -68,6 +68,7 @@ castor conformance [--plan P] [--module X]  # the certification plans through th
 gh workflow run conformance.yml [-f plan=P] [-f module=X] [-f strict=false]  # the same plans on a runner, the workflow that also runs them every Monday on the default branch
 castor mtls [--host H] [--ordinary-host H]  # the client certificate from the edge to PHP: presented, its x5t#S256 compared with the one the application computes, absent, and carried in a header (refused)
 castor login-cost [--journeys N] [--baseline MS]  # complete logins played one after another against the stack: the p95 of the journey and the count of what the KMS was asked, read in the audit device of Vault and never in the application, against the threshold of the decision that fixed it; taken by hand, twice, on one machine, and written in the journal of the spike with its commit
+castor dump-search [--keep]            # a pg_dump of the running database searched byte by byte for what the provision and the walks wrote: a finding names the value, the encoding, the table, the column and the offset, and the same search finds a value the schema declares readable, so a green run is a search that was looking; the backend played is the one apps/op/.env.local names and the list it prints carries the one that cannot be played yet with its issue
 castor demo [--check] [--rotate] [--passkey] [--form-post] [--logout-others] [--resource-server] [--dpop] [--ladder] [--device] [--service] [--ciba] [--assertion] [--rar] [--native] [--push] [--register] [--attested]
 ```
 

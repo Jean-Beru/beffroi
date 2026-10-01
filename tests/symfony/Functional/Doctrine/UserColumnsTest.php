@@ -9,13 +9,13 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Heidi\Core\Domain\Identity\Address;
 use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Profile;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Heidi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -39,25 +39,13 @@ final class UserColumnsTest extends DatabaseTestCase
      * what the row must not hold. One list, so that a column sealed without being written here, or written
      * without being asserted, is a count that no longer adds up.
      */
-    private const array PLAINTEXTS = [
-        'username' => 'ada-lovelace',
-        'email' => 'ada@example.org',
-        'phone_number' => '+441632960541',
-        'address' => '12 Grand Rue, Saint-Germain',
-        'name' => 'Augusta Ada King',
-        'given_name' => 'Augusta',
-        'family_name' => 'King',
-        'middle_name' => 'Ada',
-        'nickname' => 'Ada',
-        'preferred_username' => 'the-enchantress-of-numbers',
-        'profile_url' => 'https://ada.example.org/profile',
-        'picture_url' => 'https://ada.example.org/portrait.jpg',
-        'website_url' => 'https://ada.example.org',
-        'gender' => 'female-and-nothing-else',
-        'birthdate' => '1815-12-10',
-        'zoneinfo' => 'Europe/London',
-        'locale' => 'en-GB',
-    ];
+    /**
+     * Read from the shared fixture and declared nowhere else: the test that searches the whole database
+     * searches for these very values, and two lists of the same values are two lists that disagree.
+     *
+     * @var array<string, string>
+     */
+    private const array PLAINTEXTS = SealedRows::VALUES['heidi_user'];
 
     /**
      * The fixture writes every column the classification of the schema declares sealed, and no other: a
@@ -274,35 +262,12 @@ final class UserColumnsTest extends DatabaseTestCase
      */
     private static function ada(): User
     {
-        $now = self::now();
-        $user = User::create(
-            Uuid::v7(),
-            self::tenant(),
-            new Subject('ada-subject'),
-            self::PLAINTEXTS['username'],
-            $now,
-            new EmailAddress(self::PLAINTEXTS['email']),
-        );
-        $user->changePhoneNumber(self::PLAINTEXTS['phone_number'], false, $now);
-        $user->changeAddress(new Address(self::PLAINTEXTS['address']), $now);
-        $user->updateProfile(new Profile(
-            self::PLAINTEXTS['name'],
-            self::PLAINTEXTS['given_name'],
-            self::PLAINTEXTS['family_name'],
-            self::PLAINTEXTS['middle_name'],
-            self::PLAINTEXTS['nickname'],
-            self::PLAINTEXTS['preferred_username'],
-            self::PLAINTEXTS['profile_url'],
-            self::PLAINTEXTS['picture_url'],
-            self::PLAINTEXTS['website_url'],
-            self::PLAINTEXTS['gender'],
-            self::PLAINTEXTS['birthdate'],
-            self::PLAINTEXTS['zoneinfo'],
-            self::PLAINTEXTS['locale'],
-        ), $now);
-        self::users()->save($user);
+        return self::fixture()->user();
+    }
 
-        return $user;
+    private static function fixture(): SealedRows
+    {
+        return new SealedRows(self::getContainer(), self::tenant(), self::now());
     }
 
     /**

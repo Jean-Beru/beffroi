@@ -13,6 +13,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Heidi\Bundle\Doctrine\TenantProvider;
 use Heidi\Bundle\Doctrine\EntityManagers;
 use Heidi\Bundle\Doctrine\TenantSynchronizer;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Heidi\Core\Domain\Identity\Subject;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Domain\Session\AuthenticationMethod;
@@ -144,7 +145,7 @@ abstract class DatabaseTestCase extends WebTestCase
 
     protected static function context(?DateTimeImmutable $receivedAt = null): RequestContext
     {
-        return new RequestContext($receivedAt ?? self::now(), '203.0.113.10', 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0');
+        return new RequestContext($receivedAt ?? self::now(), SealedRows::IP_ADDRESS, SealedRows::USER_AGENT);
     }
 
     /**

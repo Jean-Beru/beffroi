@@ -10,19 +10,17 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Heidi\Core\Domain\Credential\PasskeyCredential;
 use Heidi\Core\Domain\Identity\PushSubscription;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Port\CredentialRepositoryInterface;
 use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use function random_bytes;
 use function sort;
 use function sprintf;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The name a person gave a passkey, and what a push subscription holds of one of their devices, sealed and
@@ -50,14 +48,15 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
      *
      * @var array<string, array<string, string>> table, then column, then the plaintext written there
      */
+    /**
+     * Read from the shared fixture and declared nowhere else, for the same reason as everywhere else: the
+     * test that searches the whole database searches for these very values.
+     *
+     * @var array<string, array<string, string>>
+     */
     private const array PLAINTEXTS = [
-        'heidi_passkey_credential' => [
-            'name' => 'The key Ada keeps on her keyring',
-        ],
-        'heidi_push_subscription' => [
-            'endpoint' => 'https://push.example.org/subscriptions/ada-at-the-difference-engine',
-            'label' => 'Ada on the laptop by the window',
-        ],
+        'heidi_passkey_credential' => SealedRows::VALUES['heidi_passkey_credential'],
+        'heidi_push_subscription' => SealedRows::VALUES['heidi_push_subscription'],
     ];
 
     /**
@@ -242,40 +241,17 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
 
     private static function passkey(User $user): PasskeyCredential
     {
-        $passkey = new PasskeyCredential(
-            Uuid::v7(),
-            $user,
-            self::PLAINTEXTS['heidi_passkey_credential']['name'],
-            random_bytes(16),
-            'cose-public-key',
-            0,
-            ['internal'],
-            true,
-            true,
-            Uuid::v4(),
-            Fixtures::userHandle(),
-            self::now(),
-        );
-        self::credentials()->save($passkey);
-
-        return $passkey;
+        return self::fixture()->passkey($user);
     }
 
     private static function subscription(User $user, ?string $label = self::PLAINTEXTS['heidi_push_subscription']['label']): PushSubscription
     {
-        $subscription = new PushSubscription(
-            Uuid::v7(),
-            $user,
-            self::PLAINTEXTS['heidi_push_subscription']['endpoint'],
-            'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
-            'tBHItJI5svbpez7KI4CCXg',
-            'the-application-server-key',
-            $label,
-            self::now(),
-        );
-        self::subscriptions()->save($subscription);
+        return self::fixture()->subscription($user, $label);
+    }
 
-        return $subscription;
+    private static function fixture(): SealedRows
+    {
+        return new SealedRows(self::getContainer(), self::tenant(), self::now());
     }
 
     /**

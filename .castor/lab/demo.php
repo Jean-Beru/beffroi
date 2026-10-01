@@ -446,6 +446,14 @@ const DEMO_PASSKEY_BROWSER = 'tests/demo/passkey-browser.php';
 const DEMO_PASSKEY_CLASS = 'phr';
 
 /**
+ * What the walk calls the key it enrols, before the instant it appends to tell two runs apart. A person
+ * typed that name, so the column holding it is sealed, and "castor dump-search" looks for this prefix in a
+ * dump of the database: read there rather than typed again, so that renaming it here renames what is
+ * searched for.
+ */
+const DEMO_PASSKEY_NAME_PREFIX = 'castor demo --passkey ';
+
+/**
  * The third success criterion of spike 3 (issue #93): oidc-demo, on Symfony's oidc_login without a patch,
  * requires a phishing-resistant login on /vault and gets one. From the command line, one request at a
  * time as demo_check: a password sign-in through the demo and /profile open, whose ID token says acr "1";
@@ -529,7 +537,7 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
                     'cafile' => $ca,
                     'cookies' => $cookies[$host] ?? [],
                     'interaction' => (string) ($login['interaction'] ?? ''),
-                    'name' => 'castor demo --passkey ' . date('Y-m-d H:i:s'),
+                    'name' => DEMO_PASSKEY_NAME_PREFIX . date('Y-m-d H:i:s'),
                 ],
                 \JSON_THROW_ON_ERROR,
             )),

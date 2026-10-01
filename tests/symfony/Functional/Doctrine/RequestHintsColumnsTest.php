@@ -9,17 +9,11 @@ use Doctrine\DBAL\Connection;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Heidi\Oidc\Domain\Interaction\Interaction;
 use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Port\InteractionRepositoryInterface;
 use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
-use Heidi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
@@ -43,11 +37,13 @@ use function sprintf;
  */
 final class RequestHintsColumnsTest extends DatabaseTestCase
 {
-    private const string LOGIN_HINT = 'ada@example.org';
+    /**
+     * Read from the shared fixture and declared nowhere else: the test that searches the whole database
+     * searches for these very values, and two lists of the same values are two lists that disagree.
+     */
+    private const string LOGIN_HINT = SealedRows::VALUES['heidi_interaction']['login_hint'];
 
-    private const string ID_TOKEN_HINT = 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZGEtc3ViamVjdCJ9.sig';
-
-    private const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+    private const string ID_TOKEN_HINT = SealedRows::VALUES['heidi_interaction']['id_token_hint'];
 
     /**
      * The personal data a request keeps, by the column each one lands in, over the two tables.
@@ -221,39 +217,17 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
         ?string $loginHint = self::LOGIN_HINT,
         ?string $idTokenHint = self::ID_TOKEN_HINT,
     ): string {
-        $client = self::client();
-        $request = new AuthorizationRequest(
-            $client,
-            $client->registration->redirectUris[0],
-            new Scopes([new Scope('openid'), new Scope('profile')]),
-            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
-            loginHint: $loginHint,
-            idTokenHint: $idTokenHint,
-        );
-        $id = Secrets::draw();
-        self::interactions()->save(new Interaction($id, self::tenant(), $request, 'en', self::now(), self::now()->modify('+10 minutes')));
-
-        return $id;
+        return self::fixture()->interaction(self::client(), $loginHint, $idTokenHint);
     }
 
     private static function pushed(): string
     {
-        $hash = DrawnSecret::digestOf(Secrets::draw());
-        self::pushedRequests()
-            ->save(new PushedAuthorizationRecord(
-                $hash,
-                self::client(),
-                [
-                    'response_type' => 'code',
-                    'scope' => ['openid', 'profile'],
-                    'login_hint' => self::LOGIN_HINT,
-                    'id_token_hint' => self::ID_TOKEN_HINT,
-                ],
-                self::now(),
-                self::now()->modify('+90 seconds'),
-            ));
+        return self::fixture()->pushedRequest(self::client());
+    }
 
-        return $hash;
+    private static function fixture(): SealedRows
+    {
+        return new SealedRows(self::getContainer(), self::tenant(), self::now());
     }
 
     /**

@@ -125,13 +125,16 @@ jobs:
     # What seals and unseals, the kernel sealing with the sodium key read from a file instead of the
     # environment (issue #58, the self-hosted default without a KMS): the custody of the signing keys
     # (Functional/Key: the envelope names the key file of the tenant, the file is the process's alone,
-    # a sealed key is opened and signs) and of the shared secrets of the TOTP (Functional/Security), only
-    # the DSN changing. Nothing else of the bundle suite reads the DSN, so nothing else runs here again:
-    # the whole suite against this backend was five minutes behind "Tests" for the same proof. The file is
+    # a sealed key is opened and signs), of the shared secrets of the TOTP (Functional/Security), and the
+    # dump of the database, which holds what the data keys of this backend sealed (issue #409), only the
+    # DSN changing. Nothing else of the bundle suite reads the DSN, so nothing else runs here again: the
+    # whole suite against this backend was five minutes behind "Tests" for the same proof. The file is
     # written the way "castor provision --kms file" writes it: 32 bytes, mode 0600, in a directory 0700
-    # of its own. One backend here, the fastest: the others (Vault Transit, AWS KMS on LocalStack) are the
-    # business of symfony/key-management and of its bridges, and their custody tests run on the
-    # development stack (VaultTransitCustodyTest, AwsKmsCustodyTest, skipped without their DSN).
+    # of its own. Two backends in CI, the two fastest, this one and the sodium of "Tests": the others
+    # (Vault Transit, AWS KMS on LocalStack) are the business of symfony/key-management and of its
+    # bridges, and what judges them runs on the development stack (VaultTransitCustodyTest,
+    # AwsKmsCustodyTest, skipped without their DSN; "castor dump-search", whose backend list carries the
+    # one that cannot be played yet with its issue).
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
@@ -148,7 +151,7 @@ jobs:
           echo "HEIDI_TEST_KMS_DSN=sodium+dir://${RUNNER_TEMP}/kms?ext=.key" >> "$GITHUB_ENV"
           echo "HEIDI_TEST_KMS_KEY_ID=heidi-{tenant}" >> "$GITHUB_ENV"
       - name: "Key custody against the key file"
-        run: castor phpunit -- --no-coverage tests/symfony/Functional/Key tests/symfony/Functional/Security
+        run: castor phpunit -- --no-coverage tests/symfony/Functional/Key tests/symfony/Functional/Security tests/symfony/Functional/Doctrine/DumpGivesNothingAwayTest.php
 
   infection:
     name: "3️⃣ Mutation Testing"

@@ -1,0 +1,464 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Tests\Functional\Doctrine\PersonalData;
+
+use DateTimeImmutable;
+use function array_values;
+use Heidi\Core\Domain\Credential\PasskeyCredential;
+use Heidi\Core\Domain\Identity\Address;
+use Heidi\Core\Domain\Identity\EmailAddress;
+use Heidi\Core\Domain\Identity\LinkedIdentity;
+use Heidi\Core\Domain\Identity\Profile;
+use Heidi\Core\Domain\Identity\PushSubscription;
+use Heidi\Core\Domain\Identity\Subject;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Heidi\Core\Domain\Session\AuthenticationProofs;
+use Heidi\Core\Domain\Session\AuthenticationSession;
+use Heidi\Core\Domain\Session\RequestContext;
+use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Heidi\Core\Port\CredentialRepositoryInterface;
+use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
+use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
+use Heidi\Core\Port\UserRepositoryInterface;
+use Heidi\Core\Tests\Fixture\Fixtures;
+use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Heidi\Oidc\Domain\Authorization\CodeChallenge;
+use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
+use Heidi\Oidc\Domain\Ciba\BindingMessage;
+use Heidi\Oidc\Domain\Client\Client;
+use Heidi\Oidc\Domain\Client\ClientRecord;
+use Heidi\Oidc\Domain\Client\ClientSecretInterface;
+use Heidi\Oidc\Domain\Client\SharedClientSecret;
+use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
+use Heidi\Oidc\Domain\Device\UserCode;
+use Heidi\Oidc\Domain\Interaction\Interaction;
+use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
+use Heidi\Oidc\Domain\Resource\ResourceIndicator;
+use Heidi\Oidc\Domain\Resource\ResourceIndicators;
+use Heidi\Oidc\Domain\Scope\Scope;
+use Heidi\Oidc\Domain\Scope\Scopes;
+use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
+use Heidi\Oidc\Port\ClientStoreInterface;
+use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
+use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Heidi\Oidc\Tests\Fixture\Secrets;
+use LogicException;
+use Psr\Container\ContainerInterface;
+use function random_bytes;
+use function sprintf;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * One row of every family of columns the classification declares sealed, written with the values declared
+ * here and nowhere else.
+ *
+ * It is shared rather than written per test because the two uses have to agree. A test that reads one table
+ * asserts that its own values are not in its own row; the test that reads the whole database asserts that no
+ * value the suite ever wrote is anywhere in the file. Written twice, the second list drifts from the first
+ * and the dump passes for the wrong reason: it searched for values nothing had written.
+ *
+ * What it does not do is drive the application. These are the rows as the domain writes them, which is what
+ * says the types seal; what a journey leaves behind is the business of the walk against the stack.
+ */
+final readonly class SealedRows
+{
+    /**
+     * The shortest a declared value may be, in bytes.
+     *
+     * A sealed column holds bytes that are indistinguishable from random, so a short value is found in one
+     * by chance rather than by leaking. Over a database file of some hundreds of kilobytes, three bytes turn
+     * up about once every twelve runs and four about once in ten thousand, which is a test that fails for
+     * nothing; five bytes turn up about once in two million, which is never. Hence the floor, and hence a
+     * fixture value that reads a little longer than life: `family_name` is King-Noel, which Ada's was.
+     */
+    public const int SHORTEST_VALUE = 5;
+
+    /**
+     * One value each sealed column holds, by the table and the column it lands in.
+     *
+     * One value and not the whole of what the column holds: `claims` is a JSON document, `created_from` is a
+     * whole request context, and `parameters` is a pushed request. What those carry besides is declared in
+     * {@see ALSO_WRITTEN}. What this map is for is the other guarantee, that every column the classification
+     * declares sealed has a value written into it, which is checked per table by the tests that read one.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public const array VALUES = [
+        'heidi_user' => [
+            'username' => 'ada-lovelace',
+            'email' => 'ada@example.org',
+            'phone_number' => '+441632960541',
+            'address' => '12 Grand Rue, Saint-Germain',
+            'name' => 'Augusta Ada King-Noel',
+            'given_name' => 'Augusta',
+            'family_name' => 'King-Noel',
+            'middle_name' => 'Adaline',
+            'nickname' => 'Ada-of-the-notes',
+            'preferred_username' => 'the-enchantress-of-numbers',
+            'profile_url' => 'https://ada.example.org/profile',
+            'picture_url' => 'https://ada.example.org/portrait.jpg',
+            'website_url' => 'https://ada.example.org',
+            'gender' => 'female-and-nothing-else',
+            'birthdate' => '1815-12-10',
+            'zoneinfo' => 'Europe/London',
+            'locale' => 'en-GB',
+        ],
+        'heidi_linked_identity' => [
+            'provider' => 'login.acme-federation.example',
+            'subject' => '110169484474386276334',
+            'claims' => 'ada@example.org',
+        ],
+        'heidi_passkey_credential' => [
+            'name' => 'The key Ada keeps on her keyring',
+        ],
+        'heidi_push_subscription' => [
+            'endpoint' => 'https://push.example.org/subscriptions/ada-at-the-difference-engine',
+            'label' => 'Ada on the laptop by the window',
+        ],
+        'heidi_authentication_session' => [
+            'created_from' => self::IP_ADDRESS,
+            'last_seen_from' => self::USER_AGENT,
+        ],
+        'heidi_device_authorization_request' => [
+            'requested_from' => self::IP_ADDRESS,
+        ],
+        'heidi_backchannel_authentication_request' => [
+            'binding_message' => 'Payment of 42 euros to the Analytical Engine Company',
+            'requested_from' => self::USER_AGENT,
+        ],
+        'heidi_interaction' => [
+            'login_hint' => 'ada@example.org',
+            'id_token_hint' => 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZGEtc3ViamVjdCJ9.sig',
+        ],
+        'heidi_pushed_authorization_request' => [
+            'parameters' => 'ada@example.org',
+        ],
+        'heidi_client' => [
+            'metadata' => 'The Difference Engine',
+            'assigned_metadata' => 'urn:example:scope:assigned-by-the-policy',
+            'secret' => 'a-shared-secret-this-provider-handed-over',
+        ],
+    ];
+
+    /**
+     * What the fixture writes inside a column that holds more than one value, which a dump must not hold
+     * either.
+     *
+     * @var list<string>
+     */
+    public const array ALSO_WRITTEN = [
+        'Augusta Ada King-Noel',
+        'ada@example.org',
+        self::IP_ADDRESS,
+        self::USER_AGENT,
+        'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZGEtc3ViamVjdCJ9.sig',
+    ];
+
+    /**
+     * The provenance every session, device request and backchannel request of the suite is written from.
+     *
+     * Public because {@see \Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase::context()} builds
+     * the context of the whole suite from these two, so that a row written by any test carries a value the
+     * search of the dump knows about by construction and not by coincidence.
+     */
+    public const string IP_ADDRESS = '203.0.113.10';
+
+    public const string USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0';
+
+    /**
+     * The snapshot the upstream provider returned, which is what the claims column holds whole.
+     */
+    private const array CLAIMS = [
+        'email' => 'ada@example.org',
+        'email_verified' => true,
+        'name' => 'Augusta Ada King-Noel',
+        'locale' => 'en-GB',
+    ];
+
+    private const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+
+    public function __construct(
+        private ContainerInterface $container,
+        private Tenant $tenant,
+        private DateTimeImmutable $now,
+    ) {
+    }
+
+    /**
+     * Every value the fixture writes into a sealed column, each once.
+     *
+     * @return list<string>
+     */
+    public static function searchable(): array
+    {
+        $values = [];
+        foreach (self::VALUES as $columns) {
+            foreach ($columns as $value) {
+                $values[$value] = $value;
+            }
+        }
+        foreach (self::ALSO_WRITTEN as $value) {
+            $values[$value] = $value;
+        }
+
+        return array_values($values);
+    }
+
+    /**
+     * One row of every family, in the order the foreign keys need: the user first, the client of the
+     * configuration being there already.
+     */
+    public function all(Client $client): void
+    {
+        $user = $this->user();
+        $this->linkedIdentity($user);
+        $this->passkey($user);
+        $this->subscription($user);
+        $this->session($user);
+        $this->deviceRequest($client);
+        $this->backchannelRequest($client, $user);
+        $this->interaction($client);
+        $this->pushedRequest($client);
+        $this->client(new SharedClientSecret(self::VALUES['heidi_client']['secret']));
+    }
+
+    public function user(): User
+    {
+        $values = self::VALUES['heidi_user'];
+        $user = User::create(
+            Uuid::v7(),
+            $this->tenant,
+            new Subject('ada-subject'),
+            $values['username'],
+            $this->now,
+            new EmailAddress($values['email']),
+        );
+        $user->changePhoneNumber($values['phone_number'], false, $this->now);
+        $user->changeAddress(new Address($values['address']), $this->now);
+        $user->updateProfile(new Profile(
+            $values['name'],
+            $values['given_name'],
+            $values['family_name'],
+            $values['middle_name'],
+            $values['nickname'],
+            $values['preferred_username'],
+            $values['profile_url'],
+            $values['picture_url'],
+            $values['website_url'],
+            $values['gender'],
+            $values['birthdate'],
+            $values['zoneinfo'],
+            $values['locale'],
+        ), $this->now);
+        $this->service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+
+        return $user;
+    }
+
+    public function linkedIdentity(User $user): LinkedIdentity
+    {
+        $values = self::VALUES['heidi_linked_identity'];
+        $identity = new LinkedIdentity(
+            Uuid::v7(),
+            $user,
+            $values['provider'],
+            $values['subject'],
+            self::CLAIMS,
+            $this->now,
+            $this->now,
+        );
+        $this->service('test.heidi.linked_identities', LinkedIdentityRepositoryInterface::class)->save($identity);
+
+        return $identity;
+    }
+
+    public function passkey(User $user): PasskeyCredential
+    {
+        $passkey = new PasskeyCredential(
+            Uuid::v7(),
+            $user,
+            self::VALUES['heidi_passkey_credential']['name'],
+            random_bytes(16),
+            'cose-public-key',
+            0,
+            ['internal'],
+            true,
+            true,
+            Uuid::v4(),
+            Fixtures::userHandle(),
+            $this->now,
+        );
+        $this->service('test.heidi.credentials', CredentialRepositoryInterface::class)->save($passkey);
+
+        return $passkey;
+    }
+
+    public function subscription(User $user, ?string $label = self::VALUES['heidi_push_subscription']['label']): PushSubscription
+    {
+        $subscription = new PushSubscription(
+            Uuid::v7(),
+            $user,
+            self::VALUES['heidi_push_subscription']['endpoint'],
+            'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
+            'tBHItJI5svbpez7KI4CCXg',
+            'the-application-server-key',
+            $label,
+            $this->now,
+        );
+        $this->service('test.heidi.push_subscriptions', PushSubscriptionRepositoryInterface::class)->save($subscription);
+
+        return $subscription;
+    }
+
+    public function session(User $user): AuthenticationSession
+    {
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            $this->now,
+            AuthenticationProofs::of(AuthenticationMethod::password(), $this->now),
+            $this->context(),
+            $this->now->modify('+12 hours'),
+        );
+        $this->service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->save($session);
+
+        return $session;
+    }
+
+    public function deviceRequest(Client $client): void
+    {
+        $this->service('test.heidi.device_authorization_requests', DeviceAuthorizationRecordRepositoryInterface::class)->save(new DeviceAuthorizationRecord(
+            DrawnSecret::digestOf('a-device-code'),
+            UserCode::hashOf('ZXWVTSRQ'),
+            Uuid::v7(),
+            $client,
+            new Scopes([new Scope('openid')]),
+            new ResourceIndicators([new ResourceIndicator('https://cal.example.com/')]),
+            $this->context(),
+            $this->now,
+            $this->now->modify('+10 minutes'),
+        ));
+    }
+
+    public function backchannelRequest(Client $client, User $user): void
+    {
+        $this->service(
+            'test.heidi.backchannel_authentication_requests',
+            BackchannelAuthenticationRecordRepositoryInterface::class,
+        )->save(new BackchannelAuthenticationRecord(
+            DrawnSecret::digestOf('an-auth-request-id'),
+            Uuid::v7(),
+            $client,
+            $user,
+            new Scopes([new Scope('openid')]),
+            new ResourceIndicators([new ResourceIndicator('https://cal.example.com/')]),
+            new BindingMessage(self::VALUES['heidi_backchannel_authentication_request']['binding_message']),
+            ['phr'],
+            null,
+            null,
+            $this->context(),
+            $this->now,
+            $this->now->modify('+5 minutes'),
+        ));
+    }
+
+    public function interaction(
+        Client $client,
+        ?string $loginHint = self::VALUES['heidi_interaction']['login_hint'],
+        ?string $idTokenHint = self::VALUES['heidi_interaction']['id_token_hint'],
+    ): string {
+        $request = new AuthorizationRequest(
+            $client,
+            $client->registration->redirectUris[0],
+            new Scopes([new Scope('openid'), new Scope('profile')]),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
+            loginHint: $loginHint,
+            idTokenHint: $idTokenHint,
+        );
+        $id = Secrets::draw();
+        $this->service('test.heidi.interactions', InteractionRepositoryInterface::class)->save(
+            new Interaction($id, $this->tenant, $request, 'en', $this->now, $this->now->modify('+10 minutes')),
+        );
+
+        return $id;
+    }
+
+    public function pushedRequest(Client $client): string
+    {
+        $hash = DrawnSecret::digestOf(Secrets::draw());
+        $this->service('test.heidi.pushed_authorization_requests', PushedAuthorizationRecordRepositoryInterface::class)->save(new PushedAuthorizationRecord(
+            $hash,
+            $client,
+            [
+                'response_type' => 'code',
+                'scope' => ['openid', 'profile'],
+                'login_hint' => self::VALUES['heidi_interaction']['login_hint'],
+                'id_token_hint' => self::VALUES['heidi_interaction']['id_token_hint'],
+            ],
+            $this->now,
+            $this->now->modify('+90 seconds'),
+        ));
+
+        return $hash;
+    }
+
+    /**
+     * A client of the tenant, with the secret it was given or none.
+     *
+     * None by default, because a sealed column that accepts a null holds a null and not the envelope of an
+     * empty value, and a test says so. {@see all()} gives it one, the dump having to be searched for it.
+     */
+    public function client(?ClientSecretInterface $secret = null): ClientRecord
+    {
+        $values = self::VALUES['heidi_client'];
+        $record = new ClientRecord(
+            Uuid::v7(),
+            $this->tenant,
+            'the-engine',
+            [
+                'client_name' => $values['metadata'],
+                'contacts' => [self::VALUES['heidi_user']['email']],
+                'redirect_uris' => ['https://engine.example.org/callback'],
+                'token_endpoint_auth_method' => $secret instanceof SharedClientSecret ? 'client_secret_jwt' : 'client_secret_basic',
+            ],
+            [
+                'scope' => [$values['assigned_metadata']],
+            ],
+            $secret,
+            DrawnSecret::digestOf('the-registration-access-token'),
+            $this->now,
+        );
+        $this->service('test.heidi.client_store', ClientStoreInterface::class)->save($record);
+
+        return $record;
+    }
+
+    private function context(): RequestContext
+    {
+        return new RequestContext($this->now, self::IP_ADDRESS, self::USER_AGENT);
+    }
+
+    /**
+     * @template T of object
+     *
+     * @param class-string<T> $class
+     *
+     * @return T
+     */
+    private function service(string $id, string $class): object
+    {
+        $service = $this->container->get($id);
+
+        return $service instanceof $class
+            ? $service
+            : throw new LogicException(sprintf('The test service "%s" is not a %s.', $id, $class));
+    }
+}

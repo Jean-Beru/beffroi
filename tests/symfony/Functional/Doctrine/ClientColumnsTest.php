@@ -10,19 +10,18 @@ use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
 use Heidi\Core\Domain\Credential\PasswordHash;
 use Heidi\Oidc\Domain\Client\ClientRecord;
 use Heidi\Oidc\Domain\Client\ClientSecretInterface;
 use Heidi\Oidc\Domain\Client\HashedClientSecret;
 use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Port\ClientStoreInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use function sprintf;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * What a client registered of the people responsible for it, and the secret this provider handed it,
@@ -42,13 +41,17 @@ use Symfony\Component\Uid\Uuid;
  */
 final class ClientColumnsTest extends DatabaseTestCase
 {
-    private const string CONTACT = 'ada@example.org';
+    /**
+     * Read from the shared fixture and declared nowhere else: the test that searches the whole database
+     * searches for these very values, and two lists of the same values are two lists that disagree.
+     */
+    private const string CONTACT = SealedRows::VALUES['heidi_user']['email'];
 
-    private const string CLIENT_NAME = 'The Difference Engine';
+    private const string CLIENT_NAME = SealedRows::VALUES['heidi_client']['metadata'];
 
-    private const string ASSIGNED_SCOPE = 'urn:example:scope:assigned-by-the-policy';
+    private const string ASSIGNED_SCOPE = SealedRows::VALUES['heidi_client']['assigned_metadata'];
 
-    private const string SHARED_SECRET = 'a-shared-secret-this-provider-handed-over';
+    private const string SHARED_SECRET = SealedRows::VALUES['heidi_client']['secret'];
 
     /**
      * The columns of this table the classification of the schema declares sealed.
@@ -233,26 +236,12 @@ final class ClientColumnsTest extends DatabaseTestCase
 
     private static function record(?ClientSecretInterface $secret = null): ClientRecord
     {
-        $record = new ClientRecord(
-            Uuid::v7(),
-            self::tenant(),
-            'the-engine',
-            [
-                'client_name' => self::CLIENT_NAME,
-                'contacts' => [self::CONTACT],
-                'redirect_uris' => ['https://engine.example.org/callback'],
-                'token_endpoint_auth_method' => $secret instanceof SharedClientSecret ? 'client_secret_jwt' : 'client_secret_basic',
-            ],
-            [
-                'scope' => [self::ASSIGNED_SCOPE],
-            ],
-            $secret,
-            DrawnSecret::digestOf('the-registration-access-token'),
-            self::now(),
-        );
-        self::clients()->save($record);
+        return self::fixture()->client($secret);
+    }
 
-        return $record;
+    private static function fixture(): SealedRows
+    {
+        return new SealedRows(self::getContainer(), self::tenant(), self::now());
     }
 
     /**
