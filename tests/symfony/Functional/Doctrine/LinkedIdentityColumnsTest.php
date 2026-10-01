@@ -11,6 +11,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Schema\Index\IndexedColumn;
 use Doctrine\DBAL\Schema\Index\IndexType;
 use Doctrine\ORM\Tools\SchemaTool;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
 use Heidi\Core\Domain\Identity\LinkedIdentity;
@@ -20,13 +21,10 @@ use Heidi\Core\Domain\Tenant\Issuer;
 use Heidi\Core\Domain\Tenant\Tenant;
 use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
 use Heidi\Core\Port\UserRepositoryInterface;
-use function implode;
-use function is_resource;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use function sprintf;
-use function stream_get_contents;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -259,29 +257,24 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The one row of the table as the database holds it, every value a string: nothing converts a type
-     * here, which is the whole point of reading it this way.
+     * The one row of the table as the database holds it, the three sealed columns and the two tags: a
+     * column that holds nothing is a column with nothing to assert against, so a null fails here and not
+     * silently in the test that reads it.
      *
      * @return array<string, string>
      */
     private static function row(): array
     {
-        $rows = self::connection()
-            ->fetchAllAssociative(
-                sprintf('SELECT %s, provider_index, subject_index FROM heidi_linked_identity', implode(', ', array_keys(self::PLAINTEXTS))),
-            );
+        $rows = RawRows::of(
+            self::connection(),
+            'heidi_linked_identity',
+            [...array_keys(self::PLAINTEXTS), 'provider_index', 'subject_index'],
+        );
         static::assertCount(1, $rows);
 
         $row = [];
         foreach ($rows[0] as $column => $value) {
-            static::assertIsString($column);
-            if (is_resource($value)) {
-                $row[$column] = (string) stream_get_contents($value);
-
-                continue;
-            }
-            static::assertIsString($value);
-            $row[$column] = $value;
+            $row[$column] = $value ?? static::fail(sprintf('heidi_linked_identity.%s holds nothing.', $column));
         }
 
         return $row;

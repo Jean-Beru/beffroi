@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Heidi\Bundle\Tests\Fixture\EnrichTheProvenance;
 use Heidi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler;
 use Heidi\Core\Domain\Session\AuthenticationSession;
@@ -21,11 +22,9 @@ use Heidi\Oidc\Domain\Resource\ResourceIndicators;
 use Heidi\Oidc\Domain\Secret\DrawnSecret;
 use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
 use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
-use function is_resource;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
-use function stream_get_contents;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -232,21 +231,16 @@ final class RequestContextColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * One column of the one row of a table as the database holds it: nothing converts a type here, which is
-     * the whole point of reading it this way.
+     * One column of the one row of a table as the database holds it, which is what an operator or a dump
+     * would see: a column that holds nothing fails here rather than letting the search below pass for the
+     * wrong reason.
      */
     private static function column(string $table, string $column): string
     {
-        $rows = self::connection()->fetchFirstColumn(sprintf('SELECT %s FROM %s', $column, $table));
+        $rows = RawRows::of(self::connection(), $table, [$column]);
         static::assertCount(1, $rows);
-        $value = $rows[0];
 
-        if (is_resource($value)) {
-            return (string) stream_get_contents($value);
-        }
-        static::assertIsString($value);
-
-        return $value;
+        return $rows[0][$column] ?? static::fail(sprintf('%s.%s holds nothing.', $table, $column));
     }
 
     private static function sessions(): AuthenticationSessionRepositoryInterface

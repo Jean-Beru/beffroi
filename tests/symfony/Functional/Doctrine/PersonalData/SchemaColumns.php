@@ -53,6 +53,8 @@ final readonly class SchemaColumns
 
     public const string AN_ENVELOPE = 'the envelope the KMS of the tenant sealed, and nothing else';
 
+    public const string A_KEY_OF_THE_SUBSCRIPTION = 'a key of the subscription as the browser wrote it (RFC 8291 §3.1), which reaches no browser without the sealed endpoint it was drawn for';
+
     public const string A_BLIND_INDEX = 'a keyed tag of a sealed value, under the index key of its tenant: it says which rows share a value and never what that value is (decision 0011)';
 
     /**
@@ -130,7 +132,7 @@ final readonly class SchemaColumns
                 'last_used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'revoked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
-                'name' => new Owed('heidi#405', 'the name a person gave a passkey, so as to tell theirs apart'),
+                'name' => new Sealed('passkey_credential'),
                 'credential_id' => new NoPersonalDatum(self::PUBLIC_BY_CONSTRUCTION),
                 'public_key' => new NoPersonalDatum(self::PUBLIC_BY_CONSTRUCTION),
                 'sign_count' => new NoPersonalDatum(self::PUBLIC_BY_CONSTRUCTION),
@@ -165,14 +167,12 @@ final readonly class SchemaColumns
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
             'heidi_push_subscription' => [
-                'endpoint' => new Owed('heidi#405', 'a URL that designates one browser on one device'),
+                'endpoint' => new Sealed('push_subscription'),
                 'endpoint_hash' => new NoPersonalDatum(self::HASHED),
-                'public_key' =>
-                    new NoPersonalDatum('a key of the subscription as the browser wrote it (RFC 8291 §3.1), which reaches no browser without the endpoint issue #405 seals'),
-                'auth_secret' =>
-                    new NoPersonalDatum('a key of the subscription as the browser wrote it (RFC 8291 §3.1), which reaches no browser without the endpoint issue #405 seals'),
+                'public_key' => new NoPersonalDatum(self::A_KEY_OF_THE_SUBSCRIPTION),
+                'auth_secret' => new NoPersonalDatum(self::A_KEY_OF_THE_SUBSCRIPTION),
                 'application_server_kid' => new NoPersonalDatum('names the key of the tenant a push to this browser is signed with'),
-                'label' => new Owed('heidi#405', 'the label a person typed for one of their devices'),
+                'label' => new Sealed('push_subscription'),
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'last_pushed_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'revoked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
