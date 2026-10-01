@@ -8,25 +8,14 @@ use Doctrine\DBAL\Connection;
 use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Heidi\Bundle\Tests\Fixture\EnrichTheProvenance;
 use Heidi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Heidi\Core\Domain\Session\AuthenticationSession;
 use Heidi\Core\Domain\Session\RequestContext;
 use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
-use Heidi\Oidc\Domain\Ciba\BindingMessage;
-use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
-use Heidi\Oidc\Domain\Device\UserCode;
-use Heidi\Oidc\Domain\Resource\ResourceIndicator;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
-use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The provenance of a request, one sealed column each, on the three tables that hold one (decisions 0011
@@ -46,11 +35,15 @@ use Symfony\Component\Uid\Uuid;
  */
 final class RequestContextColumnsTest extends DatabaseTestCase
 {
-    private const string IP_ADDRESS = '203.0.113.10';
+    /**
+     * Read from the shared fixture and declared nowhere else: the test that searches the whole database
+     * searches for these very values, and two lists of the same values are two lists that disagree.
+     */
+    private const string IP_ADDRESS = SealedRows::IP_ADDRESS;
 
-    private const string USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0';
+    private const string USER_AGENT = SealedRows::USER_AGENT;
 
-    private const string BINDING_MESSAGE = 'Payment of 42 euros';
+    private const string BINDING_MESSAGE = SealedRows::VALUES['heidi_backchannel_authentication_request']['binding_message'];
 
     /**
      * Read back as the domain wrote it: the provenance comes back as the object it was, the encrypted type
@@ -193,41 +186,17 @@ final class RequestContextColumnsTest extends DatabaseTestCase
      */
     private static function rows(): void
     {
+        $fixture = self::fixture();
         $user = self::user();
         $client = self::client();
         self::session($user);
-        self::service('test.heidi.device_authorization_requests', DeviceAuthorizationRecordRepositoryInterface::class)
-            ->save(
-                new DeviceAuthorizationRecord(
-                    DrawnSecret::digestOf('a-device-code'),
-                    UserCode::hashOf('ZXWVTSRQ'),
-                    Uuid::v7(),
-                    $client,
-                    new Scopes([new Scope('openid')]),
-                    new ResourceIndicators([new ResourceIndicator('https://cal.example.com/')]),
-                    self::context(),
-                    self::now(),
-                    self::now()->modify('+10 minutes'),
-                ),
-            );
-        self::service('test.heidi.backchannel_authentication_requests', BackchannelAuthenticationRecordRepositoryInterface::class)
-            ->save(
-                new BackchannelAuthenticationRecord(
-                    DrawnSecret::digestOf('an-auth-request-id'),
-                    Uuid::v7(),
-                    $client,
-                    $user,
-                    new Scopes([new Scope('openid')]),
-                    new ResourceIndicators([new ResourceIndicator('https://cal.example.com/')]),
-                    new BindingMessage(self::BINDING_MESSAGE),
-                    ['phr'],
-                    null,
-                    null,
-                    self::context(),
-                    self::now(),
-                    self::now()->modify('+5 minutes'),
-                ),
-            );
+        $fixture->deviceRequest($client);
+        $fixture->backchannelRequest($client, $user);
+    }
+
+    private static function fixture(): SealedRows
+    {
+        return new SealedRows(self::getContainer(), self::tenant(), self::now());
     }
 
     /**
