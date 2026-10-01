@@ -14,11 +14,13 @@
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
         </many-to-one>
         <field name="clientId" type="string" column="client_id" length="255"/>
-        <field name="parameters" type="json" column="parameters">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <!--
+          Sealed under the data key of its tenant (decisions 0011 and 0018): the parameters are kept as the
+          client wrote them, so a pushed "login_hint" or "id_token_hint" is in here word for word (RFC 9126
+          §2.2). It loses its "jsonb" with the rest, what the column holds now being the ciphertext of a
+          JSON document, which no query can read into and which no query did.
+        -->
+        <field name="parameters" type="heidi_encrypted_pushed_authorization_request_json" column="parameters"/>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <!-- Whether the push carried a request object the client signed (RFC 9101 §6.1): once the record answers for the request, the authorization endpoint can no longer see it. -->

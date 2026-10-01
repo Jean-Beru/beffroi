@@ -68,8 +68,8 @@ final class SchemaClassificationTest extends DatabaseTestCase
         // When
         $findings = $classification->findings([
             'heidi_user' => [
-                'id' => false,
-                'favourite_colour' => false,
+                'id' => null,
+                'favourite_colour' => null,
             ],
         ]);
 
@@ -94,8 +94,8 @@ final class SchemaClassificationTest extends DatabaseTestCase
         // When
         $findings = $classification->findings([
             'heidi_new_table' => [
-                'id' => false,
-                'tenant_id' => false,
+                'id' => null,
+                'tenant_id' => null,
             ],
         ]);
 
@@ -112,7 +112,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['email' => true]]);
+        $findings = $classification->findings(['heidi_user' => ['email' => 'heidi_encrypted_user_email_address']]);
 
         // Then
         static::assertSame(
@@ -132,12 +132,62 @@ final class SchemaClassificationTest extends DatabaseTestCase
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['email' => false]]);
+        $findings = $classification->findings(['heidi_user' => ['email' => null]]);
 
         // Then
         static::assertSame(
             [
                 'heidi_user.email is declared sealed under the "user" family and its Doctrine type does not seal it.',
+            ],
+            $findings,
+        );
+    }
+
+    /**
+     * A column seals under its own table, the family being the name of the table without the prefix of
+     * the bundle: a column sealed under another family is a value written into the scope of a table that
+     * is not its own, which no destruction of its tenant's keys for that table would reach.
+     */
+    #[Test]
+    public function aColumnDeclaredSealedUnderAnotherTableIsRefused(): void
+    {
+        // Given
+        $classification = new ClassifiedSchema([
+            'heidi_interaction' => ['login_hint' => new Sealed('user')],
+        ]);
+
+        // When
+        $findings = $classification->findings(['heidi_interaction' => ['login_hint' => 'heidi_encrypted_user_text']]);
+
+        // Then
+        static::assertSame(
+            [
+                'heidi_interaction.login_hint is declared sealed under the "user" family, and a column seals under its own table, so under "interaction".',
+            ],
+            $findings,
+        );
+    }
+
+    /**
+     * And the shape of the mapping that produces it without showing it: an embeddable fixes the type of
+     * each of its fields once for the whole model, so a second entity embedding an object whose field
+     * seals lands that field's column, with that type, on a table of another family.
+     */
+    #[Test]
+    public function aColumnCarryingTheSealingTypeOfAnotherFamilyIsRefused(): void
+    {
+        // Given
+        $classification = new ClassifiedSchema([
+            'heidi_consent' => ['login_hint' => new Sealed('consent')],
+        ]);
+
+        // When
+        $findings = $classification->findings(['heidi_consent' => ['login_hint' => 'heidi_encrypted_interaction_text']]);
+
+        // Then
+        static::assertSame(
+            [
+                'heidi_consent.login_hint is declared sealed under the "consent" family and carries "heidi_encrypted_interaction_text", which seals under another: a column of an embeddable several entities embed cannot carry the type of one of their tables.',
             ],
             $findings,
         );
@@ -152,7 +202,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['id' => true]]);
+        $findings = $classification->findings(['heidi_user' => ['id' => 'heidi_encrypted_user_string']]);
 
         // Then
         static::assertSame(
@@ -175,7 +225,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['id' => false]]);
+        $findings = $classification->findings(['heidi_user' => ['id' => null]]);
 
         // Then
         static::assertSame(

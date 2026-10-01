@@ -3,7 +3,23 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- A validated authorization request (architecture §4.2), every parameter in its own column; the client is not mapped here, an embeddable cannot hold it, the entity that carries the request does. -->
+    <!--
+      A validated authorization request (architecture §4.2), every parameter in its own column; the client
+      is not mapped here, an embeddable cannot hold it, the entity that carries the request does.
+
+      Two of its columns carry a personal datum and are sealed under the data key of their tenant
+      (decisions 0011 and 0018): the two hints, which name the person a client is asking for. Every other
+      parameter is what the request asked of the protocol, and the state and the nonce are values the
+      client drew to tie its own request to the answer it gets back.
+
+      **The family of the two sealed types is "interaction", which is the table, and this object is
+      embedded by one entity.** An embeddable fixes the type of each of its fields once for the whole
+      model, so a second entity embedding this object would seal those two columns under the scope of a
+      table that is not its own. What makes that loud is an invariant of the walk of the schema and not a
+      comment: the family of a sealed column is its own table (`Sealed`, `ClassifiedSchema`). The day a
+      second entity needs this object, the hints leave the embeddable, as the provenance of a request left
+      its own.
+    -->
     <embeddable name="Heidi\Oidc\Domain\Authorization\AuthorizationRequest">
         <field name="redirectUri" type="heidi_redirect_uri" column="redirect_uri" length="2048"/>
         <field name="scopes" type="heidi_scopes" column="scopes"/>
@@ -22,7 +38,7 @@
             </options>
         </field>
         <field name="maxAge" type="integer" column="max_age" nullable="true"/>
-        <field name="loginHint" type="text" column="login_hint" nullable="true"/>
+        <field name="loginHint" type="heidi_encrypted_interaction_text" column="login_hint" nullable="true"/>
         <field name="uiLocales" type="json" column="ui_locales">
             <options>
                 <option name="jsonb">true</option>
@@ -34,7 +50,7 @@
             </options>
         </field>
         <field name="display" type="string" column="display" length="8" nullable="true" enum-type="Heidi\Oidc\Domain\Authorization\Display"/>
-        <field name="idTokenHint" type="text" column="id_token_hint" nullable="true"/>
+        <field name="idTokenHint" type="heidi_encrypted_interaction_text" column="id_token_hint" nullable="true"/>
         <field name="claims" type="heidi_claims_request" column="claims" nullable="true">
             <options>
                 <option name="jsonb">true</option>

@@ -19,10 +19,10 @@ final readonly class Owed implements ColumnClassificationInterface
     ) {
     }
 
-    public function finding(string $column, bool $sealed): ?string
+    public function finding(string $table, string $column, ?string $sealingType): ?string
     {
-        return $sealed
-            ? sprintf('%s is sealed and %s still owes it ("%s"): delete its line and declare it sealed.', $column, $this->issue, $this->reason)
-            : null;
+        return $sealingType === null
+            ? null
+            : sprintf('%s.%s is sealed and %s still owes it ("%s"): delete its line and declare it sealed.', $table, $column, $this->issue, $this->reason);
     }
 }

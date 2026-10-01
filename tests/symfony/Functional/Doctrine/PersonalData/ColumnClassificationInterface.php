@@ -15,8 +15,11 @@ interface ColumnClassificationInterface
     /**
      * What the line and the column disagree on, or null when they agree.
      *
-     * @param string $column "table.column", as a finding names it
-     * @param bool   $sealed whether the Doctrine type of the column seals what it stores
+     * @param string      $table        the table the column is on, which is also the family a sealed column of it
+     *                                  seals under
+     * @param string      $column       the column, which a finding names as "table.column"
+     * @param string|null $sealingType  the name of the encrypted type the mapping gives the column, or null when
+     *                                  the type the mapping gives it does not seal
      */
-    public function finding(string $column, bool $sealed): ?string;
+    public function finding(string $table, string $column, ?string $sealingType): ?string;
 }
