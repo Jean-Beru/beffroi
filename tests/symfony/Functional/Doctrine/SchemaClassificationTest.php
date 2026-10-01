@@ -317,7 +317,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
         sort($families);
 
         // Then
-        $declared = array_keys(EncryptedColumnTypes::FAMILIES);
+        $declared = EncryptedColumnTypes::families();
         sort($declared);
         static::assertSame(
             $declared,

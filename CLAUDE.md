@@ -56,7 +56,7 @@ composer install                  # monorepo (packages, tests)
 castor start                      # https://op.localhost (FrankenPHP worker), PostgreSQL, RabbitMQ, and https://mtls.op.localhost behind a listener that asks for a client certificate
 castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443, profiler off
 castor start --kms vault|aws      # plus HashiCorp Vault (dev mode) or LocalStack 4.14.0, KMS only; both initialised at every start
-castor provision [--kms sodium|file|vault|aws]  # apps/op/.env.local, tenant, signing key and encryption key, user "alice", and the self-signed client certificate of var/mtls/
+castor provision [--kms sodium|file|vault|aws]  # apps/op/.env.local, the migrations, the tenant, the signing key and the encryption key, the user "alice", what the tenant holds in data keys, and the self-signed client certificate of var/mtls/
 castor stop / castor logs / castor console <cmd>
 castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI), inside the op container
 ```

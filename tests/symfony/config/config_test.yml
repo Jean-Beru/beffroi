@@ -130,6 +130,10 @@ parameters:
     env(HEIDI_TEST_CLIENT_BUDGET): 100000
     env(HEIDI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(HEIDI_TEST_KMS_KEY_ID): signing
+    # A second KMS client, which only the rewrap of the data keys needs: moving them from one client to
+    # another is a run with both configured, and a kernel with one client could not play it at all. It
+    # seals nothing of this kernel; what names it is a "--to" on the command line.
+    env(HEIDI_TEST_KMS_DSN_SECOND): 'sodium://?keys[signing]=JljzXfMKE58dH-7b6wAhvJN9MYRDHOt9mtCvlyCP-6A'
     # What authorises a registration on the tenant of the tests (decision 0009): a tenant that registers
     # nobody is one the variable is emptied for, which is the closed default of any deployment.
     env(HEIDI_TEST_REGISTRATION_MODE): initial_access_token
@@ -154,6 +158,7 @@ parameters:
 key_management:
     clients:
         test: 'service://heidi_test.kms'
+        second: 'service://heidi_test.kms.second'
 
 heidi:
     tenant:
@@ -541,6 +546,12 @@ services:
         class: Symfony\Component\KeyManagement\EncrypterInterface
         factory: ['@key_management.factory', 'fromString']
         arguments: ['%env(HEIDI_TEST_KMS_DSN)%']
+
+    # The second one, which the rewrap of the data keys moves them to and which seals nothing otherwise.
+    heidi_test.kms.second:
+        class: Symfony\Component\KeyManagement\EncrypterInterface
+        factory: ['@key_management.factory', 'fromString']
+        arguments: ['%env(HEIDI_TEST_KMS_DSN_SECOND)%']
 
     # The Vault and AWS bridges are development dependencies of the monorepo (the bundle stays
     # backend-agnostic, the application requires the bridges it deploys with), and KeyManagementBundle

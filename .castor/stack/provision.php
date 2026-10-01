@@ -295,6 +295,12 @@ function provision(
     io()->section('Development secrets');
     $env = provision_env_local($kms);
 
+    // The schema first: nothing else of this task has a table to write to, and until this spike nothing of
+    // the repository played the migrations at all, so a clean stack needed a command typed by hand before
+    // anything worked. A run with nothing to apply says so and costs nothing.
+    io()->section('Schema');
+    op_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
+
     io()->section('Tenant');
     op_console(['heidi:tenant:synchronize']);
 
@@ -346,6 +352,12 @@ function provision(
     // and through nothing else, so it is written before that issuer can name anybody ("castor demo
     // --assertion"). Replayed on every run, the command refreshes the row rather than adding one.
     op_console(['heidi:user:link', DEV_USERNAME, DEV_DEMO_ISSUER['identity_provider'], DEV_DEMO_ISSUER['subject']]);
+
+    // What the tenant holds to seal its personal data, shown rather than assumed (decision 0018): a data
+    // key per family of columns and the index key, each minted at the first write of its family, so the
+    // user created just above is what put the first ones there. Read only, and it never opens a key.
+    io()->section('Data keys');
+    op_console(['heidi:data-keys:list']);
 
     io()->section('Client certificate');
     provision_mtls_client();

@@ -8,7 +8,12 @@ use DateInterval;
 use Doctrine\DBAL\Connection;
 use Heidi\Bundle\Doctrine\PersonalData\BlindIndexListener;
 use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Heidi\Bundle\Command\DataKeysRewrapCommand;
+use Heidi\Bundle\Http\RequestContextFactory;
+use Heidi\Bundle\Messenger\EventBusDispatcher;
 use Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
+use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
+use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeys;
 use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
 use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
 use Heidi\Bundle\Doctrine\TenantProvider;
@@ -141,6 +146,25 @@ final readonly class KeysSection extends ConfigurationSection
             service(TenantProvider::class),
             TenantDataKeyStores::TABLE,
         ]);
+        // What an operator holds the data keys with (decision 0018). The reading is one service and the two
+        // writes are the commands themselves: a command that reads is not the command that writes, and
+        // what erases a key is a statement of its own and never a method of the router the encryption path
+        // sees. The index key is in the same table, so all three see it with the rest.
+        $services->set(TenantDataKeys::class)->args([service('heidi.data_keys')]);
+        $services->set(TenantDataKeyDestruction::class)->args([
+            service(Connection::class),
+            service(TenantDataKeys::class),
+            service(EventBusDispatcher::class),
+            service(RequestContextFactory::class),
+            TenantDataKeyStores::TABLE,
+        ]);
+        // The rewrap hands the command of the component a store that lists one tenant's rows, so that
+        // nothing of its loop is written twice, and resolves the master key of the tenant rather than
+        // asking for it: an operator who had to type it could type another tenant's.
+        $services->get(DataKeysRewrapCommand::class)->arg('$store', service('heidi.data_keys'))->arg('$clients', tagged_locator(
+            'key_management.client',
+            'key',
+        ))->arg('$masterKeyId', self::string($keys, 'key_id'));
         // The tag written in the same statement as the value it indexes, on "onFlush" and not on
         // "prePersist", which fires when persist() is called and would miss a value set afterwards. A row
         // whose tag does not match what it holds is a row no search returns.
