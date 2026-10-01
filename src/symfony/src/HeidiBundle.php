@@ -52,6 +52,7 @@ use Heidi\Bundle\Doctrine\Type\IssuerType;
 use Heidi\Bundle\Doctrine\Type\KeyConfirmationType;
 use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
 use Heidi\Bundle\Doctrine\Type\RedirectUriType;
+use Heidi\Bundle\Doctrine\Type\RequestContextType;
 use Heidi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Heidi\Bundle\Doctrine\Type\ScopesType;
 use Heidi\Bundle\Doctrine\Type\SectorIdentifierType;
@@ -98,6 +99,7 @@ final class HeidiBundle extends AbstractBundle
         AuthenticationSnapshotType::NAME => AuthenticationSnapshotType::class,
         GeoLocationType::NAME => GeoLocationType::class,
         DeviceType::NAME => DeviceType::class,
+        RequestContextType::NAME => RequestContextType::class,
         RedirectUriType::NAME => RedirectUriType::class,
         ScopesType::NAME => ScopesType::class,
         ResourceIndicatorsType::NAME => ResourceIndicatorsType::class,
@@ -161,7 +163,7 @@ final class HeidiBundle extends AbstractBundle
      *
      * A connection is asked for first, and this is the ordering nobody can see from the call: an encrypted
      * type resolves the type it decorates by name, in the global registry, at the moment it is registered,
-     * and ten of them decorate a type of DBAL_TYPES above, which DoctrineBundle only puts in that
+     * and seven of them decorate a type of DBAL_TYPES above, which DoctrineBundle only puts in that
      * registry when a connection is first created (ConnectionFactory::initializeTypes). Asking opens
      * nothing, a DBAL connection reaching the database on its first query and not before.
      */

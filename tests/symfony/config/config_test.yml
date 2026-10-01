@@ -668,6 +668,12 @@ services:
     test.heidi.command_bus:
         alias: command.bus
         public: true
+    # The write path the asynchronous enrichment of a provenance will take: a handler of the bus, with no
+    # request anywhere. The enrichment does not exist; what this proves is that a sealed column written
+    # from there reaches the scope of its tenant (decision 0018, heidi#404).
+    Heidi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler:
+        autowire: true
+        tags: ['messenger.message_handler']
     test.heidi.schedule:
         alias: Heidi\Bundle\Scheduler\HeidiSchedule
         public: true

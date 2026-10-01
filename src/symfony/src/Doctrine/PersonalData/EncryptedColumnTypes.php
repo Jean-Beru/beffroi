@@ -25,7 +25,7 @@ use function substr;
  * They are declared here and nowhere else, and every mapping of the spike names one of them, so that a
  * column which seals and a column which does not are told apart by the type the mapping gives it and by
  * nothing kept beside it (`SchemaColumns` of the functional suite reads this class). They cannot be
- * declared through `doctrine.dbal.types` the way the other 25 types of the bundle are: that option names a
+ * declared through `doctrine.dbal.types` the way the other 26 types of the bundle are: that option names a
  * class DoctrineBundle instantiates with no argument, and an encrypted type takes an encrypter, which is a
  * service. What the bridge asks for instead is an `EncryptedTypes` service whose `register()` runs while
  * the bundles boot (`HeidiBundle::boot()`), early enough for the front controller, the console with its
@@ -51,7 +51,7 @@ final readonly class EncryptedColumnTypes
 {
     /**
      * The prefix of every name this class derives, which is also what tells an encrypted type of the
-     * bundle from the 25 types that are not (`HeidiBundle::DBAL_TYPES`).
+     * bundle from the 26 types that are not (`HeidiBundle::DBAL_TYPES`).
      */
     public const string PREFIX = 'heidi_encrypted_';
 
@@ -73,11 +73,11 @@ final readonly class EncryptedColumnTypes
         'linked_identity' => ['string', 'json'],
         'passkey_credential' => ['string'],
         'push_subscription' => ['string', 'text'],
-        'authentication_session' => ['string', 'heidi_geo_location', 'heidi_device'],
+        'authentication_session' => ['heidi_request_context'],
         'interaction' => ['text'],
         'pushed_authorization_request' => ['json'],
-        'device_authorization_request' => ['string', 'heidi_geo_location', 'heidi_device'],
-        'backchannel_authentication_request' => ['string', 'heidi_binding_message', 'heidi_geo_location', 'heidi_device'],
+        'device_authorization_request' => ['heidi_request_context'],
+        'backchannel_authentication_request' => ['heidi_binding_message', 'heidi_request_context'],
         'client' => ['json', 'heidi_client_secret'],
     ];
 

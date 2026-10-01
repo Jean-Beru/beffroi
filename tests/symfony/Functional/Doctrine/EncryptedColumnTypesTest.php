@@ -33,15 +33,15 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     private const string TABLE = 'test_sealed_column';
 
     /**
-     * Ten families of columns, one data key per tenant each (decision 0018), and twenty-three types
-     * because a type seals one type: the count of keys is the count of families and not of types.
+     * Ten families of columns, one data key per tenant each (decision 0018), and seventeen types because a
+     * type seals one type: the count of keys is the count of families and not of types.
      */
     #[Test]
     public function theBundleDeclaresOneTypePerFamilyAndPerTypeThatFamilySeals(): void
     {
         // When / Then
         static::assertCount(10, EncryptedColumnTypes::FAMILIES);
-        static::assertCount(23, EncryptedColumnTypes::declarations());
+        static::assertCount(17, EncryptedColumnTypes::declarations());
     }
 
     /**
@@ -162,8 +162,8 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         yield 'a type of the bundle, whose prefix is dropped' => ['user', 'heidi_address', 'heidi_encrypted_user_address'];
         yield 'a family whose name is a sentence' => [
             'backchannel_authentication_request',
-            'heidi_device',
-            'heidi_encrypted_backchannel_authentication_request_device',
+            'heidi_request_context',
+            'heidi_encrypted_backchannel_authentication_request_request_context',
         ];
     }
 

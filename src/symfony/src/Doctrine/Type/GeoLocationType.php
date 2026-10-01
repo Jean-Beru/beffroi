@@ -15,6 +15,28 @@ final class GeoLocationType extends JsonObjectType
 {
     public const string NAME = 'heidi_geo_location';
 
+    /**
+     * The document of a geolocation, and the geolocation of a document, for the type that nests this one
+     * rather than holding it in a column of its own (`RequestContextType`): one encoding, named here, so
+     * that a nested document and a column of this type cannot drift apart.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function document(?GeoLocation $value): ?array
+    {
+        return $value === null ? null : $this->encode($value);
+    }
+
+    /**
+     * @param array<array-key, mixed>|null $data
+     */
+    public function of(?array $data): ?GeoLocation
+    {
+        $value = $data === null ? null : $this->decode($data);
+
+        return $value instanceof GeoLocation ? $value : null;
+    }
+
     protected function encode(object $value): array
     {
         return [
