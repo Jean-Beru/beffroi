@@ -6,7 +6,9 @@ namespace Heidi\Bundle\Configuration;
 
 use DateInterval;
 use Doctrine\DBAL\Connection;
+use Heidi\Bundle\Doctrine\PersonalData\BlindIndexListener;
 use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
 use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
 use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
 use Heidi\Bundle\Doctrine\TenantProvider;
@@ -100,6 +102,37 @@ final readonly class KeysSection extends ConfigurationSection
             self::string($keys, 'kms'),
             self::string($keys, 'key_id'),
             TenantDataKeyStores::TABLE,
+        ]);
+        // The index key of a tenant, which is what a search matches a sealed column by: a row of the same
+        // table, in a scope of its own, on a store whose maximum age is null. The age past which a key is
+        // retired is a setting of a store and not of a scope, and an index key must never be retired nor
+        // rotated, every tag already written having been derived under it; keeping it in the store rather
+        // than beside the master key of the tenant is what has "key-management:rewrap-data-keys" carry it
+        // along when a deployment changes backend (decision 0018).
+        $services->set('heidi.data_keys.index', TenantDataKeyStores::class)->args([
+            service(Connection::class),
+            tagged_locator('key_management.client', 'key'),
+            self::string($keys, 'kms'),
+            self::string($keys, 'key_id'),
+            TenantDataKeyStores::TABLE,
+            null,
+        ]);
+        // The row is read here and not asked of the store, which would open the key once to hand back a
+        // handle and leave BlindIndex to open it again: decision 0018 counts one opening per data key and
+        // per thread. Declared by its class so that what looks a user up is autowired with it
+        // (DoctrineUserRepository).
+        $services->set(TenantBlindIndexes::class)->args([
+            service(Connection::class),
+            tagged_locator('key_management.client', 'key'),
+            service('heidi.data_keys.index'),
+            service(TenantProvider::class),
+            TenantDataKeyStores::TABLE,
+        ]);
+        // The tag written in the same statement as the value it indexes, on "onFlush" and not on
+        // "prePersist", which fires when persist() is called and would miss a value set afterwards. A row
+        // whose tag does not match what it holds is a row no search returns.
+        $services->set(BlindIndexListener::class)->args([service(TenantBlindIndexes::class)])->tag('doctrine.event_listener', [
+            'event' => 'onFlush',
         ]);
         // The fallback reads an envelope that carries its own data key rather than refusing it: nothing of
         // this repository has written one into a column, but the sealed keys and the sealed secrets are

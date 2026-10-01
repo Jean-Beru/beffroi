@@ -1,0 +1,353 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Heidi\Bundle\Tests\Functional\Doctrine;
+
+use function array_keys;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Heidi\Core\Domain\Identity\Address;
+use Heidi\Core\Domain\Identity\EmailAddress;
+use Heidi\Core\Domain\Identity\Profile;
+use Heidi\Core\Domain\Identity\Subject;
+use Heidi\Core\Domain\Identity\User;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Heidi\Core\Port\UserRepositoryInterface;
+use function implode;
+use function is_resource;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use function sort;
+use function sprintf;
+use function stream_get_contents;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * The seventeen columns of `heidi_user` sealed and read back, and the row underneath (decisions 0011
+ * and 0018).
+ *
+ * What is played here is the deployment's own chain, end to end: the mapping that names an encrypted type
+ * per column, the encrypter that composes the scope with the ambient tenant, the listener that writes the
+ * blind index in the same statement as the value it indexes, and the repository that looks a user up by
+ * that index because the column it used to match on no longer matches anything.
+ */
+final class UserColumnsTest extends DatabaseTestCase
+{
+    /**
+     * The seventeen personal data of a user, by the column each one lands in: what the fixture writes and
+     * what the row must not hold. One list, so that a column sealed without being written here, or written
+     * without being asserted, is a count that no longer adds up.
+     */
+    private const array PLAINTEXTS = [
+        'username' => 'ada-lovelace',
+        'email' => 'ada@example.org',
+        'phone_number' => '+441632960541',
+        'address' => '12 Grand Rue, Saint-Germain',
+        'name' => 'Augusta Ada King',
+        'given_name' => 'Augusta',
+        'family_name' => 'King',
+        'middle_name' => 'Ada',
+        'nickname' => 'Ada',
+        'preferred_username' => 'the-enchantress-of-numbers',
+        'profile_url' => 'https://ada.example.org/profile',
+        'picture_url' => 'https://ada.example.org/portrait.jpg',
+        'website_url' => 'https://ada.example.org',
+        'gender' => 'female-and-nothing-else',
+        'birthdate' => '1815-12-10',
+        'zoneinfo' => 'Europe/London',
+        'locale' => 'en-GB',
+    ];
+
+    /**
+     * The fixture writes every column the classification of the schema declares sealed, and no other: a
+     * column sealed without a value written here would be asserted against nothing, and the walk of the
+     * schema is what says which those are (SchemaColumns, decision 0011).
+     */
+    #[Test]
+    public function theFixtureWritesEveryColumnTheClassificationDeclaresSealed(): void
+    {
+        // Given
+        $sealed = [];
+        foreach (SchemaColumns::all()['heidi_user'] as $column => $line) {
+            if ($line instanceof Sealed) {
+                $sealed[] = $column;
+            }
+        }
+        sort($sealed);
+
+        // When
+        $written = array_keys(self::PLAINTEXTS);
+        sort($written);
+
+        // Then
+        static::assertSame($sealed, $written);
+    }
+
+    /**
+     * The domain does not change because the column seals: what was written as an EmailAddress and an
+     * Address comes back as one, the encrypted type decorating the type the column had.
+     */
+    #[Test]
+    public function aUserIsReadBackAsTheDomainWroteIt(): void
+    {
+        // Given
+        $saved = self::ada();
+        self::reload();
+
+        // When
+        $read = self::users()->find($saved->id);
+
+        // Then
+        static::assertInstanceOf(User::class, $read);
+        static::assertSame(self::PLAINTEXTS['username'], $read->username);
+        static::assertInstanceOf(EmailAddress::class, $read->email);
+        static::assertSame(self::PLAINTEXTS['email'], $read->email->value);
+        static::assertSame(self::PLAINTEXTS['phone_number'], $read->phoneNumber);
+        static::assertInstanceOf(Address::class, $read->address);
+        static::assertSame(self::PLAINTEXTS['address'], $read->address->formatted);
+        static::assertSame(self::PLAINTEXTS['name'], $read->profile->name);
+        static::assertSame(self::PLAINTEXTS['birthdate'], $read->profile->birthdate);
+        static::assertSame(self::PLAINTEXTS['locale'], $read->profile->locale);
+    }
+
+    /**
+     * Column by column, which is the point of the data provider: a column that stopped sealing would fail
+     * on its own line and not hide behind sixteen others.
+     */
+    #[Test]
+    #[DataProvider('provideSealedColumns')]
+    public function theRowHoldsNoneOfThePlaintexts(string $column, string $plaintext): void
+    {
+        // Given
+        self::ada();
+
+        // When
+        $stored = self::row()[$column];
+
+        // Then
+        static::assertStringNotContainsString(
+            $plaintext,
+            $stored,
+            sprintf('heidi_user.%s holds "%s" in the clear.', $column, $plaintext),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideSealedColumns(): iterable
+    {
+        foreach (self::PLAINTEXTS as $column => $plaintext) {
+            yield $column => [$column, $plaintext];
+        }
+    }
+
+    /**
+     * The two tags, written where the row is written: sixty-four hexadecimal characters each, and neither
+     * of them the value it indexes.
+     */
+    #[Test]
+    public function theRowHoldsTheTagOfTheUsernameAndTheTagOfTheAddress(): void
+    {
+        // Given
+        self::ada();
+
+        // When
+        $row = self::row();
+
+        // Then
+        static::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $row['username_index']);
+        static::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $row['email_index']);
+        static::assertNotSame($row['username_index'], $row['email_index']);
+    }
+
+    /**
+     * A user who gave no address has no tag to hold, which is why the column is nullable: a tag of the
+     * empty string would make every such user share one.
+     */
+    #[Test]
+    public function aUserWhoGaveNoAddressHoldsNoTagForIt(): void
+    {
+        // Given
+        self::user('no-address', 'no-address-subject');
+
+        // When
+        $row = self::connection()->fetchAssociative('SELECT email, email_index FROM heidi_user');
+
+        // Then
+        static::assertIsArray($row);
+        static::assertNull($row['email']);
+        static::assertNull($row['email_index']);
+    }
+
+    /**
+     * The lookup the login makes, on a column no lookup can match: what it matches is the tag the write
+     * left beside the value.
+     */
+    #[Test]
+    public function aUserIsReadBackByItsUsername(): void
+    {
+        // Given
+        $saved = self::ada();
+        self::reload();
+
+        // When
+        $read = self::users()->findByUsername(self::tenant(), self::PLAINTEXTS['username']);
+
+        // Then
+        static::assertInstanceOf(User::class, $read);
+        static::assertTrue($read->id->equals($saved->id));
+    }
+
+    /**
+     * A username differing by its case is another username, here as in the index: the identity model trims
+     * a username and folds nothing (`User::normalizeUsername()`).
+     */
+    #[Test]
+    public function aUsernameDifferingByItsCaseFindsNobody(): void
+    {
+        // Given
+        self::ada();
+        self::reload();
+
+        // When
+        $read = self::users()->findByUsername(self::tenant(), 'Ada-Lovelace');
+
+        // Then
+        static::assertNull($read);
+    }
+
+    /**
+     * The unicity of a username within a tenant, held on the index column: a sealed column holds a
+     * different ciphertext for every write of the same value, so the constraint had nowhere else to go.
+     */
+    #[Test]
+    public function aSecondUserOfTheTenantWithTheSameUsernameIsRefused(): void
+    {
+        // Given
+        self::ada();
+        self::reload();
+
+        // Then
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        // When
+        self::users()
+            ->save(User::create(
+                Uuid::v7(),
+                self::tenant(),
+                new Subject('another-subject'),
+                self::PLAINTEXTS['username'],
+                self::now(),
+            ));
+    }
+
+    /**
+     * The third success criterion of the spike, on the lookup the login makes: one opening per data key and
+     * per thread, and none at all on a page served by a thread that has already served one (decision
+     * 0018). Two keys are touched here, the index key and the key of the "user" family, and a second
+     * lookup touches neither.
+     */
+    #[Test]
+    public function aSecondLookupOnTheSameThreadAsksTheKmsNothing(): void
+    {
+        // Given
+        self::ada();
+        self::reload();
+        self::users()->findByUsername(self::tenant(), self::PLAINTEXTS['username']);
+        self::kms()->forget();
+
+        // When
+        self::reload();
+        $read = self::users()->findByUsername(self::tenant(), self::PLAINTEXTS['username']);
+
+        // Then
+        static::assertInstanceOf(User::class, $read);
+        static::assertSame(self::PLAINTEXTS['email'], $read->email?->value);
+        static::assertSame(0, self::kms()->minted);
+        static::assertSame(0, self::kms()->unwrapped);
+    }
+
+    /**
+     * The user of the fixture, with every one of the seventeen columns written.
+     */
+    private static function ada(): User
+    {
+        $now = self::now();
+        $user = User::create(
+            Uuid::v7(),
+            self::tenant(),
+            new Subject('ada-subject'),
+            self::PLAINTEXTS['username'],
+            $now,
+            new EmailAddress(self::PLAINTEXTS['email']),
+        );
+        $user->changePhoneNumber(self::PLAINTEXTS['phone_number'], false, $now);
+        $user->changeAddress(new Address(self::PLAINTEXTS['address']), $now);
+        $user->updateProfile(new Profile(
+            self::PLAINTEXTS['name'],
+            self::PLAINTEXTS['given_name'],
+            self::PLAINTEXTS['family_name'],
+            self::PLAINTEXTS['middle_name'],
+            self::PLAINTEXTS['nickname'],
+            self::PLAINTEXTS['preferred_username'],
+            self::PLAINTEXTS['profile_url'],
+            self::PLAINTEXTS['picture_url'],
+            self::PLAINTEXTS['website_url'],
+            self::PLAINTEXTS['gender'],
+            self::PLAINTEXTS['birthdate'],
+            self::PLAINTEXTS['zoneinfo'],
+            self::PLAINTEXTS['locale'],
+        ), $now);
+        self::users()->save($user);
+
+        return $user;
+    }
+
+    /**
+     * The one row of the table as the database holds it, every value a string: nothing converts a type
+     * here, which is the whole point of reading it this way.
+     *
+     * @return array<string, string>
+     */
+    private static function row(): array
+    {
+        $rows = self::connection()
+            ->fetchAllAssociative(
+                sprintf('SELECT %s, username_index, email_index FROM heidi_user', implode(', ', array_keys(self::PLAINTEXTS))),
+            );
+        static::assertCount(1, $rows);
+
+        $row = [];
+        foreach ($rows[0] as $column => $value) {
+            static::assertIsString($column);
+            if (is_resource($value)) {
+                $row[$column] = (string) stream_get_contents($value);
+
+                continue;
+            }
+            static::assertIsString($value);
+            $row[$column] = $value;
+        }
+
+        return $row;
+    }
+
+    private static function kms(): CountingKms
+    {
+        return self::service(CountingKms::class, CountingKms::class);
+    }
+
+    private static function users(): UserRepositoryInterface
+    {
+        return self::service('test.heidi.users', UserRepositoryInterface::class);
+    }
+
+    private static function connection(): Connection
+    {
+        return self::entityManager()->getConnection();
+    }
+}

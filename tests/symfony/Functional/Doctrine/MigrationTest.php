@@ -40,6 +40,7 @@ use Heidi\Bundle\Migrations\Version20260929180000;
 use Heidi\Bundle\Migrations\Version20260930120000;
 use Heidi\Bundle\Migrations\Version20260930180000;
 use Heidi\Bundle\Migrations\Version20261001120000;
+use Heidi\Bundle\Migrations\Version20261001180000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -92,6 +93,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20260930120000::class,
         Version20260930180000::class,
         Version20261001120000::class,
+        Version20261001180000::class,
     ];
 
     #[Test]
@@ -316,14 +318,46 @@ final class MigrationTest extends DatabaseTestCase
      */
     private static function withColumnsSorted(string $statement): string
     {
-        if (! str_starts_with($statement, 'CREATE TABLE ') || preg_match('/^(CREATE TABLE \S+ \()(.*)(\))$/', $statement, $matches) !== 1) {
+        if (preg_match('/^(CREATE TABLE \S+ \()(.*)(\))$/', $statement, $matches) !== 1) {
             return $statement;
         }
+        $definitions = self::definitions($matches[2]);
+        sort($definitions);
+
+        return $matches[1] . implode(', ', $definitions) . $matches[3];
+    }
+
+    /**
+     * The same CREATE TABLE without one of its columns, which is what a migration that replaces a column
+     * leaves behind: the column is dropped and added again with another type, and what the mappings
+     * describe is the one that was added.
+     */
+    private static function withoutColumn(string $statement, string $column): string
+    {
+        if (preg_match('/^(CREATE TABLE \S+ \()(.*)(\))$/', $statement, $matches) !== 1) {
+            return $statement;
+        }
+        $definitions = array_values(array_filter(
+            self::definitions($matches[2]),
+            static fn (string $definition): bool => ! str_starts_with($definition, $column . ' '),
+        ));
+
+        return $matches[1] . implode(', ', $definitions) . $matches[3];
+    }
+
+    /**
+     * The column definitions of a CREATE TABLE, one per element. A comma inside a quoted default or inside
+     * a type of its own splits nothing.
+     *
+     * @return list<string>
+     */
+    private static function definitions(string $body): array
+    {
         $definitions = [];
         $depth = 0;
         $quoted = false;
         $current = '';
-        foreach (str_split($matches[2]) as $character) {
+        foreach (str_split($body) as $character) {
             if ($character === "'") {
                 $quoted = ! $quoted;
             } elseif (! $quoted && $character === '(') {
@@ -340,9 +374,8 @@ final class MigrationTest extends DatabaseTestCase
             $current .= $character;
         }
         $definitions[] = trim($current);
-        sort($definitions);
 
-        return $matches[1] . implode(', ', $definitions) . $matches[3];
+        return $definitions;
     }
 
     /**
@@ -386,6 +419,28 @@ final class MigrationTest extends DatabaseTestCase
                         static fn (string $earlier): string => self::renamed($earlier, $matches[1], $matches[2]),
                         $statements,
                     );
+
+                    continue;
+                }
+                // a column a later migration drops leaves the CREATE TABLE of that table without it, the
+                // schema the mappings describe holding only what is there at the end
+                if (preg_match('/^ALTER TABLE (\S+) DROP (?!CONSTRAINT )(\S+)$/', $statement, $matches) === 1) {
+                    $statements = array_map(
+                        static fn (string $earlier): string => str_starts_with($earlier, 'CREATE TABLE ' . $matches[1] . ' (')
+                            ? self::withoutColumn($earlier, $matches[2])
+                            : $earlier,
+                        $statements,
+                    );
+
+                    continue;
+                }
+                // and an index a later migration drops is an index the mappings no longer declare, so the
+                // statement that created it goes with it
+                if (preg_match('/^DROP INDEX (\S+)$/', $statement, $matches) === 1) {
+                    $statements = array_values(array_filter(
+                        $statements,
+                        static fn (string $earlier): bool => preg_match('/^CREATE (UNIQUE )?INDEX ' . preg_quote($matches[1], '/') . ' /', $earlier) !== 1,
+                    ));
 
                     continue;
                 }
