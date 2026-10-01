@@ -7,6 +7,7 @@ namespace Heidi\Bundle\Migrations;
 use function array_keys;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
+use Heidi\Bundle\Doctrine\Migration\SealingMigration;
 use function sprintf;
 
 /**

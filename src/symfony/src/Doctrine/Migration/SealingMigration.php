@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Heidi\Bundle\Doctrine\Migration;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
@@ -26,6 +26,11 @@ use function sprintf;
  *
  * What a migration of this kind still carries itself is the platform it is written for: the check below is
  * a count and runs anywhere, the statements are PostgreSQL and say so.
+ *
+ * **It lives here and not beside the migrations** because `src/symfony/migrations/` is in the `autoload` of
+ * no package: the bundle declares that directory to Doctrine Migrations, which loads the version files it
+ * finds there and nothing else, and only the `autoload-dev` of the monorepo maps the namespace, so a class
+ * placed there resolves in the suite and not in a deployment.
  */
 abstract class SealingMigration extends AbstractMigration
 {
