@@ -145,6 +145,18 @@ final readonly class EncryptedColumnTypes
     }
 
     /**
+     * The families themselves, which is the one list of the scopes a tenant holds a data key for: what the
+     * console says of a tenant that holds none, and what the walk of the schema holds the classification
+     * to.
+     *
+     * @return list<string>
+     */
+    public static function families(): array
+    {
+        return array_keys(self::FAMILIES);
+    }
+
+    /**
      * How many data keys a tenant holds for its columns, which is the count of families and not of types:
      * the arithmetic decision 0018 does when it says what a worker keeps open.
      */
