@@ -20,6 +20,10 @@ use function ksort;
  * SchemaColumns::sealingTypes()). The two cannot drift apart: a column declared sealed whose type is not
  * one of those names is a finding, and so is a column whose type is one of them and whose line still owes
  * it.
+ *
+ * The name is carried and not reduced to a yes or no, because the name says which family the column seals
+ * under and a column seals under its own table (`Sealed`): what a mapping cannot show is a column whose
+ * type belongs to another table's scope, which is what an embeddable several entities embed produces.
  */
 final readonly class BundleSchema
 {
@@ -32,7 +36,9 @@ final readonly class BundleSchema
     /**
      * @param list<string> $sealingTypes names of the Doctrine types that seal what they store
      *
-     * @return array<string, array<string, bool>> table, then column, then whether its type seals
+     * @return array<string, array<string, string|null>> table, then column, then the name of the encrypted
+     *                                                   type its mapping gives it, or null when that type
+     *                                                   does not seal
      */
     public static function columns(EntityManagerInterface $entityManager, array $sealingTypes): array
     {
@@ -45,7 +51,8 @@ final readonly class BundleSchema
             }
             $columns = [];
             foreach ($table->getColumns() as $column) {
-                $columns[$column->getObjectName()->getIdentifier()->getValue()] = in_array($column->getTypeName(), $sealingTypes, true);
+                $type = $column->getTypeName();
+                $columns[$column->getObjectName()->getIdentifier()->getValue()] = in_array($type, $sealingTypes, true) ? $type : null;
             }
             ksort($columns);
             $tables[$name] = $columns;

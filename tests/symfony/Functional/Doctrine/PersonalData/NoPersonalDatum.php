@@ -24,10 +24,10 @@ final readonly class NoPersonalDatum implements ColumnClassificationInterface
      * A readable column that turns out to be sealed is not a fault of the schema, it is a line that has
      * stopped being true: the column belongs to the sealed list from that day on.
      */
-    public function finding(string $column, bool $sealed): ?string
+    public function finding(string $table, string $column, ?string $sealingType): ?string
     {
-        return $sealed
-            ? sprintf('%s is sealed, and is declared readable ("%s"): move its line to the sealed list.', $column, $this->reason)
-            : null;
+        return $sealingType === null
+            ? null
+            : sprintf('%s.%s is sealed, and is declared readable ("%s"): move its line to the sealed list.', $table, $column, $this->reason);
     }
 }

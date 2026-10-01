@@ -28,7 +28,9 @@ final readonly class ClassifiedSchema
     }
 
     /**
-     * @param array<string, array<string, bool>> $schema table, then column, then whether its Doctrine type seals what it stores
+     * @param array<string, array<string, string|null>> $schema table, then column, then the name of the encrypted
+     *                                                          type its mapping gives it, or null when that type
+     *                                                          does not seal
      *
      * @return list<string> what the schema and the declaration disagree on, in alphabetical order, empty when they agree
      */
@@ -36,18 +38,18 @@ final readonly class ClassifiedSchema
     {
         $findings = [];
         foreach ($schema as $table => $columns) {
-            foreach ($columns as $column => $sealed) {
-                $name = sprintf('%s.%s', $table, $column);
+            foreach ($columns as $column => $sealingType) {
                 $line = $this->columns[$table][$column] ?? null;
                 if ($line === null) {
                     $findings[] = sprintf(
-                        '%s is in the schema and in no list: declare it readable with the reason a dump of it gives nothing away, sealed, or owed to the issue that seals it.',
-                        $name,
+                        '%s.%s is in the schema and in no list: declare it readable with the reason a dump of it gives nothing away, sealed, or owed to the issue that seals it.',
+                        $table,
+                        $column,
                     );
 
                     continue;
                 }
-                $finding = $line->finding($name, $sealed);
+                $finding = $line->finding($table, $column, $sealingType);
                 if ($finding !== null) {
                     $findings[] = $finding;
                 }
