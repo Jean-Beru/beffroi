@@ -484,6 +484,11 @@ function provision_env_local(?string $kms): array
         'sodium' => [
             'HEIDI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
             'HEIDI_KMS_KEY_ID' => static fn (): string => 'signing',
+            // The master key a rewrap moves to, under the same key id, which is what makes two clients
+            // configured at once possible on this stack ("castor rewrap-live"). Only this backend writes
+            // one: a second client has to hold a key under the id the deployment names, and a Transit key
+            // or a KMS alias is one a container creates and not one a task generates.
+            'HEIDI_KMS_DSN_SECOND' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
         ],
         // The same sodium backend reading <directory>/<key id><ext> (FilesystemKeyLoader): one file per
         // tenant, written in the container by this task, never in the checkout nor in the environment.
