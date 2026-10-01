@@ -27,12 +27,14 @@ use function preg_match;
 final class SchemaClassificationTest extends DatabaseTestCase
 {
     /**
-     * How many tables and columns the mappings describe, written out so that a table added whole, or a
-     * column added to one, is a figure to change here and a line to add there.
+     * How many tables and columns the schema holds, written out so that a table added whole, or a column
+     * added to one, is a figure to change here and a line to add there. All but one are described by a
+     * mapping of the bundle; the last is the table of the data key store, which the listener of the ORM
+     * bridge puts in the schema the ORM assembles (decisions 0011 and 0018).
      */
-    private const int TABLES = 23;
+    private const int TABLES = 24;
 
-    private const int COLUMNS = 308;
+    private const int COLUMNS = 313;
 
     #[Test]
     public function everyColumnOfEveryTableIsClassified(): void
