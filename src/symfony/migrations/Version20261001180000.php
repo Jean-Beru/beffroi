@@ -7,7 +7,6 @@ namespace Heidi\Bundle\Migrations;
 use function array_keys;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
-use Doctrine\Migrations\AbstractMigration;
 use function sprintf;
 
 /**
@@ -22,15 +21,15 @@ use function sprintf;
  * **The columns are recreated and their values are not carried over.** There is no deployment of this
  * provider, so there are no cleartext rows to migrate and no code to write for rows nobody has; a column
  * that would have to be read, sealed and written back is a path this repository would carry forever for a
- * case that never happens. On a table that holds rows the server refuses the migration, the username
- * coming back as a column that accepts no null.
+ * case that never happens. A table that holds rows is refused before anything runs, with the sentence
+ * `SealingMigration` gives it.
  *
  * **The unicity of a username within a tenant moves onto the index column.** A sealed column holds a
  * different ciphertext for every write of the same username, so a unique constraint on it would refuse
  * nothing at all. No constraint is added on the address: nothing today says two users of one tenant may
  * not share one, and this is not the place that decides it.
  */
-final class Version20261001180000 extends AbstractMigration
+final class Version20261001180000 extends SealingMigration
 {
     /**
      * The nullable columns that carry a personal datum, by what they held before they sealed, which is
@@ -55,6 +54,14 @@ final class Version20261001180000 extends AbstractMigration
         'zoneinfo' => 'VARCHAR(64)',
         'locale' => 'VARCHAR(35)',
     ];
+
+    /**
+     * @return list<string>
+     */
+    protected function tablesToSeal(): array
+    {
+        return ['heidi_user'];
+    }
 
     public function getDescription(): string
     {

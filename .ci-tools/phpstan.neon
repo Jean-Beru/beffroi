@@ -16,13 +16,17 @@ parameters:
 	# and every schema asset descends from it. The annotation is about extending that hierarchy, but PHPStan
 	# reads it as "do not call" and reports the two things the library asks of us: an empty Schema, which is
 	# what Doctrine Migrations hands a migration and so what a test that runs one has to build, and
-	# getObjectName(), which is the replacement the @deprecated of getName() names. Scoped to the test that
-	# runs a migration and to the two that read the names of the mapped tables and columns; here rather than
-	# in the baseline, which says what is ignored and never why, and which castor prepare-pr regenerates.
+	# getObjectName(), which is the replacement the @deprecated of getName() names. Scoped to the two tests
+	# that run a migration and to the two that read the names of the mapped tables and columns; here rather
+	# than in the baseline, which says what is ignored and never why, and which castor prepare-pr
+	# regenerates.
 	ignoreErrors:
 		-
 			identifier: method.internal
 			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/MigrationTest.php
+		-
+			identifier: method.internal
+			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/SealingMigrationTest.php
 		-
 			identifier: method.internalClass
 			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/SchemaTest.php

@@ -6,7 +6,6 @@ namespace Heidi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
-use Doctrine\Migrations\AbstractMigration;
 
 /**
  * The three columns of `heidi_linked_identity` sealed under the data key of their tenant, and the blind
@@ -20,16 +19,23 @@ use Doctrine\Migrations\AbstractMigration;
  * nothing else, so the spike that federates has nothing to migrate and nothing to add.
  *
  * The columns are recreated rather than converted, as the columns of `heidi_user` were and for the same
- * reason: there is no deployment, so there are no cleartext rows worth a conversion path. On a table that
- * holds rows the server refuses the migration, the three columns coming back as columns that accept no
- * null. `claims` loses its `jsonb` with the rest, what the column holds being the ciphertext of a JSON
- * document.
+ * reason: there is no deployment, so there are no cleartext rows worth a conversion path. A table that
+ * holds rows is refused before anything runs, with the sentence `SealingMigration` gives it. `claims`
+ * loses its `jsonb` with the rest, what the column holds being the ciphertext of a JSON document.
  *
  * **The unique constraint moves onto the two index columns.** A sealed column holds a different ciphertext
  * for every write of the same value, so the constraint on the pair in the clear would refuse nothing.
  */
-final class Version20261002120000 extends AbstractMigration
+final class Version20261002120000 extends SealingMigration
 {
+    /**
+     * @return list<string>
+     */
+    protected function tablesToSeal(): array
+    {
+        return ['heidi_linked_identity'];
+    }
+
     public function getDescription(): string
     {
         return 'The provider, the subject and the claims of heidi_linked_identity sealed, and the blind index of the pair (decisions 0011 and 0018).';
