@@ -53,6 +53,8 @@ final readonly class SchemaColumns
 
     public const string AN_ENVELOPE = 'the envelope the KMS of the tenant sealed, and nothing else';
 
+    public const string A_BLIND_INDEX = 'a keyed tag of a sealed value, under the index key of its tenant: it says which rows share a value and never what that value is (decision 0011)';
+
     /**
      * The Doctrine types of the bundle that seal what they store, by the name a mapping gives them, read
      * from the declaration of the bundle and not kept here: a second list would be a second thing to be
@@ -84,29 +86,31 @@ final readonly class SchemaColumns
             ],
             'heidi_user' => [
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
-                'username' => new Owed('heidi#402', 'what a person types to sign in, and what the login looks up'),
-                'email' => new Owed('heidi#402', 'the electronic address of a person'),
+                'username' => new Sealed('user'),
+                'username_index' => new NoPersonalDatum(self::A_BLIND_INDEX),
+                'email' => new Sealed('user'),
+                'email_index' => new NoPersonalDatum(self::A_BLIND_INDEX),
                 'email_verified' => new NoPersonalDatum('whether an address or a number was verified, which says nothing of either'),
-                'phone_number' => new Owed('heidi#402', 'the telephone number of a person'),
+                'phone_number' => new Sealed('user'),
                 'phone_number_verified' => new NoPersonalDatum('whether an address or a number was verified, which says nothing of either'),
-                'address' => new Owed('heidi#402', 'the postal address of a person (OIDC Core §5.1.1)'),
+                'address' => new Sealed('user'),
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'updated_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'disabled_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
-                'name' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'given_name' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'family_name' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'middle_name' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'nickname' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'preferred_username' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'profile_url' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'picture_url' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'website_url' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'gender' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'birthdate' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'zoneinfo' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
-                'locale' => new Owed('heidi#402', 'a claim of the OIDC Core §5.1 profile of a person'),
+                'name' => new Sealed('user'),
+                'given_name' => new Sealed('user'),
+                'family_name' => new Sealed('user'),
+                'middle_name' => new Sealed('user'),
+                'nickname' => new Sealed('user'),
+                'preferred_username' => new Sealed('user'),
+                'profile_url' => new Sealed('user'),
+                'picture_url' => new Sealed('user'),
+                'website_url' => new Sealed('user'),
+                'gender' => new Sealed('user'),
+                'birthdate' => new Sealed('user'),
+                'zoneinfo' => new Sealed('user'),
+                'locale' => new Sealed('user'),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
             'heidi_linked_identity' => [

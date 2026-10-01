@@ -3,28 +3,51 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- An identity of a tenant (decision 0002, architecture §3.1). The subject and the username are unique within the tenant. -->
+    <!--
+      An identity of a tenant (decision 0002, architecture §3.1). The subject and the username are unique
+      within the tenant.
+
+      Seventeen of its columns carry a personal datum and are sealed under the data key of their tenant
+      (decisions 0011 and 0018): the type of each is the type it had, decorated, which is what the "user"
+      family of EncryptedColumnTypes declares. Three things stop being true of a sealed column, and they
+      are written where that class declares them: the column becomes unbounded binary, so the "length"
+      below is the length the domain checks and not the width of the column; an option that describes the
+      stored value stops holding, which is why "address" no longer asks for jsonb; and a ciphertext is not
+      bound to its row.
+
+      The subject stays in the clear: it is a stable pseudonym every token carries and every table joins on.
+    -->
     <entity name="Heidi\Core\Domain\Identity\User" table="heidi_user">
         <unique-constraints>
             <unique-constraint name="heidi_user_subject" columns="tenant_id,subject"/>
-            <unique-constraint name="heidi_user_username" columns="tenant_id,username"/>
+            <!--
+              The unicity of a username within a tenant is held on the blind index and not on the value: a
+              sealed column holds a different ciphertext for every write of the same username, so a
+              constraint on it would refuse nothing (decision 0011).
+            -->
+            <unique-constraint name="heidi_user_username" columns="tenant_id,username_index"/>
         </unique-constraints>
         <id name="id" type="uuid" column="id"/>
         <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
         </many-to-one>
         <field name="subject" type="heidi_subject" column="subject" length="255"/>
-        <field name="username" type="string" column="username" length="255"/>
-        <field name="email" type="heidi_email_address" column="email" length="255" nullable="true"/>
+        <field name="username" type="heidi_encrypted_user_string" column="username" length="255"/>
+        <!--
+          The two columns a search matches on, filled by BlindIndexListener in the same statement as the
+          value they index, never by a caller: a row whose tag does not match what it holds is a row no
+          search returns. Sixty-four hexadecimal characters, whatever the length of the value and whatever
+          the keyed function behind it.
+        -->
+        <field name="usernameIndex" type="string" column="username_index" length="64"/>
+        <field name="email" type="heidi_encrypted_user_email_address" column="email" length="255" nullable="true"/>
+        <!-- Nullable because the address is: a user who gave none has no tag to hold. -->
+        <field name="emailIndex" type="string" column="email_index" length="64" nullable="true"/>
         <field name="emailVerified" type="boolean" column="email_verified"/>
         <embedded name="profile" class="Heidi\Core\Domain\Identity\Profile" use-column-prefix="false"/>
-        <field name="phoneNumber" type="string" column="phone_number" length="64" nullable="true"/>
+        <field name="phoneNumber" type="heidi_encrypted_user_string" column="phone_number" length="64" nullable="true"/>
         <field name="phoneNumberVerified" type="boolean" column="phone_number_verified"/>
-        <field name="address" type="heidi_address" column="address" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="address" type="heidi_encrypted_user_address" column="address" nullable="true"/>
         <field name="createdAt" type="datetime_immutable" column="created_at"/>
         <field name="updatedAt" type="datetime_immutable" column="updated_at"/>
         <field name="disabledAt" type="datetime_immutable" column="disabled_at" nullable="true"/>

@@ -594,6 +594,14 @@ services:
     test.heidi.kms:
         alias: heidi.kms
         public: true
+    # The index key of a tenant and what derives a tag under it (decisions 0011 and 0018): reachable so
+    # that a test can stand a second tenant up, which no configuration of one tenant can show.
+    test.heidi.data_keys_index:
+        alias: heidi.data_keys.index
+        public: true
+    test.heidi.blind_indexes:
+        alias: Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes
+        public: true
     test.heidi.key_sealer:
         alias: Heidi\Core\Port\KeySealerInterface
         public: true

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Unit\Doctrine\PersonalData;
 
 use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Heidi\Bundle\Tests\Fixture\AmbientTenant;
 use Heidi\Core\Exception\RuntimeException;
 use Heidi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
