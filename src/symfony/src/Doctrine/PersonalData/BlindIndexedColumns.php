@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Doctrine\PersonalData;
 
 use function array_map;
+use Heidi\Core\Domain\Identity\LinkedIdentity;
 use Heidi\Core\Domain\Identity\User;
 use Heidi\Core\Exception\InvalidArgumentException;
 use Symfony\Component\KeyManagement\BlindIndex;
@@ -22,12 +23,17 @@ use function sprintf;
  * instead is a keyed tag of the value, equal for equal values, in a sibling column the unique constraint
  * of the tenant also moves onto.
  *
- * **What a tag leaks, and why only these two columns carry one.** Equal values give equal tags, so the
- * column says which rows share a value and how often each occurs; on a column with few distinct values
- * that recovers the values themselves by counting. A username and an address are high-entropy and looked
- * up by equality, which is what an index is for. `gender`, `locale`, `zoneinfo` and `birthdate` are
- * neither, and decision 0011 refuses an index on them in as many words; the mapping says so where the next
- * reader is, and nothing here lists them.
+ * **What a tag leaks, and why only these columns carry one.** Equal values give equal tags, so the column
+ * says which rows share a value and how often each occurs; on a column with few distinct values that
+ * recovers the values themselves by counting. A username, an address and the subject an upstream provider
+ * gave are high-entropy and looked up by equality, which is what an index is for. `gender`, `locale`,
+ * `zoneinfo` and `birthdate` are neither, and decision 0011 refuses an index on them in as many words; the
+ * mapping says so where the next reader is, and nothing here lists them.
+ *
+ * The one index here that is not high-entropy is `provider`, a handful of values across a tenant, so its
+ * column says which rows share a provider and the largest bucket is guessable outright. It carries one
+ * because the unique constraint of its table is on the pair, not because anything looks a provider up on
+ * its own, and that price is written in the mapping beside the constraint that asks for it.
  *
  * **One index key per tenant**, not one per column, so a username that happens to be an address and that
  * address share their tag. The two columns are distinct and no query confuses them, and the alternative, a
@@ -68,6 +74,21 @@ final readonly class BlindIndexedColumns
                 'email',
                 'emailIndex',
                 static fn (DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex => new Email($kms, $wrapped),
+            ),
+            // The pair a federated login recognises an identity by, and what the unique constraint of the
+            // table is held on. Both byte for byte: what an upstream provider gave is compared as it gave
+            // it, and the name of a provider is what the registration that trusts it wrote.
+            new BlindIndexedColumn(
+                LinkedIdentity::class,
+                'provider',
+                'providerIndex',
+                static fn (DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex => new BlindIndex($kms, $wrapped),
+            ),
+            new BlindIndexedColumn(
+                LinkedIdentity::class,
+                'subject',
+                'subjectIndex',
+                static fn (DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex => new BlindIndex($kms, $wrapped),
             ),
         ];
     }
