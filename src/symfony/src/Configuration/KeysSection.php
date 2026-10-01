@@ -20,6 +20,8 @@ use Heidi\Core\Application\Key\TenantKeyRotator;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 use Symfony\Component\KeyManagement\Bridge\DoctrineOrm\SchemaListener\DataKeyStoreSchemaListener;
+use Symfony\Component\KeyManagement\Debug\TraceableDataKeyStore;
+use Symfony\Component\KeyManagement\Debug\TraceableEnvelopeEncrypter;
 use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 use Symfony\Component\KeyManagement\StoredEnvelopeEncrypter;
 use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
@@ -86,7 +88,18 @@ final readonly class KeysSection extends ConfigurationSection
         // key store are declared, and where a DSN that may carry key material already belongs. What the
         // bundle holds is a name, and an alias to the client that name points at.
         $services->alias('heidi.kms', 'key_management.' . self::string($keys, 'kms'));
-        $services->set('heidi.kms.envelopes', EnvelopeEncrypter::class)->args([service('heidi.kms')]);
+        // Traced in debug, so that the panel of the profiler sees what this provider opens. The component
+        // traces what it builds itself and nothing else: the clients it is given, its own envelope
+        // encrypter and its own store, none of which this bundle uses, so a page that sealed or opened a
+        // column reported nothing at all (heidi#427). The decorators are the component's own, posed here
+        // rather than taken through an alias to its service, because a test takes the KMS of this kernel
+        // down by replacing this service at runtime and an alias cannot be replaced.
+        $envelopes = inline_service(EnvelopeEncrypter::class)->args([service('heidi.kms')]);
+        $services->set('heidi.kms.envelopes', $debug ? TraceableEnvelopeEncrypter::class : EnvelopeEncrypter::class)->args(
+            $debug
+                ? [$envelopes, service('key_management.data_collector'), self::string($keys, 'kms')]
+                : [service('heidi.kms')],
+        );
         // The columns that carry a personal datum (decisions 0011 and 0018): a data key per tenant and per
         // family of columns, wrapped by the master key of that tenant, the one its signing keys are already
         // sealed under, and a payload that carries a 16-byte reference to it rather than the wrapped key.
@@ -137,8 +150,20 @@ final readonly class KeysSection extends ConfigurationSection
         // The fallback reads an envelope that carries its own data key rather than refusing it: nothing of
         // this repository has written one into a column, but the sealed keys and the sealed secrets are
         // envelopes of that shape and the same encrypter is what reads them.
+        // The store is where a sealed column shows: "StoredEnvelopeEncrypter" asks it for the data key of a
+        // scope and then seals locally, so the KMS is off the path of a value and the panel would see
+        // nothing of one. Traced in debug, and only on this path: the reader keeps its own, so the schema
+        // listener still gets a "DataKeyStore" and the rewrapping half stays where it is, which is what
+        // the decorator of the component says it deliberately does not claim.
+        $stores = $debug
+            ? inline_service(TraceableDataKeyStore::class)->args([
+                service('heidi.data_keys'),
+                service('key_management.data_collector'),
+                TenantDataKeyStores::TABLE,
+            ])
+            : service('heidi.data_keys');
         $services->set('heidi.kms.stored_envelopes', StoredEnvelopeEncrypter::class)->args([
-            service('heidi.data_keys'),
+            $stores,
             service('heidi.kms.envelopes'),
         ]);
         // Lazy, and public so that it stays lazy: the types are registered while the bundles boot, and what
