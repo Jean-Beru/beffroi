@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
+use Heidi\Bundle\Doctrine\Migration\SealingMigration;
 
 /**
  * The three columns of `heidi_linked_identity` sealed under the data key of their tenant, and the blind

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Heidi\Bundle\Tests\Functional\Doctrine;
 
 use function array_filter;
+use function basename;
+use function glob;
 use function array_map;
 use function array_values;
 use Doctrine\DBAL\Connection;
@@ -125,6 +127,34 @@ final class MigrationTest extends DatabaseTestCase
         sort($expected);
         sort($actual);
         static::assertSame($expected, $actual);
+    }
+
+    /**
+     * The directory of the migrations holds version files and nothing else, because it is in the `autoload`
+     * of no package: the bundle declares it to Doctrine Migrations, which loads the version files it finds
+     * there, and only the `autoload-dev` of the monorepo maps the namespace. So a class placed there
+     * resolves in this suite and not in a deployment, which is what this refuses. Anything several
+     * migrations share lives under `src/`, where `Heidi\Bundle\` autoloads it.
+     */
+    #[Test]
+    public function theDirectoryOfTheMigrationsHoldsVersionFilesAndNothingElse(): void
+    {
+        // Given
+        $directory = \dirname(__DIR__, 4) . '/src/symfony/migrations';
+
+        // When
+        $files = glob($directory . '/*.php');
+
+        // Then
+        static::assertIsArray($files);
+        static::assertNotSame([], $files);
+        foreach ($files as $file) {
+            static::assertStringStartsWith(
+                'Version',
+                basename($file),
+                sprintf('%s is in the directory of the migrations, which no package autoloads: move it under src/.', basename($file)),
+            );
+        }
     }
 
     #[Test]
