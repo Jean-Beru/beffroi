@@ -269,6 +269,24 @@ final class HeidiBundleExtensionTest extends TestCase
     }
 
     /**
+     * Decisions 0011 and 0018: what registers the encrypted types runs while the bundles boot, and what it
+     * is handed is the encrypter of the sealed columns, so an encrypter built there would build the store,
+     * the connection and the KMS client of every process that boots. It is lazy, and public because a
+     * private service with one consumer is inlined and an inlined service is not a proxy.
+     */
+    #[Test]
+    public function theEncrypterOfTheSealedColumnsIsLazySoThatABootReachesNoKms(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        $encrypter = $container->getDefinition('heidi.personal_data.encrypter');
+        static::assertTrue($encrypter->isLazy());
+        static::assertTrue($encrypter->isPublic());
+    }
+
+    /**
      * @param array<string, mixed> $config
      */
     private static function load(array $config, ?ContainerBuilder $container = null): ContainerBuilder

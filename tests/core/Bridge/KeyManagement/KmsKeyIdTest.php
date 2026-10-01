@@ -27,4 +27,19 @@ final class KmsKeyIdTest extends TestCase
         // When / Then
         static::assertSame('signing', new KmsKeyId('signing')->of(Fixtures::tenant('globex', 'https://id.globex.example')));
     }
+
+    /**
+     * The same identifier from the slug alone, for the caller that has no tenant to hand over: a data key
+     * store is built for the tenant a scope names, and a scope carries a slug and not a row
+     * (decision 0018).
+     */
+    #[Test]
+    public function theSlugAloneResolvesTheSameIdentifier(): void
+    {
+        // Given
+        $pattern = new KmsKeyId('heidi-{tenant}');
+
+        // When / Then
+        static::assertSame($pattern->of(Fixtures::tenant('globex', 'https://id.globex.example')), $pattern->forSlug('globex'));
+    }
 }

@@ -436,6 +436,18 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
+            // The one table here no mapping of the bundle describes: the store of the data keys puts it in
+            // the schema the ORM assembles, through the listener of its ORM bridge (decisions 0011 and
+            // 0018). It is where every sealed column of this schema takes its key from, and it holds no
+            // personal datum of its own: a dump of it alone opens nothing, the master key never being in it.
+            'heidi_data_key' => [
+                'id' => new NoPersonalDatum('the reference a sealed value carries, drawn as a UUIDv7 so that the newest key of a scope is the last row'),
+                'scope' =>
+                    new NoPersonalDatum('the slug of a tenant and the family of columns its key seals, which names an organisation and a set of columns'),
+                'key_material' => new NoPersonalDatum(self::AN_ENVELOPE),
+                'master_key_id' => new NoPersonalDatum('the key of the KMS that wrapped this row, written here so that a read resolves whatever wrote it'),
+                'client' => new NoPersonalDatum('the name the configuration gives the KMS that wrapped this row, for the same reason'),
+            ],
         ];
     }
 }

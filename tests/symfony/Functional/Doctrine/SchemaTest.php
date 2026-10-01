@@ -44,6 +44,10 @@ final class SchemaTest extends DatabaseTestCase
         'heidi_client',
         'heidi_initial_access_token',
         'heidi_pairwise_subject',
+        // The one table of this schema no mapping of the bundle describes: the store of the data keys puts
+        // it there, through the schema listener of the ORM bridge, so that "doctrine:schema:update" does
+        // not offer to drop what it did not put there (decisions 0011 and 0018).
+        'heidi_data_key',
     ];
 
     /**
@@ -90,20 +94,44 @@ final class SchemaTest extends DatabaseTestCase
 
     /**
      * Architecture §5.3: every row carries the tenant.
+     *
+     * Two tables name it otherwise, and both are named here rather than letting the rule bend. The tenant
+     * is its own row. And the store of the data keys carries the tenant in its scope, as the slug the
+     * encrypter of the bundle prefixes the family of columns with (decision 0018): the five columns of
+     * that table are the five the store of the bridge names, a table carrying anything else being a table
+     * the application would have to declare itself, and the scope is the only channel there is between an
+     * encrypted type and the store.
      */
     #[Test]
-    public function everyTableButTheTenantOneCarriesTheTenant(): void
+    public function everyTableButTheTenantOneAndTheDataKeysCarriesTheTenant(): void
     {
         // When
         $tables = self::tablesOfTheBundle();
 
         // Then
-        unset($tables['heidi_tenant']);
+        unset($tables['heidi_tenant'], $tables['heidi_data_key']);
         static::assertNotSame([], $tables);
         foreach ($tables as $name => $table) {
             static::assertTrue($table->hasColumn('tenant_id'), $name);
             static::assertNotFalse($table->getColumn('tenant_id')->getNotnull(), $name);
         }
+    }
+
+    /**
+     * The scope of the data key store is what carries the tenant there, so a table with no tenant column
+     * is refused unless it is one of the two the rule above names: this is the assertion that makes the
+     * exception an exception rather than a hole.
+     */
+    #[Test]
+    public function theScopeOfTheDataKeyStoreIsWhatCarriesTheTenantThere(): void
+    {
+        // When
+        $table = self::tablesOfTheBundle()['heidi_data_key'] ?? null;
+
+        // Then
+        static::assertNotNull($table);
+        static::assertFalse($table->hasColumn('tenant_id'));
+        static::assertTrue($table->hasColumn('scope'));
     }
 
     /**

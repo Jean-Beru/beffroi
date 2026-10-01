@@ -6,6 +6,7 @@ namespace Heidi\Bundle\Doctrine;
 
 use Heidi\Bundle\Tenant\TenantFactory;
 use Heidi\Core\Domain\Tenant\Tenant;
+use Heidi\Core\Port\AmbientTenantInterface;
 use function implode;
 use Symfony\Contracts\Service\ResetInterface;
 
@@ -14,7 +15,7 @@ use Symfony\Contracts\Service\ResetInterface;
  * configuration. An entity is not a service: the instance is forgotten when the kernel resets or the
  * entity manager is cleared.
  */
-final class TenantProvider implements ResetInterface
+final class TenantProvider implements AmbientTenantInterface, ResetInterface
 {
     private ?Tenant $tenant = null;
 
