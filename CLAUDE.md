@@ -57,7 +57,7 @@ castor start                      # https://op.localhost (FrankenPHP worker), Po
 castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443, profiler off
 castor start --kms vault|aws      # plus HashiCorp Vault (dev mode) or LocalStack 4.14.0, KMS only; both initialised at every start
 castor provision [--kms sodium|file|vault|aws]  # apps/op/.env.local, the migrations, the tenant, the signing key and the encryption key, the user "alice", what the tenant holds in data keys, and the self-signed client certificate of var/mtls/
-castor stop / castor logs / castor console <cmd>
+castor stop / castor logs / castor console <cmd>   # a migration command restarts op and worker, which read a column with the type they booted with
 castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI), inside the op container
 ```
 

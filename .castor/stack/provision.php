@@ -362,6 +362,10 @@ function provision(
     io()->section('Client certificate');
     provision_mtls_client();
 
+    // The migrations above may have changed the type of a column, and what was serving while they ran holds
+    // the mapping it booted with (compose_restart_after_migration).
+    compose_restart_after_migration();
+
     io()->success('The OP is provisioned.');
     io()->definitionList(
         [
