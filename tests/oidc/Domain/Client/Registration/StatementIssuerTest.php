@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client\Registration;
+namespace Beffroi\Oidc\Tests\Domain\Client\Registration;
 
-use Heidi\Oidc\Domain\Client\Registration\StatementIssuer;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Domain\Client\Registration\StatementIssuer;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

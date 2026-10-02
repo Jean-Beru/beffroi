@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use function array_keys;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
-use Heidi\Bundle\Doctrine\Migration\SealingMigration;
+use Beffroi\Bundle\Doctrine\Migration\SealingMigration;
 use function sprintf;
 
 /**
@@ -42,7 +42,7 @@ final class Version20261002180000 extends SealingMigration
      * @var array<string, array<string, list<string>>> table, then the column gained, then the ones lost
      */
     private const array PROVENANCES = [
-        'heidi_authentication_session' => [
+        'beffroi_authentication_session' => [
             'created_from' => [
                 'created_from_received_at',
                 'created_from_ip_address',
@@ -58,7 +58,7 @@ final class Version20261002180000 extends SealingMigration
                 'last_seen_from_device',
             ],
         ],
-        'heidi_device_authorization_request' => [
+        'beffroi_device_authorization_request' => [
             'requested_from' => [
                 'requested_from_received_at',
                 'requested_from_ip_address',
@@ -67,7 +67,7 @@ final class Version20261002180000 extends SealingMigration
                 'requested_from_device',
             ],
         ],
-        'heidi_backchannel_authentication_request' => [
+        'beffroi_backchannel_authentication_request' => [
             'requested_from' => [
                 'requested_from_received_at',
                 'requested_from_ip_address',
@@ -117,16 +117,16 @@ final class Version20261002180000 extends SealingMigration
             }
         }
 
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request DROP binding_message');
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request ADD binding_message BYTEA DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request DROP binding_message');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request ADD binding_message BYTEA DEFAULT NULL');
     }
 
     public function down(Schema $schema): void
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request DROP binding_message');
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request ADD binding_message VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request DROP binding_message');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request ADD binding_message VARCHAR(255) DEFAULT NULL');
 
         foreach (self::PROVENANCES as $table => $provenances) {
             foreach (array_keys($provenances) as $column) {

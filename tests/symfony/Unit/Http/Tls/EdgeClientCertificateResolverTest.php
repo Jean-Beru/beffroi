@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\Tls;
+namespace Beffroi\Bundle\Tests\Unit\Http\Tls;
 
-use Heidi\Bundle\Http\Tls\EdgeClientCertificateResolver;
-use Heidi\Bundle\Http\Tls\ForgedClientCertificateException;
+use Beffroi\Bundle\Http\Tls\EdgeClientCertificateResolver;
+use Beffroi\Bundle\Http\Tls\ForgedClientCertificateException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

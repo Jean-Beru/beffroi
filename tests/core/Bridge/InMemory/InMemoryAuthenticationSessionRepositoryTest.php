@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\InMemory;
+namespace Beffroi\Core\Tests\Bridge\InMemory;
 
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Bridge\Null\NullGeoLocator;
-use Heidi\Core\Bridge\Null\NullUserAgentParser;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\Null\NullGeoLocator;
+use Beffroi\Core\Bridge\Null\NullUserAgentParser;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Identity;
+namespace Beffroi\Core\Tests\Application\Identity;
 
-use Heidi\Core\Application\Identity\IdentityAlreadyLinkedException;
-use Heidi\Core\Application\Identity\IdentityLinker;
-use Heidi\Core\Bridge\InMemory\InMemoryLinkedIdentityRepository;
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Application\Identity\IdentityAlreadyLinkedException;
+use Beffroi\Core\Application\Identity\IdentityLinker;
+use Beffroi\Core\Bridge\InMemory\InMemoryLinkedIdentityRepository;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

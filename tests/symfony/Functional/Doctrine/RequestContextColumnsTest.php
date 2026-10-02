@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Heidi\Bundle\Tests\Fixture\EnrichTheProvenance;
-use Heidi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Beffroi\Bundle\Tests\Fixture\EnrichTheProvenance;
+use Beffroi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -43,7 +43,7 @@ final class RequestContextColumnsTest extends DatabaseTestCase
 
     private const string USER_AGENT = SealedRows::USER_AGENT;
 
-    private const string BINDING_MESSAGE = SealedRows::VALUES['heidi_backchannel_authentication_request']['binding_message'];
+    private const string BINDING_MESSAGE = SealedRows::VALUES['beffroi_backchannel_authentication_request']['binding_message'];
 
     /**
      * Read back as the domain wrote it: the provenance comes back as the object it was, the encrypted type
@@ -107,7 +107,7 @@ final class RequestContextColumnsTest extends DatabaseTestCase
         self::reload();
 
         // When
-        self::service('test.heidi.command_bus', MessageBusInterface::class)->dispatch(new EnrichTheProvenance($session->id));
+        self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new EnrichTheProvenance($session->id));
         self::reload();
 
         // Then
@@ -127,10 +127,10 @@ final class RequestContextColumnsTest extends DatabaseTestCase
     {
         // Given
         $session = self::session(self::user());
-        self::service('test.heidi.command_bus', MessageBusInterface::class)->dispatch(new EnrichTheProvenance($session->id));
+        self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new EnrichTheProvenance($session->id));
 
         // When
-        $stored = self::column('heidi_authentication_session', 'last_seen_from');
+        $stored = self::column('beffroi_authentication_session', 'last_seen_from');
 
         // Then
         static::assertStringNotContainsString(EnrichTheProvenanceHandler::CITY, $stored);
@@ -170,12 +170,12 @@ final class RequestContextColumnsTest extends DatabaseTestCase
     {
         $provenance = [self::IP_ADDRESS, self::USER_AGENT];
 
-        yield 'the session was created from' => ['heidi_authentication_session', 'created_from', $provenance];
-        yield 'the session was last seen from' => ['heidi_authentication_session', 'last_seen_from', $provenance];
-        yield 'the device authorization was requested from' => ['heidi_device_authorization_request', 'requested_from', $provenance];
-        yield 'the backchannel authentication was requested from' => ['heidi_backchannel_authentication_request', 'requested_from', $provenance];
+        yield 'the session was created from' => ['beffroi_authentication_session', 'created_from', $provenance];
+        yield 'the session was last seen from' => ['beffroi_authentication_session', 'last_seen_from', $provenance];
+        yield 'the device authorization was requested from' => ['beffroi_device_authorization_request', 'requested_from', $provenance];
+        yield 'the backchannel authentication was requested from' => ['beffroi_backchannel_authentication_request', 'requested_from', $provenance];
         yield 'the sentence a person reads on the device' => [
-            'heidi_backchannel_authentication_request',
+            'beffroi_backchannel_authentication_request',
             'binding_message',
             [self::BINDING_MESSAGE],
         ];
@@ -214,7 +214,7 @@ final class RequestContextColumnsTest extends DatabaseTestCase
 
     private static function sessions(): AuthenticationSessionRepositoryInterface
     {
-        return self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class);
+        return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class);
     }
 
     private static function connection(): Connection

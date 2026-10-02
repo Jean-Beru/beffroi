@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Messenger;
+namespace Beffroi\Bundle\Messenger;
 
-use Heidi\Bundle\Message\SendLogoutToken;
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use Beffroi\Bundle\Message\SendLogoutToken;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;

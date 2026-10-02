@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function array_map;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Oidc\Domain\Interaction\StepUp;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Oidc\Domain\Interaction\StepUp;
 
 /**
  * What the login page says of a step-up (decision 0010): the classes the request would accept, and the

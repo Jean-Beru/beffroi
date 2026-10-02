@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Registration;
+namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
 use function dirname;
 use function file_get_contents;
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
-use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -36,8 +36,8 @@ final class RegistrationModesAreClassesTest extends TestCase
     {
         // Given
         $itself = str_replace('\\', '/', strtr($class, [
-            'Heidi\Oidc\\' => 'src/oidc/src/',
-            'Heidi\Bundle\\' => 'src/symfony/src/',
+            'Beffroi\Oidc\\' => 'src/oidc/src/',
+            'Beffroi\Bundle\\' => 'src/symfony/src/',
         ])) . '.php';
 
         // When

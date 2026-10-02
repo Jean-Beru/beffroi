@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Profiler;
+namespace Beffroi\Bundle\Tests\Functional\Profiler;
 
 use function array_keys;
 use function array_map;
-use Heidi\Bundle\Profiler\OpCollector;
-use Heidi\Bundle\Profiler\OpProfile;
-use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use Beffroi\Bundle\Profiler\OpCollector;
+use Beffroi\Bundle\Profiler\OpProfile;
+use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
 use function implode;
 use const PHP_URL_QUERY;
 use function parse_str;
@@ -62,7 +62,7 @@ final class ProfilerPanelTest extends BrowserTestCase
         // Then
         static::assertSame(
             [
-                'route' => 'heidi_interaction_authorize',
+                'route' => 'beffroi_interaction_authorize',
                 'method' => 'GET',
                 'path' => '/authorize',
                 'client certificate' => 'none',
@@ -190,7 +190,7 @@ final class ProfilerPanelTest extends BrowserTestCase
 
         // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
-        static::assertStringContainsString('heidi_interaction_authorize', $crawler->filter('body')->text());
+        static::assertStringContainsString('beffroi_interaction_authorize', $crawler->filter('body')->text());
     }
 
     /**

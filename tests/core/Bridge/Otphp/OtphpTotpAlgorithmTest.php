@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Otphp;
+namespace Beffroi\Core\Tests\Bridge\Otphp;
 
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Totps;
 use function intdiv;
 use const PHP_INT_MAX;
 use PHPUnit\Framework\Attributes\DataProvider;

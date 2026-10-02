@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Client;
+namespace Beffroi\Bundle\Client;
 
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Oidc\Domain\Client\ClientJwks;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\ClientKeysUnavailableException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Port\ClientJwksFetcherInterface;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Port\ClientJwksFetcherInterface;
 use function is_array;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;

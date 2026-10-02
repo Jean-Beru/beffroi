@@ -2,18 +2,18 @@
    the name, the dates and the state of each one, a button that revokes one, and the form that enrols a
    new one, hidden until the script of the bundle finds a browser that can create a passkey. "error" is
    a code of PasskeyEnrolmentController, shown after a failed enrolment. Overridable by an application
-   under templates/bundles/HeidiBundle/. #}
-{% extends '@Heidi/layout.html.twig' %}
-{% trans_default_domain 'heidi' %}
+   under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
 
 {% block title %}{{ 'passkeys.title'|trans }}{% endblock %}
 
 {% block head %}
-    <script src="{{ path('heidi_interaction_passkey_script') }}" defer></script>
+    <script src="{{ path('beffroi_interaction_passkey_script') }}" defer></script>
 {% endblock %}
 
 {% block content %}
-    {{ include('@Heidi/account/back.html.twig') }}
+    {{ include('@Beffroi/account/back.html.twig') }}
     <p>{{ 'passkeys.signed_in_as'|trans({username: user.username}) }}</p>
     {% if error is not null %}
         <p data-error="{{ error }}">{{ ('passkeys.error.' ~ error)|trans }}</p>
@@ -40,8 +40,8 @@
                         <td>{% if passkey.revoked %}{{ 'passkeys.revoked_at'|trans({date: passkey.revokedAt|date('Y-m-d H:i')}) }}{% else %}{{ 'passkeys.active'|trans }}{% endif %}</td>
                         <td>
                             {% if not passkey.revoked %}
-                                <form method="post" action="{{ path('heidi_interaction_account_passkeys_revoke', {id: passkey.id}) }}">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('heidi_passkey_revoke') }}">
+                                <form method="post" action="{{ path('beffroi_interaction_account_passkeys_revoke', {id: passkey.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('beffroi_passkey_revoke') }}">
                                     <button type="submit" name="revoke" value="{{ passkey.id }}">{{ 'passkeys.revoke'|trans }}</button>
                                 </form>
                             {% endif %}
@@ -51,8 +51,8 @@
             </tbody>
         </table>
     {% endif %}
-    <form method="post" action="{{ path('heidi_interaction_account_passkeys_enrol') }}" data-passkey="enrol" data-options-url="{{ path('heidi_interaction_account_passkeys_options') }}" hidden>
-        <input type="hidden" name="_token" value="{{ csrf_token('heidi_passkey_enrol') }}">
+    <form method="post" action="{{ path('beffroi_interaction_account_passkeys_enrol') }}" data-passkey="enrol" data-options-url="{{ path('beffroi_interaction_account_passkeys_options') }}" hidden>
+        <input type="hidden" name="_token" value="{{ csrf_token('beffroi_passkey_enrol') }}">
         <input type="hidden" name="_passkey" value="">
         <label for="passkey-name">{{ 'passkeys.new_name'|trans }}</label>
         <input type="text" id="passkey-name" name="name" maxlength="255" required>

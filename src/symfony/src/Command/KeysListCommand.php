@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function array_map;
 use function count;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Core\Port\KeySealerInterface;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Domain\Key\KeyStatus;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Core\Port\KeySealerInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use function implode;
 use function in_array;
 use function sprintf;
@@ -34,7 +34,7 @@ use Throwable;
  * key leaves as many dead keys as the tenant has algorithms and as many rotations to do.
  */
 #[AsCommand(
-    name: 'heidi:keys:list',
+    name: 'beffroi:keys:list',
     description: 'List the keys of the tenant with their use, status and dates: the published ones, or every key with --all; --check opens the keys in use, or about to be, with the KMS and fails on one it cannot open.',
 )]
 final readonly class KeysListCommand
@@ -62,7 +62,7 @@ final readonly class KeysListCommand
 
         $keys = $all ? $this->keys->findAll($tenant) : $this->keys->findPublished($tenant);
         if ($keys === []) {
-            $io->warning(sprintf('The tenant "%s" has no %skey: nothing can be signed. Run "heidi:keys:rotate".', $tenant->slug, $all ? '' : 'published '));
+            $io->warning(sprintf('The tenant "%s" has no %skey: nothing can be signed. Run "beffroi:keys:rotate".', $tenant->slug, $all ? '' : 'published '));
 
             return Command::SUCCESS;
         }

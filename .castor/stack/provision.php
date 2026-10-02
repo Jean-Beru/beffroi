@@ -24,8 +24,8 @@ const DEV_ENV_LOCAL = 'apps/op/.env.local';
 const DEV_USERNAME = 'alice';
 
 /**
- * The slug of the one tenant of the development stack (apps/op/config/packages/heidi.yaml names no other,
- * HEIDI_TENANT_SLUG in compose.yaml is the same value for the KMS containers).
+ * The slug of the one tenant of the development stack (apps/op/config/packages/beffroi.yaml names no other,
+ * BEFFROI_TENANT_SLUG in compose.yaml is the same value for the KMS containers).
  */
 const DEV_TENANT_SLUG = 'default';
 
@@ -86,7 +86,7 @@ const DEV_USER_PROFILE = [
  */
 const DEV_MTLS_DIRECTORY = 'var/mtls';
 
-const DEV_MTLS_CLIENT_NAME = 'heidi-dev-mtls-client';
+const DEV_MTLS_CLIENT_NAME = 'beffroi-dev-mtls-client';
 
 /**
  * The host of the listener that asks for a client certificate; MTLS_SERVER_NAME in compose.yaml is the
@@ -112,7 +112,7 @@ const DEV_CONFORMANCE_DIRECTORY = 'var/conformance';
  * The clients the plans that prove a key run with, two per run: a handful of modules need a second client
  * to present an authorization code, a request URI or a request object that was issued to another one.
  * Each one holds one P-256 key, published to the provider in the environment variable named here
- * (apps/op/config/packages/heidi.yaml reads it) and held whole by the suite; the ones that carry a
+ * (apps/op/config/packages/beffroi.yaml reads it) and held whole by the suite; the ones that carry a
  * certificate have it issued on that very key, so what the handshake proves and what signs a request
  * object are the same key.
  *
@@ -274,12 +274,12 @@ const DEV_CLIENT_SECRETS = [
 
 /**
  * The policy the credential of the OP is cut from, written by docker/vault/init.sh from
- * docker/vault/heidi-op.hcl: data keys and decryption under the Transit keys of the tenants, the
+ * docker/vault/beffroi-op.hcl: data keys and decryption under the Transit keys of the tenants, the
  * configuration of those keys, nothing else. It is also what tells a request of the OP from a request of
  * the root token in the audit device of Vault, which is where the count of a measurement is read
  * (cost.php).
  */
-const VAULT_OP_POLICY = 'heidi-op';
+const VAULT_OP_POLICY = 'beffroi-op';
 
 #[AsTask(
     description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password',
@@ -302,17 +302,17 @@ function provision(
     op_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
 
     io()->section('Tenant');
-    op_console(['heidi:tenant:synchronize']);
+    op_console(['beffroi:tenant:synchronize']);
 
     io()->section('Keys');
     $keys = provision_published_keys();
     if (str_contains($keys, 'no published key')) {
-        op_console(['heidi:keys:generate']);
+        op_console(['beffroi:keys:generate']);
     } else {
         // A key is published: before trusting it, ask the KMS to open it. Vault in dev mode and LocalStack
         // forget their master key when they restart, and the envelopes sealed under it are dead; the
         // command says which key and what to do, this task deletes nothing and stops here.
-        $check = op_console(['heidi:keys:list', '--check'], context()->withAllowFailure());
+        $check = op_console(['beffroi:keys:list', '--check'], context()->withAllowFailure());
         if (! $check->isSuccessful()) {
             io()->error(sprintf(
                 'The KMS of %s cannot open a published key (above). Run the rotations the check just named, one per algorithm, once the KMS is back with its key or with a new one, then this task again.',
@@ -320,7 +320,7 @@ function provision(
             ));
             exit(1);
         }
-        io()->note('A signing key is published already and opens with the KMS; "castor console heidi:keys:rotate" rotates it without an outage.');
+        io()->note('A signing key is published already and opens with the KMS; "castor console beffroi:keys:rotate" rotates it without an outage.');
     }
     foreach (DEV_KEY_ALGORITHMS as $algorithm) {
         provision_key($algorithm);
@@ -328,7 +328,7 @@ function provision(
 
     io()->section(sprintf('User "%s"', DEV_USERNAME));
     $creation = op_console(
-        ['heidi:user:create', DEV_USERNAME, '--email', DEV_USERNAME . '@op.localhost', '--email-verified'],
+        ['beffroi:user:create', DEV_USERNAME, '--email', DEV_USERNAME . '@op.localhost', '--email-verified'],
         context()->withAllowFailure()->withQuiet(),
     );
     if ($creation->isSuccessful()) {
@@ -341,23 +341,23 @@ function provision(
     }
     // The whole profile of OIDC Core §5.1, so that every scope of the Basic OP plan gets its claims
     // (tests/conformance/README.md); replayed on every run, the command clears what it does not say.
-    op_console(['heidi:user:profile', DEV_USERNAME, ...DEV_USER_PROFILE]);
+    op_console(['beffroi:user:profile', DEV_USERNAME, ...DEV_USER_PROFILE]);
     // Never on the command line: the command reads it on its standard input.
     op_console(
-        ['heidi:user:set-password', DEV_USERNAME, '--password-stdin'],
-        context()->withInput($env['HEIDI_DEV_USER_PASSWORD'] . "\n"),
+        ['beffroi:user:set-password', DEV_USERNAME, '--password-stdin'],
+        context()->withInput($env['BEFFROI_DEV_USER_PASSWORD'] . "\n"),
     );
-    $env['HEIDI_DEV_USER_SUBJECT'] = provision_dev_subject(getcwd() . '/' . DEV_ENV_LOCAL);
+    $env['BEFFROI_DEV_USER_SUBJECT'] = provision_dev_subject(getcwd() . '/' . DEV_ENV_LOCAL);
     // Decision 0002: the subject of an assertion of the trusted issuer above is this user through this row
     // and through nothing else, so it is written before that issuer can name anybody ("castor demo
     // --assertion"). Replayed on every run, the command refreshes the row rather than adding one.
-    op_console(['heidi:user:link', DEV_USERNAME, DEV_DEMO_ISSUER['identity_provider'], DEV_DEMO_ISSUER['subject']]);
+    op_console(['beffroi:user:link', DEV_USERNAME, DEV_DEMO_ISSUER['identity_provider'], DEV_DEMO_ISSUER['subject']]);
 
     // What the tenant holds to seal its personal data, shown rather than assumed (decision 0018): a data
     // key per family of columns and the index key, each minted at the first write of its family, so the
     // user created just above is what put the first ones there. Read only, and it never opens a key.
     io()->section('Data keys');
-    op_console(['heidi:data-keys:list']);
+    op_console(['beffroi:data-keys:list']);
 
     io()->section('Client certificate');
     provision_mtls_client();
@@ -369,22 +369,22 @@ function provision(
     io()->success('The OP is provisioned.');
     io()->definitionList(
         [
-            'Discovery' => $env['HEIDI_ISSUER'] . '/.well-known/openid-configuration',
+            'Discovery' => $env['BEFFROI_ISSUER'] . '/.well-known/openid-configuration',
         ],
         [
-            'JWKS' => $env['HEIDI_ISSUER'] . '/jwks',
+            'JWKS' => $env['BEFFROI_ISSUER'] . '/jwks',
         ],
         [
-            'KMS' => sprintf('%s, key %s', kms_backend_of($env['HEIDI_KMS_DSN']) ?? 'unknown', $env['HEIDI_KMS_KEY_ID']),
+            'KMS' => sprintf('%s, key %s', kms_backend_of($env['BEFFROI_KMS_DSN']) ?? 'unknown', $env['BEFFROI_KMS_KEY_ID']),
         ],
         [
             'Username' => DEV_USERNAME,
         ],
         [
-            'Password' => $env['HEIDI_DEV_USER_PASSWORD'],
+            'Password' => $env['BEFFROI_DEV_USER_PASSWORD'],
         ],
         [
-            'Subject' => $env['HEIDI_DEV_USER_SUBJECT'],
+            'Subject' => $env['BEFFROI_DEV_USER_SUBJECT'],
         ],
         ...array_map(static fn (string $name): array => [
             $name => $env[$name],
@@ -409,13 +409,13 @@ function provision_key(string $algorithm): void
 {
     if (preg_match(sprintf('/Algorithm %s /', preg_quote($algorithm, '/')), provision_published_keys()) === 1) {
         io()->note(sprintf(
-            'A %1$s key is published already; "castor console heidi:keys:rotate --algorithm=%1$s" rotates it without an outage.',
+            'A %1$s key is published already; "castor console beffroi:keys:rotate --algorithm=%1$s" rotates it without an outage.',
             $algorithm,
         ));
 
         return;
     }
-    op_console(['heidi:keys:generate', '--algorithm=' . $algorithm]);
+    op_console(['beffroi:keys:generate', '--algorithm=' . $algorithm]);
 }
 
 /**
@@ -424,7 +424,7 @@ function provision_key(string $algorithm): void
  */
 function provision_published_keys(): string
 {
-    return (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list'], context()->withQuiet())->getOutput());
+    return (string) preg_replace('/\s+/', ' ', op_console(['beffroi:keys:list'], context()->withQuiet())->getOutput());
 }
 
 /**
@@ -438,13 +438,13 @@ function provision_published_keys(): string
  */
 function provision_dev_subject(string $path): string
 {
-    $shown = op_console(['heidi:user:show', DEV_USERNAME, '--no-ansi'], context()->withQuiet())->getOutput();
+    $shown = op_console(['beffroi:user:show', DEV_USERNAME, '--no-ansi'], context()->withQuiet())->getOutput();
     if (preg_match('/^\s*Subject\s+(\S+)\s*$/m', $shown, $matches) !== 1) {
-        io()->error(sprintf('"heidi:user:show %s" does not say which subject the user was issued.', DEV_USERNAME));
+        io()->error(sprintf('"beffroi:user:show %s" does not say which subject the user was issued.', DEV_USERNAME));
         exit(1);
     }
     $subject = $matches[1];
-    if (provision_env_local_set($path, 'HEIDI_DEV_USER_SUBJECT', $subject)) {
+    if (provision_env_local_set($path, 'BEFFROI_DEV_USER_SUBJECT', $subject)) {
         io()->text(sprintf('Published the subject of "%s" into %s.', DEV_USERNAME, DEV_ENV_LOCAL));
     }
 
@@ -466,12 +466,12 @@ function provision_dev_subject(string $path): string
 function provision_env_local(?string $kms): array
 {
     $env = load_dot_env(getcwd() . '/apps/op/.env');
-    $current = kms_backend_of($env['HEIDI_KMS_DSN'] ?? '');
+    $current = kms_backend_of($env['BEFFROI_KMS_DSN'] ?? '');
     if ($current !== null && $kms !== null && $kms !== $current) {
         io()->error([
             sprintf('%s seals the signing keys with %s; "--kms %s" is a change of KMS, which this task never does by itself.', DEV_ENV_LOCAL, $current, $kms),
             sprintf(
-                'To switch: remove HEIDI_KMS_DSN and HEIDI_KMS_KEY_ID from %s, run this task again with "--kms %s", then "castor console heidi:keys:rotate --now": the envelopes sealed by %s cannot be opened by %s, the key that signed retires with its window and its public half still verifies what it signed; nothing is deleted.',
+                'To switch: remove BEFFROI_KMS_DSN and BEFFROI_KMS_KEY_ID from %s, run this task again with "--kms %s", then "castor console beffroi:keys:rotate --now": the envelopes sealed by %s cannot be opened by %s, the key that signed retires with its window and its public half still verifies what it signed; nothing is deleted.',
                 DEV_ENV_LOCAL,
                 $kms,
                 $current,
@@ -486,35 +486,35 @@ function provision_env_local(?string $kms): array
     $generate = static fn (int $bytes): string => rtrim(strtr(base64_encode(random_bytes($bytes)), '+/', '-_'), '=');
     $values = match ($kms) {
         'sodium' => [
-            'HEIDI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
-            'HEIDI_KMS_KEY_ID' => static fn (): string => 'signing',
+            'BEFFROI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
+            'BEFFROI_KMS_KEY_ID' => static fn (): string => 'signing',
             // The master key a rewrap moves to, under the same key id, which is what makes two clients
             // configured at once possible on this stack ("castor rewrap-live"). Only this backend writes
             // one: a second client has to hold a key under the id the deployment names, and a Transit key
             // or a KMS alias is one a container creates and not one a task generates.
-            'HEIDI_KMS_DSN_SECOND' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
+            'BEFFROI_KMS_DSN_SECOND' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
         ],
         // The same sodium backend reading <directory>/<key id><ext> (FilesystemKeyLoader): one file per
         // tenant, written in the container by this task, never in the checkout nor in the environment.
         'file' => [
-            'HEIDI_KMS_DSN' => static fn (): string => 'sodium+dir://' . KMS_FILE_DIRECTORY . '?ext=.key',
-            'HEIDI_KMS_KEY_ID' => static fn (): string => 'heidi-{tenant}',
+            'BEFFROI_KMS_DSN' => static fn (): string => 'sodium+dir://' . KMS_FILE_DIRECTORY . '?ext=.key',
+            'BEFFROI_KMS_KEY_ID' => static fn (): string => 'beffroi-{tenant}',
         ],
         // The scheme and the options of the bridge (symfony/hashicorp-vault-key-management, README): the
         // token in the user component, the mount at its default, plain HTTP for the dev server.
         'vault' => [
-            'HEIDI_KMS_DSN' => static fn (): string => 'hashicorp-vault-transit://' . vault_mint_op_token() . '@vault:8200?scheme=http',
-            'HEIDI_KMS_KEY_ID' => static fn (): string => 'heidi-{tenant}',
+            'BEFFROI_KMS_DSN' => static fn (): string => 'hashicorp-vault-transit://' . vault_mint_op_token() . '@vault:8200?scheme=http',
+            'BEFFROI_KMS_KEY_ID' => static fn (): string => 'beffroi-{tenant}',
         ],
         // The scheme and the options of the bridge (symfony/aws-key-management, README): the credential
         // pair in the user information, any host but "default" is a custom endpoint, plain HTTP for
         // LocalStack; the alias of the tenant is what docker/localstack/init.sh creates.
         'aws' => [
-            'HEIDI_KMS_DSN' => static fn (): string => 'aws-kms://test:test@localstack:4566?region=eu-west-3&scheme=http',
-            'HEIDI_KMS_KEY_ID' => static fn (): string => 'alias/heidi-{tenant}',
+            'BEFFROI_KMS_DSN' => static fn (): string => 'aws-kms://test:test@localstack:4566?region=eu-west-3&scheme=http',
+            'BEFFROI_KMS_KEY_ID' => static fn (): string => 'alias/beffroi-{tenant}',
         ],
     };
-    $values['HEIDI_DEV_USER_PASSWORD'] = static fn (): string => $generate(24);
+    $values['BEFFROI_DEV_USER_PASSWORD'] = static fn (): string => $generate(24);
     foreach (DEV_CLIENT_SECRETS as $name) {
         $values[$name] = static fn (): string => $generate(32);
     }
@@ -523,15 +523,15 @@ function provision_env_local(?string $kms): array
     if ($kms === 'file') {
         // Every run: a volume recreated with the stack has no key any more, and the check below says what
         // that did to the sealed keys; an existing key is kept.
-        kms_file_write('heidi-' . DEV_TENANT_SLUG);
+        kms_file_write('beffroi-' . DEV_TENANT_SLUG);
     }
-    if ($current === 'vault' && ! vault_token_works(vault_token_of($env['HEIDI_KMS_DSN']))) {
+    if ($current === 'vault' && ! vault_token_works(vault_token_of($env['BEFFROI_KMS_DSN']))) {
         io()->warning(sprintf(
             'The Vault token of %s no longer works (the dev server forgets its tokens and its keys when it restarts): a new one is minted. The keys sealed before the restart cannot be opened any more, which the check of the published key says below.',
             DEV_ENV_LOCAL,
         ));
-        $env['HEIDI_KMS_DSN'] = $values['HEIDI_KMS_DSN']();
-        provision_env_local_set($path, 'HEIDI_KMS_DSN', $env['HEIDI_KMS_DSN']);
+        $env['BEFFROI_KMS_DSN'] = $values['BEFFROI_KMS_DSN']();
+        provision_env_local_set($path, 'BEFFROI_KMS_DSN', $env['BEFFROI_KMS_DSN']);
     }
 
     $lines = [];
@@ -847,7 +847,7 @@ function provision_self_signed_certificate(
 /**
  * The section of the OpenSSL configuration the extensions of a server certificate are read from.
  */
-const DEV_SERVER_CERTIFICATE_EXTENSIONS = 'heidi_server';
+const DEV_SERVER_CERTIFICATE_EXTENSIONS = 'beffroi_server';
 
 /**
  * What OpenSSL has to be handed a file to be told: the extensions of a server certificate cannot be given
@@ -861,9 +861,9 @@ function provision_server_certificate_configuration(string $certificateFile, str
     file_put_contents($path, sprintf(
         <<<'CONFIGURATION'
             [ req ]
-            distinguished_name = heidi_dn
+            distinguished_name = beffroi_dn
 
-            [ heidi_dn ]
+            [ beffroi_dn ]
 
             [ %s ]
             basicConstraints = critical, CA:TRUE
@@ -881,7 +881,7 @@ function provision_server_certificate_configuration(string $certificateFile, str
 
 /**
  * The key material of the four clients of the FAPI 2 plans, in var/conformance/ and published to the
- * provider as the public half of each set (apps/op/config/packages/heidi.yaml reads the variables of
+ * provider as the public half of each set (apps/op/config/packages/beffroi.yaml reads the variables of
  * DEV_FAPI_CLIENTS). Replayed on every run and idempotent: a set that is there, with its certificate
  * still valid when it carries one, is kept, so that a client the provider knows by its key survives a
  * second "castor provision".
@@ -921,7 +921,7 @@ function provision_fapi_clients(string $path): array
 
 /**
  * The key material of the rungs of the ladder that prove a key (issue #201), in var/demo/ and published
- * to the provider as the public half of each set (apps/op/config/packages/heidi.yaml reads the variables
+ * to the provider as the public half of each set (apps/op/config/packages/beffroi.yaml reads the variables
  * of DEV_DEMO_CLIENTS). Idempotent like its counterpart above: a set that is there is kept, so that a
  * rung the provider knows by its key survives a second "castor provision".
  *
@@ -1302,7 +1302,7 @@ function provision_env_local_set(string $path, string $name, string $value): boo
 
 /**
  * RFC 8705 §3.1: the SHA-256 thumbprint of the DER encoding of a certificate, base64url without padding,
- * computed here from its PEM the way Heidi\Bundle\Http\Tls\ClientCertificate computes it from what the
+ * computed here from its PEM the way Beffroi\Bundle\Http\Tls\ClientCertificate computes it from what the
  * edge hands over. Two computations of the same thing, on two sides of the stack, is what "castor mtls"
  * compares.
  */

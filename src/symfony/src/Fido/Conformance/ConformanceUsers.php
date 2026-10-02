@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Fido\Conformance;
+namespace Beffroi\Bundle\Fido\Conformance;
 
-use Heidi\Core\Application\Identity\UserProvisioner;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\UserRepositoryInterface;
 
 /**
  * The users the conformance tools name: created on their first ceremony with the display name given,

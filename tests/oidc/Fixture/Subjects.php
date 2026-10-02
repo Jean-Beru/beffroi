@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
-use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
-use Heidi\Oidc\Bridge\InMemory\InMemoryPairwiseSalt;
-use Heidi\Oidc\Bridge\InMemory\InMemoryPairwiseSubjectRepository;
-use Heidi\Oidc\Port\PairwiseSaltInterface;
-use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
+use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
+use Beffroi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSalt;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSubjectRepository;
+use Beffroi\Oidc\Port\PairwiseSaltInterface;
+use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
 

@@ -10,16 +10,16 @@
 # nothing on transit/export nor transit/backup, which the keys refuse anyway (exportable=false,
 # allow_plaintext_backup=false, docker/vault/init.sh).
 #
-# One Transit key per tenant, named heidi-<slug of the tenant>: a credential for the hosted offer is cut
+# One Transit key per tenant, named beffroi-<slug of the tenant>: a credential for the hosted offer is cut
 # from this policy with the slug in place of the wildcard.
-path "transit/datakey/plaintext/heidi-*" {
+path "transit/datakey/plaintext/beffroi-*" {
   capabilities = ["update"]
 }
 
-path "transit/decrypt/heidi-*" {
+path "transit/decrypt/beffroi-*" {
   capabilities = ["update"]
 }
 
-path "transit/keys/heidi-*" {
+path "transit/keys/beffroi-*" {
   capabilities = ["read"]
 }

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Ciba\WebPushApprovalChannel;
-use Heidi\Bundle\Push\WebPushSender;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
+use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
+use Beffroi\Bundle\Push\WebPushSender;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -32,12 +32,12 @@ final readonly class WebPushSection extends ConfigurationSection
      * The tag the channel takes its place in the lane by, the same one a deployment tags a channel of its
      * own with.
      */
-    public const string CHANNEL_TAG = 'heidi.pending_approval_channel';
+    public const string CHANNEL_TAG = 'beffroi.pending_approval_channel';
 
     /**
      * The tag an algorithm of a key the tenant hands out is wired by (§3.3).
      */
-    public const string ALGORITHM_TAG = 'heidi.application_server_algorithm';
+    public const string ALGORITHM_TAG = 'beffroi.application_server_algorithm';
 
     public function name(): string
     {

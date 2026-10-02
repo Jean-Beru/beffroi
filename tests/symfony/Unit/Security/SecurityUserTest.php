@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace Beffroi\Bundle\Tests\Unit\Security;
 
-use Heidi\Bundle\Security\CorePasswordHasher;
-use Heidi\Bundle\Security\SecurityUser;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Security\CorePasswordHasher;
+use Beffroi\Bundle\Security\SecurityUser;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -142,7 +142,7 @@ final class SecurityUserTest extends TestCase
         $this->expectExceptionMessageIs('The serialised user is not one this class wrote.');
 
         // When
-        unserialize('O:34:"Heidi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
+        unserialize('O:34:"Beffroi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
     }
 
     /**

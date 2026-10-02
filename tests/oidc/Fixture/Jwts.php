@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function base64_decode;
 use DateTimeImmutable;
 use function explode;
-use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\GeneratedKeyPair;
-use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Oidc\Application\Client\ClientDocumentIssuer;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
-use Heidi\Oidc\Port\ClientJwksFetcherInterface;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Key\GeneratedKeyPair;
+use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Application\Client\ClientDocumentIssuer;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
+use Beffroi\Oidc\Port\ClientJwksFetcherInterface;
 use function is_array;
 use Jose\Component\Checker\AudienceChecker;
 use Jose\Component\Checker\ClaimCheckerManager;

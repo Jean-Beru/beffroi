@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_keys;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Identity\PushSubscription;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
@@ -27,7 +27,7 @@ use function sprintf;
  * read back (decisions 0011 and 0018).
  *
  * Three columns over two tables, and **no index and no constraint moved**, which is what distinguishes
- * these two tables from `heidi_user` and `heidi_linked_identity`. Each has its own reason.
+ * these two tables from `beffroi_user` and `beffroi_linked_identity`. Each has its own reason.
  *
  * A passkey is found by the credential ID its authenticator issued and, for a ceremony that starts without
  * a username, by the user handle: both are in the clear, being published by the authenticator and drawn at
@@ -35,7 +35,7 @@ use function sprintf;
  * column needs no tag. That the lookup is untouched is `DoctrineCredentialRepositoryTest`, which runs
  * against this mapping and is not repeated here.
  *
- * And `heidi_push_subscription` already holds the digest of its endpoint in a column of its own, with the
+ * And `beffroi_push_subscription` already holds the digest of its endpoint in a column of its own, with the
  * unique constraint and the lookup on it: that is the shape a blind index builds, built there for its own
  * reason, an endpoint being as long as its push service decided. The two tests at the end of this class are
  * the ones that had to be written, because they are what sealing the endpoint could have broken.
@@ -55,8 +55,8 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
      * @var array<string, array<string, string>>
      */
     private const array PLAINTEXTS = [
-        'heidi_passkey_credential' => SealedRows::VALUES['heidi_passkey_credential'],
-        'heidi_push_subscription' => SealedRows::VALUES['heidi_push_subscription'],
+        'beffroi_passkey_credential' => SealedRows::VALUES['beffroi_passkey_credential'],
+        'beffroi_push_subscription' => SealedRows::VALUES['beffroi_push_subscription'],
     ];
 
     /**
@@ -111,7 +111,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
 
         // Then
         static::assertInstanceOf(PasskeyCredential::class, $read);
-        static::assertSame(self::PLAINTEXTS['heidi_passkey_credential']['name'], $read->name);
+        static::assertSame(self::PLAINTEXTS['beffroi_passkey_credential']['name'], $read->name);
     }
 
     #[Test]
@@ -126,8 +126,8 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
 
         // Then
         static::assertInstanceOf(PushSubscription::class, $read);
-        static::assertSame(self::PLAINTEXTS['heidi_push_subscription']['endpoint'], $read->endpoint);
-        static::assertSame(self::PLAINTEXTS['heidi_push_subscription']['label'], $read->label);
+        static::assertSame(self::PLAINTEXTS['beffroi_push_subscription']['endpoint'], $read->endpoint);
+        static::assertSame(self::PLAINTEXTS['beffroi_push_subscription']['label'], $read->label);
     }
 
     /**
@@ -148,7 +148,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         // Then
         static::assertInstanceOf(PushSubscription::class, $read);
         static::assertNull($read->label);
-        static::assertNull(self::rows('heidi_push_subscription')[0]['label']);
+        static::assertNull(self::rows('beffroi_push_subscription')[0]['label']);
     }
 
     /**
@@ -203,7 +203,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         $found = self::subscriptions()
             ->findByEndpoint(
                 self::users()->find($saved->user->id) ?? static::fail('The user was not stored.'),
-                self::PLAINTEXTS['heidi_push_subscription']['endpoint'],
+                self::PLAINTEXTS['beffroi_push_subscription']['endpoint'],
             );
 
         // Then
@@ -244,7 +244,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         return self::fixture()->passkey($user);
     }
 
-    private static function subscription(User $user, ?string $label = self::PLAINTEXTS['heidi_push_subscription']['label']): PushSubscription
+    private static function subscription(User $user, ?string $label = self::PLAINTEXTS['beffroi_push_subscription']['label']): PushSubscription
     {
         return self::fixture()->subscription($user, $label);
     }
@@ -267,17 +267,17 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
 
     private static function users(): UserRepositoryInterface
     {
-        return self::service('test.heidi.users', UserRepositoryInterface::class);
+        return self::service('test.beffroi.users', UserRepositoryInterface::class);
     }
 
     private static function credentials(): CredentialRepositoryInterface
     {
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class);
+        return self::service('test.beffroi.credentials', CredentialRepositoryInterface::class);
     }
 
     private static function subscriptions(): PushSubscriptionRepositoryInterface
     {
-        return self::service('test.heidi.push_subscriptions', PushSubscriptionRepositoryInterface::class);
+        return self::service('test.beffroi.push_subscriptions', PushSubscriptionRepositoryInterface::class);
     }
 
     private static function connection(): Connection

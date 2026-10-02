@@ -2,46 +2,46 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use DateTimeImmutable;
-use Heidi\Oidc\Tests\Fixture\Secrets;
-use Heidi\Oidc\Domain\Token\AuthorizationInterface;
-use Heidi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use function array_map;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientPresentation;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Token\CertificateConfirmation;
-use Heidi\Oidc\Domain\Token\ClientAuthorization;
-use Heidi\Oidc\Domain\Token\ConfirmationInterface;
-use Heidi\Oidc\Domain\Token\UserAuthorization;
-use Heidi\Oidc\Domain\Token\KeyConfirmation;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
-use Heidi\Oidc\Domain\Token\StoredClientAccessToken;
-use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Methods;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Token\CertificateConfirmation;
+use Beffroi\Oidc\Domain\Token\ClientAuthorization;
+use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredClientAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredUserAccessToken;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokenInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
-use Heidi\Oidc\Tests\Fixture\Shapes;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.6, §5.3: a record keyed by the hash of a value it never keeps, found by that value,
@@ -419,7 +419,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         static::assertSame([DrawnSecret::digestOf($kept)], self::hashes($revoked));
         static::assertEquals(
             0,
-            self::entityManager()->getConnection()->fetchOne('SELECT COUNT(*) FROM heidi_access_token'),
+            self::entityManager()->getConnection()->fetchOne('SELECT COUNT(*) FROM beffroi_access_token'),
             'the row of the ghost went with the others',
         );
     }
@@ -439,7 +439,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 
     private static function consentRevoker(): CanRevokeAccessTokensByConsentInterface
     {
-        return self::service('test.heidi.access_tokens_of_a_consent', CanRevokeAccessTokensByConsentInterface::class);
+        return self::service('test.beffroi.access_tokens_of_a_consent', CanRevokeAccessTokensByConsentInterface::class);
     }
 
     private static function clientAuthorization(Client $client, ?Uuid $grantId = null): ClientAuthorization
@@ -455,7 +455,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 
     private static function tokens(): AccessTokenRepositoryInterface
     {
-        return self::service('test.heidi.access_tokens_store', AccessTokenRepositoryInterface::class);
+        return self::service('test.beffroi.access_tokens_store', AccessTokenRepositoryInterface::class);
     }
 
     /**
@@ -472,17 +472,17 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 
     private static function revoker(): CanRevokeAccessTokenInterface
     {
-        return self::service('test.heidi.access_tokens_store', CanRevokeAccessTokenInterface::class);
+        return self::service('test.beffroi.access_tokens_store', CanRevokeAccessTokenInterface::class);
     }
 
     private static function grantRevoker(): CanRevokeAccessTokensByGrantInterface
     {
-        return self::service('test.heidi.access_tokens_store', CanRevokeAccessTokensByGrantInterface::class);
+        return self::service('test.beffroi.access_tokens_store', CanRevokeAccessTokensByGrantInterface::class);
     }
 
     private static function sessionRevoker(): CanRevokeAccessTokensBySessionInterface
     {
-        return self::service('test.heidi.access_tokens_store', CanRevokeAccessTokensBySessionInterface::class);
+        return self::service('test.beffroi.access_tokens_store', CanRevokeAccessTokensBySessionInterface::class);
     }
 
     /**

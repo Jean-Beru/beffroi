@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
 use function array_slice;
 use function explode;
-use Heidi\Core\Domain\Event\DomainEventInterface;
+use Beffroi\Core\Domain\Event\DomainEventInterface;
 use function implode;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use const DATE_ATOM;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function in_array;
-use Heidi\Oidc\Domain\Authorization\ResponseModeNames;
-use Heidi\Oidc\Port\ServedResponseModesInterface;
+use Beffroi\Oidc\Domain\Authorization\ResponseModeNames;
+use Beffroi\Oidc\Port\ServedResponseModesInterface;
 
 /**
  * The response modes a test wires exactly, under the names the ways of answering give themselves, including

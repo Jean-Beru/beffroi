@@ -101,7 +101,7 @@ function login_cost(
     }
 
     $env = load_dot_env(getcwd() . '/apps/op/.env');
-    foreach (['HEIDI_ISSUER', 'HEIDI_DEV_USER_PASSWORD', 'OIDC_DEMO_SECRET'] as $name) {
+    foreach (['BEFFROI_ISSUER', 'BEFFROI_DEV_USER_PASSWORD', 'OIDC_DEMO_SECRET'] as $name) {
         if (($env[$name] ?? '') === '') {
             io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
             exit(1);
@@ -110,7 +110,7 @@ function login_cost(
 
     // Before a single journey is played: fifty logins take a minute, and a stack whose master key lives in
     // the process cannot answer half of what is being measured whatever they cost.
-    $backend = kms_backend_of((string) ($env['HEIDI_KMS_DSN'] ?? ''));
+    $backend = kms_backend_of((string) ($env['BEFFROI_KMS_DSN'] ?? ''));
     if ($backend === null) {
         io()->error(sprintf('%s names no KMS: run "castor provision --kms %s" first.', DEV_ENV_LOCAL, COST_KMS));
         exit(1);
@@ -119,7 +119,7 @@ function login_cost(
         io()->error([
             sprintf('The keys of this stack are sealed by the %s backend, which keeps the master key in the process and logs nothing.', $backend),
             sprintf(
-                'The count of the third success criterion is read in the log of the KMS (decision 0018), so this run needs the %s backend: remove HEIDI_KMS_DSN and HEIDI_KMS_KEY_ID from %s, then run "castor start --kms %s", "castor provision --kms %s", and "castor console heidi:keys:rotate --now --algorithm=X" once for every algorithm the provider is wired with, the envelopes of the previous backend opening under none of them.',
+                'The count of the third success criterion is read in the log of the KMS (decision 0018), so this run needs the %s backend: remove BEFFROI_KMS_DSN and BEFFROI_KMS_KEY_ID from %s, then run "castor start --kms %s", "castor provision --kms %s", and "castor console beffroi:keys:rotate --now --algorithm=X" once for every algorithm the provider is wired with, the envelopes of the previous backend opening under none of them.',
                 COST_KMS,
                 DEV_ENV_LOCAL,
                 COST_KMS,
@@ -133,7 +133,7 @@ function login_cost(
         exit(1);
     }
 
-    $issuer = $env['HEIDI_ISSUER'];
+    $issuer = $env['BEFFROI_ISSUER'];
     $instrumented = cost_instrumented($issuer);
     if ($instrumented !== []) {
         io()->error([
@@ -165,7 +165,7 @@ function login_cost(
     io()->section(sprintf('%d journeys, after %d thrown away', $journeys, COST_WARM_UP));
     io()->text(sprintf(' Warming up: %d journeys played and thrown away.', COST_WARM_UP));
     for ($journey = 0; $journey < COST_WARM_UP; ++$journey) {
-        cost_journey($issuer, $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $ca);
+        cost_journey($issuer, $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $ca);
     }
     // The window the count is read over, as an instant and not as a duration: a duration is resolved
     // against the moment the log is read, which is after the last journey, and would reach back before the
@@ -176,7 +176,7 @@ function login_cost(
     $steps = [];
     io()->progressStart($journeys);
     for ($journey = 0; $journey < $journeys; ++$journey) {
-        foreach (cost_journey($issuer, $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $ca) as $step => $seconds) {
+        foreach (cost_journey($issuer, $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $ca) as $step => $seconds) {
             $steps[$step][] = $seconds;
         }
         io()->progressAdvance();
@@ -287,7 +287,7 @@ function cost_journey(string $issuer, string $password, string $secret, string $
     cost_expect(
         $status === 302 && str_starts_with($location, $issuer . '/consent?'),
         sprintf(
-            'the interaction did not resume into a consent, which a refused sign-in does not either (got %d %s; "heidi:user:show %s" says which credentials that user holds)',
+            'the interaction did not resume into a consent, which a refused sign-in does not either (got %d %s; "beffroi:user:show %s" says which credentials that user holds)',
             $status,
             $location,
             DEV_USERNAME,
@@ -402,7 +402,7 @@ function cost_request(array &$steps, array &$cookies, string $step, string $ca, 
  *
  * The profiler marks a response it collected with an X-Debug-Token, and the JWK Set is what is asked
  * because the well-known paths are the ones its configuration excludes from collection. The kernel in
- * debug is what wires the decorators the bundle puts on the encrypter and on the store (heidi#427), which
+ * debug is what wires the decorators the bundle puts on the encrypter and on the store (beffroi#427), which
  * record every opening whether a profile is kept or not, and the application answers for it itself.
  *
  * @return list<string> what is instrumented, empty when nothing is
@@ -555,7 +555,7 @@ function cost_slowest_request(array $steps): array
  * (the data key it mints, the one it unwraps, and the configuration of the master key it reads once per
  * process: symfony/hashicorp-vault-key-management, TransitKms); and when the token that made it is the one
  * of the OP rather than the root token, which the healthcheck of compose.yaml and docker/vault/init.sh
- * hold. The policy of a token is what tells the two apart (docker/vault/heidi-op.hcl).
+ * hold. The policy of a token is what tells the two apart (docker/vault/beffroi-op.hcl).
  */
 function cost_kms_calls(string $since): int
 {

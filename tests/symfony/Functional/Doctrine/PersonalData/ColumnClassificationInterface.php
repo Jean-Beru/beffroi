@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
 /**
  * What one line of SchemaColumns says of one column, and what it has to say about the column the schema

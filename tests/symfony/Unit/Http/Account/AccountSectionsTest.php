@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\Account;
+namespace Beffroi\Bundle\Tests\Unit\Http\Account;
 
 use function array_map;
-use Heidi\Bundle\Http\Account\AccountSectionInterface;
-use Heidi\Bundle\Http\Account\AccountSections;
-use Heidi\Bundle\Http\Account\AccountSectionState;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Http\Account\AccountSectionInterface;
+use Beffroi\Bundle\Http\Account\AccountSections;
+use Beffroi\Bundle\Http\Account\AccountSectionState;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -25,8 +25,8 @@ final class AccountSectionsTest extends TestCase
     {
         // Given
         $sections = new AccountSections([
-            self::section('heidi_interaction_account_passkeys', 'passkeys.title', 'account.passkeys.state'),
-            self::section('heidi_interaction_account_two_factor', 'two_factor.title', 'account.two_factor.state.none'),
+            self::section('beffroi_interaction_account_passkeys', 'passkeys.title', 'account.passkeys.state'),
+            self::section('beffroi_interaction_account_two_factor', 'two_factor.title', 'account.two_factor.state.none'),
         ]);
 
         // When
@@ -35,8 +35,8 @@ final class AccountSectionsTest extends TestCase
         // Then
         static::assertSame(
             [
-                ['route' => 'heidi_interaction_account_passkeys', 'title' => 'passkeys.title'],
-                ['route' => 'heidi_interaction_account_two_factor', 'title' => 'two_factor.title'],
+                ['route' => 'beffroi_interaction_account_passkeys', 'title' => 'passkeys.title'],
+                ['route' => 'beffroi_interaction_account_two_factor', 'title' => 'two_factor.title'],
             ],
             array_map(static fn (array $line): array => [
                 'route' => $line['route'],
@@ -50,7 +50,7 @@ final class AccountSectionsTest extends TestCase
     {
         // Given
         $sections = new AccountSections([
-            self::section('heidi_interaction_account_passkeys', 'passkeys.title', 'account.passkeys.state', [
+            self::section('beffroi_interaction_account_passkeys', 'passkeys.title', 'account.passkeys.state', [
                 'count' => 2,
             ]),
         ]);
@@ -73,12 +73,12 @@ final class AccountSectionsTest extends TestCase
     {
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('Two sections of the account name the route "heidi_interaction_account_passkeys".');
+        $this->expectExceptionMessageIs('Two sections of the account name the route "beffroi_interaction_account_passkeys".');
 
         // When
         new AccountSections([
-            self::section('heidi_interaction_account_passkeys', 'passkeys.title', 'account.passkeys.state'),
-            self::section('heidi_interaction_account_passkeys', 'other.title', 'other.state'),
+            self::section('beffroi_interaction_account_passkeys', 'passkeys.title', 'account.passkeys.state'),
+            self::section('beffroi_interaction_account_passkeys', 'other.title', 'other.state'),
         ]);
     }
 

@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace Beffroi\Bundle\Tests\Functional\Command;
 
 use Doctrine\DBAL\Connection;
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Event\TenantDataKeysDestroyed;
-use Heidi\Core\Domain\Event\TenantDataKeysRewrapped;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
+use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use function count;
 use function sprintf;
@@ -49,7 +49,7 @@ final class DataKeysTest extends ConsoleTestCase
         self::sealSomething();
 
         // When
-        $tester = self::console('heidi:data-keys:list');
+        $tester = self::console('beffroi:data-keys:list');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
@@ -67,7 +67,7 @@ final class DataKeysTest extends ConsoleTestCase
     public function aTenantThatHasSealedNothingIsToldWhichFamiliesThereAre(): void
     {
         // When
-        $tester = self::console('heidi:data-keys:list');
+        $tester = self::console('beffroi:data-keys:list');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
@@ -91,7 +91,7 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertNotNull($material);
 
         // When
-        $tester = self::console('heidi:data-keys:list');
+        $tester = self::console('beffroi:data-keys:list');
 
         // Then
         static::assertStringNotContainsString($material, self::flattened($tester));
@@ -104,7 +104,7 @@ final class DataKeysTest extends ConsoleTestCase
         self::sealSomething();
 
         // When
-        $tester = self::console('heidi:data-keys:destroy');
+        $tester = self::console('beffroi:data-keys:destroy');
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
@@ -119,7 +119,7 @@ final class DataKeysTest extends ConsoleTestCase
         self::sealSomething();
 
         // When
-        $tester = self::console('heidi:data-keys:destroy', [
+        $tester = self::console('beffroi:data-keys:destroy', [
             'slug' => 'another-tenant',
         ]);
 
@@ -139,11 +139,11 @@ final class DataKeysTest extends ConsoleTestCase
     {
         // Given
         $user = self::sealSomething();
-        $sealed = self::connection()->fetchOne('SELECT username FROM heidi_user WHERE id = ?', [$user->id->toBinary()]);
+        $sealed = self::connection()->fetchOne('SELECT username FROM beffroi_user WHERE id = ?', [$user->id->toBinary()]);
         static::assertNotFalse($sealed);
 
         // When
-        $tester = self::console('heidi:data-keys:destroy', [
+        $tester = self::console('beffroi:data-keys:destroy', [
             'slug' => self::tenant()->slug,
         ]);
 
@@ -153,7 +153,7 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertSame([], self::rows());
         static::assertSame(
             $sealed,
-            self::connection()->fetchOne('SELECT username FROM heidi_user WHERE id = ?', [$user->id->toBinary()]),
+            self::connection()->fetchOne('SELECT username FROM beffroi_user WHERE id = ?', [$user->id->toBinary()]),
             'The destruction erased a key and not a row: what is gone is the means of reading it.',
         );
     }
@@ -165,7 +165,7 @@ final class DataKeysTest extends ConsoleTestCase
         self::sealSomething();
 
         // When
-        self::console('heidi:data-keys:destroy', [
+        self::console('beffroi:data-keys:destroy', [
             'slug' => self::tenant()->slug,
         ]);
 
@@ -184,7 +184,7 @@ final class DataKeysTest extends ConsoleTestCase
         self::sealSomething();
 
         // When
-        $tester = self::console('heidi:data-keys:rewrap');
+        $tester = self::console('beffroi:data-keys:rewrap');
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
@@ -199,7 +199,7 @@ final class DataKeysTest extends ConsoleTestCase
     public function theRewrapOfATenantThatHoldsNothingSaysSo(): void
     {
         // When
-        $tester = self::console('heidi:data-keys:rewrap', [
+        $tester = self::console('beffroi:data-keys:rewrap', [
             '--to' => 'second',
         ]);
 
@@ -216,7 +216,7 @@ final class DataKeysTest extends ConsoleTestCase
         $before = self::rows();
 
         // When
-        $tester = self::console('heidi:data-keys:rewrap', [
+        $tester = self::console('beffroi:data-keys:rewrap', [
             '--to' => 'second',
             '--dry-run' => true,
         ]);
@@ -239,7 +239,7 @@ final class DataKeysTest extends ConsoleTestCase
         $user = self::sealSomething();
 
         // When
-        $tester = self::console('heidi:data-keys:rewrap', [
+        $tester = self::console('beffroi:data-keys:rewrap', [
             '--to' => 'second',
         ]);
 
@@ -249,7 +249,7 @@ final class DataKeysTest extends ConsoleTestCase
             static::assertSame('second', $row['client']);
         }
         self::reload();
-        $read = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id);
+        $read = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id);
         static::assertInstanceOf(User::class, $read);
         static::assertSame(self::USERNAME, $read->username);
     }
@@ -261,7 +261,7 @@ final class DataKeysTest extends ConsoleTestCase
         self::sealSomething();
 
         // When
-        self::console('heidi:data-keys:rewrap', [
+        self::console('beffroi:data-keys:rewrap', [
             '--to' => 'second',
         ]);
 
@@ -282,12 +282,12 @@ final class DataKeysTest extends ConsoleTestCase
     {
         // Given
         self::sealSomething();
-        self::console('heidi:data-keys:rewrap', [
+        self::console('beffroi:data-keys:rewrap', [
             '--to' => 'second',
         ]);
 
         // When
-        $tester = self::console('heidi:data-keys:rewrap', [
+        $tester = self::console('beffroi:data-keys:rewrap', [
             '--to' => 'second',
             '--from' => 'test',
             '--dry-run' => true,
@@ -315,7 +315,7 @@ final class DataKeysTest extends ConsoleTestCase
         $before = self::sealedColumns();
 
         // When
-        $tester = self::console('heidi:data-keys:rewrap', [
+        $tester = self::console('beffroi:data-keys:rewrap', [
             '--to' => 'second',
         ]);
 
@@ -340,7 +340,7 @@ final class DataKeysTest extends ConsoleTestCase
     {
         // Given
         $user = self::sealSomething();
-        self::console('heidi:data-keys:destroy', [
+        self::console('beffroi:data-keys:destroy', [
             'slug' => self::tenant()->slug,
         ]);
         self::reload();
@@ -348,7 +348,7 @@ final class DataKeysTest extends ConsoleTestCase
         // When
         $thrown = null;
         try {
-            self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id);
+            self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id);
         } catch (Throwable $caught) {
             $thrown = $caught;
         }
@@ -379,7 +379,7 @@ final class DataKeysTest extends ConsoleTestCase
         self::destroyTheKeysOf($other);
 
         // Then
-        $read = self::service('test.heidi.users', UserRepositoryInterface::class)->find($mine->id);
+        $read = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($mine->id);
         static::assertInstanceOf(User::class, $read);
         static::assertSame(self::USERNAME, $read->username);
     }
@@ -395,13 +395,13 @@ final class DataKeysTest extends ConsoleTestCase
     private static function sealedColumns(): array
     {
         $columns = [];
-        foreach (SchemaColumns::all()['heidi_user'] as $column => $line) {
+        foreach (SchemaColumns::all()['beffroi_user'] as $column => $line) {
             if ($line instanceof Sealed) {
                 $columns[] = $column;
             }
         }
 
-        $rows = RawRows::of(self::connection(), 'heidi_user', $columns);
+        $rows = RawRows::of(self::connection(), 'beffroi_user', $columns);
         static::assertCount(1, $rows);
 
         $held = [];
@@ -460,7 +460,7 @@ final class DataKeysTest extends ConsoleTestCase
             new EmailAddress('bob@example.org'),
         );
         $user->changePhoneNumber('+441632960542', false, self::now());
-        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
         self::reload();
 
         return $user;
@@ -482,7 +482,7 @@ final class DataKeysTest extends ConsoleTestCase
         );
         $user->changePhoneNumber('+441632960541', false, self::now());
         $user->changeAddress(new Address('12 Grand Rue, Saint-Germain'), self::now());
-        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
         self::reload();
 
         return $user;

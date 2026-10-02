@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 
 /**
  * The key an authorization request reserved its code for (RFC 9449 §10), one thumbprint in one column.
@@ -15,7 +15,7 @@ use Heidi\Oidc\Domain\Token\KeyConfirmation;
  */
 final class KeyConfirmationType extends StringObjectType
 {
-    public const string NAME = 'heidi_key_confirmation';
+    public const string NAME = 'beffroi_key_confirmation';
 
     /**
      * RFC 7638 §3.1: the base64url of a SHA-256.

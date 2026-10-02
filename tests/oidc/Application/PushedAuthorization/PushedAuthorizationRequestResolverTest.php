@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\PushedAuthorization;
+namespace Beffroi\Oidc\Tests\Application\PushedAuthorization;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateInterval;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
-use Heidi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Event\PushedRequestRefusalReason;
-use Heidi\Oidc\Domain\Event\PushedRequestRefused;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
-use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
-use Heidi\Oidc\Exception\InvalidRequestUriException;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\PushedRequestRefusalReason;
+use Beffroi\Oidc\Domain\Event\PushedRequestRefused;
+use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
+use Beffroi\Oidc\Domain\PushedAuthorization\RequestUri;
+use Beffroi\Oidc\Exception\InvalidRequestUriException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

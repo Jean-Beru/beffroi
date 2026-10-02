@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
 use function count;
-use Heidi\Bundle\Controller\AccountNotificationsController;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Bundle\Controller\AccountNotificationsController;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
 
 /**
  * The browsers of the account this provider may push to, on the home page: how many of them are still

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\PasskeyOptionsStore;
-use Heidi\Core\Application\Passkey\PasskeyEnrolment;
-use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\PasskeyOptionsStore;
+use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
+use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,7 +23,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class PasskeyEnrolmentOptionsController
 {
-    public const string ROUTE = 'heidi_interaction_account_passkeys_options';
+    public const string ROUTE = 'beffroi_interaction_account_passkeys_options';
 
     public function __construct(
         private AccountAccess $account,

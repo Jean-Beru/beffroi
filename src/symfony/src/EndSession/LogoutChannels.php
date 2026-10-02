@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\EndSession;
+namespace Beffroi\Bundle\EndSession;
 
 use function array_values;
-use Heidi\Oidc\Domain\EndSession\LogoutChannel;
-use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
+use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
+use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
 
 /**
  * The ways of telling a client that a session ended the integration is wired with (architecture §4.9):

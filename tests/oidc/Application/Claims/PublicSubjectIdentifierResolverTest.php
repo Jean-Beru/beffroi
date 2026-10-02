@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Claims;
+namespace Beffroi\Oidc\Tests\Application\Claims;
 
-use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\TestCase;
 
 final class PublicSubjectIdentifierResolverTest extends TestCase

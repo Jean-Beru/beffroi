@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Domain\Claims\SectorIdentifier;
+use Beffroi\Oidc\Domain\Claims\SectorIdentifier;
 
 /**
  * The sector a pairwise identifier belongs to (OIDC Core §8.1), stored as the host it is.
@@ -13,7 +13,7 @@ use Heidi\Oidc\Domain\Claims\SectorIdentifier;
  */
 final class SectorIdentifierType extends StringObjectType
 {
-    public const string NAME = 'heidi_sector_identifier';
+    public const string NAME = 'beffroi_sector_identifier';
 
     protected function encode(object $value): string
     {

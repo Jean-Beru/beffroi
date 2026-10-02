@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace Beffroi\Bundle\Tests\Functional\Key;
 
 use function dirname;
 use function fileperms;
 use function filesize;
 use function getenv;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use function is_string;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -23,7 +23,7 @@ use Symfony\Component\KeyManagement\Envelope;
 /**
  * Issue #58, the file backend: the same sodium backend as the development default, its key read from a
  * file of its own instead of the environment (FilesystemKeyLoader, "sodium+dir://<directory>?ext=.key"),
- * one file per tenant. Skipped unless the kernel seals with it (HEIDI_TEST_KMS_DSN), which the CI does in
+ * one file per tenant. Skipped unless the kernel seals with it (BEFFROI_TEST_KMS_DSN), which the CI does in
  * a job of its own with a key written the way "castor provision --kms file" writes it; every other test of
  * the suite then runs against it too.
  */
@@ -31,15 +31,15 @@ final class KeyFileCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'sodium+dir://';
 
-    private const string KEY_ID = 'heidi-default';
+    private const string KEY_ID = 'beffroi-default';
 
     private Dsn $dsn;
 
     protected function setUp(): void
     {
-        $dsn = getenv('HEIDI_TEST_KMS_DSN');
+        $dsn = getenv('BEFFROI_TEST_KMS_DSN');
         if (! is_string($dsn) || ! str_starts_with($dsn, self::SCHEME)) {
-            static::markTestSkipped('The kernel seals with an inline sodium key; set HEIDI_TEST_KMS_DSN to a sodium+dir DSN to run this test.');
+            static::markTestSkipped('The kernel seals with an inline sodium key; set BEFFROI_TEST_KMS_DSN to a sodium+dir DSN to run this test.');
         }
         parent::setUp();
         $this->dsn = Dsn::fromString($dsn);
@@ -52,13 +52,13 @@ final class KeyFileCustodyTest extends DatabaseTestCase
     public function aSealedKeyIsWrappedByTheKeyFileOfTheTenant(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', TenantKeyRotator::class);
+        $rotator = self::service('test.beffroi.key_rotator', TenantKeyRotator::class);
 
         // When
         $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
-        $stored = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)
+        $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
             ->find(self::tenant(), $rotated->kid) ?? static::fail('The key is stored.');
         static::assertSame(self::KEY_ID, Envelope::fromBytes($stored->sealedPrivateJwk)->keyId);
     }

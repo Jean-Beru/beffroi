@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -148,7 +148,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
         self::reload();
 
         return (
-            self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
                 ->findByExternalId(self::tenant(), PasskeyCredential::class, $device->credentialId) ?? static::fail('The passkey is not in the rows.')
         );
     }
@@ -163,7 +163,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
         self::reload();
 
         return (
-            self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+            self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
                 ->find(Uuid::fromString($id)) ?? static::fail('The bound session is gone.')
         );
     }
@@ -178,7 +178,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
      */
     protected function securityToken(): TokenInterface
     {
-        $serialized = $this->readHttpSession()->get('_security_heidi_interaction');
+        $serialized = $this->readHttpSession()->get('_security_beffroi_interaction');
         static::assertIsString($serialized, 'The firewall stored no token.');
         $token = unserialize($serialized);
         static::assertInstanceOf(TokenInterface::class, $token);
@@ -194,12 +194,12 @@ abstract class PasskeyTestCase extends BrowserTestCase
     protected static function sessionsOf(string $username): array
     {
         self::reload();
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), $username);
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), $username);
         if (! $user instanceof User) {
             return [];
         }
 
-        return self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, new DateTimeImmutable());
+        return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, new DateTimeImmutable());
     }
 
     /**

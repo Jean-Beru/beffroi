@@ -13,11 +13,11 @@
 
 splits:
   - prefix: "src/core"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/heidi-core.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/core.git"
   - prefix: "src/oidc"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/heidi-oidc.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/oidc.git"
   - prefix: "src/symfony"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/heidi-symfony-bundle.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/symfony-bundle.git"
 
 origins:
   - ^\d+\.\d+\.x$

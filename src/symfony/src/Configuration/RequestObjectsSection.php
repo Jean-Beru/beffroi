@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Client\RequestObjectFetcher;
-use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
+use Beffroi\Bundle\Client\RequestObjectFetcher;
+use Beffroi\Oidc\Application\Authorization\RequestObjectValidator;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 

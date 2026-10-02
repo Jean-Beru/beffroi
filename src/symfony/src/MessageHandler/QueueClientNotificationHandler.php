@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\MessageHandler;
+namespace Beffroi\Bundle\MessageHandler;
 
-use Heidi\Bundle\Message\SendClientNotification;
-use Heidi\Oidc\Domain\Event\BackchannelRequestAnswered;
+use Beffroi\Bundle\Message\SendClientNotification;
+use Beffroi\Oidc\Domain\Event\BackchannelRequestAnswered;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 

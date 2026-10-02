@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Client;
+namespace Beffroi\Bundle\Client;
 
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\RequestObjectUnavailableException;
-use Heidi\Oidc\Port\RequestObjectFetcherInterface;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\RequestObjectUnavailableException;
+use Beffroi\Oidc\Port\RequestObjectFetcherInterface;
 use function sprintf;
 use function strlen;
 use Symfony\Contracts\HttpClient\HttpClientInterface;

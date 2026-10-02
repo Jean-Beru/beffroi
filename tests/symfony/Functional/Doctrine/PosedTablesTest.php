@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Core\Domain\Group\Group;
-use Heidi\Core\Domain\Group\GroupMembership;
-use Heidi\Core\Domain\Group\GroupSource;
-use Heidi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Domain\Group\Group;
+use Beffroi\Core\Domain\Group\GroupMembership;
+use Beffroi\Core\Domain\Group\GroupSource;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 

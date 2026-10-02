@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
@@ -70,26 +70,26 @@ final class AccountHomeTest extends PasskeyTestCase
         // Then
         static::assertCount(6, $crawler->filter('ul[data-sections="6"] li'));
         // first of them: it is what makes the page of what somebody is waiting on findable (BCP 10027 §5.2)
-        $approvals = $crawler->filter('li[data-section="heidi_interaction_account_approvals"]');
+        $approvals = $crawler->filter('li[data-section="beffroi_interaction_account_approvals"]');
         static::assertSame('/account/approvals', $approvals->filter('a')->attr('href'));
         static::assertSame('Requests waiting for you', $approvals->filter('a')->text());
         static::assertSame('Nothing waiting for you', $approvals->filter('span[data-state]')->text());
-        $profile = $crawler->filter('li[data-section="heidi_interaction_account_profile"]');
+        $profile = $crawler->filter('li[data-section="beffroi_interaction_account_profile"]');
         static::assertSame('/account/profile', $profile->filter('a')->attr('href'));
         static::assertSame('Your information', $profile->filter('a')->text());
         static::assertSame('Nothing filled in', $profile->filter('span[data-state]')->text());
-        $passkeys = $crawler->filter('li[data-section="heidi_interaction_account_passkeys"]');
+        $passkeys = $crawler->filter('li[data-section="beffroi_interaction_account_passkeys"]');
         static::assertSame('/account/passkeys', $passkeys->filter('a')->attr('href'));
         static::assertSame('Your passkeys', $passkeys->filter('a')->text());
         static::assertSame('No passkey', $passkeys->filter('span[data-state]')->text());
-        $twoFactor = $crawler->filter('li[data-section="heidi_interaction_account_two_factor"]');
+        $twoFactor = $crawler->filter('li[data-section="beffroi_interaction_account_two_factor"]');
         static::assertSame('/account/two-factor', $twoFactor->filter('a')->attr('href'));
         static::assertSame('No authenticator app', $twoFactor->filter('span[data-state]')->text());
-        $consents = $crawler->filter('li[data-section="heidi_interaction_account_consents"]');
+        $consents = $crawler->filter('li[data-section="beffroi_interaction_account_consents"]');
         static::assertSame('/account/consents', $consents->filter('a')->attr('href'));
         static::assertSame('Applications you have allowed', $consents->filter('a')->text());
         static::assertSame('No application', $consents->filter('span[data-state]')->text());
-        $notifications = $crawler->filter('li[data-section="heidi_interaction_account_notifications"]');
+        $notifications = $crawler->filter('li[data-section="beffroi_interaction_account_notifications"]');
         static::assertSame('/account/notifications', $notifications->filter('a')->attr('href'));
         static::assertSame('Notifications', $notifications->filter('a')->text());
         static::assertSame('No browser told', $notifications->filter('span[data-state]')->text());
@@ -107,7 +107,7 @@ final class AccountHomeTest extends PasskeyTestCase
         // Then
         static::assertSame(
             'One passkey',
-            $crawler->filter('li[data-section="heidi_interaction_account_passkeys"] span[data-state]')->text(),
+            $crawler->filter('li[data-section="beffroi_interaction_account_passkeys"] span[data-state]')->text(),
         );
     }
 

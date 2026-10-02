@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace Beffroi\Bundle\Tests\Functional\Command;
 
-use Heidi\Bundle\Command\ClientDeleteCommand;
-use Heidi\Bundle\Command\ClientListCommand;
-use Heidi\Bundle\Command\ClientShowCommand;
-use Heidi\Bundle\Doctrine\Repository\DoctrineClientRepository;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Bundle\Command\ClientDeleteCommand;
+use Beffroi\Bundle\Command\ClientListCommand;
+use Beffroi\Bundle\Command\ClientShowCommand;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -128,7 +128,7 @@ final class ClientsTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertNull(self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId));
+        static::assertNull(self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId));
     }
 
     /**
@@ -145,8 +145,8 @@ final class ClientsTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
-        static::assertStringContainsString('heidi.yaml', self::flattened($tester));
-        static::assertNotNull(self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), 'oidc-demo'));
+        static::assertStringContainsString('beffroi.yaml', self::flattened($tester));
+        static::assertNotNull(self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), 'oidc-demo'));
     }
 
     /**
@@ -155,7 +155,7 @@ final class ClientsTest extends ConsoleTestCase
      */
     private function register(): string
     {
-        self::service('test.heidi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
+        self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
             ->save(new InitialAccessToken(
                 Uuid::v7(),
                 self::tenant(),

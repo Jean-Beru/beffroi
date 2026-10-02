@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace Beffroi\Bundle\Tests\Unit\Security;
 
-use Heidi\Bundle\Security\SecurityUser;
-use Heidi\Bundle\Security\UserChecker;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Security\SecurityUser;
+use Beffroi\Bundle\Security\UserChecker;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Exception\DisabledException;

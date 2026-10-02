@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional;
+namespace Beffroi\Bundle\Tests\Functional;
 
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 
 /**
- * Architecture §5.2 and §6: HEIDI_PLANE restricts a process to one plane; the routes of the other plane get
+ * Architecture §5.2 and §6: BEFFROI_PLANE restricts a process to one plane; the routes of the other plane get
  * the 404 an unknown path gets, the routes of the host application are never touched. The plane is read
  * from the environment when the process starts, on the same compiled container.
  *
@@ -31,7 +31,7 @@ final class PlaneTest extends DatabaseTestCase
     protected function tearDown(): void
     {
         parent::tearDown();
-        unset($_SERVER['HEIDI_PLANE'], $_ENV['HEIDI_PLANE']);
+        unset($_SERVER['BEFFROI_PLANE'], $_ENV['BEFFROI_PLANE']);
     }
 
     /**
@@ -47,8 +47,8 @@ final class PlaneTest extends DatabaseTestCase
         yield 'an interaction process leaves the host application alone' => ['interaction', '/host', 200];
         yield 'a process serving all planes serves the login' => ['all', '/login', self::LOGIN_SERVED];
         yield 'a process serving all planes serves the JWK Set' => ['all', '/jwks', self::JWKS_SERVED];
-        yield 'without HEIDI_PLANE a process serves the login' => [null, '/login', self::LOGIN_SERVED];
-        yield 'without HEIDI_PLANE a process serves the JWK Set' => [null, '/jwks', self::JWKS_SERVED];
+        yield 'without BEFFROI_PLANE a process serves the login' => [null, '/login', self::LOGIN_SERVED];
+        yield 'without BEFFROI_PLANE a process serves the JWK Set' => [null, '/jwks', self::JWKS_SERVED];
         yield 'an unknown path is a 404 on every plane' => ['protocol', '/unknown', 404];
     }
 
@@ -58,7 +58,7 @@ final class PlaneTest extends DatabaseTestCase
     {
         // Given
         if ($plane !== null) {
-            $_SERVER['HEIDI_PLANE'] = $plane;
+            $_SERVER['BEFFROI_PLANE'] = $plane;
         }
         $browser = self::browser();
 
@@ -76,7 +76,7 @@ final class PlaneTest extends DatabaseTestCase
     public function anUnknownPlaneIsRefused(): void
     {
         // Given
-        $_SERVER['HEIDI_PLANE'] = 'everything';
+        $_SERVER['BEFFROI_PLANE'] = 'everything';
         $browser = self::browser();
         $browser->catchExceptions(false);
 

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use function array_filter;
 use function array_values;
 use function count;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CodeAttemptLimiterInterface;
-use Heidi\Core\Port\PasswordAttemptLimiterInterface;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CodeAttemptLimiterInterface;
+use Beffroi\Core\Port\PasswordAttemptLimiterInterface;
 use const PHP_INT_MAX;
 
 /**

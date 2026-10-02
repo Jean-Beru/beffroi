@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\LoginTarget;
-use Heidi\Bundle\Http\PendingLoginStore;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Security\CodeRefusal;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Bundle\Http\AuthorizationResponderInterface;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\LoginTarget;
+use Beffroi\Bundle\Http\PendingLoginStore;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Security\CodeRefusal;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -31,7 +31,7 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 #[AsController]
 final readonly class LoginCodeController
 {
-    public const string ROUTE = 'heidi_interaction_login_code';
+    public const string ROUTE = 'beffroi_interaction_login_code';
 
     public function __construct(
         private TenantProvider $tenants,

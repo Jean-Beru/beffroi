@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function array_keys;
 use function count;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeys;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeys;
 use function implode;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
@@ -29,12 +29,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * writes knowing what it does, not an option this command offers.
  */
 #[AsCommand(
-    name: 'heidi:data-keys:destroy',
+    name: 'beffroi:data-keys:destroy',
     description: 'Erase the data keys of the tenant, which makes every personal datum it had sealed unreadable for good. Asks for the slug to be typed back. Cannot be undone.',
 )]
 final readonly class DataKeysDestroyCommand
 {
-    public const string NAME = 'heidi:data-keys:destroy';
+    public const string NAME = 'beffroi:data-keys:destroy';
 
     public function __construct(
         private ConfiguredTenant $tenant,

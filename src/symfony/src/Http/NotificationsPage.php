@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Bundle\Push\ApplicationServerKey;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\KeyNotFoundException;
-use Heidi\Core\Port\ApplicationServerAlgorithmsInterface;
-use Heidi\Core\Port\ApplicationServerKeyProviderInterface;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Bundle\Push\ApplicationServerKey;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
+use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

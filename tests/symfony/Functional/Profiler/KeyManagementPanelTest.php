@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Profiler;
+namespace Beffroi\Bundle\Tests\Functional\Profiler;
 
-use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
 use function sort;
 use function sprintf;
 use PHPUnit\Framework\Attributes\Test;

@@ -15,7 +15,7 @@
 /.deptrac.cache
 /graphify-out
 
-# The standalone application lives in its own repository, beffroi-php/heidi-op, and is cloned here
+# The standalone application lives in its own repository, beffroi-php/op, and is cloned here
 # (apps/op) because the stack, the castor tasks, the conformance plans and the demonstration walks all
 # drive it from this working copy. This repository tracks the packages; it does not track the application.
 /apps/op/

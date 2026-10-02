@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Core\Application\Push\PushSubscriptionRevocation;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -23,9 +23,9 @@ use Symfony\Component\Uid\Uuid;
 #[AsController]
 final readonly class PushSubscriptionRevocationController
 {
-    public const string ROUTE = 'heidi_interaction_account_notifications_revoke';
+    public const string ROUTE = 'beffroi_interaction_account_notifications_revoke';
 
-    public const string CSRF_TOKEN_ID = 'heidi_push_revoke';
+    public const string CSRF_TOKEN_ID = 'beffroi_push_revoke';
 
     public function __construct(
         private AccountAccess $account,

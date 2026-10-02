@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Oidc\Tests\Fixture\Proofs;
+use Beffroi\Oidc\Tests\Fixture\Proofs;
 use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\Clock;

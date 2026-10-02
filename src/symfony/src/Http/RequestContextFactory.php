@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function get_current_user;
 use function gethostname;
-use Heidi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\RequestContext;
 use function is_string;
 use Psr\Clock\ClockInterface;
 use function sprintf;
@@ -31,12 +31,12 @@ final readonly class RequestContextFactory
 
     public function fromConsole(string $command): RequestContext
     {
-        return new RequestContext($this->clock->now(), null, sprintf('heidi-console/%s (%s@%s)', $command, self::shellUser(), self::host()));
+        return new RequestContext($this->clock->now(), null, sprintf('beffroi-console/%s (%s@%s)', $command, self::shellUser(), self::host()));
     }
 
     public function fromSchedule(string $schedule): RequestContext
     {
-        return new RequestContext($this->clock->now(), null, sprintf('heidi-scheduler/%s (%s)', $schedule, self::host()));
+        return new RequestContext($this->clock->now(), null, sprintf('beffroi-scheduler/%s (%s)', $schedule, self::host()));
     }
 
     /**

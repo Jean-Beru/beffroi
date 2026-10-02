@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedLogout;
-use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
-use Heidi\Oidc\Tests\Fixture\Endpoints;
-use Heidi\Oidc\Tests\Fixture\ServedChannels;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedLogout;
+use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
+use Beffroi\Oidc\Tests\Fixture\Endpoints;
+use Beffroi\Oidc\Tests\Fixture\ServedChannels;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

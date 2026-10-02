@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Client;
+namespace Beffroi\Bundle\Client;
 
 use function array_is_list;
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\SectorIdentifierUnavailableException;
-use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\SectorIdentifierUnavailableException;
+use Beffroi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
 use function is_array;
 use function is_string;
 use function json_decode;

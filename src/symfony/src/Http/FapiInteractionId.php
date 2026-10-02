@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function count;
-use Heidi\Core\Port\UuidGeneratorInterface;
+use Beffroi\Core\Port\UuidGeneratorInterface;
 use function is_string;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
@@ -43,7 +43,7 @@ final readonly class FapiInteractionId
      * Where the name of the exchange waits between the two moments of a request that has one: the answer
      * of a resource is the only thing that reads it.
      */
-    private const string ATTRIBUTE = '_heidi_fapi_interaction_id';
+    private const string ATTRIBUTE = '_beffroi_fapi_interaction_id';
 
     public function __construct(
         private UuidGeneratorInterface $uuids,

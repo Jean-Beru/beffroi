@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Webauthn;
+namespace Beffroi\Bundle\Tests\Unit\Webauthn;
 
 use function file_get_contents;
-use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -25,7 +25,7 @@ final class FileMetadataBlobStoreTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/heidi-bundle-tests/webauthn-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/webauthn-' . uniqid();
         $this->store = new FileMetadataBlobStore($this->directory);
     }
 

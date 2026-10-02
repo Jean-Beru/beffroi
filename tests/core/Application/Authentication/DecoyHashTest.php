@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Authentication;
+namespace Beffroi\Core\Tests\Application\Authentication;
 
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Core\Application\Authentication\DecoyHash;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Authentication\DecoyHash;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Identity\User;
 use function is_bool;
 use function is_string;
 use LogicException;

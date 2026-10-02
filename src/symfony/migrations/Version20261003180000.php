@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use function array_keys;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
-use Heidi\Bundle\Doctrine\Migration\SealingMigration;
+use Beffroi\Bundle\Doctrine\Migration\SealingMigration;
 use function sprintf;
 
 /**
@@ -18,7 +18,7 @@ use function sprintf;
  * found by its identifier, and a pushed request by the digest of the reference it was answered with, which
  * is its primary key and stays in the clear.
  *
- * The two hints are columns of `heidi_interaction` because the request is an embeddable that one entity
+ * The two hints are columns of `beffroi_interaction` because the request is an embeddable that one entity
  * embeds, with no column prefix. `parameters` loses its `jsonb` with the rest, what the column holds now
  * being the ciphertext of a JSON document; it keeps the hints word for word as the client wrote them
  * (RFC 9126 §2.2), which is the whole reason it seals.
@@ -36,11 +36,11 @@ final class Version20261003180000 extends SealingMigration
      * @var array<string, array<string, string>> table, then column, then its declaration
      */
     private const array CLEARTEXT = [
-        'heidi_interaction' => [
+        'beffroi_interaction' => [
             'login_hint' => 'TEXT DEFAULT NULL',
             'id_token_hint' => 'TEXT DEFAULT NULL',
         ],
-        'heidi_pushed_authorization_request' => [
+        'beffroi_pushed_authorization_request' => [
             'parameters' => 'JSONB NOT NULL',
         ],
     ];

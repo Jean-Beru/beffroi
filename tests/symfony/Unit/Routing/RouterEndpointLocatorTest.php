@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Routing;
+namespace Beffroi\Bundle\Tests\Unit\Routing;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Routing\RouterEndpointLocator;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Bundle\Routing\RouterEndpointLocator;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -172,20 +172,20 @@ final class RouterEndpointLocatorTest extends TestCase
     private static function router(string $prefix, ?RequestContext $context = null): UrlGenerator
     {
         $routes = new RouteCollection();
-        $routes->add('heidi_protocol_discovery', new Route($prefix . '/.well-known/openid-configuration'));
-        $routes->add('heidi_protocol_jwks', new Route($prefix . '/jwks'));
-        $routes->add('heidi_protocol_token', new Route($prefix . '/token'));
-        $routes->add('heidi_protocol_userinfo', new Route($prefix . '/userinfo'));
-        $routes->add('heidi_interaction_authorize', new Route($prefix . '/authorize'));
-        $routes->add('heidi_interaction_logout', new Route($prefix . '/logout'));
-        $routes->add('heidi_protocol_introspection', new Route($prefix . '/introspect'));
-        $routes->add('heidi_protocol_revocation', new Route($prefix . '/revoke'));
-        $routes->add('heidi_protocol_pushed_authorization_request', new Route($prefix . '/par'));
-        $routes->add('heidi_protocol_device_authorization', new Route($prefix . '/device_authorization'));
-        $routes->add('heidi_interaction_device', new Route($prefix . '/device'));
-        $routes->add('heidi_protocol_backchannel_authentication', new Route($prefix . '/backchannel_authentication'));
-        $routes->add('heidi_interaction_account_approvals', new Route($prefix . '/account/approvals'));
-        $routes->add('heidi_protocol_client_registration', new Route($prefix . '/register'));
+        $routes->add('beffroi_protocol_discovery', new Route($prefix . '/.well-known/openid-configuration'));
+        $routes->add('beffroi_protocol_jwks', new Route($prefix . '/jwks'));
+        $routes->add('beffroi_protocol_token', new Route($prefix . '/token'));
+        $routes->add('beffroi_protocol_userinfo', new Route($prefix . '/userinfo'));
+        $routes->add('beffroi_interaction_authorize', new Route($prefix . '/authorize'));
+        $routes->add('beffroi_interaction_logout', new Route($prefix . '/logout'));
+        $routes->add('beffroi_protocol_introspection', new Route($prefix . '/introspect'));
+        $routes->add('beffroi_protocol_revocation', new Route($prefix . '/revoke'));
+        $routes->add('beffroi_protocol_pushed_authorization_request', new Route($prefix . '/par'));
+        $routes->add('beffroi_protocol_device_authorization', new Route($prefix . '/device_authorization'));
+        $routes->add('beffroi_interaction_device', new Route($prefix . '/device'));
+        $routes->add('beffroi_protocol_backchannel_authentication', new Route($prefix . '/backchannel_authentication'));
+        $routes->add('beffroi_interaction_account_approvals', new Route($prefix . '/account/approvals'));
+        $routes->add('beffroi_protocol_client_registration', new Route($prefix . '/register'));
 
         return new UrlGenerator($routes, $context ?? new RequestContext());
     }

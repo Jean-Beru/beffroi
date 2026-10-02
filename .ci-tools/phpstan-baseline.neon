@@ -1,19 +1,19 @@
 parameters:
 	ignoreErrors:
 		-
-			rawMessage: 'Parameter #1 $length of method Heidi\Core\Bridge\Random\FixedRandomness::bytes() expects int<1, max>, int given.'
+			rawMessage: 'Parameter #1 $length of method Beffroi\Core\Bridge\Random\FixedRandomness::bytes() expects int<1, max>, int given.'
 			identifier: argument.type
 			count: 1
 			path: ../tests/core/Bridge/Random/FixedRandomnessTest.php
 
 		-
-			rawMessage: Using nullsafe property access on non-nullable type Heidi\Oidc\Domain\Client\ResponseEncryption. Use -> instead.
+			rawMessage: Using nullsafe property access on non-nullable type Beffroi\Oidc\Domain\Client\ResponseEncryption. Use -> instead.
 			identifier: nullsafe.neverNull
 			count: 1
 			path: ../tests/oidc/Bridge/Configuration/ConfigurationClientRepositoryTest.php
 
 		-
-			rawMessage: 'Method Heidi\Oidc\Tests\Fixture\ClientEncryption::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
+			rawMessage: 'Method Beffroi\Oidc\Tests\Fixture\ClientEncryption::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
 			identifier: return.type
 			count: 1
 			path: ../tests/oidc/Fixture/ClientEncryption.php
@@ -25,7 +25,7 @@ parameters:
 			path: ../tests/symfony/Functional/Controller/EncryptedForTheClientTest.php
 
 		-
-			rawMessage: 'Method Heidi\Bundle\Tests\Functional\Controller\EncryptedForTheClientTest::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
+			rawMessage: 'Method Beffroi\Bundle\Tests\Functional\Controller\EncryptedForTheClientTest::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
 			identifier: return.type
 			count: 1
 			path: ../tests/symfony/Functional/Controller/EncryptedForTheClientTest.php

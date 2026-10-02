@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Registration;
+namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Client\Registration\KeptRegistration;
-use Heidi\Oidc\Domain\Client\ClientSecretInterface;
-use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\InvalidClientMetadataException;
-use Heidi\Oidc\Exception\SectorIdentifierUnavailableException;
-use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
-use Heidi\Oidc\Tests\Fixture\FakeSectorIdentifierDocumentFetcher;
-use Heidi\Oidc\Tests\Fixture\Grants;
-use Heidi\Oidc\Port\ServedGrantsInterface;
-use Heidi\Oidc\Tests\Fixture\Registrations;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\Registration\KeptRegistration;
+use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
+use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\InvalidClientMetadataException;
+use Beffroi\Oidc\Exception\SectorIdentifierUnavailableException;
+use Beffroi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
+use Beffroi\Oidc\Tests\Fixture\FakeSectorIdentifierDocumentFetcher;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Port\ServedGrantsInterface;
+use Beffroi\Oidc\Tests\Fixture\Registrations;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use function array_map;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

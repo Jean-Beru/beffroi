@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Push;
+namespace Beffroi\Bundle\Push;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\PushSubscription;
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Core\Exception\KeyNotFoundException;
-use Heidi\Core\Port\ApplicationServerKeyProviderInterface;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
 use function is_string;
 use Psr\Clock\ClockInterface;
 use function sprintf;

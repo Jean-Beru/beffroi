@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
 
 /**
  * A redirect URI as the client presented it (RFC 6749 §3.1.2), byte for byte.
@@ -13,7 +13,7 @@ use Heidi\Oidc\Domain\Client\RedirectUri;
  */
 final class RedirectUriType extends StringObjectType
 {
-    public const string NAME = 'heidi_redirect_uri';
+    public const string NAME = 'beffroi_redirect_uri';
 
     protected function encode(object $value): string
     {

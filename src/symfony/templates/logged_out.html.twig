@@ -1,7 +1,7 @@
 {# Shown after a logout request that has nowhere to send the user, or after the user chose to stay signed
-   in, in the locale of the request. Overridable by an application under templates/bundles/HeidiBundle/. #}
-{% extends '@Heidi/layout.html.twig' %}
-{% trans_default_domain 'heidi' %}
+   in, in the locale of the request. Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
 
 {% block title %}{{ (logged_out ? 'logged_out.title' : 'still_signed_in.title')|trans }}{% endblock %}
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Decision;
+namespace Beffroi\Bundle\Http\Decision;
 
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class ConsentRequiredRenderer implements DecisionRendererInterface
 {
-    public const string ROUTE = 'heidi_interaction_consent';
+    public const string ROUTE = 'beffroi_interaction_consent';
 
     public function __construct(
         private InteractionPage $page,

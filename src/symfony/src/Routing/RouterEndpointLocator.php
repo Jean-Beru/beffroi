@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Routing;
+namespace Beffroi\Bundle\Routing;
 
-use Heidi\Bundle\Controller\BackchannelAuthenticationController;
-use Heidi\Bundle\Controller\ClientConfigurationReadController;
-use Heidi\Bundle\Controller\ClientRegistrationController;
-use Heidi\Bundle\Controller\DeviceAuthorizationController;
-use Heidi\Bundle\Controller\DeviceVerificationController;
-use Heidi\Bundle\Controller\PendingApprovalsController;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
-use Heidi\Oidc\Domain\Discovery\ProviderMetadata;
-use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
-use Heidi\Oidc\Port\EndpointLocatorInterface;
-use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
+use Beffroi\Bundle\Controller\BackchannelAuthenticationController;
+use Beffroi\Bundle\Controller\ClientConfigurationReadController;
+use Beffroi\Bundle\Controller\ClientRegistrationController;
+use Beffroi\Bundle\Controller\DeviceAuthorizationController;
+use Beffroi\Bundle\Controller\DeviceVerificationController;
+use Beffroi\Bundle\Controller\PendingApprovalsController;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Discovery\ProviderEndpoints;
+use Beffroi\Oidc\Domain\Discovery\ProviderMetadata;
+use Beffroi\Oidc\Port\ClientConfigurationEndpointInterface;
+use Beffroi\Oidc\Port\EndpointLocatorInterface;
+use Beffroi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 use LogicException;
 use function rtrim;
 use function sprintf;
@@ -58,7 +58,7 @@ final readonly class RouterEndpointLocator implements ClientConfigurationEndpoin
     private function assertTheRoutesAreUnderTheIssuer(Tenant $tenant): void
     {
         $issuer = $tenant->issuer->value;
-        $discovery = $tenant->issuer->origin() . $this->path('heidi_protocol_discovery');
+        $discovery = $tenant->issuer->origin() . $this->path('beffroi_protocol_discovery');
         $expected = $issuer . ProviderMetadata::OPENID_CONFIGURATION_PATH;
         if ($discovery !== $expected) {
             throw new LogicException(sprintf(
@@ -110,14 +110,14 @@ final readonly class RouterEndpointLocator implements ClientConfigurationEndpoin
     private function endpointsUnder(string $origin): ProviderEndpoints
     {
         return new ProviderEndpoints(
-            $origin . $this->path('heidi_interaction_authorize'),
-            $origin . $this->path('heidi_protocol_token'),
-            $origin . $this->path('heidi_protocol_userinfo'),
-            $origin . $this->path('heidi_protocol_jwks'),
-            $origin . $this->path('heidi_interaction_logout'),
-            $origin . $this->path('heidi_protocol_introspection'),
-            $origin . $this->path('heidi_protocol_revocation'),
-            $origin . $this->path('heidi_protocol_pushed_authorization_request'),
+            $origin . $this->path('beffroi_interaction_authorize'),
+            $origin . $this->path('beffroi_protocol_token'),
+            $origin . $this->path('beffroi_protocol_userinfo'),
+            $origin . $this->path('beffroi_protocol_jwks'),
+            $origin . $this->path('beffroi_interaction_logout'),
+            $origin . $this->path('beffroi_protocol_introspection'),
+            $origin . $this->path('beffroi_protocol_revocation'),
+            $origin . $this->path('beffroi_protocol_pushed_authorization_request'),
             $origin . $this->path(DeviceAuthorizationController::ROUTE),
             $origin . $this->path(DeviceVerificationController::ROUTE),
             $origin . $this->path(BackchannelAuthenticationController::ROUTE),

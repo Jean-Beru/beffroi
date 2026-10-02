@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
-use Heidi\Oidc\Tests\Fixture\Logins;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
+use Beffroi\Oidc\Tests\Fixture\Logins;
 use PHPUnit\Framework\Attributes\Test;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\TestCase;
 
 /**

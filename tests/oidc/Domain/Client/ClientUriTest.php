@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client;
+namespace Beffroi\Oidc\Tests\Domain\Client;
 
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -32,7 +32,7 @@ final class ClientUriTest extends TestCase
         yield 'scheme in capitals (RFC 3986 §3.1, kept as registered)' => ['HTTPS://demo.localhost/login/check'];
         yield 'loopback host in capitals' => ['http://LOCALHOST:8000/login/check'];
         yield 'https with a query' => ['https://rp.example/cb?app=1'];
-        yield 'https with a port' => ['https://localhost:8443/test/a/heidi/callback'];
+        yield 'https with a port' => ['https://localhost:8443/test/a/beffroi/callback'];
         yield 'http on localhost' => ['http://localhost:8000/login/check'];
         yield 'http under localhost' => ['http://rp.localhost/login/check'];
         yield 'http on IPv4 loopback' => ['http://127.0.0.1:8000/cb'];

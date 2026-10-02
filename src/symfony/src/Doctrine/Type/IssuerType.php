@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Issuer;
 
 /**
  * The issuer identifier of a tenant (OIDC Discovery §3), stored as is.
@@ -13,7 +13,7 @@ use Heidi\Core\Domain\Tenant\Issuer;
  */
 final class IssuerType extends StringObjectType
 {
-    public const string NAME = 'heidi_issuer';
+    public const string NAME = 'beffroi_issuer';
 
     protected function encode(object $value): string
     {

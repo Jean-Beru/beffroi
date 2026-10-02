@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Client\ClientSecretInterface;
-use Heidi\Oidc\Domain\Client\GrantTypeName;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\ClientStoreInterface;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use function array_map;
@@ -42,7 +42,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
         $this->register();
 
         // When
-        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::CLIENT_ID);
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::CLIENT_ID);
 
         // Then
         static::assertSame(self::CLIENT_ID, $client?->registration->clientId);
@@ -64,7 +64,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
         ]);
 
         // When
-        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::CLIENT_ID);
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::CLIENT_ID);
 
         // Then
         static::assertInstanceOf(Client::class, $client);
@@ -286,8 +286,8 @@ final class RegisteredClientFlowTest extends BrowserTestCase
      */
     private function registerMembers(array $members, ?ClientSecretInterface $secret = null): void
     {
-        $secret ??= new HashedClientSecret(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->hash(self::SECRET));
-        self::service('test.heidi.client_store', ClientStoreInterface::class)
+        $secret ??= new HashedClientSecret(self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->hash(self::SECRET));
+        self::service('test.beffroi.client_store', ClientStoreInterface::class)
             ->save(new ClientRecord(
                 Uuid::v7(),
                 self::tenant(),
@@ -307,7 +307,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     private static function storedSecret(): string
     {
         $connection = self::entityManager()->getConnection();
-        $secret = $connection->fetchOne('SELECT secret FROM heidi_client WHERE client_id = :clientId', [
+        $secret = $connection->fetchOne('SELECT secret FROM beffroi_client WHERE client_id = :clientId', [
             'clientId' => self::CLIENT_ID,
         ]);
 

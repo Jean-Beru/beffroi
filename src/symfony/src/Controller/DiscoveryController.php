@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
-use Heidi\Oidc\Domain\Discovery\ProviderMetadata;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Oidc\Application\Discovery\DiscoveryHandler;
+use Beffroi\Oidc\Domain\Discovery\ProviderMetadata;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
@@ -31,8 +31,8 @@ final readonly class DiscoveryController
     ) {
     }
 
-    #[Route(ProviderMetadata::OPENID_CONFIGURATION_PATH, name: 'heidi_protocol_discovery', methods: ['GET'])]
-    #[Route(ProviderMetadata::AUTHORIZATION_SERVER_METADATA_PATH, name: 'heidi_protocol_authorization_server_metadata', methods: ['GET'])]
+    #[Route(ProviderMetadata::OPENID_CONFIGURATION_PATH, name: 'beffroi_protocol_discovery', methods: ['GET'])]
+    #[Route(ProviderMetadata::AUTHORIZATION_SERVER_METADATA_PATH, name: 'beffroi_protocol_authorization_server_metadata', methods: ['GET'])]
     public function __invoke(): Response
     {
         $metadata = $this->handler->handle($this->tenants->provide());

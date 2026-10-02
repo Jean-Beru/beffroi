@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Uid;
+namespace Beffroi\Core\Tests\Bridge\Uid;
 
-use Heidi\Core\Bridge\Uid\FixedUuidGenerator;
+use Beffroi\Core\Bridge\Uid\FixedUuidGenerator;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

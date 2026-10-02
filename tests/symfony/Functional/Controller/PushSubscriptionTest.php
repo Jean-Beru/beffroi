@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_decode;
-use Heidi\Core\Domain\Identity\PushSubscription;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use function strlen;
 use function strtr;
@@ -263,13 +263,13 @@ final class PushSubscriptionTest extends BrowserTestCase
     {
         self::reload();
 
-        return self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        return self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
     }
 
     private static function subscriptions(): PushSubscriptionRepositoryInterface
     {
         self::reload();
 
-        return self::service('test.heidi.push_subscriptions', PushSubscriptionRepositoryInterface::class);
+        return self::service('test.beffroi.push_subscriptions', PushSubscriptionRepositoryInterface::class);
     }
 }

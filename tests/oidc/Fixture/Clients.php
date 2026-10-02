@@ -2,39 +2,39 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
-use Heidi\Oidc\Domain\Ciba\DeliveryModeInterface;
-use Heidi\Oidc\Domain\Ciba\PingDelivery;
-use Heidi\Oidc\Domain\Ciba\PollDelivery;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
-use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
-use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientPresentation;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\GrantTypeName;
-use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
-use Heidi\Oidc\Domain\Client\ClientJwks;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\InitiateLoginUri;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\RequestUri;
-use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
-use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
-use Heidi\Oidc\Domain\Resource\ResourceIndicator;
-use Heidi\Oidc\Domain\Client\ResponseFormat;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Domain\Client\TokenExchange;
-use Heidi\Oidc\Domain\Exchange\MayAct;
-use Heidi\Oidc\Domain\Exchange\TokenTypeIdentifier;
-use Heidi\Oidc\Domain\Scope\Scope;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
+use Beffroi\Oidc\Domain\Ciba\DeliveryModeInterface;
+use Beffroi\Oidc\Domain\Ciba\PingDelivery;
+use Beffroi\Oidc\Domain\Ciba\PollDelivery;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Client\AccessTokenShapeInterface;
+use Beffroi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
+use Beffroi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\InitiateLoginUri;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Client\RequestUri;
+use Beffroi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
+use Beffroi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
+use Beffroi\Oidc\Domain\Client\ResponseFormat;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Client\TokenExchange;
+use Beffroi\Oidc\Domain\Exchange\MayAct;
+use Beffroi\Oidc\Domain\Exchange\TokenTypeIdentifier;
+use Beffroi\Oidc\Domain\Scope\Scope;
 
 final class Clients
 {

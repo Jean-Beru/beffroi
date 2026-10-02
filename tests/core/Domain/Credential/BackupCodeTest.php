@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace Beffroi\Bundle\Tests\Unit\Security;
 
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Bundle\Security\DecoyHashListener;
-use Heidi\Bundle\Security\RefusalCost;
-use Heidi\Bundle\Security\SecurityUser;
-use Heidi\Core\Application\Authentication\DecoyHash;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Bundle\Security\DecoyHashListener;
+use Beffroi\Bundle\Security\RefusalCost;
+use Beffroi\Bundle\Security\SecurityUser;
+use Beffroi\Core\Application\Authentication\DecoyHash;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;

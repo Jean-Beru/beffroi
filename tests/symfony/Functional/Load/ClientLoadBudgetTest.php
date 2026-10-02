@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Load;
+namespace Beffroi\Bundle\Tests\Functional\Load;
 
 use function base64_encode;
-use Heidi\Bundle\Load\LoadBudget;
-use Heidi\Bundle\Load\LoadRefusal;
-use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Event\LoadBudgetSpent;
+use Beffroi\Bundle\Load\LoadBudget;
+use Beffroi\Bundle\Load\LoadRefusal;
+use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -45,7 +45,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
 
     protected function setUp(): void
     {
-        $_SERVER['HEIDI_TEST_CLIENT_BUDGET'] = (string) self::BUDGET;
+        $_SERVER['BEFFROI_TEST_CLIENT_BUDGET'] = (string) self::BUDGET;
         parent::setUp();
         $this->browser->disableReboot();
         self::signingKey();
@@ -54,7 +54,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
     protected function tearDown(): void
     {
         parent::tearDown();
-        unset($_SERVER['HEIDI_TEST_CLIENT_BUDGET'], $_ENV['HEIDI_TEST_CLIENT_BUDGET']);
+        unset($_SERVER['BEFFROI_TEST_CLIENT_BUDGET'], $_ENV['BEFFROI_TEST_CLIENT_BUDGET']);
     }
 
     /**
@@ -138,7 +138,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
         $spent = self::refusals();
         static::assertCount(1, $spent);
         static::assertSame(LoadBudget::CLIENT, $spent[0]->budget);
-        static::assertSame('heidi_protocol_token', $spent[0]->route);
+        static::assertSame('beffroi_protocol_token', $spent[0]->route);
         static::assertSame(self::CLIENT_ID, $spent[0]->client);
     }
 

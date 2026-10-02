@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Port\PushedAuthorizationRequirementInterface;
 
 /**
  * What the registered clients of a tenant make of RFC 9126 §5: every one of them pushes its

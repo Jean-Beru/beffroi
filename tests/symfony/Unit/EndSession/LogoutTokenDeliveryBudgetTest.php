@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\EndSession;
+namespace Beffroi\Bundle\Tests\Unit\EndSession;
 
-use Heidi\Bundle\Configuration\BackChannelLogoutSection;
+use Beffroi\Bundle\Configuration\BackChannelLogoutSection;
 use DateInterval;
-use Heidi\Bundle\EndSession\LogoutTokenDeliveryBudget;
-use Heidi\Bundle\Http\LogoutTokenSender;
-use Heidi\Bundle\Messenger\NotificationRetryPolicy;
+use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
+use Beffroi\Bundle\Http\LogoutTokenSender;
+use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;

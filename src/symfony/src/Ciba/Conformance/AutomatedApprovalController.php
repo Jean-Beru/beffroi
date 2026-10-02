@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Ciba\Conformance;
+namespace Beffroi\Bundle\Ciba\Conformance;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Authentication\PasswordAuthenticator;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Application\Ciba\BackchannelApproval;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Application\Ciba\BackchannelApproval;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use function is_string;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,7 +40,7 @@ use function sprintf;
 #[AsController]
 final readonly class AutomatedApprovalController
 {
-    public const string ROUTE = 'heidi_ciba_conformance_approval';
+    public const string ROUTE = 'beffroi_ciba_conformance_approval';
 
     /**
      * The identifier of the request, as the suite substitutes it into the URL it was configured with

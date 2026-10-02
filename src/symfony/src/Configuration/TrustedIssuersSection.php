@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Oidc\Application\Trust\IssuerAssertionValidator;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
+use Beffroi\Oidc\Application\Trust\IssuerAssertionValidator;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
 use function is_array;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;

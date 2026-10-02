@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Exchange;
+namespace Beffroi\Oidc\Tests\Domain\Exchange;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Oidc\Domain\Exchange\Actor;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Oidc\Domain\Exchange\Actor;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

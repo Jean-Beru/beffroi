@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Domain\Ciba\BindingMessage;
+use Beffroi\Oidc\Domain\Ciba\BindingMessage;
 
 /**
  * The message shown to a user beside the name of the client that asked (CIBA Core §7.1), stored as the
@@ -15,7 +15,7 @@ use Heidi\Oidc\Domain\Ciba\BindingMessage;
  */
 final class BindingMessageType extends StringObjectType
 {
-    public const string NAME = 'heidi_binding_message';
+    public const string NAME = 'beffroi_binding_message';
 
     protected function encode(object $value): string
     {

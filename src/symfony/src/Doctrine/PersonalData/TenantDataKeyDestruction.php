@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use function count;
 use Doctrine\DBAL\Connection;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Domain\Event\TenantDataKeysDestroyed;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use function sprintf;
 

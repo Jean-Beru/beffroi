@@ -29,7 +29,7 @@ use function Castor\run;
  * Where the dump is written. Under var/, which the repository ignores: it is the one file of this walk that
  * holds every personal datum of the stack in whatever form the database keeps it.
  */
-const DUMP_FILE = 'var/dump/heidi.sql';
+const DUMP_FILE = 'var/dump/beffroi.sql';
 
 /**
  * The shortest value the search accepts, in bytes, and the reason is the same arithmetic as the one of the
@@ -60,7 +60,7 @@ const DUMP_BACKENDS = [
     'sodium' => 'played: "castor provision --kms sodium", the default of a development stack',
     'file' => 'played: "castor provision --kms file", the self-hosted default without a KMS',
     'aws' => 'played: "castor start --kms aws" and "castor provision --kms aws", LocalStack',
-    'vault' => 'not playable yet: the data key store cannot wrap under a derived Transit key, which is the only kind docker/vault/init.sh creates, so the provision fails before a row is written (heidi#420, fixed upstream in symfony/symfony#66527 and not released)',
+    'vault' => 'not playable yet: the data key store cannot wrap under a derived Transit key, which is the only kind docker/vault/init.sh creates, so the provision fails before a row is written (beffroi#420, fixed upstream in symfony/symfony#66527 and not released)',
 ];
 
 /**
@@ -73,7 +73,7 @@ const DUMP_LABORATORY_USER_AGENT = 'Symfony HttpClient';
 /**
  * The credentials of the database container, as compose.yaml declares them.
  */
-const DUMP_DATABASE_DEFAULTS = ['user' => 'heidi', 'database' => 'heidi'];
+const DUMP_DATABASE_DEFAULTS = ['user' => 'beffroi', 'database' => 'beffroi'];
 
 #[AsTask(
     description: 'Search a pg_dump of the running database for what the provision and the walks wrote: no personal datum appears in the clear, and a finding names the value, the table, the column and the offset',
@@ -118,7 +118,7 @@ function dump_search(
     $canary = dump_canary();
     if (dump_findings($dump, [$canary]) === []) {
         io()->error(sprintf(
-            'The search did not find "%s", which heidi_tenant.issuer holds in the clear and which the classification of the schema declares readable (SchemaColumns). A search that misses what is there would miss what leaks, so this run says nothing about the dump.',
+            'The search did not find "%s", which beffroi_tenant.issuer holds in the clear and which the classification of the schema declares readable (SchemaColumns). A search that misses what is there would miss what leaks, so this run says nothing about the dump.',
             $canary,
         ));
 
@@ -184,8 +184,8 @@ function dump_take(): string
     $dump = $process->getOutput();
     file_put_contents(DUMP_FILE, $dump);
 
-    if (! str_contains($dump, 'COPY public.heidi_user ')) {
-        io()->error('The dump holds no row of heidi_user: provision the stack and play a journey before searching it ("castor provision", then "castor demo --check").');
+    if (! str_contains($dump, 'COPY public.beffroi_user ')) {
+        io()->error('The dump holds no row of beffroi_user: provision the stack and play a journey before searching it ("castor provision", then "castor demo --check").');
 
         exit(1);
     }
@@ -327,7 +327,7 @@ function dump_backend(): string
     }
 
     load_dot_env(DEV_ENV_LOCAL);
-    $dsn = $_SERVER['HEIDI_KMS_DSN'] ?? '';
+    $dsn = $_SERVER['BEFFROI_KMS_DSN'] ?? '';
 
     return is_string($dsn) && str_contains($dsn, '://')
         ? (string) strstr($dsn, '://', true)
@@ -358,7 +358,7 @@ function dump_canary(): string
             '-t',
             '-A',
             '-c',
-            'SELECT issuer FROM heidi_tenant LIMIT 1',
+            'SELECT issuer FROM beffroi_tenant LIMIT 1',
         ],
         context: context()->withQuiet()->withAllowFailure(),
     );

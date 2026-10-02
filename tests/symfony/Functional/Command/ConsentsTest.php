@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace Beffroi\Bundle\Tests\Functional\Command;
 
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Domain\Token\UserAuthorization;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
-use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
-use Heidi\Oidc\Tests\Fixture\Grants;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -101,7 +101,7 @@ final class ConsentsTest extends ConsoleTestCase
 
     private static function revoke(string $username, string $clientId): CommandTester
     {
-        return self::console('heidi:user:revoke-consent', [
+        return self::console('beffroi:user:revoke-consent', [
             'username' => $username,
             'client-id' => $clientId,
         ]);
@@ -109,21 +109,21 @@ final class ConsentsTest extends ConsoleTestCase
 
     private static function consents(): ConsentRepositoryInterface
     {
-        return self::service('test.heidi.consents', ConsentRepositoryInterface::class);
+        return self::service('test.beffroi.consents', ConsentRepositoryInterface::class);
     }
 
     private static function codes(): AuthorizationCodeRepositoryInterface
     {
-        return self::service('test.heidi.authorization_codes', AuthorizationCodeRepositoryInterface::class);
+        return self::service('test.beffroi.authorization_codes', AuthorizationCodeRepositoryInterface::class);
     }
 
     private static function refreshTokens(): RefreshTokenRepositoryInterface
     {
-        return self::service('test.heidi.refresh_tokens', RefreshTokenRepositoryInterface::class);
+        return self::service('test.beffroi.refresh_tokens', RefreshTokenRepositoryInterface::class);
     }
 
     private static function accessTokens(): AccessTokenRepositoryInterface
     {
-        return self::service('test.heidi.access_tokens_store', AccessTokenRepositoryInterface::class);
+        return self::service('test.beffroi.access_tokens_store', AccessTokenRepositoryInterface::class);
     }
 }

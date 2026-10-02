@@ -2,443 +2,443 @@
 
 declare(strict_types=1);
 
-use Heidi\Oidc\Application\Secret\SecretDrawer;
-use Heidi\Oidc\Application\Secret\UserCodeDrawer;
-use Heidi\Core\Port\RandomnessInterface;
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Bundle\Ciba\QueuedPendingApprovalNotifier;
-use Heidi\Bundle\Cache\SeenOnce;
-use Heidi\Bundle\Client\ClientAssertionReplayGuard;
-use Heidi\Bundle\Client\SoftwareStatementReplayGuard;
-use Heidi\Bundle\Trust\IssuerAssertionReplayGuard;
-use Heidi\Bundle\Client\RequestObjectReplayGuard;
-use Heidi\Bundle\Client\ClientJwksCache;
-use Heidi\Bundle\Client\ClientJwksFetcher;
-use Heidi\Bundle\Client\RequestObjectFetcher;
-use Heidi\Bundle\Client\SectorIdentifierDocumentFetcher;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineClientRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineInitialAccessTokenRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrinePairwiseSubjectRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineBackchannelAuthenticationRecordRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineLinkedIdentityRepository;
-use Heidi\Bundle\Doctrine\Repository\DoctrineUserRepository;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Doctrine\TenantSynchronizer;
-use Heidi\Bundle\Dpop\CachedDpopNonce;
-use Heidi\Bundle\Dpop\CachedDpopProofReplayGuard;
-use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
-use Heidi\Bundle\EndSession\LogoutChannels;
-use Heidi\Bundle\EndSession\LogoutTokenDeliveryBudget;
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\AccountHomePage;
-use Heidi\Bundle\Http\Account\AccountSections;
-use Heidi\Bundle\Http\Account\PasskeysSection;
-use Heidi\Bundle\Http\Account\ProfileSection;
-use Heidi\Bundle\Http\Account\ApprovalsSection;
-use Heidi\Bundle\Http\Account\ConsentsSection;
-use Heidi\Bundle\Http\Account\TwoFactorSection;
-use Heidi\Bundle\Http\AuthorizationRequestReader;
-use Heidi\Bundle\Http\Decision\ConsentRequiredRenderer;
-use Heidi\Bundle\Http\Decision\DecisionRenderers;
-use Heidi\Bundle\Http\Decision\GrantedRenderer;
-use Heidi\Bundle\Http\Decision\InteractionPage;
-use Heidi\Bundle\Http\Decision\LoginRequiredRenderer;
-use Heidi\Bundle\Http\FapiInteractionId;
-use Heidi\Bundle\Http\FormToken;
-use Heidi\Bundle\Http\DeviceApprovalPage;
-use Heidi\Bundle\Http\LoginTarget;
-use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Locale\ServedLocales;
-use Heidi\Bundle\Locale\UserLocale;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\ClientNotificationSender;
-use Heidi\Bundle\Http\PendingApprovalsPage;
-use Heidi\Bundle\Http\LogoutTokenSender;
-use Heidi\Bundle\Http\PasskeyOptionsStore;
-use Heidi\Bundle\Http\ProfilePage;
-use Heidi\Bundle\Http\PasskeysPage;
-use Heidi\Bundle\Http\ConsentsPage;
-use Heidi\Bundle\Http\PendingLoginStore;
-use Heidi\Bundle\Http\QrCode;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
-use Heidi\Bundle\Http\ResponseMode\FormPostResponseRenderer;
-use Heidi\Bundle\Http\ResponseMode\QueryResponseRenderer;
-use Heidi\Bundle\Http\ResponseMode\SignedFormPostResponseRenderer;
-use Heidi\Bundle\Http\ResponseMode\SignedQueryResponseRenderer;
-use Heidi\Bundle\Http\Tls\ClientCertificateResolverInterface;
-use Heidi\Bundle\Http\Tls\EdgeClientCertificateResolver;
-use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
-use Heidi\Bundle\Http\TotpProvisioningSealer;
-use Heidi\Bundle\Http\TotpProvisioningStore;
-use Heidi\Bundle\Http\TwoFactorPage;
-use Heidi\Bundle\Key\FilePairwiseSalt;
-use Heidi\Bundle\Key\FileTenantKeyRepository;
-use Heidi\Bundle\Key\KmsUnavailableListener;
-use Heidi\Bundle\Load\LoadBudget;
-use Heidi\Bundle\Load\LoadRefusal;
-use Heidi\Bundle\Load\LoadRefusalListener;
-use Heidi\Bundle\Load\OriginLoadListener;
-use Heidi\Bundle\Load\RateLimitedClientLoad;
-use Heidi\Bundle\MessageHandler\TellUserOfPendingApprovalHandler;
-use Heidi\Bundle\MessageHandler\QueueLogoutTokenHandler;
-use Heidi\Bundle\Messenger\EventBusDispatcher;
-use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
-use Heidi\Bundle\Messenger\NotificationRetryPolicy;
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Bundle\Plane\PlaneRequestListener;
-use Heidi\Bundle\Routing\RouterEndpointLocator;
-use Heidi\Bundle\Scheduler\HeidiSchedule;
-use Heidi\Bundle\Security\CorePasswordHasher;
-use Heidi\Bundle\Security\DecoyHashListener;
-use Heidi\Bundle\Security\IdentityUserProvider;
-use Heidi\Bundle\Security\InteractionLoginHandler;
-use Heidi\Bundle\Security\LoginFailureListener;
-use Heidi\Bundle\Security\LoginSuccessListener;
-use Heidi\Bundle\Security\PasskeyLogin;
-use Heidi\Bundle\Security\PasskeyLoginAuthenticator;
-use Heidi\Bundle\Security\PassportProofs;
-use Heidi\Bundle\Security\PasswordAttemptListener;
-use Heidi\Bundle\Security\DatedPasswordCredential;
-use Heidi\Bundle\Security\PasswordLogin;
-use Heidi\Bundle\Security\RateLimitedAttempts;
-use Heidi\Bundle\Security\RefusalCost;
-use Heidi\Bundle\Security\SecondFactorGate;
-use Heidi\Bundle\Security\TotpLogin;
-use Heidi\Bundle\Security\TotpLoginAuthenticator;
-use Heidi\Bundle\Security\UserChecker;
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
-use Heidi\Core\Application\Authentication\DecoyHash;
-use Heidi\Core\Application\Authentication\AuthenticationRefusal;
-use Heidi\Core\Application\Authentication\LoginCompletion;
-use Heidi\Core\Application\Authentication\PasswordAuthenticator;
-use Heidi\Core\Application\Authentication\SecondFactorRequirement;
-use Heidi\Core\Application\Authentication\SessionOpener;
-use Heidi\Core\Application\Authentication\SessionTerminator;
-use Heidi\Core\Application\Credential\ActiveCredentials;
-use Heidi\Core\Application\Credential\CredentialRevocation;
-use Heidi\Core\Application\Identity\IdentityLinker;
-use Heidi\Core\Application\Identity\UserProvisioner;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Application\Passkey\PasskeyAuthentication;
-use Heidi\Core\Application\Passkey\PasskeyEnrolment;
-use Heidi\Core\Application\Totp\ActiveTotp;
-use Heidi\Core\Application\Totp\TotpAuthentication;
-use Heidi\Core\Application\Totp\TotpCodeMatcher;
-use Heidi\Core\Application\Totp\TotpEnrolment;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Es256;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Ps256;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
-use Heidi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Heidi\Core\Bridge\Null\NullGeoLocator;
-use Heidi\Core\Bridge\Null\NullUserAgentParser;
-use Heidi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
-use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
-use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
-use Heidi\Core\Bridge\Webauthn\StoredMetadata;
-use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
-use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
-use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CodeAttemptLimiterInterface;
-use Heidi\Core\Port\ContentEncryptionAlgorithmsInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\DecryptionKeyProviderInterface;
-use Heidi\Core\Port\GeoLocatorInterface;
-use Heidi\Core\Port\JweDecrypterInterface;
-use Heidi\Core\Port\JwsSignerInterface;
-use Heidi\Core\Port\JwsVerifierInterface;
-use Heidi\Core\Port\KeyAlgorithmsInterface;
-use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
-use Heidi\Core\Port\KeyPairGeneratorInterface;
-use Heidi\Core\Port\KeySealerInterface;
-use Heidi\Core\Port\MetadataBlobStoreInterface;
-use Heidi\Core\Port\PasskeyAuthenticatorInterface;
-use Heidi\Core\Port\PasskeyRegistrarInterface;
-use Heidi\Core\Port\PasswordAttemptLimiterInterface;
-use Heidi\Core\Port\PasswordAlgorithmsInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\UuidGeneratorInterface;
-use Heidi\Core\Port\PublicKeySetProviderInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Core\Port\SigningKeyProviderInterface;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
-use Heidi\Core\Port\TotpAlgorithmInterface;
-use Heidi\Core\Port\UserAgentParserInterface;
-use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Oidc\Application\Authorization\AuthenticationRequirement;
-use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
-use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
-use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
-use Heidi\Oidc\Application\Authorization\CodeChallengeMethods;
-use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
-use Heidi\Oidc\Application\Authorization\RequestObjectReader;
-use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
-use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
-use Heidi\Oidc\Application\Authorization\ResponseDocumentIssuer;
-use Heidi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
-use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
-use Heidi\Oidc\Application\Claims\Sector\JwksUriSectorIdentifier;
-use Heidi\Oidc\Application\Claims\Sector\RedirectUriSectorIdentifier;
-use Heidi\Oidc\Application\Claims\Sector\RegisteredSectorIdentifier;
-use Heidi\Oidc\Application\Claims\SectorIdentifiers;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
-use Heidi\Oidc\Application\Claims\ServedClaims;
-use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
-use Heidi\Oidc\Application\Client\AcceptedAssertionAudiences;
-use Heidi\Oidc\Application\Client\ClientIdentifierDrawer;
-use Heidi\Oidc\Application\Client\ClientMetadataReader;
-use Heidi\Oidc\Application\Client\ClientAssertionValidator;
-use Heidi\Oidc\Application\Client\RegisteredClients;
-use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
-use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
-use Heidi\Oidc\Application\Client\ClientAuthenticator;
-use Heidi\Oidc\Application\Client\ClientDocumentIssuer;
-use Heidi\Oidc\Application\Client\ClientKeySetProvider;
-use Heidi\Oidc\Application\Client\Method\ClientSecretBasic;
-use Heidi\Oidc\Application\Client\Method\ClientSecretJwt;
-use Heidi\Oidc\Application\Client\Method\ClientSecretPost;
-use Heidi\Oidc\Application\Client\Method\NoAuthentication;
-use Heidi\Oidc\Application\Client\Method\PrivateKeyJwt;
-use Heidi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
-use Heidi\Oidc\Application\Client\Method\TlsClientAuth;
-use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
-use Heidi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClientRegistration;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedBackchannelAuthentication;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDeviceAuthorization;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIdToken;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClientAuthentication;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedClaims;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedRequestObjects;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedPkce;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedRevocation;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedPushedAuthorization;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIntrospection;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedIssuerParameter;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedLogout;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTls;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedDpop;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTlsEndpoints;
-use Heidi\Oidc\Application\AuthorizationDetails\ServedAuthorizationDetailTypes;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthorizationDetails;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedProtectedResources;
-use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Application\Dpop\DpopProofValidator;
-use Heidi\Oidc\Application\Dpop\DpopProofVerifier;
-use Heidi\Oidc\Application\EndSession\BackChannelLogout;
-use Heidi\Oidc\Application\EndSession\EndSessionHandler;
-use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
-use Heidi\Oidc\Application\EndSession\FrontChannelLogout;
-use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
-use Heidi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
-use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
-use Heidi\Oidc\Application\Key\AccessTokenJwsKind;
-use Heidi\Oidc\Application\Key\IdTokenJwsKind;
-use Heidi\Oidc\Application\Key\LogoutTokenJwsKind;
-use Heidi\Oidc\Application\Key\PushedRequestJweKind;
-use Heidi\Oidc\Application\Key\RequestObjectJweKind;
-use Heidi\Oidc\Application\Key\ResponseDocumentJwsKind;
-use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
-use Heidi\Oidc\Application\Consent\ConsentGranting;
-use Heidi\Oidc\Application\Consent\RequiredConsent;
-use Heidi\Oidc\Application\Consent\ConsentRevocation;
-use Heidi\Oidc\Application\Exchange\PresentedAccessTokenType;
-use Heidi\Oidc\Application\Exchange\PresentedTokenTypes;
-use Heidi\Oidc\Application\Grant\RecordedGrants;
-use Heidi\Oidc\Application\Trust\IssuerAssertionValidator;
-use Heidi\Oidc\Application\Ciba\ApprovalAuthenticationRequirement;
-use Heidi\Oidc\Application\Ciba\BackchannelApproval;
-use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
-use Heidi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
-use Heidi\Oidc\Application\Hint\LoginHints;
-use Heidi\Oidc\Application\Hint\SubjectLoginHint;
-use Heidi\Oidc\Application\Hint\UsernameLoginHint;
-use Heidi\Oidc\Application\Ciba\ServedDeliveryModes;
-use Heidi\Oidc\Application\Ciba\SignedBackchannelRequest;
-use Heidi\Oidc\Application\Ciba\UserHints;
-use Heidi\Oidc\Application\Device\DeviceApproval;
-use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
-use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
-use Heidi\Oidc\Application\Revocation\RevocationHandler;
-use Heidi\Oidc\Application\Token\AccessTokenInspector;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
-use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
-use Heidi\Oidc\Application\Token\ClientCredentialsGrant;
-use Heidi\Oidc\Application\Token\JwtBearerGrant;
-use Heidi\Oidc\Application\Token\TokenExchangeGrant;
-use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
-use Heidi\Oidc\Application\Token\DeviceCodeGrant;
-use Heidi\Oidc\Application\Token\RefreshTokenDue;
-use Heidi\Oidc\Application\Token\RequestedAuthorizationDetails;
-use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
-use Heidi\Oidc\Application\Token\Confirmations;
-use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
-use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
-use Heidi\Oidc\Application\Token\PresentedAccessTokenParser;
-use Heidi\Oidc\Application\Token\RefreshTokenGrant;
-use Heidi\Oidc\Application\Token\ServedAccessTokenShapes;
-use Heidi\Oidc\Application\Token\ServedGrants;
-use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
-use Heidi\Oidc\Application\Token\TokenHandler;
-use Heidi\Oidc\Application\Token\TokenIssuer;
-use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
-use Heidi\Oidc\Bridge\Null\NoDpopNonce;
-use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
-use Heidi\Oidc\Port\AccessTokenIssuerInterface;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\ActiveConsentsInterface;
-use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
-use Heidi\Oidc\Port\RecordedGrantsInterface;
-use Heidi\Oidc\Port\CertificateReaderInterface;
-use Heidi\Oidc\Port\ClaimsProviderInterface;
-use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
-use Heidi\Oidc\Port\IssuerAssertionReplayGuardInterface;
-use Heidi\Oidc\Port\SoftwareStatementReplayGuardInterface;
-use Heidi\Oidc\Port\PresentedTokenTypesInterface;
-use Heidi\Oidc\Port\TrustedIssuersInterface;
-use Heidi\Oidc\Port\RequestObjectReplayGuardInterface;
-use Heidi\Oidc\Port\ClientAssertionSecretVerifierInterface;
-use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
-use Heidi\Oidc\Port\CodeChallengeMethodsInterface;
-use Heidi\Oidc\Port\ClientJwksCacheInterface;
-use Heidi\Oidc\Port\ClientJwksFetcherInterface;
-use Heidi\Oidc\Domain\Token\CertificateConfirmationKind;
-use Heidi\Oidc\Domain\Token\KeyConfirmationKind;
-use Heidi\Oidc\Port\ClientLoadBudgetInterface;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
-use Heidi\Oidc\Port\ConfirmationReaderInterface;
-use Heidi\Oidc\Port\ServedTokenSchemesInterface;
-use Heidi\Oidc\Port\RegisteredResourcesInterface;
-use Heidi\Oidc\Port\ClientStoreInterface;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
-use Heidi\Oidc\Application\Client\Registration\ClientUseRecording;
-use Heidi\Oidc\Application\Client\ClientInventory;
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenRevocation;
-use Heidi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
-use Heidi\Oidc\Application\Client\Registration\UnusedClientRemoval;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReader;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationRemoval;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReplacement;
-use Heidi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
-use Heidi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
-use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
-use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
-use Heidi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
-use Heidi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
-use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
-use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
-use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
-use Heidi\Oidc\Application\Scope\OfferedScopes;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
-use Heidi\Oidc\Port\ClientRegistrationPolicyInterface;
-use Heidi\Oidc\Port\ClientInventoryInterface;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\IssuedInitialAccessTokensInterface;
-use Heidi\Oidc\Port\OfferedScopesInterface;
-use Heidi\Oidc\Port\RegisteredScopesInterface;
-use Heidi\Oidc\Port\RegisteredAccessTokenShapesInterface;
-use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
-use Heidi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
-use Heidi\Oidc\Port\ServedGrantsInterface;
-use Heidi\Oidc\Port\CompactJwtReaderInterface;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
-use Heidi\Oidc\Port\RefreshTokensOfAConsentInterface;
-use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
-use Heidi\Oidc\Port\EndpointLocatorInterface;
-use Heidi\Oidc\Port\IdTokenIssuerInterface;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
-use Heidi\Oidc\Port\JweEncrypterInterface;
-use Heidi\Oidc\Port\JwtKeyVerifierInterface;
-use Heidi\Oidc\Port\LoggedInClientsInterface;
-use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
-use Heidi\Oidc\Port\ProofKeyVerifierInterface;
-use Heidi\Oidc\Port\ProvableMethodsInterface;
-use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Domain\Ciba\PingDelivery;
-use Heidi\Oidc\Domain\Ciba\PollDelivery;
-use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
-use Heidi\Oidc\Port\PendingApprovalNotifierInterface;
-use Heidi\Oidc\Port\ServedDeliveryModesInterface;
-use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
-use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
-use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
-use Heidi\Oidc\Port\RequestObjectFetcherInterface;
-use Heidi\Oidc\Port\LogoutTokenDeliveryInterface;
-use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
-use Heidi\Oidc\Port\ServedResponseModesInterface;
-use Heidi\Oidc\Port\AssignedSubjectTypesInterface;
-use Heidi\Oidc\Port\PairwiseSaltInterface;
-use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
-use Heidi\Oidc\Port\PresentedSubjectReaderInterface;
-use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
-use Heidi\Oidc\Port\SectorIdentifiersInterface;
-use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
-use Heidi\Oidc\Port\UnsignedRequestObjectsInterface;
+use Beffroi\Oidc\Application\Secret\SecretDrawer;
+use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
+use Beffroi\Core\Port\RandomnessInterface;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Bundle\Ciba\QueuedPendingApprovalNotifier;
+use Beffroi\Bundle\Cache\SeenOnce;
+use Beffroi\Bundle\Client\ClientAssertionReplayGuard;
+use Beffroi\Bundle\Client\SoftwareStatementReplayGuard;
+use Beffroi\Bundle\Trust\IssuerAssertionReplayGuard;
+use Beffroi\Bundle\Client\RequestObjectReplayGuard;
+use Beffroi\Bundle\Client\ClientJwksCache;
+use Beffroi\Bundle\Client\ClientJwksFetcher;
+use Beffroi\Bundle\Client\RequestObjectFetcher;
+use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineInitialAccessTokenRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrinePairwiseSubjectRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineBackchannelAuthenticationRecordRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineLinkedIdentityRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineUserRepository;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Doctrine\TenantSynchronizer;
+use Beffroi\Bundle\Dpop\CachedDpopNonce;
+use Beffroi\Bundle\Dpop\CachedDpopProofReplayGuard;
+use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
+use Beffroi\Bundle\EndSession\LogoutChannels;
+use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\AccountHomePage;
+use Beffroi\Bundle\Http\Account\AccountSections;
+use Beffroi\Bundle\Http\Account\PasskeysSection;
+use Beffroi\Bundle\Http\Account\ProfileSection;
+use Beffroi\Bundle\Http\Account\ApprovalsSection;
+use Beffroi\Bundle\Http\Account\ConsentsSection;
+use Beffroi\Bundle\Http\Account\TwoFactorSection;
+use Beffroi\Bundle\Http\AuthorizationRequestReader;
+use Beffroi\Bundle\Http\Decision\ConsentRequiredRenderer;
+use Beffroi\Bundle\Http\Decision\DecisionRenderers;
+use Beffroi\Bundle\Http\Decision\GrantedRenderer;
+use Beffroi\Bundle\Http\Decision\InteractionPage;
+use Beffroi\Bundle\Http\Decision\LoginRequiredRenderer;
+use Beffroi\Bundle\Http\FapiInteractionId;
+use Beffroi\Bundle\Http\FormToken;
+use Beffroi\Bundle\Http\DeviceApprovalPage;
+use Beffroi\Bundle\Http\LoginTarget;
+use Beffroi\Bundle\Http\AuthorizationRequestReaderInterface;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Bundle\Http\AuthorizationResponderInterface;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Locale\ServedLocales;
+use Beffroi\Bundle\Locale\UserLocale;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\ClientNotificationSender;
+use Beffroi\Bundle\Http\PendingApprovalsPage;
+use Beffroi\Bundle\Http\LogoutTokenSender;
+use Beffroi\Bundle\Http\PasskeyOptionsStore;
+use Beffroi\Bundle\Http\ProfilePage;
+use Beffroi\Bundle\Http\PasskeysPage;
+use Beffroi\Bundle\Http\ConsentsPage;
+use Beffroi\Bundle\Http\PendingLoginStore;
+use Beffroi\Bundle\Http\QrCode;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
+use Beffroi\Bundle\Http\ResponseMode\FormPostResponseRenderer;
+use Beffroi\Bundle\Http\ResponseMode\QueryResponseRenderer;
+use Beffroi\Bundle\Http\ResponseMode\SignedFormPostResponseRenderer;
+use Beffroi\Bundle\Http\ResponseMode\SignedQueryResponseRenderer;
+use Beffroi\Bundle\Http\Tls\ClientCertificateResolverInterface;
+use Beffroi\Bundle\Http\Tls\EdgeClientCertificateResolver;
+use Beffroi\Bundle\Http\Tls\PresentedClientCertificate;
+use Beffroi\Bundle\Http\TotpProvisioningSealer;
+use Beffroi\Bundle\Http\TotpProvisioningStore;
+use Beffroi\Bundle\Http\TwoFactorPage;
+use Beffroi\Bundle\Key\FilePairwiseSalt;
+use Beffroi\Bundle\Key\FileTenantKeyRepository;
+use Beffroi\Bundle\Key\KmsUnavailableListener;
+use Beffroi\Bundle\Load\LoadBudget;
+use Beffroi\Bundle\Load\LoadRefusal;
+use Beffroi\Bundle\Load\LoadRefusalListener;
+use Beffroi\Bundle\Load\OriginLoadListener;
+use Beffroi\Bundle\Load\RateLimitedClientLoad;
+use Beffroi\Bundle\MessageHandler\TellUserOfPendingApprovalHandler;
+use Beffroi\Bundle\MessageHandler\QueueLogoutTokenHandler;
+use Beffroi\Bundle\Messenger\EventBusDispatcher;
+use Beffroi\Bundle\Messenger\LogoutTokenGivenUpListener;
+use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Bundle\Plane\PlaneRequestListener;
+use Beffroi\Bundle\Routing\RouterEndpointLocator;
+use Beffroi\Bundle\Scheduler\BeffroiSchedule;
+use Beffroi\Bundle\Security\CorePasswordHasher;
+use Beffroi\Bundle\Security\DecoyHashListener;
+use Beffroi\Bundle\Security\IdentityUserProvider;
+use Beffroi\Bundle\Security\InteractionLoginHandler;
+use Beffroi\Bundle\Security\LoginFailureListener;
+use Beffroi\Bundle\Security\LoginSuccessListener;
+use Beffroi\Bundle\Security\PasskeyLogin;
+use Beffroi\Bundle\Security\PasskeyLoginAuthenticator;
+use Beffroi\Bundle\Security\PassportProofs;
+use Beffroi\Bundle\Security\PasswordAttemptListener;
+use Beffroi\Bundle\Security\DatedPasswordCredential;
+use Beffroi\Bundle\Security\PasswordLogin;
+use Beffroi\Bundle\Security\RateLimitedAttempts;
+use Beffroi\Bundle\Security\RefusalCost;
+use Beffroi\Bundle\Security\SecondFactorGate;
+use Beffroi\Bundle\Security\TotpLogin;
+use Beffroi\Bundle\Security\TotpLoginAuthenticator;
+use Beffroi\Bundle\Security\UserChecker;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
+use Beffroi\Core\Application\Authentication\DecoyHash;
+use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
+use Beffroi\Core\Application\Authentication\LoginCompletion;
+use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
+use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
+use Beffroi\Core\Application\Authentication\SessionOpener;
+use Beffroi\Core\Application\Authentication\SessionTerminator;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\CredentialRevocation;
+use Beffroi\Core\Application\Identity\IdentityLinker;
+use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Passkey\PasskeyAuthentication;
+use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
+use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Application\Totp\TotpAuthentication;
+use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Application\Totp\TotpEnrolment;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Es256;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Ps256;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
+use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
+use Beffroi\Core\Bridge\Null\NullGeoLocator;
+use Beffroi\Core\Bridge\Null\NullUserAgentParser;
+use Beffroi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2i;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Bridge\Password\NativePasswordHasher;
+use Beffroi\Core\Bridge\Password\PasswordHasherRegistry;
+use Beffroi\Core\Bridge\Password\WiredPasswordAlgorithms;
+use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
+use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
+use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CodeAttemptLimiterInterface;
+use Beffroi\Core\Port\ContentEncryptionAlgorithmsInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\DecryptionKeyProviderInterface;
+use Beffroi\Core\Port\GeoLocatorInterface;
+use Beffroi\Core\Port\JweDecrypterInterface;
+use Beffroi\Core\Port\JwsSignerInterface;
+use Beffroi\Core\Port\JwsVerifierInterface;
+use Beffroi\Core\Port\KeyAlgorithmsInterface;
+use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
+use Beffroi\Core\Port\KeyPairGeneratorInterface;
+use Beffroi\Core\Port\KeySealerInterface;
+use Beffroi\Core\Port\MetadataBlobStoreInterface;
+use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
+use Beffroi\Core\Port\PasskeyRegistrarInterface;
+use Beffroi\Core\Port\PasswordAttemptLimiterInterface;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Port\UuidGeneratorInterface;
+use Beffroi\Core\Port\PublicKeySetProviderInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Core\Port\SigningKeyProviderInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Port\TotpAlgorithmInterface;
+use Beffroi\Core\Port\UserAgentParserInterface;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Oidc\Application\Authorization\AuthenticationRequirement;
+use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
+use Beffroi\Oidc\Application\Authorization\AuthorizationHandler;
+use Beffroi\Oidc\Application\Authorization\AuthorizationRequestParser;
+use Beffroi\Oidc\Application\Authorization\CodeChallengeMethods;
+use Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Beffroi\Oidc\Application\Authorization\RequestObjectReader;
+use Beffroi\Oidc\Application\Authorization\RequestObjectResolver;
+use Beffroi\Oidc\Application\Authorization\RequestObjectValidator;
+use Beffroi\Oidc\Application\Authorization\ResponseDocumentIssuer;
+use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
+use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
+use Beffroi\Oidc\Application\Claims\Sector\JwksUriSectorIdentifier;
+use Beffroi\Oidc\Application\Claims\Sector\RedirectUriSectorIdentifier;
+use Beffroi\Oidc\Application\Claims\Sector\RegisteredSectorIdentifier;
+use Beffroi\Oidc\Application\Claims\SectorIdentifiers;
+use Beffroi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
+use Beffroi\Oidc\Application\Claims\ServedClaims;
+use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
+use Beffroi\Oidc\Application\Client\AcceptedAssertionAudiences;
+use Beffroi\Oidc\Application\Client\ClientIdentifierDrawer;
+use Beffroi\Oidc\Application\Client\ClientMetadataReader;
+use Beffroi\Oidc\Application\Client\ClientAssertionValidator;
+use Beffroi\Oidc\Application\Client\RegisteredClients;
+use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
+use Beffroi\Oidc\Application\Client\ClientAuthenticationRequestParser;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Application\Client\ClientDocumentIssuer;
+use Beffroi\Oidc\Application\Client\ClientKeySetProvider;
+use Beffroi\Oidc\Application\Client\Method\ClientSecretBasic;
+use Beffroi\Oidc\Application\Client\Method\ClientSecretJwt;
+use Beffroi\Oidc\Application\Client\Method\ClientSecretPost;
+use Beffroi\Oidc\Application\Client\Method\NoAuthentication;
+use Beffroi\Oidc\Application\Client\Method\PrivateKeyJwt;
+use Beffroi\Oidc\Application\Client\Method\SelfSignedTlsClientAuth;
+use Beffroi\Oidc\Application\Client\Method\TlsClientAuth;
+use Beffroi\Oidc\Application\Discovery\DiscoveryHandler;
+use Beffroi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedClientRegistration;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedBackchannelAuthentication;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedDeviceAuthorization;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedIdToken;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedClientAuthentication;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedClaims;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedRequestObjects;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedPkce;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedRevocation;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedPushedAuthorization;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedIntrospection;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedIssuerParameter;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedLogout;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTls;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedDpop;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResponse;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedMutualTlsEndpoints;
+use Beffroi\Oidc\Application\AuthorizationDetails\ServedAuthorizationDetailTypes;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedAuthorizationDetails;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedProtectedResources;
+use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Oidc\Application\Dpop\DpopProofValidator;
+use Beffroi\Oidc\Application\Dpop\DpopProofVerifier;
+use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
+use Beffroi\Oidc\Application\EndSession\EndSessionHandler;
+use Beffroi\Oidc\Application\EndSession\EndSessionRequestParser;
+use Beffroi\Oidc\Application\EndSession\FrontChannelLogout;
+use Beffroi\Oidc\Application\EndSession\LogoutTokenIssuer;
+use Beffroi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
+use Beffroi\Oidc\Application\Introspection\IntrospectionHandler;
+use Beffroi\Oidc\Application\Key\AccessTokenJwsKind;
+use Beffroi\Oidc\Application\Key\IdTokenJwsKind;
+use Beffroi\Oidc\Application\Key\LogoutTokenJwsKind;
+use Beffroi\Oidc\Application\Key\PushedRequestJweKind;
+use Beffroi\Oidc\Application\Key\RequestObjectJweKind;
+use Beffroi\Oidc\Application\Key\ResponseDocumentJwsKind;
+use Beffroi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
+use Beffroi\Oidc\Application\Consent\ConsentGranting;
+use Beffroi\Oidc\Application\Consent\RequiredConsent;
+use Beffroi\Oidc\Application\Consent\ConsentRevocation;
+use Beffroi\Oidc\Application\Exchange\PresentedAccessTokenType;
+use Beffroi\Oidc\Application\Exchange\PresentedTokenTypes;
+use Beffroi\Oidc\Application\Grant\RecordedGrants;
+use Beffroi\Oidc\Application\Trust\IssuerAssertionValidator;
+use Beffroi\Oidc\Application\Ciba\ApprovalAuthenticationRequirement;
+use Beffroi\Oidc\Application\Ciba\BackchannelApproval;
+use Beffroi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
+use Beffroi\Oidc\Application\Ciba\Hint\IdTokenUserHint;
+use Beffroi\Oidc\Application\Hint\LoginHints;
+use Beffroi\Oidc\Application\Hint\SubjectLoginHint;
+use Beffroi\Oidc\Application\Hint\UsernameLoginHint;
+use Beffroi\Oidc\Application\Ciba\ServedDeliveryModes;
+use Beffroi\Oidc\Application\Ciba\SignedBackchannelRequest;
+use Beffroi\Oidc\Application\Ciba\UserHints;
+use Beffroi\Oidc\Application\Device\DeviceApproval;
+use Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler;
+use Beffroi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
+use Beffroi\Oidc\Application\Revocation\RevocationHandler;
+use Beffroi\Oidc\Application\Token\AccessTokenInspector;
+use Beffroi\Oidc\Application\Token\AccessTokenVerifier;
+use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Beffroi\Oidc\Application\Token\ClientCredentialsGrant;
+use Beffroi\Oidc\Application\Token\JwtBearerGrant;
+use Beffroi\Oidc\Application\Token\TokenExchangeGrant;
+use Beffroi\Oidc\Application\Token\BackchannelAuthenticationGrant;
+use Beffroi\Oidc\Application\Token\DeviceCodeGrant;
+use Beffroi\Oidc\Application\Token\RefreshTokenDue;
+use Beffroi\Oidc\Application\Token\RequestedAuthorizationDetails;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\Confirmations;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenVerifier;
+use Beffroi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
+use Beffroi\Oidc\Application\Token\PresentedAccessTokenParser;
+use Beffroi\Oidc\Application\Token\RefreshTokenGrant;
+use Beffroi\Oidc\Application\Token\ServedAccessTokenShapes;
+use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Application\Token\RefreshTokenRevocation;
+use Beffroi\Oidc\Application\Token\TokenHandler;
+use Beffroi\Oidc\Application\Token\TokenIssuer;
+use Beffroi\Oidc\Application\UserInfo\UserInfoHandler;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
+use Beffroi\Oidc\Bridge\Null\NoDpopNonce;
+use Beffroi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
+use Beffroi\Oidc\Port\AccessTokenIssuerInterface;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
+use Beffroi\Oidc\Port\RecordedGrantsInterface;
+use Beffroi\Oidc\Port\CertificateReaderInterface;
+use Beffroi\Oidc\Port\ClaimsProviderInterface;
+use Beffroi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Beffroi\Oidc\Port\IssuerAssertionReplayGuardInterface;
+use Beffroi\Oidc\Port\SoftwareStatementReplayGuardInterface;
+use Beffroi\Oidc\Port\PresentedTokenTypesInterface;
+use Beffroi\Oidc\Port\TrustedIssuersInterface;
+use Beffroi\Oidc\Port\RequestObjectReplayGuardInterface;
+use Beffroi\Oidc\Port\ClientAssertionSecretVerifierInterface;
+use Beffroi\Oidc\Port\ClientAuthenticationMethodsInterface;
+use Beffroi\Oidc\Port\CodeChallengeMethodsInterface;
+use Beffroi\Oidc\Port\ClientJwksCacheInterface;
+use Beffroi\Oidc\Port\ClientJwksFetcherInterface;
+use Beffroi\Oidc\Domain\Token\CertificateConfirmationKind;
+use Beffroi\Oidc\Domain\Token\KeyConfirmationKind;
+use Beffroi\Oidc\Port\ClientLoadBudgetInterface;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\AuthorizationDetailsReaderInterface;
+use Beffroi\Oidc\Port\ConfirmationReaderInterface;
+use Beffroi\Oidc\Port\ServedTokenSchemesInterface;
+use Beffroi\Oidc\Port\RegisteredResourcesInterface;
+use Beffroi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
+use Beffroi\Oidc\Application\Client\Registration\ClientUseRecording;
+use Beffroi\Oidc\Application\Client\ClientInventory;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenRevocation;
+use Beffroi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
+use Beffroi\Oidc\Application\Client\Registration\UnusedClientRemoval;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationReader;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationRemoval;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationReplacement;
+use Beffroi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
+use Beffroi\Oidc\Port\ClientConfigurationEndpointInterface;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
+use Beffroi\Oidc\Application\Scope\OfferedScopes;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use Beffroi\Oidc\Port\ClientRegistrationPolicyInterface;
+use Beffroi\Oidc\Port\ClientInventoryInterface;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
+use Beffroi\Oidc\Port\OfferedScopesInterface;
+use Beffroi\Oidc\Port\RegisteredScopesInterface;
+use Beffroi\Oidc\Port\RegisteredAccessTokenShapesInterface;
+use Beffroi\Oidc\Port\ServedAccessTokenShapesInterface;
+use Beffroi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
+use Beffroi\Oidc\Port\ServedGrantsInterface;
+use Beffroi\Oidc\Port\CompactJwtReaderInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
+use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
+use Beffroi\Oidc\Port\DpopProofReplayGuardInterface;
+use Beffroi\Oidc\Port\EndpointLocatorInterface;
+use Beffroi\Oidc\Port\IdTokenIssuerInterface;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Oidc\Port\JweEncrypterInterface;
+use Beffroi\Oidc\Port\JwtKeyVerifierInterface;
+use Beffroi\Oidc\Port\LoggedInClientsInterface;
+use Beffroi\Oidc\Port\MutualTlsEndpointLocatorInterface;
+use Beffroi\Oidc\Port\ProofKeyVerifierInterface;
+use Beffroi\Oidc\Port\ProvableMethodsInterface;
+use Beffroi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Ciba\PingDelivery;
+use Beffroi\Oidc\Domain\Ciba\PollDelivery;
+use Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
+use Beffroi\Oidc\Port\PendingApprovalNotifierInterface;
+use Beffroi\Oidc\Port\ServedDeliveryModesInterface;
+use Beffroi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
+use Beffroi\Oidc\Port\PushedAuthorizationRequirementInterface;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Oidc\Port\RequestObjectFetcherInterface;
+use Beffroi\Oidc\Port\LogoutTokenDeliveryInterface;
+use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
+use Beffroi\Oidc\Port\ServedResponseModesInterface;
+use Beffroi\Oidc\Port\AssignedSubjectTypesInterface;
+use Beffroi\Oidc\Port\PairwiseSaltInterface;
+use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Beffroi\Oidc\Port\PresentedSubjectReaderInterface;
+use Beffroi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
+use Beffroi\Oidc\Port\SectorIdentifiersInterface;
+use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
+use Beffroi\Oidc\Port\UnsignedRequestObjectsInterface;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Signature\Algorithm\HS256;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -451,20 +451,20 @@ use Webauthn\MetadataService\CertificateChain\CertificateChainValidator;
 use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 use Webauthn\MetadataService\MetadataStatementRepository;
 use Webauthn\MetadataService\StatusReportRepository;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
-use Heidi\Core\Port\ApplicationServerKeyProviderInterface;
-use Heidi\Core\Port\ApplicationServerAlgorithmsInterface;
-use Heidi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
-use Heidi\Core\Application\Push\PushSubscriptionRevocation;
-use Heidi\Core\Application\Push\PushSubscriptionEnrolment;
-use Heidi\Bundle\Configuration\WebPushSection;
-use Heidi\Bundle\Push\WebPushSender;
-use Heidi\Bundle\Http\NotificationsPage;
-use Heidi\Bundle\Http\BundleScript;
-use Heidi\Bundle\Http\Account\NotificationsSection;
-use Heidi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
-use Heidi\Bundle\Ciba\WebPushApprovalChannel;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
+use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
+use Beffroi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
+use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
+use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
+use Beffroi\Bundle\Configuration\WebPushSection;
+use Beffroi\Bundle\Push\WebPushSender;
+use Beffroi\Bundle\Http\NotificationsPage;
+use Beffroi\Bundle\Http\BundleScript;
+use Beffroi\Bundle\Http\Account\NotificationsSection;
+use Beffroi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
+use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
 
 /*
  * Every service of the core, of the module and of the bundle, autowired, the ports aliased to their one
@@ -482,11 +482,11 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle
     $services->set(EventBusDispatcher::class)->args([service('event.bus')]);
-    $services->set(PlaneRequestListener::class)->args(['%env(enum:' . Plane::class . ':HEIDI_PLANE)%']);
+    $services->set(PlaneRequestListener::class)->args(['%env(enum:' . Plane::class . ':BEFFROI_PLANE)%']);
     $services->set(TenantFactory::class);
 
     // The bundle: the two planes (architecture §5.2)
-    $services->load('Heidi\\Bundle\\Controller\\', '../src/Controller/');
+    $services->load('Beffroi\\Bundle\\Controller\\', '../src/Controller/');
     $services->set(RequestContextFactory::class);
     // what every answer of a protected resource of the provider names the exchange with (FAPI 1.0
     // Advanced Final §6.2.1): read where the resource that will answer is known, written where the
@@ -520,13 +520,13 @@ return static function (ContainerConfigurator $container): void {
     // line here, and neither the home page nor its template is edited
     // first of the sections: every other one says what the account holds, this one says that somebody is
     // waiting on it now, and it is what makes the page of the answers findable at all (BCP 10027 §5.2)
-    $services->set(ApprovalsSection::class)->tag('heidi.account_section');
-    $services->set(ProfileSection::class)->tag('heidi.account_section');
-    $services->set(PasskeysSection::class)->tag('heidi.account_section');
-    $services->set(TwoFactorSection::class)->tag('heidi.account_section');
-    $services->set(ConsentsSection::class)->tag('heidi.account_section');
-    $services->set(NotificationsSection::class)->tag('heidi.account_section');
-    $services->set(AccountSections::class)->args([tagged_iterator('heidi.account_section')]);
+    $services->set(ApprovalsSection::class)->tag('beffroi.account_section');
+    $services->set(ProfileSection::class)->tag('beffroi.account_section');
+    $services->set(PasskeysSection::class)->tag('beffroi.account_section');
+    $services->set(TwoFactorSection::class)->tag('beffroi.account_section');
+    $services->set(ConsentsSection::class)->tag('beffroi.account_section');
+    $services->set(NotificationsSection::class)->tag('beffroi.account_section');
+    $services->set(AccountSections::class)->args([tagged_iterator('beffroi.account_section')]);
     $services->set(AccountHomePage::class);
     // the languages this deployment has, read by the pages of the interaction plane and by whatever
     // writes to a user out of any request of theirs: one list, or a translator is asked for a language
@@ -540,21 +540,21 @@ return static function (ContainerConfigurator $container): void {
     // how the answer of the authorization endpoint reaches the client (Multiple Response Type Encoding
     // Practices §2.1): one class per mode, and what is tagged is what the parser accepts and what the
     // discovery document announces, never an enumeration kept beside them
-    $services->set(QueryResponseRenderer::class)->tag('heidi.response_mode');
-    $services->set(FormPostResponseRenderer::class)->tag('heidi.response_mode');
+    $services->set(QueryResponseRenderer::class)->tag('beffroi.response_mode');
+    $services->set(FormPostResponseRenderer::class)->tag('beffroi.response_mode');
     // JARM §2.1: the same two deliveries, of a document the tenant signs rather than of the parameters
-    $services->set(SignedQueryResponseRenderer::class)->tag('heidi.response_mode');
-    $services->set(SignedFormPostResponseRenderer::class)->tag('heidi.response_mode');
-    $services->set(AuthorizationResponseRenderers::class)->args([tagged_iterator('heidi.response_mode')]);
+    $services->set(SignedQueryResponseRenderer::class)->tag('beffroi.response_mode');
+    $services->set(SignedFormPostResponseRenderer::class)->tag('beffroi.response_mode');
+    $services->set(AuthorizationResponseRenderers::class)->args([tagged_iterator('beffroi.response_mode')]);
     $services->alias(ServedResponseModesInterface::class, AuthorizationResponseRenderers::class);
 
     // One way of answering per decision of the authorization endpoint (architecture §4.3): a decision
     // the provider gains is a renderer beside these and a line here, and nothing reads a class name
     $services->set(InteractionPage::class);
-    $services->set(LoginRequiredRenderer::class)->tag('heidi.authorization_decision');
-    $services->set(ConsentRequiredRenderer::class)->tag('heidi.authorization_decision');
-    $services->set(GrantedRenderer::class)->tag('heidi.authorization_decision');
-    $services->set(DecisionRenderers::class)->args([tagged_iterator('heidi.authorization_decision')]);
+    $services->set(LoginRequiredRenderer::class)->tag('beffroi.authorization_decision');
+    $services->set(ConsentRequiredRenderer::class)->tag('beffroi.authorization_decision');
+    $services->set(GrantedRenderer::class)->tag('beffroi.authorization_decision');
+    $services->set(DecisionRenderers::class)->args([tagged_iterator('beffroi.authorization_decision')]);
     $services->set(AuthorizationResponder::class);
     $services->alias(AuthorizationResponderInterface::class, AuthorizationResponder::class);
     // the two resolvers of the authorization endpoint, in the order the protocol gives them (RFC 9126 §4, RFC 9101 §6.1)
@@ -583,28 +583,28 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PresentedClientCertificate::class);
 
     // The bundle: the console (architecture §5.5)
-    $services->load('Heidi\\Bundle\\Command\\', '../src/Command/');
+    $services->load('Beffroi\\Bundle\\Command\\', '../src/Command/');
 
     // The bundle: the endpoints of the FIDO2 server API for the FIDO Conformance Tools (architecture §7); their
     // routes are a file of their own (config/routes/fido-conformance.php) an application imports in development
     // only, and a controller no route names is dropped from the container
-    $services->load('Heidi\\Bundle\\Fido\\Conformance\\', '../src/Fido/Conformance/');
+    $services->load('Beffroi\\Bundle\\Fido\\Conformance\\', '../src/Fido/Conformance/');
     // The bundle: what answers a backchannel request when the certification suite is the one waiting for
     // the answer (CIBA Core §10.1), on the same terms as the endpoints above and in the same place in a
     // deployment: a file of routes of its own (config/routes/ciba-conformance.php), development only
-    $services->load('Heidi\\Bundle\\Ciba\\Conformance\\', '../src/Ciba/Conformance/');
+    $services->load('Beffroi\\Bundle\\Ciba\\Conformance\\', '../src/Ciba/Conformance/');
 
     // The bundle: the handlers of its own messages and what time does on its own (architecture §5.6)
-    $services->load('Heidi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
-    $services->get(QueueLogoutTokenHandler::class)->tag('heidi.logout_channel');
-    $services->set(HeidiSchedule::class);
+    $services->load('Beffroi\\Bundle\\MessageHandler\\', '../src/MessageHandler/');
+    $services->get(QueueLogoutTokenHandler::class)->tag('beffroi.logout_channel');
+    $services->set(BeffroiSchedule::class);
     // what tells a user that something is waiting for them, on the lane rather than in the request the
     // client is waiting on (CIBA Core §7); what carries the word at the end of it is whatever a
-    // deployment tagged "heidi.pending_approval_channel", and the bundle tags nothing
+    // deployment tagged "beffroi.pending_approval_channel", and the bundle tags nothing
     $services->set(QueuedPendingApprovalNotifier::class);
     $services->alias(PendingApprovalNotifierInterface::class, QueuedPendingApprovalNotifier::class);
     $services->get(TellUserOfPendingApprovalHandler::class)->args([
-        '$channels' => tagged_iterator('heidi.pending_approval_channel'),
+        '$channels' => tagged_iterator('beffroi.pending_approval_channel'),
     ]);
     // what carries a logout token to a client, and what says the provider gave up on one (§4.9)
     $services->set(LogoutTokenSender::class);
@@ -620,27 +620,27 @@ return static function (ContainerConfigurator $container): void {
     $services->set(CorePasswordHasher::class);
     $services->set(UserChecker::class);
     $services->set(InteractionLoginHandler::class);
-    $services->set(LoginSuccessListener::class)->args(['$logins' => tagged_iterator('heidi.login')]);
-    $services->set(LoginFailureListener::class)->args(['$logins' => tagged_iterator('heidi.login.refusal')]);
+    $services->set(LoginSuccessListener::class)->args(['$logins' => tagged_iterator('beffroi.login')]);
+    $services->set(LoginFailureListener::class)->args(['$logins' => tagged_iterator('beffroi.login.refusal')]);
     $services->set(PasskeyLoginAuthenticator::class);
     // a password of a user who holds a second factor is held until the code, verified by the second authenticator of the firewall
     $services->set(SecondFactorGate::class);
     $services->set(TotpLoginAuthenticator::class);
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010):
     // one class per login, and what is tagged is what the provider announces
-    // "heidi.login" is every login; "heidi.login.refusal" is those whose refusals the listener
+    // "beffroi.login" is every login; "beffroi.login.refusal" is those whose refusals the listener
     // announces, the second step announcing its own through the core
     $services->set(DatedPasswordCredential::class);
-    $services->set(PasswordLogin::class)->tag('heidi.login')->tag('heidi.login.refusal');
-    $services->set(PasskeyLogin::class)->tag('heidi.login')->tag('heidi.login.refusal');
-    $services->set(TotpLogin::class)->tag('heidi.login');
-    $services->set(PassportProofs::class)->args([tagged_iterator('heidi.login')]);
+    $services->set(PasswordLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal');
+    $services->set(PasskeyLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal');
+    $services->set(TotpLogin::class)->tag('beffroi.login');
+    $services->set(PassportProofs::class)->args([tagged_iterator('beffroi.login')]);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
     // the attempts at a code and at a password, counted per user by the two limiters the bundle declares in the framework (architecture §3.4)
-    $services->set('heidi.security.code_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::CODE_LIMITER)]);
-    $services->alias(CodeAttemptLimiterInterface::class, 'heidi.security.code_attempts');
-    $services->set('heidi.security.password_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
-    $services->alias(PasswordAttemptLimiterInterface::class, 'heidi.security.password_attempts');
+    $services->set('beffroi.security.code_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::CODE_LIMITER)]);
+    $services->alias(CodeAttemptLimiterInterface::class, 'beffroi.security.code_attempts');
+    $services->set('beffroi.security.password_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
+    $services->alias(PasswordAttemptLimiterInterface::class, 'beffroi.security.password_attempts');
     $services->set(PasswordAttemptListener::class);
     // the decoy hash of the core paid where the firewall refuses a password before any hash (architecture §5.4)
     $services->set(RefusalCost::class);
@@ -652,17 +652,17 @@ return static function (ContainerConfigurator $container): void {
     // configuration and the count kept in a pool of its own, shared by the processes of the OP: what one
     // origin sends, counted on every route of the two planes before any work, and what one authenticated
     // client asks, counted where the module proves its identifier. A refusal is one shape for both.
-    $services->set('heidi.load.storage', CacheStorage::class)->args([service('heidi.load')]);
-    $services->set('heidi.load.' . LoadBudget::ORIGIN, LoadBudget::class)->args([
+    $services->set('beffroi.load.storage', CacheStorage::class)->args([service('beffroi.load')]);
+    $services->set('beffroi.load.' . LoadBudget::ORIGIN, LoadBudget::class)->args([
         '$name' => LoadBudget::ORIGIN,
-        '$storage' => service('heidi.load.storage'),
+        '$storage' => service('beffroi.load.storage'),
     ]);
-    $services->set('heidi.load.' . LoadBudget::CLIENT, LoadBudget::class)->args([
+    $services->set('beffroi.load.' . LoadBudget::CLIENT, LoadBudget::class)->args([
         '$name' => LoadBudget::CLIENT,
-        '$storage' => service('heidi.load.storage'),
+        '$storage' => service('beffroi.load.storage'),
     ]);
-    $services->set(OriginLoadListener::class)->args([service('heidi.load.' . LoadBudget::ORIGIN)]);
-    $services->set(RateLimitedClientLoad::class)->args([service('heidi.load.' . LoadBudget::CLIENT)]);
+    $services->set(OriginLoadListener::class)->args([service('beffroi.load.' . LoadBudget::ORIGIN)]);
+    $services->set(RateLimitedClientLoad::class)->args([service('beffroi.load.' . LoadBudget::CLIENT)]);
     $services->alias(ClientLoadBudgetInterface::class, RateLimitedClientLoad::class);
     $services->set(LoadRefusal::class);
     $services->set(LoadRefusalListener::class);
@@ -693,15 +693,15 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
     // the three stores that carry a grant, each one tagged so that the reader of what a token descends
     // from asks them all and knows no flow by name (architecture §4.6)
-    $services->set(DoctrineAuthorizationCodeRepository::class)->tag('heidi.oidc.grant_record');
+    $services->set(DoctrineAuthorizationCodeRepository::class)->tag('beffroi.oidc.grant_record');
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
     // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6)
     $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
     $services->set(DoctrinePushedAuthorizationRecordRepository::class);
     $services->alias(PushedAuthorizationRecordRepositoryInterface::class, DoctrinePushedAuthorizationRecordRepository::class);
-    $services->set(DoctrineDeviceAuthorizationRecordRepository::class)->tag('heidi.oidc.grant_record');
+    $services->set(DoctrineDeviceAuthorizationRecordRepository::class)->tag('beffroi.oidc.grant_record');
     $services->alias(DeviceAuthorizationRecordRepositoryInterface::class, DoctrineDeviceAuthorizationRecordRepository::class);
-    $services->set(DoctrineBackchannelAuthenticationRecordRepository::class)->tag('heidi.oidc.grant_record');
+    $services->set(DoctrineBackchannelAuthenticationRecordRepository::class)->tag('beffroi.oidc.grant_record');
     $services->alias(BackchannelAuthenticationRecordRepositoryInterface::class, DoctrineBackchannelAuthenticationRecordRepository::class);
     $services->set(DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
@@ -735,35 +735,35 @@ return static function (ContainerConfigurator $container): void {
     $services
         ->set(Rs256::class)
         ->args([service(RsaKeyBits::class)])
-        ->tag('heidi.signature_algorithm');
+        ->tag('beffroi.signature_algorithm');
     $services
         ->set(Ps256::class)
         ->args([service(RsaKeyBits::class)])
-        ->tag('heidi.signature_algorithm');
-    $services->set(Es256::class)->tag('heidi.signature_algorithm');
-    $services->set(EdDsa::class)->tag('heidi.signature_algorithm');
-    $services->set(JoseSignatureAlgorithms::class)->args([tagged_iterator('heidi.signature_algorithm')]);
+        ->tag('beffroi.signature_algorithm');
+    $services->set(Es256::class)->tag('beffroi.signature_algorithm');
+    $services->set(EdDsa::class)->tag('beffroi.signature_algorithm');
+    $services->set(JoseSignatureAlgorithms::class)->args([tagged_iterator('beffroi.signature_algorithm')]);
     $services->alias(SignatureAlgorithmsInterface::class, JoseSignatureAlgorithms::class);
     // The algorithms a client encrypts to the provider with, wired the same way: the "alg" that wraps or
     // agrees on the content encryption key, and the "enc" that encrypts the payload. RFC 8725 §3.4 keeps
     // RSA1_5 out, and a deployment nobody encrypts to drops these lines: it then generates no encryption
     // key, publishes none and announces none, the document and the decrypter reading this one list.
-    $services->set(EcdhEsA256Kw::class)->tag('heidi.key_encryption_algorithm');
+    $services->set(EcdhEsA256Kw::class)->tag('beffroi.key_encryption_algorithm');
     $services
         ->set(RsaOaep256::class)
         ->args([service(RsaKeyBits::class)])
-        ->tag('heidi.key_encryption_algorithm');
-    $services->set(A256Gcm::class)->tag('heidi.content_encryption_algorithm');
-    $services->set(JoseKeyEncryptionAlgorithms::class)->args([tagged_iterator('heidi.key_encryption_algorithm')]);
+        ->tag('beffroi.key_encryption_algorithm');
+    $services->set(A256Gcm::class)->tag('beffroi.content_encryption_algorithm');
+    $services->set(JoseKeyEncryptionAlgorithms::class)->args([tagged_iterator('beffroi.key_encryption_algorithm')]);
     $services->alias(KeyEncryptionAlgorithmsInterface::class, JoseKeyEncryptionAlgorithms::class);
-    $services->set(JoseContentEncryptionAlgorithms::class)->args([tagged_iterator('heidi.content_encryption_algorithm')]);
+    $services->set(JoseContentEncryptionAlgorithms::class)->args([tagged_iterator('beffroi.content_encryption_algorithm')]);
     $services->alias(ContentEncryptionAlgorithmsInterface::class, JoseContentEncryptionAlgorithms::class);
     $services->set(JoseEncryptionAlgorithms::class);
     // The algorithms of the keys the tenant hands out itself rather than publishing in its JWK Set
     // (RFC 8292 §2): wired by the deployment that reaches its users by push and by no other, so that a
     // deployment that does not draws no such key and has no page that would hand one out (§5.6).
     $services->set(Vapid::class);
-    $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('heidi.application_server_algorithm')]);
+    $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('beffroi.application_server_algorithm')]);
     $services->alias(ApplicationServerAlgorithmsInterface::class, JoseApplicationServerAlgorithms::class);
     // What a key may be generated for, the two lists read as one: the key commands and the key files
     // resolve an algorithm name against this, whatever the key is published for
@@ -780,25 +780,25 @@ return static function (ContainerConfigurator $container): void {
     // the modules tag the kinds of artifact bound to a key, each naming the use it holds back; the
     // rotation dates a retirement from the longest of those of the use of the key retiring (architecture §3.3)
     $services->set(TenantKeyRotator::class)->args([
-        '$artifacts' => tagged_iterator('heidi.key_bound_artifact'),
+        '$artifacts' => tagged_iterator('beffroi.key_bound_artifact'),
     ]);
 
     // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
     // The algorithms a hash may have been made with, in the order they are wired: the first one is what a
     // new hash is made with, the others are what an import may bring. A new one is a class and a line here.
-    $services->set(Argon2id::class)->tag('heidi.password_algorithm');
-    $services->set(Argon2i::class)->tag('heidi.password_algorithm');
-    $services->set(Bcrypt::class)->tag('heidi.password_algorithm');
-    $services->set(Pbkdf2Sha256::class)->tag('heidi.password_algorithm');
-    $services->set(Pbkdf2Sha512::class)->tag('heidi.password_algorithm');
-    $services->set(WiredPasswordAlgorithms::class)->args([tagged_iterator('heidi.password_algorithm')]);
+    $services->set(Argon2id::class)->tag('beffroi.password_algorithm');
+    $services->set(Argon2i::class)->tag('beffroi.password_algorithm');
+    $services->set(Bcrypt::class)->tag('beffroi.password_algorithm');
+    $services->set(Pbkdf2Sha256::class)->tag('beffroi.password_algorithm');
+    $services->set(Pbkdf2Sha512::class)->tag('beffroi.password_algorithm');
+    $services->set(WiredPasswordAlgorithms::class)->args([tagged_iterator('beffroi.password_algorithm')]);
     $services->alias(PasswordAlgorithmsInterface::class, WiredPasswordAlgorithms::class);
     // Public on purpose: the DBAL types that read a hash back cannot be injected into, and the bundle
-    // hands them the wiring when it boots (HeidiBundle::boot()).
-    $services->alias('heidi.password_algorithms', PasswordAlgorithmsInterface::class)->public();
+    // hands them the wiring when it boots (BeffroiBundle::boot()).
+    $services->alias('beffroi.password_algorithms', PasswordAlgorithmsInterface::class)->public();
 
-    $services->set(NativePasswordHasher::class)->tag('heidi.password_hasher');
-    $services->set(PasswordHasherRegistry::class)->args([tagged_iterator('heidi.password_hasher'), service(PasswordAlgorithmsInterface::class)]);
+    $services->set(NativePasswordHasher::class)->tag('beffroi.password_hasher');
+    $services->set(PasswordHasherRegistry::class)->args([tagged_iterator('beffroi.password_hasher'), service(PasswordAlgorithmsInterface::class)]);
     $services->alias(PasswordHasherInterface::class, PasswordHasherRegistry::class);
     // the hash a refused password is verified against when none of the user could be, computed once per process
     $services->set(DecoyHash::class);
@@ -868,10 +868,10 @@ return static function (ContainerConfigurator $container): void {
     // enumeration kept beside them (issue #98). The bundle wires none: no type of detail is universal, a
     // type says what a client may do to what in the words of one domain, so a deployment that serves rich
     // authorization requests adds the class its own domain needs and tags it here.
-    $services->set(ServedAuthorizationDetailTypes::class)->args([tagged_iterator('heidi.oidc.authorization_detail_type')]);
+    $services->set(ServedAuthorizationDetailTypes::class)->args([tagged_iterator('beffroi.oidc.authorization_detail_type')]);
     $services->alias(AuthorizationDetailsReaderInterface::class, ServedAuthorizationDetailTypes::class);
     $services->alias(ServedAuthorizationDetailTypesInterface::class, ServedAuthorizationDetailTypes::class);
-    $services->alias('heidi.authorization_detail_types', AuthorizationDetailsReaderInterface::class)->public();
+    $services->alias('beffroi.authorization_detail_types', AuthorizationDetailsReaderInterface::class)->public();
 
     // The module: clients. One reader of the metadata a client is registered with (issue #335): a member of
     // RFC 7591 §2 is spelled there, whether a deployment declared it or a client sent it, and every source
@@ -884,11 +884,11 @@ return static function (ContainerConfigurator $container): void {
     // implements ClientSourceInterface and a line here, and nothing downstream learns there are several.
     // What a question about the set of clients of a tenant means is read once, in RegisteredClients: a
     // source says what it holds and never what the set of them makes true (issue #98).
-    $services->set(ConfigurationClientRepository::class)->tag('heidi.oidc.client_source')->tag('heidi.oidc.client_inventory');
+    $services->set(ConfigurationClientRepository::class)->tag('beffroi.oidc.client_source')->tag('beffroi.oidc.client_inventory');
     // the second source holds rows, so it is also the one thing the removal of the clients nobody uses
     // any more asks (decision 0009); the first holds declarations and is asked nothing
-    $services->set(DoctrineClientRepository::class)->tag('heidi.oidc.client_source')->tag('heidi.oidc.client_inventory')->tag('heidi.oidc.unused_clients');
-    $services->set(RegisteredClients::class)->args([tagged_iterator('heidi.oidc.client_source')]);
+    $services->set(DoctrineClientRepository::class)->tag('beffroi.oidc.client_source')->tag('beffroi.oidc.client_inventory')->tag('beffroi.oidc.unused_clients');
+    $services->set(RegisteredClients::class)->args([tagged_iterator('beffroi.oidc.client_source')]);
     $services->alias(ClientRepositoryInterface::class, RegisteredClients::class);
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
     // require, read from the clients themselves and nowhere else (issue #98)
@@ -902,7 +902,7 @@ return static function (ContainerConfigurator $container): void {
     // decision 0009: the same sources read for a person rather than for a request, which is what the
     // console lists. The two callers are disjoint, so the ports are: what resolves a client for a request
     // answers one identifier and knows no dates, and what lists them answers every client of a tenant
-    $services->set(ClientInventory::class)->args([tagged_iterator('heidi.oidc.client_inventory')]);
+    $services->set(ClientInventory::class)->args([tagged_iterator('beffroi.oidc.client_inventory')]);
     $services->alias(ClientInventoryInterface::class, ClientInventory::class);
     // RFC 7591 §3.2.1: where a client the provider registers is written, which is not the port one is
     // looked up through, and the identifier it is given, drawn like every other value this provider hands
@@ -927,19 +927,19 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(IssuedInitialAccessTokensInterface::class, DoctrineInitialAccessTokenRepository::class);
     $services->set(InitialAccessTokenIssuance::class);
     $services->set(InitialAccessTokenRevocation::class);
-    $services->set(InitialAccessTokenAuthorization::class)->tag('heidi.oidc.registration_mode');
-    $services->set(OpenRegistrationAuthorization::class)->tag('heidi.oidc.registration_mode');
+    $services->set(InitialAccessTokenAuthorization::class)->tag('beffroi.oidc.registration_mode');
+    $services->set(OpenRegistrationAuthorization::class)->tag('beffroi.oidc.registration_mode');
     // RFC 7591 §2.3: the mode that crosses the boundary of an organisation, a statement signed by an
     // authority the tenant pinned in place of a credential this provider issued. Its "jti" is remembered
     // in a pool of its own until the statement expires, so that one statement registers one client and so
     // that nothing remembered here can satisfy the guard of an assertion (RFC 7523 §2.1)
     $services->set(SoftwareStatementReplayGuard::class)->args([
-        inline_service(SeenOnce::class)->args([service('heidi.software_statements')]),
+        inline_service(SeenOnce::class)->args([service('beffroi.software_statements')]),
     ]);
     $services->alias(SoftwareStatementReplayGuardInterface::class, SoftwareStatementReplayGuard::class);
     $services->set(SoftwareStatementVerifier::class);
-    $services->set(SoftwareStatementAuthorization::class)->tag('heidi.oidc.registration_mode');
-    $services->set(RegistrationAuthorizations::class)->args([tagged_iterator('heidi.oidc.registration_mode')]);
+    $services->set(SoftwareStatementAuthorization::class)->tag('beffroi.oidc.registration_mode');
+    $services->set(RegistrationAuthorizations::class)->args([tagged_iterator('beffroi.oidc.registration_mode')]);
     // what a client registering itself is held to beyond the wiring: the scopes its tenant hands out
     // tokens for, which are the ones its document announces (issue #278)
     $services->set(RegistrationHeldToTheTenant::class);
@@ -968,21 +968,21 @@ return static function (ContainerConfigurator $container): void {
     // rows what it may drop. The source that holds declarations is not tagged and is therefore asked
     // nothing, which is how "a client a deployment declared is never deleted" is the wiring and not a
     // condition in the step.
-    $services->set(UnusedClientRemoval::class)->args([tagged_iterator('heidi.oidc.unused_clients')]);
+    $services->set(UnusedClientRemoval::class)->args([tagged_iterator('beffroi.oidc.unused_clients')]);
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).
     // The first tagged one is what a client that names none registers. FAPI 2.0 §5.2.2 takes
     // private_key_jwt and mTLS alone: a deployment that follows the profile drops the three lines that
     // prove a shared secret, and the provider stops taking them and stops announcing them.
-    $services->set(ClientSecretBasic::class)->tag('heidi.client_authentication_method');
-    $services->set(ClientSecretPost::class)->tag('heidi.client_authentication_method');
-    $services->set(PrivateKeyJwt::class)->tag('heidi.client_authentication_method');
-    $services->set(ClientSecretJwt::class)->tag('heidi.client_authentication_method');
-    $services->set(TlsClientAuth::class)->tag('heidi.client_authentication_method');
-    $services->set(SelfSignedTlsClientAuth::class)->tag('heidi.client_authentication_method');
-    $services->set(NoAuthentication::class)->tag('heidi.client_authentication_method');
-    $services->set(ClientAuthenticationMethods::class)->args([tagged_iterator('heidi.client_authentication_method')]);
+    $services->set(ClientSecretBasic::class)->tag('beffroi.client_authentication_method');
+    $services->set(ClientSecretPost::class)->tag('beffroi.client_authentication_method');
+    $services->set(PrivateKeyJwt::class)->tag('beffroi.client_authentication_method');
+    $services->set(ClientSecretJwt::class)->tag('beffroi.client_authentication_method');
+    $services->set(TlsClientAuth::class)->tag('beffroi.client_authentication_method');
+    $services->set(SelfSignedTlsClientAuth::class)->tag('beffroi.client_authentication_method');
+    $services->set(NoAuthentication::class)->tag('beffroi.client_authentication_method');
+    $services->set(ClientAuthenticationMethods::class)->args([tagged_iterator('beffroi.client_authentication_method')]);
     $services->alias(ClientAuthenticationMethodsInterface::class, ClientAuthenticationMethods::class);
     // what arrived at such an endpoint, read once into what the methods read (issue #246): the assertion
     // of RFC 7523 §2.2 included, however many of the wired methods go on to read it
@@ -998,18 +998,18 @@ return static function (ContainerConfigurator $container): void {
     // with HS256 and nothing else (RFC 8725 §3.1)
     $services->set(JwtLibraryCompactJwtReader::class);
     $services->alias(CompactJwtReaderInterface::class, JwtLibraryCompactJwtReader::class);
-    $services->set('heidi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)->factory([service(JoseSignatureAlgorithms::class), 'manager']);
-    $services->set(JwtLibraryJwtKeyVerifier::class)->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
+    $services->set('beffroi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)->factory([service(JoseSignatureAlgorithms::class), 'manager']);
+    $services->set(JwtLibraryJwtKeyVerifier::class)->args([service('beffroi.oidc.client_assertion.signature_algorithms')]);
     $services->alias(JwtKeyVerifierInterface::class, JwtLibraryJwtKeyVerifier::class);
     // What the provider encrypts for a client: the key management and content encryption algorithms it is
     // wired with, the same ones it opens a JWE with, read from the two registries of the core and never
     // from a list kept beside them
-    $services->set('heidi.oidc.client_encryption.algorithms', AlgorithmManager::class)->factory([service(JoseEncryptionAlgorithms::class), 'manager']);
-    $services->set(JwtLibraryJweEncrypter::class)->args([service('heidi.oidc.client_encryption.algorithms')]);
+    $services->set('beffroi.oidc.client_encryption.algorithms', AlgorithmManager::class)->factory([service(JoseEncryptionAlgorithms::class), 'manager']);
+    $services->set(JwtLibraryJweEncrypter::class)->args([service('beffroi.oidc.client_encryption.algorithms')]);
     $services->alias(JweEncrypterInterface::class, JwtLibraryJweEncrypter::class);
     $services->set(ClientDocumentIssuer::class);
-    $services->set('heidi.oidc.client_assertion.mac_algorithms', AlgorithmManager::class)->args([[inline_service(HS256::class)]]);
-    $services->set(JwtLibraryClientAssertionSecretVerifier::class)->args([service('heidi.oidc.client_assertion.mac_algorithms')]);
+    $services->set('beffroi.oidc.client_assertion.mac_algorithms', AlgorithmManager::class)->args([[inline_service(HS256::class)]]);
+    $services->set(JwtLibraryClientAssertionSecretVerifier::class)->args([service('beffroi.oidc.client_assertion.mac_algorithms')]);
     $services->alias(ClientAssertionSecretVerifierInterface::class, JwtLibraryClientAssertionSecretVerifier::class);
     $services->set(ClientAssertionValidator::class);
     // the names of this provider a client assertion may name in its "aud" (issue #267): the issuer of
@@ -1022,11 +1022,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClientJwksFetcher::class);
     $services->alias(ClientJwksFetcherInterface::class, ClientJwksFetcher::class);
     $services->set(ClientJwksCache::class)->args([
-        '$cache' => service('heidi.client_keys'),
+        '$cache' => service('beffroi.client_keys'),
     ]);
     $services->alias(ClientJwksCacheInterface::class, ClientJwksCache::class);
     $services->set(ClientAssertionReplayGuard::class)->args([
-        inline_service(SeenOnce::class)->args([service('heidi.client_assertions')]),
+        inline_service(SeenOnce::class)->args([service('beffroi.client_assertions')]),
     ]);
     $services->alias(ClientAssertionReplayGuardInterface::class, ClientAssertionReplayGuard::class);
 
@@ -1037,7 +1037,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(TrustedIssuersInterface::class, ConfigurationTrustedIssuers::class);
     $services->set(IssuerAssertionValidator::class);
     $services->set(IssuerAssertionReplayGuard::class)->args([
-        inline_service(SeenOnce::class)->args([service('heidi.issuer_assertions')]),
+        inline_service(SeenOnce::class)->args([service('beffroi.issuer_assertions')]),
     ]);
     $services->alias(IssuerAssertionReplayGuardInterface::class, IssuerAssertionReplayGuard::class);
 
@@ -1045,15 +1045,15 @@ return static function (ContainerConfigurator $container): void {
     // a client signs is read with and verified against the key of its own header, with the algorithms
     // the provider is wired with; the proofs already seen and the nonces it hands out live in a pool
     // the workers share, as the assertions already seen do
-    $services->set(JwtLibraryProofKeyVerifier::class)->args([service('heidi.oidc.client_assertion.signature_algorithms')]);
+    $services->set(JwtLibraryProofKeyVerifier::class)->args([service('beffroi.oidc.client_assertion.signature_algorithms')]);
     $services->alias(ProofKeyVerifierInterface::class, JwtLibraryProofKeyVerifier::class);
     $services->set(CachedDpopProofReplayGuard::class)->args([
-        inline_service(SeenOnce::class)->args([service('heidi.dpop')]),
+        inline_service(SeenOnce::class)->args([service('beffroi.dpop')]),
     ]);
     $services->alias(DpopProofReplayGuardInterface::class, CachedDpopProofReplayGuard::class);
     $services->set(NoDpopNonce::class);
     $services->set(CachedDpopNonce::class)->args([
-        '$cache' => service('heidi.dpop'),
+        '$cache' => service('beffroi.dpop'),
     ]);
     $services->set(DpopProofValidator::class);
     $services->set(DpopProofVerifier::class);
@@ -1069,14 +1069,14 @@ return static function (ContainerConfigurator $container): void {
     // notification endpoint of push mode is the class that would sit beside them the day this provider
     // served push. A client no wired source reads a sector for is refused at its registration rather than
     // served an identifier computed from whatever stood in.
-    $services->set(RegisteredSectorIdentifier::class)->tag('heidi.oidc.sector_identifier_source');
-    $services->set(RedirectUriSectorIdentifier::class)->tag('heidi.oidc.sector_identifier_source');
-    $services->set(JwksUriSectorIdentifier::class)->tag('heidi.oidc.sector_identifier_source');
-    $services->set(SectorIdentifiers::class)->args([tagged_iterator('heidi.oidc.sector_identifier_source')]);
+    $services->set(RegisteredSectorIdentifier::class)->tag('beffroi.oidc.sector_identifier_source');
+    $services->set(RedirectUriSectorIdentifier::class)->tag('beffroi.oidc.sector_identifier_source');
+    $services->set(JwksUriSectorIdentifier::class)->tag('beffroi.oidc.sector_identifier_source');
+    $services->set(SectorIdentifiers::class)->args([tagged_iterator('beffroi.oidc.sector_identifier_source')]);
     $services->alias(SectorIdentifiersInterface::class, SectorIdentifiers::class);
-    $services->set(PublicSubjectIdentifierResolver::class)->tag('heidi.oidc.subject_type');
-    $services->set(PairwiseSubjectIdentifierResolver::class)->tag('heidi.oidc.subject_type');
-    $services->set(AssignedSubjectIdentifiers::class)->args([tagged_iterator('heidi.oidc.subject_type')]);
+    $services->set(PublicSubjectIdentifierResolver::class)->tag('beffroi.oidc.subject_type');
+    $services->set(PairwiseSubjectIdentifierResolver::class)->tag('beffroi.oidc.subject_type');
+    $services->set(AssignedSubjectIdentifiers::class)->args([tagged_iterator('beffroi.oidc.subject_type')]);
     $services->alias(SubjectIdentifierResolverInterface::class, AssignedSubjectIdentifiers::class);
     $services->alias(PresentedSubjectReaderInterface::class, AssignedSubjectIdentifiers::class);
     $services->alias(AssignedSubjectTypesInterface::class, AssignedSubjectIdentifiers::class);
@@ -1089,8 +1089,8 @@ return static function (ContainerConfigurator $container): void {
     // the claims of OIDC Core §5.1 and the four scopes of §5.4, closed by the specification; a deployment
     // that serves claims of its own, or a scope of its own that stands for them, wires a class beside this
     // one and edits nothing, the document announcing what the wired providers serve (issue #278)
-    $services->set(StandardClaimsProvider::class)->tag('heidi.oidc.claims_provider');
-    $services->set(ServedClaims::class)->args([tagged_iterator('heidi.oidc.claims_provider')]);
+    $services->set(StandardClaimsProvider::class)->tag('beffroi.oidc.claims_provider');
+    $services->set(ServedClaims::class)->args([tagged_iterator('beffroi.oidc.claims_provider')]);
     $services->alias(ClaimsProviderInterface::class, ServedClaims::class);
     // every scope the tenant hands out tokens for, assembled once: what the document announces and what a
     // registration is held to are one set, and not two places that must agree (issues #278, #336)
@@ -1101,12 +1101,12 @@ return static function (ContainerConfigurator $container): void {
     // are wired. What the document announces, what a request may name in "code_challenge_method" and what
     // a stored challenge is read back as all read this one list. "plain" is no class of the module,
     // decision 0006 refusing it, so no deployment can wire it.
-    $services->set(Sha256CodeChallengeMethod::class)->tag('heidi.oidc.code_challenge_method');
-    $services->set(CodeChallengeMethods::class)->args([tagged_iterator('heidi.oidc.code_challenge_method')]);
+    $services->set(Sha256CodeChallengeMethod::class)->tag('beffroi.oidc.code_challenge_method');
+    $services->set(CodeChallengeMethods::class)->args([tagged_iterator('beffroi.oidc.code_challenge_method')]);
     $services->alias(CodeChallengeMethodsInterface::class, CodeChallengeMethods::class);
     // Public on purpose: the DBAL type that reads a stored challenge back cannot be injected into, and the
-    // bundle hands it the wiring when it boots (HeidiBundle::boot()).
-    $services->alias('heidi.code_challenge_methods', CodeChallengeMethodsInterface::class)->public();
+    // bundle hands it the wiring when it boots (BeffroiBundle::boot()).
+    $services->alias('beffroi.code_challenge_methods', CodeChallengeMethodsInterface::class)->public();
 
     // The module: authorization endpoint, the pushed request the browser may come back with, and the
     // request object a client signs (RFC 9101), read with the very reader and verifier a client
@@ -1121,7 +1121,7 @@ return static function (ContainerConfigurator $container): void {
     // CIBA Core §7.1.1: the "jti" of a backchannel request object is remembered until its "exp", in a
     // pool of its own, so that one signed request is made once (issue #269)
     $services->set(RequestObjectReplayGuard::class)->args([
-        inline_service(SeenOnce::class)->args([service('heidi.request_objects')]),
+        inline_service(SeenOnce::class)->args([service('beffroi.request_objects')]),
     ]);
     $services->alias(RequestObjectReplayGuardInterface::class, RequestObjectReplayGuard::class);
     $services->set(RequestObjectFetcher::class);
@@ -1135,17 +1135,17 @@ return static function (ContainerConfigurator $container): void {
     // tagged is what a client may register and what the document announces; one class per way a request
     // may name its user, of which the deployment wires the one that reads a "login_hint"
     // (BackchannelAuthenticationSection) and this the one that reads an ID token we issued
-    $services->set(PollDelivery::class)->tag('heidi.oidc.ciba_delivery_mode');
-    $services->set(PingDelivery::class)->tag('heidi.oidc.ciba_delivery_mode');
-    $services->set(ServedDeliveryModes::class)->args([tagged_iterator('heidi.oidc.ciba_delivery_mode')]);
+    $services->set(PollDelivery::class)->tag('beffroi.oidc.ciba_delivery_mode');
+    $services->set(PingDelivery::class)->tag('beffroi.oidc.ciba_delivery_mode');
+    $services->set(ServedDeliveryModes::class)->args([tagged_iterator('beffroi.oidc.ciba_delivery_mode')]);
     $services->alias(ServedDeliveryModesInterface::class, ServedDeliveryModes::class);
-    $services->set(IdTokenUserHint::class)->tag('heidi.oidc.ciba_user_hint');
+    $services->set(IdTokenUserHint::class)->tag('beffroi.oidc.ciba_user_hint');
     // the two ways of reading a "login_hint" the bundle ships, of which the deployment tags one per side
     // it is read on, this one and the login page (InteractionSection, LoginHintReadings): two things
     // reading one parameter would be a wiring with two answers to one question
     $services->set(SubjectLoginHint::class);
     $services->set(UsernameLoginHint::class);
-    $services->set(UserHints::class)->args([tagged_iterator('heidi.oidc.ciba_user_hint')]);
+    $services->set(UserHints::class)->args([tagged_iterator('beffroi.oidc.ciba_user_hint')]);
     $services->set(SignedBackchannelRequest::class);
     $services->set(BackchannelAuthenticationHandler::class);
     // what a backchannel request asks of the authentication of whoever answers it (issue #266)
@@ -1153,8 +1153,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BackchannelApproval::class);
     // What a client may still be encrypting to a key of the tenant, which is what holds an encryption key
     // back from retiring: each one reads its lifetime where that lifetime is set (architecture §3.3)
-    $services->set(RequestObjectJweKind::class)->tag('heidi.key_bound_artifact');
-    $services->set(PushedRequestJweKind::class)->tag('heidi.key_bound_artifact');
+    $services->set(RequestObjectJweKind::class)->tag('beffroi.key_bound_artifact');
+    $services->set(PushedRequestJweKind::class)->tag('beffroi.key_bound_artifact');
     $services->set(IdTokenHintVerifier::class);
     // The authorization endpoint, one subject per class (issue #251): what the authentication of an
     // interaction still needs, whether a consent page is still needed, the code minted when nothing is, and
@@ -1171,7 +1171,7 @@ return static function (ContainerConfigurator $container): void {
     // OIDC Core §3.1.2.1: and the way back, what the "login_hint" of that request names, read by the one
     // reading the deployment tagged for this side (InteractionSection) so the page waiting for a login
     // offers a name rather than the "sub" the client carried
-    $services->set(LoginHints::class)->args([tagged_iterator('heidi.oidc.login_hint')]);
+    $services->set(LoginHints::class)->args([tagged_iterator('beffroi.oidc.login_hint')]);
     // and its counterpart: a consent taken back takes back what was issued under it (issue #273)
     $services->set(ConsentRevocation::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
@@ -1181,16 +1181,16 @@ return static function (ContainerConfigurator $container): void {
     // is tagged is what a client may register and what a signing key still waits for, never an
     // enumeration kept beside them (issue #239). An issuer names the shape it writes and the verifier of
     // that shape answers to the same name; the first tagged one is what a client that names none takes.
-    $services->set(JwtAccessTokenIssuer::class)->tag('heidi.oidc.access_token_issuer');
-    $services->set(OpaqueAccessTokenIssuer::class)->tag('heidi.oidc.access_token_issuer');
-    $services->set(ServedAccessTokenShapes::class)->args([tagged_iterator('heidi.oidc.access_token_issuer')]);
+    $services->set(JwtAccessTokenIssuer::class)->tag('beffroi.oidc.access_token_issuer');
+    $services->set(OpaqueAccessTokenIssuer::class)->tag('beffroi.oidc.access_token_issuer');
+    $services->set(ServedAccessTokenShapes::class)->args([tagged_iterator('beffroi.oidc.access_token_issuer')]);
     $services->alias(AccessTokenIssuerInterface::class, ServedAccessTokenShapes::class);
     $services->alias(ServedAccessTokenShapesInterface::class, ServedAccessTokenShapes::class);
     $services->set(JwtIdTokenIssuer::class);
     $services->alias(IdTokenIssuerInterface::class, JwtIdTokenIssuer::class);
-    $services->set(IdTokenJwsKind::class)->tag('heidi.key_bound_artifact');
-    $services->set(AccessTokenJwsKind::class)->tag('heidi.key_bound_artifact');
-    $services->set(ResponseDocumentJwsKind::class)->tag('heidi.key_bound_artifact');
+    $services->set(IdTokenJwsKind::class)->tag('beffroi.key_bound_artifact');
+    $services->set(AccessTokenJwsKind::class)->tag('beffroi.key_bound_artifact');
+    $services->set(ResponseDocumentJwsKind::class)->tag('beffroi.key_bound_artifact');
     $services->set(TokenIssuer::class);
     $services->set(RefreshTokenRevocation::class);
     // RFC 6749 §4.1.4: whether a response carries a refresh token, asked once for every grant that may
@@ -1202,38 +1202,38 @@ return static function (ContainerConfigurator $container): void {
     // may register and what the discovery document announces, never an enumeration kept beside them
     // (issue #173). A grant names itself and declares what it makes of a refresh token by the interfaces
     // it implements; the list is read when a question is asked of it, because a grant reads it too.
-    $services->set(AuthorizationCodeGrant::class)->tag('heidi.oidc.grant');
-    $services->set(RefreshTokenGrant::class)->tag('heidi.oidc.grant');
-    $services->set(ClientCredentialsGrant::class)->tag('heidi.oidc.grant');
-    $services->set(DeviceCodeGrant::class)->tag('heidi.oidc.grant');
-    $services->set(BackchannelAuthenticationGrant::class)->tag('heidi.oidc.grant');
-    $services->set(TokenExchangeGrant::class)->tag('heidi.oidc.grant');
-    $services->set(JwtBearerGrant::class)->tag('heidi.oidc.grant');
-    $services->set(ServedGrants::class)->args([tagged_iterator('heidi.oidc.grant')]);
+    $services->set(AuthorizationCodeGrant::class)->tag('beffroi.oidc.grant');
+    $services->set(RefreshTokenGrant::class)->tag('beffroi.oidc.grant');
+    $services->set(ClientCredentialsGrant::class)->tag('beffroi.oidc.grant');
+    $services->set(DeviceCodeGrant::class)->tag('beffroi.oidc.grant');
+    $services->set(BackchannelAuthenticationGrant::class)->tag('beffroi.oidc.grant');
+    $services->set(TokenExchangeGrant::class)->tag('beffroi.oidc.grant');
+    $services->set(JwtBearerGrant::class)->tag('beffroi.oidc.grant');
+    $services->set(ServedGrants::class)->args([tagged_iterator('beffroi.oidc.grant')]);
     $services->alias(ServedGrantsInterface::class, ServedGrants::class);
     // one class per type of token the exchange reads (RFC 8693 §3), tagged, and what is tagged is what a
     // request may present and what a client may register, never an enumeration kept beside them
-    $services->set(PresentedAccessTokenType::class)->tag('heidi.oidc.presented_token_type');
-    $services->set(PresentedTokenTypes::class)->args([tagged_iterator('heidi.oidc.presented_token_type')]);
+    $services->set(PresentedAccessTokenType::class)->tag('beffroi.oidc.presented_token_type');
+    $services->set(PresentedTokenTypes::class)->args([tagged_iterator('beffroi.oidc.presented_token_type')]);
     $services->alias(PresentedTokenTypesInterface::class, PresentedTokenTypes::class);
     $services->set(TokenHandler::class);
     // what a token descends from, and what a consent taken back reaches, read across the records every
     // flow of the provider writes (architecture §4.3, §4.6)
-    $services->set(RecordedGrants::class)->args([tagged_iterator('heidi.oidc.grant_record')]);
+    $services->set(RecordedGrants::class)->args([tagged_iterator('beffroi.oidc.grant_record')]);
     $services->alias(RecordedGrantsInterface::class, RecordedGrants::class);
     $services->alias(CanRevokeGrantsByConsentInterface::class, RecordedGrants::class);
-    $services->set(CertificateConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
-    $services->set(KeyConfirmationKind::class)->tag('heidi.oidc.confirmation_kind');
-    $services->set(Confirmations::class)->args([tagged_iterator('heidi.oidc.confirmation_kind')]);
+    $services->set(CertificateConfirmationKind::class)->tag('beffroi.oidc.confirmation_kind');
+    $services->set(KeyConfirmationKind::class)->tag('beffroi.oidc.confirmation_kind');
+    $services->set(Confirmations::class)->args([tagged_iterator('beffroi.oidc.confirmation_kind')]);
     $services->alias(ConfirmationReaderInterface::class, Confirmations::class);
     $services->alias(ServedTokenSchemesInterface::class, Confirmations::class);
-    $services->alias('heidi.confirmations', ConfirmationReaderInterface::class)->public();
+    $services->alias('beffroi.confirmations', ConfirmationReaderInterface::class)->public();
 
     // the other side of a shape: a token this provider writes and cannot read back is refused by the
     // verifier that collects them, where the two wired lists meet
-    $services->set(JwtAccessTokenVerifier::class)->tag('heidi.oidc.access_token_verifier');
-    $services->set(OpaqueAccessTokenVerifier::class)->tag('heidi.oidc.access_token_verifier');
-    $services->set(AccessTokenVerifier::class)->args([tagged_iterator('heidi.oidc.access_token_verifier')]);
+    $services->set(JwtAccessTokenVerifier::class)->tag('beffroi.oidc.access_token_verifier');
+    $services->set(OpaqueAccessTokenVerifier::class)->tag('beffroi.oidc.access_token_verifier');
+    $services->set(AccessTokenVerifier::class)->args([tagged_iterator('beffroi.oidc.access_token_verifier')]);
     $services->set(AccessTokenInspector::class);
     $services->set(PresentedAccessTokenParser::class);
 
@@ -1245,33 +1245,33 @@ return static function (ContainerConfigurator $container): void {
     // its own members, in the order the document publishes them, and a capability that arrives is a class
     // here and nothing edited elsewhere (architecture §4.8).
     $services->set(AnnouncedAlgorithms::class);
-    $services->set(ProviderIdentity::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedScopes::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedClientRegistration::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedResponses::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedGrants::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedAuthenticationContext::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedIdToken::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedUserInfo::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedClientAuthentication::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedClaims::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedRequestObjects::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedPkce::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedRevocation::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedPushedAuthorization::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedDeviceAuthorization::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedBackchannelAuthentication::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedIntrospection::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedIssuerParameter::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedLogout::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedMutualTls::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedDpop::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedSignedAuthorizationResponse::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedMutualTlsEndpoints::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedProtectedResources::class)->tag('heidi.oidc.metadata');
-    $services->set(AnnouncedAuthorizationDetails::class)->tag('heidi.oidc.metadata');
+    $services->set(ProviderIdentity::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedScopes::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedClientRegistration::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedResponses::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedGrants::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedAuthenticationContext::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedIdToken::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedUserInfo::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedClientAuthentication::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedClaims::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedRequestObjects::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedPkce::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedRevocation::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedPushedAuthorization::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedDeviceAuthorization::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedBackchannelAuthentication::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedIntrospection::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedIssuerParameter::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedLogout::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedMutualTls::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedDpop::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedSignedAuthorizationResponse::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedMutualTlsEndpoints::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedProtectedResources::class)->tag('beffroi.oidc.metadata');
+    $services->set(AnnouncedAuthorizationDetails::class)->tag('beffroi.oidc.metadata');
     $services->set(DiscoveryHandler::class)->args([
-        '$contributors' => tagged_iterator('heidi.oidc.metadata'),
+        '$contributors' => tagged_iterator('beffroi.oidc.metadata'),
     ]);
     $services->set(JwksHandler::class);
     $services->set(EndSessionRequestParser::class);
@@ -1281,11 +1281,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(FrontChannelLogout::class);
     // The two ways of telling a client that a session ended (architecture §4.9): one class per channel,
     // and what is tagged is what the discovery document announces, never an enumeration kept beside it
-    $services->set(FrontChannelLogoutRenderer::class)->tag('heidi.logout_channel');
-    $services->set(LogoutChannels::class)->args([tagged_iterator('heidi.logout_channel')]);
+    $services->set(FrontChannelLogoutRenderer::class)->tag('beffroi.logout_channel');
+    $services->set(LogoutChannels::class)->args([tagged_iterator('beffroi.logout_channel')]);
     $services->alias(ServedLogoutChannelsInterface::class, LogoutChannels::class);
     // how long a logout token stays on its way, from the retries of its lane and the timeout of one send
     $services->set(LogoutTokenDeliveryBudget::class);
     $services->alias(LogoutTokenDeliveryInterface::class, LogoutTokenDeliveryBudget::class);
-    $services->set(LogoutTokenJwsKind::class)->tag('heidi.key_bound_artifact');
+    $services->set(LogoutTokenJwsKind::class)->tag('beffroi.key_bound_artifact');
 };

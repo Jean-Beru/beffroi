@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientPresentation;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Tests\Fixture\Methods;
-use Heidi\Oidc\Tests\Fixture\Shapes;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 use function array_map;
-use Heidi\Oidc\Port\ActiveConsentsInterface;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
@@ -167,11 +167,11 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
 
     private static function activeConsents(): ActiveConsentsInterface
     {
-        return self::service('test.heidi.active_consents', ActiveConsentsInterface::class);
+        return self::service('test.beffroi.active_consents', ActiveConsentsInterface::class);
     }
 
     private static function consents(): ConsentRepositoryInterface
     {
-        return self::service('test.heidi.consents', ConsentRepositoryInterface::class);
+        return self::service('test.beffroi.consents', ConsentRepositoryInterface::class);
     }
 }

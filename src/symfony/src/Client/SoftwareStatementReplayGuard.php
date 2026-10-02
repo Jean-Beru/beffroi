@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Client;
+namespace Beffroi\Bundle\Client;
 
 use DateTimeImmutable;
 use function hash;
-use Heidi\Bundle\Cache\SeenOnce;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Client\Registration\StatementIssuer;
-use Heidi\Oidc\Port\SoftwareStatementReplayGuardInterface;
+use Beffroi\Bundle\Cache\SeenOnce;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Client\Registration\StatementIssuer;
+use Beffroi\Oidc\Port\SoftwareStatementReplayGuardInterface;
 use function sprintf;
 
 /**
@@ -39,6 +39,6 @@ final readonly class SoftwareStatementReplayGuard implements SoftwareStatementRe
      */
     private static function key(Tenant $tenant, StatementIssuer $issuer, string $jti): string
     {
-        return 'heidi.software_statements.' . hash('xxh128', sprintf('%s|%s|%s', $tenant->id->toRfc4122(), $issuer->issuer, $jti));
+        return 'beffroi.software_statements.' . hash('xxh128', sprintf('%s|%s|%s', $tenant->id->toRfc4122(), $issuer->issuer, $jti));
     }
 }

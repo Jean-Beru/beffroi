@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
-use Heidi\Oidc\Application\Token\JwtBearerGrant;
-use Heidi\Oidc\Application\Token\TokenExchangeGrant;
-use Heidi\Oidc\Application\Token\ServedGrants;
-use Heidi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Application\Token\BackchannelAuthenticationGrant;
+use Beffroi\Oidc\Application\Token\JwtBearerGrant;
+use Beffroi\Oidc\Application\Token\TokenExchangeGrant;
+use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
 
 /**
  * The grant names the tests speak of, and the wirings they read them from. The two names the provider

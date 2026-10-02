@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Bundle\Http\Account\AccountSections;
-use Heidi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Bundle\Http\Account\AccountSections;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

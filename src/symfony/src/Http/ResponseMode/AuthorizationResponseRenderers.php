@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\ResponseMode;
+namespace Beffroi\Bundle\Http\ResponseMode;
 
 use function array_any;
 use function array_keys;
-use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
-use Heidi\Oidc\Domain\Authorization\ResponseModeNames;
-use Heidi\Oidc\Port\ServedResponseModesInterface;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
+use Beffroi\Oidc\Domain\Authorization\ResponseModeNames;
+use Beffroi\Oidc\Port\ServedResponseModesInterface;
 use LogicException;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Response;

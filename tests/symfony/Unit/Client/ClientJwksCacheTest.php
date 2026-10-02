@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Client;
+namespace Beffroi\Bundle\Tests\Unit\Client;
 
-use Heidi\Bundle\Client\ClientJwksCache;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Client\CachedClientJwks;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Bundle\Client\ClientJwksCache;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Client\CachedClientJwks;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
@@ -88,6 +88,6 @@ final class ClientJwksCacheTest extends TestCase
 
     private static function keyOf(Client $client): string
     {
-        return 'heidi.client_keys.' . hash('xxh128', $client->tenant->id->toRfc4122() . '|' . $client->registration->clientId);
+        return 'beffroi.client_keys.' . hash('xxh128', $client->tenant->id->toRfc4122() . '|' . $client->registration->clientId);
     }
 }

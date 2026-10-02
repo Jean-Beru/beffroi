@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function array_map;
 use function base64_encode;
 use function count;
 use function explode;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use Jose\Component\Core\JWK;
 use Jose\Component\Core\JWKSet;
 use Jose\Component\Encryption\JWEDecrypter;

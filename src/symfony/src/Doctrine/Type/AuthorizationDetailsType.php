@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
-use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Port\AuthorizationDetailsReaderInterface;
 use function is_string;
 use function json_encode;
 use const JSON_PRESERVE_ZERO_FRACTION;
@@ -30,7 +30,7 @@ use LogicException;
  */
 final class AuthorizationDetailsType extends Type implements NeedsAuthorizationDetailTypesInterface
 {
-    public const string NAME = 'heidi_authorization_details';
+    public const string NAME = 'beffroi_authorization_details';
 
     private static ?AuthorizationDetailsReaderInterface $types = null;
 

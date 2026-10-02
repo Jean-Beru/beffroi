@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace Beffroi\Bundle\Tests\Unit\Http;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Http\TotpProvisioningSealer;
-use Heidi\Bundle\Http\TotpProvisioningStore;
-use Heidi\Core\Domain\Credential\TotpProvisioning;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Bundle\Http\TotpProvisioningSealer;
+use Beffroi\Bundle\Http\TotpProvisioningStore;
+use Beffroi\Core\Domain\Credential\TotpProvisioning;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function serialize;

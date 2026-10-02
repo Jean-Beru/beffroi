@@ -2,40 +2,40 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use function base64_decode;
 use function base64_encode;
 use Closure;
 use DateTimeImmutable;
 use function explode;
 use function hash;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
-use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use function parse_str;
@@ -135,13 +135,13 @@ abstract class BrowserTestCase extends DatabaseTestCase
     {
         $user = self::user($username, $username . '-subject');
         $hash = match ($algorithm->name()) {
-            Argon2id::NAME => self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->hash($password),
+            Argon2id::NAME => self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->hash($password),
             Bcrypt::NAME => new PasswordHash(new Bcrypt(), password_hash($password, PASSWORD_BCRYPT, [
                 'cost' => 4,
             ])),
             default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->name())),
         };
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
 
         return $user;
     }
@@ -154,7 +154,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected function signIn(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
     {
         // the browser reboots the kernel between two requests: the user is read again from the rows
-        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $managed = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
         $session = self::session($managed, $establishedAt ?? self::currentSecond());
         $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->bind($httpSession, $session));
 
@@ -175,7 +175,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
             'nonce-of-the-client',
         );
         $interaction = new Interaction(Secrets::draw(), self::tenant(), $request, null, $createdAt, $expiresAt);
-        self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->save($interaction);
+        self::service('test.beffroi.interactions', InteractionRepositoryInterface::class)->save($interaction);
         $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->begin($httpSession, $interaction));
 
         return $interaction;
@@ -217,7 +217,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     protected static function rotator(): TenantKeyRotator
     {
-        return self::service('test.heidi.key_rotator', TenantKeyRotator::class);
+        return self::service('test.beffroi.key_rotator', TenantKeyRotator::class);
     }
 
     /**
@@ -409,7 +409,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     protected static function keyStorage(): string
     {
-        return sys_get_temp_dir() . '/heidi-bundle-tests/cache/test/keys';
+        return sys_get_temp_dir() . '/beffroi-bundle-tests/cache/test/keys';
     }
 
     /**
@@ -419,7 +419,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected function endSession(AuthenticationSession $session, SessionEnd $by = SessionEnd::User): void
     {
-        $sessions = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class);
+        $sessions = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class);
         $stored = $sessions->find($session->id) ?? static::fail('The session is gone.');
         $stored->end($by, self::currentSecond());
         $sessions->save($stored);
@@ -477,7 +477,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
             $httpSession->setId($cookie->getValue());
         }
         $httpSession->start();
-        $write($httpSession, self::service('test.heidi.browser_session', BrowserSession::class));
+        $write($httpSession, self::service('test.beffroi.browser_session', BrowserSession::class));
         $httpSession->save();
         // the cookie the kernel set carries a domain, and a cookie with a domain wins over one without
         $this->browser->getCookieJar()->set(

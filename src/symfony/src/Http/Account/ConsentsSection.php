@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
 use function count;
-use Heidi\Bundle\Controller\AccountConsentsController;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Bundle\Controller\AccountConsentsController;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Port\ActiveConsentsInterface;
 
 /**
  * What a user has agreed to, on the home page: how many clients may obtain something about them. Which

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\EndSession;
+namespace Beffroi\Oidc\Tests\Application\EndSession;
 
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\EndSession\FrontChannelLogout;
-use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\EndSession\FrontChannelLogout;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

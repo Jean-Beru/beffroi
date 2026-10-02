@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Secret;
+namespace Beffroi\Oidc\Tests\Domain\Secret;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Trust;
+namespace Beffroi\Bundle\Trust;
 
 use DateTimeImmutable;
 use function hash;
-use Heidi\Bundle\Cache\SeenOnce;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Trust\TrustedIssuer;
-use Heidi\Oidc\Port\IssuerAssertionReplayGuardInterface;
+use Beffroi\Bundle\Cache\SeenOnce;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Trust\TrustedIssuer;
+use Beffroi\Oidc\Port\IssuerAssertionReplayGuardInterface;
 use function sprintf;
 
 /**
@@ -39,6 +39,6 @@ final readonly class IssuerAssertionReplayGuard implements IssuerAssertionReplay
      */
     private static function key(Tenant $tenant, TrustedIssuer $issuer, string $jti): string
     {
-        return 'heidi.issuer_assertions.' . hash('xxh128', sprintf('%s|%s|%s', $tenant->id->toRfc4122(), $issuer->issuer, $jti));
+        return 'beffroi.issuer_assertions.' . hash('xxh128', sprintf('%s|%s|%s', $tenant->id->toRfc4122(), $issuer->issuer, $jti));
     }
 }

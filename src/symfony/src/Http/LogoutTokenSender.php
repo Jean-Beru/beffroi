@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Oidc\Domain\EndSession\LogoutToken;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Oidc\Domain\EndSession\LogoutToken;
 use function sprintf;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;

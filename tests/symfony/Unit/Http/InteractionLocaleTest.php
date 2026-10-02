@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace Beffroi\Bundle\Tests\Unit\Http;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Locale\ServedLocales;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientPresentation;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Locale\ServedLocales;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -29,7 +29,7 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Translation\LocaleSwitcher;
 use Symfony\Component\Uid\Uuid;
-use Heidi\Oidc\Tests\Fixture\Shapes;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §5.7: the locale of an interaction is "ui_locales" (OIDC Core §3.1.2.1) read against the
@@ -139,7 +139,7 @@ final class InteractionLocaleTest extends TestCase
     {
         // Given
         $locale = new InteractionLocale(new LocaleSwitcher('en', []), new ServedLocales(['en', 'fr'], 'en'));
-        $page = self::event('heidi_interaction_logout', 'fr');
+        $page = self::event('beffroi_interaction_logout', 'fr');
 
         // When
         $locale->onKernelRequest($page);
@@ -168,10 +168,10 @@ final class InteractionLocaleTest extends TestCase
      */
     public static function provideRequestsOutsideTheInteractionPlane(): iterable
     {
-        yield 'the protocol plane' => ['heidi_protocol_token', HttpKernelInterface::MAIN_REQUEST];
+        yield 'the protocol plane' => ['beffroi_protocol_token', HttpKernelInterface::MAIN_REQUEST];
         yield 'a route of the host application' => ['host_route', HttpKernelInterface::MAIN_REQUEST];
         yield 'no route' => [null, HttpKernelInterface::MAIN_REQUEST];
-        yield 'a sub request of the interaction plane' => ['heidi_interaction_login', HttpKernelInterface::SUB_REQUEST];
+        yield 'a sub request of the interaction plane' => ['beffroi_interaction_login', HttpKernelInterface::SUB_REQUEST];
     }
 
     private static function event(?string $route, string $acceptLanguage, int $type = HttpKernelInterface::MAIN_REQUEST): RequestEvent

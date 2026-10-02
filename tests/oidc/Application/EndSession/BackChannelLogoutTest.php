@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\EndSession;
+namespace Beffroi\Oidc\Tests\Application\EndSession;
 
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use function array_map;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\EndSession\BackChannelLogout;
-use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
-use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Jwts;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
+use Beffroi\Oidc\Application\EndSession\LogoutTokenIssuer;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 /**

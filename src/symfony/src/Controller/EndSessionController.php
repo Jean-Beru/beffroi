@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\EndSession\FrontChannelLogoutRenderer;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Http\FormToken;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Oidc\Application\EndSession\EndSessionHandler;
-use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
-use Heidi\Oidc\Domain\EndSession\LoggedOut;
-use Heidi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Http\FormToken;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Oidc\Application\EndSession\EndSessionHandler;
+use Beffroi\Oidc\Application\EndSession\EndSessionRequestParser;
+use Beffroi\Oidc\Domain\EndSession\LoggedOut;
+use Beffroi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use function is_string;
 use LogicException;
 use function sprintf;
@@ -35,7 +35,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class EndSessionController
 {
-    public const string CSRF_TOKEN_ID = 'heidi_logout';
+    public const string CSRF_TOKEN_ID = 'beffroi_logout';
 
     public const string CONFIRM_PARAMETER = 'confirm';
 
@@ -59,7 +59,7 @@ final readonly class EndSessionController
     ) {
     }
 
-    #[Route('/logout', name: 'heidi_interaction_logout', methods: ['GET', 'POST'])]
+    #[Route('/logout', name: 'beffroi_interaction_logout', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         $tenant = $this->tenants->provide();

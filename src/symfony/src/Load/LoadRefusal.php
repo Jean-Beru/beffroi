@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Load;
+namespace Beffroi\Bundle\Load;
 
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\ProtocolAnswer;
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Oidc\Domain\Token\TokenErrorResponse;
-use Heidi\Oidc\Domain\Token\TokenResponse;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\ProtocolAnswer;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Oidc\Domain\Token\TokenErrorResponse;
+use Beffroi\Oidc\Domain\Token\TokenResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 

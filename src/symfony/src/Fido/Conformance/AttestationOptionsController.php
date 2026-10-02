@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Fido\Conformance;
+namespace Beffroi\Bundle\Fido\Conformance;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Core\Application\Passkey\PasskeyEnrolment;
-use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
+use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,7 +28,7 @@ use Webauthn\PublicKeyCredentialCreationOptions;
 #[AsController]
 final readonly class AttestationOptionsController
 {
-    public const string ROUTE = 'heidi_fido_conformance_attestation_options';
+    public const string ROUTE = 'beffroi_fido_conformance_attestation_options';
 
     public function __construct(
         private TenantProvider $tenants,

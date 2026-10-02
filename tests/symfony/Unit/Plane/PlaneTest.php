@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Plane;
+namespace Beffroi\Bundle\Tests\Unit\Plane;
 
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Bundle\Plane\PlaneRequestListener;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Bundle\Plane\PlaneRequestListener;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -27,16 +27,16 @@ final class PlaneTest extends TestCase
      */
     public static function provideRoutes(): iterable
     {
-        yield 'all serves the login' => [Plane::All, 'heidi_interaction_login', true];
-        yield 'all serves the token endpoint' => [Plane::All, 'heidi_protocol_token', true];
+        yield 'all serves the login' => [Plane::All, 'beffroi_interaction_login', true];
+        yield 'all serves the token endpoint' => [Plane::All, 'beffroi_protocol_token', true];
         yield 'all serves the host' => [Plane::All, 'app_home', true];
-        yield 'interaction serves the login' => [Plane::Interaction, 'heidi_interaction_login', true];
-        yield 'interaction refuses the token endpoint' => [Plane::Interaction, 'heidi_protocol_token', false];
+        yield 'interaction serves the login' => [Plane::Interaction, 'beffroi_interaction_login', true];
+        yield 'interaction refuses the token endpoint' => [Plane::Interaction, 'beffroi_protocol_token', false];
         yield 'interaction serves the host' => [Plane::Interaction, 'app_home', true];
-        yield 'protocol refuses the login' => [Plane::Protocol, 'heidi_interaction_login', false];
-        yield 'protocol serves the token endpoint' => [Plane::Protocol, 'heidi_protocol_token', true];
+        yield 'protocol refuses the login' => [Plane::Protocol, 'beffroi_interaction_login', false];
+        yield 'protocol serves the token endpoint' => [Plane::Protocol, 'beffroi_protocol_token', true];
         yield 'protocol serves the host' => [Plane::Protocol, 'app_home', true];
-        yield 'a prefix is not a plane' => [Plane::Protocol, 'heidi_interaction', true];
+        yield 'a prefix is not a plane' => [Plane::Protocol, 'beffroi_interaction', true];
     }
 
     #[Test]
@@ -52,12 +52,12 @@ final class PlaneTest extends TestCase
      */
     public static function provideRoutesAndTheirPlane(): iterable
     {
-        yield 'the login is of the interaction plane' => ['heidi_interaction_login', Plane::Interaction];
-        yield 'the token endpoint is of the protocol plane' => ['heidi_protocol_token', Plane::Protocol];
+        yield 'the login is of the interaction plane' => ['beffroi_interaction_login', Plane::Interaction];
+        yield 'the token endpoint is of the protocol plane' => ['beffroi_protocol_token', Plane::Protocol];
         yield 'a route of the host application is of neither' => ['app_home', null];
-        yield 'an endpoint of the FIDO conformance tools is of neither' => ['heidi_fido_conformance_attestation_options', null];
-        yield 'the automated approval of the conformance suite is of neither' => ['heidi_ciba_conformance_approval', null];
-        yield 'a prefix alone is of neither' => ['heidi_interaction', null];
+        yield 'an endpoint of the FIDO conformance tools is of neither' => ['beffroi_fido_conformance_attestation_options', null];
+        yield 'the automated approval of the conformance suite is of neither' => ['beffroi_ciba_conformance_approval', null];
+        yield 'a prefix alone is of neither' => ['beffroi_interaction', null];
         yield 'no route is of neither' => ['', null];
     }
 
@@ -93,7 +93,7 @@ final class PlaneTest extends TestCase
      */
     public static function provideRoutesTheProtocolPlaneServes(): iterable
     {
-        yield 'a route of the plane' => ['heidi_protocol_jwks'];
+        yield 'a route of the plane' => ['beffroi_protocol_jwks'];
         yield 'a route of the host' => ['app_home'];
         yield 'the profiler of the host, in development' => ['_profiler'];
         yield 'the web debug toolbar of the host, in development' => ['_wdt'];
@@ -105,7 +105,7 @@ final class PlaneTest extends TestCase
     {
         // Given
         $listener = new PlaneRequestListener(Plane::Protocol);
-        $event = self::event('heidi_interaction_login');
+        $event = self::event('beffroi_interaction_login');
 
         // When
         try {
@@ -114,8 +114,8 @@ final class PlaneTest extends TestCase
         } catch (NotFoundHttpException $exception) {
             // Then
             static::assertSame(404, $exception->getStatusCode());
-            static::assertStringContainsString('heidi_interaction_login', $exception->getMessage());
-            static::assertStringContainsString('HEIDI_PLANE=protocol', $exception->getMessage());
+            static::assertStringContainsString('beffroi_interaction_login', $exception->getMessage());
+            static::assertStringContainsString('BEFFROI_PLANE=protocol', $exception->getMessage());
         }
     }
 

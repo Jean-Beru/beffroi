@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Key;
+namespace Beffroi\Bundle\Tests\Unit\Key;
 
 use function base64_decode;
 use function file_get_contents;
 use function file_put_contents;
-use Heidi\Bundle\Key\FilePairwiseSalt;
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Tests\Fixture\FakeSecretSealer;
+use Beffroi\Bundle\Key\FilePairwiseSalt;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Tests\Fixture\FakeSecretSealer;
 use function mkdir;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -29,7 +29,7 @@ final class FilePairwiseSaltTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/heidi-pairwise-salt-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-pairwise-salt-' . uniqid();
     }
 
     protected function tearDown(): void

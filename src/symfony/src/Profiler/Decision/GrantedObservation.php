@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler\Decision;
+namespace Beffroi\Bundle\Profiler\Decision;
 
 use function array_keys;
-use Heidi\Bundle\Profiler\Observation;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\Granted;
+use Beffroi\Bundle\Profiler\Observation;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\Granted;
 use function implode;
 
 /**

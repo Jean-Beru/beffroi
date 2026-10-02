@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\Address;
 
 /**
  * The OIDC Core §5.1.1 address as one JSON document: an embeddable whose every column is null would
@@ -14,7 +14,7 @@ use Heidi\Core\Domain\Identity\Address;
  */
 final class AddressType extends JsonObjectType
 {
-    public const string NAME = 'heidi_address';
+    public const string NAME = 'beffroi_address';
 
     protected function encode(object $value): array
     {

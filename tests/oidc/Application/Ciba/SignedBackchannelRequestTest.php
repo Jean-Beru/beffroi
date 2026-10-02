@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Ciba;
+namespace Beffroi\Oidc\Tests\Application\Ciba;
 
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Authorization\ResolvedRequestObject;
-use Heidi\Oidc\Application\Ciba\SignedBackchannelRequest;
-use Heidi\Oidc\Bridge\InMemory\InMemoryRequestObjectReplayGuard;
-use Heidi\Oidc\Domain\Authorization\RequestObject;
-use Heidi\Oidc\Domain\Token\UnverifiedJwt;
-use Heidi\Oidc\Exception\LogicException;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Authorization\ResolvedRequestObject;
+use Beffroi\Oidc\Application\Ciba\SignedBackchannelRequest;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryRequestObjectReplayGuard;
+use Beffroi\Oidc\Domain\Authorization\RequestObject;
+use Beffroi\Oidc\Domain\Token\UnverifiedJwt;
+use Beffroi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

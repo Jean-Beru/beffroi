@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Oidc\Domain\Client\Registration\ClientInformationResponse;
-use Heidi\Oidc\Domain\Client\Registration\RegistrationErrorResponse;
-use Heidi\Oidc\Exception\UnauthorizedBearerRequestException;
-use Heidi\Oidc\Exception\UnreadableClientMetadataException;
+use Beffroi\Oidc\Domain\Client\Registration\ClientInformationResponse;
+use Beffroi\Oidc\Domain\Client\Registration\RegistrationErrorResponse;
+use Beffroi\Oidc\Exception\UnauthorizedBearerRequestException;
+use Beffroi\Oidc\Exception\UnreadableClientMetadataException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;

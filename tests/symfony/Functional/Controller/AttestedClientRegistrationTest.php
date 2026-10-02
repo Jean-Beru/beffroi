@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Port\ClientStoreInterface;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
-use Heidi\Oidc\Tests\Fixture\SoftwareStatements;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\SoftwareStatements;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -31,8 +31,8 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
 
     protected function setUp(): void
     {
-        $_SERVER['HEIDI_TEST_REGISTRATION_MODE'] = SoftwareStatementAuthorization::MODE;
-        $_SERVER['HEIDI_TEST_STATEMENT_JWKS'] = base64_encode(json_encode(
+        $_SERVER['BEFFROI_TEST_REGISTRATION_MODE'] = SoftwareStatementAuthorization::MODE;
+        $_SERVER['BEFFROI_TEST_STATEMENT_JWKS'] = base64_encode(json_encode(
             ['keys' => ClientAssertions::publishedKeys()->keys],
             JSON_THROW_ON_ERROR,
         ));
@@ -43,10 +43,10 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     {
         parent::tearDown();
         unset(
-            $_SERVER['HEIDI_TEST_REGISTRATION_MODE'],
-            $_ENV['HEIDI_TEST_REGISTRATION_MODE'],
-            $_SERVER['HEIDI_TEST_STATEMENT_JWKS'],
-            $_ENV['HEIDI_TEST_STATEMENT_JWKS'],
+            $_SERVER['BEFFROI_TEST_REGISTRATION_MODE'],
+            $_ENV['BEFFROI_TEST_REGISTRATION_MODE'],
+            $_SERVER['BEFFROI_TEST_STATEMENT_JWKS'],
+            $_ENV['BEFFROI_TEST_STATEMENT_JWKS'],
         );
     }
 
@@ -289,6 +289,6 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
 
     private function record(string $clientId): ?ClientRecord
     {
-        return self::service('test.heidi.client_store', ClientStoreInterface::class)->findRecord(self::tenant(), $clientId);
+        return self::service('test.beffroi.client_store', ClientStoreInterface::class)->findRecord(self::tenant(), $clientId);
     }
 }

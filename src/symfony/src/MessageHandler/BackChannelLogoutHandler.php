@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\MessageHandler;
+namespace Beffroi\Bundle\MessageHandler;
 
-use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
-use Heidi\Oidc\Application\EndSession\BackChannelLogout;
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**

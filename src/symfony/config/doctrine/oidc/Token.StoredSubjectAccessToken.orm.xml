@@ -4,25 +4,25 @@
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- An opaque access token whose subject was named by what the client presented (RFC 8693 §2.1, RFC 7523 §2.1, architecture §4.6): the "sub" as it was named, the sign-in the presented token named as it named it, and the chain of actors that holds it. The session is a column and not a row: what named it is a token, which carries a "sid". -->
-    <entity name="Heidi\Oidc\Domain\Token\StoredSubjectAccessToken" table="heidi_subject_access_token">
+    <entity name="Beffroi\Oidc\Domain\Token\StoredSubjectAccessToken" table="beffroi_subject_access_token">
         <indexes>
-            <index name="heidi_subject_access_token_grant" columns="grant_id"/>
-            <index name="heidi_subject_access_token_session" columns="session_id"/>
-            <index name="heidi_subject_access_token_expiry" columns="expires_at"/>
+            <index name="beffroi_subject_access_token_grant" columns="grant_id"/>
+            <index name="beffroi_subject_access_token_session" columns="session_id"/>
+            <index name="beffroi_subject_access_token_expiry" columns="expires_at"/>
         </indexes>
         <entity-listeners>
-            <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
+            <entity-listener class="Beffroi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>
             </entity-listener>
         </entity-listeners>
-        <field name="subject" type="heidi_subject" column="sub" length="255"/>
+        <field name="subject" type="beffroi_subject" column="sub" length="255"/>
         <field name="sessionId" type="uuid" column="session_id" nullable="true"/>
-        <field name="authentication" type="heidi_authentication_snapshot" column="authentication" nullable="true">
+        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication" nullable="true">
             <options>
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <field name="actor" type="heidi_actor" column="act" nullable="true">
+        <field name="actor" type="beffroi_actor" column="act" nullable="true">
             <options>
                 <option name="jsonb">true</option>
             </options>

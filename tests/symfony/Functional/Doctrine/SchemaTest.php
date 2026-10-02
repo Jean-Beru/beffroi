@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_map;
 use Doctrine\DBAL\Schema\Name\OptionallyQualifiedName;
 use Doctrine\DBAL\Schema\Table;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\Tools\SchemaValidator;
-use Heidi\Bundle\Tests\Functional\Doctrine\Host\User as HostUser;
+use Beffroi\Bundle\Tests\Functional\Doctrine\Host\User as HostUser;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use function str_starts_with;
@@ -21,33 +21,33 @@ use function str_starts_with;
 final class SchemaTest extends DatabaseTestCase
 {
     public const array TABLES = [
-        'heidi_tenant',
-        'heidi_user',
-        'heidi_password_credential',
-        'heidi_passkey_credential',
-        'heidi_totp_credential',
-        'heidi_linked_identity',
-        'heidi_push_subscription',
-        'heidi_group',
-        'heidi_group_membership',
-        'heidi_authentication_session',
-        'heidi_interaction',
-        'heidi_authorization_code',
-        'heidi_pushed_authorization_request',
-        'heidi_device_authorization_request',
-        'heidi_backchannel_authentication_request',
-        'heidi_refresh_token',
-        'heidi_access_token',
-        'heidi_client_access_token',
-        'heidi_subject_access_token',
-        'heidi_consent',
-        'heidi_client',
-        'heidi_initial_access_token',
-        'heidi_pairwise_subject',
+        'beffroi_tenant',
+        'beffroi_user',
+        'beffroi_password_credential',
+        'beffroi_passkey_credential',
+        'beffroi_totp_credential',
+        'beffroi_linked_identity',
+        'beffroi_push_subscription',
+        'beffroi_group',
+        'beffroi_group_membership',
+        'beffroi_authentication_session',
+        'beffroi_interaction',
+        'beffroi_authorization_code',
+        'beffroi_pushed_authorization_request',
+        'beffroi_device_authorization_request',
+        'beffroi_backchannel_authentication_request',
+        'beffroi_refresh_token',
+        'beffroi_access_token',
+        'beffroi_client_access_token',
+        'beffroi_subject_access_token',
+        'beffroi_consent',
+        'beffroi_client',
+        'beffroi_initial_access_token',
+        'beffroi_pairwise_subject',
         // The one table of this schema no mapping of the bundle describes: the store of the data keys puts
         // it there, through the schema listener of the ORM bridge, so that "doctrine:schema:update" does
         // not offer to drop what it did not put there (decisions 0011 and 0018).
-        'heidi_data_key',
+        'beffroi_data_key',
     ];
 
     /**
@@ -74,7 +74,7 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §5.3: the tables of the bundle, every one prefixed "heidi_", and no other.
+     * Architecture §5.3: the tables of the bundle, every one prefixed "beffroi_", and no other.
      */
     #[Test]
     public function theBundleDeclaresItsTwentyThreePrefixedTables(): void
@@ -88,7 +88,7 @@ final class SchemaTest extends DatabaseTestCase
         sort($expected);
         static::assertSame($expected, $tables);
         foreach ($tables as $name) {
-            static::assertTrue(str_starts_with($name, 'heidi_'), $name);
+            static::assertTrue(str_starts_with($name, 'beffroi_'), $name);
         }
     }
 
@@ -109,7 +109,7 @@ final class SchemaTest extends DatabaseTestCase
         $tables = self::tablesOfTheBundle();
 
         // Then
-        unset($tables['heidi_tenant'], $tables['heidi_data_key']);
+        unset($tables['beffroi_tenant'], $tables['beffroi_data_key']);
         static::assertNotSame([], $tables);
         foreach ($tables as $name => $table) {
             static::assertTrue($table->hasColumn('tenant_id'), $name);
@@ -126,7 +126,7 @@ final class SchemaTest extends DatabaseTestCase
     public function theScopeOfTheDataKeyStoreIsWhatCarriesTheTenantThere(): void
     {
         // When
-        $table = self::tablesOfTheBundle()['heidi_data_key'] ?? null;
+        $table = self::tablesOfTheBundle()['beffroi_data_key'] ?? null;
 
         // Then
         static::assertNotNull($table);
@@ -154,7 +154,7 @@ final class SchemaTest extends DatabaseTestCase
 
         // Then
         static::assertContains('app_user', $tables);
-        static::assertContains('heidi_user', $tables);
+        static::assertContains('beffroi_user', $tables);
         static::assertSame('host@example.com', self::entityManager()->find(HostUser::class, $host->id)?->email);
     }
 

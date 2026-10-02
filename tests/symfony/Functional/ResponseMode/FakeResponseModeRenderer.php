@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\ResponseMode;
+namespace Beffroi\Bundle\Tests\Functional\ResponseMode;
 
-use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRendererInterface;
-use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
+use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRendererInterface;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

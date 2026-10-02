@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
 use DateInterval;
 use Doctrine\DBAL\Connection;
-use Heidi\Bundle\Doctrine\PersonalData\BlindIndexListener;
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Heidi\Bundle\Command\DataKeysRewrapCommand;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Messenger\EventBusDispatcher;
-use Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeys;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Key\FilePairwiseSalt;
-use Heidi\Bundle\Key\FileTenantKeyRepository;
-use Heidi\Bundle\Key\StagingDelay;
-use Heidi\Bundle\Profiler\KmsClient;
-use Heidi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexListener;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Command\DataKeysRewrapCommand;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Messenger\EventBusDispatcher;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeys;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Key\FilePairwiseSalt;
+use Beffroi\Bundle\Key\FileTenantKeyRepository;
+use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Bundle\Profiler\KmsClient;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 use Symfony\Component\KeyManagement\Bridge\DoctrineOrm\SchemaListener\DataKeyStoreSchemaListener;
@@ -29,9 +29,9 @@ use Symfony\Component\KeyManagement\Debug\TraceableDataKeyStore;
 use Symfony\Component\KeyManagement\Debug\TraceableEnvelopeEncrypter;
 use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 use Symfony\Component\KeyManagement\StoredEnvelopeEncrypter;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
@@ -92,18 +92,18 @@ final readonly class KeysSection extends ConfigurationSection
         // the framework configuration, which is also where a client made of several providers and a data
         // key store are declared, and where a DSN that may carry key material already belongs. What the
         // bundle holds is a name, and an alias to the client that name points at.
-        $services->alias('heidi.kms', 'key_management.' . self::string($keys, 'kms'));
+        $services->alias('beffroi.kms', 'key_management.' . self::string($keys, 'kms'));
         // Traced in debug, so that the panel of the profiler sees what this provider opens. The component
         // traces what it builds itself and nothing else: the clients it is given, its own envelope
         // encrypter and its own store, none of which this bundle uses, so a page that sealed or opened a
-        // column reported nothing at all (heidi#427). The decorators are the component's own, posed here
+        // column reported nothing at all (beffroi#427). The decorators are the component's own, posed here
         // rather than taken through an alias to its service, because a test takes the KMS of this kernel
         // down by replacing this service at runtime and an alias cannot be replaced.
-        $envelopes = inline_service(EnvelopeEncrypter::class)->args([service('heidi.kms')]);
-        $services->set('heidi.kms.envelopes', $debug ? TraceableEnvelopeEncrypter::class : EnvelopeEncrypter::class)->args(
+        $envelopes = inline_service(EnvelopeEncrypter::class)->args([service('beffroi.kms')]);
+        $services->set('beffroi.kms.envelopes', $debug ? TraceableEnvelopeEncrypter::class : EnvelopeEncrypter::class)->args(
             $debug
                 ? [$envelopes, service('key_management.data_collector'), self::string($keys, 'kms')]
-                : [service('heidi.kms')],
+                : [service('beffroi.kms')],
         );
         // The columns that carry a personal datum (decisions 0011 and 0018): a data key per tenant and per
         // family of columns, wrapped by the master key of that tenant, the one its signing keys are already
@@ -114,7 +114,7 @@ final readonly class KeysSection extends ConfigurationSection
         // its master keys. None of them is tagged "kernel.reset": the component tags its own store with it
         // and "forget()" would put the KMS back on the path of every request that touches a column, where a
         // thread is to keep open what it has opened (decision 0018, 12-garde-des-cles.md §1.5).
-        $services->set('heidi.data_keys', TenantDataKeyStores::class)->args([
+        $services->set('beffroi.data_keys', TenantDataKeyStores::class)->args([
             service(Connection::class),
             tagged_locator('key_management.client', 'key'),
             self::string($keys, 'kms'),
@@ -127,7 +127,7 @@ final readonly class KeysSection extends ConfigurationSection
         // rotated, every tag already written having been derived under it; keeping it in the store rather
         // than beside the master key of the tenant is what has "key-management:rewrap-data-keys" carry it
         // along when a deployment changes backend (decision 0018).
-        $services->set('heidi.data_keys.index', TenantDataKeyStores::class)->args([
+        $services->set('beffroi.data_keys.index', TenantDataKeyStores::class)->args([
             service(Connection::class),
             tagged_locator('key_management.client', 'key'),
             self::string($keys, 'kms'),
@@ -142,7 +142,7 @@ final readonly class KeysSection extends ConfigurationSection
         $services->set(TenantBlindIndexes::class)->args([
             service(Connection::class),
             tagged_locator('key_management.client', 'key'),
-            service('heidi.data_keys.index'),
+            service('beffroi.data_keys.index'),
             service(TenantProvider::class),
             TenantDataKeyStores::TABLE,
         ]);
@@ -150,7 +150,7 @@ final readonly class KeysSection extends ConfigurationSection
         // writes are the commands themselves: a command that reads is not the command that writes, and
         // what erases a key is a statement of its own and never a method of the router the encryption path
         // sees. The index key is in the same table, so all three see it with the rest.
-        $services->set(TenantDataKeys::class)->args([service('heidi.data_keys')]);
+        $services->set(TenantDataKeys::class)->args([service('beffroi.data_keys')]);
         $services->set(TenantDataKeyDestruction::class)->args([
             service(Connection::class),
             service(TenantDataKeys::class),
@@ -161,7 +161,7 @@ final readonly class KeysSection extends ConfigurationSection
         // The rewrap hands the command of the component a store that lists one tenant's rows, so that
         // nothing of its loop is written twice, and resolves the master key of the tenant rather than
         // asking for it: an operator who had to type it could type another tenant's.
-        $services->get(DataKeysRewrapCommand::class)->arg('$store', service('heidi.data_keys'))->arg('$clients', tagged_locator(
+        $services->get(DataKeysRewrapCommand::class)->arg('$store', service('beffroi.data_keys'))->arg('$clients', tagged_locator(
             'key_management.client',
             'key',
         ))->arg('$masterKeyId', self::string($keys, 'key_id'));
@@ -181,14 +181,14 @@ final readonly class KeysSection extends ConfigurationSection
         // the decorator of the component says it deliberately does not claim.
         $stores = $debug
             ? inline_service(TraceableDataKeyStore::class)->args([
-                service('heidi.data_keys'),
+                service('beffroi.data_keys'),
                 service('key_management.data_collector'),
                 TenantDataKeyStores::TABLE,
             ])
-            : service('heidi.data_keys');
-        $services->set('heidi.kms.stored_envelopes', StoredEnvelopeEncrypter::class)->args([
+            : service('beffroi.data_keys');
+        $services->set('beffroi.kms.stored_envelopes', StoredEnvelopeEncrypter::class)->args([
             $stores,
-            service('heidi.kms.envelopes'),
+            service('beffroi.kms.envelopes'),
         ]);
         // Lazy, and public so that it stays lazy: the types are registered while the bundles boot, and what
         // they are handed is this encrypter, so building it there would build the store, the connection and
@@ -196,39 +196,39 @@ final readonly class KeysSection extends ConfigurationSection
         // A private service with one consumer is inlined, and an inlined service is not a proxy, so being
         // reachable by its name is what keeps the KMS off the path of a boot; it is also what lets a
         // deployment seal a value outside Doctrine. What it costs is asserted rather than trusted
-        // (HeidiBundleExtensionTest).
+        // (BeffroiBundleExtensionTest).
         $services
-            ->set('heidi.personal_data.encrypter', TenantScopedEncrypter::class)
+            ->set('beffroi.personal_data.encrypter', TenantScopedEncrypter::class)
             ->public()
             ->lazy()
             ->args([
-                service('heidi.kms.stored_envelopes'),
+                service('beffroi.kms.stored_envelopes'),
                 service(TenantProvider::class),
             ]);
-        // What the bundles register while they boot (HeidiBundle::boot()), and the one argument a
+        // What the bundles register while they boot (BeffroiBundle::boot()), and the one argument a
         // deployment chooses: which encrypter the types are given is what decides where the data key of a
         // scope comes from.
         $services
-            ->set('heidi.encrypted_types', EncryptedTypes::class)
+            ->set('beffroi.encrypted_types', EncryptedTypes::class)
             ->public()
             ->factory(EncryptedColumnTypes::service(...))
-            ->args([service('heidi.personal_data.encrypter')]);
+            ->args([service('beffroi.personal_data.encrypter')]);
         // The table of the store declared in the schema the ORM assembles, so that "doctrine:schema:update"
         // does not offer to drop what no mapping of the bundle puts there. What the listener of the ORM
         // bridge asks for is a DataKeyStore and not the router, so what is tagged is the one store every
         // read goes to: the table of a read is the table of every write.
         $services
-            ->set('heidi.data_keys.reader', DataKeyStore::class)
-            ->factory([service('heidi.data_keys'), 'reader'])
-            ->tag('heidi.data_key_store');
+            ->set('beffroi.data_keys.reader', DataKeyStore::class)
+            ->factory([service('beffroi.data_keys'), 'reader'])
+            ->tag('beffroi.data_key_store');
         $services->set(
-            'heidi.data_keys.schema_listener',
+            'beffroi.data_keys.schema_listener',
             DataKeyStoreSchemaListener::class,
-        )->args([tagged_iterator('heidi.data_key_store')])->tag('doctrine.event_listener', [
+        )->args([tagged_iterator('beffroi.data_key_store')])->tag('doctrine.event_listener', [
             'event' => 'postGenerateSchema',
         ]);
-        $services->get(EnvelopeKeySealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
-        $services->get(EnvelopeSecretSealer::class)->arg('$envelopes', service('heidi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
+        $services->get(EnvelopeKeySealer::class)->arg('$envelopes', service('beffroi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
+        $services->get(EnvelopeSecretSealer::class)->arg('$envelopes', service('beffroi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileTenantKeyRepository::class)->arg('$directory', self::string($keys, 'storage'));
         // The pairwise salt of a tenant lives beside its sealed keys and is sealed like them (OIDC Core
         // §8.1): one directory to back up, one KMS to lose.

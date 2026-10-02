@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Key;
+namespace Beffroi\Bundle\Tests\Unit\Key;
 
 use DateTimeImmutable;
 use function decoct;
@@ -10,15 +10,15 @@ use function file_get_contents;
 use function file_put_contents;
 use function fileperms;
 use function glob;
-use Heidi\Bundle\Key\FileTenantKeyRepository;
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
-use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
+use Beffroi\Bundle\Key\FileTenantKeyRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Beffroi\Core\Domain\Key\KeyStatus;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use function mkdir;
@@ -41,7 +41,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/heidi-keys-' . uniqid('', true);
+        $this->directory = sys_get_temp_dir() . '/beffroi-keys-' . uniqid('', true);
         $this->repository = new FileTenantKeyRepository($this->directory, Algorithms::all());
     }
 

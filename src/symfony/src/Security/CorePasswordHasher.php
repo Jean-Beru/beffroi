@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\ExceptionInterface;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\PasswordAlgorithmsInterface;
-use Heidi\Core\Port\PasswordHasherInterface as CoreHasher;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\ExceptionInterface;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
+use Beffroi\Core\Port\PasswordHasherInterface as CoreHasher;
 use function is_array;
 use function is_int;
 use function is_string;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use DateTimeInterface;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Exception\KeyNotFoundException;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -21,12 +21,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * delay elapsed, for an operator who knows every relying party has seen the key.
  */
 #[AsCommand(
-    name: 'heidi:keys:activate',
+    name: 'beffroi:keys:activate',
     description: 'Make a staged key the active one of its algorithm before its staging delay elapsed; the key it takes over from starts retiring.',
 )]
 final readonly class KeysActivateCommand
 {
-    public const string NAME = 'heidi:keys:activate';
+    public const string NAME = 'beffroi:keys:activate';
 
     public function __construct(
         private ConfiguredTenant $tenant,
@@ -39,7 +39,7 @@ final readonly class KeysActivateCommand
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument(description: 'The identifier ("kid") of the staged key, as heidi:keys:list shows it.')]
+        #[Argument(description: 'The identifier ("kid") of the staged key, as beffroi:keys:list shows it.')]
         string $kid,
     ): int {
         $tenant = $this->tenant->orTold($io);

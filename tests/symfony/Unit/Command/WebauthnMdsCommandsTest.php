@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Command;
+namespace Beffroi\Bundle\Tests\Unit\Command;
 
 use function array_keys;
 use function file_put_contents;
-use Heidi\Bundle\Command\WebauthnMdsImportCommand;
-use Heidi\Bundle\Command\WebauthnMdsRefreshCommand;
-use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
-use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
-use Heidi\Core\Bridge\Webauthn\StoredMetadata;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\MetadataSigner;
+use Beffroi\Bundle\Command\WebauthnMdsImportCommand;
+use Beffroi\Bundle\Command\WebauthnMdsRefreshCommand;
+use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\MetadataSigner;
 use function json_decode;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
@@ -48,7 +48,7 @@ final class WebauthnMdsCommandsTest extends TestCase
     {
         $this->service = MetadataSigner::create();
         $this->store = new InMemoryMetadataBlobStore();
-        $this->directory = sys_get_temp_dir() . '/heidi-bundle-tests/mds-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/mds-' . uniqid();
         new Filesystem()->mkdir($this->directory);
     }
 
@@ -240,12 +240,12 @@ final class WebauthnMdsCommandsTest extends TestCase
     {
         $verifier = new MetadataBlobVerifier(PhpCertificateChainValidator::create(new MockHttpClient(), new MockClock(Fixtures::now())));
 
-        return new CommandTester(new Command('heidi:webauthn:mds-refresh')->setCode(new WebauthnMdsRefreshCommand($http, $verifier, $this->store)));
+        return new CommandTester(new Command('beffroi:webauthn:mds-refresh')->setCode(new WebauthnMdsRefreshCommand($http, $verifier, $this->store)));
     }
 
     private function import(): CommandTester
     {
-        return new CommandTester(new Command('heidi:webauthn:mds-import')->setCode(new WebauthnMdsImportCommand($this->store, new MockClock(Fixtures::now()))));
+        return new CommandTester(new Command('beffroi:webauthn:mds-import')->setCode(new WebauthnMdsImportCommand($this->store, new MockClock(Fixtures::now()))));
     }
 
     private static function flattened(CommandTester $tester): string

@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Totp;
+namespace Beffroi\Core\Tests\Application\Totp;
 
-use Heidi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use function array_unique;
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Core\Application\Credential\ActiveCredentials;
-use Heidi\Core\Application\Totp\ActiveTotp;
-use Heidi\Core\Application\Totp\TotpCodeMatcher;
-use Heidi\Core\Application\Totp\TotpEnrolment;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Application\Totp\TotpEnrolment;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

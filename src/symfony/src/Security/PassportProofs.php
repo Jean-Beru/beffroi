@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
 use function array_any;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Oidc\Port\ProvableMethodsInterface;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Oidc\Port\ProvableMethodsInterface;
 use LogicException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 

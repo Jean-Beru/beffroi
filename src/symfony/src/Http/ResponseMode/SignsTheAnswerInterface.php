@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\ResponseMode;
+namespace Beffroi\Bundle\Http\ResponseMode;
 
 /**
  * A way of answering whose answer is a document the tenant signs rather than a list of parameters

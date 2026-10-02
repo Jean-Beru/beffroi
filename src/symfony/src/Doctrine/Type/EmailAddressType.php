@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\EmailAddress;
 
 /**
  * An email address, stored as written.
@@ -13,7 +13,7 @@ use Heidi\Core\Domain\Identity\EmailAddress;
  */
 final class EmailAddressType extends StringObjectType
 {
-    public const string NAME = 'heidi_email_address';
+    public const string NAME = 'beffroi_email_address';
 
     protected function encode(object $value): string
     {

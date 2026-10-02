@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler\Decision;
+namespace Beffroi\Bundle\Profiler\Decision;
 
-use Heidi\Bundle\Profiler\Observation;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Bundle\Profiler\Observation;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 
 /**
  * What the panel says about one decision of the authorization endpoint. A decision the provider gains is

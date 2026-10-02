@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Token;
+namespace Beffroi\Oidc\Tests\Domain\Token;
 
-use Heidi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
 use JsonException;
 use const NAN;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\SectorIdentifierUnavailableException;
-use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\SectorIdentifierUnavailableException;
+use Beffroi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
 
 /**
  * A "sector_identifier_uri" that answers the redirection URIs the test told it to, and counts the reads.

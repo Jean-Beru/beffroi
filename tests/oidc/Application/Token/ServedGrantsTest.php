@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Token;
+namespace Beffroi\Oidc\Tests\Application\Token;
 
-use Heidi\Oidc\Application\Token\GrantNames;
-use Heidi\Oidc\Application\Token\ServedGrants;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\FakeClientActingGrant;
-use Heidi\Oidc\Tests\Fixture\FakeGrant;
-use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenIssuingGrant;
-use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenSpendingGrant;
-use Heidi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Application\Token\GrantNames;
+use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\FakeClientActingGrant;
+use Beffroi\Oidc\Tests\Fixture\FakeGrant;
+use Beffroi\Oidc\Tests\Fixture\FakeRefreshTokenIssuingGrant;
+use Beffroi\Oidc\Tests\Fixture\FakeRefreshTokenSpendingGrant;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace Beffroi\Bundle\Tests\Functional\Command;
 
-use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
 
@@ -26,7 +26,7 @@ final class LinkedIdentitiesTest extends ConsoleTestCase
         self::userWithPassword('alice', 'correct horse battery staple');
 
         // When
-        $tester = self::console('heidi:user:link', [
+        $tester = self::console('beffroi:user:link', [
             'username' => 'alice',
             'provider' => self::PROVIDER,
             'subject' => self::SUBJECT,
@@ -34,7 +34,7 @@ final class LinkedIdentitiesTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $identity = self::service('test.heidi.linked_identities', LinkedIdentityRepositoryInterface::class)
+        $identity = self::service('test.beffroi.linked_identities', LinkedIdentityRepositoryInterface::class)
             ->find(self::tenant(), self::PROVIDER, self::SUBJECT);
         static::assertNotNull($identity);
         static::assertSame('alice', $identity->user->username);
@@ -48,14 +48,14 @@ final class LinkedIdentitiesTest extends ConsoleTestCase
     {
         // Given
         self::userWithPassword('alice', 'correct horse battery staple');
-        $first = self::displayed(self::console('heidi:user:link', [
+        $first = self::displayed(self::console('beffroi:user:link', [
             'username' => 'alice',
             'provider' => self::PROVIDER,
             'subject' => self::SUBJECT,
         ]), 'Identifier');
 
         // When
-        $tester = self::console('heidi:user:link', [
+        $tester = self::console('beffroi:user:link', [
             'username' => 'alice',
             'provider' => self::PROVIDER,
             'subject' => self::SUBJECT,
@@ -76,14 +76,14 @@ final class LinkedIdentitiesTest extends ConsoleTestCase
         // Given
         self::userWithPassword('alice', 'correct horse battery staple');
         self::userWithPassword('bob', 'correct horse battery staple');
-        self::console('heidi:user:link', [
+        self::console('beffroi:user:link', [
             'username' => 'alice',
             'provider' => self::PROVIDER,
             'subject' => self::SUBJECT,
         ]);
 
         // When
-        $tester = self::console('heidi:user:link', [
+        $tester = self::console('beffroi:user:link', [
             'username' => 'bob',
             'provider' => self::PROVIDER,
             'subject' => self::SUBJECT,
@@ -98,7 +98,7 @@ final class LinkedIdentitiesTest extends ConsoleTestCase
     public function aUsernameNobodyAnswersToIsSaidAsEveryCommandSaysIt(): void
     {
         // When
-        $tester = self::console('heidi:user:link', [
+        $tester = self::console('beffroi:user:link', [
             'username' => 'nobody',
             'provider' => self::PROVIDER,
             'subject' => self::SUBJECT,

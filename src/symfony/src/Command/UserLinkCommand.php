@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Core\Application\Identity\IdentityAlreadyLinkedException;
-use Heidi\Core\Application\Identity\IdentityLinker;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Application\Identity\IdentityAlreadyLinkedException;
+use Beffroi\Core\Application\Identity\IdentityLinker;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -23,7 +23,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * federation write the same rows, from their own side.
  */
 #[AsCommand(
-    name: 'heidi:user:link',
+    name: 'beffroi:user:link',
     description: 'Say that a user of the tenant is a given subject at an upstream provider; run again to refresh it.',
 )]
 final readonly class UserLinkCommand

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use Doctrine\DBAL\Connection;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Port\AmbientTenantInterface;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\AmbientTenantInterface;
 use function is_resource;
 use function is_string;
 use Psr\Container\ContainerInterface;

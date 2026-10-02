@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace Beffroi\Bundle\Tests\Unit\Http;
 
 use DateTimeImmutable;
 use function gethostname;
-use Heidi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestContextFactory;
 use PHPUnit\Framework\Attributes\BackupGlobals;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -72,12 +72,12 @@ final class RequestContextFactoryTest extends TestCase
         $_SERVER['USER'] = 'root';
 
         // When
-        $context = $factory->fromConsole('heidi:keys:rotate');
+        $context = $factory->fromConsole('beffroi:keys:rotate');
 
         // Then
         static::assertEquals($now, $context->receivedAt);
         static::assertNull($context->ipAddress);
-        static::assertSame(sprintf('heidi-console/heidi:keys:rotate (alice@%s)', self::host()), $context->userAgent);
+        static::assertSame(sprintf('beffroi-console/beffroi:keys:rotate (alice@%s)', self::host()), $context->userAgent);
     }
 
     #[Test]
@@ -90,10 +90,10 @@ final class RequestContextFactoryTest extends TestCase
         $_SERVER['USER'] = 'bob';
 
         // When
-        $context = $factory->fromConsole('heidi:keys:rotate');
+        $context = $factory->fromConsole('beffroi:keys:rotate');
 
         // Then
-        static::assertStringStartsWith('heidi-console/heidi:keys:rotate (bob@', $context->userAgent ?? '');
+        static::assertStringStartsWith('beffroi-console/beffroi:keys:rotate (bob@', $context->userAgent ?? '');
     }
 
     #[Test]
@@ -103,11 +103,11 @@ final class RequestContextFactoryTest extends TestCase
         $factory = new RequestContextFactory(new MockClock());
 
         // When
-        $context = $factory->fromSchedule('heidi');
+        $context = $factory->fromSchedule('beffroi');
 
         // Then
         static::assertNull($context->ipAddress);
-        static::assertSame(sprintf('heidi-scheduler/heidi (%s)', self::host()), $context->userAgent);
+        static::assertSame(sprintf('beffroi-scheduler/beffroi (%s)', self::host()), $context->userAgent);
     }
 
     private static function host(): string

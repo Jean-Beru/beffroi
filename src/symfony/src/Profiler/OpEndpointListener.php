@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
-use Heidi\Bundle\Http\DpopProofHeader;
-use Heidi\Bundle\Http\Tls\ClientCertificateResolverInterface;
-use Heidi\Bundle\Http\Tls\ForgedClientCertificateException;
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Oidc\Exception\InvalidDpopProofException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Bundle\Http\DpopProofHeader;
+use Beffroi\Bundle\Http\Tls\ClientCertificateResolverInterface;
+use Beffroi\Bundle\Http\Tls\ForgedClientCertificateException;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Oidc\Exception\InvalidDpopProofException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function str_starts_with;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;

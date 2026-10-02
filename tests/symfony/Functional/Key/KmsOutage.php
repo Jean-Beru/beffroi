@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace Beffroi\Bundle\Tests\Functional\Key;
 
 use LogicException;
 use SensitiveParameter;
@@ -31,12 +31,12 @@ final class KmsOutage implements EnvelopeEncrypterInterface, EnvelopeDecrypterIn
 
     public function takeOver(ContainerInterface $container): void
     {
-        $kms = $container->get('test.heidi.kms');
+        $kms = $container->get('test.beffroi.kms');
         if (! $kms instanceof DataKeyGeneratorInterface) {
             throw new LogicException('The KMS of the kernel generates no data key.');
         }
         $this->envelopes = new EnvelopeEncrypter($kms);
-        $container->set('heidi.kms.envelopes', $this);
+        $container->set('beffroi.kms.envelopes', $this);
     }
 
     public function encrypt(string $key, #[SensitiveParameter] string $plaintext, string $aad = ''): Envelope

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Authorization;
+namespace Beffroi\Oidc\Tests\Application\Authorization;
 
-use Heidi\Oidc\Application\Authorization\CodeChallengeMethods;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\ChallengeMethods;
-use Heidi\Oidc\Tests\Fixture\FakeCodeChallengeMethod;
+use Beffroi\Oidc\Application\Authorization\CodeChallengeMethods;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\ChallengeMethods;
+use Beffroi\Oidc\Tests\Fixture\FakeCodeChallengeMethod;
 use function array_map;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethodInterface;
+use Beffroi\Oidc\Domain\Authorization\CodeChallengeMethodInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

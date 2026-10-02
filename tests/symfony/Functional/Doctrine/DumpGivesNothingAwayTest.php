@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_filter;
 use function array_keys;
@@ -10,10 +10,10 @@ use function array_values;
 use function bin2hex;
 use Doctrine\DBAL\Connection;
 use function file_put_contents;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SearchedDump;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SearchedDump;
 use function implode;
 use function is_numeric;
 use function is_string;
@@ -153,7 +153,7 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
         // Then
         static::assertNotSame([], $findings, 'the search found nothing where the value is in the clear, so it would find nothing anywhere.');
         foreach ($findings as $finding) {
-            static::assertStringContainsString('heidi_user.subject', $finding);
+            static::assertStringContainsString('beffroi_user.subject', $finding);
         }
     }
 
@@ -201,7 +201,7 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
 
     private static function dump(): SearchedDump
     {
-        $database = static::getContainer()->getParameter('heidi_test.database');
+        $database = static::getContainer()->getParameter('beffroi_test.database');
         if (! is_string($database)) {
             static::fail('The database of the test kernel is not a file.');
         }

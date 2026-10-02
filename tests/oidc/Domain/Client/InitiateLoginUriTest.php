@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client;
+namespace Beffroi\Oidc\Tests\Domain\Client;
 
-use Heidi\Oidc\Domain\Client\InitiateLoginUri;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Client\InitiateLoginUri;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -44,7 +44,7 @@ final class InitiateLoginUriTest extends TestCase
      */
     public static function provideHostsPlainHttpNeverReaches(): iterable
     {
-        yield 'the loopback name of the conformance suite' => ['http://localhost:8443/test/a/heidi/initiate-login'];
+        yield 'the loopback name of the conformance suite' => ['http://localhost:8443/test/a/beffroi/initiate-login'];
         yield 'a name under localhost' => ['http://rp.localhost/start'];
         yield 'the IPv4 loopback literal' => ['http://127.0.0.1:8000/start'];
         yield 'the IPv6 loopback literal' => ['http://[::1]:8000/start'];

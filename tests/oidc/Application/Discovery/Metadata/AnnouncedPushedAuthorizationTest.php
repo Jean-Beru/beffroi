@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedPushedAuthorization;
-use Heidi\Oidc\Port\PushedAuthorizationRequirementInterface;
-use Heidi\Oidc\Tests\Fixture\Endpoints;
-use Heidi\Oidc\Tests\Fixture\PushedRequests;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedPushedAuthorization;
+use Beffroi\Oidc\Port\PushedAuthorizationRequirementInterface;
+use Beffroi\Oidc\Tests\Fixture\Endpoints;
+use Beffroi\Oidc\Tests\Fixture\PushedRequests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function is_string;
 
 /**
@@ -18,7 +18,7 @@ use function is_string;
  */
 final class ScopesType extends Type
 {
-    public const string NAME = 'heidi_scopes';
+    public const string NAME = 'beffroi_scopes';
 
     public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
     {

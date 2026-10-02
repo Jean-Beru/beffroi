@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Oidc\Application\Consent\ConsentRevocation;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Oidc\Application\Consent\ConsentRevocation;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -29,7 +29,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final readonly class UserRevokeConsentCommand
 {
-    public const string NAME = 'heidi:user:revoke-consent';
+    public const string NAME = 'beffroi:user:revoke-consent';
 
     public function __construct(
         private ConfiguredTenant $tenant,

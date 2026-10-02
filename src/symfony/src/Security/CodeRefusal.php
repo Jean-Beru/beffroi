@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Core\Application\Totp\TotpCodeMatcher;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use SensitiveParameter;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 

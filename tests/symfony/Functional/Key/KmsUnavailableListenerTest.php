@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace Beffroi\Bundle\Tests\Functional\Key;
 
-use Heidi\Bundle\Key\KmsUnavailableListener;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Event\KmsUnavailable;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Exception\RuntimeException;
+use Beffroi\Bundle\Key\KmsUnavailableListener;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Event\KmsUnavailable;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Exception\RuntimeException;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +30,7 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->listener = self::service('test.heidi.kms_unavailable_listener', KmsUnavailableListener::class);
+        $this->listener = self::service('test.beffroi.kms_unavailable_listener', KmsUnavailableListener::class);
     }
 
     #[Test]

@@ -4,16 +4,16 @@
    value. The warning is not decoration: somebody who started nothing must be told to refuse. Each answer
    is a POST with the token this page renders and the handle of the request it names; a GET answers
    nothing.
-   Overridable by an application under templates/bundles/HeidiBundle/. #}
-{% extends '@Heidi/layout.html.twig' %}
-{% trans_default_domain 'heidi' %}
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
 
 {% set described_scopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'] %}
 
 {% block title %}{{ 'approvals.title'|trans }}{% endblock %}
 
 {% block content %}
-    {{ include('@Heidi/account/back.html.twig') }}
+    {{ include('@Beffroi/account/back.html.twig') }}
     <p data-provider="{{ tenant.name }}">{{ 'approvals.provider'|trans({provider: tenant.name}) }}</p>
     <p>{{ 'approvals.signed_in_as'|trans({username: user.username}) }}</p>
     {% if refusal is not null %}
@@ -37,9 +37,9 @@
                         <li data-scope="{{ scope.value }}">{{ scope.value in described_scopes ? ('scope.' ~ scope.value)|trans : scope.value }}</li>
                     {% endfor %}
                 </ul>
-                <form method="post" action="{{ path('heidi_interaction_account_approvals') }}">
+                <form method="post" action="{{ path('beffroi_interaction_account_approvals') }}">
                     <input type="hidden" name="request" value="{{ record.authRequestIdHash }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('heidi_approvals') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('beffroi_approvals') }}">
                     <button type="submit" name="answer" value="allow">{{ 'approvals.allow'|trans }}</button>
                     <button type="submit" name="answer" value="deny">{{ 'approvals.deny'|trans }}</button>
                 </form>

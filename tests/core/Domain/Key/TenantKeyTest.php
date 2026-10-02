@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Key;
+namespace Beffroi\Core\Tests\Domain\Key;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\KeyUse;
-use Heidi\Core\Domain\Key\PublicKeySet;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Domain\Key\KeyStatus;
+use Beffroi\Core\Domain\Key\KeyUse;
+use Beffroi\Core\Domain\Key\PublicKeySet;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

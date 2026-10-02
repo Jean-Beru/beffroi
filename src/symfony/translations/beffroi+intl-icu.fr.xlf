@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
-  <file source-language="en" target-language="fr" datatype="plaintext" original="heidi">
+  <file source-language="en" target-language="fr" datatype="plaintext" original="beffroi">
     <header>
       <note>The pages of the interaction plane (architecture §5.7): every string a user reads. ICU message format: {client} is the name of the client, {username} the name of the user.</note>
     </header>

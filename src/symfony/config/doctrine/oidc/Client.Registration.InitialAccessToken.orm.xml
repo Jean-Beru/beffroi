@@ -4,12 +4,12 @@
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- What a tenant hands to whoever may register a client for it (RFC 7591 §1.2, decision 0009): the digest of the value and never the value, the name the tenant gave it, what it is worth and what it has served, when it expires and whether it was taken back. The digest is unique under its tenant, which is what a presented value is looked up by. -->
-    <entity name="Heidi\Oidc\Domain\Client\Registration\InitialAccessToken" table="heidi_initial_access_token">
+    <entity name="Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken" table="beffroi_initial_access_token">
         <unique-constraints>
-            <unique-constraint name="heidi_initial_access_token_digest" columns="tenant_id,digest"/>
+            <unique-constraint name="beffroi_initial_access_token_digest" columns="tenant_id,digest"/>
         </unique-constraints>
         <id name="id" type="uuid" column="id"/>
-        <many-to-one field="tenant" target-entity="Heidi\Core\Domain\Tenant\Tenant">
+        <many-to-one field="tenant" target-entity="Beffroi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
         </many-to-one>
         <field name="digest" type="string" column="digest" length="64">

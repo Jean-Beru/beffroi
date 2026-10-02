@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\EndSession;
+namespace Beffroi\Bundle\EndSession;
 
 use function ceil;
 use DateInterval;
-use Heidi\Bundle\Http\LogoutTokenSender;
-use Heidi\Bundle\Messenger\NotificationRetryPolicy;
-use Heidi\Oidc\Port\LogoutTokenDeliveryInterface;
+use Beffroi\Bundle\Http\LogoutTokenSender;
+use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
+use Beffroi\Oidc\Port\LogoutTokenDeliveryInterface;
 
 /**
  * How long a logout token stays on its way, from what carries it (Back-Channel Logout 1.0 §2.5): the

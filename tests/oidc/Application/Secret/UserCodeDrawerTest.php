@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Secret;
+namespace Beffroi\Oidc\Tests\Application\Secret;
 
 use function array_unique;
 use function chr;
 use function count;
-use Heidi\Core\Bridge\Random\FixedRandomness;
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Oidc\Application\Secret\UserCodeDrawer;
-use Heidi\Oidc\Domain\Device\UserCode;
+use Beffroi\Core\Bridge\Random\FixedRandomness;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
+use Beffroi\Oidc\Domain\Device\UserCode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -8,9 +8,9 @@
    user is signed out of them. A frame of another origin reaches its client only if the browser sends that
    client's cookies, and a browser that blocks third-party cookies does not.
 
-   Overridable by an application under templates/bundles/HeidiBundle/, the script kept exactly as it is
+   Overridable by an application under templates/bundles/BeffroiBundle/, the script kept exactly as it is
    given: its hash is the policy. #}
-{% trans_default_domain 'heidi' %}
+{% trans_default_domain 'beffroi' %}
 <!DOCTYPE html>
 <html lang="{{ app.request.locale|replace({'_': '-'}) }}">
 <head>

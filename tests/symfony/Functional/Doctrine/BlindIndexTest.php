@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
-use Heidi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
-use Heidi\Bundle\Tests\Fixture\AmbientTenant;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
+use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use Psr\Container\ContainerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -97,7 +97,7 @@ final class BlindIndexTest extends DatabaseTestCase
      * itself, so the two projections of one tenant each open the one key of that tenant. Decision 0018
      * counts one opening per data key, and this is the one place where the count is per projection; what
      * would remove it is a `BlindIndex` that accepted an open handle, which is a change in the component
-     * (heidi#418). The login journey touches one of the two, the lookup being by username.
+     * (beffroi#418). The login journey touches one of the two, the lookup being by username.
      */
     #[Test]
     public function eachProjectionOpensTheOneIndexKeyOfTheTenantOnItsOwn(): void
@@ -166,7 +166,7 @@ final class BlindIndexTest extends DatabaseTestCase
     public function theIndexesOfTheContainerDeriveForTheConfiguredTenant(): void
     {
         // When
-        $tag = self::service('test.heidi.blind_indexes', TenantBlindIndexes::class)->of(BlindIndexedColumns::of(User::class, 'username'))->of('ada-lovelace');
+        $tag = self::service('test.beffroi.blind_indexes', TenantBlindIndexes::class)->of(BlindIndexedColumns::of(User::class, 'username'))->of('ada-lovelace');
 
         // Then
         static::assertSame(self::tagOf(self::tenant()->slug, 'ada-lovelace'), $tag);
@@ -199,13 +199,13 @@ final class BlindIndexTest extends DatabaseTestCase
     private static function clients(): ContainerInterface
     {
         return new ServiceLocator([
-            'test' => static fn (): DataKeyGeneratorInterface => self::service('test.heidi.kms', DataKeyGeneratorInterface::class),
+            'test' => static fn (): DataKeyGeneratorInterface => self::service('test.beffroi.kms', DataKeyGeneratorInterface::class),
         ]);
     }
 
     private static function store(): TenantDataKeyStores
     {
-        return self::service('test.heidi.data_keys_index', TenantDataKeyStores::class);
+        return self::service('test.beffroi.data_keys_index', TenantDataKeyStores::class);
     }
 
     /**
@@ -214,7 +214,7 @@ final class BlindIndexTest extends DatabaseTestCase
     private static function scopes(): array
     {
         $scopes = [];
-        foreach (self::connection()->iterateAssociative('SELECT scope FROM heidi_data_key ORDER BY id') as $row) {
+        foreach (self::connection()->iterateAssociative('SELECT scope FROM beffroi_data_key ORDER BY id') as $row) {
             static::assertIsString($row['scope']);
             $scopes[] = $row['scope'];
         }

@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Http\FormToken;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\ConsentPage;
-use Heidi\Oidc\Domain\Interaction\ConsentRequired;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Exception\InteractionCompletedException;
-use Heidi\Oidc\Exception\InteractionExpiredException;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Bundle\Http\AuthorizationResponderInterface;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Http\FormToken;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Oidc\Application\Authorization\AuthorizationHandler;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\ConsentPage;
+use Beffroi\Oidc\Domain\Interaction\ConsentRequired;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Exception\InteractionCompletedException;
+use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,7 +38,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class ConsentController
 {
-    public const string CSRF_TOKEN_ID = 'heidi_consent';
+    public const string CSRF_TOKEN_ID = 'beffroi_consent';
 
     public const string ANSWER_ALLOW = 'allow';
 
@@ -56,7 +56,7 @@ final readonly class ConsentController
     ) {
     }
 
-    #[Route('/consent', name: 'heidi_interaction_consent', methods: ['GET', 'POST'])]
+    #[Route('/consent', name: 'beffroi_interaction_consent', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         $tenant = $this->tenants->provide();

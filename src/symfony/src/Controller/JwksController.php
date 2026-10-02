@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Domain\Discovery\JwkSetResponse;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Oidc\Domain\Discovery\JwkSetResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,7 +23,7 @@ final readonly class JwksController
     ) {
     }
 
-    #[Route('/jwks', name: 'heidi_protocol_jwks', methods: ['GET'])]
+    #[Route('/jwks', name: 'beffroi_protocol_jwks', methods: ['GET'])]
     public function __invoke(): Response
     {
         $jwks = $this->handler->handle($this->tenants->provide());

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Controller;
+namespace Beffroi\Bundle\Tests\Unit\Controller;
 
-use Heidi\Bundle\Controller\PasskeyLoginController;
-use Heidi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Controller\PasskeyLoginController;
+use Beffroi\Bundle\Http\InteractionPages;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -30,7 +30,7 @@ final class PasskeyLoginControllerTest extends TestCase
     protected function setUp(): void
     {
         $routes = new RouteCollection();
-        $routes->add('heidi_interaction_login', new Route('/login'));
+        $routes->add('beffroi_interaction_login', new Route('/login'));
         $router = new Router(new ClosureLoader(), static fn (): RouteCollection => $routes, [], new RequestContext());
         $this->controller = new PasskeyLoginController(new InteractionPages(new Environment(new ArrayLoader()), $router));
     }

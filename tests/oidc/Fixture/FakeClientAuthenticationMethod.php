@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Client\ClientAuthenticationRequest;
-use Heidi\Oidc\Application\Client\Method\AuthenticationMethodInterface;
-use Heidi\Oidc\Domain\Client\AssertionMethodInterface;
-use Heidi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Application\Client\ClientAuthenticationRequest;
+use Beffroi\Oidc\Application\Client\Method\AuthenticationMethodInterface;
+use Beffroi\Oidc\Domain\Client\AssertionMethodInterface;
+use Beffroi\Oidc\Domain\Client\Client;
 
 /**
  * A client authentication method nothing of the core, of the module or of the bundle knows about, wired

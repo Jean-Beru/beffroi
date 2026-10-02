@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Fido\Conformance;
+namespace Beffroi\Bundle\Fido\Conformance;
 
 use InvalidArgumentException;
 

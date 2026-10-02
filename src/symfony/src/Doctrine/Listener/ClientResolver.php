@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Listener;
+namespace Beffroi\Bundle\Doctrine\Listener;
 
-use Heidi\Oidc\Domain\Client\ResolvesItsClientInterface;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Domain\Client\ResolvesItsClientInterface;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use ReflectionProperty;
 
 /**

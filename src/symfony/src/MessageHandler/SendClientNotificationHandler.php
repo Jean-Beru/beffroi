@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\MessageHandler;
+namespace Beffroi\Bundle\MessageHandler;
 
-use Heidi\Bundle\Http\ClientNotificationSender;
-use Heidi\Bundle\Message\SendClientNotification;
+use Beffroi\Bundle\Http\ClientNotificationSender;
+use Beffroi\Bundle\Message\SendClientNotification;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
 

@@ -7,9 +7,9 @@
    from the host the client named, with no referrer and under the Content-Security-Policy the module built
    for this client; the provider never fetches it. A client that registered none of them shows its name
    alone, no empty image and no empty link.
-   Overridable by an application under templates/bundles/HeidiBundle/. #}
-{% extends '@Heidi/layout.html.twig' %}
-{% trans_default_domain 'heidi' %}
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
 
 {% block title %}{{ 'consent.title'|trans({client: page.presentation.name}) }}{% endblock %}
 
@@ -19,10 +19,10 @@
     {% endif %}
     <p>{{ 'consent.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'consent.request'|trans({client: page.presentation.name}) }}</p>
-    {{ include('@Heidi/scopes.html.twig', {scopes: scopes}) }}
+    {{ include('@Beffroi/scopes.html.twig', {scopes: scopes}) }}
     {% if authorization_details is not null %}
         <p>{{ 'consent.authorization_details'|trans({client: page.presentation.name}) }}</p>
-        {{ include('@Heidi/authorization_details.html.twig', {details: authorization_details}) }}
+        {{ include('@Beffroi/authorization_details.html.twig', {details: authorization_details}) }}
     {% endif %}
     {% if page.links is not empty %}
         <ul>
@@ -31,9 +31,9 @@
             {% endfor %}
         </ul>
     {% endif %}
-    <form method="post" action="{{ path('heidi_interaction_consent') }}">
+    <form method="post" action="{{ path('beffroi_interaction_consent') }}">
         <input type="hidden" name="interaction" value="{{ interaction.id }}">
-        <input type="hidden" name="_token" value="{{ csrf_token('heidi_consent') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('beffroi_consent') }}">
         <button type="submit" name="answer" value="allow">{{ 'consent.allow'|trans }}</button>
         <button type="submit" name="answer" value="deny">{{ 'consent.deny'|trans }}</button>
     </form>

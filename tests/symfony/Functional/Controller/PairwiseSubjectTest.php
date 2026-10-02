@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Oidc\Domain\Claims\SectorIdentifier;
-use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
-use Heidi\Oidc\Port\SectorIdentifiersInterface;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Oidc\Domain\Claims\SectorIdentifier;
+use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Beffroi\Oidc\Port\SectorIdentifiersInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -196,7 +196,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
 
         // When
         self::reload();
-        $assigned = self::service('test.heidi.pairwise_subjects', PairwiseSubjectRepositoryInterface::class);
+        $assigned = self::service('test.beffroi.pairwise_subjects', PairwiseSubjectRepositoryInterface::class);
         $found = $assigned->findUser(self::tenant(), new SectorIdentifier('pairwise.test'), $subject);
         $elsewhere = $assigned->findUser(self::tenant(), new SectorIdentifier('other-pairwise.test'), $subject);
 
@@ -217,7 +217,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
         $client = self::client('pairwise-terminal');
 
         // When
-        $sector = self::service('test.heidi.sector_identifiers', SectorIdentifiersInterface::class)->sectorOf($client->registration);
+        $sector = self::service('test.beffroi.sector_identifiers', SectorIdentifiersInterface::class)->sectorOf($client->registration);
 
         // Then
         static::assertSame('terminal-sector.test', $sector->host);
@@ -234,7 +234,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
         $client = self::client('pairwise-app');
 
         // When
-        $sector = self::service('test.heidi.sector_identifiers', SectorIdentifiersInterface::class)->sectorOf($client->registration);
+        $sector = self::service('test.beffroi.sector_identifiers', SectorIdentifiersInterface::class)->sectorOf($client->registration);
 
         // Then
         static::assertSame('pairwise.test', $sector->host);

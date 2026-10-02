@@ -2,66 +2,66 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle;
+namespace Beffroi\Bundle;
 
 use function is_a;
 use function dirname;
-use Heidi\Bundle\Doctrine\Type\ActorType;
-use Heidi\Bundle\Doctrine\Type\AddressType;
-use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
-use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
-use Heidi\Bundle\Doctrine\Type\BackupCodesType;
-use Heidi\Bundle\Doctrine\Type\BindingMessageType;
-use Heidi\Bundle\Doctrine\Type\BytesType;
-use Heidi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
-use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
-use Heidi\Core\Port\PasswordAlgorithmsInterface;
-use Heidi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
-use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
-use Heidi\Bundle\Doctrine\Type\ClientSecretType;
-use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
-use Heidi\Bundle\Configuration\BackchannelAuthenticationSection;
-use Heidi\Bundle\Configuration\BackChannelLogoutSection;
-use Heidi\Bundle\Configuration\ClientAuthenticationSection;
-use Heidi\Bundle\Configuration\ClientRegistrationSection;
-use Heidi\Bundle\Configuration\ClientsSection;
-use Heidi\Bundle\Configuration\InteractionSection;
-use Heidi\Bundle\Configuration\ConfigurationSectionInterface;
-use Heidi\Bundle\Configuration\DpopSection;
-use Heidi\Bundle\Configuration\KeysSection;
-use Heidi\Bundle\Configuration\LoadSection;
-use Heidi\Bundle\Configuration\MutualTlsSection;
-use Heidi\Bundle\Configuration\RequestObjectsSection;
-use Heidi\Bundle\Configuration\TenantSection;
-use Heidi\Bundle\Configuration\TokensSection;
-use Heidi\Bundle\Configuration\TrustedIssuersSection;
-use Heidi\Bundle\Configuration\WebauthnSection;
-use Heidi\Bundle\Configuration\WebPushSection;
-use Heidi\Bundle\Doctrine\Type\ConfirmationType;
-use Heidi\Bundle\Doctrine\Type\AuthorizationDetailsType;
-use Heidi\Bundle\Doctrine\Type\NeedsAuthorizationDetailTypesInterface;
-use Heidi\Bundle\Doctrine\Type\NeedsCodeChallengeMethodsInterface;
-use Heidi\Bundle\Doctrine\Type\NeedsConfirmationReaderInterface;
-use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
-use Heidi\Oidc\Port\CodeChallengeMethodsInterface;
-use Heidi\Oidc\Port\ConfirmationReaderInterface;
-use Heidi\Bundle\Doctrine\Type\DeviceType;
-use Heidi\Bundle\Doctrine\Type\EmailAddressType;
-use Heidi\Bundle\Doctrine\Type\GeoLocationType;
-use Heidi\Bundle\Doctrine\Type\IssuerType;
-use Heidi\Bundle\Doctrine\Type\KeyConfirmationType;
-use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
-use Heidi\Bundle\Doctrine\Type\RedirectUriType;
-use Heidi\Bundle\Doctrine\Type\RequestContextType;
-use Heidi\Bundle\Doctrine\Type\ResourceIndicatorsType;
-use Heidi\Bundle\Doctrine\Type\ScopesType;
-use Heidi\Bundle\Doctrine\Type\SectorIdentifierType;
-use Heidi\Bundle\Doctrine\Type\SubjectType;
-use Heidi\Bundle\Key\KmsClientPass;
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Bundle\Security\CorePasswordHasher;
-use Heidi\Bundle\Security\RateLimitedAttempts;
-use Heidi\Bundle\Security\SecurityUser;
+use Beffroi\Bundle\Doctrine\Type\ActorType;
+use Beffroi\Bundle\Doctrine\Type\AddressType;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
+use Beffroi\Bundle\Doctrine\Type\BackupCodesType;
+use Beffroi\Bundle\Doctrine\Type\BindingMessageType;
+use Beffroi\Bundle\Doctrine\Type\BytesType;
+use Beffroi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
+use Beffroi\Bundle\Doctrine\Type\PasswordAlgorithmType;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
+use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
+use Beffroi\Bundle\Doctrine\Type\ClientSecretType;
+use Beffroi\Bundle\Doctrine\Type\CodeChallengeType;
+use Beffroi\Bundle\Configuration\BackchannelAuthenticationSection;
+use Beffroi\Bundle\Configuration\BackChannelLogoutSection;
+use Beffroi\Bundle\Configuration\ClientAuthenticationSection;
+use Beffroi\Bundle\Configuration\ClientRegistrationSection;
+use Beffroi\Bundle\Configuration\ClientsSection;
+use Beffroi\Bundle\Configuration\InteractionSection;
+use Beffroi\Bundle\Configuration\ConfigurationSectionInterface;
+use Beffroi\Bundle\Configuration\DpopSection;
+use Beffroi\Bundle\Configuration\KeysSection;
+use Beffroi\Bundle\Configuration\LoadSection;
+use Beffroi\Bundle\Configuration\MutualTlsSection;
+use Beffroi\Bundle\Configuration\RequestObjectsSection;
+use Beffroi\Bundle\Configuration\TenantSection;
+use Beffroi\Bundle\Configuration\TokensSection;
+use Beffroi\Bundle\Configuration\TrustedIssuersSection;
+use Beffroi\Bundle\Configuration\WebauthnSection;
+use Beffroi\Bundle\Configuration\WebPushSection;
+use Beffroi\Bundle\Doctrine\Type\ConfirmationType;
+use Beffroi\Bundle\Doctrine\Type\AuthorizationDetailsType;
+use Beffroi\Bundle\Doctrine\Type\NeedsAuthorizationDetailTypesInterface;
+use Beffroi\Bundle\Doctrine\Type\NeedsCodeChallengeMethodsInterface;
+use Beffroi\Bundle\Doctrine\Type\NeedsConfirmationReaderInterface;
+use Beffroi\Oidc\Port\AuthorizationDetailsReaderInterface;
+use Beffroi\Oidc\Port\CodeChallengeMethodsInterface;
+use Beffroi\Oidc\Port\ConfirmationReaderInterface;
+use Beffroi\Bundle\Doctrine\Type\DeviceType;
+use Beffroi\Bundle\Doctrine\Type\EmailAddressType;
+use Beffroi\Bundle\Doctrine\Type\GeoLocationType;
+use Beffroi\Bundle\Doctrine\Type\IssuerType;
+use Beffroi\Bundle\Doctrine\Type\KeyConfirmationType;
+use Beffroi\Bundle\Doctrine\Type\PasskeyUserHandleType;
+use Beffroi\Bundle\Doctrine\Type\RedirectUriType;
+use Beffroi\Bundle\Doctrine\Type\RequestContextType;
+use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
+use Beffroi\Bundle\Doctrine\Type\ScopesType;
+use Beffroi\Bundle\Doctrine\Type\SectorIdentifierType;
+use Beffroi\Bundle\Doctrine\Type\SubjectType;
+use Beffroi\Bundle\Key\KmsClientPass;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Bundle\Security\CorePasswordHasher;
+use Beffroi\Bundle\Security\RateLimitedAttempts;
+use Beffroi\Bundle\Security\SecurityUser;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
@@ -73,9 +73,9 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
  * The configuration of architecture §5.1, and nothing that decision 0006 forbids: no "insecure_*" key, no
  * compatibility switch.
  */
-final class HeidiBundle extends AbstractBundle
+final class BeffroiBundle extends AbstractBundle
 {
-    protected string $extensionAlias = 'heidi';
+    protected string $extensionAlias = 'beffroi';
 
     public function configure(DefinitionConfigurator $definition): void
     {
@@ -132,10 +132,10 @@ final class HeidiBundle extends AbstractBundle
         if ($container === null) {
             return;
         }
-        $algorithms = $container->has('heidi.password_algorithms') ? $container->get('heidi.password_algorithms') : null;
-        $confirmations = $container->has('heidi.confirmations') ? $container->get('heidi.confirmations') : null;
-        $authorizationDetails = $container->has('heidi.authorization_detail_types') ? $container->get('heidi.authorization_detail_types') : null;
-        $codeChallengeMethods = $container->has('heidi.code_challenge_methods') ? $container->get('heidi.code_challenge_methods') : null;
+        $algorithms = $container->has('beffroi.password_algorithms') ? $container->get('beffroi.password_algorithms') : null;
+        $confirmations = $container->has('beffroi.confirmations') ? $container->get('beffroi.confirmations') : null;
+        $authorizationDetails = $container->has('beffroi.authorization_detail_types') ? $container->get('beffroi.authorization_detail_types') : null;
+        $codeChallengeMethods = $container->has('beffroi.code_challenge_methods') ? $container->get('beffroi.code_challenge_methods') : null;
         foreach (self::DBAL_TYPES as $class) {
             if ($algorithms instanceof PasswordAlgorithmsInterface && is_a($class, NeedsPasswordAlgorithmsInterface::class, true)) {
                 $class::resolveWith($algorithms);
@@ -170,14 +170,14 @@ final class HeidiBundle extends AbstractBundle
     private function registerEncryptedTypes(): void
     {
         $container = $this->container;
-        if ($container === null || ! $container->has('heidi.encrypted_types')) {
+        if ($container === null || ! $container->has('beffroi.encrypted_types')) {
             return;
         }
         $doctrine = $container->has('doctrine') ? $container->get('doctrine') : null;
         if ($doctrine instanceof ManagerRegistry) {
             $doctrine->getConnection();
         }
-        $types = $container->get('heidi.encrypted_types');
+        $types = $container->get('beffroi.encrypted_types');
         if ($types instanceof EncryptedTypes) {
             $types->register();
         }
@@ -211,19 +211,19 @@ final class HeidiBundle extends AbstractBundle
                 ],
                 'orm' => [
                     'mappings' => [
-                        'HeidiCore' => [
+                        'BeffroiCore' => [
                             'type' => 'xml',
                             'is_bundle' => false,
                             'dir' => $bundleDir . '/config/doctrine/core',
-                            'prefix' => 'Heidi\\Core\\Domain',
-                            'alias' => 'HeidiCore',
+                            'prefix' => 'Beffroi\\Core\\Domain',
+                            'alias' => 'BeffroiCore',
                         ],
-                        'HeidiOidc' => [
+                        'BeffroiOidc' => [
                             'type' => 'xml',
                             'is_bundle' => false,
                             'dir' => $bundleDir . '/config/doctrine/oidc',
-                            'prefix' => 'Heidi\\Oidc\\Domain',
-                            'alias' => 'HeidiOidc',
+                            'prefix' => 'Beffroi\\Oidc\\Domain',
+                            'alias' => 'BeffroiOidc',
                         ],
                     ],
                 ],
@@ -260,25 +260,25 @@ final class HeidiBundle extends AbstractBundle
             $builder->prependExtensionConfig('framework', [
                 'cache' => [
                     'pools' => [
-                        'heidi.client_keys' => [
+                        'beffroi.client_keys' => [
                             'adapter' => 'cache.app',
                         ],
-                        'heidi.client_assertions' => [
+                        'beffroi.client_assertions' => [
                             'adapter' => 'cache.app',
                         ],
-                        'heidi.issuer_assertions' => [
+                        'beffroi.issuer_assertions' => [
                             'adapter' => 'cache.app',
                         ],
-                        'heidi.software_statements' => [
+                        'beffroi.software_statements' => [
                             'adapter' => 'cache.app',
                         ],
-                        'heidi.request_objects' => [
+                        'beffroi.request_objects' => [
                             'adapter' => 'cache.app',
                         ],
-                        'heidi.dpop' => [
+                        'beffroi.dpop' => [
                             'adapter' => 'cache.app',
                         ],
-                        'heidi.load' => [
+                        'beffroi.load' => [
                             'adapter' => 'cache.app',
                         ],
                     ],
@@ -288,7 +288,7 @@ final class HeidiBundle extends AbstractBundle
         if ($builder->hasExtension('doctrine_migrations')) {
             $builder->prependExtensionConfig('doctrine_migrations', [
                 'migrations_paths' => [
-                    'Heidi\\Bundle\\Migrations' => $bundleDir . '/migrations',
+                    'Beffroi\\Bundle\\Migrations' => $bundleDir . '/migrations',
                 ],
             ]);
         }
@@ -316,8 +316,8 @@ final class HeidiBundle extends AbstractBundle
             $container->import('../config/profiler.php');
         }
 
-        if (! $builder->hasParameter('env(HEIDI_PLANE)')) {
-            $builder->setParameter('env(HEIDI_PLANE)', Plane::All->value);
+        if (! $builder->hasParameter('env(BEFFROI_PLANE)')) {
+            $builder->setParameter('env(BEFFROI_PLANE)', Plane::All->value);
         }
 
         $services = $container->services();

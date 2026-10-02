@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Port\ServedResponseModesInterface;
+use Beffroi\Oidc\Port\ServedResponseModesInterface;
 
 /**
  * The response modes an integration wired: the default alone, as spike 1 had, the default and the posted

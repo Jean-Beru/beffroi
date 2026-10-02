@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_keys;
 use Doctrine\DBAL\Connection;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
-use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
@@ -29,7 +29,7 @@ use function sprintf;
  * `DoctrineInteractionRepositoryTest`, which asserts both hints among every other parameter and which runs
  * against this mapping; what is written here is what that test cannot say, which is what the rows hold.
  *
- * The two hints are columns of `heidi_interaction` and of no other table, `AuthorizationRequest` being an
+ * The two hints are columns of `beffroi_interaction` and of no other table, `AuthorizationRequest` being an
  * embeddable that one entity embeds with no column prefix. That is also why the walk of the schema now
  * holds a sealed column to its own table: an embeddable fixes the type of each of its fields once for the
  * whole model, so a second entity embedding this object would seal those columns under a scope that is not
@@ -41,9 +41,9 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
      * Read from the shared fixture and declared nowhere else: the test that searches the whole database
      * searches for these very values, and two lists of the same values are two lists that disagree.
      */
-    private const string LOGIN_HINT = SealedRows::VALUES['heidi_interaction']['login_hint'];
+    private const string LOGIN_HINT = SealedRows::VALUES['beffroi_interaction']['login_hint'];
 
-    private const string ID_TOKEN_HINT = SealedRows::VALUES['heidi_interaction']['id_token_hint'];
+    private const string ID_TOKEN_HINT = SealedRows::VALUES['beffroi_interaction']['id_token_hint'];
 
     /**
      * The personal data a request keeps, by the column each one lands in, over the two tables.
@@ -51,8 +51,8 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
      * @var array<string, list<string>> table, then the columns the fixture writes
      */
     private const array SEALED = [
-        'heidi_interaction' => ['login_hint', 'id_token_hint'],
-        'heidi_pushed_authorization_request' => ['parameters'],
+        'beffroi_interaction' => ['login_hint', 'id_token_hint'],
+        'beffroi_pushed_authorization_request' => ['parameters'],
     ];
 
     /**
@@ -129,7 +129,7 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
         static::assertInstanceOf(Interaction::class, $found);
         static::assertNull($found->request->loginHint);
         static::assertNull($found->request->idTokenHint);
-        $row = self::rows('heidi_interaction')[0];
+        $row = self::rows('beffroi_interaction')[0];
         static::assertNull($row['login_hint']);
         static::assertNull($row['id_token_hint']);
     }
@@ -205,7 +205,7 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
         self::pushed();
 
         // When
-        $stored = self::rows('heidi_pushed_authorization_request')[0]['parameters'];
+        $stored = self::rows('beffroi_pushed_authorization_request')[0]['parameters'];
 
         // Then
         static::assertNotNull($stored);
@@ -243,12 +243,12 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
 
     private static function interactions(): InteractionRepositoryInterface
     {
-        return self::service('test.heidi.interactions', InteractionRepositoryInterface::class);
+        return self::service('test.beffroi.interactions', InteractionRepositoryInterface::class);
     }
 
     private static function pushedRequests(): PushedAuthorizationRecordRepositoryInterface
     {
-        return self::service('test.heidi.pushed_authorization_requests', PushedAuthorizationRecordRepositoryInterface::class);
+        return self::service('test.beffroi.pushed_authorization_requests', PushedAuthorizationRecordRepositoryInterface::class);
     }
 
     private static function connection(): Connection

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\TotpProvisioningStore;
-use Heidi\Bundle\Http\TwoFactorPage;
-use Heidi\Core\Application\Totp\TotpEnrolment;
-use Heidi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\TotpProvisioningStore;
+use Beffroi\Bundle\Http\TwoFactorPage;
+use Beffroi\Core\Application\Totp\TotpEnrolment;
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -24,9 +24,9 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class TotpEnrolmentBeginController
 {
-    public const string ROUTE = 'heidi_interaction_account_two_factor_begin';
+    public const string ROUTE = 'beffroi_interaction_account_two_factor_begin';
 
-    public const string CSRF_TOKEN_ID = 'heidi_two_factor_begin';
+    public const string CSRF_TOKEN_ID = 'beffroi_two_factor_begin';
 
     public const string ALREADY_ENROLLED = 'already_enrolled';
 

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
-use Heidi\Oidc\Domain\Token\UnverifiedJwt;
-use Heidi\Oidc\Port\CompactJwtReaderInterface;
+use Beffroi\Oidc\Domain\Token\UnverifiedJwt;
+use Beffroi\Oidc\Port\CompactJwtReaderInterface;
 
 /**
  * Every JWT a third party sent the provider, as the provider read it: the request object that carries an

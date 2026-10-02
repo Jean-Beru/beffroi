@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use DateTimeImmutable;
-use Heidi\Oidc\Exception\UseDpopNonceException;
-use Heidi\Oidc\Port\DpopNonceInterface;
+use Beffroi\Oidc\Exception\UseDpopNonceException;
+use Beffroi\Oidc\Port\DpopNonceInterface;
 
 /**
  * A provider that asks for one nonce and always the same one, so that a test can say what it hands back

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Claims\Sector\JwksUriSectorIdentifier;
-use Heidi\Oidc\Application\Claims\Sector\RedirectUriSectorIdentifier;
-use Heidi\Oidc\Application\Claims\Sector\RegisteredSectorIdentifier;
-use Heidi\Oidc\Application\Claims\SectorIdentifiers;
+use Beffroi\Oidc\Application\Claims\Sector\JwksUriSectorIdentifier;
+use Beffroi\Oidc\Application\Claims\Sector\RedirectUriSectorIdentifier;
+use Beffroi\Oidc\Application\Claims\Sector\RegisteredSectorIdentifier;
+use Beffroi\Oidc\Application\Claims\SectorIdentifiers;
 
 /**
  * The ways a client may say which sector it is of, wired as a deployment wires them (OIDC Core §8.1,

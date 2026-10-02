@@ -4,7 +4,7 @@
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- What the session had proven when the grant was made (architecture §4.6), carried by the code, the refresh token and the opaque access token on the same three columns as before: the "auth_time", "amr" and "acr" of every token of the grant. -->
-    <embeddable name="Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot">
+    <embeddable name="Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot">
         <field name="authenticatedAt" type="datetime_immutable" column="authenticated_at"/>
         <field name="methods" type="simple_array" column="amr"/>
         <field name="contextClass" type="string" column="acr" length="255"/>

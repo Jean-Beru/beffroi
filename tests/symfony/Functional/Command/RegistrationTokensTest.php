@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace Beffroi\Bundle\Tests\Functional\Command;
 
-use Heidi\Bundle\Command\ClientTokenIssueCommand;
-use Heidi\Bundle\Command\ClientTokenListCommand;
-use Heidi\Bundle\Command\ClientTokenRevokeCommand;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\IssuedInitialAccessTokensInterface;
+use Beffroi\Bundle\Command\ClientTokenIssueCommand;
+use Beffroi\Bundle\Command\ClientTokenListCommand;
+use Beffroi\Bundle\Command\ClientTokenRevokeCommand;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -155,7 +155,7 @@ final class RegistrationTokensTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
-        static::assertCount(1, [...self::service('test.heidi.initial_access_tokens', IssuedInitialAccessTokensInterface::class)->issuedIn(self::tenant())]);
+        static::assertCount(1, [...self::service('test.beffroi.initial_access_tokens', IssuedInitialAccessTokensInterface::class)->issuedIn(self::tenant())]);
     }
 
     #[Test]

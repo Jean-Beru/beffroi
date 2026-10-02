@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_keys;
 use function array_map;
@@ -11,16 +11,16 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Schema\Index\IndexedColumn;
 use Doctrine\DBAL\Schema\Index\IndexType;
 use Doctrine\ORM\Tools\SchemaTool;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Core\Domain\Identity\LinkedIdentity;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
@@ -28,11 +28,11 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The three columns of `heidi_linked_identity` sealed, and the blind index of the pair a federated login
+ * The three columns of `beffroi_linked_identity` sealed, and the blind index of the pair a federated login
  * recognises an identity by (decisions 0011 and 0018).
  *
  * **The table is sealed before a federation fills it, and that is why it is sealed now.** What writes a row
- * today is `heidi:user:link` and what reads one is the grant that reads an assertion of a trusted issuer,
+ * today is `beffroi:user:link` and what reads one is the grant that reads an assertion of a trusted issuer,
  * so the lookup of the pair is a path this provider already takes; a federation will write one row per
  * person who signs in through it, and a blind index added at that point is a reindex of every row of every
  * tenant of a customer. The rows written here go through the repository that lookup uses, unchanged.
@@ -72,7 +72,7 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()['heidi_linked_identity'] as $column => $line) {
+        foreach (SchemaColumns::all()['beffroi_linked_identity'] as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }
@@ -126,7 +126,7 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         static::assertStringNotContainsString(
             $plaintext,
             $stored,
-            sprintf('heidi_linked_identity.%s holds "%s" in the clear.', $column, $plaintext),
+            sprintf('beffroi_linked_identity.%s holds "%s" in the clear.', $column, $plaintext),
         );
     }
 
@@ -209,7 +209,7 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
 
         // Then
         static::assertFalse($ofOther->id->equals($ofAcme->id));
-        static::assertCount(2, self::connection()->fetchAllAssociative('SELECT id FROM heidi_linked_identity'));
+        static::assertCount(2, self::connection()->fetchAllAssociative('SELECT id FROM beffroi_linked_identity'));
     }
 
     /**
@@ -224,14 +224,14 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         $entityManager = self::entityManager();
         $table = new SchemaTool($entityManager)
             ->getSchemaFromMetadata($entityManager->getMetadataFactory()->getAllMetadata())
-            ->getTable('heidi_linked_identity');
+            ->getTable('beffroi_linked_identity');
 
         // When
-        $index = $table->getIndex('heidi_linked_identity_subject');
+        $index = $table->getIndex('beffroi_linked_identity_subject');
 
         // Then
         foreach (['provider', 'provider_index', 'subject', 'subject_index', 'claims'] as $column) {
-            static::assertTrue($table->hasColumn($column), sprintf('heidi_linked_identity has no column "%s".', $column));
+            static::assertTrue($table->hasColumn($column), sprintf('beffroi_linked_identity has no column "%s".', $column));
         }
         static::assertSame(IndexType::UNIQUE, $index->getType());
         static::assertSame(
@@ -249,7 +249,7 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
     private static function identity(string $subject = 'ada-subject', ?Tenant $tenant = null): LinkedIdentity
     {
         $user = User::create(Uuid::v7(), $tenant ?? self::tenant(), new Subject($subject), $subject, self::now());
-        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
         $identity = new LinkedIdentity(Uuid::v7(), $user, self::PROVIDER, self::SUBJECT, self::CLAIMS, self::now(), self::now());
         self::identities()->save($identity);
 
@@ -267,14 +267,14 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
     {
         $rows = RawRows::of(
             self::connection(),
-            'heidi_linked_identity',
+            'beffroi_linked_identity',
             [...array_keys(self::PLAINTEXTS), 'provider_index', 'subject_index'],
         );
         static::assertCount(1, $rows);
 
         $row = [];
         foreach ($rows[0] as $column => $value) {
-            $row[$column] = $value ?? static::fail(sprintf('heidi_linked_identity.%s holds nothing.', $column));
+            $row[$column] = $value ?? static::fail(sprintf('beffroi_linked_identity.%s holds nothing.', $column));
         }
 
         return $row;
@@ -282,7 +282,7 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
 
     private static function identities(): LinkedIdentityRepositoryInterface
     {
-        return self::service('test.heidi.linked_identities', LinkedIdentityRepositoryInterface::class);
+        return self::service('test.beffroi.linked_identities', LinkedIdentityRepositoryInterface::class);
     }
 
     private static function connection(): Connection

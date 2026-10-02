@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Webauthn;
+namespace Beffroi\Core\Tests\Bridge\Webauthn;
 
-use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
-use Heidi\Core\Exception\MetadataBlobRefusedException;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\MetadataSigner;
+use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Beffroi\Core\Exception\MetadataBlobRefusedException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\MetadataSigner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_replace;

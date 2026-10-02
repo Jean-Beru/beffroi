@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Port\ActiveConsentsInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -270,7 +270,7 @@ final class AccountConsentsTest extends BrowserTestCase
     private function consentOf(User $user): Consent
     {
         return (
-            self::service('test.heidi.active_consents', ActiveConsentsInterface::class)->activeOf($user)[0] ?? static::fail('The user has agreed to nothing.')
+            self::service('test.beffroi.active_consents', ActiveConsentsInterface::class)->activeOf($user)[0] ?? static::fail('The user has agreed to nothing.')
         );
     }
 }

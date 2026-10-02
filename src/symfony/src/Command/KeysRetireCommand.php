@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function count;
 use DateTimeInterface;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\KeyNotFoundException;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Exception\RetirementNotDueException;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Exception\RetirementNotDueException;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -25,12 +25,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * scheduled step does; one key before its date with --force, and the trail says so.
  */
 #[AsCommand(
-    name: 'heidi:keys:retire',
+    name: 'beffroi:keys:retire',
     description: 'Take a retiring key out of the JWK Set: one key by its identifier, before its retirement date with --force; or every key past its date with --due.',
 )]
 final readonly class KeysRetireCommand
 {
-    public const string NAME = 'heidi:keys:retire';
+    public const string NAME = 'beffroi:keys:retire';
 
     public function __construct(
         private ConfiguredTenant $tenant,
@@ -41,7 +41,7 @@ final readonly class KeysRetireCommand
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument(description: 'The identifier ("kid") of the retiring key, as heidi:keys:list shows it.')]
+        #[Argument(description: 'The identifier ("kid") of the retiring key, as beffroi:keys:list shows it.')]
         ?string $kid = null,
         #[Option(
             description: 'Retire the key although what is bound to it may still arrive: after a compromise, or when everything it is bound to is known to have expired.',

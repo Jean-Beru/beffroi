@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
 use function explode;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function implode;
 use function is_string;
 
@@ -20,7 +20,7 @@ use function is_string;
  */
 final class ResourceIndicatorsType extends Type
 {
-    public const string NAME = 'heidi_resources';
+    public const string NAME = 'beffroi_resources';
 
     private const string SEPARATOR = ' ';
 

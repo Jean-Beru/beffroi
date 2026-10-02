@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Fido;
+namespace Beffroi\Bundle\Tests\Functional\Fido;
 
-use Heidi\Bundle\Fido\Conformance\AttestationResultController;
-use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\MetadataBlobStoreInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Bundle\Fido\Conformance\AttestationResultController;
+use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\MetadataBlobStoreInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use function is_array;
 use function json_decode;
 use function json_encode;
@@ -83,7 +83,7 @@ final class FidoConformanceTest extends BrowserTestCase
             ],
             self::section($options, 'extensions'),
         );
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'johndoe@example.com');
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'johndoe@example.com');
         static::assertSame('John Doe', $user?->profile->name);
     }
 
@@ -98,7 +98,7 @@ final class FidoConformanceTest extends BrowserTestCase
         $device = new SoftwareAuthenticator(self::ORIGIN);
         $enrolled = $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('johndoe@example.com')));
         static::assertSame('ok', $enrolled['status'], json_encode($enrolled, JSON_THROW_ON_ERROR));
-        $passkey = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+        $passkey = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->findByExternalId(self::tenant(), PasskeyCredential::class, $device->credentialId);
         static::assertSame(AttestationResultController::PASSKEY_NAME, $passkey?->name);
 
@@ -122,9 +122,9 @@ final class FidoConformanceTest extends BrowserTestCase
             $asserted,
         );
         self::reload();
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
             ->findByUsername(self::tenant(), 'johndoe@example.com') ?? static::fail('The user is gone.');
-        static::assertCount(1, self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, self::now()));
+        static::assertCount(1, self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, self::now()));
     }
 
     /**
@@ -189,14 +189,14 @@ final class FidoConformanceTest extends BrowserTestCase
     /**
      * §7.1 step 22 through the kernel: the tools ask for an attestation, the metadata of the store say the
      * authenticator is compromised, the self attestation it sends is refused; the metadata are what
-     * heidi:webauthn:mds-refresh stored.
+     * beffroi:webauthn:mds-refresh stored.
      */
     #[Test]
     public function anAttestationAskedForIsCheckedAgainstTheStoredMetadata(): void
     {
         // Given
         $device = new SoftwareAuthenticator(self::ORIGIN, attestation: 'packed');
-        self::service('test.heidi.metadata_store', MetadataBlobStoreInterface::class)
+        self::service('test.beffroi.metadata_store', MetadataBlobStoreInterface::class)
             ->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(
                 Uuid::fromBinary($device->aaguid)->toRfc4122(),
                 [AuthenticatorStatus::USER_VERIFICATION_BYPASS],

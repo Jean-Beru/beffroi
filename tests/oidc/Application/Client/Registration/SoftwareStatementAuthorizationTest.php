@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Registration;
+namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
 use DateInterval;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
-use Heidi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
-use Heidi\Oidc\Bridge\InMemory\InMemorySoftwareStatementReplayGuard;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
-use Heidi\Oidc\Domain\Client\Registration\RegistrationRequest;
-use Heidi\Oidc\Exception\InvalidClientMetadataException;
-use Heidi\Oidc\Exception\UnauthorizedRegistrationException;
-use Heidi\Oidc\Tests\Fixture\Policies;
-use Heidi\Oidc\Tests\Fixture\SoftwareStatements;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
+use Beffroi\Oidc\Bridge\InMemory\InMemorySoftwareStatementReplayGuard;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
+use Beffroi\Oidc\Domain\Client\Registration\RegistrationRequest;
+use Beffroi\Oidc\Exception\InvalidClientMetadataException;
+use Beffroi\Oidc\Exception\UnauthorizedRegistrationException;
+use Beffroi\Oidc\Tests\Fixture\Policies;
+use Beffroi\Oidc\Tests\Fixture\SoftwareStatements;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\PasswordAlgorithmsInterface;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use LogicException;
 
 /**
@@ -19,7 +19,7 @@ use LogicException;
  */
 final class PasswordAlgorithmType extends StringObjectType implements NeedsPasswordAlgorithmsInterface
 {
-    public const string NAME = 'heidi_password_algorithm';
+    public const string NAME = 'beffroi_password_algorithm';
 
     private static ?PasswordAlgorithmsInterface $algorithms = null;
 

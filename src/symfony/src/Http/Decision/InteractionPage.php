@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Decision;
+namespace Beffroi\Bundle\Http\Decision;
 
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;

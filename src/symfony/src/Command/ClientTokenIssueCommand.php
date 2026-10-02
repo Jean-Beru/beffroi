@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use DateInterval;
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -30,7 +30,7 @@ use function trim;
 )]
 final readonly class ClientTokenIssueCommand
 {
-    public const string NAME = 'heidi:client:token:issue';
+    public const string NAME = 'beffroi:client:token:issue';
 
     /**
      * What a token is worth and for how long when the command line says neither: one client, thirty days.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Messenger;
+namespace Beffroi\Bundle\Messenger;
 
 use function min;
 use Symfony\Component\Messenger\Envelope;

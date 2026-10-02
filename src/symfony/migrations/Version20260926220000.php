@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
@@ -30,26 +30,26 @@ final class Version20260926220000 extends AbstractMigration
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('DELETE FROM heidi_device_authorization_request');
-        $this->addSql('ALTER TABLE heidi_device_authorization_request ADD grant_id UUID NOT NULL');
-        $this->addSql('ALTER TABLE heidi_device_authorization_request ADD revoked_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
-        $this->addSql('CREATE UNIQUE INDEX heidi_device_authorization_grant ON heidi_device_authorization_request (grant_id)');
+        $this->addSql('DELETE FROM beffroi_device_authorization_request');
+        $this->addSql('ALTER TABLE beffroi_device_authorization_request ADD grant_id UUID NOT NULL');
+        $this->addSql('ALTER TABLE beffroi_device_authorization_request ADD revoked_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        $this->addSql('CREATE UNIQUE INDEX beffroi_device_authorization_grant ON beffroi_device_authorization_request (grant_id)');
 
-        $this->addSql('DELETE FROM heidi_backchannel_authentication_request');
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request ADD grant_id UUID NOT NULL');
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request ADD revoked_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
-        $this->addSql('CREATE UNIQUE INDEX heidi_backchannel_authentication_grant ON heidi_backchannel_authentication_request (grant_id)');
+        $this->addSql('DELETE FROM beffroi_backchannel_authentication_request');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request ADD grant_id UUID NOT NULL');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request ADD revoked_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        $this->addSql('CREATE UNIQUE INDEX beffroi_backchannel_authentication_grant ON beffroi_backchannel_authentication_request (grant_id)');
     }
 
     public function down(Schema $schema): void
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('DROP INDEX heidi_backchannel_authentication_grant');
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request DROP revoked_at');
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request DROP grant_id');
-        $this->addSql('DROP INDEX heidi_device_authorization_grant');
-        $this->addSql('ALTER TABLE heidi_device_authorization_request DROP revoked_at');
-        $this->addSql('ALTER TABLE heidi_device_authorization_request DROP grant_id');
+        $this->addSql('DROP INDEX beffroi_backchannel_authentication_grant');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request DROP revoked_at');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request DROP grant_id');
+        $this->addSql('DROP INDEX beffroi_device_authorization_grant');
+        $this->addSql('ALTER TABLE beffroi_device_authorization_request DROP revoked_at');
+        $this->addSql('ALTER TABLE beffroi_device_authorization_request DROP grant_id');
     }
 }

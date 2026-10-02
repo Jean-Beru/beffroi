@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function array_values;
-use Heidi\Bundle\Locale\ServedLocales;
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Bundle\Locale\ServedLocales;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
 use function str_starts_with;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;

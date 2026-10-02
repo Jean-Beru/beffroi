@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
 
 /**
  * Every column of every table of the two pure-PHP packages, and what it is: a column a dump gives away
@@ -78,7 +78,7 @@ final readonly class SchemaColumns
     public static function all(): array
     {
         return [
-            'heidi_tenant' => [
+            'beffroi_tenant' => [
                 'slug' => new NoPersonalDatum(self::THE_TENANT),
                 'issuer' => new NoPersonalDatum(self::THE_TENANT),
                 'name' => new NoPersonalDatum(self::THE_TENANT),
@@ -86,7 +86,7 @@ final readonly class SchemaColumns
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_user' => [
+            'beffroi_user' => [
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
                 'username' => new Sealed('user'),
                 'username_index' => new NoPersonalDatum(self::A_BLIND_INDEX),
@@ -115,7 +115,7 @@ final readonly class SchemaColumns
                 'locale' => new Sealed('user'),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
-            'heidi_linked_identity' => [
+            'beffroi_linked_identity' => [
                 'provider' => new Sealed('linked_identity'),
                 'provider_index' => new NoPersonalDatum(self::A_BLIND_INDEX),
                 'subject' => new Sealed('linked_identity'),
@@ -127,7 +127,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_passkey_credential' => [
+            'beffroi_passkey_credential' => [
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'last_used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
@@ -144,7 +144,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_password_credential' => [
+            'beffroi_password_credential' => [
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'last_used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
@@ -155,7 +155,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_totp_credential' => [
+            'beffroi_totp_credential' => [
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'last_used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
@@ -166,7 +166,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_push_subscription' => [
+            'beffroi_push_subscription' => [
                 'endpoint' => new Sealed('push_subscription'),
                 'endpoint_hash' => new NoPersonalDatum(self::HASHED),
                 'public_key' => new NoPersonalDatum(self::A_KEY_OF_THE_SUBSCRIPTION),
@@ -180,14 +180,14 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_group' => [
+            'beffroi_group' => [
                 'name' => new NoPersonalDatum('names a group of the tenant, an organisational unit and not a person'),
                 'source' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
-            'heidi_group_membership' => [
+            'beffroi_group_membership' => [
                 'source' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'added_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
@@ -195,7 +195,7 @@ final readonly class SchemaColumns
                 'group_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_authentication_session' => [
+            'beffroi_authentication_session' => [
                 'established_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'proofs' => new NoPersonalDatum(self::WHAT_THE_SESSION_PROVED),
                 'last_seen_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
@@ -208,7 +208,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_interaction' => [
+            'beffroi_interaction' => [
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'locale' => new NoPersonalDatum('the language a request asked the page to be served in, not a language the provider knows of the person'),
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
@@ -237,7 +237,7 @@ final readonly class SchemaColumns
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'consent_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_authorization_code' => [
+            'beffroi_authorization_code' => [
                 'used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'revoked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'grant_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
@@ -259,7 +259,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_pushed_authorization_request' => [
+            'beffroi_pushed_authorization_request' => [
                 'used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'parameters' => new Sealed('pushed_authorization_request'),
@@ -269,7 +269,7 @@ final readonly class SchemaColumns
                 'request_uri_hash' => new NoPersonalDatum(self::HASHED),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
-            'heidi_access_token' => [
+            'beffroi_access_token' => [
                 'grant_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'scopes' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
@@ -286,7 +286,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_subject_access_token' => [
+            'beffroi_subject_access_token' => [
                 'grant_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'scopes' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
@@ -301,7 +301,7 @@ final readonly class SchemaColumns
                 'act' => new NoPersonalDatum('the actor a delegated token names, which is a client and never a person (RFC 8693 §4.1)'),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
-            'heidi_client_access_token' => [
+            'beffroi_client_access_token' => [
                 'grant_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'scopes' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
@@ -312,7 +312,7 @@ final readonly class SchemaColumns
                 'token_hash' => new NoPersonalDatum(self::HASHED),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
-            'heidi_refresh_token' => [
+            'beffroi_refresh_token' => [
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'scopes' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
                 'resources' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
@@ -335,7 +335,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_device_authorization_request' => [
+            'beffroi_device_authorization_request' => [
                 'used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'revoked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'user_code_hash' => new NoPersonalDatum(self::HASHED),
@@ -355,7 +355,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_backchannel_authentication_request' => [
+            'beffroi_backchannel_authentication_request' => [
                 'used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'revoked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'grant_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
@@ -379,7 +379,7 @@ final readonly class SchemaColumns
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_consent' => [
+            'beffroi_consent' => [
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'scopes' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
                 'authorization_details' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
@@ -389,7 +389,7 @@ final readonly class SchemaColumns
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
-            'heidi_client' => [
+            'beffroi_client' => [
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'metadata' => new Sealed('client'),
                 'assigned_metadata' => new Sealed('client'),
@@ -401,7 +401,7 @@ final readonly class SchemaColumns
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
-            'heidi_initial_access_token' => [
+            'beffroi_initial_access_token' => [
                 'digest' => new NoPersonalDatum(self::HASHED),
                 'name' => new NoPersonalDatum('the name an operator gave a token, so that one can be told from another'),
                 'registrations_allowed' => new NoPersonalDatum(self::NAMES_NO_PERSON),
@@ -412,7 +412,7 @@ final readonly class SchemaColumns
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
-            'heidi_pairwise_subject' => [
+            'beffroi_pairwise_subject' => [
                 'sector' => new NoPersonalDatum('the sector a client registered, a host or the URL of a document, not a person'),
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
                 'assigned_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
@@ -424,7 +424,7 @@ final readonly class SchemaColumns
             // the schema the ORM assembles, through the listener of its ORM bridge (decisions 0011 and
             // 0018). It is where every sealed column of this schema takes its key from, and it holds no
             // personal datum of its own: a dump of it alone opens nothing, the master key never being in it.
-            'heidi_data_key' => [
+            'beffroi_data_key' => [
                 'id' => new NoPersonalDatum('the reference a sealed value carries, drawn as a UUIDv7 so that the newest key of a scope is the last row'),
                 'scope' =>
                     new NoPersonalDatum('the slug of a tenant and the family of columns its key seals, which names an organisation and a set of columns'),

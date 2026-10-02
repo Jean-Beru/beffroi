@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function array_filter;
 use function array_slice;
 use function array_values;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function in_array;
 use function is_array;
 use function is_string;
@@ -27,9 +27,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class BrowserSession
 {
-    public const string AUTHENTICATION_SESSION_KEY = '_heidi_session';
+    public const string AUTHENTICATION_SESSION_KEY = '_beffroi_session';
 
-    public const string INTERACTIONS_KEY = '_heidi_interactions';
+    public const string INTERACTIONS_KEY = '_beffroi_interactions';
 
     public const int MAX_PENDING_INTERACTIONS = 8;
 

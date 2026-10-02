@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Plane;
+namespace Beffroi\Bundle\Plane;
 
 use function sprintf;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -35,7 +35,7 @@ final readonly class PlaneRequestListener
         }
 
         throw new NotFoundHttpException(sprintf(
-            'The route "%s" belongs to a plane this process does not serve (HEIDI_PLANE=%s).',
+            'The route "%s" belongs to a plane this process does not serve (BEFFROI_PLANE=%s).',
             $route,
             $this->plane->value,
         ));

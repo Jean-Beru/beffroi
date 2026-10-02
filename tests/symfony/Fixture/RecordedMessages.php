@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Fixture;
+namespace Beffroi\Bundle\Tests\Fixture;
 
 use Psr\Log\AbstractLogger;
 use Stringable;

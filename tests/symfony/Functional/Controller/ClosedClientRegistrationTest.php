@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
@@ -21,14 +21,14 @@ final class ClosedClientRegistrationTest extends BrowserTestCase
 {
     protected function setUp(): void
     {
-        $_SERVER['HEIDI_TEST_REGISTRATION_MODE'] = '';
+        $_SERVER['BEFFROI_TEST_REGISTRATION_MODE'] = '';
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
         parent::tearDown();
-        unset($_SERVER['HEIDI_TEST_REGISTRATION_MODE'], $_ENV['HEIDI_TEST_REGISTRATION_MODE']);
+        unset($_SERVER['BEFFROI_TEST_REGISTRATION_MODE'], $_ENV['BEFFROI_TEST_REGISTRATION_MODE']);
     }
 
     #[Test]

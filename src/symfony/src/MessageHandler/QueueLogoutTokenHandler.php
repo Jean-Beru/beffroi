@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\MessageHandler;
+namespace Beffroi\Bundle\MessageHandler;
 
-use Heidi\Bundle\EndSession\LogoutChannelInterface;
-use Heidi\Bundle\Message\SendLogoutToken;
-use Heidi\Oidc\Domain\EndSession\LogoutChannel;
-use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Bundle\EndSession\LogoutChannelInterface;
+use Beffroi\Bundle\Message\SendLogoutToken;
+use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 

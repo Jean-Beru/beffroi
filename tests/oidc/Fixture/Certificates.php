@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function base64_encode;
-use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
-use Heidi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
 use LogicException;
 
 /**
@@ -94,7 +94,7 @@ final class Certificates
      * ("openssl x509 -noout -subject -nameopt RFC2253"). A registration is normalised by the reader of
      * the provider, so what is registered is the name as the tool that printed it wrote it.
      */
-    public const string SUBJECT_DN = 'C=FR,O=Heidi Test,CN=heidi mtls client';
+    public const string SUBJECT_DN = 'C=FR,O=Beffroi Test,CN=beffroi mtls client';
 
     public const string DNS_NAME = 'client.example.com';
 

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\ProtocolAnswer;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
-use Heidi\Oidc\Application\Introspection\IntrospectionHandler;
-use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\ProtocolAnswer;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Http\Tls\PresentedClientCertificate;
+use Beffroi\Oidc\Application\Introspection\IntrospectionHandler;
+use Beffroi\Oidc\Domain\Introspection\IntrospectionResponse;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use function in_array;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,7 +33,7 @@ final readonly class IntrospectionController
     ) {
     }
 
-    #[Route('/introspect', name: 'heidi_protocol_introspection', methods: ['POST'])]
+    #[Route('/introspect', name: 'beffroi_protocol_introspection', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
         try {

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function count;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeys;
-use Heidi\Bundle\Doctrine\PersonalData\TenantScopedDataKeyStore;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Bridge\KeyManagement\KmsKeyId;
-use Heidi\Core\Domain\Event\TenantDataKeysRewrapped;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeys;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedDataKeyStore;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Bridge\KeyManagement\KmsKeyId;
+use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
 use function implode;
 use function iterator_count;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -43,12 +43,12 @@ use Symfony\Contracts\Service\ServiceProviderInterface;
  * It is asked for by a person, as the key rotation of the key custody is, and nothing schedules it.
  */
 #[AsCommand(
-    name: 'heidi:data-keys:rewrap',
+    name: 'beffroi:data-keys:rewrap',
     description: 'Wrap the data keys of the tenant with another KMS client from now on, or with another master key of the same one; --dry-run lists what would move. No sealed value is read or rewritten.',
 )]
 final readonly class DataKeysRewrapCommand
 {
-    public const string NAME = 'heidi:data-keys:rewrap';
+    public const string NAME = 'beffroi:data-keys:rewrap';
 
     /**
      * @param ServiceProviderInterface<DecrypterInterface&EncrypterInterface> $clients the KMS clients of the
@@ -92,7 +92,7 @@ final readonly class DataKeysRewrapCommand
         $moving = iterator_count($scoped->all($from));
         if ($moving === 0) {
             $io->warning(sprintf(
-                'The tenant "%s" holds no data key%s: there is nothing to move. "heidi:data-keys:list" says what it holds.',
+                'The tenant "%s" holds no data key%s: there is nothing to move. "beffroi:data-keys:list" says what it holds.',
                 $tenant->slug,
                 $from === null ? '' : sprintf(' wrapped by "%s"', $from),
             ));

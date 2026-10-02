@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
@@ -33,19 +33,19 @@ final class Version20260930180000 extends AbstractMigration
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('CREATE TABLE heidi_pairwise_subject (sector VARCHAR(255) NOT NULL, subject VARCHAR(255) NOT NULL, assigned_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, id UUID NOT NULL, tenant_id UUID NOT NULL, user_id UUID NOT NULL, PRIMARY KEY (id))');
-        $this->addSql('CREATE UNIQUE INDEX heidi_pairwise_subject_identifier ON heidi_pairwise_subject (tenant_id, sector, subject)');
-        $this->addSql('CREATE UNIQUE INDEX heidi_pairwise_subject_user ON heidi_pairwise_subject (tenant_id, sector, user_id)');
-        $this->addSql('CREATE INDEX IDX_3D55F2529033212A ON heidi_pairwise_subject (tenant_id)');
-        $this->addSql('CREATE INDEX IDX_3D55F252A76ED395 ON heidi_pairwise_subject (user_id)');
-        $this->addSql('ALTER TABLE heidi_pairwise_subject ADD CONSTRAINT FK_3D55F2529033212A FOREIGN KEY (tenant_id) REFERENCES heidi_tenant (id)');
-        $this->addSql('ALTER TABLE heidi_pairwise_subject ADD CONSTRAINT FK_3D55F252A76ED395 FOREIGN KEY (user_id) REFERENCES heidi_user (id) ON DELETE CASCADE');
+        $this->addSql('CREATE TABLE beffroi_pairwise_subject (sector VARCHAR(255) NOT NULL, subject VARCHAR(255) NOT NULL, assigned_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, id UUID NOT NULL, tenant_id UUID NOT NULL, user_id UUID NOT NULL, PRIMARY KEY (id))');
+        $this->addSql('CREATE UNIQUE INDEX beffroi_pairwise_subject_identifier ON beffroi_pairwise_subject (tenant_id, sector, subject)');
+        $this->addSql('CREATE UNIQUE INDEX beffroi_pairwise_subject_user ON beffroi_pairwise_subject (tenant_id, sector, user_id)');
+        $this->addSql('CREATE INDEX IDX_3D55F2529033212A ON beffroi_pairwise_subject (tenant_id)');
+        $this->addSql('CREATE INDEX IDX_3D55F252A76ED395 ON beffroi_pairwise_subject (user_id)');
+        $this->addSql('ALTER TABLE beffroi_pairwise_subject ADD CONSTRAINT FK_3D55F2529033212A FOREIGN KEY (tenant_id) REFERENCES beffroi_tenant (id)');
+        $this->addSql('ALTER TABLE beffroi_pairwise_subject ADD CONSTRAINT FK_3D55F252A76ED395 FOREIGN KEY (user_id) REFERENCES beffroi_user (id) ON DELETE CASCADE');
     }
 
     public function down(Schema $schema): void
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('DROP TABLE heidi_pairwise_subject');
+        $this->addSql('DROP TABLE beffroi_pairwise_subject');
     }
 }

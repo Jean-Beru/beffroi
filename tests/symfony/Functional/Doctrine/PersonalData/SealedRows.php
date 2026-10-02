@@ -2,53 +2,53 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
 use DateTimeImmutable;
 use function array_values;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\LinkedIdentity;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\PushSubscription;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
-use Heidi\Oidc\Domain\Ciba\BindingMessage;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Client\ClientSecretInterface;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
-use Heidi\Oidc\Domain\Device\UserCode;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
-use Heidi\Oidc\Domain\Resource\ResourceIndicator;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
-use Heidi\Oidc\Port\ClientStoreInterface;
-use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
-use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
+use Beffroi\Oidc\Domain\Ciba\BindingMessage;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
+use Beffroi\Oidc\Domain\Device\UserCode;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
+use Beffroi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use LogicException;
 use Psr\Container\ContainerInterface;
 use function random_bytes;
@@ -91,7 +91,7 @@ final readonly class SealedRows
      * @var array<string, array<string, string>>
      */
     public const array VALUES = [
-        'heidi_user' => [
+        'beffroi_user' => [
             'username' => 'ada-lovelace',
             'email' => 'ada@example.org',
             'phone_number' => '+441632960541',
@@ -110,37 +110,37 @@ final readonly class SealedRows
             'zoneinfo' => 'Europe/London',
             'locale' => 'en-GB',
         ],
-        'heidi_linked_identity' => [
+        'beffroi_linked_identity' => [
             'provider' => 'login.acme-federation.example',
             'subject' => '110169484474386276334',
             'claims' => 'ada@example.org',
         ],
-        'heidi_passkey_credential' => [
+        'beffroi_passkey_credential' => [
             'name' => 'The key Ada keeps on her keyring',
         ],
-        'heidi_push_subscription' => [
+        'beffroi_push_subscription' => [
             'endpoint' => 'https://push.example.org/subscriptions/ada-at-the-difference-engine',
             'label' => 'Ada on the laptop by the window',
         ],
-        'heidi_authentication_session' => [
+        'beffroi_authentication_session' => [
             'created_from' => self::IP_ADDRESS,
             'last_seen_from' => self::USER_AGENT,
         ],
-        'heidi_device_authorization_request' => [
+        'beffroi_device_authorization_request' => [
             'requested_from' => self::IP_ADDRESS,
         ],
-        'heidi_backchannel_authentication_request' => [
+        'beffroi_backchannel_authentication_request' => [
             'binding_message' => 'Payment of 42 euros to the Analytical Engine Company',
             'requested_from' => self::USER_AGENT,
         ],
-        'heidi_interaction' => [
+        'beffroi_interaction' => [
             'login_hint' => 'ada@example.org',
             'id_token_hint' => 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZGEtc3ViamVjdCJ9.sig',
         ],
-        'heidi_pushed_authorization_request' => [
+        'beffroi_pushed_authorization_request' => [
             'parameters' => 'ada@example.org',
         ],
-        'heidi_client' => [
+        'beffroi_client' => [
             'metadata' => 'The Difference Engine',
             'assigned_metadata' => 'urn:example:scope:assigned-by-the-policy',
             'secret' => 'a-shared-secret-this-provider-handed-over',
@@ -164,7 +164,7 @@ final readonly class SealedRows
     /**
      * The provenance every session, device request and backchannel request of the suite is written from.
      *
-     * Public because {@see \Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase::context()} builds
+     * Public because {@see \Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase::context()} builds
      * the context of the whole suite from these two, so that a row written by any test carries a value the
      * search of the dump knows about by construction and not by coincidence.
      */
@@ -226,12 +226,12 @@ final readonly class SealedRows
         $this->backchannelRequest($client, $user);
         $this->interaction($client);
         $this->pushedRequest($client);
-        $this->client(new SharedClientSecret(self::VALUES['heidi_client']['secret']));
+        $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']));
     }
 
     public function user(): User
     {
-        $values = self::VALUES['heidi_user'];
+        $values = self::VALUES['beffroi_user'];
         $user = User::create(
             Uuid::v7(),
             $this->tenant,
@@ -257,14 +257,14 @@ final readonly class SealedRows
             $values['zoneinfo'],
             $values['locale'],
         ), $this->now);
-        $this->service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        $this->service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
 
         return $user;
     }
 
     public function linkedIdentity(User $user): LinkedIdentity
     {
-        $values = self::VALUES['heidi_linked_identity'];
+        $values = self::VALUES['beffroi_linked_identity'];
         $identity = new LinkedIdentity(
             Uuid::v7(),
             $user,
@@ -274,7 +274,7 @@ final readonly class SealedRows
             $this->now,
             $this->now,
         );
-        $this->service('test.heidi.linked_identities', LinkedIdentityRepositoryInterface::class)->save($identity);
+        $this->service('test.beffroi.linked_identities', LinkedIdentityRepositoryInterface::class)->save($identity);
 
         return $identity;
     }
@@ -284,7 +284,7 @@ final readonly class SealedRows
         $passkey = new PasskeyCredential(
             Uuid::v7(),
             $user,
-            self::VALUES['heidi_passkey_credential']['name'],
+            self::VALUES['beffroi_passkey_credential']['name'],
             random_bytes(16),
             'cose-public-key',
             0,
@@ -295,24 +295,24 @@ final readonly class SealedRows
             Fixtures::userHandle(),
             $this->now,
         );
-        $this->service('test.heidi.credentials', CredentialRepositoryInterface::class)->save($passkey);
+        $this->service('test.beffroi.credentials', CredentialRepositoryInterface::class)->save($passkey);
 
         return $passkey;
     }
 
-    public function subscription(User $user, ?string $label = self::VALUES['heidi_push_subscription']['label']): PushSubscription
+    public function subscription(User $user, ?string $label = self::VALUES['beffroi_push_subscription']['label']): PushSubscription
     {
         $subscription = new PushSubscription(
             Uuid::v7(),
             $user,
-            self::VALUES['heidi_push_subscription']['endpoint'],
+            self::VALUES['beffroi_push_subscription']['endpoint'],
             'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
             'tBHItJI5svbpez7KI4CCXg',
             'the-application-server-key',
             $label,
             $this->now,
         );
-        $this->service('test.heidi.push_subscriptions', PushSubscriptionRepositoryInterface::class)->save($subscription);
+        $this->service('test.beffroi.push_subscriptions', PushSubscriptionRepositoryInterface::class)->save($subscription);
 
         return $subscription;
     }
@@ -328,14 +328,14 @@ final readonly class SealedRows
             $this->context(),
             $this->now->modify('+12 hours'),
         );
-        $this->service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->save($session);
+        $this->service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->save($session);
 
         return $session;
     }
 
     public function deviceRequest(Client $client): void
     {
-        $this->service('test.heidi.device_authorization_requests', DeviceAuthorizationRecordRepositoryInterface::class)->save(new DeviceAuthorizationRecord(
+        $this->service('test.beffroi.device_authorization_requests', DeviceAuthorizationRecordRepositoryInterface::class)->save(new DeviceAuthorizationRecord(
             DrawnSecret::digestOf('a-device-code'),
             UserCode::hashOf('ZXWVTSRQ'),
             Uuid::v7(),
@@ -351,7 +351,7 @@ final readonly class SealedRows
     public function backchannelRequest(Client $client, User $user): void
     {
         $this->service(
-            'test.heidi.backchannel_authentication_requests',
+            'test.beffroi.backchannel_authentication_requests',
             BackchannelAuthenticationRecordRepositoryInterface::class,
         )->save(new BackchannelAuthenticationRecord(
             DrawnSecret::digestOf('an-auth-request-id'),
@@ -360,7 +360,7 @@ final readonly class SealedRows
             $user,
             new Scopes([new Scope('openid')]),
             new ResourceIndicators([new ResourceIndicator('https://cal.example.com/')]),
-            new BindingMessage(self::VALUES['heidi_backchannel_authentication_request']['binding_message']),
+            new BindingMessage(self::VALUES['beffroi_backchannel_authentication_request']['binding_message']),
             ['phr'],
             null,
             null,
@@ -372,8 +372,8 @@ final readonly class SealedRows
 
     public function interaction(
         Client $client,
-        ?string $loginHint = self::VALUES['heidi_interaction']['login_hint'],
-        ?string $idTokenHint = self::VALUES['heidi_interaction']['id_token_hint'],
+        ?string $loginHint = self::VALUES['beffroi_interaction']['login_hint'],
+        ?string $idTokenHint = self::VALUES['beffroi_interaction']['id_token_hint'],
     ): string {
         $request = new AuthorizationRequest(
             $client,
@@ -384,7 +384,7 @@ final readonly class SealedRows
             idTokenHint: $idTokenHint,
         );
         $id = Secrets::draw();
-        $this->service('test.heidi.interactions', InteractionRepositoryInterface::class)->save(
+        $this->service('test.beffroi.interactions', InteractionRepositoryInterface::class)->save(
             new Interaction($id, $this->tenant, $request, 'en', $this->now, $this->now->modify('+10 minutes')),
         );
 
@@ -394,14 +394,14 @@ final readonly class SealedRows
     public function pushedRequest(Client $client): string
     {
         $hash = DrawnSecret::digestOf(Secrets::draw());
-        $this->service('test.heidi.pushed_authorization_requests', PushedAuthorizationRecordRepositoryInterface::class)->save(new PushedAuthorizationRecord(
+        $this->service('test.beffroi.pushed_authorization_requests', PushedAuthorizationRecordRepositoryInterface::class)->save(new PushedAuthorizationRecord(
             $hash,
             $client,
             [
                 'response_type' => 'code',
                 'scope' => ['openid', 'profile'],
-                'login_hint' => self::VALUES['heidi_interaction']['login_hint'],
-                'id_token_hint' => self::VALUES['heidi_interaction']['id_token_hint'],
+                'login_hint' => self::VALUES['beffroi_interaction']['login_hint'],
+                'id_token_hint' => self::VALUES['beffroi_interaction']['id_token_hint'],
             ],
             $this->now,
             $this->now->modify('+90 seconds'),
@@ -418,14 +418,14 @@ final readonly class SealedRows
      */
     public function client(?ClientSecretInterface $secret = null): ClientRecord
     {
-        $values = self::VALUES['heidi_client'];
+        $values = self::VALUES['beffroi_client'];
         $record = new ClientRecord(
             Uuid::v7(),
             $this->tenant,
             'the-engine',
             [
                 'client_name' => $values['metadata'],
-                'contacts' => [self::VALUES['heidi_user']['email']],
+                'contacts' => [self::VALUES['beffroi_user']['email']],
                 'redirect_uris' => ['https://engine.example.org/callback'],
                 'token_endpoint_auth_method' => $secret instanceof SharedClientSecret ? 'client_secret_jwt' : 'client_secret_basic',
             ],
@@ -436,7 +436,7 @@ final readonly class SealedRows
             DrawnSecret::digestOf('the-registration-access-token'),
             $this->now,
         );
-        $this->service('test.heidi.client_store', ClientStoreInterface::class)->save($record);
+        $this->service('test.beffroi.client_store', ClientStoreInterface::class)->save($record);
 
         return $record;
     }

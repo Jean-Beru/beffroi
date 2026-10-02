@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use function array_shift;
-use Heidi\Core\Domain\Key\GeneratedKeyPair;
-use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Port\KeyPairGeneratorInterface;
+use Beffroi\Core\Domain\Key\GeneratedKeyPair;
+use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Port\KeyPairGeneratorInterface;
 
 /**
  * Hands out pre-generated pairs: generating RSA keys in every test would cost seconds for nothing.

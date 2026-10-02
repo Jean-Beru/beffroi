@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Locale;
+namespace Beffroi\Bundle\Tests\Unit\Locale;
 
-use Heidi\Bundle\Locale\ServedLocales;
+use Beffroi\Bundle\Locale\ServedLocales;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

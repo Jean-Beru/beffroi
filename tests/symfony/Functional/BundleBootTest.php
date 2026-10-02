@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional;
+namespace Beffroi\Bundle\Tests\Functional;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Messenger\EventBusDispatcher;
-use Heidi\Bundle\Security\CorePasswordHasher;
-use Heidi\Bundle\Security\SecurityUser;
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Application\Client\ClientAuthenticator;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Bundle\Messenger\EventBusDispatcher;
+use Beffroi\Bundle\Security\CorePasswordHasher;
+use Beffroi\Bundle\Security\SecurityUser;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -54,8 +54,8 @@ final class BundleBootTest extends DatabaseTestCase
         $bundles = self::$kernel?->getBundles() ?? [];
 
         // Then
-        static::assertArrayHasKey('HeidiBundle', $bundles);
-        static::assertSame('heidi', $bundles['HeidiBundle']->getContainerExtension()?->getAlias());
+        static::assertArrayHasKey('BeffroiBundle', $bundles);
+        static::assertSame('beffroi', $bundles['BeffroiBundle']->getContainerExtension()?->getAlias());
     }
 
     /**
@@ -81,7 +81,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function aConfidentialClientComesFromTheConfiguration(): void
     {
         // Given
-        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+        $clients = self::service('test.beffroi.clients', ClientRepositoryInterface::class);
 
         // When
         $demo = $clients->findByClientId(self::tenant(), 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
@@ -100,7 +100,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function aClientWithoutThePkceRequirementComesFromTheConfiguration(): void
     {
         // Given
-        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+        $clients = self::service('test.beffroi.clients', ClientRepositoryInterface::class);
 
         // When
         $legacy = $clients->findByClientId(self::tenant(), 'legacy-app') ?? static::fail('The legacy-app client is configured.');
@@ -117,8 +117,8 @@ final class BundleBootTest extends DatabaseTestCase
     public function theSecretOfAConfiguredClientIsHashedByTheHasherOfTheCore(): void
     {
         // Given
-        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
-        $hasher = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
+        $clients = self::service('test.beffroi.clients', ClientRepositoryInterface::class);
+        $hasher = self::service('test.beffroi.password_hasher', PasswordHasherInterface::class);
 
         // When
         $demo = $clients->findByClientId(self::tenant(), 'oidc-demo') ?? static::fail('The oidc-demo client is configured.');
@@ -133,7 +133,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function aPublicClientComesFromTheConfiguration(): void
     {
         // Given
-        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+        $clients = self::service('test.beffroi.clients', ClientRepositoryInterface::class);
 
         // When
         $native = $clients->findByClientId(self::tenant(), 'native-app') ?? static::fail('The native-app client is configured.');
@@ -148,7 +148,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function anUnknownClientIsNotFound(): void
     {
         // Given
-        $clients = self::service('test.heidi.clients', ClientRepositoryInterface::class);
+        $clients = self::service('test.beffroi.clients', ClientRepositoryInterface::class);
 
         // When / Then
         static::assertNull($clients->findByClientId(self::tenant(), 'unknown'));
@@ -158,7 +158,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function theClientAuthenticatorIsWired(): void
     {
         // When / Then
-        static::assertInstanceOf(ClientAuthenticator::class, self::getContainer()->get('test.heidi.client_authenticator'));
+        static::assertInstanceOf(ClientAuthenticator::class, self::getContainer()->get('test.beffroi.client_authenticator'));
     }
 
     /**
@@ -169,7 +169,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function theSecurityComponentHashesTheUsersOfTheBundleWithTheHasherOfTheCore(): void
     {
         // Given
-        $factory = self::service('test.heidi.password_hasher_factory', PasswordHasherFactoryInterface::class);
+        $factory = self::service('test.beffroi.password_hasher_factory', PasswordHasherFactoryInterface::class);
 
         // When
         $hasher = $factory->getPasswordHasher(SecurityUser::class);
@@ -185,14 +185,14 @@ final class BundleBootTest extends DatabaseTestCase
     public function aHashOfTheSecurityComponentIsAHashOfTheCore(): void
     {
         // Given
-        $hasher = self::service('test.heidi.password_hasher_factory', PasswordHasherFactoryInterface::class)->getPasswordHasher(SecurityUser::class);
-        $core = self::service('test.heidi.password_hasher', PasswordHasherInterface::class);
+        $hasher = self::service('test.beffroi.password_hasher_factory', PasswordHasherFactoryInterface::class)->getPasswordHasher(SecurityUser::class);
+        $core = self::service('test.beffroi.password_hasher', PasswordHasherInterface::class);
 
         // When
         $encoded = $hasher->hash('correct horse battery staple');
 
         // Then
-        $hash = self::service('test.heidi.core_password_hasher', CorePasswordHasher::class)->decode($encoded) ?? static::fail('The hash is one of the core.');
+        $hash = self::service('test.beffroi.core_password_hasher', CorePasswordHasher::class)->decode($encoded) ?? static::fail('The hash is one of the core.');
         static::assertSame(Argon2id::NAME, $hash->algorithm->name());
         static::assertTrue($core->verify($hash, 'correct horse battery staple'));
         static::assertTrue($hasher->verify($encoded, 'correct horse battery staple'));
@@ -202,7 +202,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function aTenantWithoutKeysPublishesNothing(): void
     {
         // Given
-        $jwks = self::service('test.heidi.jwks', JwksHandler::class);
+        $jwks = self::service('test.beffroi.jwks', JwksHandler::class);
 
         // When
         $response = $jwks->handle(self::tenant());
@@ -219,7 +219,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function aRotatedKeyIsSealedAndStored(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', TenantKeyRotator::class);
+        $rotator = self::service('test.beffroi.key_rotator', TenantKeyRotator::class);
 
         // When
         $key = $rotator->rotate(self::tenant(), Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
@@ -237,11 +237,11 @@ final class BundleBootTest extends DatabaseTestCase
     {
         // Given
         $tenant = self::tenant();
-        $key = self::service('test.heidi.key_rotator', TenantKeyRotator::class)
+        $key = self::service('test.beffroi.key_rotator', TenantKeyRotator::class)
             ->rotate($tenant, Algorithms::rs256(), new RequestContext(new DateTimeImmutable(), '127.0.0.1', 'phpunit'));
 
         // When
-        $published = json_decode(self::service('test.heidi.jwks', JwksHandler::class)->handle($tenant)->toJson(), true, 8, JSON_THROW_ON_ERROR);
+        $published = json_decode(self::service('test.beffroi.jwks', JwksHandler::class)->handle($tenant)->toJson(), true, 8, JSON_THROW_ON_ERROR);
 
         // Then
         static::assertIsArray($published);
@@ -259,7 +259,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function theEventDispatcherOfTheCoreIsTheEventBusOne(): void
     {
         // When / Then
-        static::assertInstanceOf(EventBusDispatcher::class, self::getContainer()->get('test.heidi.event_bus_dispatcher'));
+        static::assertInstanceOf(EventBusDispatcher::class, self::getContainer()->get('test.beffroi.event_bus_dispatcher'));
     }
 
     /**
@@ -270,7 +270,7 @@ final class BundleBootTest extends DatabaseTestCase
     public function theEventsOfTheCoreAndOfTheModuleGoToTheEventBus(): void
     {
         // Given
-        $authenticator = self::service('test.heidi.client_authenticator', ClientAuthenticator::class);
+        $authenticator = self::service('test.beffroi.client_authenticator', ClientAuthenticator::class);
         $recorder = self::service(RecordingEventHandler::class, RecordingEventHandler::class);
 
         // When
@@ -302,6 +302,6 @@ final class BundleBootTest extends DatabaseTestCase
 
     private static function keyStorage(): string
     {
-        return sys_get_temp_dir() . '/heidi-bundle-tests/cache/test/keys';
+        return sys_get_temp_dir() . '/beffroi-bundle-tests/cache/test/keys';
     }
 }

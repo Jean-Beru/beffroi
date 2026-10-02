@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine;
+namespace Beffroi\Bundle\Doctrine;
 
 use RuntimeException;
 use function sprintf;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler\Decision;
+namespace Beffroi\Bundle\Profiler\Decision;
 
-use Heidi\Bundle\Profiler\Observation;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\ConsentRequired;
+use Beffroi\Bundle\Profiler\Observation;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\ConsentRequired;
 
 /**
  * Why the user is asked to consent, and what the client asked for (architecture §4.3).

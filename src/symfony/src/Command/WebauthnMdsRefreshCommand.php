@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function count;
 use function file_get_contents;
 use function hash;
-use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
-use Heidi\Core\Exception\MetadataBlobRefusedException;
-use Heidi\Core\Port\MetadataBlobStoreInterface;
+use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Beffroi\Core\Exception\MetadataBlobRefusedException;
+use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use function is_string;
 use function parse_url;
 use const PHP_URL_HOST;
@@ -32,7 +32,7 @@ use Webauthn\MetadataService\CertificateChain\CertificateToolbox;
  * enrolment does not need (it asks for no attestation).
  */
 #[AsCommand(
-    name: 'heidi:webauthn:mds-refresh',
+    name: 'beffroi:webauthn:mds-refresh',
     description: 'Download the FIDO Metadata BLOB, verify its signature under the pinned root and store it for the passkey ceremonies; --url for another service, --root for another root.',
 )]
 final readonly class WebauthnMdsRefreshCommand

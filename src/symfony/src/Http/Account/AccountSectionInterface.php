@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\User;
 
 /**
  * A page of the account, as the home of the account names it (architecture §5.2): where it lives, what it

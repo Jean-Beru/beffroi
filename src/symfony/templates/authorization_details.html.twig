@@ -3,8 +3,8 @@
    type chose to show. A type is a class the deployment wires, and the message it names is the one thing a
    user reads rather than recognises before agreeing to it. Included by the consent page of an interaction
    and by the page of the account that lists what is in force, so that a detail is said the same way
-   wherever it is read. Overridable by an application under templates/bundles/HeidiBundle/. #}
-{% trans_default_domain 'heidi' %}
+   wherever it is read. Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% trans_default_domain 'beffroi' %}
 <ul data-authorization-details="{{ details|length }}">
     {% for detail in details %}
         <li data-authorization-detail="{{ detail.type }}">{{ ('authorization_details.' ~ detail.type)|trans(detail.rendering) }}</li>

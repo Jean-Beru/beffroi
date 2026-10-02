@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Exchange\PresentedTokenTypes;
-use Heidi\Oidc\Domain\Exchange\PresentedToken;
-use Heidi\Oidc\Domain\Exchange\TokenTypeIdentifier;
+use Beffroi\Oidc\Application\Exchange\PresentedTokenTypes;
+use Beffroi\Oidc\Domain\Exchange\PresentedToken;
+use Beffroi\Oidc\Domain\Exchange\TokenTypeIdentifier;
 
 /**
  * The token type identifiers the tests speak of (RFC 8693 §3), and the wirings they read them from. The one

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Exception;
-use Heidi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\RequestContext;
 use function is_array;
 
 /**
@@ -32,7 +32,7 @@ use function is_array;
  */
 final class RequestContextType extends JsonObjectType
 {
-    public const string NAME = 'heidi_request_context';
+    public const string NAME = 'beffroi_request_context';
 
     /**
      * The format of a date in the document: to the second and with no offset, which is what a

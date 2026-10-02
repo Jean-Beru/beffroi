@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Messenger;
+namespace Beffroi\Bundle\Tests\Unit\Messenger;
 
-use Heidi\Bundle\Message\AdvanceKeyLifecycle;
-use Heidi\Bundle\Message\SendLogoutToken;
-use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
+use Beffroi\Bundle\Message\SendLogoutToken;
+use Beffroi\Bundle\Messenger\LogoutTokenGivenUpListener;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;

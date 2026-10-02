@@ -1,9 +1,9 @@
 {# The home of the account (architecture §5.2), in the language of the browser: who the browser is signed in
    as and since when, the pages of the account with what the account holds there, and the way out. The pages
    are the sections that are wired, in their order; this template names none of them. Overridable by an
-   application under templates/bundles/HeidiBundle/. #}
-{% extends '@Heidi/layout.html.twig' %}
-{% trans_default_domain 'heidi' %}
+   application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
 
 {% block title %}{{ 'account.title'|trans }}{% endblock %}
 
@@ -18,5 +18,5 @@
             </li>
         {% endfor %}
     </ul>
-    <p><a href="{{ path('heidi_interaction_logout') }}">{{ 'account.sign_out'|trans }}</a></p>
+    <p><a href="{{ path('beffroi_interaction_logout') }}">{{ 'account.sign_out'|trans }}</a></p>
 {% endblock %}

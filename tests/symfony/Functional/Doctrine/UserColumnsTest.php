@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_keys;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
@@ -24,7 +24,7 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The seventeen columns of `heidi_user` sealed and read back, and the row underneath (decisions 0011
+ * The seventeen columns of `beffroi_user` sealed and read back, and the row underneath (decisions 0011
  * and 0018).
  *
  * What is played here is the deployment's own chain, end to end: the mapping that names an encrypted type
@@ -45,7 +45,7 @@ final class UserColumnsTest extends DatabaseTestCase
      *
      * @var array<string, string>
      */
-    private const array PLAINTEXTS = SealedRows::VALUES['heidi_user'];
+    private const array PLAINTEXTS = SealedRows::VALUES['beffroi_user'];
 
     /**
      * The fixture writes every column the classification of the schema declares sealed, and no other: a
@@ -57,7 +57,7 @@ final class UserColumnsTest extends DatabaseTestCase
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()['heidi_user'] as $column => $line) {
+        foreach (SchemaColumns::all()['beffroi_user'] as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }
@@ -117,7 +117,7 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertStringNotContainsString(
             $plaintext,
             $stored,
-            sprintf('heidi_user.%s holds "%s" in the clear.', $column, $plaintext),
+            sprintf('beffroi_user.%s holds "%s" in the clear.', $column, $plaintext),
         );
     }
 
@@ -161,7 +161,7 @@ final class UserColumnsTest extends DatabaseTestCase
         self::user('no-address', 'no-address-subject');
 
         // When
-        $row = self::connection()->fetchAssociative('SELECT email, email_index FROM heidi_user');
+        $row = self::connection()->fetchAssociative('SELECT email, email_index FROM beffroi_user');
 
         // Then
         static::assertIsArray($row);
@@ -279,12 +279,12 @@ final class UserColumnsTest extends DatabaseTestCase
      */
     private static function row(): array
     {
-        $rows = RawRows::of(self::connection(), 'heidi_user', [...array_keys(self::PLAINTEXTS), 'username_index', 'email_index']);
+        $rows = RawRows::of(self::connection(), 'beffroi_user', [...array_keys(self::PLAINTEXTS), 'username_index', 'email_index']);
         static::assertCount(1, $rows);
 
         $row = [];
         foreach ($rows[0] as $column => $value) {
-            $row[$column] = $value ?? static::fail(sprintf('heidi_user.%s holds nothing.', $column));
+            $row[$column] = $value ?? static::fail(sprintf('beffroi_user.%s holds nothing.', $column));
         }
 
         return $row;
@@ -297,7 +297,7 @@ final class UserColumnsTest extends DatabaseTestCase
 
     private static function users(): UserRepositoryInterface
     {
-        return self::service('test.heidi.users', UserRepositoryInterface::class);
+        return self::service('test.beffroi.users', UserRepositoryInterface::class);
     }
 
     private static function connection(): Connection

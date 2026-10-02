@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Authorization\CodeChallengeMethods;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Application\Authorization\CodeChallengeMethods;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 
 /**
  * The PKCE methods the tests wire (RFC 7636 §4.2): the one the bundle wires, which decision 0006 holds

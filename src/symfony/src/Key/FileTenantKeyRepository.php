@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Key;
+namespace Beffroi\Bundle\Key;
 
 use function base64_decode;
 use function base64_encode;
@@ -13,15 +13,15 @@ use DateTimeInterface;
 use function file_get_contents;
 use function file_put_contents;
 use function glob;
-use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
-use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\KeyAlgorithmsInterface;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
+use Beffroi\Core\Domain\Key\KeyStatus;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\KeyAlgorithmsInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use function is_array;
 use function is_dir;
 use function is_string;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
-use Heidi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
+use Beffroi\Core\Domain\Identity\EmailAddress;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DependencyInjection\ServicesResetter;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
@@ -152,7 +152,7 @@ final class DataKeyStoreTest extends DatabaseTestCase
     public function theReaderOfTheRouterIsAStoreOfTheBridge(): void
     {
         // When / Then
-        static::assertInstanceOf(DataKeyStore::class, self::service('heidi.data_keys.reader', DataKeyStore::class));
+        static::assertInstanceOf(DataKeyStore::class, self::service('beffroi.data_keys.reader', DataKeyStore::class));
     }
 
     private static function seal(int $id, string $address): void
@@ -165,7 +165,7 @@ final class DataKeyStoreTest extends DatabaseTestCase
                     'value' => new EmailAddress($address),
                 ],
                 [
-                    'value' => EncryptedColumnTypes::name(self::FAMILY, 'heidi_email_address'),
+                    'value' => EncryptedColumnTypes::name(self::FAMILY, 'beffroi_email_address'),
                 ],
             );
     }
@@ -174,7 +174,7 @@ final class DataKeyStoreTest extends DatabaseTestCase
     {
         $stored = self::connection()->fetchOne('SELECT value FROM ' . self::TABLE . ' WHERE id = ?', [$id]);
         static::assertIsString($stored);
-        $read = Type::getTypeRegistry()->get(EncryptedColumnTypes::name(self::FAMILY, 'heidi_email_address'))->convertToPHPValue(
+        $read = Type::getTypeRegistry()->get(EncryptedColumnTypes::name(self::FAMILY, 'beffroi_email_address'))->convertToPHPValue(
             $stored,
             self::connection()->getDatabasePlatform(),
         );
@@ -189,7 +189,7 @@ final class DataKeyStoreTest extends DatabaseTestCase
     private static function dataKeys(): array
     {
         $rows = [];
-        foreach (self::connection()->iterateAssociative('SELECT scope, master_key_id, client FROM heidi_data_key ORDER BY id') as $row) {
+        foreach (self::connection()->iterateAssociative('SELECT scope, master_key_id, client FROM beffroi_data_key ORDER BY id') as $row) {
             static::assertIsString($row['scope']);
             static::assertIsString($row['master_key_id']);
             static::assertIsString($row['client']);

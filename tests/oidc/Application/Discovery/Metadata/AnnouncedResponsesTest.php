@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
-use Heidi\Oidc\Tests\Fixture\ServedModes;
-use Heidi\Oidc\Tests\Fixture\WiredModes;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedResponses;
+use Beffroi\Oidc\Tests\Fixture\ServedModes;
+use Beffroi\Oidc\Tests\Fixture\WiredModes;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

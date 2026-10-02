@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function array_map;
 use function base64_encode;
-use Heidi\Oidc\Domain\Client\GrantTypeName;
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -104,7 +104,7 @@ final class ClientRegistrationTest extends BrowserTestCase
 
         // When
         self::reload();
-        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId);
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId);
 
         // Then
         static::assertSame(['authorization_code'], array_map(
@@ -394,7 +394,7 @@ final class ClientRegistrationTest extends BrowserTestCase
         if ($revoked) {
             $token->revoke(self::currentSecond());
         }
-        self::service('test.heidi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)->save($token);
+        self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)->save($token);
         self::reload();
 
         return $token;

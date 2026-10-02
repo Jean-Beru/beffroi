@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use DateInterval;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Credential\TotpProvisioning;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Exception\RuntimeException;
+use Beffroi\Core\Domain\Credential\TotpProvisioning;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Exception\RuntimeException;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -27,7 +27,7 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
  */
 final readonly class TotpProvisioningStore
 {
-    public const string KEY = 'heidi.totp.provisioning';
+    public const string KEY = 'beffroi.totp.provisioning';
 
     /**
      * Ten minutes to install an app and scan a code.

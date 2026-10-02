@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Load;
+namespace Beffroi\Bundle\Load;
 
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Bundle\Plane\PlaneRequestListener;
-use Heidi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Bundle\Plane\PlaneRequestListener;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;

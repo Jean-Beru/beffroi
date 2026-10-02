@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use Doctrine\ORM\Event\OnFlushEventArgs;
 use Doctrine\ORM\Mapping\ClassMetadata;
-use Heidi\Core\Exception\LogicException;
+use Beffroi\Core\Exception\LogicException;
 use function get_debug_type;
 use function is_string;
 use ReflectionProperty;

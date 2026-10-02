@@ -25,7 +25,7 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: Heidi commit or tag, PHP, Symfony, client used (`oidc_login` 8.2, conformance suite version, other).
+      description: Beffroi commit or tag, PHP, Symfony, client used (`oidc_login` 8.2, conformance suite version, other).
   - type: checkboxes
     id: security
     attributes:

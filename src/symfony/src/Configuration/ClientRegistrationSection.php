@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Client\SectorIdentifierDocumentFetcher;
-use Heidi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use function is_array;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;

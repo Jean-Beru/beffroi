@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\ProfilePage;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\ProfilePage;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class AccountProfileController
 {
-    public const string ROUTE = 'heidi_interaction_account_profile';
+    public const string ROUTE = 'beffroi_interaction_account_profile';
 
     public function __construct(
         private AccountAccess $account,

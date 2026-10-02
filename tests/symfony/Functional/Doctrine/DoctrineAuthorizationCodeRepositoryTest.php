@@ -2,35 +2,35 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use function array_map;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientPresentation;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Grant\GrantRecord;
-use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
-use Heidi\Oidc\Port\LoggedInClientsInterface;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Grant\GrantRecord;
+use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
+use Beffroi\Oidc\Port\LoggedInClientsInterface;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use Symfony\Component\Uid\Uuid;
-use Heidi\Oidc\Tests\Fixture\Shapes;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.4, §5.3: a code keyed by its hash, with everything the token endpoint needs, back with
@@ -290,12 +290,12 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
 
     private static function grantsOfAConsent(): CanRevokeGrantsByConsentInterface
     {
-        return self::service('test.heidi.grants_of_a_consent', CanRevokeGrantsByConsentInterface::class);
+        return self::service('test.beffroi.grants_of_a_consent', CanRevokeGrantsByConsentInterface::class);
     }
 
     private static function loggedInClients(): LoggedInClientsInterface
     {
-        return self::service('test.heidi.logged_in_clients', LoggedInClientsInterface::class);
+        return self::service('test.beffroi.logged_in_clients', LoggedInClientsInterface::class);
     }
 
     private static function code(string $code, Client $client, AuthenticationSession $session, ?ClaimsRequest $claims): AuthorizationCode
@@ -321,6 +321,6 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
 
     private static function codes(): AuthorizationCodeRepositoryInterface
     {
-        return self::service('test.heidi.authorization_codes', AuthorizationCodeRepositoryInterface::class);
+        return self::service('test.beffroi.authorization_codes', AuthorizationCodeRepositoryInterface::class);
     }
 }

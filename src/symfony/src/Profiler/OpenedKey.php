@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
-use Heidi\Core\Domain\Key\UnsealedKey;
+use Beffroi\Core\Domain\Key\UnsealedKey;
 
 /**
  * What the panel says of a key the KMS opened during the request, written once for the two providers

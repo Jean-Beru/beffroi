@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Bundle\Doctrine\TenantSynchronizer;
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Doctrine\TenantSynchronizer;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\MockClock;
@@ -193,6 +193,6 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
 
     private static function users(): UserRepositoryInterface
     {
-        return self::service('test.heidi.users', UserRepositoryInterface::class);
+        return self::service('test.beffroi.users', UserRepositoryInterface::class);
     }
 }

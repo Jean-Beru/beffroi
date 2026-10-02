@@ -17,7 +17,7 @@ declare(strict_types=1);
  * to, "credential_id" of the passkey (base64url) and "sign_count" after the assertion.
  */
 
-use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use function is_int;
 use function is_string;
 
@@ -18,7 +18,7 @@ use function is_string;
  */
 final class AuthenticationProofsType extends JsonObjectType
 {
-    public const string NAME = 'heidi_authentication_proofs';
+    public const string NAME = 'beffroi_authentication_proofs';
 
     protected function encode(object $value): array
     {

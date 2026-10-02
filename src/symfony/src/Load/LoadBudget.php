@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Load;
+namespace Beffroi\Bundle\Load;
 
 use DateInterval;
-use Heidi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
 use function max;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -43,7 +43,7 @@ final readonly class LoadBudget
         StorageInterface $storage,
     ) {
         $this->limiter = new RateLimiterFactory([
-            'id' => 'heidi_' . $name . '_load',
+            'id' => 'beffroi_' . $name . '_load',
             'policy' => 'sliding_window',
             'limit' => $limit,
             'interval' => $interval,

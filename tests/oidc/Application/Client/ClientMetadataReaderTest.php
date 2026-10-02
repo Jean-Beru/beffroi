@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client;
+namespace Beffroi\Oidc\Tests\Application\Client;
 
-use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
-use Heidi\Oidc\Domain\Client\Metadata\RegisteredMembers;
-use Heidi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Exception\InvalidClientMetadataException;
-use Heidi\Oidc\Exception\InvalidRedirectUriException;
-use Heidi\Oidc\Exception\UnreadableClientMetadataException;
-use Heidi\Oidc\Tests\Fixture\Grants;
-use Heidi\Oidc\Tests\Fixture\Registrations;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadata;
+use Beffroi\Oidc\Domain\Client\Metadata\RegisteredMembers;
+use Beffroi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Exception\InvalidClientMetadataException;
+use Beffroi\Oidc\Exception\InvalidRedirectUriException;
+use Beffroi\Oidc\Exception\UnreadableClientMetadataException;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Registrations;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -394,7 +394,7 @@ final class ClientMetadataReaderTest extends TestCase
         yield 'a login begun by a third party over plain HTTP on a loopback host' => [
             [
                 'redirect_uris' => ['https://rp.example/cb'],
-                'initiate_login_uri' => 'http://localhost:8443/test/a/heidi/initiate-login',
+                'initiate_login_uri' => 'http://localhost:8443/test/a/beffroi/initiate-login',
             ],
             InvalidClientMetadataException::class,
             'initiate_login_uri',

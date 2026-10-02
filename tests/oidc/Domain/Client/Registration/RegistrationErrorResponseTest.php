@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client\Registration;
+namespace Beffroi\Oidc\Tests\Domain\Client\Registration;
 
-use Heidi\Oidc\Domain\Client\Registration\RegistrationErrorResponse;
-use Heidi\Oidc\Exception\InvalidClientMetadataException;
-use Heidi\Oidc\Exception\InvalidRedirectUriException;
+use Beffroi\Oidc\Domain\Client\Registration\RegistrationErrorResponse;
+use Beffroi\Oidc\Exception\InvalidClientMetadataException;
+use Beffroi\Oidc\Exception\InvalidRedirectUriException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

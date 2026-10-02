@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantSynchronizer;
+use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
+use Beffroi\Bundle\Doctrine\TenantSynchronizer;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -15,7 +15,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * The first step of a provisioning (architecture §5.3, §5.5): the row of the configured tenant.
  */
 #[AsCommand(
-    name: 'heidi:tenant:synchronize',
+    name: 'beffroi:tenant:synchronize',
     description: 'Write the row of the tenant of the configuration: created, renamed, or left alone.',
 )]
 final readonly class TenantSynchronizeCommand

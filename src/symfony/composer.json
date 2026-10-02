@@ -1,5 +1,5 @@
 {
-    "name": "heidi/symfony-bundle",
+    "name": "beffroi/symfony-bundle",
     "description": "Symfony integration of the IdP: configuration, controllers, security, persistence, login and consent pages.",
     "type": "symfony-bundle",
     "license": "MIT",
@@ -22,8 +22,8 @@
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/migrations": "^3.9",
         "doctrine/orm": "^3.7",
-        "heidi/core": "self.version",
-        "heidi/oidc": "self.version",
+        "beffroi/core": "self.version",
+        "beffroi/oidc": "self.version",
         "psr/event-dispatcher": "^1.0",
         "spomky-labs/web-push-lib": "^3.2",
         "symfony/clock": "8.2.*",
@@ -56,12 +56,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Heidi\\Bundle\\": "src/"
+            "Beffroi\\Bundle\\": "src/"
         }
     },
     "extra": {
         "thanks": {
-            "name": "heidi/framework"
+            "name": "beffroi/framework"
         }
     }
 }

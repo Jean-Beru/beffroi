@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\MessageHandler;
+namespace Beffroi\Bundle\MessageHandler;
 
 use function count;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Message\RemoveUnusedClients;
-use Heidi\Bundle\Scheduler\HeidiSchedule;
-use Heidi\Oidc\Application\Client\Registration\UnusedClientRemoval;
+use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Message\RemoveUnusedClients;
+use Beffroi\Bundle\Scheduler\BeffroiSchedule;
+use Beffroi\Oidc\Application\Client\Registration\UnusedClientRemoval;
 use function implode;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -42,7 +42,7 @@ final readonly class RemoveUnusedClientsHandler
             // before the first provisioning there is no client to drop, and a tick is not the place to say so
             return;
         }
-        $removed = $this->removal->removeUnused($tenant, $this->contexts->fromSchedule(HeidiSchedule::NAME));
+        $removed = $this->removal->removeUnused($tenant, $this->contexts->fromSchedule(BeffroiSchedule::NAME));
         if ($removed === []) {
             return;
         }

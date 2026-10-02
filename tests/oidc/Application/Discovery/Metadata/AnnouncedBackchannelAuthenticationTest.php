@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedBackchannelAuthentication;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Tests\Fixture\DeliveryModes;
-use Heidi\Oidc\Tests\Fixture\Endpoints;
-use Heidi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedBackchannelAuthentication;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Tests\Fixture\DeliveryModes;
+use Beffroi\Oidc\Tests\Fixture\Endpoints;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

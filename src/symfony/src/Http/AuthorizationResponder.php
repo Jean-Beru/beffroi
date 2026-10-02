@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Bundle\Http\Decision\DecisionRenderers;
-use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
-use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
-use Heidi\Oidc\Domain\Authorization\AuthorizationErrorResponse;
-use Heidi\Oidc\Domain\Authorization\RedirectTarget;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Exception\InteractionCompletedException;
-use Heidi\Oidc\Exception\InteractionExpiredException;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Http\Decision\DecisionRenderers;
+use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationErrorResponse;
+use Beffroi\Oidc\Domain\Authorization\RedirectTarget;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Exception\InteractionCompletedException;
+use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 

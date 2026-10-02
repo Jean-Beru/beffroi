@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client\RequestObject;
+namespace Beffroi\Oidc\Tests\Domain\Client\RequestObject;
 
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
-use Heidi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
-use Heidi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
-use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
+use Beffroi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
+use Beffroi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
+use Beffroi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

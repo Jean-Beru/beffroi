@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\EndSession;
+namespace Beffroi\Bundle\EndSession;
 
-use Heidi\Oidc\Domain\EndSession\LogoutChannel;
+use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
 
 /**
  * What tells the clients of an ended session that it ended, one per channel (architecture §4.9): the

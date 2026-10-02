@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use DateInterval;
-use Heidi\Core\Domain\Key\KeyUse;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\KeyBoundArtifactInterface;
+use Beffroi\Core\Domain\Key\KeyUse;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\KeyBoundArtifactInterface;
 
 /**
  * A kind of artifact bound to a key of the use given, with the lifetime given, or one the tenant does not

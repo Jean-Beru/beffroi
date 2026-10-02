@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\Account;
+namespace Beffroi\Bundle\Tests\Unit\Http\Account;
 
-use Heidi\Bundle\Http\Account\PasskeysSection;
-use Heidi\Core\Application\Credential\ActiveCredentials;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\Credential;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Http\Account\PasskeysSection;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -90,7 +90,7 @@ final class PasskeysSectionTest extends TestCase
         $route = $section->route();
 
         // Then
-        static::assertSame('heidi_interaction_account_passkeys', $route);
+        static::assertSame('beffroi_interaction_account_passkeys', $route);
     }
 
     /**

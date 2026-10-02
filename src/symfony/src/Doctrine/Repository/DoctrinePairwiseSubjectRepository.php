@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use Doctrine\DBAL\Types\Types;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Type\SectorIdentifierType;
-use Heidi\Bundle\Doctrine\Type\SubjectType;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Claims\PairwiseSubject;
-use Heidi\Oidc\Domain\Claims\SectorIdentifier;
-use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Type\SectorIdentifierType;
+use Beffroi\Bundle\Doctrine\Type\SubjectType;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Claims\PairwiseSubject;
+use Beffroi\Oidc\Domain\Claims\SectorIdentifier;
+use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
 use function sprintf;
 
 /**
- * What each sector of a tenant has seen a user under, in heidi_pairwise_subject (OIDC Core §8.1).
+ * What each sector of a tenant has seen a user under, in beffroi_pairwise_subject (OIDC Core §8.1).
  *
  * @extends DoctrineRepository<PairwiseSubject>
  */

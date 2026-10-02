@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler\Decision;
+namespace Beffroi\Bundle\Profiler\Decision;
 
 use function array_map;
-use Heidi\Bundle\Profiler\Observation;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\LoginRequired;
+use Beffroi\Bundle\Profiler\Observation;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\LoginRequired;
 use function implode;
 
 /**

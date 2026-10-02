@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tenant;
+namespace Beffroi\Bundle\Tenant;
 
-use Heidi\Bundle\Configuration\TenantSection;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
-use Heidi\Core\Domain\Session\AuthenticationPredicate;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Bundle\Configuration\TenantSection;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The tenant of the "heidi.tenant" configuration (architecture §5.1); its identifier derives from its
+ * The tenant of the "beffroi.tenant" configuration (architecture §5.1); its identifier derives from its
  * slug, so renaming the slug is creating another tenant. Its "acr" policy is the configured classes in
  * their order (decision 0010); what the policy refuses refuses the start.
  */

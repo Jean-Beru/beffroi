@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Bundle\Http\Account\RecordedInformation;
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Bundle\Http\Account\RecordedInformation;
+use Beffroi\Core\Domain\Identity\User;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

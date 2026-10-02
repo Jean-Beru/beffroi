@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function base64_encode;
 use DateTimeImmutable;
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Application\Client\ClientAuthenticationRequestParser;
-use Heidi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Application\Client\ClientAuthenticationRequestParser;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\Algorithm\HS256;

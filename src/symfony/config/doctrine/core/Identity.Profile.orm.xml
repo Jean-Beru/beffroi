@@ -14,19 +14,19 @@
       it in as many words. What is searched by equality here is nothing: the console looks a user up by its
       identifier, its username or its address (BlindIndexedColumns).
     -->
-    <embeddable name="Heidi\Core\Domain\Identity\Profile">
-        <field name="name" type="heidi_encrypted_user_string" column="name" length="255" nullable="true"/>
-        <field name="givenName" type="heidi_encrypted_user_string" column="given_name" length="255" nullable="true"/>
-        <field name="familyName" type="heidi_encrypted_user_string" column="family_name" length="255" nullable="true"/>
-        <field name="middleName" type="heidi_encrypted_user_string" column="middle_name" length="255" nullable="true"/>
-        <field name="nickname" type="heidi_encrypted_user_string" column="nickname" length="255" nullable="true"/>
-        <field name="preferredUsername" type="heidi_encrypted_user_string" column="preferred_username" length="255" nullable="true"/>
-        <field name="profileUrl" type="heidi_encrypted_user_text" column="profile_url" nullable="true"/>
-        <field name="pictureUrl" type="heidi_encrypted_user_text" column="picture_url" nullable="true"/>
-        <field name="websiteUrl" type="heidi_encrypted_user_text" column="website_url" nullable="true"/>
-        <field name="gender" type="heidi_encrypted_user_string" column="gender" length="64" nullable="true"/>
-        <field name="birthdate" type="heidi_encrypted_user_string" column="birthdate" length="10" nullable="true"/>
-        <field name="zoneinfo" type="heidi_encrypted_user_string" column="zoneinfo" length="64" nullable="true"/>
-        <field name="locale" type="heidi_encrypted_user_string" column="locale" length="35" nullable="true"/>
+    <embeddable name="Beffroi\Core\Domain\Identity\Profile">
+        <field name="name" type="beffroi_encrypted_user_string" column="name" length="255" nullable="true"/>
+        <field name="givenName" type="beffroi_encrypted_user_string" column="given_name" length="255" nullable="true"/>
+        <field name="familyName" type="beffroi_encrypted_user_string" column="family_name" length="255" nullable="true"/>
+        <field name="middleName" type="beffroi_encrypted_user_string" column="middle_name" length="255" nullable="true"/>
+        <field name="nickname" type="beffroi_encrypted_user_string" column="nickname" length="255" nullable="true"/>
+        <field name="preferredUsername" type="beffroi_encrypted_user_string" column="preferred_username" length="255" nullable="true"/>
+        <field name="profileUrl" type="beffroi_encrypted_user_text" column="profile_url" nullable="true"/>
+        <field name="pictureUrl" type="beffroi_encrypted_user_text" column="picture_url" nullable="true"/>
+        <field name="websiteUrl" type="beffroi_encrypted_user_text" column="website_url" nullable="true"/>
+        <field name="gender" type="beffroi_encrypted_user_string" column="gender" length="64" nullable="true"/>
+        <field name="birthdate" type="beffroi_encrypted_user_string" column="birthdate" length="10" nullable="true"/>
+        <field name="zoneinfo" type="beffroi_encrypted_user_string" column="zoneinfo" length="64" nullable="true"/>
+        <field name="locale" type="beffroi_encrypted_user_string" column="locale" length="35" nullable="true"/>
     </embeddable>
 </doctrine-mapping>

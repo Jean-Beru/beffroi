@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace Beffroi\Bundle\Tests\Functional\Key;
 
 use function array_map;
 use function base64_decode;
 use DateInterval;
 use function explode;
-use Heidi\Bundle\Key\FileTenantKeyRepository;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Key\UnsealedKey;
-use Heidi\Core\Port\JwsSignerInterface;
-use Heidi\Core\Port\KeyPairGeneratorInterface;
-use Heidi\Core\Port\KeySealerInterface;
-use Heidi\Core\Port\PublicKeySetProviderInterface;
-use Heidi\Core\Port\SigningKeyProviderInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Bundle\Key\FileTenantKeyRepository;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Key\UnsealedKey;
+use Beffroi\Core\Port\JwsSignerInterface;
+use Beffroi\Core\Port\KeyPairGeneratorInterface;
+use Beffroi\Core\Port\KeySealerInterface;
+use Beffroi\Core\Port\PublicKeySetProviderInterface;
+use Beffroi\Core\Port\SigningKeyProviderInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionProperty;
 use function strtr;
@@ -49,9 +49,9 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         static::assertIsString($cacheDir);
         $this->directory = $cacheDir . '/keys';
         new Filesystem()->remove($this->directory);
-        $this->provider = self::service('test.heidi.key_provider', SigningKeyProviderInterface::class);
-        $this->published = self::service('test.heidi.public_keys', PublicKeySetProviderInterface::class);
-        self::service('test.heidi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        $this->provider = self::service('test.beffroi.key_provider', SigningKeyProviderInterface::class);
+        $this->published = self::service('test.beffroi.public_keys', PublicKeySetProviderInterface::class);
+        self::service('test.beffroi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     protected function tearDown(): void
@@ -86,7 +86,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     public function theWorkerSignsWithTheNewKeyAtOnce(): void
     {
         // Given
-        $signer = self::service('test.heidi.jws_signer', JwsSignerInterface::class);
+        $signer = self::service('test.beffroi.jws_signer', JwsSignerInterface::class);
         $signer->sign(self::tenant(), Algorithms::rs256(), 'before');
         $rotated = $this->rotateFromAnotherProcess();
 
@@ -148,8 +148,8 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     {
         $rotator = new TenantKeyRotator(
             new FileTenantKeyRepository($this->directory, Algorithms::all()),
-            self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class),
-            self::service('test.heidi.key_sealer', KeySealerInterface::class),
+            self::service('test.beffroi.key_pair_generator', KeyPairGeneratorInterface::class),
+            self::service('test.beffroi.key_sealer', KeySealerInterface::class),
             [],
             new DateInterval('PT6M'),
             new NativeClock(),

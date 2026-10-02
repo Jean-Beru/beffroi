@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Registration;
+namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReader;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientStore;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\Registration\ClientInformationResponse;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Oidc\Exception\UnauthorizedClientConfigurationException;
-use Heidi\Oidc\Tests\Fixture\Endpoints;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationReader;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientStore;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\Registration\ClientInformationResponse;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Oidc\Exception\UnauthorizedClientConfigurationException;
+use Beffroi\Oidc\Tests\Fixture\Endpoints;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

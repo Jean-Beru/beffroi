@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function array_filter;
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Credential\Credential;
-use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Domain\Credential\RevocableCredentialInterface;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function implode;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
@@ -21,10 +21,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 /**
  * A user as the provider knows them (architecture §5.5): the identity, the standard claims that are set,
  * and the credentials with their kind, identifier, name and dates. Reads, writes nothing: describing a
- * user is heidi:user:profile, and that one clears what it is not told.
+ * user is beffroi:user:profile, and that one clears what it is not told.
  */
 #[AsCommand(
-    name: 'heidi:user:show',
+    name: 'beffroi:user:show',
     description: 'Show a user: the identity, the standard claims that are set, and the credentials with their kind, identifier, name and dates.',
 )]
 final readonly class UserShowCommand
@@ -98,7 +98,7 @@ final readonly class UserShowCommand
     }
 
     /**
-     * The standard claims of OIDC Core §5.1 the user has, as heidi:user:profile prints what it wrote.
+     * The standard claims of OIDC Core §5.1 the user has, as beffroi:user:profile prints what it wrote.
      *
      * @return list<array<string, string>>
      */

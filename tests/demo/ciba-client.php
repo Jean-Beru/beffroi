@@ -439,7 +439,7 @@ function ciba_cli_options(): array
     }
     // CIBA Core §7.1, §15: what a "login_hint" names is the provider's to decide and not this client's to
     // guess, so there is no default; this development stack reads it as the subject it issued
-    // (heidi.backchannel_authentication.login_hint).
+    // (beffroi.backchannel_authentication.login_hint).
     if ($options['login-hint'] === '') {
         throw new RuntimeException('Name the user the request is made for with --login-hint, as the provider reads one.');
     }

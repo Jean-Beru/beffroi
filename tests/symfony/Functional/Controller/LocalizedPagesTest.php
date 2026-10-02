@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -18,7 +18,7 @@ use Twig\Error\RuntimeError;
  * Architecture §5.7: the pages of the interaction plane speak the language of the interaction, chosen
  * once on "/authorize" from "ui_locales" (OIDC Core §3.1.2.1), then "Accept-Language", then the default
  * of the deployment, recorded on the interaction and never put in a URL. Every word a user reads comes
- * from the "heidi" catalogue, and a word the catalogue of the language lacks fails the test kernel.
+ * from the "beffroi" catalogue, and a word the catalogue of the language lacks fails the test kernel.
  */
 final class LocalizedPagesTest extends BrowserTestCase
 {
@@ -322,7 +322,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         $twig = self::service('twig', Environment::class);
 
         // When
-        $rendered = $twig->createTemplate("{{ 'login.title'|trans({}, 'heidi', '" . $locale . "') }}")->render();
+        $rendered = $twig->createTemplate("{{ 'login.title'|trans({}, 'beffroi', '" . $locale . "') }}")->render();
 
         // Then
         static::assertSame($translation, $rendered);
@@ -345,7 +345,7 @@ final class LocalizedPagesTest extends BrowserTestCase
     public function theTestKernelFailsOnAMissingTranslation(): void
     {
         // Given
-        $template = self::service('twig', Environment::class)->createTemplate("{{ 'login.nothing'|trans({}, 'heidi', 'fr') }}");
+        $template = self::service('twig', Environment::class)->createTemplate("{{ 'login.nothing'|trans({}, 'beffroi', 'fr') }}");
 
         // When
         try {
@@ -355,7 +355,7 @@ final class LocalizedPagesTest extends BrowserTestCase
             // Then
             $cause = $error->getPrevious();
             static::assertInstanceOf(LogicException::class, $cause);
-            static::assertSame('No translation of "login.nothing" in the "heidi" domain for the "fr" locale.', $cause->getMessage());
+            static::assertSame('No translation of "login.nothing" in the "beffroi" domain for the "fr" locale.', $cause->getMessage());
         }
     }
 
@@ -398,7 +398,7 @@ final class LocalizedPagesTest extends BrowserTestCase
 
     private function storedLocale(string $interaction): ?string
     {
-        $stored = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)
+        $stored = self::service('test.beffroi.interactions', InteractionRepositoryInterface::class)
             ->find($interaction) ?? static::fail('The interaction is gone.');
 
         return $stored->locale;

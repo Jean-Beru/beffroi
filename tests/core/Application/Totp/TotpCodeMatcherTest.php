@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Totp;
+namespace Beffroi\Core\Tests\Application\Totp;
 
 use DateTimeImmutable;
-use Heidi\Core\Application\Totp\TotpCodeMatcher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

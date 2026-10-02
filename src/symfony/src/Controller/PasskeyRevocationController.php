@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Credential\CredentialRevocation;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Credential\CredentialRevocation;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -26,9 +26,9 @@ use Symfony\Component\Uid\Uuid;
 #[AsController]
 final readonly class PasskeyRevocationController
 {
-    public const string ROUTE = 'heidi_interaction_account_passkeys_revoke';
+    public const string ROUTE = 'beffroi_interaction_account_passkeys_revoke';
 
-    public const string CSRF_TOKEN_ID = 'heidi_passkey_revoke';
+    public const string CSRF_TOKEN_ID = 'beffroi_passkey_revoke';
 
     public function __construct(
         private AccountAccess $account,

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Key\VerifiedJws;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidJwsException;
-use Heidi\Core\Port\JwsVerifierInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Key\VerifiedJws;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidJwsException;
+use Beffroi\Core\Port\JwsVerifierInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use function sprintf;
 
 /**

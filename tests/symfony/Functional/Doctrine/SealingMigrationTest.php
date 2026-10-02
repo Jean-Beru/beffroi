@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Doctrine\Migrations\Exception\AbortMigration;
-use Heidi\Bundle\Migrations\Version20261001180000;
-use Heidi\Bundle\Migrations\Version20261002120000;
-use Heidi\Bundle\Tests\Fixture\RecordedMessages;
-use Heidi\Core\Domain\Identity\LinkedIdentity;
-use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Bundle\Migrations\Version20261001180000;
+use Beffroi\Bundle\Migrations\Version20261002120000;
+use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
@@ -50,7 +50,7 @@ final class SealingMigrationTest extends DatabaseTestCase
 
         // Then
         $this->expectException(AbortMigration::class);
-        $this->expectExceptionMessageIsOrContains('heidi_user holds 1 row(s) and this migration seals its columns');
+        $this->expectExceptionMessageIsOrContains('beffroi_user holds 1 row(s) and this migration seals its columns');
 
         // When
         $migration->preUp(new Schema());
@@ -70,7 +70,7 @@ final class SealingMigrationTest extends DatabaseTestCase
         } catch (AbortMigration $refusal) {
             // Then
             static::assertStringContainsString('There is no migration path for cleartext rows', $refusal->getMessage());
-            static::assertStringContainsString('TRUNCATE TABLE heidi_user CASCADE', $refusal->getMessage());
+            static::assertStringContainsString('TRUNCATE TABLE beffroi_user CASCADE', $refusal->getMessage());
         }
     }
 
@@ -87,7 +87,7 @@ final class SealingMigrationTest extends DatabaseTestCase
 
         // Then
         $this->expectException(AbortMigration::class);
-        $this->expectExceptionMessageIsOrContains('heidi_linked_identity holds 1 row(s) and this migration seals its columns');
+        $this->expectExceptionMessageIsOrContains('beffroi_linked_identity holds 1 row(s) and this migration seals its columns');
 
         // When
         $migration->preUp(new Schema());
@@ -145,7 +145,7 @@ final class SealingMigrationTest extends DatabaseTestCase
         // Then
         $notices = implode("\n", $said->at(LogLevel::NOTICE));
         static::assertStringContainsString(
-            'A process that booted before this migration reads the columns of heidi_linked_identity with the type they had, so restart what serves requests and what consumes the bus once it has run.',
+            'A process that booted before this migration reads the columns of beffroi_linked_identity with the type they had, so restart what serves requests and what consumes the bus once it has run.',
             $notices,
         );
         static::assertStringContainsString('a column typed "text" does not, and returns the ciphertext as a string', $notices);
@@ -167,7 +167,7 @@ final class SealingMigrationTest extends DatabaseTestCase
 
         // Then
         static::assertStringContainsString(
-            'reads the columns of heidi_linked_identity with the type they had',
+            'reads the columns of beffroi_linked_identity with the type they had',
             implode("\n", $said->at(LogLevel::NOTICE)),
         );
     }
@@ -182,7 +182,7 @@ final class SealingMigrationTest extends DatabaseTestCase
 
     private static function linkedIdentity(): void
     {
-        self::service('test.heidi.linked_identities', LinkedIdentityRepositoryInterface::class)
+        self::service('test.beffroi.linked_identities', LinkedIdentityRepositoryInterface::class)
             ->save(
                 new LinkedIdentity(
                     Uuid::v7(),

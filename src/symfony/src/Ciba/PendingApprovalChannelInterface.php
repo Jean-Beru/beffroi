@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Ciba;
+namespace Beffroi\Bundle\Ciba;
 
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Ciba\PendingApproval;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Ciba\PendingApproval;
 
 /**
  * One way an integration reaches a user of this deployment (architecture §5.6): a mail, a push
  * notification to an application of its own, a message on whatever it already uses to talk to them. One
- * class per way, tagged "heidi.pending_approval_channel", and a deployment that gains a way is a class
+ * class per way, tagged "beffroi.pending_approval_channel", and a deployment that gains a way is a class
  * added to that wiring.
  *
  * The bundle ships none, and that is not an omission: how a deployment reaches its users is the one thing

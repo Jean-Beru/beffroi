@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Oidc\Domain\Authorization\FormPostResponse;
+use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\DomCrawler\Crawler;

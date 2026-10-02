@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Key;
+namespace Beffroi\Bundle\Key;
 
 use DateInterval;
 

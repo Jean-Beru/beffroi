@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Load;
+namespace Beffroi\Bundle\Tests\Unit\Load;
 
 use DateInterval;
-use Heidi\Bundle\Load\LoadBudget;
-use Heidi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Bundle\Load\LoadBudget;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;

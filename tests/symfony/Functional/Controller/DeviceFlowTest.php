@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
 use DateTimeImmutable;
 use function intdiv;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Port\TotpAlgorithmInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Port\TotpAlgorithmInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use Symfony\Component\Uid\Uuid;
 use function str_replace;
 use Symfony\Component\DomCrawler\Crawler;
@@ -531,9 +531,9 @@ final class DeviceFlowTest extends BrowserTestCase
     private function userWithTotp(string $username, string $password): User
     {
         $user = self::userWithPassword($username, $password);
-        $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
+        $sealed = self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
         $anHourAgo = new DateTimeImmutable('-1 hour');
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->save(
                 new TotpCredential(
                     Uuid::v7(),
@@ -550,7 +550,7 @@ final class DeviceFlowTest extends BrowserTestCase
 
     private function codeAt(DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)
+        return self::service('test.beffroi.totp_algorithm', TotpAlgorithmInterface::class)
             ->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
