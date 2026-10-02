@@ -134,6 +134,17 @@ function login_cost(
     }
 
     $issuer = $env['HEIDI_ISSUER'];
+    $instrumented = cost_instrumented($issuer);
+    if ($instrumented !== []) {
+        io()->error([
+            sprintf('This stack is instrumented: %s.', implode(' and ', $instrumented)),
+            sprintf(
+                'A p95 taken then is the instrumentation as much as the provider, and the two do not grow alike: the profiler collects what the decorators the bundle wires under kernel.debug record, which is one entry per value opened, seventeen for one read of a user. Measured, the same commit gave 1234 ms instrumented and 871 ms not. Write APP_DEBUG=0 and APP_PROFILER=0 in %s, restart the op container, and run this again.',
+                DEV_ENV_LOCAL,
+            ),
+        ]);
+        exit(1);
+    }
     $ca = caddy_ca(getcwd() . '/' . COST_CA_FILE);
 
     io()->section('What is played');
@@ -182,7 +193,7 @@ function login_cost(
         [sprintf('Calls to the KMS while the %d journeys were served', $journeys), (string) $asked],
     ]);
     io()->text([
-        sprintf(' Commit <info>%s</info>, %d journeys, KMS %s.', cost_commit(), $journeys, $backend),
+        sprintf(' Commit <info>%s</info>, %d journeys, KMS %s, the stack neither in debug nor collecting profiles.', cost_commit(), $journeys, $backend),
         sprintf(' The count is read in %s.', cost_kms_log()),
     ]);
     io()->newLine();
@@ -384,6 +395,36 @@ function cost_request(array &$steps, array &$cookies, string $step, string $ca, 
     $steps[$step] = cost_seconds($started);
 
     return $answer;
+}
+
+/**
+ * What of the stack is instrumented, each read where it is true and not in a file.
+ *
+ * The profiler marks a response it collected with an X-Debug-Token, and the JWK Set is what is asked
+ * because the well-known paths are the ones its configuration excludes from collection. The kernel in
+ * debug is what wires the decorators the bundle puts on the encrypter and on the store (heidi#427), which
+ * record every opening whether a profile is kept or not, and the application answers for it itself.
+ *
+ * @return list<string> what is instrumented, empty when nothing is
+ */
+function cost_instrumented(string $issuer): array
+{
+    $instrumented = [];
+
+    // The development OP is served by the internal CA of Caddy, which nothing on the host trusts.
+    $headers = http_request('GET', $issuer . '/jwks', [
+        'verify_peer' => false,
+        'verify_host' => false,
+    ])->getHeaders(false);
+    if (($headers['x-debug-token'] ?? []) !== []) {
+        $instrumented[] = 'the profiler collects, the JWK Set coming back with an X-Debug-Token';
+    }
+
+    if (preg_match('/Debug\s+true/', op_console(['about'], context()->withQuiet())->getOutput()) === 1) {
+        $instrumented[] = 'the kernel runs in debug, which its own "about" says';
+    }
+
+    return $instrumented;
 }
 
 /**
