@@ -6,11 +6,12 @@ namespace Heidi\Bundle\Doctrine\Migration;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use function implode;
 use function is_numeric;
 use function sprintf;
 
 /**
- * A migration that seals the columns of a table, and the one thing every one of them has to say before it
+ * A migration that seals the columns of a table, and the two things every one of them has to say before it
  * runs (decisions 0011 and 0018).
  *
  * A sealed column is binary and accepts no null, so a table that holds rows whose values are in the clear
@@ -23,6 +24,15 @@ use function sprintf;
  * (`DbalExecutor`). Nothing of the functional suite calls it, `MigrationTest` instantiating each migration
  * and calling `up()` alone, which is what lets that test compare the DDL of every migration with the
  * mappings without a database at all.
+ *
+ * The second thing is what no migration can do for the operator: a process that booted before this one
+ * holds the type registry it built then, so it reads these columns with the type they had, and what it does
+ * then depends on which type that was. A column typed `string` throws, pdo_pgsql handing a blob back as a
+ * stream that `StringType` passes on untouched; a column typed `text` does not, `TextType` reading the
+ * stream and returning the raw ciphertext as a string for its caller to act on. That one is the reason the
+ * sentence exists: nothing says anything, and the failure surfaces wherever the value was going. So the
+ * migration says to restart what serves and what consumes, which is the only way out, and says it whether
+ * the column seals or unseals, both being a change of type.
  *
  * What a migration of this kind still carries itself is the platform it is written for: the check below is
  * a count and runs anywhere, the statements are PostgreSQL and say so.
@@ -37,6 +47,7 @@ abstract class SealingMigration extends AbstractMigration
     public function preUp(Schema $schema): void
     {
         $this->refuseRowsIn('seals');
+        $this->sayToRestartWhatReadsTheColumns();
     }
 
     /**
@@ -46,6 +57,7 @@ abstract class SealingMigration extends AbstractMigration
     public function preDown(Schema $schema): void
     {
         $this->refuseRowsIn('unseals');
+        $this->sayToRestartWhatReadsTheColumns();
     }
 
     /**
@@ -54,6 +66,19 @@ abstract class SealingMigration extends AbstractMigration
      * @return list<string>
      */
     abstract protected function tablesToSeal(): array;
+
+    /**
+     * Said once the rows are accounted for, so that a migration that goes no further says what stops it and
+     * nothing else, and said in the terms of the schema rather than of a deployment: what serves and what
+     * consumes is a process list this class cannot know.
+     */
+    private function sayToRestartWhatReadsTheColumns(): void
+    {
+        $this->write(sprintf(
+            'A process that booted before this migration reads the columns of %s with the type they had, so restart what serves requests and what consumes the bus once it has run. A column typed "string" throws, a blob coming back as a stream; a column typed "text" does not, and returns the ciphertext as a string for its caller to act on, which nothing reports.',
+            implode(', ', $this->tablesToSeal()),
+        ));
+    }
 
     private function refuseRowsIn(string $what): void
     {

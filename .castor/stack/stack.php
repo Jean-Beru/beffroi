@@ -227,6 +227,39 @@ function compose_recreate_redirectors(array $restarted): void
     }
 }
 
+/**
+ * Restarts what reads the schema, after a migration that changes the type of a column.
+ *
+ * A migration that seals a column recreates it as BYTEA, and a process that booted before the mapping
+ * changed still holds the type registry it built then: it reads that column with the type it had, which
+ * throws on a column typed "string" and, on one typed "text", hands its caller the raw ciphertext as a
+ * string with nothing at all to say so ([heidi#430](https://github.com/beffroi-php/heidi/issues/430)). The
+ * op container holds the kernel of the application for every request its FrankenPHP workers serve, the
+ * worker container runs for an hour, and neither restarts on a write in the database.
+ *
+ * Whether the migration applied anything is not asked: a restart nothing needed costs a few seconds on a
+ * development stack, and one that was needed and not done costs a green walk and an hour in the logs.
+ */
+function compose_restart_after_migration(): void
+{
+    $running = compose_running_services();
+    $restarted = array_values(array_filter(
+        ['op', 'worker'],
+        static fn (string $service): bool => in_array($service, $running, true),
+    ));
+    if ($restarted === []) {
+        return;
+    }
+
+    io()->note(sprintf(
+        'Restarting %s: a process that booted before a migration reads the columns it changed with the type they had.',
+        implode(' and ', $restarted),
+    ));
+    run(['docker', 'compose', ...compose_profiles(), 'restart', ...$restarted]);
+    // Last, and after the containers they follow, for the reason compose_recreate_redirectors gives.
+    compose_recreate_redirectors($restarted);
+}
+
 #[AsTask(description: 'Stop the development stack')]
 function stop(): void
 {
@@ -239,10 +272,48 @@ function logs(#[AsRawTokens] array $args = []): void
     run(['docker', 'compose', ...compose_profiles(), 'logs', '-f', ...$args]);
 }
 
-#[AsTask(description: 'Run a Symfony console command of the application inside the op container', ignoreValidationErrors: true)]
+#[AsTask(
+    description: 'Run a Symfony console command of the application inside the op container; a migration restarts what reads the schema',
+    ignoreValidationErrors: true,
+)]
 function console(#[AsRawTokens] array $args = []): void
 {
     op_console($args);
+    if (console_runs_the_migrations($args)) {
+        compose_restart_after_migration();
+    }
+}
+
+/**
+ * Whether these arguments run the migration command, under whatever abbreviation of its name was typed:
+ * the console resolves "d:m:m" and "doctrine:mig:migrate" to the same command, so what is recognised here
+ * is the command and not one spelling of it. A dry run changes no type and is not one of them.
+ *
+ * Every token is looked at rather than the first that is not an option, an option whose value is written
+ * apart from its name making that value look like the command; no value of one abbreviates this command.
+ *
+ * @param array<string> $args
+ */
+function console_runs_the_migrations(array $args): bool
+{
+    if (in_array('--dry-run', $args, true)) {
+        return false;
+    }
+    return array_any($args, fn ($argument) => console_abbreviates($argument, 'doctrine:migrations:migrate'));
+}
+
+/**
+ * Whether a token names a command or abbreviates it, the way the console resolves one: as many parts as
+ * the name has, each a non-empty prefix of the part at its place (Symfony\Component\Console\Application).
+ */
+function console_abbreviates(string $token, string $command): bool
+{
+    $typed = explode(':', $token);
+    $parts = explode(':', $command);
+    if (count($typed) !== count($parts)) {
+        return false;
+    }
+    return array_all($parts, fn ($part, $index) => ! ($typed[$index] === '' || ! str_starts_with($part, $typed[$index])));
 }
 
 /**

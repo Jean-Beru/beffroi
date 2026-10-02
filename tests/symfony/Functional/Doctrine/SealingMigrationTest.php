@@ -9,21 +9,29 @@ use Doctrine\Migrations\AbstractMigration;
 use Doctrine\Migrations\Exception\AbortMigration;
 use Heidi\Bundle\Migrations\Version20261001180000;
 use Heidi\Bundle\Migrations\Version20261002120000;
+use Heidi\Bundle\Tests\Fixture\RecordedMessages;
 use Heidi\Core\Domain\Identity\LinkedIdentity;
 use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
 use Psr\Log\NullLogger;
 use Symfony\Component\Uid\Uuid;
+use function implode;
 
 /**
- * What an operator reads when a migration that seals a table meets a table that holds rows.
+ * What an operator reads when a migration seals a table: when the table holds rows, and when it does not.
  *
  * The refusal itself is intended: a sealed column is binary and accepts no null, so a row whose values are
  * in the clear has nothing to become, and decision 0011 settled that there is no migration path for such
  * rows, no deployment existing. What this holds is the sentence, because without it the server answers
  * with a null violation on a column nobody made nullable and says nothing about what to do.
  *
- * It runs on `preUp()`, which the executor of the migrations calls before `up()` and which nothing of
+ * The second sentence is the one a migration cannot act on: a process that booted before it reads these
+ * columns with the type they had, and with `text` nothing throws, the ciphertext coming back as a string.
+ * It is written whenever the migration goes through, which is also why it is asserted on an empty table.
+ *
+ * Both run on `preUp()`, which the executor of the migrations calls before `up()` and which nothing of
  * MigrationTest calls, that test comparing the DDL of every migration with the mappings without a database
  * at all.
  */
@@ -121,11 +129,55 @@ final class SealingMigrationTest extends DatabaseTestCase
     }
 
     /**
+     * The sentence names the tables, says to restart what reads them, and says that a column typed `text`
+     * comes back as the ciphertext without anything throwing, which is the case nobody would look for.
+     */
+    #[Test]
+    public function theWordsSayToRestartWhatReadsTheColumnsAndThatOneCaseIsSilent(): void
+    {
+        // Given
+        $said = new RecordedMessages();
+        $migration = self::migration(Version20261002120000::class, $said);
+
+        // When
+        $migration->preUp(new Schema());
+
+        // Then
+        $notices = implode("\n", $said->at(LogLevel::NOTICE));
+        static::assertStringContainsString(
+            'A process that booted before this migration reads the columns of heidi_linked_identity with the type they had, so restart what serves requests and what consumes the bus once it has run.',
+            $notices,
+        );
+        static::assertStringContainsString('a column typed "text" does not, and returns the ciphertext as a string', $notices);
+    }
+
+    /**
+     * Going back changes the type of the same columns in the other direction, so a process that booted
+     * before it reads them with the type they had just as much.
+     */
+    #[Test]
+    public function goingBackSaysToRestartThemToo(): void
+    {
+        // Given
+        $said = new RecordedMessages();
+        $migration = self::migration(Version20261002120000::class, $said);
+
+        // When
+        $migration->preDown(new Schema());
+
+        // Then
+        static::assertStringContainsString(
+            'reads the columns of heidi_linked_identity with the type they had',
+            implode("\n", $said->at(LogLevel::NOTICE)),
+        );
+    }
+
+    /**
      * @param class-string<AbstractMigration> $migration
      */
-    private static function migration(string $migration): AbstractMigration
+    private static function migration(string $migration, ?LoggerInterface $logger = null): AbstractMigration
     {
-        return new $migration(self::entityManager()->getConnection(), new NullLogger());
+        return new $migration(self::entityManager()->getConnection(), $logger ?? new NullLogger());
     }
 
     private static function linkedIdentity(): void
