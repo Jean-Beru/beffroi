@@ -33,8 +33,8 @@ final class Version20260927090000 extends AbstractMigration
         $this->addSql('CREATE INDEX beffroi_subject_access_token_grant ON beffroi_subject_access_token (grant_id)');
         $this->addSql('CREATE INDEX beffroi_subject_access_token_session ON beffroi_subject_access_token (session_id)');
         $this->addSql('CREATE INDEX beffroi_subject_access_token_expiry ON beffroi_subject_access_token (expires_at)');
-        $this->addSql('CREATE INDEX IDX_F2E82ABA9033212A ON beffroi_subject_access_token (tenant_id)');
-        $this->addSql('ALTER TABLE beffroi_subject_access_token ADD CONSTRAINT FK_F2E82ABA9033212A FOREIGN KEY (tenant_id) REFERENCES beffroi_tenant (id)');
+        $this->addSql('CREATE INDEX IDX_4866A6EE9033212A ON beffroi_subject_access_token (tenant_id)');
+        $this->addSql('ALTER TABLE beffroi_subject_access_token ADD CONSTRAINT FK_4866A6EE9033212A FOREIGN KEY (tenant_id) REFERENCES beffroi_tenant (id)');
     }
 
     public function down(Schema $schema): void

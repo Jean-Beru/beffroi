@@ -36,10 +36,10 @@ final class Version20260930180000 extends AbstractMigration
         $this->addSql('CREATE TABLE beffroi_pairwise_subject (sector VARCHAR(255) NOT NULL, subject VARCHAR(255) NOT NULL, assigned_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, id UUID NOT NULL, tenant_id UUID NOT NULL, user_id UUID NOT NULL, PRIMARY KEY (id))');
         $this->addSql('CREATE UNIQUE INDEX beffroi_pairwise_subject_identifier ON beffroi_pairwise_subject (tenant_id, sector, subject)');
         $this->addSql('CREATE UNIQUE INDEX beffroi_pairwise_subject_user ON beffroi_pairwise_subject (tenant_id, sector, user_id)');
-        $this->addSql('CREATE INDEX IDX_3D55F2529033212A ON beffroi_pairwise_subject (tenant_id)');
-        $this->addSql('CREATE INDEX IDX_3D55F252A76ED395 ON beffroi_pairwise_subject (user_id)');
-        $this->addSql('ALTER TABLE beffroi_pairwise_subject ADD CONSTRAINT FK_3D55F2529033212A FOREIGN KEY (tenant_id) REFERENCES beffroi_tenant (id)');
-        $this->addSql('ALTER TABLE beffroi_pairwise_subject ADD CONSTRAINT FK_3D55F252A76ED395 FOREIGN KEY (user_id) REFERENCES beffroi_user (id) ON DELETE CASCADE');
+        $this->addSql('CREATE INDEX IDX_63634AAF9033212A ON beffroi_pairwise_subject (tenant_id)');
+        $this->addSql('CREATE INDEX IDX_63634AAFA76ED395 ON beffroi_pairwise_subject (user_id)');
+        $this->addSql('ALTER TABLE beffroi_pairwise_subject ADD CONSTRAINT FK_63634AAF9033212A FOREIGN KEY (tenant_id) REFERENCES beffroi_tenant (id)');
+        $this->addSql('ALTER TABLE beffroi_pairwise_subject ADD CONSTRAINT FK_63634AAFA76ED395 FOREIGN KEY (user_id) REFERENCES beffroi_user (id) ON DELETE CASCADE');
     }
 
     public function down(Schema $schema): void

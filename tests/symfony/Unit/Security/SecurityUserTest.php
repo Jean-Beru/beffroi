@@ -142,7 +142,7 @@ final class SecurityUserTest extends TestCase
         $this->expectExceptionMessageIs('The serialised user is not one this class wrote.');
 
         // When
-        unserialize('O:34:"Beffroi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
+        unserialize('O:36:"Beffroi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
     }
 
     /**
