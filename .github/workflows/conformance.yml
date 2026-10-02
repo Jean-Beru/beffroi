@@ -53,13 +53,15 @@ jobs:
       - uses: actions/checkout@v7
       # The application is its own repository and this one does not track it, so the stack booted below is
       # this repository plus that clone at apps/op, which is the layout of a working copy. The token is a
-      # read credential for beffroi-php/op and this workflow cannot run without it; the judge that
-      # needs no credential is "castor conformance", from a working copy that already has both.
+      # read credential for beffroi-php/op, a secret of the organisation this run shares with the run of
+      # the application, which reads this repository the other way round: one credential, two consumers,
+      # neither able to write. The judge that needs none at all is "castor conformance", from a working
+      # copy that already has both.
       - uses: actions/checkout@v7
         with:
           repository: beffroi-php/op
           path: apps/op
-          token: ${{ secrets.BEFFROI_OP_TOKEN }}
+          token: ${{ secrets.BEFFROI_READ_TOKEN }}
           persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
