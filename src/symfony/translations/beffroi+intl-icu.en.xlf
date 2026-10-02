@@ -845,6 +845,18 @@
         <source>push.approval.body_with_message</source>
         <target>{client} is asking you to approve: {message}. Open your account to answer.</target>
       </trans-unit>
+      <trans-unit id="c7a1e4f9b3" resname="locale.choose">
+        <source>locale.choose</source>
+        <target>Language</target>
+      </trans-unit>
+      <trans-unit id="a4b8d2e6f1" resname="language.en">
+        <source>language.en</source>
+        <target>English</target>
+      </trans-unit>
+      <trans-unit id="f2c9a7b5e8" resname="language.fr">
+        <source>language.fr</source>
+        <target>Français</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

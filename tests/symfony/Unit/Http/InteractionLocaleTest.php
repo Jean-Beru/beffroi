@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Unit\Http;
 
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
+use Beffroi\Bundle\Http\ChosenLocale;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Core\Domain\Tenant\Issuer;
@@ -32,9 +33,10 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §5.7: the locale of an interaction is "ui_locales" (OIDC Core §3.1.2.1) read against the
- * locales this deployment serves, then "Accept-Language", then the default; never the URL. How a tag is
- * read against that list is ServedLocales and is tested there.
+ * Architecture §5.7: the locale of an interaction is what the visitor asked for (issue #448), then
+ * "ui_locales" (OIDC Core §3.1.2.1), then "Accept-Language", then the default, each read against the
+ * locales this deployment serves; never the URL. How a tag is read against that list is ServedLocales and
+ * is tested there, and what the cookie of a choice holds is ChosenLocaleTest.
  */
 final class InteractionLocaleTest extends TestCase
 {
@@ -52,7 +54,7 @@ final class InteractionLocaleTest extends TestCase
         string $expected,
     ): void {
         // Given
-        $locale = new InteractionLocale(new LocaleSwitcher($default, []), new ServedLocales($enabled, $default));
+        $locale = self::locale(new LocaleSwitcher($default, []), new ServedLocales($enabled, $default));
         // Request::create() gives every request an English Accept-Language; the case says which header there is
         $request = Request::create('/authorize');
         $request->headers->remove('Accept-Language');
@@ -81,11 +83,38 @@ final class InteractionLocaleTest extends TestCase
      * The request carries the locale for the response, the switcher for everything that translates.
      */
     #[Test]
+    public function whatTheVisitorChoseOutranksTheHintOfTheClient(): void
+    {
+        // Given
+        $served = new ServedLocales(['en', 'fr'], 'en');
+        $locale = self::locale(new LocaleSwitcher('en', []), $served);
+        $request = Request::create('/authorize');
+        $request->headers->set('Accept-Language', 'en');
+        $request->cookies->set(ChosenLocale::COOKIE, 'fr');
+
+        // When / Then
+        static::assertSame('fr', $locale->choose($request, ['en']));
+    }
+
+    #[Test]
+    public function aChoiceThisDeploymentDoesNotServeLeavesTheHintInPlace(): void
+    {
+        // Given
+        $served = new ServedLocales(['en', 'fr'], 'en');
+        $locale = self::locale(new LocaleSwitcher('en', []), $served);
+        $request = Request::create('/authorize');
+        $request->cookies->set(ChosenLocale::COOKIE, 'de');
+
+        // When / Then
+        static::assertSame('fr', $locale->choose($request, ['fr']));
+    }
+
+    #[Test]
     public function applyingALocaleSetsItOnTheRequestAndOnTheSwitcher(): void
     {
         // Given
         $switcher = new LocaleSwitcher('en', []);
-        $locale = new InteractionLocale($switcher, new ServedLocales(['en', 'fr'], 'en'));
+        $locale = self::locale($switcher, new ServedLocales(['en', 'fr'], 'en'));
         $request = Request::create('/login');
 
         // When
@@ -101,7 +130,7 @@ final class InteractionLocaleTest extends TestCase
     {
         // Given
         $switcher = new LocaleSwitcher('en', []);
-        $locale = new InteractionLocale($switcher, new ServedLocales(['en', 'fr'], 'en'));
+        $locale = self::locale($switcher, new ServedLocales(['en', 'fr'], 'en'));
         $request = Request::create('/login');
 
         // When
@@ -117,7 +146,7 @@ final class InteractionLocaleTest extends TestCase
     {
         // Given
         $switcher = new LocaleSwitcher('en', []);
-        $locale = new InteractionLocale($switcher, new ServedLocales(['en', 'fr'], 'en'));
+        $locale = self::locale($switcher, new ServedLocales(['en', 'fr'], 'en'));
         $request = Request::create('/login');
         $request->setLocale('fr');
 
@@ -138,7 +167,7 @@ final class InteractionLocaleTest extends TestCase
     public function theListenerChoosesForThePagesOfTheInteractionPlane(): void
     {
         // Given
-        $locale = new InteractionLocale(new LocaleSwitcher('en', []), new ServedLocales(['en', 'fr'], 'en'));
+        $locale = self::locale(new LocaleSwitcher('en', []), new ServedLocales(['en', 'fr'], 'en'));
         $page = self::event('beffroi_interaction_logout', 'fr');
 
         // When
@@ -153,7 +182,7 @@ final class InteractionLocaleTest extends TestCase
     public function theListenerLeavesTheOtherRequestsAlone(?string $route, int $type): void
     {
         // Given
-        $locale = new InteractionLocale(new LocaleSwitcher('en', []), new ServedLocales(['en', 'fr'], 'en'));
+        $locale = self::locale(new LocaleSwitcher('en', []), new ServedLocales(['en', 'fr'], 'en'));
         $event = self::event($route, 'fr', $type);
 
         // When
@@ -210,5 +239,10 @@ final class InteractionLocaleTest extends TestCase
         );
 
         return new Interaction(Secrets::draw(), $tenant, $request, $locale, $now, $now->modify('+10 minutes'));
+    }
+
+    private static function locale(LocaleSwitcher $switcher, ServedLocales $served): InteractionLocale
+    {
+        return new InteractionLocale($switcher, $served, new ChosenLocale($served));
     }
 }
