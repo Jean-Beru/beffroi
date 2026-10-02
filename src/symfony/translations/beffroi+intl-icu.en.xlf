@@ -857,6 +857,54 @@
         <source>language.fr</source>
         <target>Français</target>
       </trans-unit>
+      <trans-unit id="d1a7f3b9c2" resname="sessions.title">
+        <source>sessions.title</source>
+        <target>Where you are signed in</target>
+      </trans-unit>
+      <trans-unit id="e4b8c6d1a7" resname="sessions.signed_in_as">
+        <source>sessions.signed_in_as</source>
+        <target>Signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="f7c2e9a4b1" resname="sessions.explanation">
+        <source>sessions.explanation</source>
+        <target>Each line is a browser or an application holding a session opened in your name. Ending one signs it out everywhere that session reached.</target>
+      </trans-unit>
+      <trans-unit id="a9d4f1c7e3" resname="sessions.proved">
+        <source>sessions.proved</source>
+        <target>Proved</target>
+      </trans-unit>
+      <trans-unit id="b2e7a3d9f4" resname="sessions.opened_at">
+        <source>sessions.opened_at</source>
+        <target>Opened</target>
+      </trans-unit>
+      <trans-unit id="c5f1b8e2a7" resname="sessions.last_seen">
+        <source>sessions.last_seen</source>
+        <target>Last seen</target>
+      </trans-unit>
+      <trans-unit id="d8a2c7f3b1" resname="sessions.from">
+        <source>sessions.from</source>
+        <target>From</target>
+      </trans-unit>
+      <trans-unit id="e1b4d9a2c8" resname="sessions.unknown_address">
+        <source>sessions.unknown_address</source>
+        <target>address not recorded</target>
+      </trans-unit>
+      <trans-unit id="f3c8a1e7b2" resname="sessions.this_browser">
+        <source>sessions.this_browser</source>
+        <target>this browser</target>
+      </trans-unit>
+      <trans-unit id="a6d2f9b3c1" resname="sessions.end">
+        <source>sessions.end</source>
+        <target>End</target>
+      </trans-unit>
+      <trans-unit id="b9e3a7d2f8" resname="sessions.end_this_one">
+        <source>sessions.end_this_one</source>
+        <target>End and sign out</target>
+      </trans-unit>
+      <trans-unit id="c2f7b1e9a4" resname="account.sessions.state">
+        <source>account.sessions.state</source>
+        <target>{count, plural, =0 {no session open} one {one session open} other {# sessions open}}</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

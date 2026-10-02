@@ -64,6 +64,7 @@ use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\ChosenLocale;
 use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Http\SessionsPage;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Bundle\Locale\UserLocale;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -465,6 +466,7 @@ use Beffroi\Bundle\Push\WebPushSender;
 use Beffroi\Bundle\Http\NotificationsPage;
 use Beffroi\Bundle\Http\BundleScript;
 use Beffroi\Bundle\Http\Account\NotificationsSection;
+use Beffroi\Bundle\Http\Account\SessionsSection;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
 use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
 
@@ -527,6 +529,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PasskeysSection::class)->tag('beffroi.account_section');
     $services->set(TwoFactorSection::class)->tag('beffroi.account_section');
     $services->set(ConsentsSection::class)->tag('beffroi.account_section');
+    // where this person is signed in, and the page that ends one of those sessions (issue #450)
+    $services->set(SessionsSection::class)->tag('beffroi.account_section');
+    $services->set(SessionsPage::class);
     $services->set(NotificationsSection::class)->tag('beffroi.account_section');
     $services->set(AccountSections::class)->args([tagged_iterator('beffroi.account_section')]);
     $services->set(AccountHomePage::class);
