@@ -51,6 +51,16 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
+      # The application is its own repository and this one does not track it, so the stack booted below is
+      # this repository plus that clone at apps/op, which is the layout of a working copy. The token is a
+      # read credential for beffroi-php/heidi-op and this workflow cannot run without it; the judge that
+      # needs no credential is "castor conformance", from a working copy that already has both.
+      - uses: actions/checkout@v7
+        with:
+          repository: beffroi-php/heidi-op
+          path: apps/op
+          token: ${{ secrets.HEIDI_OP_TOKEN }}
+          persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
