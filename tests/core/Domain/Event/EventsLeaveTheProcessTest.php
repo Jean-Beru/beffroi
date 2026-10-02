@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Event;
+namespace Beffroi\Core\Tests\Domain\Event;
 
 use function array_map;
 use function array_unique;
@@ -12,32 +12,32 @@ use function class_exists;
 use DateTimeImmutable;
 use function dirname;
 use function glob;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Domain\Event\DomainEventInterface;
-use Heidi\Core\Domain\Event\KmsUnavailable;
-use Heidi\Core\Domain\Event\LoadBudgetSpent;
-use Heidi\Core\Domain\Event\PasskeyUsed;
-use Heidi\Core\Domain\Event\PasswordRehashed;
-use Heidi\Core\Domain\Event\TenantDataKeysDestroyed;
-use Heidi\Core\Domain\Event\TenantDataKeysRewrapped;
-use Heidi\Core\Domain\Event\TenantKeyRetired;
-use Heidi\Core\Domain\Event\TenantKeyRotated;
-use Heidi\Core\Domain\Event\TenantKeyStaged;
-use Heidi\Core\Domain\Event\TotpUsed;
-use Heidi\Core\Domain\Event\UserAuthenticated;
-use Heidi\Core\Domain\Key\RetirementReason;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Event\DomainEventInterface;
+use Beffroi\Core\Domain\Event\KmsUnavailable;
+use Beffroi\Core\Domain\Event\LoadBudgetSpent;
+use Beffroi\Core\Domain\Event\PasskeyUsed;
+use Beffroi\Core\Domain\Event\PasswordRehashed;
+use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
+use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
+use Beffroi\Core\Domain\Event\TenantKeyRetired;
+use Beffroi\Core\Domain\Event\TenantKeyRotated;
+use Beffroi\Core\Domain\Event\TenantKeyStaged;
+use Beffroi\Core\Domain\Event\TotpUsed;
+use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Key\RetirementReason;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Tests\Fixture\Totps;
 use function is_a;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -98,7 +98,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a password rehashed' => [new PasswordRehashed($password, $now, $context)];
         yield 'a TOTP used' => [new TotpUsed($totp, $now, $context, false)];
         yield 'a KMS that could not be reached' => [new KmsUnavailable($now, $tenant, $context, 'the KMS answered 503')];
-        yield 'a load budget spent' => [new LoadBudgetSpent($now, $tenant, $context, 'login', 'heidi_interaction_login', 'oidc-demo')];
+        yield 'a load budget spent' => [new LoadBudgetSpent($now, $tenant, $context, 'login', 'beffroi_interaction_login', 'oidc-demo')];
         yield 'a key staged' => [new TenantKeyStaged(self::key($tenant, $now), $now, $context)];
         yield 'a key rotated' => [new TenantKeyRotated(self::key($tenant, $now), self::key($tenant, $now), $now, $context)];
         yield 'a key retired' => [new TenantKeyRetired(self::key($tenant, $now), RetirementReason::Due, $now, $context)];
@@ -108,7 +108,7 @@ final class EventsLeaveTheProcessTest extends TestCase
             10,
             'vault',
             'aws',
-            'alias/heidi-acme',
+            'alias/beffroi-acme',
             $now,
             $context,
         )];

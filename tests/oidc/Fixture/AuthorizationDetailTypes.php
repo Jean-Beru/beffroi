@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\AuthorizationDetails\ServedAuthorizationDetailTypes;
-use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetail;
-use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
-use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetailTypeInterface;
+use Beffroi\Oidc\Application\AuthorizationDetails\ServedAuthorizationDetailTypes;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetail;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetailTypeInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 

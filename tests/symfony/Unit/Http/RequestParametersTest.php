@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace Beffroi\Bundle\Tests\Unit\Http;
 
-use Heidi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Http\RequestParameters;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function rawurlencode;

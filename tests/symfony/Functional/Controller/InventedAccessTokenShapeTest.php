@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Bundle\Tests\Functional\Token\InventedAccessTokenIssuer;
+use Beffroi\Bundle\Tests\Functional\Token\InventedAccessTokenIssuer;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use function str_starts_with;

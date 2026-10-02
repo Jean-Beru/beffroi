@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Claims;
+namespace Beffroi\Oidc\Tests\Application\Claims;
 
-use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

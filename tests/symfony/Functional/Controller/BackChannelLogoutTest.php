@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function array_map;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\EndSession\LogoutToken;
-use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\EndSession\LogoutToken;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use Symfony\Component\DomCrawler\Crawler;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function array_filter;
 use function count;
-use Heidi\Core\Application\Totp\ActiveTotp;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\TotpProvisioning;
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Domain\Credential\TotpProvisioning;
+use Beffroi\Core\Domain\Identity\User;
 use function implode;
 use ParagonIE\ConstantTime\Base32;
 use function str_split;

@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace Beffroi\Bundle\Tests\Functional\Command;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Credential\RevocableCredentialInterface;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_replace;
 use function random_bytes;
@@ -41,7 +41,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($passkey);
 
         // When
-        $tester = self::console('heidi:user:show', [
+        $tester = self::console('beffroi:user:show', [
             'username' => 'alice',
         ]);
 
@@ -62,7 +62,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:show', [
+        $tester = self::console('beffroi:user:show', [
             'username' => 'alice',
         ]);
 
@@ -80,7 +80,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($passkey);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $passkey->id->toRfc4122(),
         ]);
@@ -96,11 +96,11 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertInstanceOf(CredentialRevoked::class, $events[0]);
         static::assertTrue($events[0]->credential->id->equals($passkey->id));
         static::assertNull($events[0]->context->ipAddress);
-        static::assertStringStartsWith('heidi-console/heidi:user:revoke-credential (', $events[0]->context->userAgent ?? '');
+        static::assertStringStartsWith('beffroi-console/beffroi:user:revoke-credential (', $events[0]->context->userAgent ?? '');
     }
 
     /**
-     * Issue #91: the TOTP is revoked from the console like a passkey, by the identifier heidi:user:show
+     * Issue #91: the TOTP is revoked from the console like a passkey, by the identifier beffroi:user:show
      * lists; the kind has no label, the identifier stands for it.
      */
     #[Test]
@@ -112,7 +112,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($totp);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $totp->id->toRfc4122(),
         ]);
@@ -139,7 +139,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($passkey);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $passkey->id->toRfc4122(),
         ]);
@@ -159,7 +159,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($password);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $password->id->toRfc4122(),
         ]);
@@ -181,7 +181,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $passkey->id->toRfc4122(),
         ]);
@@ -198,7 +198,7 @@ final class CredentialsTest extends ConsoleTestCase
     public function anIdentifierThatIsNotOneIsRefusedBeforeAnyLookup(): void
     {
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'nobody',
             'id' => 'not-a-uuid',
         ]);
@@ -212,7 +212,7 @@ final class CredentialsTest extends ConsoleTestCase
     public function anUnknownUserIsRefused(): void
     {
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'nobody',
             'id' => Uuid::v7()->toRfc4122(),
         ]);
@@ -242,6 +242,6 @@ final class CredentialsTest extends ConsoleTestCase
 
     private static function credentials(): CredentialRepositoryInterface
     {
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class);
+        return self::service('test.beffroi.credentials', CredentialRepositoryInterface::class);
     }
 }

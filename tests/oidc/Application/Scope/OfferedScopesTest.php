@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Scope;
+namespace Beffroi\Oidc\Tests\Application\Scope;
 
 use function array_map;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
-use Heidi\Oidc\Application\Client\RegisteredClients;
-use Heidi\Oidc\Application\Scope\OfferedScopes;
-use Heidi\Oidc\Application\Token\ServedGrants;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakeClaimsProvider;
-use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenIssuingGrant;
-use Heidi\Oidc\Tests\Fixture\FakeRefreshTokenSpendingGrant;
-use Heidi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
+use Beffroi\Oidc\Application\Client\RegisteredClients;
+use Beffroi\Oidc\Application\Scope\OfferedScopes;
+use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClaimsProvider;
+use Beffroi\Oidc\Tests\Fixture\FakeRefreshTokenIssuingGrant;
+use Beffroi\Oidc\Tests\Fixture\FakeRefreshTokenSpendingGrant;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

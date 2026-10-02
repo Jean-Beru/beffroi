@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Domain\Token\TokenErrorResponse;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Domain\Token\TokenErrorResponse;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

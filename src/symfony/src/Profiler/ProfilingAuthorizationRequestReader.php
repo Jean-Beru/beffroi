@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
 use function array_diff;
 use function array_keys;
-use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
-use Heidi\Bundle\Http\ReceivedAuthorizationRequest;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Bundle\Http\AuthorizationRequestReaderInterface;
+use Beffroi\Bundle\Http\ReceivedAuthorizationRequest;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use function implode;
 use Symfony\Component\HttpFoundation\Request;
 

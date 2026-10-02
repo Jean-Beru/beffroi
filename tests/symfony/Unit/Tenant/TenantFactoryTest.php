@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Tenant;
+namespace Beffroi\Bundle\Tests\Unit\Tenant;
 
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Session\AuthenticationPredicate;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;

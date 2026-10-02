@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethodInterface;
+use Beffroi\Oidc\Domain\Authorization\CodeChallengeMethodInterface;
 
 /**
  * A PKCE method nothing of the module knows about, wired like any other: it names itself, it answers what

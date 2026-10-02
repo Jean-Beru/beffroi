@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Discovery;
+namespace Beffroi\Oidc\Tests\Domain\Discovery;
 
 use function array_keys;
-use Heidi\Core\Domain\Key\PublicKeySet;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Oidc\Domain\Discovery\JwkSetResponse;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Key\PublicKeySet;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Domain\Discovery\JwkSetResponse;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -37,6 +37,6 @@ final readonly class InteractionSection extends ConfigurationSection
 
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
-        LoginHintReadings::tag($services, self::string($this->own($config), 'login_hint'), 'heidi.oidc.login_hint');
+        LoginHintReadings::tag($services, self::string($this->own($config), 'login_hint'), 'beffroi.oidc.login_hint');
     }
 }

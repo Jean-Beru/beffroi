@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use function trim;

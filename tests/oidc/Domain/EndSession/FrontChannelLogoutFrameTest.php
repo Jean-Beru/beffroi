@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\EndSession;
+namespace Beffroi\Oidc\Tests\Domain\EndSession;
 
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\EndSession\FrontChannelLogoutFrame;
-use Heidi\Oidc\Exception\LogicException;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\EndSession\FrontChannelLogoutFrame;
+use Beffroi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

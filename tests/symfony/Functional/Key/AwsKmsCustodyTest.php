@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace Beffroi\Bundle\Tests\Functional\Key;
 
 use AsyncAws\Core\Configuration;
 use AsyncAws\Core\Exception\Http\ClientException;
@@ -10,11 +10,11 @@ use AsyncAws\Kms\Input\DecryptRequest;
 use AsyncAws\Kms\KmsClient;
 use function base64_encode;
 use function getenv;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use function is_string;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -28,24 +28,24 @@ use Symfony\Component\KeyManagement\Envelope;
  * Issue #58, against an AWS KMS (LocalStack in the CI and on the development stack, the same API): the
  * master key of the tenant is the one docker/localstack/init.sh creates under the alias the DSN names, and
  * the envelope holds the data key as that KMS wrapped it, bound to the tenant. Skipped unless the kernel
- * seals with AWS KMS (HEIDI_TEST_KMS_DSN), which the CI does in a job of its own against a LocalStack
+ * seals with AWS KMS (BEFFROI_TEST_KMS_DSN), which the CI does in a job of its own against a LocalStack
  * service; every other test of the suite then runs against it too.
  */
 final class AwsKmsCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'aws-kms://';
 
-    private const string ALIAS = 'alias/heidi-default';
+    private const string ALIAS = 'alias/beffroi-default';
 
-    private const string AAD = 'heidi:signing-key:v2:default';
+    private const string AAD = 'beffroi:signing-key:v2:default';
 
     private Dsn $dsn;
 
     protected function setUp(): void
     {
-        $dsn = getenv('HEIDI_TEST_KMS_DSN');
+        $dsn = getenv('BEFFROI_TEST_KMS_DSN');
         if (! is_string($dsn) || ! str_starts_with($dsn, self::SCHEME)) {
-            static::markTestSkipped('The kernel seals with sodium; set HEIDI_TEST_KMS_DSN to an AWS KMS DSN to run this test.');
+            static::markTestSkipped('The kernel seals with sodium; set BEFFROI_TEST_KMS_DSN to an AWS KMS DSN to run this test.');
         }
         parent::setUp();
         $this->dsn = Dsn::fromString($dsn);
@@ -60,7 +60,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     public function theDataKeyOfASealedKeyIsWrappedByTheKeyOfTheTenant(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', TenantKeyRotator::class);
+        $rotator = self::service('test.beffroi.key_rotator', TenantKeyRotator::class);
 
         // When
         $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
@@ -88,7 +88,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     public function theKmsRefusesToUnwrapTheDataKeyUnderAnotherTenant(): void
     {
         // Given
-        $rotated = self::service('test.heidi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        $rotated = self::service('test.beffroi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
         $envelope = self::envelopeOf($rotated);
 
         // Then
@@ -101,7 +101,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
                 'KeyId' => self::ALIAS,
                 'CiphertextBlob' => (string) $envelope->wrappedDek,
                 'EncryptionContext' => [
-                    'aad' => base64_encode('heidi:signing-key:v2:other'),
+                    'aad' => base64_encode('beffroi:signing-key:v2:other'),
                 ],
             ]))
             ->getPlaintext();
@@ -126,7 +126,8 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
 
     private static function envelopeOf(TenantKey $key): Envelope
     {
-        $stored = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
+        $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
+            ->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
 
         return Envelope::fromBytes($stored->sealedPrivateJwk);
     }

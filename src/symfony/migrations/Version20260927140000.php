@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
@@ -29,14 +29,14 @@ final class Version20260927140000 extends AbstractMigration
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('DELETE FROM heidi_backchannel_authentication_request');
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request ADD acr_values JSONB NOT NULL');
+        $this->addSql('DELETE FROM beffroi_backchannel_authentication_request');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request ADD acr_values JSONB NOT NULL');
     }
 
     public function down(Schema $schema): void
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('ALTER TABLE heidi_backchannel_authentication_request DROP acr_values');
+        $this->addSql('ALTER TABLE beffroi_backchannel_authentication_request DROP acr_values');
     }
 }

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Event\PasswordRehashed;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Event\PasswordRehashed;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use LogicException;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;

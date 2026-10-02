@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
-use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
-use Heidi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
-use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
-use Heidi\Oidc\Domain\Client\Registration\StatementIssuer;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
+use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Beffroi\Oidc\Domain\Client\Registration\StatementIssuer;
 
 /**
  * The policy of a tenant of the tests, by the mode it names (decision 0009): the object the endpoint reads,

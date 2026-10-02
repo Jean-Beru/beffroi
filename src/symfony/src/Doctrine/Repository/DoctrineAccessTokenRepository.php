@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use function array_filter;
 use function array_merge;
 use function array_values;
 use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
-use Heidi\Oidc\Domain\Token\StoredUserAccessToken;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredUserAccessToken;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokenInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use function is_subclass_of;
 use function sort;
 use function usort;

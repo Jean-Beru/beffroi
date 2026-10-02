@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Webauthn;
+namespace Beffroi\Bundle\Webauthn;
 
 use function basename;
 use function bin2hex;
@@ -10,9 +10,9 @@ use function chmod;
 use function file_get_contents;
 use function file_put_contents;
 use function glob;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Port\MetadataBlobStoreInterface;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use function is_dir;
 use const LOCK_EX;
 use function mkdir;

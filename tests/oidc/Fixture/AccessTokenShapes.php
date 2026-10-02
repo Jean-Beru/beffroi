@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Port\JwsVerifierInterface;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
-use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
-use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
+use Beffroi\Core\Port\JwsVerifierInterface;
+use Beffroi\Oidc\Application\Token\AccessTokenVerifier;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenVerifier;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
 
 /**
  * The two shapes this provider writes an access token in, wired as the bundle wires them. A test names

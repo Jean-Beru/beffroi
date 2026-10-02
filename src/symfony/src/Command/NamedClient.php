@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Application\Client\ClientInventory;
-use Heidi\Oidc\Domain\Client\InventoriedClient;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Application\Client\ClientInventory;
+use Beffroi\Oidc\Domain\Client\InventoriedClient;
 use function sprintf;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use function trim;

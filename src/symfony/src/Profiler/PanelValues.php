@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
-use Heidi\Oidc\Port\ClaimsProviderInterface;
+use Beffroi\Oidc\Port\ClaimsProviderInterface;
 use function implode;
 use function in_array;
 use function json_encode;

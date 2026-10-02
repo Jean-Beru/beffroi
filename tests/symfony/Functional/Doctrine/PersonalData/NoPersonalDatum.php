@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
 use function sprintf;
 

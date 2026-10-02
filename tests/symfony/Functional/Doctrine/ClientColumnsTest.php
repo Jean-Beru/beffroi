@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
-use Heidi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Client\ClientSecretInterface;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Port\ClientStoreInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
@@ -45,13 +45,13 @@ final class ClientColumnsTest extends DatabaseTestCase
      * Read from the shared fixture and declared nowhere else: the test that searches the whole database
      * searches for these very values, and two lists of the same values are two lists that disagree.
      */
-    private const string CONTACT = SealedRows::VALUES['heidi_user']['email'];
+    private const string CONTACT = SealedRows::VALUES['beffroi_user']['email'];
 
-    private const string CLIENT_NAME = SealedRows::VALUES['heidi_client']['metadata'];
+    private const string CLIENT_NAME = SealedRows::VALUES['beffroi_client']['metadata'];
 
-    private const string ASSIGNED_SCOPE = SealedRows::VALUES['heidi_client']['assigned_metadata'];
+    private const string ASSIGNED_SCOPE = SealedRows::VALUES['beffroi_client']['assigned_metadata'];
 
-    private const string SHARED_SECRET = SealedRows::VALUES['heidi_client']['secret'];
+    private const string SHARED_SECRET = SealedRows::VALUES['beffroi_client']['secret'];
 
     /**
      * The columns of this table the classification of the schema declares sealed.
@@ -70,7 +70,7 @@ final class ClientColumnsTest extends DatabaseTestCase
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()['heidi_client'] as $column => $line) {
+        foreach (SchemaColumns::all()['beffroi_client'] as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }
@@ -183,12 +183,12 @@ final class ClientColumnsTest extends DatabaseTestCase
         $stored = self::rows()[0][$column];
 
         // Then
-        static::assertNotNull($stored, sprintf('heidi_client.%s holds nothing, so there is nothing to search.', $column));
+        static::assertNotNull($stored, sprintf('beffroi_client.%s holds nothing, so there is nothing to search.', $column));
         foreach ([self::CONTACT, self::CLIENT_NAME, self::ASSIGNED_SCOPE, self::SHARED_SECRET] as $plaintext) {
             static::assertStringNotContainsString(
                 $plaintext,
                 (string) $stored,
-                sprintf('heidi_client.%s holds "%s" in the clear.', $column, $plaintext),
+                sprintf('beffroi_client.%s holds "%s" in the clear.', $column, $plaintext),
             );
         }
     }
@@ -220,7 +220,7 @@ final class ClientColumnsTest extends DatabaseTestCase
         self::record();
 
         // When
-        $scopes = self::connection()->fetchFirstColumn('SELECT scope FROM heidi_data_key ORDER BY scope ASC');
+        $scopes = self::connection()->fetchFirstColumn('SELECT scope FROM beffroi_data_key ORDER BY scope ASC');
 
         // Then
         $slug = self::tenant()->slug;
@@ -249,7 +249,7 @@ final class ClientColumnsTest extends DatabaseTestCase
      */
     private static function rows(): array
     {
-        $rows = RawRows::of(self::connection(), 'heidi_client', self::SEALED);
+        $rows = RawRows::of(self::connection(), 'beffroi_client', self::SEALED);
         static::assertCount(1, $rows);
 
         return $rows;
@@ -257,7 +257,7 @@ final class ClientColumnsTest extends DatabaseTestCase
 
     private static function clients(): ClientStoreInterface
     {
-        return self::service('test.heidi.client_store', ClientStoreInterface::class);
+        return self::service('test.beffroi.client_store', ClientStoreInterface::class);
     }
 
     private static function connection(): Connection

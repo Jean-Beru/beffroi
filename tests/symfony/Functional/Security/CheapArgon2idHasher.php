@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Security;
+namespace Beffroi\Bundle\Tests\Functional\Security;
 
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Port\AlgorithmPasswordHasherInterface;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Port\AlgorithmPasswordHasherInterface;
 use const PASSWORD_ARGON2ID;
 use function password_hash;
 use function password_needs_rehash;

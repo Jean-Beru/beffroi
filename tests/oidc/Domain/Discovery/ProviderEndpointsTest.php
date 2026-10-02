@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Discovery;
+namespace Beffroi\Oidc\Tests\Domain\Discovery;
 
-use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Discovery\ProviderEndpoints;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

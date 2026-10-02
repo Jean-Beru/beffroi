@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client\Certificate;
+namespace Beffroi\Oidc\Tests\Domain\Client\Certificate;
 
-use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
-use Heidi\Oidc\Domain\Client\Certificate\CertificateSubject;
-use Heidi\Oidc\Domain\Client\Certificate\DnsName;
-use Heidi\Oidc\Domain\Client\Certificate\EmailAddressName;
-use Heidi\Oidc\Domain\Client\Certificate\IpAddressName;
-use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
-use Heidi\Oidc\Domain\Client\Certificate\UriName;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
+use Beffroi\Oidc\Domain\Client\Certificate\CertificateSubject;
+use Beffroi\Oidc\Domain\Client\Certificate\DnsName;
+use Beffroi\Oidc\Domain\Client\Certificate\EmailAddressName;
+use Beffroi\Oidc\Domain\Client\Certificate\IpAddressName;
+use Beffroi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
+use Beffroi\Oidc\Domain\Client\Certificate\UriName;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -115,7 +115,7 @@ final class CertificateIdentityTest extends TestCase
      */
     public static function provideRegisteredNames(): iterable
     {
-        yield 'the subject distinguished name' => [new SubjectDistinguishedName('cn=client,o=Heidi Test')];
+        yield 'the subject distinguished name' => [new SubjectDistinguishedName('cn=client,o=Beffroi Test')];
 
         yield 'a dNSName' => [new DnsName('client.example.com')];
 
@@ -131,7 +131,7 @@ final class CertificateIdentityTest extends TestCase
      */
     public static function provideNamesOfSomebodyElse(): iterable
     {
-        yield 'another distinguished name' => [new SubjectDistinguishedName('cn=other,o=Heidi Test')];
+        yield 'another distinguished name' => [new SubjectDistinguishedName('cn=other,o=Beffroi Test')];
 
         yield 'another dNSName' => [new DnsName('other.example.com')];
 
@@ -196,7 +196,7 @@ final class CertificateIdentityTest extends TestCase
     private static function subject(): CertificateSubject
     {
         return new CertificateSubject(
-            'cn=client,o=Heidi Test',
+            'cn=client,o=Beffroi Test',
             ['client.example.com'],
             ['https://client.example.com/callback'],
             ['198.51.100.7'],

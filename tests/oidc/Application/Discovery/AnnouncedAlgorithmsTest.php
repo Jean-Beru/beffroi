@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery;
+namespace Beffroi\Oidc\Tests\Application\Discovery;
 
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
-use Heidi\Core\Port\ContentEncryptionAlgorithmsInterface;
-use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\FakeSignatureAlgorithm;
-use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
-use Heidi\Oidc\Tests\Fixture\FakeClientAuthenticationMethod;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Beffroi\Core\Port\ContentEncryptionAlgorithmsInterface;
+use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\FakeSignatureAlgorithm;
+use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
+use Beffroi\Oidc\Tests\Fixture\FakeClientAuthenticationMethod;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
-use Heidi\Bundle\Controller\AccountTwoFactorController;
-use Heidi\Core\Application\Totp\ActiveTotp;
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Bundle\Controller\AccountTwoFactorController;
+use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Domain\Identity\User;
 
 /**
  * The second factor of the account, on the home page: the authenticator app it holds, or none. How many

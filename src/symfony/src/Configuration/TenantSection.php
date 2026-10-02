@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
 use function array_column;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;

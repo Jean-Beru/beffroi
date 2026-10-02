@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
+use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
@@ -26,7 +26,7 @@ final readonly class WebauthnSection extends ConfigurationSection
             ->addDefaultsIfNotSet()
             ->children()
             ->scalarNode('metadata_storage')
-            ->info('Directory of the FIDO metadata the ceremonies check an attestation against: the documents "heidi:webauthn:mds-refresh" verified and "heidi:webauthn:mds-import" stored, next to the keys; empty until one of them ran, which the enrolment of the provider does not need.')
+            ->info('Directory of the FIDO metadata the ceremonies check an attestation against: the documents "beffroi:webauthn:mds-refresh" verified and "beffroi:webauthn:mds-import" stored, next to the keys; empty until one of them ran, which the enrolment of the provider does not need.')
             ->defaultValue('%kernel.project_dir%/var/webauthn')
             ->cannotBeEmpty()
             ->end()

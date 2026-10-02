@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Translation;
+namespace Beffroi\Bundle\Tests\Functional\Translation;
 
 use LogicException;
 use function sprintf;

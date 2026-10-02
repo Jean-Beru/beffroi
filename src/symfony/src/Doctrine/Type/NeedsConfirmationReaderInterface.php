@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Port\ConfirmationReaderInterface;
+use Beffroi\Oidc\Port\ConfirmationReaderInterface;
 
 /**
  * A DBAL type that reads back what a token is bound to and needs the wiring to do it: the members of a

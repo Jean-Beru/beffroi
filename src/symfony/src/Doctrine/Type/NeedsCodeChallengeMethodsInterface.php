@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Port\CodeChallengeMethodsInterface;
+use Beffroi\Oidc\Port\CodeChallengeMethodsInterface;
 
 /**
  * A DBAL type that reads a PKCE method back and needs the wiring to do it (RFC 7636 §4.3: a stored

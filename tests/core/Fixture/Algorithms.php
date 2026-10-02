@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Es256;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Ps256;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
-use Heidi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
-use Heidi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Es256;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Ps256;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
+use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
+use Beffroi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 
 /**
  * The algorithms of the suite, wired as the bundle wires them, RS256 first and the two a client encrypts

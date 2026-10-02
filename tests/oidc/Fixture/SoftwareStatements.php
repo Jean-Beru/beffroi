@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function bin2hex;
 use DateTimeImmutable;
 use function random_bytes;
-use Heidi\Oidc\Domain\Client\Registration\StatementIssuer;
+use Beffroi\Oidc\Domain\Client\Registration\StatementIssuer;
 use Jose\Component\Core\JWK;
 
 /**

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client;
+namespace Beffroi\Oidc\Tests\Application\Client;
 
 use function array_map;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Client\ClientInventory;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\InventoriedClient;
-use Heidi\Oidc\Port\ClientInventoryInterface;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\ClientInventory;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Client\InventoriedClient;
+use Beffroi\Oidc\Port\ClientInventoryInterface;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

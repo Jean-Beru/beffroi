@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Ciba;
+namespace Beffroi\Bundle\Tests\Functional\Ciba;
 
 use function base64_encode;
-use Heidi\Bundle\Ciba\Conformance\AutomatedApprovalController;
-use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use Beffroi\Bundle\Ciba\Conformance\AutomatedApprovalController;
+use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
 use function http_build_query;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;

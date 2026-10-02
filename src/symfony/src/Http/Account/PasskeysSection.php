@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
 use function count;
-use Heidi\Bundle\Controller\AccountPasskeysController;
-use Heidi\Core\Application\Credential\ActiveCredentials;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Bundle\Controller\AccountPasskeysController;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Identity\User;
 
 /**
  * The passkeys of the account, on the home page: how many of them still sign the user in. A revoked one is

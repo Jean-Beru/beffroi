@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Cache;
+namespace Beffroi\Bundle\Cache;
 
 use DateTimeImmutable;
 use Psr\Cache\CacheItemPoolInterface;

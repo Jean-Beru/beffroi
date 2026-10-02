@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use function array_map;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
-use Heidi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
 use function is_array;
 use function is_string;
 
@@ -21,7 +21,7 @@ use function is_string;
  */
 final class AuthenticationContextPolicyType extends JsonObjectType
 {
-    public const string NAME = 'heidi_authentication_context_policy';
+    public const string NAME = 'beffroi_authentication_context_policy';
 
     protected function encode(object $value): array
     {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
 use DateInterval;
 use function is_array;
@@ -52,7 +52,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     {
         $value = $section[$key] ?? null;
         if (! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a string.', $key));
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a string.', $key));
         }
 
         return $value;
@@ -67,7 +67,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     {
         $value = $section[$key] ?? null;
         if (! is_int($value) && ! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a number.', $key));
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number.', $key));
         }
 
         return $value;
@@ -82,7 +82,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     {
         $value = $section[$key] ?? null;
         if (! is_bool($value) && ! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be true or false.', $key));
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be true or false.', $key));
         }
 
         return $value;
@@ -97,7 +97,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     {
         $value = $section[$key] ?? null;
         if (! is_float($value) && ! is_int($value) && ! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a number.', $key));
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number.', $key));
         }
 
         return is_int($value) ? (float) $value : $value;
@@ -112,7 +112,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     {
         $value = $section[$key] ?? null;
         if (! is_int($value) && ! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "heidi" configuration key "%s" must be a number of seconds.', $key));
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of seconds.', $key));
         }
 
         return inline_service(DateInterval::class)->args(['PT' . $value . 'S']);

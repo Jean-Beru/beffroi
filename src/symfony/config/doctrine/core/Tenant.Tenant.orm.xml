@@ -4,16 +4,16 @@
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- One issuer (architecture §3.1). Every other table carries its identifier. Its "acr" policy (decision 0010) is a JSON document whose default, in the database as in the core, is the default policy: a row written before the column existed speaks it. -->
-    <entity name="Heidi\Core\Domain\Tenant\Tenant" table="heidi_tenant">
+    <entity name="Beffroi\Core\Domain\Tenant\Tenant" table="beffroi_tenant">
         <unique-constraints>
-            <unique-constraint name="heidi_tenant_slug" columns="slug"/>
-            <unique-constraint name="heidi_tenant_issuer" columns="issuer"/>
+            <unique-constraint name="beffroi_tenant_slug" columns="slug"/>
+            <unique-constraint name="beffroi_tenant_issuer" columns="issuer"/>
         </unique-constraints>
         <id name="id" type="uuid" column="id"/>
         <field name="slug" type="string" column="slug" length="63"/>
-        <field name="issuer" type="heidi_issuer" column="issuer" length="255"/>
+        <field name="issuer" type="beffroi_issuer" column="issuer" length="255"/>
         <field name="name" type="string" column="name" length="255"/>
-        <field name="authenticationContextPolicy" type="heidi_authentication_context_policy" column="authentication_context_policy">
+        <field name="authenticationContextPolicy" type="beffroi_authentication_context_policy" column="authentication_context_policy">
             <options>
                 <option name="default">{"classes":[{"name":"phrh","predicate":"phishing_resistant_hardware"},{"name":"phr","predicate":"phishing_resistant"},{"name":"2","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}</option>
             </options>

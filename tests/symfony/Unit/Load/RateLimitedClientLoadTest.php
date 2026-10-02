@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Load;
+namespace Beffroi\Bundle\Tests\Unit\Load;
 
 use DateInterval;
-use Heidi\Bundle\Load\LoadBudget;
-use Heidi\Bundle\Load\RateLimitedClientLoad;
-use Heidi\Core\Exception\LoadBudgetSpentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Load\LoadBudget;
+use Beffroi\Bundle\Load\RateLimitedClientLoad;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;

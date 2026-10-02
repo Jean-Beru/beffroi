@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\KeyAlgorithmsInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\KeyAlgorithmsInterface;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -18,17 +18,17 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * A key for the tenant, sealed by the KMS and active at once (architecture §3.3, §5.5): what
- * "heidi:keys:rotate --now" does, kept under this name for the first key of a tenant; run twice, a
+ * "beffroi:keys:rotate --now" does, kept under this name for the first key of a tenant; run twice, a
  * rotation without a staging window. The algorithm names what the key is for: a JWS algorithm gives a key
  * that signs, a JWE key management algorithm a key a client encrypts to.
  */
 #[AsCommand(
-    name: 'heidi:keys:generate',
-    description: 'Generate a key, seal it with the configured KMS and make it the active one of its algorithm at once; "heidi:keys:rotate" is the rotation without an outage.',
+    name: 'beffroi:keys:generate',
+    description: 'Generate a key, seal it with the configured KMS and make it the active one of its algorithm at once; "beffroi:keys:rotate" is the rotation without an outage.',
 )]
 final readonly class KeysGenerateCommand
 {
-    public const string NAME = 'heidi:keys:generate';
+    public const string NAME = 'beffroi:keys:generate';
 
     public function __construct(
         private ConfiguredTenant $tenant,
@@ -41,7 +41,7 @@ final readonly class KeysGenerateCommand
     }
 
     /**
-     * What both this command and "heidi:keys:rotate" offer, said once: the wiring is the one source of
+     * What both this command and "beffroi:keys:rotate" offer, said once: the wiring is the one source of
      * truth over the algorithms, so the option describes it the same way wherever it is offered.
      */
     public const string ALGORITHM_OPTION = 'The algorithm the key pair is generated for, among those the provider is wired with: a JWS algorithm for a key that signs, a JWE key management one for a key clients encrypt to. The default signature algorithm when none is named.';

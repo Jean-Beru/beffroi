@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Client;
+namespace Beffroi\Bundle\Tests\Unit\Client;
 
-use Heidi\Bundle\Client\SectorIdentifierDocumentFetcher;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\SectorIdentifierUnavailableException;
+use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\SectorIdentifierUnavailableException;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;

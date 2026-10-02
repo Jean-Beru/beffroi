@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function is_string;
 use function json_encode;
 use const JSON_PRESERVE_ZERO_FRACTION;
@@ -24,7 +24,7 @@ use JsonException;
  */
 final class ClaimsRequestType extends Type
 {
-    public const string NAME = 'heidi_claims_request';
+    public const string NAME = 'beffroi_claims_request';
 
     public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
     {

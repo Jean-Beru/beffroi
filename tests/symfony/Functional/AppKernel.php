@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional;
+namespace Beffroi\Bundle\Tests\Functional;
 
 use function dirname;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
@@ -29,11 +29,11 @@ final class AppKernel extends Kernel
 
     public function getCacheDir(): string
     {
-        return sys_get_temp_dir() . '/heidi-bundle-tests/cache/' . $this->environment;
+        return sys_get_temp_dir() . '/beffroi-bundle-tests/cache/' . $this->environment;
     }
 
     public function getLogDir(): string
     {
-        return sys_get_temp_dir() . '/heidi-bundle-tests/log';
+        return sys_get_temp_dir() . '/beffroi-bundle-tests/log';
     }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use Closure;
 use Symfony\Component\KeyManagement\BlindIndex;
@@ -14,7 +14,7 @@ use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
  *
  * It says what the `BlindIndexed` attribute of the ORM bridge says on an entity, and it says it here
  * because that attribute cannot reach these columns: it would put a class of the bridge inside
- * `Heidi\Core\Domain`, which is the one thing Deptrac exists to refuse, and it is read off the entity while
+ * `Beffroi\Core\Domain`, which is the one thing Deptrac exists to refuse, and it is read off the entity while
  * the mapping of this bundle is XML beside it. So the declaration lives with the mapping, and the listener
  * that fills the column is the bundle's own (`BlindIndexListener`).
  *

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use DateTimeImmutable;
 use function array_keys;
 use function count;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use function ksort;
 use Symfony\Component\KeyManagement\RewrappableDataKeyStoreInterface;
 use Symfony\Component\Uid\Uuid;

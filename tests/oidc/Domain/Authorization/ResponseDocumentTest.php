@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Authorization;
+namespace Beffroi\Oidc\Tests\Domain\Authorization;
 
 use function array_keys;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Oidc\Domain\Authorization\ResponseDocument;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Oidc\Domain\Authorization\ResponseDocument;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

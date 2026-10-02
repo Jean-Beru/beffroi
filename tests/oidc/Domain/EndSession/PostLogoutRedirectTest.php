@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\EndSession;
+namespace Beffroi\Oidc\Tests\Domain\EndSession;
 
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\EndSession\PostLogoutRedirect;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\EndSession\PostLogoutRedirect;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

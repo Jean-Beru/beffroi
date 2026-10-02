@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Authorization;
+namespace Beffroi\Oidc\Tests\Domain\Authorization;
 
-use Heidi\Oidc\Domain\Authorization\RequestObject;
-use Heidi\Oidc\Domain\Token\UnverifiedJwt;
-use Heidi\Oidc\Exception\InvalidRequestObjectException;
+use Beffroi\Oidc\Domain\Authorization\RequestObject;
+use Beffroi\Oidc\Domain\Token\UnverifiedJwt;
+use Beffroi\Oidc\Exception\InvalidRequestObjectException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

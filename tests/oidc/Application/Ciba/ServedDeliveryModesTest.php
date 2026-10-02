@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Ciba;
+namespace Beffroi\Oidc\Tests\Application\Ciba;
 
-use Heidi\Oidc\Application\Ciba\DeliveryModeNames;
-use Heidi\Oidc\Application\Ciba\ServedDeliveryModes;
-use Heidi\Oidc\Domain\Ciba\PingDelivery;
-use Heidi\Oidc\Domain\Ciba\PollDelivery;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\DeliveryModes;
+use Beffroi\Oidc\Application\Ciba\DeliveryModeNames;
+use Beffroi\Oidc\Application\Ciba\ServedDeliveryModes;
+use Beffroi\Oidc\Domain\Ciba\PingDelivery;
+use Beffroi\Oidc\Domain\Ciba\PollDelivery;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\DeliveryModes;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

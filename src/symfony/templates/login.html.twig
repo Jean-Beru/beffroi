@@ -9,14 +9,14 @@
    user holds would satisfy one, by kind (login.step_up.<kind>: a passkey, the password, a TOTP after the
    password), nothing of a kind they do not hold; both forms stay offered. A step-up asked for by a page
    of the provider names no client, that page serving no request of a browser (CIBA Core §7.1).
-   Overridable by an application under templates/bundles/HeidiBundle/. #}
-{% extends '@Heidi/layout.html.twig' %}
-{% trans_default_domain 'heidi' %}
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
 
 {% block title %}{{ 'login.title'|trans }}{% endblock %}
 
 {% block head %}
-    <script src="{{ path('heidi_interaction_passkey_script') }}" defer></script>
+    <script src="{{ path('beffroi_interaction_passkey_script') }}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -32,7 +32,7 @@
     {% if failed %}
         <p data-error="authentication_failed">{{ 'login.failed'|trans }}</p>
     {% endif %}
-    <form method="post" action="{{ path('heidi_interaction_login', interaction is null ? {} : {interaction: interaction.id}) }}">
+    <form method="post" action="{{ path('beffroi_interaction_login', interaction is null ? {} : {interaction: interaction.id}) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
         <label for="username">{{ 'login.username'|trans }}</label>
         <input type="text" id="username" name="_username" value="{{ username ?? '' }}" autocomplete="username webauthn" required autofocus>
@@ -40,7 +40,7 @@
         <input type="password" id="password" name="_password" autocomplete="current-password" required>
         <button type="submit">{{ 'login.submit'|trans }}</button>
     </form>
-    <form method="post" action="{{ path('heidi_interaction_passkey_login', interaction is null ? {} : {interaction: interaction.id}) }}" data-passkey="login" data-options-url="{{ path('heidi_interaction_passkey_login_options', interaction is null ? {} : {interaction: interaction.id}) }}" hidden>
+    <form method="post" action="{{ path('beffroi_interaction_passkey_login', interaction is null ? {} : {interaction: interaction.id}) }}" data-passkey="login" data-options-url="{{ path('beffroi_interaction_passkey_login_options', interaction is null ? {} : {interaction: interaction.id}) }}" hidden>
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
         <input type="hidden" name="_passkey" value="">
         <button type="button" data-passkey-button>{{ 'login.passkey'|trans }}</button>

@@ -47,7 +47,7 @@ use Symfony\Component\Console\Input\InputOption;
 /**
  * A client per logout channel, in place of the "client" of the configuration: the suite certifies one
  * channel at a time and a module fails on a request to the endpoint of the other one, so the client of a
- * plan registers the URI of its channel and of no other (apps/op/config/packages/heidi.yaml).
+ * plan registers the URI of its channel and of no other (apps/op/config/packages/beffroi.yaml).
  */
 const CONFORMANCE_FRONT_CHANNEL_CLIENT = [
     'client_id' => 'conformance-front-channel-logout',
@@ -65,7 +65,7 @@ const CONFORMANCE_BACK_CHANNEL_CLIENT = [
  * uses. Two per pair, because a client authenticates with the one method it registered (RFC 6749 §2.3.1)
  * and the two pairs do not authenticate the same way. "castor provision" generates their keys into
  * var/conformance/ and publishes the public half to the provider
- * (apps/op/config/packages/heidi.yaml).
+ * (apps/op/config/packages/beffroi.yaml).
  */
 const CONFORMANCE_FAPI_PRIVATE_KEY_JWT_CLIENTS = ['conformance-fapi-private-key-jwt', 'conformance-fapi-private-key-jwt-second'];
 
@@ -83,7 +83,7 @@ const CONFORMANCE_FAPI_SIGNING_MTLS_CLIENTS = ['conformance-fapi-signing-mtls', 
 /**
  * The clients of the two FAPI-CIBA runs, read as "client" and "client2" like every other pair. One pair
  * per run and not one for both: a client registers one backchannel token delivery mode (CIBA Core §4),
- * and the two runs are that mode changed (apps/op/config/packages/heidi.yaml).
+ * and the two runs are that mode changed (apps/op/config/packages/beffroi.yaml).
  */
 const CONFORMANCE_CIBA_POLL_CLIENTS = ['conformance-ciba-poll', 'conformance-ciba-poll-second'];
 
@@ -97,7 +97,7 @@ const CONFORMANCE_CIBA_PING_CLIENTS = ['conformance-ciba-ping', 'conformance-cib
  */
 const CONFORMANCE_CIBA_HINT_TYPE = 'login_hint';
 
-const CONFORMANCE_CIBA_HINT_VALUE = '{HEIDI_DEV_USER_SUBJECT}';
+const CONFORMANCE_CIBA_HINT_VALUE = '{BEFFROI_DEV_USER_SUBJECT}';
 
 /**
  * The authentication context class a client of the FAPI-CIBA runs asks for (CIBA Core §7.1, the
@@ -181,7 +181,7 @@ const CONFORMANCE_FAPI_KNOWN_MODULES = [
         // the suite's own wording and is not matched: what is known is which check warns, not how it words
         // it. A second condition warning on the same module is a finding beside this one and fails the run.
         'findings' => ['WARNING CheckForUnexpectedClaimsInIdToken:'],
-        'reason' => 'the ID token carries "sid", a claim Front-Channel Logout 1.0 §3 defines and the suite does not know; heidi#210',
+        'reason' => 'the ID token carries "sid", a claim Front-Channel Logout 1.0 §3 defines and the suite does not know; beffroi#210',
     ],
 ];
 
@@ -226,7 +226,7 @@ const CONFORMANCE_FAPI_KNOWN_MODULES = [
  * passes. So what is written down is a check of the suite behind a specification this provider follows, as
  * the two above are, and the profile stays out of certification (../../docs/07-certifications.md).
  */
-const CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE = 'the plan signs the URL of the token endpoint as the "aud" of its client assertions, which draft-ietf-oauth-rfc7523bis section 4 forbids and decision 0016 refuses; heidi#379';
+const CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE = 'the plan signs the URL of the token endpoint as the "aud" of its client assertions, which draft-ietf-oauth-rfc7523bis section 4 forbids and decision 0016 refuses; beffroi#379';
 
 /**
  * What such a module ends on: the status the exchange did not answer, and its own interruption, which
@@ -260,7 +260,7 @@ const CONFORMANCE_TOKEN_ENDPOINT_STATUS = 'FAILURE CheckTokenEndpointHttpStatus2
  * (AnyRegisteredAlgorithm): decision 0012 has an unsigned object registered per client, never fallen
  * into, and by the tenant or by a global setting never at all. The module skips itself where "none" is
  * not announced, and this tenant announces it because one client of it registered it
- * (AnnouncedRequestObjects, and the comment that member carries in apps/op/config/packages/heidi.yaml):
+ * (AnnouncedRequestObjects, and the comment that member carries in apps/op/config/packages/beffroi.yaml):
  * dropping that registration to buy the skip would cost the module of the Basic and Form Post plans
  * decision 0012 exists for.
  *
@@ -278,9 +278,9 @@ const CONFORMANCE_TOKEN_ENDPOINT_STATUS = 'FAILURE CheckTokenEndpointHttpStatus2
  * and the assertion audience above, and the profile stays out of certification
  * (../../docs/07-certifications.md).
  */
-const CONFORMANCE_DYNAMIC_SIGNED_REQUEST_OBJECT_CLAIMS = 'the plan signs a request object carrying neither exp nor nbf, which decision 0012 asks of every signed object and which two modules of the FAPI 2 security runs require to be refused; heidi#385';
+const CONFORMANCE_DYNAMIC_SIGNED_REQUEST_OBJECT_CLAIMS = 'the plan signs a request object carrying neither exp nor nbf, which decision 0012 asks of every signed object and which two modules of the FAPI 2 security runs require to be refused; beffroi#385';
 
-const CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT = 'the plan sends an unsigned request object from a client that registered no request_object_signing_alg, which decision 0012 reads from the client that registered "none" and from no other; heidi#385';
+const CONFORMANCE_DYNAMIC_UNSIGNED_REQUEST_OBJECT = 'the plan sends an unsigned request object from a client that registered no request_object_signing_alg, which decision 0012 reads from the client that registered "none" and from no other; beffroi#385';
 
 /**
  * The first of the three findings a module whose browser never reached the callback ends on: the runner
@@ -300,7 +300,7 @@ const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
             'FAILURE OIDCCCheckDiscEndpointResponseTypesSupportedDynamic:',
             'FAILURE OIDCCCheckDiscEndpointGrantTypesSupportedDynamic:',
         ],
-        'reason' => 'the Dynamic OP profile requires the implicit grant and the hybrid response types, which decision 0006 refuses; heidi#371',
+        'reason' => 'the Dynamic OP profile requires the implicit grant and the hybrid response types, which decision 0006 refuses; beffroi#371',
     ],
     'oidcc-server' => [
         'result' => 'FAILED',
@@ -564,7 +564,7 @@ const CONFORMANCE_PLANS = [
     // themselves and leave the response type to whoever creates them, which is the one variant written
     // here; both hide the secret and the key of a client section, the suite drawing the key of every
     // client it registers and sending it in the registration request, so there is no client of
-    // heidi.yaml behind either run and nothing for "castor provision" to draw. What they need of the
+    // beffroi.yaml behind either run and nothing for "castor provision" to draw. What they need of the
     // deployment is the registration policy of the tenant in its open mode, which the task reads in the
     // document before it creates a plan: without it every module of both fails on the same line.
     'dynamic' => [
@@ -616,11 +616,11 @@ const CONFORMANCE_UNCONDITIONALLY_ACCEPTED = ['PASSED', 'REVIEW', 'SKIPPED'];
 const CONFORMANCE_CONFIGURATION = 'tests/conformance/configuration.json';
 
 const CONFORMANCE_REQUIRED_VALUES = [
-    'HEIDI_ISSUER',
+    'BEFFROI_ISSUER',
     // The host whose listener asks for a client certificate, where the FAPI runs that bind their tokens
     // to one call the token, the PAR and the resource endpoints (RFC 8705 §5).
-    'HEIDI_MTLS_ORIGIN',
-    'HEIDI_DEV_USER_PASSWORD',
+    'BEFFROI_MTLS_ORIGIN',
+    'BEFFROI_DEV_USER_PASSWORD',
     'CONFORMANCE_BASIC_SECRET',
     'CONFORMANCE_BASIC_SECOND_SECRET',
     'CONFORMANCE_POST_SECRET',
@@ -628,7 +628,7 @@ const CONFORMANCE_REQUIRED_VALUES = [
     'CONFORMANCE_BACK_CHANNEL_LOGOUT_SECRET',
     // The subject the provider issued the development user: what a client of the FAPI-CIBA runs names
     // its user with, and the one value of those runs that follows the rows rather than the file.
-    'HEIDI_DEV_USER_SUBJECT',
+    'BEFFROI_DEV_USER_SUBJECT',
 ];
 
 /**
@@ -691,17 +691,17 @@ function conformance(
         exit(1);
     }
     if ($reset) {
-        conformance_reset($env['HEIDI_ISSUER']);
+        conformance_reset($env['BEFFROI_ISSUER']);
     }
     // What a run whose clients register themselves needs of the deployment is not a value of its
     // environment but its registration policy, so it is read where the provider says what it does
     // (CONFORMANCE_PLANS, "registers_its_own_clients").
     if (array_any($plans, static fn (array $definition): bool => (bool) ($definition['registers_its_own_clients'] ?? false))) {
-        conformance_open_registration($env['HEIDI_ISSUER']);
+        conformance_open_registration($env['BEFFROI_ISSUER']);
     }
 
     $server = conformance_server($suite);
-    io()->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['HEIDI_ISSUER']));
+    io()->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['BEFFROI_ISSUER']));
     $rows = [];
     $verdict = [];
     $stale = [];
@@ -939,7 +939,7 @@ function conformance_open_registration(string $issuer): void
     if (! is_array($document) || ! is_string($document['registration_endpoint'] ?? null)) {
         io()->error([
             sprintf('%s announces no "registration_endpoint", so no client can register itself.', $url),
-            'The runs that register their own clients need the registration policy of the tenant, which apps/op/config/packages/heidi.yaml writes under "when@dev" (decision 0009).',
+            'The runs that register their own clients need the registration policy of the tenant, which apps/op/config/packages/beffroi.yaml writes under "when@dev" (decision 0009).',
         ]);
         exit(1);
     }
@@ -979,7 +979,7 @@ function conformance_server(string $suite): array
  * nothing else. A second factor or a passkey enrolled by hand (a run of "castor demo --passkey", an
  * afternoon on the account pages) stops the scripted browser of the suite on the page that asks for it,
  * and every module of every plan fails on the same line, "unexpected url for task: Verify complete". The
- * client secrets live in apps/op/.env.local and the clients in apps/op/config/packages/heidi.yaml, so
+ * client secrets live in apps/op/.env.local and the clients in apps/op/config/packages/beffroi.yaml, so
  * nothing of the configuration is lost; the signing keys are generated again, their sealed files in the
  * keys_data volume left behind as orphans.
  *
@@ -1031,7 +1031,7 @@ function conformance_wait_for_op(string $issuer): void
 
 /**
  * The plan configuration with its placeholders filled: {NAME} is the value of NAME in the environment of
- * the application, {HEIDI_DEV_USERNAME} the development user. The file itself carries no secret. A plan
+ * the application, {BEFFROI_DEV_USERNAME} the development user. The file itself carries no secret. A plan
  * that names a client of its own has the "client" of the file replaced before the placeholders are
  * filled, so that its secret comes from the environment like every other; a FAPI plan replaces the
  * clients and what goes with them, which is not in the file at all but in var/conformance/.
@@ -1066,7 +1066,7 @@ function conformance_configuration(array $env, array $definition): string
         $template = json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT);
     }
     $values = [
-        '{HEIDI_DEV_USERNAME}' => DEV_USERNAME,
+        '{BEFFROI_DEV_USERNAME}' => DEV_USERNAME,
     ];
     foreach ($env as $name => $value) {
         $values['{' . $name . '}'] = $value;
@@ -1134,7 +1134,7 @@ function conformance_fapi_sections(array $configuration, array $clients, string 
     // resource is called on the host whose listener asks for one (RFC 8705 §5); a token bound to a key
     // is presented anywhere, and the ordinary host of the provider is where the other plans call too.
     $configuration['resource'] = [
-        'resourceUrl' => ($certificates ? '{HEIDI_MTLS_ORIGIN}' : '{HEIDI_ISSUER}') . CONFORMANCE_FAPI_RESOURCE_PATH,
+        'resourceUrl' => ($certificates ? '{BEFFROI_MTLS_ORIGIN}' : '{BEFFROI_ISSUER}') . CONFORMANCE_FAPI_RESOURCE_PATH,
     ];
 
     return $configuration;
@@ -1168,12 +1168,12 @@ function conformance_ciba_sections(array $configuration, array $clients, array $
     // query and is encoded for one, which the filling of the file does not do.
     $configuration['automated_ciba_approval_url'] = sprintf(
         '%s%s?%s',
-        $env['HEIDI_ISSUER'],
+        $env['BEFFROI_ISSUER'],
         CONFORMANCE_CIBA_APPROVAL_PATH,
         implode('&', [
             http_build_query([
                 'username' => DEV_USERNAME,
-                'password' => $env['HEIDI_DEV_USER_PASSWORD'],
+                'password' => $env['BEFFROI_DEV_USER_PASSWORD'],
             ]),
             // what the suite substitutes itself, left as it writes it
             'auth_req_id={auth_req_id}',
@@ -1285,7 +1285,7 @@ function conformance_forget_consents(string $module, array $clients): void
         return;
     }
     foreach ($clients as $clientId) {
-        op_console(['heidi:user:revoke-consent', DEV_USERNAME, $clientId], context()->withQuiet());
+        op_console(['beffroi:user:revoke-consent', DEV_USERNAME, $clientId], context()->withQuiet());
     }
 }
 
@@ -1411,8 +1411,8 @@ function conformance_start_module(string $suite, string $id, float $deadline): s
  */
 function conformance_rotate_signing_key(): void
 {
-    io()->text('  The suite asks for a rotation: "heidi:keys:rotate --now" on the OP.');
-    $rotated = op_console(['heidi:keys:rotate', '--now', '--no-ansi'], context()->withAllowFailure()->withQuiet());
+    io()->text('  The suite asks for a rotation: "beffroi:keys:rotate --now" on the OP.');
+    $rotated = op_console(['beffroi:keys:rotate', '--now', '--no-ansi'], context()->withAllowFailure()->withQuiet());
     if (! $rotated->isSuccessful()) {
         io()->error(['The signing key could not be rotated; the module will see no new key.', trim($rotated->getErrorOutput() . $rotated->getOutput())]);
 

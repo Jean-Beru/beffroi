@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Fixture;
+namespace Beffroi\Bundle\Tests\Fixture;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Port\AmbientTenantInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\AmbientTenantInterface;
 
 /**
  * The tenant of a unit of work, decided by the test rather than by a request. A deployment has one tenant

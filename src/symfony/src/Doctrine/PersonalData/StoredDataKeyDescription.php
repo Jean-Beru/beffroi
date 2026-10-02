@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use function bin2hex;
 use DateTimeImmutable;

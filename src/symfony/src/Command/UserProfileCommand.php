@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function array_filter;
-use Heidi\Core\Application\Identity\UserProvisioner;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -20,11 +20,11 @@ use function trim;
 /**
  * The standard claims of OIDC Core §5.1 of a user (architecture §5.5), the whole of them every time: what
  * the command does not say is cleared, and a run that says nothing writes nothing rather than clearing
- * everything. Writes and prints what it wrote; reading a user is heidi:user:show.
+ * everything. Writes and prints what it wrote; reading a user is beffroi:user:show.
  */
 #[AsCommand(
-    name: 'heidi:user:profile',
-    description: 'Describe a user with the standard claims of OIDC Core section 5.1; what is not said is cleared, a run that says nothing writes nothing. To read a user, see heidi:user:show.',
+    name: 'beffroi:user:profile',
+    description: 'Describe a user with the standard claims of OIDC Core section 5.1; what is not said is cleared, a run that says nothing writes nothing. To read a user, see beffroi:user:show.',
 )]
 final readonly class UserProfileCommand
 {
@@ -119,7 +119,7 @@ final readonly class UserProfileCommand
         if ($said === [] && ! $phoneNumberVerified) {
             $io->error([
                 'Nothing was said: this command writes the whole profile and clears what it is not told.',
-                'To read a user, run "heidi:user:show"; to clear the profile, say at least one claim.',
+                'To read a user, run "beffroi:user:show"; to clear the profile, say at least one claim.',
             ]);
 
             return Command::INVALID;

@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
-use Heidi\Core\Domain\Identity\LinkedIdentity;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 
 /**
- * The identities of a user at an upstream provider, in heidi_linked_identity (architecture §3.1); a lookup is
+ * The identities of a user at an upstream provider, in beffroi_linked_identity (architecture §3.1); a lookup is
  * scoped by the tenant and exact, as the unique constraint of the table is.
  *
  * Both columns of the pair are sealed, so neither matches: the format seals every value under a random

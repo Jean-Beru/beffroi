@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Interaction;
+namespace Beffroi\Oidc\Tests\Application\Interaction;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
-use Heidi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
+use Beffroi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

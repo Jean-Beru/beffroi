@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use function base64_encode;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\PasskeyUsed;
-use Heidi\Core\Domain\Event\UserAuthenticated;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\PasskeyUsed;
+use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use ParagonIE\ConstantTime\Base64UrlSafe;
@@ -259,7 +259,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $alice = self::user('alice');
         $passkey = $this->enrol($alice, $device);
         $passkey->revoke(self::now());
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->save($passkey);
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->save($passkey);
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
 
@@ -286,7 +286,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $device = self::device();
         $alice = self::user('alice');
         $this->enrol($alice, $device);
-        $users = self::service('test.heidi.users', UserRepositoryInterface::class);
+        $users = self::service('test.beffroi.users', UserRepositoryInterface::class);
         $managed = $users->find($alice->id) ?? static::fail('The user is gone.');
         $managed->disable(self::now());
         $users->save($managed);
@@ -317,8 +317,8 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $other = new Tenant(Uuid::v7(), 'other', new Issuer('https://other.test'), 'Other', self::now());
         $bob = User::create(Uuid::v7(), $other, new Subject('bob-subject'), 'bob', self::now());
         self::entityManager()->persist($other);
-        self::service('test.heidi.users', UserRepositoryInterface::class)->save($bob);
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($bob);
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->save(
                 new PasskeyCredential(
                     Uuid::v7(),

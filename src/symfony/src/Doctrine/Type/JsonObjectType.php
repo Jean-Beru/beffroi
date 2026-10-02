@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
-use Heidi\Core\Exception\InvalidArgumentException as CoreInvalidArgumentException;
-use Heidi\Oidc\Exception\InvalidArgumentException as OidcInvalidArgumentException;
+use Beffroi\Core\Exception\InvalidArgumentException as CoreInvalidArgumentException;
+use Beffroi\Oidc\Exception\InvalidArgumentException as OidcInvalidArgumentException;
 use function is_array;
 use function is_float;
 use function is_int;

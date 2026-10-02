@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 /**
  * The parameters of an authorization request as the provider reads them, and how they got there: the

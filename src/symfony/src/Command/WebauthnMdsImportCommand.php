@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function file_get_contents;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\MetadataBlobStoreInterface;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use function is_array;
 use function json_decode;
 use function json_encode;
@@ -32,7 +32,7 @@ use Webauthn\MetadataService\Statement\MetadataStatement;
  * report, so that the ceremonies read it like an entry of the blob.
  */
 #[AsCommand(
-    name: 'heidi:webauthn:mds-import',
+    name: 'beffroi:webauthn:mds-import',
     description: 'Store a metadata statement file (unsigned, trusted as the file is) next to the FIDO Metadata BLOB, for the keys of a manufacturer the service does not list or the authenticators of the FIDO conformance tools.',
 )]
 final readonly class WebauthnMdsImportCommand

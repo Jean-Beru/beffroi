@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -77,7 +77,7 @@ final class EndSessionControllerTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('https://demo.test/?state=after-logout', $response->headers->get('Location'));
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+        $ended = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
             ->find($session->id) ?? static::fail('The session is gone.');
         static::assertTrue($ended->hasEnded());
     }
@@ -117,7 +117,7 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
         static::assertStringContainsString('data-logged-out="no"', self::string($response->getContent()));
-        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+        $kept = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
             ->find($session->id) ?? static::fail('The session is gone.');
         static::assertFalse($kept->hasEnded());
     }
@@ -243,7 +243,7 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
         static::assertStringContainsString('data-logged-out="yes"', self::string($response->getContent()));
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+        $ended = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
             ->find($session->id) ?? static::fail('The session is gone.');
         static::assertTrue($ended->hasEnded());
     }
@@ -284,7 +284,7 @@ final class EndSessionControllerTest extends BrowserTestCase
 
         // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
-        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+        $kept = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
             ->find($session->id) ?? static::fail('The session is gone.');
         static::assertFalse($kept->hasEnded());
     }
@@ -307,7 +307,7 @@ final class EndSessionControllerTest extends BrowserTestCase
      */
     private function idTokenOf(User $user): string
     {
-        if (self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)->findActive(self::tenant(), Algorithms::rs256()) === null) {
+        if (self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)->findActive(self::tenant(), Algorithms::rs256()) === null) {
             self::signingKey();
         }
         $this->signIn($user);

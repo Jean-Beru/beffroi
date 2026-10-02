@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
 use function array_map;
 use function count;
@@ -22,7 +22,7 @@ use Throwable;
  */
 final class OpCollector extends DataCollector
 {
-    public const string NAME = 'heidi';
+    public const string NAME = 'beffroi';
 
     public function __construct(
         private readonly OpProfile $profile,

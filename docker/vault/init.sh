@@ -8,8 +8,8 @@
 # exists is a no-op for Vault, writing a policy replaces it with the same text.
 set -eu
 
-: "${HEIDI_TENANT_SLUG:=default}"
-KEY="heidi-${HEIDI_TENANT_SLUG}"
+: "${BEFFROI_TENANT_SLUG:=default}"
+KEY="beffroi-${BEFFROI_TENANT_SLUG}"
 
 echo "Waiting for Vault at ${VAULT_ADDR} ..."
 until vault status >/dev/null 2>&1; do
@@ -28,8 +28,8 @@ fi
 vault write -f "transit/keys/${KEY}" type=aes256-gcm96 derived=true exportable=false allow_plaintext_backup=false >/dev/null
 vault write "transit/keys/${KEY}/config" deletion_allowed=false >/dev/null
 
-# What the OP may do, and nothing else (heidi-op.hcl, next to this script).
-vault policy write heidi-op "$(dirname "$0")/heidi-op.hcl" >/dev/null
+# What the OP may do, and nothing else (beffroi-op.hcl, next to this script).
+vault policy write beffroi-op "$(dirname "$0")/beffroi-op.hcl" >/dev/null
 
 # The audit device, on the standard output of the container, so that the log of this container says what it
 # was asked for. A dev server has none until it is asked for one, and a production Vault has one: it is
@@ -41,5 +41,5 @@ if ! vault audit list -format=json 2>/dev/null | grep -q '"file/"'; then
     vault audit enable file file_path=stdout >/dev/null
 fi
 
-echo "Vault ready: key ${KEY}, policy heidi-op, audit device on stdout"
+echo "Vault ready: key ${KEY}, policy beffroi-op, audit device on stdout"
 vault read -format=json "transit/keys/${KEY}" | grep -E '"(name|type|derived|exportable|allow_plaintext_backup|deletion_allowed|latest_version)"'

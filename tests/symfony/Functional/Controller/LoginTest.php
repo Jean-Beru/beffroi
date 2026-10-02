@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
-use Heidi\Core\Domain\Event\PasswordRehashed;
-use Heidi\Core\Domain\Event\UserAuthenticated;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Event\PasswordRehashed;
+use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
@@ -125,7 +125,7 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
 
         // Then
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+        $credential = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->findByUser($this->boundSession()->user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
         static::assertNotNull($credential->lastUsedAt);
     }
@@ -277,7 +277,7 @@ final class LoginTest extends BrowserTestCase
         ]);
 
         // Then
-        static::assertFalse(self::service('test.heidi.interactions', InteractionRepositoryInterface::class)->find($interaction)?->isCompleted());
+        static::assertFalse(self::service('test.beffroi.interactions', InteractionRepositoryInterface::class)->find($interaction)?->isCompleted());
     }
 
     /**
@@ -445,7 +445,7 @@ final class LoginTest extends BrowserTestCase
             static function (): User {
                 $disabled = self::userWithPassword('bob', self::PASSWORD);
                 $disabled->disable(self::now());
-                self::service('test.heidi.users', UserRepositoryInterface::class)->save($disabled);
+                self::service('test.beffroi.users', UserRepositoryInterface::class)->save($disabled);
 
                 return $disabled;
             },
@@ -826,7 +826,7 @@ final class LoginTest extends BrowserTestCase
         $this->submitLogin($interaction, 'bob', self::PASSWORD);
 
         // Then
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+        $ended = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
             ->find($alice->id) ?? static::fail('The session of alice is gone.');
         static::assertTrue($ended->hasEnded());
         static::assertSame(SessionEnd::User, $ended->endedBy);
@@ -922,10 +922,10 @@ final class LoginTest extends BrowserTestCase
 
     private function credentialOf(User $user): PasswordCredential
     {
-        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $managed = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
 
         return (
-            self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
                 ->findByUser($managed, PasswordCredential::class)[0] ?? static::fail('The credential is gone.')
         );
     }
@@ -940,7 +940,7 @@ final class LoginTest extends BrowserTestCase
         self::reload();
 
         return (
-            self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)
+            self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
                 ->find(Uuid::fromString($id)) ?? static::fail('The bound session is gone.')
         );
     }
@@ -950,7 +950,7 @@ final class LoginTest extends BrowserTestCase
      */
     private function securityToken(): TokenInterface
     {
-        $serialized = $this->readHttpSession()->get('_security_heidi_interaction');
+        $serialized = $this->readHttpSession()->get('_security_beffroi_interaction');
         static::assertIsString($serialized, 'The firewall stored no token.');
         $token = unserialize($serialized);
         static::assertInstanceOf(TokenInterface::class, $token);
@@ -966,12 +966,12 @@ final class LoginTest extends BrowserTestCase
     private static function sessionsOf(string $username): array
     {
         self::reload();
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), $username);
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), $username);
         if (! $user instanceof User) {
             return [];
         }
 
-        return self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, new DateTimeImmutable());
+        return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, new DateTimeImmutable());
     }
 
     /**

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Port\IssuedInitialAccessTokensInterface;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
 use Psr\Clock\ClockInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -27,7 +27,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final readonly class ClientTokenListCommand
 {
-    public const string NAME = 'heidi:client:token:list';
+    public const string NAME = 'beffroi:client:token:list';
 
     public function __construct(
         private ConfiguredTenant $tenant,

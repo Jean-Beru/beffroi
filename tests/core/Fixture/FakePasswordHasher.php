@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use function hash;
 use function hash_equals;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Port\PasswordHasherInterface;
 use SensitiveParameter;
 
 /**

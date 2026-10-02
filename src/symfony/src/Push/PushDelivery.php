@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Push;
+namespace Beffroi\Bundle\Push;
 
 use function sprintf;
 

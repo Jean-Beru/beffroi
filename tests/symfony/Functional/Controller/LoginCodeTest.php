@@ -2,30 +2,30 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function array_map;
 use function base64_encode;
 use DateTimeImmutable;
-use Heidi\Bundle\Http\PendingLoginStore;
-use Heidi\Core\Domain\Credential\Credential;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\TotpUsed;
-use Heidi\Core\Domain\Event\UserAuthenticated;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\PendingLogin;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Port\TotpAlgorithmInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Bundle\Http\PendingLoginStore;
+use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\TotpUsed;
+use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\PendingLogin;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Port\TotpAlgorithmInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use function intdiv;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -114,7 +114,7 @@ final class LoginCodeTest extends PasskeyTestCase
         // Then
         $httpSession = $this->readHttpSession();
         static::assertFalse($this->isBoundToASession());
-        static::assertFalse($httpSession->has('_security_heidi_interaction'), 'The firewall kept a token of the first step.');
+        static::assertFalse($httpSession->has('_security_beffroi_interaction'), 'The firewall kept a token of the first step.');
         $pending = $httpSession->get(PendingLoginStore::KEY);
         static::assertInstanceOf(PendingLogin::class, $pending);
         static::assertTrue($pending->userId->equals($alice->id));
@@ -674,10 +674,10 @@ final class LoginCodeTest extends PasskeyTestCase
     private function userWithTotp(string $username, string $password, bool $hashedBackupCodes = false): User
     {
         $user = self::userWithPassword($username, $password);
-        $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
-        $hasher = $hashedBackupCodes ? self::service('test.heidi.password_hasher', PasswordHasherInterface::class) : new FakePasswordHasher();
+        $sealed = self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
+        $hasher = $hashedBackupCodes ? self::service('test.beffroi.password_hasher', PasswordHasherInterface::class) : new FakePasswordHasher();
         $anHourAgo = new DateTimeImmutable('-1 hour');
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->save(
                 new TotpCredential(
                     Uuid::v7(),
@@ -694,7 +694,7 @@ final class LoginCodeTest extends PasskeyTestCase
 
     private function codeAt(DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)
+        return self::service('test.beffroi.totp_algorithm', TotpAlgorithmInterface::class)
             ->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
@@ -772,10 +772,10 @@ final class LoginCodeTest extends PasskeyTestCase
     private static function credentialOf(User $user, string $kind): object
     {
         self::reload();
-        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $managed = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
 
         return (
-            self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
+            self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
                 ->findByUser($managed, $kind)[0] ?? static::fail('The credential is gone.')
         );
     }

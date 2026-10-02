@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 
 /**
- * Interactions in heidi_interaction (architecture §4.3). An interaction of a client no longer registered
+ * Interactions in beffroi_interaction (architecture §4.3). An interaction of a client no longer registered
  * is not found.
  *
  * @extends DoctrineRepository<Interaction>

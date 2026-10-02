@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Exchange;
+namespace Beffroi\Oidc\Tests\Application\Exchange;
 
 use function array_map;
-use Heidi\Oidc\Application\Exchange\PresentedTokenTypes;
-use Heidi\Oidc\Domain\Exchange\TokenTypeIdentifier;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\FakePresentedTokenType;
-use Heidi\Oidc\Tests\Fixture\TokenTypes;
+use Beffroi\Oidc\Application\Exchange\PresentedTokenTypes;
+use Beffroi\Oidc\Domain\Exchange\TokenTypeIdentifier;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\FakePresentedTokenType;
+use Beffroi\Oidc\Tests\Fixture\TokenTypes;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

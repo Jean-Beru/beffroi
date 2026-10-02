@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine;
+namespace Beffroi\Bundle\Doctrine;
 
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Tenant\Tenant;
 
 /**
  * Writes the row of the configured tenant: created, renamed, its "acr" policy replaced, or left alone. A

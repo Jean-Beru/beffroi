@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Bundle\Controller\PasskeyLoginController;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\PasskeyOptionsStore;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
-use Heidi\Core\Port\PasskeyAuthenticatorInterface;
+use Beffroi\Bundle\Controller\PasskeyLoginController;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\PasskeyOptionsStore;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;

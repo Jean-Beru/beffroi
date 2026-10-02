@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
 use DateTimeImmutable;
-use Heidi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 
 /**
  * Dating the password of the user who signed in, for the two logins that prove one: the form login, and

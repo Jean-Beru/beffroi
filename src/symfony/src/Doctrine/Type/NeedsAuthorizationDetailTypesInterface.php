@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Port\AuthorizationDetailsReaderInterface;
+use Beffroi\Oidc\Port\AuthorizationDetailsReaderInterface;
 
 /**
  * A DBAL type that reads back what a user agreed to beyond the scopes (RFC 9396 §2) and needs the wiring

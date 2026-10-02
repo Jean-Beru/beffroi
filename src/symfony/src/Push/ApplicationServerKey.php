@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Push;
+namespace Beffroi\Bundle\Push;
 
 use function base64_decode;
 use function base64_encode;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function is_string;
 use function mb_str_pad;
 use function mb_strlen;

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Fixture;
+namespace Beffroi\Bundle\Tests\Fixture;
 
-use Heidi\Bundle\Message\Command;
+use Beffroi\Bundle\Message\Command;
 use Symfony\Component\Uid\Uuid;
 
 /**

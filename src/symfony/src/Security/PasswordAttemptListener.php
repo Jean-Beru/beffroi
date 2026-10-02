@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Core\Port\PasswordAttemptLimiterInterface;
+use Beffroi\Core\Port\PasswordAttemptLimiterInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Security\Core\Exception\TooManyLoginAttemptsAuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;

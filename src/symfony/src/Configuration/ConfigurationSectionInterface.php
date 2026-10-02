@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -19,7 +19,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
 interface ConfigurationSectionInterface
 {
     /**
-     * The key of the "heidi" configuration this section owns.
+     * The key of the "beffroi" configuration this section owns.
      *
      * @return non-empty-string
      */
@@ -35,7 +35,7 @@ interface ConfigurationSectionInterface
      * this section, because a capability may be configured by what another one says: the clients of a
      * deployment belong to the tenant it declares.
      *
-     * @param array<array-key, mixed> $config the whole "heidi" configuration, validated against the tree
+     * @param array<array-key, mixed> $config the whole "beffroi" configuration, validated against the tree
      * @param bool $debug whether the kernel runs in debug, which is the only thing the panel is wired on
      */
     public function load(array $config, ServicesConfigurator $services, bool $debug): void;

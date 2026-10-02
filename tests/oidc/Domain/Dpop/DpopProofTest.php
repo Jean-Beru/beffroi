@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Dpop;
+namespace Beffroi\Oidc\Tests\Domain\Dpop;
 
-use Heidi\Oidc\Domain\Dpop\DpopProof;
-use Heidi\Oidc\Domain\Token\UnverifiedJwt;
-use Heidi\Oidc\Exception\InvalidDpopProofException;
+use Beffroi\Oidc\Domain\Dpop\DpopProof;
+use Beffroi\Oidc\Domain\Token\UnverifiedJwt;
+use Beffroi\Oidc\Exception\InvalidDpopProofException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

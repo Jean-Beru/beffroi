@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
 use Closure;
 use function hash;
-use Heidi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Domain\EndSession\FrontChannelLogoutPage;
+use Beffroi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Domain\EndSession\FrontChannelLogoutPage;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use Symfony\Component\DomCrawler\Crawler;

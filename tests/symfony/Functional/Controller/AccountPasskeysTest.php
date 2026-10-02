@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use function ksort;
@@ -203,7 +203,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame($error, $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
         static::assertSame([], self::events(CredentialEnrolled::class));
     }
 
@@ -302,7 +302,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Then
         static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
         static::assertSame('refused', $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertCount(1, self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
+        static::assertCount(1, self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
     }
 
     #[Test]
@@ -323,7 +323,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
         static::assertSame('invalid_csrf_token', $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
     }
 
     /**
@@ -351,7 +351,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Then
         static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
         static::assertSame('no_ceremony', $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, PasskeyCredential::class));
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, PasskeyCredential::class));
     }
 
     #[Test]

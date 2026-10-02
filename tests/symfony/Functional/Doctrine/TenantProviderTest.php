@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Bundle\Configuration\TenantSection;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Doctrine\TenantSynchronizer;
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
-use Heidi\Core\Domain\Session\AuthenticationPredicate;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Bundle\Configuration\TenantSection;
+use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Doctrine\TenantSynchronizer;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Contracts\Service\ResetInterface;
@@ -46,7 +46,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function theInstanceIsTheSameWithinAUnitOfWork(): void
     {
         // Given
-        $provider = self::service('test.heidi.tenant_provider', TenantProvider::class);
+        $provider = self::service('test.beffroi.tenant_provider', TenantProvider::class);
         $first = $provider->provide();
 
         // When
@@ -60,7 +60,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function theInstanceIsForgottenWhenTheEntityManagerIsCleared(): void
     {
         // Given
-        $provider = self::service('test.heidi.tenant_provider', TenantProvider::class);
+        $provider = self::service('test.beffroi.tenant_provider', TenantProvider::class);
         $first = $provider->provide();
         self::entityManager()->clear();
 
@@ -77,7 +77,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function theInstanceIsForgottenWhenTheServicesAreReset(): void
     {
         // Given
-        $provider = self::service('test.heidi.tenant_provider', TenantProvider::class);
+        $provider = self::service('test.beffroi.tenant_provider', TenantProvider::class);
         $first = $provider->provide();
         self::service('services_resetter', ResetInterface::class)->reset();
 
@@ -94,7 +94,7 @@ final class TenantProviderTest extends DatabaseTestCase
     public function synchronisingAgainWritesNothing(): void
     {
         // Given
-        $synchronizer = self::service('test.heidi.tenant_synchronizer', TenantSynchronizer::class);
+        $synchronizer = self::service('test.beffroi.tenant_synchronizer', TenantSynchronizer::class);
         $first = $synchronizer->synchronize();
 
         // When
@@ -110,7 +110,7 @@ final class TenantProviderTest extends DatabaseTestCase
     {
         // Given
         $provider = new TenantProvider(self::factory('https://op.test', 'default', null), self::managers());
-        self::entityManager()->createQuery('DELETE FROM Heidi\Core\Domain\Tenant\Tenant t')->execute();
+        self::entityManager()->createQuery('DELETE FROM Beffroi\Core\Domain\Tenant\Tenant t')->execute();
 
         // Then
         $this->expectException(TenantNotSynchronizedException::class);

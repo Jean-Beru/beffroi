@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Tests\Unit\Doctrine\PersonalData;
 
-use Heidi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Heidi\Bundle\Tests\Fixture\AmbientTenant;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
+use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -167,7 +167,7 @@ final class TenantScopedEncrypterTest extends TestCase
         $kms = new InMemoryKms();
         $tenant = Fixtures::tenant('acme');
         $selfContained = new EnvelopeEncrypter($kms);
-        $envelope = $selfContained->encrypt('heidi-acme', 'alice@example.com', TenantScopedEncrypter::AAD . 'acme');
+        $envelope = $selfContained->encrypt('beffroi-acme', 'alice@example.com', TenantScopedEncrypter::AAD . 'acme');
         $encrypter = new TenantScopedEncrypter(
             new StoredEnvelopeEncrypter(new InMemoryDataKeyStore(['default' => $kms]), $selfContained),
             new AmbientTenant($tenant),

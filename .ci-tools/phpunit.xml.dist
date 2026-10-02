@@ -29,7 +29,7 @@
         <server name="APP_ENV" value="test" force="true"/>
         <server name="APP_DEBUG" value="0" force="true"/>
         <server name="SHELL_VERBOSITY" value="-1"/>
-        <server name="KERNEL_CLASS" value="Heidi\Bundle\Tests\Functional\AppKernel"/>
+        <server name="KERNEL_CLASS" value="Beffroi\Bundle\Tests\Functional\AppKernel"/>
     </php>
     <source ignoreIndirectDeprecations="true">
         <include>

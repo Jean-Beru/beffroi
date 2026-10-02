@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\AnnouncedAlgorithms;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedRequestObjects;
-use Heidi\Oidc\Port\UnsignedRequestObjectsInterface;
-use Heidi\Oidc\Tests\Fixture\RequestObjectSignings;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedRequestObjects;
+use Beffroi\Oidc\Port\UnsignedRequestObjectsInterface;
+use Beffroi\Oidc\Tests\Fixture\RequestObjectSignings;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

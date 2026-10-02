@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\LoginTarget;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\StepUpOffer;
-use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
-use Heidi\Oidc\Application\Hint\LoginHints;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Interaction\LoginRequired;
-use Heidi\Oidc\Domain\Interaction\LoginRequirement;
-use Heidi\Oidc\Exception\InteractionCompletedException;
-use Heidi\Oidc\Exception\InteractionExpiredException;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Bundle\Http\AuthorizationResponderInterface;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\LoginTarget;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\StepUpOffer;
+use Beffroi\Oidc\Application\Authorization\AuthorizationHandler;
+use Beffroi\Oidc\Application\Hint\LoginHints;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Interaction\LoginRequired;
+use Beffroi\Oidc\Domain\Interaction\LoginRequirement;
+use Beffroi\Oidc\Exception\InteractionCompletedException;
+use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -43,7 +43,7 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 #[AsController]
 final readonly class LoginController
 {
-    public const string ROUTE = 'heidi_interaction_login';
+    public const string ROUTE = 'beffroi_interaction_login';
 
     public function __construct(
         private TenantProvider $tenants,

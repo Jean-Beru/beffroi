@@ -2,18 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use function array_keys;
 use function count;
 use function implode;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 use Symfony\Component\KeyManagement\EnvelopeDecrypterInterface;
 use Symfony\Component\KeyManagement\EnvelopeEncrypterInterface;
 use function in_array;
 use function sprintf;
 use function str_starts_with;
+use function strlen;
 use function substr;
 
 /**
@@ -28,7 +29,7 @@ use function substr;
  * declared through `doctrine.dbal.types` the way the other 26 types of the bundle are: that option names a
  * class DoctrineBundle instantiates with no argument, and an encrypted type takes an encrypter, which is a
  * service. What the bridge asks for instead is an `EncryptedTypes` service whose `register()` runs while
- * the bundles boot (`HeidiBundle::boot()`), early enough for the front controller, the console with its
+ * the bundles boot (`BeffroiBundle::boot()`), early enough for the front controller, the console with its
  * schema tool and its migrations, and the test kernel, all at once.
  *
  * **Three things a mapping stops being able to say once its column seals**, written here because here is
@@ -37,7 +38,7 @@ use function substr;
  * - **The column becomes unbounded binary.** `EncryptedType::getSQLDeclaration()` drops the `length` and
  *   asks the platform for a blob, so the `length` a mapping carries describes the plaintext and nothing
  *   else. It is kept because it is the length the domain checks, not because the column is that wide.
- * - **An option that describes the stored value stops being true.** `heidi_user.address` loses its
+ * - **An option that describes the stored value stops being true.** `beffroi_user.address` loses its
  *   `jsonb: true`, and with it anything a query could have done with the JSON: what is in the column is
  *   the ciphertext of a JSON document, which no operator of the database can read into.
  * - **A ciphertext is not bound to its row.** The type passes no authenticated data, having nowhere to
@@ -51,9 +52,9 @@ final readonly class EncryptedColumnTypes
 {
     /**
      * The prefix of every name this class derives, which is also what tells an encrypted type of the
-     * bundle from the 26 types that are not (`HeidiBundle::DBAL_TYPES`).
+     * bundle from the 26 types that are not (`BeffroiBundle::DBAL_TYPES`).
      */
-    public const string PREFIX = 'heidi_encrypted_';
+    public const string PREFIX = 'beffroi_encrypted_';
 
     /**
      * The families of columns this spike seals, by the scope their data key is minted under, each naming
@@ -62,23 +63,23 @@ final readonly class EncryptedColumnTypes
      * it, being what the encrypter puts there from the tenant that is ambient, which no type can know
      * (decision 0018).
      *
-     * A family holds several types because a type seals one type: every column of `heidi_user` shares one
+     * A family holds several types because a type seals one type: every column of `beffroi_user` shares one
      * data key, and the four types below are four ways into it. What the count of keys per tenant is, is
      * therefore the count of families and not the count of types.
      *
      * @var array<string, list<string>>
      */
     public const array FAMILIES = [
-        'user' => ['string', 'text', 'heidi_email_address', 'heidi_address'],
+        'user' => ['string', 'text', 'beffroi_email_address', 'beffroi_address'],
         'linked_identity' => ['string', 'json'],
         'passkey_credential' => ['string'],
         'push_subscription' => ['string', 'text'],
-        'authentication_session' => ['heidi_request_context'],
+        'authentication_session' => ['beffroi_request_context'],
         'interaction' => ['text'],
         'pushed_authorization_request' => ['json'],
-        'device_authorization_request' => ['heidi_request_context'],
-        'backchannel_authentication_request' => ['heidi_binding_message', 'heidi_request_context'],
-        'client' => ['json', 'heidi_client_secret'],
+        'device_authorization_request' => ['beffroi_request_context'],
+        'backchannel_authentication_request' => ['beffroi_binding_message', 'beffroi_request_context'],
+        'client' => ['json', 'beffroi_client_secret'],
     ];
 
     /**
@@ -99,7 +100,7 @@ final readonly class EncryptedColumnTypes
             ));
         }
 
-        return self::PREFIX . $family . '_' . (str_starts_with($type, 'heidi_') ? substr($type, 6) : $type);
+        return self::PREFIX . $family . '_' . (str_starts_with($type, 'beffroi_') ? substr($type, strlen('beffroi_')) : $type);
     }
 
     /**
@@ -124,7 +125,7 @@ final readonly class EncryptedColumnTypes
     }
 
     /**
-     * The service the bundles register on boot (`HeidiBundle::boot()`), built here so that the declaration
+     * The service the bundles register on boot (`BeffroiBundle::boot()`), built here so that the declaration
      * and its construction are one thing: what a deployment chooses is the encrypter and nothing else, and
      * that choice is what decides where the data key of a scope comes from.
      */

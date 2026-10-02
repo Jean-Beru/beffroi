@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Domain\Exchange\Actor;
+use Beffroi\Oidc\Domain\Exchange\Actor;
 
 /**
  * Who holds an opaque access token on behalf of its subject, stored as the "act" of RFC 8693 §4.1 is written:
@@ -15,7 +15,7 @@ use Heidi\Oidc\Domain\Exchange\Actor;
  */
 final class ActorType extends JsonObjectType
 {
-    public const string NAME = 'heidi_actor';
+    public const string NAME = 'beffroi_actor';
 
     protected function encode(object $value): array
     {

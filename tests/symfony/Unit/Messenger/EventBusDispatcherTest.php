@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Messenger;
+namespace Beffroi\Bundle\Tests\Unit\Messenger;
 
-use Heidi\Bundle\Messenger\EventBusDispatcher;
-use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Messenger\EventBusDispatcher;
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;

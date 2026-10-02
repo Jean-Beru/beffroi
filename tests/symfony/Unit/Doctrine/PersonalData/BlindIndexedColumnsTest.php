@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Tests\Unit\Doctrine\PersonalData;
 
-use Heidi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\KeyManagement\BlindIndex;
@@ -90,7 +90,7 @@ final class BlindIndexedColumnsTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('No blind index is declared on "Heidi\Core\Domain\Identity\User::$phoneNumber", so nothing can be searched by it.');
+        $this->expectExceptionMessageIs('No blind index is declared on "Beffroi\Core\Domain\Identity\User::$phoneNumber", so nothing can be searched by it.');
 
         // When
         BlindIndexedColumns::of(User::class, 'phoneNumber');

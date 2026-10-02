@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace Beffroi\Bundle\Tests\Unit\Security;
 
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\LoginTarget;
-use Heidi\Bundle\Security\InteractionLoginHandler;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\LoginTarget;
+use Beffroi\Bundle\Security\InteractionLoginHandler;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -37,8 +37,8 @@ final class InteractionLoginHandlerTest extends TestCase
     protected function setUp(): void
     {
         $routes = new RouteCollection();
-        $routes->add('heidi_interaction_login', new Route('/login'));
-        $routes->add('heidi_interaction_device', new Route('/device'));
+        $routes->add('beffroi_interaction_login', new Route('/login'));
+        $routes->add('beffroi_interaction_device', new Route('/device'));
         $router = new Router(new ClosureLoader(), static fn (): RouteCollection => $routes, [], new RequestContext());
         $pages = new InteractionPages(new Environment(new ArrayLoader()), $router);
         $this->loginTargets = new LoginTarget($pages);
@@ -113,7 +113,7 @@ final class InteractionLoginHandlerTest extends TestCase
         // Given
         $request = Request::create('/login', 'POST');
         $request->setSession(new Session(new MockArraySessionStorage()));
-        $this->loginTargets->sendToLogin($request->getSession(), 'heidi_interaction_device', [
+        $this->loginTargets->sendToLogin($request->getSession(), 'beffroi_interaction_device', [
             'user_code' => 'BCDFGHJK',
         ]);
 
@@ -135,7 +135,7 @@ final class InteractionLoginHandlerTest extends TestCase
         // Given
         $request = Request::create('/login', 'POST');
         $request->setSession(new Session(new MockArraySessionStorage()));
-        $this->loginTargets->sendToLogin($request->getSession(), 'heidi_interaction_device');
+        $this->loginTargets->sendToLogin($request->getSession(), 'beffroi_interaction_device');
         $this->handler->onAuthenticationSuccess($request, new NullToken());
 
         // When
@@ -155,7 +155,7 @@ final class InteractionLoginHandlerTest extends TestCase
         // Given
         $request = Request::create('/login?interaction=abc', 'POST');
         $request->setSession(new Session(new MockArraySessionStorage()));
-        $this->loginTargets->sendToLogin($request->getSession(), 'heidi_interaction_device');
+        $this->loginTargets->sendToLogin($request->getSession(), 'beffroi_interaction_device');
 
         // When
         $response = $this->handler->onAuthenticationSuccess($request, new NullToken());
@@ -174,7 +174,7 @@ final class InteractionLoginHandlerTest extends TestCase
         // Given
         $request = Request::create('/login', 'POST');
         $request->setSession(new Session(new MockArraySessionStorage()));
-        $this->loginTargets->sendToLogin($request->getSession(), 'heidi_interaction_device');
+        $this->loginTargets->sendToLogin($request->getSession(), 'beffroi_interaction_device');
 
         // When
         $response = $this->handler->onAuthenticationFailure($request, new BadCredentialsException('Bad credentials.'));

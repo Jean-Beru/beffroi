@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Locale;
+namespace Beffroi\Bundle\Locale;
 
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\User;
 
 /**
  * The language this provider writes to a user in when there is no request of theirs to read one from

@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\DpopProofHeader;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Bundle\Http\ServesAProtectedResourceInterface;
-use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
-use Heidi\Oidc\Application\UserInfo\UserInfoHandler;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
-use Heidi\Oidc\Domain\UserInfo\UserInfoResponse;
-use Heidi\Oidc\Exception\MissingBearerTokenException;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\DpopProofHeader;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Http\ServesAProtectedResourceInterface;
+use Beffroi\Bundle\Http\Tls\PresentedClientCertificate;
+use Beffroi\Oidc\Application\UserInfo\UserInfoHandler;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
+use Beffroi\Oidc\Domain\UserInfo\UserInfoResponse;
+use Beffroi\Oidc\Exception\MissingBearerTokenException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Heidi\Oidc\Port\ServedTokenSchemesInterface;
+use Beffroi\Oidc\Port\ServedTokenSchemesInterface;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -41,7 +41,7 @@ final readonly class UserInfoController implements ServesAProtectedResourceInter
     ) {
     }
 
-    #[Route('/userinfo', name: 'heidi_protocol_userinfo', methods: ['GET', 'POST'])]
+    #[Route('/userinfo', name: 'beffroi_protocol_userinfo', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         try {

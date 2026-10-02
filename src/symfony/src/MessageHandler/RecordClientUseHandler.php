@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\MessageHandler;
+namespace Beffroi\Bundle\MessageHandler;
 
-use Heidi\Oidc\Application\Client\Registration\ClientUseRecording;
-use Heidi\Oidc\Domain\Event\ClientInUseInterface;
+use Beffroi\Oidc\Application\Client\Registration\ClientUseRecording;
+use Beffroi\Oidc\Domain\Event\ClientInUseInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**

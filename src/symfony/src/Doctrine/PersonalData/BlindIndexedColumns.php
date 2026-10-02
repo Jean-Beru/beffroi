@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use function array_map;
-use Heidi\Core\Domain\Identity\LinkedIdentity;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Symfony\Component\KeyManagement\BlindIndex;
 use Symfony\Component\KeyManagement\BlindIndex\Email;
 use Symfony\Component\KeyManagement\Ciphertext;

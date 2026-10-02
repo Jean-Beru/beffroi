@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Bridge\Pki;
+namespace Beffroi\Oidc\Tests\Bridge\Pki;
 
-use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
-use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
-use Heidi\Oidc\Exception\UnreadableCertificateException;
-use Heidi\Oidc\Tests\Fixture\Certificates;
+use Beffroi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Exception\UnreadableCertificateException;
+use Beffroi\Oidc\Tests\Fixture\Certificates;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -31,7 +31,7 @@ final class PkiFrameworkCertificateReaderTest extends TestCase
         $subject = $this->reader->subjectOf(Certificates::client());
 
         // Then
-        static::assertSame('c=FR,o=Heidi Test,cn=heidi mtls client', $subject->distinguishedName);
+        static::assertSame('c=FR,o=Beffroi Test,cn=beffroi mtls client', $subject->distinguishedName);
     }
 
     /**
@@ -76,7 +76,7 @@ final class PkiFrameworkCertificateReaderTest extends TestCase
     public function aRegisteredNameIsWrittenTheWayTheOneOfACertificateIs(): void
     {
         // Given
-        $registered = 'C=FR,O=Heidi Test,CN=heidi mtls client';
+        $registered = 'C=FR,O=Beffroi Test,CN=beffroi mtls client';
 
         // When
         $written = $this->reader->distinguishedName($registered);
@@ -107,6 +107,6 @@ final class PkiFrameworkCertificateReaderTest extends TestCase
         $this->expectExceptionMessageIs('The value is not a distinguished name of RFC 4514.');
 
         // When
-        $this->reader->distinguishedName('heidi mtls client');
+        $this->reader->distinguishedName('beffroi mtls client');
     }
 }

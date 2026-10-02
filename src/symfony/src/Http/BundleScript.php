@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function dirname;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;

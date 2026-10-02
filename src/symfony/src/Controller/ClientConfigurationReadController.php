@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\ClientRegistrationAnswer;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationReader;
-use Heidi\Oidc\Exception\UnauthorizedBearerRequestException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\ClientRegistrationAnswer;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationReader;
+use Beffroi\Oidc\Exception\UnauthorizedBearerRequestException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -28,7 +28,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class ClientConfigurationReadController
 {
-    public const string ROUTE = 'heidi_protocol_client_configuration_read';
+    public const string ROUTE = 'beffroi_protocol_client_configuration_read';
 
     /**
      * The client the URI answers for, which is the one the token must have been drawn for.

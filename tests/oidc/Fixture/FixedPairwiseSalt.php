@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Port\PairwiseSaltInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Port\PairwiseSaltInterface;
 
 /**
  * A salt a test can write out, so that the identifier a test computes by hand is the identifier the

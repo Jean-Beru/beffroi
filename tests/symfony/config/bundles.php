@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
-use Heidi\Bundle\HeidiBundle;
+use Beffroi\Bundle\BeffroiBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
@@ -22,7 +22,7 @@ return [
     SecurityBundle::class => [
         'all' => true,
     ],
-    HeidiBundle::class => [
+    BeffroiBundle::class => [
         'all' => true,
     ],
     // the panel of the bundle is rendered by the layout of this one; the profiler follows kernel.debug,

@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use DateInterval;
 use DateTimeImmutable;
 use function hash;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Application\Dpop\DpopProofValidator;
-use Heidi\Oidc\Application\Dpop\DpopProofVerifier;
-use Heidi\Oidc\Bridge\InMemory\InMemoryDpopProofReplayGuard;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
-use Heidi\Oidc\Bridge\Null\NoDpopNonce;
-use Heidi\Oidc\Domain\Dpop\DpopProof;
-use Heidi\Oidc\Domain\Token\Base64Url;
-use Heidi\Oidc\Domain\Token\KeyConfirmation;
-use Heidi\Oidc\Port\DpopNonceInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Application\Dpop\DpopProofValidator;
+use Beffroi\Oidc\Application\Dpop\DpopProofVerifier;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryDpopProofReplayGuard;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
+use Beffroi\Oidc\Bridge\Null\NoDpopNonce;
+use Beffroi\Oidc\Domain\Dpop\DpopProof;
+use Beffroi\Oidc\Domain\Token\Base64Url;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Port\DpopNonceInterface;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\JWSBuilder;

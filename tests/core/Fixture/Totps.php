@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Heidi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
+use Beffroi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\PasswordHasherInterface;
 use function intdiv;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\KeyManagement;
+namespace Beffroi\Core\Tests\Bridge\KeyManagement;
 
-use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Tests\Fixture\EnvelopesThatThrow;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Tests\Fixture\Totps;
 use JsonException;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\DataProvider;

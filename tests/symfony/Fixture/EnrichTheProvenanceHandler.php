@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Fixture;
+namespace Beffroi\Bundle\Tests\Fixture;
 
-use Heidi\Core\Domain\Session\Device;
-use Heidi\Core\Domain\Session\DeviceType;
-use Heidi\Core\Domain\Session\GeoLocation;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Domain\Session\Device;
+use Beffroi\Core\Domain\Session\DeviceType;
+use Beffroi\Core\Domain\Session\GeoLocation;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 
 /**
  * Writes the enrichment of a provenance on the session the message names, which is the write path the

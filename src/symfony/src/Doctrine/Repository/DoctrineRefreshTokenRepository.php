@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use function array_filter;
 use function array_values;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
-use Heidi\Oidc\Port\RefreshTokensOfAConsentInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Refresh tokens in heidi_refresh_token (architecture §4.6). A token of a client no longer registered is
+ * Refresh tokens in beffroi_refresh_token (architecture §4.6). A token of a client no longer registered is
  * not found and not listed.
  *
  * @extends DoctrineRepository<RefreshToken>

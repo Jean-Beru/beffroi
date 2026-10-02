@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
-use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Oidc\Application\Authorization\AuthorizationHandler;
-use Heidi\Oidc\Application\Authorization\AuthorizationRequestParser;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\AuthorizationRequestReaderInterface;
+use Beffroi\Bundle\Http\AuthorizationResponderInterface;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionLocale;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Oidc\Application\Authorization\AuthorizationHandler;
+use Beffroi\Oidc\Application\Authorization\AuthorizationRequestParser;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -42,7 +42,7 @@ final readonly class AuthorizationController
     ) {
     }
 
-    #[Route('/authorize', name: 'heidi_interaction_authorize', methods: ['GET', 'POST'])]
+    #[Route('/authorize', name: 'beffroi_interaction_authorize', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         $tenant = $this->tenants->provide();

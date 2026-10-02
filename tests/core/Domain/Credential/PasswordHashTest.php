@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

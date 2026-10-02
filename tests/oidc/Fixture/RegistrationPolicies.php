@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
-use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
-use Heidi\Oidc\Port\ClientRegistrationPolicyInterface;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use Beffroi\Oidc\Port\ClientRegistrationPolicyInterface;
 
 /**
  * What the tenant of the tests does with a client that registers itself (decision 0009): nothing by

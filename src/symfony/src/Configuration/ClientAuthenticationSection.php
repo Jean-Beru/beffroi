@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Client\ClientJwksCache;
-use Heidi\Bundle\Client\ClientJwksFetcher;
-use Heidi\Oidc\Application\Client\ClientAssertionValidator;
-use Heidi\Oidc\Application\Client\ClientKeySetProvider;
+use Beffroi\Bundle\Client\ClientJwksCache;
+use Beffroi\Bundle\Client\ClientJwksFetcher;
+use Beffroi\Oidc\Application\Client\ClientAssertionValidator;
+use Beffroi\Oidc\Application\Client\ClientKeySetProvider;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 

@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\Device;
-use Heidi\Core\Domain\Session\DeviceType;
-use Heidi\Core\Domain\Session\GeoLocation;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\Device;
+use Beffroi\Core\Domain\Session\DeviceType;
+use Beffroi\Core\Domain\Session\GeoLocation;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
@@ -188,7 +188,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
 
     private static function sessions(): AuthenticationSessionRepositoryInterface
     {
-        return self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class);
+        return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class);
     }
 
     /**

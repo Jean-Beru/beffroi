@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function array_map;
 use function chr;
-use Heidi\Core\Bridge\Random\FixedRandomness;
-use Heidi\Oidc\Application\Secret\UserCodeDrawer;
-use Heidi\Oidc\Domain\Device\UserCode;
+use Beffroi\Core\Bridge\Random\FixedRandomness;
+use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
+use Beffroi\Oidc\Domain\Device\UserCode;
 use function str_split;
 use function strpos;
 

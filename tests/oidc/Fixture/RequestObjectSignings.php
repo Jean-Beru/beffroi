@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Port\UnsignedRequestObjectsInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Port\UnsignedRequestObjectsInterface;
 
 /**
  * What the registered clients of a tenant make of "request_object_signing_alg" (OIDC Registration §2):

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
+use Beffroi\Core\Exception\InvalidArgumentException;
 
 /**
  * The user handle of a passkey (WebAuthn Level 3 §5.4.3), 64 bytes as base64url.
@@ -14,7 +14,7 @@ use Heidi\Core\Exception\InvalidArgumentException;
  */
 final class PasskeyUserHandleType extends StringObjectType
 {
-    public const string NAME = 'heidi_passkey_user_handle';
+    public const string NAME = 'beffroi_passkey_user_handle';
 
     protected function encode(object $value): string
     {

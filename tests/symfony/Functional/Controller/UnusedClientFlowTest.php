@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Bundle\Message\RemoveUnusedClients;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\ClientStoreInterface;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Bundle\Message\RemoveUnusedClients;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -155,7 +155,7 @@ final class UnusedClientFlowTest extends BrowserTestCase
         // Then
         self::reload();
         static::assertNotNull(
-            self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), 'oidc-demo'),
+            self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), 'oidc-demo'),
         );
     }
 
@@ -198,18 +198,19 @@ final class UnusedClientFlowTest extends BrowserTestCase
 
     private function runTheStep(): void
     {
-        self::service('test.heidi.command_bus', MessageBusInterface::class)->dispatch(new RemoveUnusedClients());
+        self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new RemoveUnusedClients());
         self::reload();
     }
 
     private function record(): ?ClientRecord
     {
-        return self::service('test.heidi.client_store', ClientStoreInterface::class)->findRecord(self::tenant(), self::string($this->registered['client_id']));
+        return self::service('test.beffroi.client_store', ClientStoreInterface::class)
+            ->findRecord(self::tenant(), self::string($this->registered['client_id']));
     }
 
     private function issue(): void
     {
-        self::service('test.heidi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
+        self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
             ->save(new InitialAccessToken(
                 Uuid::v7(),
                 self::tenant(),

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Dpop;
+namespace Beffroi\Oidc\Tests\Application\Dpop;
 
 use DateTimeImmutable;
-use Heidi\Oidc\Application\Dpop\DpopProofVerifier;
-use Heidi\Oidc\Domain\Dpop\DpopProof;
-use Heidi\Oidc\Exception\InvalidDpopProofException;
-use Heidi\Oidc\Exception\UseDpopNonceException;
-use Heidi\Oidc\Tests\Fixture\FakeDpopNonce;
-use Heidi\Oidc\Tests\Fixture\Proofs;
+use Beffroi\Oidc\Application\Dpop\DpopProofVerifier;
+use Beffroi\Oidc\Domain\Dpop\DpopProof;
+use Beffroi\Oidc\Exception\InvalidDpopProofException;
+use Beffroi\Oidc\Exception\UseDpopNonceException;
+use Beffroi\Oidc\Tests\Fixture\FakeDpopNonce;
+use Beffroi\Oidc\Tests\Fixture\Proofs;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

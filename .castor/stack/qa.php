@@ -269,11 +269,11 @@ function deptrac(): void
 
 /*
  * The generated configuration of the application, both files committed: "apps/op/config/reference.php", the
- * array shapes an editor completes a "heidi.*" key with, and "apps/op/config/schema.json", the JSON schema a
+ * array shapes an editor completes a "beffroi.*" key with, and "apps/op/config/schema.json", the JSON schema a
  * language server validates the YAML against. The kernel writes them when it compiles its container in debug
  * (FrameworkBundle, PhpConfigReferenceDumpPass and JsonSchemaConfigDumpPass), from the configuration trees of
  * the bundles the application has installed, and nothing else writes them: a node added, renamed or re-worded
- * in "HeidiBundle::configure()" leaves them behind until someone boots the application. A member that exists
+ * in "BeffroiBundle::configure()" leaves them behind until someone boots the application. A member that exists
  * and is not in the reference is a member nobody discovers; a member the reference still carries and the
  * container refuses is worse, since the file says otherwise.
  */

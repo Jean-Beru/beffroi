@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function count;
-use Heidi\Oidc\Domain\Dpop\DpopProof;
-use Heidi\Oidc\Exception\InvalidDpopProofException;
+use Beffroi\Oidc\Domain\Dpop\DpopProof;
+use Beffroi\Oidc\Exception\InvalidDpopProofException;
 use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 

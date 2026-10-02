@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Locale;
+namespace Beffroi\Bundle\Tests\Unit\Locale;
 
-use Heidi\Bundle\Locale\ServedLocales;
-use Heidi\Bundle\Locale\UserLocale;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Locale\ServedLocales;
+use Beffroi\Bundle\Locale\UserLocale;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

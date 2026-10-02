@@ -2,32 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Oidc\Tests\Fixture\ServedModes;
-use Heidi\Oidc\Tests\Fixture\Secrets;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Domain\Authorization\Display;
-use Heidi\Oidc\Domain\Authorization\Prompt;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientPresentation;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Tests\Fixture\ServedModes;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Authorization\Display;
+use Beffroi\Oidc\Domain\Authorization\Prompt;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
-use Heidi\Oidc\Tests\Fixture\Shapes;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.3, §5.3: an interaction parks a validated request, every parameter of it, and comes
@@ -149,7 +149,7 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         $session = self::session($user);
         $client = self::client();
         $consent = new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
-        self::service('test.heidi.consents', ConsentRepositoryInterface::class)->save($consent);
+        self::service('test.beffroi.consents', ConsentRepositoryInterface::class)->save($consent);
         $request = new AuthorizationRequest(
             $client,
             $client->registration->redirectUris[0],
@@ -218,6 +218,6 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
 
     private static function interactions(): InteractionRepositoryInterface
     {
-        return self::service('test.heidi.interactions', InteractionRepositoryInterface::class);
+        return self::service('test.beffroi.interactions', InteractionRepositoryInterface::class);
     }
 }

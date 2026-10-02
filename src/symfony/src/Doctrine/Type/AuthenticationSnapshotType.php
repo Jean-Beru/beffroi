@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 
 /**
  * What a session had proven at a grant (architecture §4.6), as the three claims every token of the provider
@@ -16,7 +16,7 @@ use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
  */
 final class AuthenticationSnapshotType extends JsonObjectType
 {
-    public const string NAME = 'heidi_authentication_snapshot';
+    public const string NAME = 'beffroi_authentication_snapshot';
 
     protected function encode(object $value): array
     {

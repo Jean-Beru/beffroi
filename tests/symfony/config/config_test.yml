@@ -43,12 +43,12 @@ framework:
             # it is queued in production, and the tests of the delivery play the worker on the queue.
             notifications: 'in-memory://'
         routing:
-            Heidi\Core\Domain\Event\DomainEventInterface: sync
-            Heidi\Bundle\Message\Notification: notifications
-            Heidi\Bundle\Message\Command: sync
-            Heidi\Bundle\Message\Event: sync
-            Heidi\Bundle\Message\Query: sync
-            Heidi\Bundle\Message\SyncMessage: sync
+            Beffroi\Core\Domain\Event\DomainEventInterface: sync
+            Beffroi\Bundle\Message\Notification: notifications
+            Beffroi\Bundle\Message\Command: sync
+            Beffroi\Bundle\Message\Event: sync
+            Beffroi\Bundle\Message\Query: sync
+            Beffroi\Bundle\Message\SyncMessage: sync
 
 # The pages of the bundle, and nothing else: a missing variable is a defect of a template.
 twig:
@@ -60,31 +60,31 @@ twig:
 # The hasher of the users of the bundle is prepended by the bundle.
 security:
     providers:
-        heidi:
-            id: Heidi\Bundle\Security\IdentityUserProvider
+        beffroi:
+            id: Beffroi\Bundle\Security\IdentityUserProvider
     firewalls:
-        heidi_protocol:
+        beffroi_protocol:
             pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register(/.+)?)$
             security: false
-        heidi_interaction:
+        beffroi_interaction:
             lazy: true
-            provider: heidi
-            user_checker: Heidi\Bundle\Security\UserChecker
+            provider: beffroi
+            user_checker: Beffroi\Bundle\Security\UserChecker
             form_login:
-                login_path: heidi_interaction_login
-                check_path: heidi_interaction_login
+                login_path: beffroi_interaction_login
+                check_path: beffroi_interaction_login
                 username_parameter: _username
                 password_parameter: _password
                 enable_csrf: true
                 csrf_token_id: authenticate
-                success_handler: Heidi\Bundle\Security\InteractionLoginHandler
-                failure_handler: Heidi\Bundle\Security\InteractionLoginHandler
+                success_handler: Beffroi\Bundle\Security\InteractionLoginHandler
+                failure_handler: Beffroi\Bundle\Security\InteractionLoginHandler
             # The passkey login and the second step of a password login on the same firewall: the
             # assertion posted by the login page, the code posted by the code page, one
             # LoginSuccessListener for the three (architecture §5.4).
             custom_authenticators:
-                - Heidi\Bundle\Security\PasskeyLoginAuthenticator
-                - Heidi\Bundle\Security\TotpLoginAuthenticator
+                - Beffroi\Bundle\Security\PasskeyLoginAuthenticator
+                - Beffroi\Bundle\Security\TotpLoginAuthenticator
 
 # SQLite in a file of the cache directory (architecture §7): a kernel reboot between two requests keeps the
 # rows, a fresh schema is created by the tests that need one. The mappings and the types of the bundle are
@@ -92,7 +92,7 @@ security:
 # all names, to show the two schemas side by side (decision 0002).
 doctrine:
     dbal:
-        url: 'sqlite:///%heidi_test.database%'
+        url: 'sqlite:///%beffroi_test.database%'
     orm:
         validate_xml_mapping: true
         mappings:
@@ -100,7 +100,7 @@ doctrine:
                 type: attribute
                 is_bundle: false
                 dir: '%kernel.project_dir%/Functional/Doctrine/Host'
-                prefix: 'Heidi\Bundle\Tests\Functional\Doctrine\Host'
+                prefix: 'Beffroi\Bundle\Tests\Functional\Doctrine\Host'
                 alias: Host
 
 # A full configuration (architecture §5.1): one tenant, a KMS, files for the sealed keys, a JWK Set cached
@@ -122,55 +122,55 @@ doctrine:
 # outside of it.
 parameters:
     # The file of the database above, which DatabaseTestCase copies from its template before every test.
-    heidi_test.database: '%kernel.cache_dir%/heidi.sqlite'
+    beffroi_test.database: '%kernel.cache_dir%/beffroi.sqlite'
     # The numbers of the two load budgets, which a deployment sets and a test of a refusal sets to one:
     # they reach the budgets at runtime, so a test names them before it boots its kernel, the way
-    # PlaneTest names HEIDI_PLANE. Left alone, they are far above what the suite sends.
-    env(HEIDI_TEST_ORIGIN_BUDGET): 100000
-    env(HEIDI_TEST_CLIENT_BUDGET): 100000
-    env(HEIDI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
-    env(HEIDI_TEST_KMS_KEY_ID): signing
+    # PlaneTest names BEFFROI_PLANE. Left alone, they are far above what the suite sends.
+    env(BEFFROI_TEST_ORIGIN_BUDGET): 100000
+    env(BEFFROI_TEST_CLIENT_BUDGET): 100000
+    env(BEFFROI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
+    env(BEFFROI_TEST_KMS_KEY_ID): signing
     # A second KMS client, which only the rewrap of the data keys needs: moving them from one client to
     # another is a run with both configured, and a kernel with one client could not play it at all. It
     # seals nothing of this kernel; what names it is a "--to" on the command line.
-    env(HEIDI_TEST_KMS_DSN_SECOND): 'sodium://?keys[signing]=JljzXfMKE58dH-7b6wAhvJN9MYRDHOt9mtCvlyCP-6A'
+    env(BEFFROI_TEST_KMS_DSN_SECOND): 'sodium://?keys[signing]=JljzXfMKE58dH-7b6wAhvJN9MYRDHOt9mtCvlyCP-6A'
     # What authorises a registration on the tenant of the tests (decision 0009): a tenant that registers
     # nobody is one the variable is emptied for, which is the closed default of any deployment.
-    env(HEIDI_TEST_REGISTRATION_MODE): initial_access_token
+    env(BEFFROI_TEST_REGISTRATION_MODE): initial_access_token
     # Decision 0017: the named exception a registration policy may carry, off for every test but the one
     # that plays a tenant carrying it, as the conformance tenant will.
-    env(HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION): 'false'
+    env(BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION): 'false'
     # RFC 7591 §2: what a registration that names no scope is registered with here. Empty is none, which is
     # what a tenant that writes none gets, and a test that wants one names it before it boots a kernel.
-    env(HEIDI_TEST_REGISTRATION_DEFAULT_SCOPE): ''
+    env(BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE): ''
     # RFC 7591 §2.3: the keys the authority below is pinned by, which the test that plays the attested mode
     # replaces with the ones it signs with. The default is a key no test signs anything with: the anchor is
     # declared for every test because YAML cannot declare it only for one, and an anchor nothing verifies
     # against is exactly a tenant that accepts no statement.
-    env(HEIDI_TEST_STATEMENT_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
+    env(BEFFROI_TEST_STATEMENT_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
 
 # The KMS clients of an application, where every application declares them: the bundle seals with the one
-# "heidi.keys.kms" names and builds none itself. One client here, whose DSN the environment gives, so that
+# "beffroi.keys.kms" names and builds none itself. One client here, whose DSN the environment gives, so that
 # the suite runs against sodium, a key file, a Vault or an AWS KMS without a line of it changing. The DSN
 # reaches it through a service of this kernel and not through the "dsn" of the client, which refuses an
 # environment variable (the node cannot be empty and is validated, which Config\VariableNode denies a
 # placeholder for); the application deploys the same way, for the same reason.
 key_management:
     clients:
-        test: 'service://heidi_test.kms'
-        second: 'service://heidi_test.kms.second'
+        test: 'service://beffroi_test.kms'
+        second: 'service://beffroi_test.kms.second'
 
-heidi:
+beffroi:
     tenant:
         issuer: 'https://op.test'
     load:
         origin:
-            limit: '%env(int:HEIDI_TEST_ORIGIN_BUDGET)%'
+            limit: '%env(int:BEFFROI_TEST_ORIGIN_BUDGET)%'
         client:
-            limit: '%env(int:HEIDI_TEST_CLIENT_BUDGET)%'
+            limit: '%env(int:BEFFROI_TEST_CLIENT_BUDGET)%'
     keys:
         kms: test
-        key_id: '%env(HEIDI_TEST_KMS_KEY_ID)%'
+        key_id: '%env(BEFFROI_TEST_KMS_KEY_ID)%'
         storage: '%kernel.cache_dir%/keys'
         jwks_max_age: 120
     webauthn:
@@ -178,15 +178,15 @@ heidi:
     # RFC 7591, decision 0009: the tenant of the tests registers the clients that present an initial
     # access token it issued. A test that wants a closed tenant empties the variable.
     client_registration:
-        mode: '%env(HEIDI_TEST_REGISTRATION_MODE)%'
-        exempt_confidential_clients_from_pkce: '%env(bool:HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION)%'
-        default_scope: '%env(HEIDI_TEST_REGISTRATION_DEFAULT_SCOPE)%'
+        mode: '%env(BEFFROI_TEST_REGISTRATION_MODE)%'
+        exempt_confidential_clients_from_pkce: '%env(bool:BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION)%'
+        default_scope: '%env(BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE)%'
         # The one authority the tenant of the tests pins the software statements of (RFC 7591 §2.3). Only
         # the attested mode reads it, and a statement is verified against these keys and never against one
         # it carries itself (RFC 8725 §3.10).
         statement_issuers:
             'https://store.example.com':
-                jwks: '%env(json:base64:HEIDI_TEST_STATEMENT_JWKS)%'
+                jwks: '%env(json:base64:BEFFROI_TEST_STATEMENT_JWKS)%'
                 signing_algorithms: ['ES256']
     # Reaching a user through the push service of a browser they signed in with (RFC 8030): naming a
     # subject is what wires it, here as in any deployment (architecture §5.6).
@@ -221,8 +221,8 @@ heidi:
             client_name: 'Application recognised by its certificate'
             redirect_uris: ['https://mtls.test/callback']
             token_endpoint_auth_method: tls_client_auth
-            # the subject of the certificate of Heidi\Oidc\Tests\Fixture\Certificates, as openssl prints it
-            tls_client_auth_subject_dn: 'C=FR,O=Heidi Test,CN=heidi mtls client'
+            # the subject of the certificate of Beffroi\Oidc\Tests\Fixture\Certificates, as openssl prints it
+            tls_client_auth_subject_dn: 'C=FR,O=Beffroi Test,CN=beffroi mtls client'
             requires_consent: false
         mtls-opaque-app:
             client_name: 'Application recognised by its certificate, with opaque tokens'
@@ -516,48 +516,48 @@ services:
     # window, where this suite sends from one address, in one minute, what no deployment does and what a
     # count kept in a file would make it refuse itself for. A test of a refusal keeps one kernel
     # (disableReboot) and names its own numbers through the environment.
-    heidi.load.storage:
+    beffroi.load.storage:
         class: Symfony\Component\RateLimiter\Storage\InMemoryStorage
 
     # RFC 9396 §2 (issue #225): one class per type of authorization detail, tagged, which is the whole of
     # what a deployment adds to serve one. The bundle wires none, no type of detail being universal, so
     # this kernel is the deployment that wires one; the type of the test fixtures is that class.
-    Heidi\Oidc\Tests\Fixture\InventedAuthorizationDetailType:
-        tags: ['heidi.oidc.authorization_detail_type']
+    Beffroi\Oidc\Tests\Fixture\InventedAuthorizationDetailType:
+        tags: ['beffroi.oidc.authorization_detail_type']
 
     # OIDC Core §5.1 (issue #278): a claims provider is a class and a line here, and the bundle wires the
     # standard claims as one of them. This kernel is the deployment that adds a second, serving a scope of
     # its own that the document announces beside the four of §5.4. Behind the standard one, so that the
     # document reads the scopes of §5.4 first, as a deployment that adds a claim of its own would want.
-    Heidi\Oidc\Tests\Fixture\InventedClaimsProvider:
+    Beffroi\Oidc\Tests\Fixture\InventedClaimsProvider:
         tags:
-            - { name: heidi.oidc.claims_provider, priority: -10 }
+            - { name: beffroi.oidc.claims_provider, priority: -10 }
 
     # RFC 7591 §2: the keys a client of the tests publishes behind its "jwks_uri", answered without a
     # request. Nothing of this kernel reaches a host, so the fetcher that makes one is replaced rather than
     # pointed somewhere: it has its own unit test, and what a functional test needs is the client whose keys
     # are read back rather than the reading. Every URI but the one the fixture names is unavailable.
-    Heidi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri: ~
-    Heidi\Oidc\Port\ClientJwksFetcherInterface:
-        alias: Heidi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri
+    Beffroi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri: ~
+    Beffroi\Oidc\Port\ClientJwksFetcherInterface:
+        alias: Beffroi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri
 
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
-    heidi_test.kms:
+    beffroi_test.kms:
         class: Symfony\Component\KeyManagement\EncrypterInterface
         factory: ['@key_management.factory', 'fromString']
-        arguments: ['%env(HEIDI_TEST_KMS_DSN)%']
+        arguments: ['%env(BEFFROI_TEST_KMS_DSN)%']
 
     # The second one, which the rewrap of the data keys moves them to and which seals nothing otherwise.
-    heidi_test.kms.second:
+    beffroi_test.kms.second:
         class: Symfony\Component\KeyManagement\EncrypterInterface
         factory: ['@key_management.factory', 'fromString']
-        arguments: ['%env(HEIDI_TEST_KMS_DSN_SECOND)%']
+        arguments: ['%env(BEFFROI_TEST_KMS_DSN_SECOND)%']
 
     # The Vault and AWS bridges are development dependencies of the monorepo (the bundle stays
     # backend-agnostic, the application requires the bridges it deploys with), and KeyManagementBundle
     # registers a factory only for a bridge the root package requires outside of "require-dev"
     # (ContainerBuilder::willBeAvailable()): this kernel registers them itself, for the runs where
-    # HEIDI_TEST_KMS_DSN names a Vault or an AWS KMS (LocalStack in the CI).
+    # BEFFROI_TEST_KMS_DSN names a Vault or an AWS KMS (LocalStack in the CI).
     Symfony\Component\KeyManagement\Bridge\HashiCorpVault\TransitKmsFactory:
         tags: ['key_management.factory']
     Symfony\Component\KeyManagement\Bridge\AwsKms\AwsKmsFactory:
@@ -565,206 +565,206 @@ services:
 
     # Reachable from the tests: the use cases and ports the bundle wires in full today. A private service
     # nothing references is removed from the container, which is what these aliases prevent.
-    test.heidi.tenant_provider:
-        alias: Heidi\Bundle\Doctrine\TenantProvider
+    test.beffroi.tenant_provider:
+        alias: Beffroi\Bundle\Doctrine\TenantProvider
         public: true
-    test.heidi.clients:
-        alias: Heidi\Oidc\Port\ClientRepositoryInterface
+    test.beffroi.clients:
+        alias: Beffroi\Oidc\Port\ClientRepositoryInterface
         public: true
-    test.heidi.client_store:
-        alias: Heidi\Oidc\Port\ClientStoreInterface
+    test.beffroi.client_store:
+        alias: Beffroi\Oidc\Port\ClientStoreInterface
         public: true
-    test.heidi.client_authenticator:
-        alias: Heidi\Oidc\Application\Client\ClientAuthenticator
+    test.beffroi.client_authenticator:
+        alias: Beffroi\Oidc\Application\Client\ClientAuthenticator
         public: true
-    test.heidi.initial_access_tokens:
-        alias: Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface
+    test.beffroi.initial_access_tokens:
+        alias: Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface
         public: true
-    test.heidi.pairwise_subjects:
-        alias: Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface
+    test.beffroi.pairwise_subjects:
+        alias: Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface
         public: true
-    test.heidi.sector_identifiers:
-        alias: Heidi\Oidc\Port\SectorIdentifiersInterface
+    test.beffroi.sector_identifiers:
+        alias: Beffroi\Oidc\Port\SectorIdentifiersInterface
         public: true
-    test.heidi.password_hasher:
-        alias: Heidi\Core\Port\PasswordHasherInterface
+    test.beffroi.password_hasher:
+        alias: Beffroi\Core\Port\PasswordHasherInterface
         public: true
-    test.heidi.core_password_hasher:
-        alias: Heidi\Bundle\Security\CorePasswordHasher
+    test.beffroi.core_password_hasher:
+        alias: Beffroi\Bundle\Security\CorePasswordHasher
         public: true
-    test.heidi.password_hasher_factory:
+    test.beffroi.password_hasher_factory:
         alias: security.password_hasher_factory
         public: true
-    test.heidi.key_rotator:
-        alias: Heidi\Core\Application\Key\TenantKeyRotator
+    test.beffroi.key_rotator:
+        alias: Beffroi\Core\Application\Key\TenantKeyRotator
         public: true
-    test.heidi.keys:
-        alias: Heidi\Core\Port\TenantKeyRepositoryInterface
+    test.beffroi.keys:
+        alias: Beffroi\Core\Port\TenantKeyRepositoryInterface
         public: true
     # The KMS the sealers share, for the tests that take it down between two requests (KmsOutage).
-    test.heidi.kms:
-        alias: heidi.kms
+    test.beffroi.kms:
+        alias: beffroi.kms
         public: true
     # The index key of a tenant and what derives a tag under it (decisions 0011 and 0018): reachable so
     # that a test can stand a second tenant up, which no configuration of one tenant can show.
-    test.heidi.data_keys_index:
-        alias: heidi.data_keys.index
+    test.beffroi.data_keys_index:
+        alias: beffroi.data_keys.index
         public: true
-    test.heidi.blind_indexes:
-        alias: Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes
+    test.beffroi.blind_indexes:
+        alias: Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes
         public: true
-    test.heidi.key_sealer:
-        alias: Heidi\Core\Port\KeySealerInterface
+    test.beffroi.key_sealer:
+        alias: Beffroi\Core\Port\KeySealerInterface
         public: true
-    test.heidi.secret_sealer:
-        alias: Heidi\Core\Port\SecretSealerInterface
+    test.beffroi.secret_sealer:
+        alias: Beffroi\Core\Port\SecretSealerInterface
         public: true
-    test.heidi.code_attempts:
-        alias: Heidi\Core\Port\CodeAttemptLimiterInterface
+    test.beffroi.code_attempts:
+        alias: Beffroi\Core\Port\CodeAttemptLimiterInterface
         public: true
-    test.heidi.kms_unavailable_listener:
-        alias: Heidi\Bundle\Key\KmsUnavailableListener
+    test.beffroi.kms_unavailable_listener:
+        alias: Beffroi\Bundle\Key\KmsUnavailableListener
         public: true
-    test.heidi.totp_enrolment:
-        alias: Heidi\Core\Application\Totp\TotpEnrolment
+    test.beffroi.totp_enrolment:
+        alias: Beffroi\Core\Application\Totp\TotpEnrolment
         public: true
-    test.heidi.totp_authentication:
-        alias: Heidi\Core\Application\Totp\TotpAuthentication
+    test.beffroi.totp_authentication:
+        alias: Beffroi\Core\Application\Totp\TotpAuthentication
         public: true
-    test.heidi.totp_algorithm:
-        alias: Heidi\Core\Port\TotpAlgorithmInterface
+    test.beffroi.totp_algorithm:
+        alias: Beffroi\Core\Port\TotpAlgorithmInterface
         public: true
-    test.heidi.key_pair_generator:
-        alias: Heidi\Core\Port\KeyPairGeneratorInterface
+    test.beffroi.key_pair_generator:
+        alias: Beffroi\Core\Port\KeyPairGeneratorInterface
         public: true
-    test.heidi.jws_signer:
-        alias: Heidi\Core\Port\JwsSignerInterface
+    test.beffroi.jws_signer:
+        alias: Beffroi\Core\Port\JwsSignerInterface
         public: true
-    test.heidi.key_provider:
-        alias: Heidi\Core\Port\SigningKeyProviderInterface
+    test.beffroi.key_provider:
+        alias: Beffroi\Core\Port\SigningKeyProviderInterface
         public: true
-    test.heidi.public_keys:
-        alias: Heidi\Core\Port\PublicKeySetProviderInterface
+    test.beffroi.public_keys:
+        alias: Beffroi\Core\Port\PublicKeySetProviderInterface
         public: true
-    test.heidi.decryption_keys:
-        alias: Heidi\Core\Port\DecryptionKeyProviderInterface
+    test.beffroi.decryption_keys:
+        alias: Beffroi\Core\Port\DecryptionKeyProviderInterface
         public: true
-    test.heidi.jwe_decrypter:
-        alias: Heidi\Core\Port\JweDecrypterInterface
+    test.beffroi.jwe_decrypter:
+        alias: Beffroi\Core\Port\JweDecrypterInterface
         public: true
-    test.heidi.jwks:
-        alias: Heidi\Oidc\Application\Discovery\JwksHandler
+    test.beffroi.jwks:
+        alias: Beffroi\Oidc\Application\Discovery\JwksHandler
         public: true
-    test.heidi.access_tokens:
-        alias: Heidi\Oidc\Port\AccessTokenIssuerInterface
+    test.beffroi.access_tokens:
+        alias: Beffroi\Oidc\Port\AccessTokenIssuerInterface
         public: true
-    test.heidi.id_tokens:
-        alias: Heidi\Oidc\Port\IdTokenIssuerInterface
+    test.beffroi.id_tokens:
+        alias: Beffroi\Oidc\Port\IdTokenIssuerInterface
         public: true
-    test.heidi.access_token_verifier:
-        alias: Heidi\Oidc\Application\Token\AccessTokenVerifier
+    test.beffroi.access_token_verifier:
+        alias: Beffroi\Oidc\Application\Token\AccessTokenVerifier
         public: true
-    test.heidi.id_token_hints:
-        alias: Heidi\Oidc\Application\Authorization\IdTokenHintVerifier
+    test.beffroi.id_token_hints:
+        alias: Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier
         public: true
-    test.heidi.authorization_request_parser:
-        alias: Heidi\Oidc\Application\Authorization\AuthorizationRequestParser
+    test.beffroi.authorization_request_parser:
+        alias: Beffroi\Oidc\Application\Authorization\AuthorizationRequestParser
         public: true
-    test.heidi.end_session_request_parser:
-        alias: Heidi\Oidc\Application\EndSession\EndSessionRequestParser
+    test.beffroi.end_session_request_parser:
+        alias: Beffroi\Oidc\Application\EndSession\EndSessionRequestParser
         public: true
-    test.heidi.event_bus_dispatcher:
-        alias: Heidi\Bundle\Messenger\EventBusDispatcher
+    test.beffroi.event_bus_dispatcher:
+        alias: Beffroi\Bundle\Messenger\EventBusDispatcher
         public: true
-    test.heidi.command_bus:
+    test.beffroi.command_bus:
         alias: command.bus
         public: true
     # The write path the asynchronous enrichment of a provenance will take: a handler of the bus, with no
     # request anywhere. The enrichment does not exist; what this proves is that a sealed column written
-    # from there reaches the scope of its tenant (decision 0018, heidi#404).
-    Heidi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler:
+    # from there reaches the scope of its tenant (decision 0018, beffroi#404).
+    Beffroi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler:
         autowire: true
         tags: ['messenger.message_handler']
-    test.heidi.schedule:
-        alias: Heidi\Bundle\Scheduler\HeidiSchedule
+    test.beffroi.schedule:
+        alias: Beffroi\Bundle\Scheduler\BeffroiSchedule
         public: true
-    test.heidi.tenant_synchronizer:
-        alias: Heidi\Bundle\Doctrine\TenantSynchronizer
+    test.beffroi.tenant_synchronizer:
+        alias: Beffroi\Bundle\Doctrine\TenantSynchronizer
         public: true
-    test.heidi.users:
-        alias: Heidi\Core\Port\UserRepositoryInterface
+    test.beffroi.users:
+        alias: Beffroi\Core\Port\UserRepositoryInterface
         public: true
-    test.heidi.credentials:
-        alias: Heidi\Core\Port\CredentialRepositoryInterface
+    test.beffroi.credentials:
+        alias: Beffroi\Core\Port\CredentialRepositoryInterface
         public: true
-    test.heidi.linked_identities:
-        alias: Heidi\Core\Port\LinkedIdentityRepositoryInterface
+    test.beffroi.linked_identities:
+        alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
         public: true
-    test.heidi.push_subscriptions:
-        alias: Heidi\Core\Port\PushSubscriptionRepositoryInterface
+    test.beffroi.push_subscriptions:
+        alias: Beffroi\Core\Port\PushSubscriptionRepositoryInterface
         public: true
-    test.heidi.metadata_store:
-        alias: Heidi\Core\Port\MetadataBlobStoreInterface
+    test.beffroi.metadata_store:
+        alias: Beffroi\Core\Port\MetadataBlobStoreInterface
         public: true
-    test.heidi.sessions:
-        alias: Heidi\Core\Port\AuthenticationSessionRepositoryInterface
+    test.beffroi.sessions:
+        alias: Beffroi\Core\Port\AuthenticationSessionRepositoryInterface
         public: true
-    test.heidi.interactions:
-        alias: Heidi\Oidc\Port\InteractionRepositoryInterface
+    test.beffroi.interactions:
+        alias: Beffroi\Oidc\Port\InteractionRepositoryInterface
         public: true
-    test.heidi.authorization_codes:
-        alias: Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface
+    test.beffroi.authorization_codes:
+        alias: Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface
         public: true
-    test.heidi.pushed_authorization_requests:
-        alias: Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface
+    test.beffroi.pushed_authorization_requests:
+        alias: Beffroi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface
         public: true
-    test.heidi.device_authorization_requests:
-        alias: Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface
+    test.beffroi.device_authorization_requests:
+        alias: Beffroi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface
         public: true
-    test.heidi.backchannel_authentication_requests:
-        alias: Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface
+    test.beffroi.backchannel_authentication_requests:
+        alias: Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface
         public: true
-    test.heidi.logged_in_clients:
-        alias: Heidi\Oidc\Port\LoggedInClientsInterface
+    test.beffroi.logged_in_clients:
+        alias: Beffroi\Oidc\Port\LoggedInClientsInterface
         public: true
     # the delivery of a logout token: the queue it waits in, and the handler called as the worker calls it
-    test.heidi.notification_queue:
+    test.beffroi.notification_queue:
         alias: messenger.transport.notifications
         public: true
-    test.heidi.logout_token_delivery:
-        alias: Heidi\Bundle\MessageHandler\SendLogoutTokenHandler
+    test.beffroi.logout_token_delivery:
+        alias: Beffroi\Bundle\MessageHandler\SendLogoutTokenHandler
         public: true
-    test.heidi.refresh_tokens:
-        alias: Heidi\Oidc\Port\RefreshTokenRepositoryInterface
+    test.beffroi.refresh_tokens:
+        alias: Beffroi\Oidc\Port\RefreshTokenRepositoryInterface
         public: true
-    test.heidi.access_tokens_store:
-        alias: Heidi\Oidc\Port\AccessTokenRepositoryInterface
+    test.beffroi.access_tokens_store:
+        alias: Beffroi\Oidc\Port\AccessTokenRepositoryInterface
         public: true
-    test.heidi.consents:
-        alias: Heidi\Oidc\Port\ConsentRepositoryInterface
+    test.beffroi.consents:
+        alias: Beffroi\Oidc\Port\ConsentRepositoryInterface
         public: true
-    test.heidi.active_consents:
-        alias: Heidi\Oidc\Port\ActiveConsentsInterface
+    test.beffroi.active_consents:
+        alias: Beffroi\Oidc\Port\ActiveConsentsInterface
         public: true
-    test.heidi.recorded_grants:
-        alias: Heidi\Oidc\Port\RecordedGrantsInterface
+    test.beffroi.recorded_grants:
+        alias: Beffroi\Oidc\Port\RecordedGrantsInterface
         public: true
-    test.heidi.grants_of_a_consent:
-        alias: Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface
+    test.beffroi.grants_of_a_consent:
+        alias: Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface
         public: true
-    test.heidi.refresh_tokens_of_a_consent:
-        alias: Heidi\Oidc\Port\RefreshTokensOfAConsentInterface
+    test.beffroi.refresh_tokens_of_a_consent:
+        alias: Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface
         public: true
-    test.heidi.access_tokens_of_a_consent:
-        alias: Heidi\Oidc\Port\CanRevokeAccessTokensByConsentInterface
+    test.beffroi.access_tokens_of_a_consent:
+        alias: Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface
         public: true
-    test.heidi.browser_session:
-        alias: Heidi\Bundle\Http\BrowserSession
+    test.beffroi.browser_session:
+        alias: Beffroi\Bundle\Http\BrowserSession
         public: true
-    test.heidi.endpoints:
-        alias: Heidi\Oidc\Port\EndpointLocatorInterface
+    test.beffroi.endpoints:
+        alias: Beffroi\Oidc\Port\EndpointLocatorInterface
         public: true
-    Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
+    Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
         autoconfigure: true
         public: true
 
@@ -773,39 +773,39 @@ services:
     # the UserInfo endpoint to read it back (issue #239). Behind the two the bundle wires, because the
     # first wired shape is what a client that registers none takes, and the clients of this kernel that
     # register none expect the "at+jwt" the bundle writes first.
-    Heidi\Bundle\Tests\Functional\Token\InventedAccessTokenIssuer:
-        arguments: ['@Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer']
+    Beffroi\Bundle\Tests\Functional\Token\InventedAccessTokenIssuer:
+        arguments: ['@Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer']
         tags:
-            - { name: heidi.oidc.access_token_issuer, priority: -10 }
-    Heidi\Bundle\Tests\Functional\Token\InventedAccessTokenVerifier:
-        arguments: ['@Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier']
+            - { name: beffroi.oidc.access_token_issuer, priority: -10 }
+    Beffroi\Bundle\Tests\Functional\Token\InventedAccessTokenVerifier:
+        arguments: ['@Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier']
         tags:
-            - { name: heidi.oidc.access_token_verifier, priority: -10 }
+            - { name: beffroi.oidc.access_token_verifier, priority: -10 }
 
     # A fifth way of answering the authorization endpoint, wired as a deployment wires one: it names itself,
     # and that name is what a request may ask for, what the document announces and what the endpoint answers
     # in, with no line of src edited (issue #240). Behind the four the bundle wires, because the first wired
     # mode is what a request the provider cannot answer as it asked falls back to, and every other test of
     # this kernel expects that fallback to be the "query" of RFC 6749 §4.1.2.
-    Heidi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer:
+    Beffroi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer:
         tags:
-            - { name: heidi.response_mode, priority: -10 }
+            - { name: beffroi.response_mode, priority: -10 }
 
     # A missing translation fails the request rather than showing its key or its English (architecture §5.7).
-    Heidi\Bundle\Tests\Functional\Translation\StrictTranslator:
+    Beffroi\Bundle\Tests\Functional\Translation\StrictTranslator:
         decorates: translator
         arguments: ['@.inner']
 
     # The argon2id hashes of the suite at the smallest cost the algorithm accepts, ahead of the native hasher
     # of the core, which keeps its production cost and the hashes of the other algorithms: 400 ms a hash
     # otherwise, paid once per user, ten times per TOTP and once per client authentication after a reboot.
-    Heidi\Bundle\Tests\Functional\Security\CheapArgon2idHasher:
+    Beffroi\Bundle\Tests\Functional\Security\CheapArgon2idHasher:
         tags:
-            - { name: heidi.password_hasher, priority: 10 }
+            - { name: beffroi.password_hasher, priority: 10 }
 
     # The RSA keys of the suite at the 2048 bits RFC 7518 §3.3 requires rather than the 3072 the bundle
     # generates: a key pair in 60 ms instead of 300, at every signingKey() and every rotation.
-    Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits:
+    Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits:
         arguments:
             $value: 2048
 
@@ -813,7 +813,7 @@ services:
     # asked, read in the log of the KMS when it is measured against a running stack ("castor login-cost").
     # Where there is no KMS on a network, the client the configuration names is decorated with one that
     # counts: one unwrap per data key and per process, and none per value.
-    Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms:
-        decorates: heidi_test.kms
+    Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms:
+        decorates: beffroi_test.kms
         arguments: ['@.inner']
         public: true

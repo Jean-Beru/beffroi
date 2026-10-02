@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function base64_encode;
 use DateInterval;
 use DateTimeImmutable;
-use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Port\JweDecrypterInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Oidc\Application\Authorization\RequestObjectReader;
-use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
-use Heidi\Oidc\Application\Authorization\RequestObjectValidator;
-use Heidi\Oidc\Application\Client\ClientKeySetProvider;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\RequestObjectFetcherInterface;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Port\JweDecrypterInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Application\Authorization\RequestObjectReader;
+use Beffroi\Oidc\Application\Authorization\RequestObjectResolver;
+use Beffroi\Oidc\Application\Authorization\RequestObjectValidator;
+use Beffroi\Oidc\Application\Client\ClientKeySetProvider;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\RequestObjectFetcherInterface;
 use Jose\Component\Core\JWK;
 use Jose\Component\Encryption\JWEBuilder;
 use Jose\Component\Encryption\Serializer\CompactSerializer;

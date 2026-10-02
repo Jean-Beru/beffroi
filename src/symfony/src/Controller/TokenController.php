@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\DpopProofHeader;
-use Heidi\Bundle\Http\ProtocolAnswer;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
-use Heidi\Oidc\Application\Token\TokenHandler;
-use Heidi\Oidc\Domain\Token\TokenResponse;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\DpopProofHeader;
+use Beffroi\Bundle\Http\ProtocolAnswer;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Http\Tls\PresentedClientCertificate;
+use Beffroi\Oidc\Application\Token\TokenHandler;
+use Beffroi\Oidc\Domain\Token\TokenResponse;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -32,7 +32,7 @@ final readonly class TokenController
     ) {
     }
 
-    #[Route('/token', name: 'heidi_protocol_token', methods: ['POST'])]
+    #[Route('/token', name: 'beffroi_protocol_token', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
         try {

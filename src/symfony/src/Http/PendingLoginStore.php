@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\PendingLogin;
+use Beffroi\Core\Domain\Session\PendingLogin;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
  */
 final readonly class PendingLoginStore
 {
-    public const string KEY = '_heidi_pending_login';
+    public const string KEY = '_beffroi_pending_login';
 
     public function hold(SessionInterface $session, PendingLogin $login): void
     {

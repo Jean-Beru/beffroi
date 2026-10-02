@@ -1,13 +1,13 @@
-# heidi/framework
+# beffroi/framework
 
-An identity provider for the Symfony ecosystem. "Heidi" is the code name; the product name comes later.
+An identity provider for the Symfony ecosystem.
 
 | Package | Directory | What it is |
 |---|---|---|
-| `heidi/core` | `src/core` | Identity core: tenants, users, credentials, linked identities, groups, authentication sessions, signing keys. Pure PHP. |
-| `heidi/oidc` | `src/oidc` | OAuth 2.0 / OpenID Connect module. Pure PHP. |
-| `heidi/symfony-bundle` | `src/symfony` | Symfony integration. |
-| `heidi/op` | `apps/op` | The standalone application (not published). |
+| `beffroi/core` | `src/core` | Identity core: tenants, users, credentials, linked identities, groups, authentication sessions, signing keys. Pure PHP. |
+| `beffroi/oidc` | `src/oidc` | OAuth 2.0 / OpenID Connect module. Pure PHP. |
+| `beffroi/symfony-bundle` | `src/symfony` | Symfony integration. |
+| `beffroi/op` | `apps/op` | The standalone application (not published). |
 
 Requires PHP 8.4 and Symfony 8.2.
 

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Port\AmbientTenantInterface;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\AmbientTenantInterface;
 use SensitiveParameter;
 use function sprintf;
 use function strpos;
@@ -46,7 +46,7 @@ final readonly class TenantScopedEncrypter implements EnvelopeDecrypterInterface
      * and one tenant from another. The wording is the one of the day it was written and it does not
      * change: nothing rewraps an envelope, so every value sealed under it must keep opening under it.
      */
-    public const string AAD = 'heidi:personal-data:v1:';
+    public const string AAD = 'beffroi:personal-data:v1:';
 
     /**
      * What joins the slug of a tenant to the family of columns in a scope. A slug is one to sixty-three

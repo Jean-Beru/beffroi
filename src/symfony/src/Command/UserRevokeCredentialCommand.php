@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Credential\CredentialRevocation;
-use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Credential\CredentialRevocation;
+use Beffroi\Core\Domain\Credential\RevocableCredentialInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
 use function trim;
 
 /**
- * Revokes a credential of a user by the identifier heidi:user:show lists (architecture §5.5): it never
+ * Revokes a credential of a user by the identifier beffroi:user:show lists (architecture §5.5): it never
  * authenticates again and its row stays. A kind that is not revocable, the password, is replaced instead.
  */
 #[AsCommand(
@@ -26,7 +26,7 @@ use function trim;
 )]
 final readonly class UserRevokeCredentialCommand
 {
-    public const string NAME = 'heidi:user:revoke-credential';
+    public const string NAME = 'beffroi:user:revoke-credential';
 
     public function __construct(
         private ConfiguredTenant $tenant,
@@ -41,7 +41,7 @@ final readonly class UserRevokeCredentialCommand
         SymfonyStyle $io,
         #[Argument(description: 'The username of the user.')]
         string $username,
-        #[Argument(description: 'The identifier of the credential, as "heidi:user:show" lists it.')]
+        #[Argument(description: 'The identifier of the credential, as "beffroi:user:show" lists it.')]
         string $id,
     ): int {
         $tenant = $this->tenant->orTold($io);

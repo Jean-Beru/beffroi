@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\PushedAuthorization;
+namespace Beffroi\Oidc\Tests\Domain\PushedAuthorization;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use function hash;
-use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
+use Beffroi\Oidc\Domain\PushedAuthorization\RequestUri;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Request;
+namespace Beffroi\Oidc\Tests\Application\Request;
 
-use Heidi\Oidc\Application\Request\RequestParameters;
-use Heidi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Exception\InvalidRequestException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

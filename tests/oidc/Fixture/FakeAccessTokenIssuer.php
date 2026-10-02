@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use DateInterval;
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\AuthorizationInterface;
-use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
-use Heidi\Oidc\Port\AccessTokenShapeIssuerInterface;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
+use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Beffroi\Oidc\Port\AccessTokenShapeIssuerInterface;
 use function sprintf;
 
 /**

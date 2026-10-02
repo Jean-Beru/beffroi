@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Sessions in heidi_authentication_session (architecture §3.2, §3.4). A DQL parameter that is an
+ * Sessions in beffroi_authentication_session (architecture §3.2, §3.4). A DQL parameter that is an
  * identifier names its type: the ORM would infer a string from a Uuid.
  *
  * @extends DoctrineRepository<AuthenticationSession>

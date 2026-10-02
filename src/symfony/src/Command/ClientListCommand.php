@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Oidc\Application\Client\ClientInventory;
-use Heidi\Oidc\Domain\Client\InventoriedClient;
+use Beffroi\Oidc\Application\Client\ClientInventory;
+use Beffroi\Oidc\Domain\Client\InventoriedClient;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -26,7 +26,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final readonly class ClientListCommand
 {
-    public const string NAME = 'heidi:client:list';
+    public const string NAME = 'beffroi:client:list';
 
     public function __construct(
         private ConfiguredTenant $tenant,

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\MessageHandler;
+namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
 
-use Heidi\Core\Domain\Event\DomainEventInterface;
+use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**

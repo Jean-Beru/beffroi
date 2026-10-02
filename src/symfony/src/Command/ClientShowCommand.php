@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function array_keys;
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Client\InventoriedClient;
-use Heidi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Oidc\Domain\Client\InventoriedClient;
+use Beffroi\Oidc\Port\ClientStoreInterface;
 use function is_string;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
@@ -24,7 +24,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 /**
  * A client of the tenant as the provider holds it: where it came from, its dates, and, for one that
  * registered itself, the members it registered and what the registration policy of the tenant wrote on
- * them (decision 0017). Reads, writes nothing: deleting one is heidi:client:delete.
+ * them (decision 0017). Reads, writes nothing: deleting one is beffroi:client:delete.
  *
  * The members are shown as the client sent them and not as the provider resolved them, which is what a
  * client reads back at its own configuration endpoint (RFC 7592 §2.1): what a registration does not
@@ -36,7 +36,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final readonly class ClientShowCommand
 {
-    public const string NAME = 'heidi:client:show';
+    public const string NAME = 'beffroi:client:show';
 
     public function __construct(
         private ConfiguredTenant $tenant,
@@ -47,7 +47,7 @@ final readonly class ClientShowCommand
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument(description: 'The identifier of the client, as "heidi:client:list" shows it.')]
+        #[Argument(description: 'The identifier of the client, as "beffroi:client:list" shows it.')]
         string $clientId,
     ): int {
         $tenant = $this->tenant->orTold($io);
@@ -64,7 +64,7 @@ final readonly class ClientShowCommand
         $record = $this->store->findRecord($tenant, $client->clientId);
         if ($record === null) {
             $io->text(sprintf(
-                'This client is declared in the configuration of the deployment; what it is, is what "heidi.yaml" says under "%s".',
+                'This client is declared in the configuration of the deployment; what it is, is what "beffroi.yaml" says under "%s".',
                 $client->clientId,
             ));
 

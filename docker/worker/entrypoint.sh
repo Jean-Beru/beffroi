@@ -15,10 +15,10 @@
 # Dynamic plan from the same address (issue #363).
 set -eu
 
-HEIDI_DEMO_HOST_IP=$(getent ahostsv4 demo.localhost 2>/dev/null | head -1 | cut -d' ' -f1)
-if [ -n "${HEIDI_DEMO_HOST_IP}" ]; then
-	export HEIDI_DEMO_HOST_IP
-	echo "The host answers on ${HEIDI_DEMO_HOST_IP} for demo.localhost"
+BEFFROI_DEMO_HOST_IP=$(getent ahostsv4 demo.localhost 2>/dev/null | head -1 | cut -d' ' -f1)
+if [ -n "${BEFFROI_DEMO_HOST_IP}" ]; then
+	export BEFFROI_DEMO_HOST_IP
+	echo "The host answers on ${BEFFROI_DEMO_HOST_IP} for demo.localhost"
 fi
 
 CONFORMANCE_TRUST_COSTS="the back-channel logout plan will not receive its token"

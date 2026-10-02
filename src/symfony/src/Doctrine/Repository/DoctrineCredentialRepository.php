@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use function array_filter;
 use function array_merge;
 use function array_values;
 use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Core\Domain\Credential\Credential;
-use Heidi\Core\Domain\Credential\ExternallyIdentifiedCredentialInterface;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Domain\Credential\ExternallyIdentifiedCredentialInterface;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function is_a;
 use function is_subclass_of;
 use function sort;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Ciba\ServedDeliveryModes;
-use Heidi\Oidc\Domain\Ciba\PingDelivery;
-use Heidi\Oidc\Domain\Ciba\PollDelivery;
+use Beffroi\Oidc\Application\Ciba\ServedDeliveryModes;
+use Beffroi\Oidc\Domain\Ciba\PingDelivery;
+use Beffroi\Oidc\Domain\Ciba\PollDelivery;
 
 /**
  * The ways of telling a client that a backchannel request was answered, as the tests wire them (CIBA

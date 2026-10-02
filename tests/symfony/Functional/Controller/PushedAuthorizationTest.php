@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
+use Beffroi\Oidc\Domain\PushedAuthorization\RequestUri;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 

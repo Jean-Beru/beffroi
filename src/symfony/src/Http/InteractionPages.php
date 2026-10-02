@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -48,7 +48,7 @@ final readonly class InteractionPages
      */
     public function render(string $template, array $context = [], int $status = Response::HTTP_OK, array $headers = []): Response
     {
-        return new Response($this->twig->render('@Heidi/' . $template, $context), $status, $headers + self::HEADERS);
+        return new Response($this->twig->render('@Beffroi/' . $template, $context), $status, $headers + self::HEADERS);
     }
 
     /**

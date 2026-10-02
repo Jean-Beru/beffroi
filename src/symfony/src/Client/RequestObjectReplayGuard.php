@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Client;
+namespace Beffroi\Bundle\Client;
 
 use DateTimeImmutable;
 use function hash;
-use Heidi\Bundle\Cache\SeenOnce;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\RequestObjectReplayGuardInterface;
+use Beffroi\Bundle\Cache\SeenOnce;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Port\RequestObjectReplayGuardInterface;
 use function sprintf;
 
 /**
@@ -34,6 +34,6 @@ final readonly class RequestObjectReplayGuard implements RequestObjectReplayGuar
      */
     private static function key(Client $client, string $jti): string
     {
-        return 'heidi.request_objects.' . hash('xxh128', sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId, $jti));
+        return 'beffroi.request_objects.' . hash('xxh128', sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId, $jti));
     }
 }

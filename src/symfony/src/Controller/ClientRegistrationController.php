@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\ClientRegistrationAnswer;
-use Heidi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
-use Heidi\Oidc\Domain\Client\Registration\RegistrationRequest;
-use Heidi\Oidc\Exception\ClientRegistrationNotOfferedException;
-use Heidi\Oidc\Exception\UnauthorizedBearerRequestException;
-use Heidi\Oidc\Exception\UnreadableClientMetadataException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\ClientRegistrationAnswer;
+use Beffroi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
+use Beffroi\Oidc\Domain\Client\Registration\RegistrationRequest;
+use Beffroi\Oidc\Exception\ClientRegistrationNotOfferedException;
+use Beffroi\Oidc\Exception\UnauthorizedBearerRequestException;
+use Beffroi\Oidc\Exception\UnreadableClientMetadataException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -29,7 +29,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class ClientRegistrationController
 {
-    public const string ROUTE = 'heidi_protocol_client_registration';
+    public const string ROUTE = 'beffroi_protocol_client_registration';
 
     public function __construct(
         private TenantProvider $tenants,

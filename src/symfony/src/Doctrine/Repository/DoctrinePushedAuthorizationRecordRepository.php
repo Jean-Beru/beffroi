@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
-use Heidi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
+use Beffroi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
 use function is_string;
 use function sprintf;
 
 /**
- * The records of pushed authorization requests, in heidi_pushed_authorization_request (RFC 9126 §2.2).
+ * The records of pushed authorization requests, in beffroi_pushed_authorization_request (RFC 9126 §2.2).
  * A record of a client no longer registered is not found, as a code of one is not.
  *
  * @extends DoctrineRepository<PushedAuthorizationRecord>

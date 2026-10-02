@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\ResponseMode;
+namespace Beffroi\Bundle\Tests\Unit\Http\ResponseMode;
 
-use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
-use Heidi\Bundle\Tests\Functional\ResponseMode\FakeAliasedRenderer;
-use Heidi\Bundle\Tests\Functional\ResponseMode\FakeResponseModeRenderer;
-use Heidi\Bundle\Tests\Functional\ResponseMode\FakeSigningRenderer;
-use Heidi\Oidc\Domain\Authorization\ResponseModeNames;
+use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
+use Beffroi\Bundle\Tests\Functional\ResponseMode\FakeAliasedRenderer;
+use Beffroi\Bundle\Tests\Functional\ResponseMode\FakeResponseModeRenderer;
+use Beffroi\Bundle\Tests\Functional\ResponseMode\FakeSigningRenderer;
+use Beffroi\Oidc\Domain\Authorization\ResponseModeNames;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

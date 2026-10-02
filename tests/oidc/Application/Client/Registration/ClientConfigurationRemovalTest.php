@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Registration;
+namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
-use Heidi\Oidc\Application\Client\Registration\ClientConfigurationRemoval;
-use Heidi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientStore;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Event\RegisteredClientDeleted;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Exception\UnauthorizedClientConfigurationException;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationAccess;
+use Beffroi\Oidc\Application\Client\Registration\ClientConfigurationRemoval;
+use Beffroi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientStore;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Event\RegisteredClientDeleted;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Exception\UnauthorizedClientConfigurationException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

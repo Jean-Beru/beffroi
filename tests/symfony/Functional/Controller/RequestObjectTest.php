@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function array_filter;
 use function base64_encode;
 use Closure;
 use DateTimeImmutable;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Tests\Fixture\RequestObjects;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Tests\Fixture\RequestObjects;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\JWSBuilder;

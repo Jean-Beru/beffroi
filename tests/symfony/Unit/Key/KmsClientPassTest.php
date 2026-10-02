@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Key;
+namespace Beffroi\Bundle\Tests\Unit\Key;
 
-use Heidi\Bundle\Key\KmsClientPass;
+use Beffroi\Bundle\Key\KmsClientPass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -30,7 +30,7 @@ final class KmsClientPassTest extends TestCase
         new KmsClientPass()->process($container);
 
         // Then
-        static::assertSame('key_management.op', (string) $container->getAlias('heidi.kms'));
+        static::assertSame('key_management.op', (string) $container->getAlias('beffroi.kms'));
     }
 
     #[Test]
@@ -47,7 +47,7 @@ final class KmsClientPassTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('The KMS client "aws" named by the "heidi.keys.kms" configuration is not registered in "key_management.clients": the registered ones are "op", "backup".');
+        $this->expectExceptionMessageIs('The KMS client "aws" named by the "beffroi.keys.kms" configuration is not registered in "key_management.clients": the registered ones are "op", "backup".');
 
         // When
         new KmsClientPass()->process($container);
@@ -61,7 +61,7 @@ final class KmsClientPassTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('The KMS client "op" named by the "heidi.keys.kms" configuration is not registered in "key_management.clients": no client is registered at all.');
+        $this->expectExceptionMessageIs('The KMS client "op" named by the "beffroi.keys.kms" configuration is not registered in "key_management.clients": no client is registered at all.');
 
         // When
         new KmsClientPass()->process($container);
@@ -81,13 +81,13 @@ final class KmsClientPassTest extends TestCase
         new KmsClientPass()->process($container);
 
         // Then
-        static::assertFalse($container->hasAlias('heidi.kms'));
+        static::assertFalse($container->hasAlias('beffroi.kms'));
     }
 
     private static function container(string $client): ContainerBuilder
     {
         $container = new ContainerBuilder();
-        $container->setAlias('heidi.kms', 'key_management.' . $client);
+        $container->setAlias('beffroi.kms', 'key_management.' . $client);
 
         return $container;
     }

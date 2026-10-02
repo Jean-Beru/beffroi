@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace Beffroi\Bundle\Tests\Unit\Security;
 
-use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
-use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
-use Heidi\Bundle\Security\CorePasswordHasher;
-use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Bridge\Password\PasswordHasherRegistry;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
-use Heidi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2i;
+use Beffroi\Core\Bridge\Password\WiredPasswordAlgorithms;
+use Beffroi\Bundle\Security\CorePasswordHasher;
+use Beffroi\Core\Bridge\Password\NativePasswordHasher;
+use Beffroi\Core\Bridge\Password\PasswordHasherRegistry;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
+use Beffroi\Core\Domain\Credential\PasswordHash;
 use const PASSWORD_BCRYPT;
 use function password_hash;
 use PHPUnit\Framework\Attributes\DataProvider;

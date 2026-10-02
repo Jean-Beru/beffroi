@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use function http_build_query;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

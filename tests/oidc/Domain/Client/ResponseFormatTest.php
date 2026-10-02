@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client;
+namespace Beffroi\Oidc\Tests\Domain\Client;
 
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Client\ResponseEncryption;
-use Heidi\Oidc\Domain\Client\ResponseFormat;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Client\ResponseEncryption;
+use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
 use function array_filter;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\User;
 use function implode;
 
 /**

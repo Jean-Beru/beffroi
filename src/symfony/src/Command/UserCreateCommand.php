@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Core\Application\Identity\UserAlreadyExistsException;
-use Heidi\Core\Application\Identity\UserProvisioner;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
+use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -20,8 +20,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * A user of the tenant (architecture §3.1, §5.5); the subject is generated unless an import brings one (decision 0002).
  */
 #[AsCommand(
-    name: 'heidi:user:create',
-    description: 'Create a user of the tenant; give them a password with heidi:user:set-password.',
+    name: 'beffroi:user:create',
+    description: 'Create a user of the tenant; give them a password with beffroi:user:set-password.',
 )]
 final readonly class UserCreateCommand
 {
@@ -82,7 +82,7 @@ final readonly class UserCreateCommand
                 'Tenant' => $tenant->slug,
             ],
         );
-        $io->success(sprintf('The user "%s" is created; give them a password with "heidi:user:set-password %s".', $user->username, $user->username));
+        $io->success(sprintf('The user "%s" is created; give them a password with "beffroi:user:set-password %s".', $user->username, $user->username));
 
         return Command::SUCCESS;
     }

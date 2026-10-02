@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Client;
+namespace Beffroi\Bundle\Tests\Unit\Client;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Cache\SeenOnce;
-use Heidi\Bundle\Client\ClientAssertionReplayGuard;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Bundle\Cache\SeenOnce;
+use Beffroi\Bundle\Client\ClientAssertionReplayGuard;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;

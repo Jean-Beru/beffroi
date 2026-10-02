@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Authorization;
+namespace Beffroi\Oidc\Tests\Application\Authorization;
 
 use function array_map;
 use DateInterval;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Authorization\RequestObjectResolver;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Domain\Client\RequestUri;
-use Heidi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
-use Heidi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
-use Heidi\Oidc\Exception\ClientKeysUnavailableException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Exception\RequestObjectUnavailableException;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
-use Heidi\Oidc\Tests\Fixture\FakeRequestObjectFetcher;
-use Heidi\Oidc\Tests\Fixture\Methods;
-use Heidi\Oidc\Tests\Fixture\RequestObjects;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Authorization\RequestObjectResolver;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Client\RequestUri;
+use Beffroi\Oidc\Domain\Client\RequestObject\OneRegisteredAlgorithm;
+use Beffroi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Exception\RequestObjectUnavailableException;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
+use Beffroi\Oidc\Tests\Fixture\FakeRequestObjectFetcher;
+use Beffroi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Tests\Fixture\RequestObjects;
 use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

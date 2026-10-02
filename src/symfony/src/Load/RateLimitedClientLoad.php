@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Load;
+namespace Beffroi\Bundle\Load;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Port\ClientLoadBudgetInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Port\ClientLoadBudgetInterface;
 use function sprintf;
 
 /**

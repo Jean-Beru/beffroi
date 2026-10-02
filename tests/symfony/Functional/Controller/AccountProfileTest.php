@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
@@ -94,8 +94,8 @@ final class AccountProfileTest extends BrowserTestCase
     {
         // Given
         $user = self::user('alice');
-        $user->changeEmail(new EmailAddress('alice@heidi.test'), $verified, self::now());
-        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        $user->changeEmail(new EmailAddress('alice@beffroi.test'), $verified, self::now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
         $this->signIn($user);
 
         // When
@@ -134,7 +134,7 @@ final class AccountProfileTest extends BrowserTestCase
     private function described(User $user): User
     {
         $now = new DateTimeImmutable('2026-01-15 10:00:00');
-        $user->changeEmail(new EmailAddress('alice@heidi.test'), true, $now);
+        $user->changeEmail(new EmailAddress('alice@beffroi.test'), true, $now);
         $user->changePhoneNumber('+33123456789', false, $now);
         $user->updateProfile(new Profile(
             name: 'Alice Example',
@@ -147,7 +147,7 @@ final class AccountProfileTest extends BrowserTestCase
             locality: 'London',
             postalCode: 'NW1',
         ), $now);
-        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
 
         return $user;
     }

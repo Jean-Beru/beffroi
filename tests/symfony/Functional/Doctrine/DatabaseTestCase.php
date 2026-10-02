@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Closure;
 use function copy;
@@ -10,21 +10,21 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\TenantSynchronizer;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\TenantSynchronizer;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use function is_string;
 use function sprintf;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -82,7 +82,7 @@ abstract class DatabaseTestCase extends WebTestCase
     {
         $connection = self::entityManager()->getConnection();
         $connection->close();
-        $database = static::getContainer()->getParameter('heidi_test.database');
+        $database = static::getContainer()->getParameter('beffroi_test.database');
         if (! is_string($database)) {
             static::fail('The database of the test kernel is not a file.');
         }
@@ -109,7 +109,7 @@ abstract class DatabaseTestCase extends WebTestCase
             $schema->dropDatabase();
             $schema->createSchema($entityManager->getMetadataFactory()->getAllMetadata());
         });
-        self::service('test.heidi.tenant_synchronizer', TenantSynchronizer::class)->synchronize();
+        self::service('test.beffroi.tenant_synchronizer', TenantSynchronizer::class)->synchronize();
     }
 
     protected static function entityManager(): EntityManagerInterface
@@ -132,7 +132,7 @@ abstract class DatabaseTestCase extends WebTestCase
      */
     protected static function tenant(): Tenant
     {
-        return self::service('test.heidi.tenant_provider', TenantProvider::class)->provide();
+        return self::service('test.beffroi.tenant_provider', TenantProvider::class)->provide();
     }
 
     /**
@@ -154,7 +154,7 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function user(string $username = 'alice', string $subject = 'alice-subject'): User
     {
         $user = User::create(Uuid::v7(), self::tenant(), new Subject($subject), $username, self::now());
-        self::service('test.heidi.users', UserRepositoryInterface::class)->save($user);
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
 
         return $user;
     }
@@ -174,7 +174,7 @@ abstract class DatabaseTestCase extends WebTestCase
             self::context($establishedAt),
             $establishedAt->modify('+12 hours'),
         );
-        self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->save($session);
+        self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->save($session);
 
         return $session;
     }
@@ -185,7 +185,7 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function client(string $clientId = 'oidc-demo'): Client
     {
         return (
-            self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId) ?? static::fail(sprintf(
+            self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId) ?? static::fail(sprintf(
                 'The client "%s" is not configured.',
                 $clientId,
             ))

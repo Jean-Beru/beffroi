@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
 use function base64_encode;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
@@ -32,14 +32,14 @@ final class PkceExemptRegistrationTest extends BrowserTestCase
 
     protected function setUp(): void
     {
-        $_SERVER['HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION'] = 'true';
+        $_SERVER['BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION'] = 'true';
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
         parent::tearDown();
-        unset($_SERVER['HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION'], $_ENV['HEIDI_TEST_REGISTRATION_PKCE_EXEMPTION']);
+        unset($_SERVER['BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION'], $_ENV['BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION']);
     }
 
     /**
@@ -89,7 +89,7 @@ final class PkceExemptRegistrationTest extends BrowserTestCase
         self::reload();
 
         // When
-        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId);
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId);
 
         // Then
         static::assertTrue($client?->registration->requiresPkce);
@@ -108,7 +108,7 @@ final class PkceExemptRegistrationTest extends BrowserTestCase
         self::reload();
 
         // When
-        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId);
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId);
 
         // Then
         static::assertFalse($client?->registration->requiresPkce);
@@ -141,7 +141,7 @@ final class PkceExemptRegistrationTest extends BrowserTestCase
 
     private function issue(): void
     {
-        self::service('test.heidi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
+        self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
             ->save(new InitialAccessToken(
                 Uuid::v7(),
                 self::tenant(),

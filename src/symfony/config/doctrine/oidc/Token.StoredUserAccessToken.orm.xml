@@ -4,27 +4,27 @@
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- An opaque access token somebody signed in for (architecture §4.6): the session is what a logout revokes by, and what it had proven at the grant is what the introspection of the token renders. -->
-    <entity name="Heidi\Oidc\Domain\Token\StoredUserAccessToken" table="heidi_access_token">
+    <entity name="Beffroi\Oidc\Domain\Token\StoredUserAccessToken" table="beffroi_access_token">
         <indexes>
-            <index name="heidi_access_token_grant" columns="grant_id"/>
-            <index name="heidi_access_token_expiry" columns="expires_at"/>
+            <index name="beffroi_access_token_grant" columns="grant_id"/>
+            <index name="beffroi_access_token_expiry" columns="expires_at"/>
         </indexes>
-        <many-to-one field="session" target-entity="Heidi\Core\Domain\Session\AuthenticationSession">
+        <many-to-one field="session" target-entity="Beffroi\Core\Domain\Session\AuthenticationSession">
             <join-column name="session_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
         </many-to-one>
-        <field name="authorizationDetails" type="heidi_authorization_details" column="authorization_details" nullable="true">
+        <field name="authorizationDetails" type="beffroi_authorization_details" column="authorization_details" nullable="true">
             <options>
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <field name="claimsRequest" type="heidi_claims_request" column="claims" nullable="true">
+        <field name="claimsRequest" type="beffroi_claims_request" column="claims" nullable="true">
             <options>
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <embedded name="authentication" class="Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
+        <embedded name="authentication" class="Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
         <entity-listeners>
-            <entity-listener class="Heidi\Bundle\Doctrine\Listener\ClientResolver">
+            <entity-listener class="Beffroi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>
             </entity-listener>
         </entity-listeners>

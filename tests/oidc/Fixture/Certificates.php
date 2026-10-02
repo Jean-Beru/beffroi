@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function base64_encode;
-use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
-use Heidi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
 use LogicException;
 
 /**
@@ -26,66 +26,68 @@ final class Certificates
 {
     private const string CLIENT_PEM = <<<'PEM'
         -----BEGIN CERTIFICATE-----
-        MIICHDCCAcOgAwIBAgIBATAKBggqhkjOPQQDAjA6MRYwFAYDVQQDDA1IZWlkaSBU
-        ZXN0IENBMRMwEQYDVQQKDApIZWlkaSBUZXN0MQswCQYDVQQGEwJGUjAgFw0yNjA5
-        MjEyMDMxMzlaGA8yMTI2MDgyODIwMzEzOVowPjEaMBgGA1UEAwwRaGVpZGkgbXRs
-        cyBjbGllbnQxEzARBgNVBAoMCkhlaWRpIFRlc3QxCzAJBgNVBAYTAkZSMFkwEwYH
-        KoZIzj0CAQYIKoZIzj0DAQcDQgAEyL/VRHTs0CgXrQWcBfg3HKDLCuR2lCSVtKM0
-        9GcBviq2s2Utd9Jioe1/kvOkbPVoTTQxXlyZHrEt1i5BBjFYBaOBszCBsDBgBgNV
-        HREEWTBXghJjbGllbnQuZXhhbXBsZS5jb22GI2h0dHBzOi8vY2xpZW50LmV4YW1w
-        bGUuY29tL2NhbGxiYWNrhwTGM2QHgRZvcHNAY2xpZW50LmV4YW1wbGUuY29tMAwG
-        A1UdEwEB/wQCMAAwHQYDVR0OBBYEFEyUIsZkQTWEyTlA2awgRVYQBqxhMB8GA1Ud
-        IwQYMBaAFL0dVm8T+DfqZlIl08qly1D3okZ/MAoGCCqGSM49BAMCA0cAMEQCIAUe
-        iMoZGoDHFZm1UfK8vYOlNxNyqu0ODMdOWYAaOx8zAiBbs0adJhJ1JF+oYPE6CM/L
-        mxDM7hva3XOginrDAsObLw==
+        MIICNzCCAd6gAwIBAgIUZCRlYKl43G0AyCgRWbCflF0+vAEwCgYIKoZIzj0EAwIw
+        PjEYMBYGA1UEAwwPQmVmZnJvaSBUZXN0IENBMRUwEwYDVQQKDAxCZWZmcm9pIFRl
+        c3QxCzAJBgNVBAYTAkZSMCAXDTI2MTAwMjIxMzgyNloYDzIxMjYwOTA4MjEzODI2
+        WjBCMRwwGgYDVQQDDBNiZWZmcm9pIG10bHMgY2xpZW50MRUwEwYDVQQKDAxCZWZm
+        cm9pIFRlc3QxCzAJBgNVBAYTAkZSMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+        HVaix5t0Q8yDYtsvNtQc1JXB7Sg5imB3nQzN9DPYPJMWUFCK13jWmQNPThRR26R4
+        Xy0BsJlze2mLOS4QvGCkVKOBszCBsDBgBgNVHREEWTBXghJjbGllbnQuZXhhbXBs
+        ZS5jb22GI2h0dHBzOi8vY2xpZW50LmV4YW1wbGUuY29tL2NhbGxiYWNrhwTGM2QH
+        gRZvcHNAY2xpZW50LmV4YW1wbGUuY29tMAwGA1UdEwEB/wQCMAAwHQYDVR0OBBYE
+        FE19P6JVBT53uOuabQWLVJ4+P3DqMB8GA1UdIwQYMBaAFLtKzbYMIV/QstRhuatL
+        u1jESycyMAoGCCqGSM49BAMCA0cAMEQCIBUFVEdsivRmuyHRKpWBKjhWLpZqIvop
+        W8Jz1NSNS63zAiAg5U9dmbSR6/msXxqyl45LaCRF6XMSvvh/IwgwuordhQ==
         -----END CERTIFICATE-----
         PEM;
 
     private const string OTHER_PEM = <<<'PEM'
         -----BEGIN CERTIFICATE-----
-        MIIB3TCCAYOgAwIBAgIBAjAKBggqhkjOPQQDAjA6MRYwFAYDVQQDDA1IZWlkaSBU
-        ZXN0IENBMRMwEQYDVQQKDApIZWlkaSBUZXN0MQswCQYDVQQGEwJGUjAgFw0yNjA5
-        MjEyMDMxNTNaGA8yMTI2MDgyODIwMzE1M1owRDEgMB4GA1UEAwwXaGVpZGkgbXRs
-        cyBvdGhlciBjbGllbnQxEzARBgNVBAoMCkhlaWRpIFRlc3QxCzAJBgNVBAYTAkZS
-        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEH6+CxCGnrzCua4SWMfr4KzpFXVHH
-        /4NL2xuTK06roxIWx3GwR6bsCiITZxMbb5KIbc4vup2pih005KWKnBu8GKNuMGww
-        HAYDVR0RBBUwE4IRb3RoZXIuZXhhbXBsZS5jb20wDAYDVR0TAQH/BAIwADAdBgNV
-        HQ4EFgQUBq1+W89kzuHZUDHrxwC40am0570wHwYDVR0jBBgwFoAUvR1WbxP4N+pm
-        UiXTyqXLUPeiRn8wCgYIKoZIzj0EAwIDSAAwRQIgbcUYrF9lY6AY2Pa0we6KYPNf
-        B+tfY0pXUcKwnsidhsoCIQCmyxDDvncfJ7k2bDmLWqTvnBl1ykTZiwiKBH2nC3Og
-        Ag==
+        MIIB+DCCAZ6gAwIBAgIUDGgirj9ommtYT0aNPFNsweYyse4wCgYIKoZIzj0EAwIw
+        PjEYMBYGA1UEAwwPQmVmZnJvaSBUZXN0IENBMRUwEwYDVQQKDAxCZWZmcm9pIFRl
+        c3QxCzAJBgNVBAYTAkZSMCAXDTI2MTAwMjIxMzgyNloYDzIxMjYwOTA4MjEzODI2
+        WjBIMSIwIAYDVQQDDBliZWZmcm9pIG10bHMgb3RoZXIgY2xpZW50MRUwEwYDVQQK
+        DAxCZWZmcm9pIFRlc3QxCzAJBgNVBAYTAkZSMFkwEwYHKoZIzj0CAQYIKoZIzj0D
+        AQcDQgAEk2eVaDdDr/QSMD5NuXMsNdNhpBCc8JhqlpIQg9JydvODJCkz8yEPYKU0
+        3gqREewD9OoMjDSdcb58y434wJTTQ6NuMGwwHAYDVR0RBBUwE4IRb3RoZXIuZXhh
+        bXBsZS5jb20wDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUAEKKatcgvKSxadl5QLZ4
+        J+xkgdwwHwYDVR0jBBgwFoAUu0rNtgwhX9Cy1GG5q0u7WMRLJzIwCgYIKoZIzj0E
+        AwIDSAAwRQIgbDrwfI+9+4S4Y0cROO6eWbkTuCbsXL1hfDMah3iGAE8CIQCuj71r
+        /3hlg5NLJF5DoDGIagf1J0xwFve7/bsxyIRWWA==
         -----END CERTIFICATE-----
         PEM;
 
     private const string SELF_SIGNED_PEM = <<<'PEM'
         -----BEGIN CERTIFICATE-----
-        MIICADCCAaagAwIBAgIBAzAKBggqhkjOPQQDAjA+MRowGAYDVQQDDBFoZWlkaSBt
-        dGxzIGNsaWVudDETMBEGA1UECgwKSGVpZGkgVGVzdDELMAkGA1UEBhMCRlIwIBcN
-        MjYwOTIxMjAzMTM5WhgPMjEyNjA4MjgyMDMxMzlaMD4xGjAYBgNVBAMMEWhlaWRp
-        IG10bHMgY2xpZW50MRMwEQYDVQQKDApIZWlkaSBUZXN0MQswCQYDVQQGEwJGUjBZ
-        MBMGByqGSM49AgEGCCqGSM49AwEHA0IABMnrmMNkWzMcMjv2L+6YQ5jg7QrmF5WR
-        3YrUH6qcd0kOi1QjWBXiGAppbfl8d7C4V6q6b86d3afhicRoVfu2AD+jgZIwgY8w
-        YAYDVR0RBFkwV4ISY2xpZW50LmV4YW1wbGUuY29thiNodHRwczovL2NsaWVudC5l
-        eGFtcGxlLmNvbS9jYWxsYmFja4cExjNkB4EWb3BzQGNsaWVudC5leGFtcGxlLmNv
-        bTAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBQ+C12XDIr1Gs4nrv6P5WzribaOnDAK
-        BggqhkjOPQQDAgNIADBFAiEArZvGJgZbp4cOdeYh7REEo43eNvG5cHFFDmJHpK8U
-        n4ACIDRIaOS7f2MbuFsLYYMF3Se1aM3AzdpPUKc50N7sQJYf
+        MIICGjCCAcGgAwIBAgIUWYn5MWZyn3gTZukk8cAJuCVwmQkwCgYIKoZIzj0EAwIw
+        QjEcMBoGA1UEAwwTYmVmZnJvaSBtdGxzIGNsaWVudDEVMBMGA1UECgwMQmVmZnJv
+        aSBUZXN0MQswCQYDVQQGEwJGUjAgFw0yNjEwMDIyMTM4MjZaGA8yMTI2MDkwODIx
+        MzgyNlowQjEcMBoGA1UEAwwTYmVmZnJvaSBtdGxzIGNsaWVudDEVMBMGA1UECgwM
+        QmVmZnJvaSBUZXN0MQswCQYDVQQGEwJGUjBZMBMGByqGSM49AgEGCCqGSM49AwEH
+        A0IABB1WosebdEPMg2LbLzbUHNSVwe0oOYpgd50MzfQz2DyTFlBQitd41pkDT04U
+        UdukeF8tAbCZc3tpizkuELxgpFSjgZIwgY8wYAYDVR0RBFkwV4ISY2xpZW50LmV4
+        YW1wbGUuY29thiNodHRwczovL2NsaWVudC5leGFtcGxlLmNvbS9jYWxsYmFja4cE
+        xjNkB4EWb3BzQGNsaWVudC5leGFtcGxlLmNvbTAMBgNVHRMBAf8EAjAAMB0GA1Ud
+        DgQWBBRNfT+iVQU+d7jrmm0Fi1SePj9w6jAKBggqhkjOPQQDAgNHADBEAiBOU6bQ
+        odXsqgQaOYY47mehA9tWmwwcJeZAcsnY5C1+iAIgH4/LsQYgrSU4pENyGX3eVto0
+        elf03h4ecHU/lOAAv0I=
         -----END CERTIFICATE-----
         PEM;
 
     private const string REISSUED_PEM = <<<'PEM'
         -----BEGIN CERTIFICATE-----
-        MIICADCCAaagAwIBAgIBBDAKBggqhkjOPQQDAjA+MRowGAYDVQQDDBFoZWlkaSBt
-        dGxzIGNsaWVudDETMBEGA1UECgwKSGVpZGkgVGVzdDELMAkGA1UEBhMCRlIwIBcN
-        MjYwOTIxMjAzMTM5WhgPMjEyNjA4MjgyMDMxMzlaMD4xGjAYBgNVBAMMEWhlaWRp
-        IG10bHMgY2xpZW50MRMwEQYDVQQKDApIZWlkaSBUZXN0MQswCQYDVQQGEwJGUjBZ
-        MBMGByqGSM49AgEGCCqGSM49AwEHA0IABH8iRkRP2qF/HhCAL/mvIt6KDX8H0j2G
-        Vbib/qv1Hmx8knpRu3hn1Q9irNuAI1/QrTtsq8pgIfXK3TG5T42PVE6jgZIwgY8w
-        YAYDVR0RBFkwV4ISY2xpZW50LmV4YW1wbGUuY29thiNodHRwczovL2NsaWVudC5l
-        eGFtcGxlLmNvbS9jYWxsYmFja4cExjNkB4EWb3BzQGNsaWVudC5leGFtcGxlLmNv
-        bTAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBR3MBMfuj9jB7eZsd6Dn27lhUBO/DAK
-        BggqhkjOPQQDAgNIADBFAiEAzlxoBFi71b9yyHd3pfV/ja0s9In8iT5UCK9Ahv+u
-        ihwCIAIq7kbrmqIHNHbk4wQah0/N/9ovXu3VKpI8momYnaoI
+        MIICGjCCAcGgAwIBAgIUbh1J8t1uMaDM+6eQdgpAUbF778YwCgYIKoZIzj0EAwIw
+        QjEcMBoGA1UEAwwTYmVmZnJvaSBtdGxzIGNsaWVudDEVMBMGA1UECgwMQmVmZnJv
+        aSBUZXN0MQswCQYDVQQGEwJGUjAgFw0yNjEwMDIyMTM4MjZaGA8yMTI2MDkwODIx
+        MzgyNlowQjEcMBoGA1UEAwwTYmVmZnJvaSBtdGxzIGNsaWVudDEVMBMGA1UECgwM
+        QmVmZnJvaSBUZXN0MQswCQYDVQQGEwJGUjBZMBMGByqGSM49AgEGCCqGSM49AwEH
+        A0IABEHIbI2KwKsRzZqHcGjVIFgkKDgrOstkzxoE4653IBnAYLUC4TE9iSnW8gRb
+        YQCCev5BbSXn0nUjxpndv7/WmYijgZIwgY8wYAYDVR0RBFkwV4ISY2xpZW50LmV4
+        YW1wbGUuY29thiNodHRwczovL2NsaWVudC5leGFtcGxlLmNvbS9jYWxsYmFja4cE
+        xjNkB4EWb3BzQGNsaWVudC5leGFtcGxlLmNvbTAMBgNVHRMBAf8EAjAAMB0GA1Ud
+        DgQWBBS3NbZhSnhemhetx+0r/T3filZ00jAKBggqhkjOPQQDAgNHADBEAiBh5KL/
+        oPoElvYiq2+zPCgGkrmSo345s1SqUVgN3EjSmwIgAiM1cN4pGezwV2kG0ptstwS0
+        zVMisBWDviEIUWzaBoM=
         -----END CERTIFICATE-----
         PEM;
 
@@ -94,7 +96,7 @@ final class Certificates
      * ("openssl x509 -noout -subject -nameopt RFC2253"). A registration is normalised by the reader of
      * the provider, so what is registered is the name as the tool that printed it wrote it.
      */
-    public const string SUBJECT_DN = 'C=FR,O=Heidi Test,CN=heidi mtls client';
+    public const string SUBJECT_DN = 'C=FR,O=Beffroi Test,CN=beffroi mtls client';
 
     public const string DNS_NAME = 'client.example.com';
 

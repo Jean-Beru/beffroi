@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Token\ServedAccessTokenShapes;
-use Heidi\Oidc\Domain\Client\AccessTokenShapeInterface;
+use Beffroi\Oidc\Application\Token\ServedAccessTokenShapes;
+use Beffroi\Oidc\Domain\Client\AccessTokenShapeInterface;
 
 /**
  * The shapes an access token is written in that the tests speak of, and the wirings they read them

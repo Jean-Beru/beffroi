@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
-use Heidi\Oidc\Domain\Client\ResponseFormat;
+use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use function sprintf;
 
 /**

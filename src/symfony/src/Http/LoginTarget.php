@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Bundle\Controller\LoginController;
+use Beffroi\Bundle\Controller\LoginController;
 use function array_is_list;
 use function is_array;
 use function is_string;
@@ -32,7 +32,7 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
  */
 final readonly class LoginTarget
 {
-    public const string SESSION_KEY = '_heidi_login_target';
+    public const string SESSION_KEY = '_beffroi_login_target';
 
     public function __construct(
         private InteractionPages $pages,

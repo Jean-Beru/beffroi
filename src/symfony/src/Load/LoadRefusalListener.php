@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Load;
+namespace Beffroi\Bundle\Load;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Plane\Plane;
-use Heidi\Core\Domain\Event\LoadBudgetSpent;
-use Heidi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Core\Domain\Event\LoadBudgetSpent;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;

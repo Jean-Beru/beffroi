@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Token;
+namespace Beffroi\Bundle\Tests\Functional\Token;
 
 use DateTimeImmutable;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
-use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\AuthorizationInterface;
-use Heidi\Oidc\Port\AccessTokenShapeIssuerInterface;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
+use Beffroi\Oidc\Port\AccessTokenShapeIssuerInterface;
 
 /**
  * A third shape of access token, wired into the test kernel under a name no class of the module knows

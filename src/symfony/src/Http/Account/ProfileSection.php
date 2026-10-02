@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
 use function count;
-use Heidi\Bundle\Controller\AccountProfileController;
-use Heidi\Core\Domain\Identity\User;
+use Beffroi\Bundle\Controller\AccountProfileController;
+use Beffroi\Core\Domain\Identity\User;
 
 /**
  * What this provider holds about the person, on the home page: how much of it they told us. What each

@@ -147,9 +147,9 @@ jobs:
       - name: "Write the key of the tenant"
         run: |
           mkdir -m 700 "${RUNNER_TEMP}/kms"
-          (umask 077 && head -c 32 /dev/urandom > "${RUNNER_TEMP}/kms/heidi-default.key")
-          echo "HEIDI_TEST_KMS_DSN=sodium+dir://${RUNNER_TEMP}/kms?ext=.key" >> "$GITHUB_ENV"
-          echo "HEIDI_TEST_KMS_KEY_ID=heidi-{tenant}" >> "$GITHUB_ENV"
+          (umask 077 && head -c 32 /dev/urandom > "${RUNNER_TEMP}/kms/beffroi-default.key")
+          echo "BEFFROI_TEST_KMS_DSN=sodium+dir://${RUNNER_TEMP}/kms?ext=.key" >> "$GITHUB_ENV"
+          echo "BEFFROI_TEST_KMS_KEY_ID=beffroi-{tenant}" >> "$GITHUB_ENV"
       - name: "Key custody against the key file"
         run: castor phpunit -- --no-coverage tests/symfony/Functional/Key tests/symfony/Functional/Security tests/symfony/Functional/Doctrine/DumpGivesNothingAwayTest.php
 

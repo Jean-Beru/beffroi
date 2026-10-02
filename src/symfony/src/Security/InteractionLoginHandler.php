@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Bundle\Controller\LoginController;
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\LoginTarget;
+use Beffroi\Bundle\Controller\LoginController;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\LoginTarget;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;

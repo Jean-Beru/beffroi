@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
-use Heidi\Oidc\Port\ClientConfigurationEndpointInterface;
-use Heidi\Oidc\Port\EndpointLocatorInterface;
-use Heidi\Oidc\Port\MutualTlsEndpointLocatorInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Discovery\ProviderEndpoints;
+use Beffroi\Oidc\Port\ClientConfigurationEndpointInterface;
+use Beffroi\Oidc\Port\EndpointLocatorInterface;
+use Beffroi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 
 /**
  * Where the endpoints of a tenant are served in the tests: under the issuer, at the paths the

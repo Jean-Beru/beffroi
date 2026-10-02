@@ -1,22 +1,22 @@
 # The routes of the bundle, imported as an application imports them, next to a route of the host
 # application that the plane guard must leave alone.
-heidi:
-    resource: '@HeidiBundle/config/routes.php'
+beffroi:
+    resource: '@BeffroiBundle/config/routes.php'
 
 host_route:
     path: /host
-    controller: Heidi\Bundle\Tests\Functional\Controller\ProbeController
+    controller: Beffroi\Bundle\Tests\Functional\Controller\ProbeController
     defaults:
         plane: host
 # The endpoints of the FIDO2 server API, imported as an application imports them in development, under a
 # prefix of its own.
-heidi_fido_conformance:
-    resource: '@HeidiBundle/config/routes/fido-conformance.php'
+beffroi_fido_conformance:
+    resource: '@BeffroiBundle/config/routes/fido-conformance.php'
     prefix: /fido/conformance
 
 # What the certification suite answers a backchannel request with, imported the same way.
-heidi_ciba_conformance:
-    resource: '@HeidiBundle/config/routes/ciba-conformance.php'
+beffroi_ciba_conformance:
+    resource: '@BeffroiBundle/config/routes/ciba-conformance.php'
     prefix: /ciba/conformance
 
 # The pages of the profiler, as an application imports them in development: the one test that boots a

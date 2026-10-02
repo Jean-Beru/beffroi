@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Registration;
+namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
 use DateInterval;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
-use Heidi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;

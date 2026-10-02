@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Webauthn;
+namespace Beffroi\Core\Tests\Bridge\Webauthn;
 
 use function array_map;
-use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
-use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
-use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

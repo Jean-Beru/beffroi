@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use function base64_decode;
 use function base64_encode;
@@ -20,7 +20,7 @@ use function strtr;
  */
 final class BytesType extends Type
 {
-    public const string NAME = 'heidi_bytes';
+    public const string NAME = 'beffroi_bytes';
 
     public static function encode(string $bytes): string
     {

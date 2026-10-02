@@ -2,38 +2,38 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Port\ContentEncryptionAlgorithmsInterface;
-use Heidi\Core\Port\KeyEncryptionAlgorithmsInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
-use Heidi\Oidc\Application\Client\RegisteredClients;
-use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
-use Heidi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
-use Heidi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
-use Heidi\Oidc\Application\Scope\OfferedScopes;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Port\ClientSourceInterface;
-use Heidi\Oidc\Port\OfferedScopesInterface;
-use Heidi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
-use Heidi\Oidc\Application\Client\ClientMetadataReader;
-use Heidi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
-use Heidi\Oidc\Domain\Client\Metadata\ClientMetadata;
-use Heidi\Oidc\Domain\Client\Metadata\DeclaredMembers;
-use Heidi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
-use Heidi\Oidc\Domain\Client\Metadata\RegisteredMembers;
-use Heidi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
-use Heidi\Oidc\Port\CertificateReaderInterface;
-use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
-use Heidi\Oidc\Port\PresentedTokenTypesInterface;
-use Heidi\Oidc\Port\ServedAccessTokenShapesInterface;
-use Heidi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
-use Heidi\Oidc\Port\ServedDeliveryModesInterface;
-use Heidi\Oidc\Port\ServedGrantsInterface;
-use Heidi\Oidc\Port\AssignedSubjectTypesInterface;
+use Beffroi\Core\Port\ContentEncryptionAlgorithmsInterface;
+use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
+use Beffroi\Oidc\Application\Client\RegisteredClients;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
+use Beffroi\Oidc\Application\Scope\OfferedScopes;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Port\ClientSourceInterface;
+use Beffroi\Oidc\Port\OfferedScopesInterface;
+use Beffroi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
+use Beffroi\Oidc\Application\Client\ClientMetadataReader;
+use Beffroi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
+use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadata;
+use Beffroi\Oidc\Domain\Client\Metadata\DeclaredMembers;
+use Beffroi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
+use Beffroi\Oidc\Domain\Client\Metadata\RegisteredMembers;
+use Beffroi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
+use Beffroi\Oidc\Port\CertificateReaderInterface;
+use Beffroi\Oidc\Port\ClientAuthenticationMethodsInterface;
+use Beffroi\Oidc\Port\PresentedTokenTypesInterface;
+use Beffroi\Oidc\Port\ServedAccessTokenShapesInterface;
+use Beffroi\Oidc\Port\ServedAuthorizationDetailTypesInterface;
+use Beffroi\Oidc\Port\ServedDeliveryModesInterface;
+use Beffroi\Oidc\Port\ServedGrantsInterface;
+use Beffroi\Oidc\Port\AssignedSubjectTypesInterface;
 
 /**
  * The reader every registration of the tests goes through, wired with what the provider of the tests is

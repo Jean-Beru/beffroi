@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Key;
+namespace Beffroi\Bundle\Key;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Domain\Event\KmsUnavailable;
-use Heidi\Core\Exception\ExceptionTrail;
-use Heidi\Core\Exception\KmsUnavailableException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Domain\Event\KmsUnavailable;
+use Beffroi\Core\Exception\ExceptionTrail;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;

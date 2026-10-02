@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Http\LogoutTokenSender;
-use Heidi\Bundle\Messenger\NotificationRetryPolicy;
+use Beffroi\Bundle\Http\LogoutTokenSender;
+use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 

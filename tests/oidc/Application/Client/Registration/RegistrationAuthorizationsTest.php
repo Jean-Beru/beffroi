@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Registration;
+namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
-use Heidi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
-use Heidi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
-use Heidi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
-use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
+use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;

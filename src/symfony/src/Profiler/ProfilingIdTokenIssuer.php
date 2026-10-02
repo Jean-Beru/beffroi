@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\UserAuthorizationInterface;
-use Heidi\Oidc\Exception\InvalidJwtException;
-use Heidi\Oidc\Port\CompactJwtReaderInterface;
-use Heidi\Oidc\Port\IdTokenIssuerInterface;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Beffroi\Oidc\Exception\InvalidJwtException;
+use Beffroi\Oidc\Port\CompactJwtReaderInterface;
+use Beffroi\Oidc\Port\IdTokenIssuerInterface;
 use function array_keys;
 use function implode;
 use const DATE_ATOM;

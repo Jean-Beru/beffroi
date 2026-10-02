@@ -3,9 +3,9 @@
    the standard scopes of OIDC Core §5.4 in words and any other by its value. The warning is not decoration: somebody who started
    nothing must be told to refuse. The answer is a POST with the token this page renders; a GET approves
    nothing.
-   Overridable by an application under templates/bundles/HeidiBundle/. #}
-{% extends '@Heidi/layout.html.twig' %}
-{% trans_default_domain 'heidi' %}
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
 
 {% set described_scopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'] %}
 
@@ -25,9 +25,9 @@
         {% endfor %}
     </ul>
     <p data-warning="unexpected">{{ 'device.approval.unexpected'|trans }}</p>
-    <form method="post" action="{{ path('heidi_interaction_device') }}">
+    <form method="post" action="{{ path('beffroi_interaction_device') }}">
         <input type="hidden" name="user_code" value="{{ typed }}">
-        <input type="hidden" name="_token" value="{{ csrf_token('heidi_device') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('beffroi_device') }}">
         <button type="submit" name="answer" value="allow">{{ 'device.approval.allow'|trans }}</button>
         <button type="submit" name="answer" value="deny">{{ 'device.approval.deny'|trans }}</button>
     </form>

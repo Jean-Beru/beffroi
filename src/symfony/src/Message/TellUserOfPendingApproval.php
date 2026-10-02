@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Message;
+namespace Beffroi\Bundle\Message;
 
-use Heidi\Oidc\Domain\Ciba\PendingApproval;
+use Beffroi\Oidc\Domain\Ciba\PendingApproval;
 
 /**
  * One user to reach, because a client has asked for something they alone can answer (CIBA Core §7,

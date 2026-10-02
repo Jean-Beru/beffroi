@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
@@ -24,13 +24,13 @@ final class Version20260922120000 extends AbstractMigration
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('ALTER TABLE heidi_access_token ADD cnf JSONB DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_access_token ADD cnf JSONB DEFAULT NULL');
     }
 
     public function down(Schema $schema): void
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('ALTER TABLE heidi_access_token DROP cnf');
+        $this->addSql('ALTER TABLE beffroi_access_token DROP cnf');
     }
 }

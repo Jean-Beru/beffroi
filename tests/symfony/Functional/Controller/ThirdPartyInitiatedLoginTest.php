@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Oidc\Domain\Claims\SectorIdentifier;
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Oidc\Domain\Claims\SectorIdentifier;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
 use function http_build_query;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
@@ -210,7 +210,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         $this->begin('launched-pairwise-app');
         $hint = new Subject(self::redirectedQuery($this->browser->getResponse())['login_hint']);
         self::reload();
-        $named = self::service('test.heidi.pairwise_subjects', PairwiseSubjectRepositoryInterface::class)
+        $named = self::service('test.beffroi.pairwise_subjects', PairwiseSubjectRepositoryInterface::class)
             ->findUser(self::tenant(), new SectorIdentifier('launched-pairwise.test'), $hint);
 
         // Then
@@ -277,7 +277,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     public static function provideUrisInPlainHttp(): iterable
     {
         yield 'on the host the client registered' => ['http://launched.test/start'];
-        yield 'on the loopback host the suite runs on' => ['http://localhost:8443/test/a/heidi/initiate-login'];
+        yield 'on the loopback host the suite runs on' => ['http://localhost:8443/test/a/beffroi/initiate-login'];
     }
 
     /**
@@ -316,7 +316,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
 
     private function issue(): void
     {
-        self::service('test.heidi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
+        self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
             ->save(new InitialAccessToken(
                 Uuid::v7(),
                 self::tenant(),

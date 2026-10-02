@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\InteractionPages;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class PasskeyLoginController
 {
-    public const string ROUTE = 'heidi_interaction_passkey_login';
+    public const string ROUTE = 'beffroi_interaction_passkey_login';
 
     public function __construct(
         private InteractionPages $pages,

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\SecretSealerInterface;
 use SensitiveParameter;
 use function sprintf;
 use function str_starts_with;

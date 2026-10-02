@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
 /**
  * One thing the provider did during a request, as the panel shows it: the tab it belongs under, a

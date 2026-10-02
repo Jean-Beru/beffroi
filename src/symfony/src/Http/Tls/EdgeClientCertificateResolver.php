@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Tls;
+namespace Beffroi\Bundle\Http\Tls;
 
-use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Symfony\Component\HttpFoundation\Request;
 
 /**

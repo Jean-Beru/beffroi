@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
 use function array_keys;
 use function array_map;
-use Heidi\Oidc\Domain\Authorization\Prompt;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Oidc\Domain\Authorization\Prompt;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function implode;
 use function sprintf;
 use const DATE_ATOM;

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function hash_equals;
-use Heidi\Core\Application\Identity\UserProvisioner;
-use Heidi\Core\Domain\Credential\PlainPassword;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Domain\Credential\PlainPassword;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function is_string;
 use function preg_replace;
 use function sprintf;
@@ -26,7 +26,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * never an argument nor an option.
  */
 #[AsCommand(
-    name: 'heidi:user:set-password',
+    name: 'beffroi:user:set-password',
     description: 'Set or replace the password of a user, asked on the terminal or read from the standard input.',
 )]
 final readonly class UserSetPasswordCommand

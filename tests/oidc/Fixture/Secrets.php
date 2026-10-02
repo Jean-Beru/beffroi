@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Oidc\Application\Secret\SecretDrawer;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Oidc\Application\Secret\SecretDrawer;
 
 /**
  * For a test that needs a value of the shape this provider draws and does not care which.

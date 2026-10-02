@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace Beffroi\Bundle\Tests\Functional\Command;
 
-use Heidi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
 use function preg_match;
 use function preg_replace;
 use function sprintf;

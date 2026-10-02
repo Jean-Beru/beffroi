@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
-use Heidi\Core\Domain\Credential\PasswordAlgorithmInterface;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\PasswordAlgorithmsInterface;
-use Heidi\Oidc\Domain\Client\ClientSecretInterface;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
+use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -36,7 +36,7 @@ use LogicException;
  */
 final class ClientSecretType extends JsonObjectType implements NeedsPasswordAlgorithmsInterface
 {
-    public const string NAME = 'heidi_client_secret';
+    public const string NAME = 'beffroi_client_secret';
 
     private const string HASH = 'hash';
 

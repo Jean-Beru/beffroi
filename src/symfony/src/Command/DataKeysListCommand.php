@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use function count;
 use DateTimeInterface;
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Heidi\Bundle\Doctrine\PersonalData\StoredDataKeyDescription;
-use Heidi\Bundle\Doctrine\PersonalData\TenantDataKeys;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Doctrine\PersonalData\StoredDataKeyDescription;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeys;
 use function implode;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -27,7 +27,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * that is absent is a family nothing has sealed yet, which is what this says in place of a table.
  */
 #[AsCommand(
-    name: 'heidi:data-keys:list',
+    name: 'beffroi:data-keys:list',
     description: 'List the data keys of the tenant by scope, with when each was minted, the master key that wraps it and the KMS client that opens it; reads only, and never opens a key.',
 )]
 final readonly class DataKeysListCommand

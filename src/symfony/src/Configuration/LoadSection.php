@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Load\LoadBudget;
+use Beffroi\Bundle\Load\LoadBudget;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
@@ -97,7 +97,7 @@ final readonly class LoadSection extends ConfigurationSection
         $load = $this->own($config);
         foreach ([LoadBudget::ORIGIN, LoadBudget::CLIENT] as $budget) {
             $numbers = self::section($load, $budget);
-            $services->get('heidi.load.' . $budget)->arg('$limit', self::integer($numbers, 'limit'))->arg('$interval', self::seconds($numbers, 'interval'));
+            $services->get('beffroi.load.' . $budget)->arg('$limit', self::integer($numbers, 'limit'))->arg('$interval', self::seconds($numbers, 'interval'));
         }
     }
 }

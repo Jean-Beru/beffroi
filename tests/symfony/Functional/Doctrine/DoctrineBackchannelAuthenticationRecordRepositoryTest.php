@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
-use Heidi\Oidc\Domain\Ciba\BindingMessage;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Resource\ResourceIndicator;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
-use Heidi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
+use Beffroi\Oidc\Domain\Ciba\BindingMessage;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
@@ -228,7 +228,7 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
 
     private static function records(): BackchannelAuthenticationRecordRepositoryInterface
     {
-        return self::service('test.heidi.backchannel_authentication_requests', BackchannelAuthenticationRecordRepositoryInterface::class);
+        return self::service('test.beffroi.backchannel_authentication_requests', BackchannelAuthenticationRecordRepositoryInterface::class);
     }
 
     private static function record(

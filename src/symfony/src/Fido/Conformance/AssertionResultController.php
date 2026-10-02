@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Fido\Conformance;
+namespace Beffroi\Bundle\Fido\Conformance;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Passkey\PasskeyAuthentication;
-use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Passkey\PasskeyAuthentication;
+use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -23,7 +23,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class AssertionResultController
 {
-    public const string ROUTE = 'heidi_fido_conformance_assertion_result';
+    public const string ROUTE = 'beffroi_fido_conformance_assertion_result';
 
     public function __construct(
         private TenantProvider $tenants,

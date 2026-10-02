@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Webauthn;
+namespace Beffroi\Core\Tests\Bridge\Webauthn;
 
-use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
-use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;

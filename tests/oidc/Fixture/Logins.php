@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function array_map;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Oidc\Port\ProvableMethodsInterface;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Oidc\Port\ProvableMethodsInterface;
 
 /**
  * What the logins of an integration can prove: a password only, as spike 1 had, or a password and a

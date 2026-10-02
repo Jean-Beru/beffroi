@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedPkce;
-use Heidi\Oidc\Tests\Fixture\ChallengeMethods;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedPkce;
+use Beffroi\Oidc\Tests\Fixture\ChallengeMethods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

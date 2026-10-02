@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\Account;
+namespace Beffroi\Bundle\Tests\Unit\Http\Account;
 
-use Heidi\Bundle\Http\Account\ConsentsSection;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Bundle\Http\Account\ConsentsSection;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -94,7 +94,7 @@ final class ConsentsSectionTest extends TestCase
         $route = $section->route();
 
         // Then
-        static::assertSame('heidi_interaction_account_consents', $route);
+        static::assertSame('beffroi_interaction_account_consents', $route);
     }
 
     /**

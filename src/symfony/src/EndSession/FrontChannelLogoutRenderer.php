@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\EndSession;
+namespace Beffroi\Bundle\EndSession;
 
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Application\EndSession\FrontChannelLogout;
-use Heidi\Oidc\Domain\EndSession\FrontChannelLogoutPage;
-use Heidi\Oidc\Domain\EndSession\LogoutChannel;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Application\EndSession\FrontChannelLogout;
+use Beffroi\Oidc\Domain\EndSession\FrontChannelLogoutPage;
+use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

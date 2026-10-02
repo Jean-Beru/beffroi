@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\NotificationsPage;
-use Heidi\Core\Application\Push\PushSubscriptionEnrolment;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\KeyNotFoundException;
-use Heidi\Core\Port\ApplicationServerAlgorithmsInterface;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\NotificationsPage;
+use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
 use function mb_strlen;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,9 +31,9 @@ use function trim;
 #[AsController]
 final readonly class PushSubscriptionController
 {
-    public const string ROUTE = 'heidi_interaction_account_notifications_subscribe';
+    public const string ROUTE = 'beffroi_interaction_account_notifications_subscribe';
 
-    public const string CSRF_TOKEN_ID = 'heidi_push_subscribe';
+    public const string CSRF_TOKEN_ID = 'beffroi_push_subscribe';
 
     public const string ENDPOINT_PARAMETER = 'endpoint';
 

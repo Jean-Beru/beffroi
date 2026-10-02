@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Dpop;
+namespace Beffroi\Bundle\Dpop;
 
 use DateInterval;
 use DateTimeImmutable;
 use function hash;
-use Heidi\Oidc\Application\Secret\SecretDrawer;
-use Heidi\Oidc\Exception\UseDpopNonceException;
-use Heidi\Oidc\Port\DpopNonceInterface;
+use Beffroi\Oidc\Application\Secret\SecretDrawer;
+use Beffroi\Oidc\Exception\UseDpopNonceException;
+use Beffroi\Oidc\Port\DpopNonceInterface;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
@@ -59,6 +59,6 @@ final readonly class CachedDpopNonce implements DpopNonceInterface
 
     private static function key(string $nonce): string
     {
-        return 'heidi.dpop_nonces.' . hash('xxh128', $nonce);
+        return 'beffroi.dpop_nonces.' . hash('xxh128', $nonce);
     }
 }

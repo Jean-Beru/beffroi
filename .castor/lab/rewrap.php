@@ -60,17 +60,17 @@ function rewrap_live(
     io()->title('The data keys move while the provider serves');
 
     $env = load_dot_env(getcwd() . '/apps/op/.env');
-    foreach (['HEIDI_ISSUER', 'HEIDI_DEV_USER_PASSWORD', 'OIDC_DEMO_SECRET'] as $name) {
+    foreach (['BEFFROI_ISSUER', 'BEFFROI_DEV_USER_PASSWORD', 'OIDC_DEMO_SECRET'] as $name) {
         if (($env[$name] ?? '') === '') {
             io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
 
             exit(1);
         }
     }
-    if (($env['HEIDI_KMS_DSN_SECOND'] ?? '') === '') {
+    if (($env['BEFFROI_KMS_DSN_SECOND'] ?? '') === '') {
         io()->error([
             'There is no second KMS client to move the keys to, so there is nothing this walk can play.',
-            'A rewrap is a run with both clients configured at once, and the second one has to hold a key under the id the deployment names. Run "castor provision --kms sodium", which writes HEIDI_KMS_DSN_SECOND; the Vault and LocalStack backends hold a key a container creates and not one a task generates, and moving to Vault waits on heidi#420 besides.',
+            'A rewrap is a run with both clients configured at once, and the second one has to hold a key under the id the deployment names. Run "castor provision --kms sodium", which writes BEFFROI_KMS_DSN_SECOND; the Vault and LocalStack backends hold a key a container creates and not one a task generates, and moving to Vault waits on beffroi#420 besides.',
         ]);
 
         exit(1);
@@ -85,8 +85,8 @@ function rewrap_live(
         }
     }
 
-    $issuer = $env['HEIDI_ISSUER'];
-    $password = $env['HEIDI_DEV_USER_PASSWORD'];
+    $issuer = $env['BEFFROI_ISSUER'];
+    $password = $env['BEFFROI_DEV_USER_PASSWORD'];
     $secret = $env['OIDC_DEMO_SECRET'];
     $ca = caddy_ca(getcwd() . '/' . REWRAP_CA_FILE);
 
@@ -99,14 +99,14 @@ function rewrap_live(
     [$from, $to] = rewrap_direction(array_values(array_unique(array_values($keysBefore))));
     $sealedBefore = rewrap_sealed_columns();
     if ($sealedBefore === []) {
-        io()->error('No sealed column of heidi_user holds anything, so a comparison before and after would compare nothing: run "castor provision" and play a journey.');
+        io()->error('No sealed column of beffroi_user holds anything, so a comparison before and after would compare nothing: run "castor provision" and play a journey.');
 
         exit(1);
     }
 
     io()->definitionList(
         ['Keys' => sprintf('%d scope(s), wrapped by "%s"', count($keysBefore), implode('", "', array_unique(array_values($keysBefore))))],
-        ['Sealed' => sprintf('%d column value(s) of heidi_user, read as bytes', count($sealedBefore))],
+        ['Sealed' => sprintf('%d column value(s) of beffroi_user, read as bytes', count($sealedBefore))],
         ['Logins' => sprintf('%d, the move started after the %d%s', $logins, REWRAP_AFTER, REWRAP_AFTER === 1 ? 'st' : 'th')],
         ['Move' => sprintf('"%s" to "%s", the direction the store leaves available', $from, $to)],
     );
@@ -192,7 +192,7 @@ function rewrap_live(
     }
 
     io()->success(sprintf(
-        'The data keys of the tenant moved from "%s" to "%s" in %.2f s while the provider served %d login(s), not one of which failed, and the %d sealed value(s) of heidi_user hold the bytes they held. A scope minted from now on is wrapped by the client the bundle seals with, which this walk does not change; the keys stay on "%s", which is where the next run of it starts.',
+        'The data keys of the tenant moved from "%s" to "%s" in %.2f s while the provider served %d login(s), not one of which failed, and the %d sealed value(s) of beffroi_user hold the bytes they held. A scope minted from now on is wrapped by the client the bundle seals with, which this walk does not change; the keys stay on "%s", which is where the next run of it starts.',
         $from,
         $to,
         $moveEnded - $moveStarted,
@@ -222,7 +222,7 @@ function rewrap_direction(array $holding): array
                 count($holding),
                 implode('", "', $holding),
             ),
-            sprintf('Put them all on one client first ("castor console heidi:data-keys:rewrap --to=%s"), then run this again.', REWRAP_CLIENTS[0]),
+            sprintf('Put them all on one client first ("castor console beffroi:data-keys:rewrap --to=%s"), then run this again.', REWRAP_CLIENTS[0]),
         ]);
 
         exit(1);
@@ -258,7 +258,7 @@ function rewrap_start(string $from, string $to): Process
         '-T',
         'op',
         'bin/console',
-        'heidi:data-keys:rewrap',
+        'beffroi:data-keys:rewrap',
         '--to=' . $to,
         '--from=' . $from,
         '--no-interaction',
@@ -289,7 +289,7 @@ function rewrap_check(Process $process): void
 function rewrap_dry_run(string $from, string $to): int
 {
     $output = op_console(
-        ['heidi:data-keys:rewrap', '--to=' . $to, '--from=' . $from, '--dry-run', '--no-interaction'],
+        ['beffroi:data-keys:rewrap', '--to=' . $to, '--from=' . $from, '--dry-run', '--no-interaction'],
         context()->withQuiet(),
     )->getOutput();
 
@@ -310,7 +310,7 @@ function rewrap_dry_run(string $from, string $to): int
 function rewrap_keys(): array
 {
     $keys = [];
-    foreach (rewrap_query('SELECT scope, client FROM heidi_data_key ORDER BY scope ASC') as $line) {
+    foreach (rewrap_query('SELECT scope, client FROM beffroi_data_key ORDER BY scope ASC') as $line) {
         [$scope, $client] = explode('|', $line, 2);
         $keys[$scope] = $client;
     }
@@ -319,7 +319,7 @@ function rewrap_keys(): array
 }
 
 /**
- * Every sealed value of heidi_user as the database holds it, in hexadecimal.
+ * Every sealed value of beffroi_user as the database holds it, in hexadecimal.
  *
  * The columns are the binary ones of the table, which is what a sealed column is under PostgreSQL, so a
  * column sealed later is compared without this walk being touched. The rows are named by their subject,
@@ -329,7 +329,7 @@ function rewrap_keys(): array
  */
 function rewrap_sealed_columns(): array
 {
-    $columns = rewrap_query("SELECT column_name FROM information_schema.columns WHERE table_name = 'heidi_user' AND data_type = 'bytea' ORDER BY column_name ASC");
+    $columns = rewrap_query("SELECT column_name FROM information_schema.columns WHERE table_name = 'beffroi_user' AND data_type = 'bytea' ORDER BY column_name ASC");
     if ($columns === []) {
         return [];
     }
@@ -337,7 +337,7 @@ function rewrap_sealed_columns(): array
     $selects = [];
     foreach ($columns as $column) {
         $selects[] = sprintf(
-            "SELECT subject || '.%s' AS where_, encode(%s, 'hex') AS bytes_ FROM heidi_user WHERE %s IS NOT NULL",
+            "SELECT subject || '.%s' AS where_, encode(%s, 'hex') AS bytes_ FROM beffroi_user WHERE %s IS NOT NULL",
             $column,
             $column,
             $column,
@@ -403,5 +403,5 @@ function rewrap_setting(string $key): string
 {
     $value = $_SERVER[sprintf('POSTGRES_%s', strtoupper($key))] ?? null;
 
-    return is_string($value) && $value !== '' ? $value : 'heidi';
+    return is_string($value) && $value !== '' ? $value : 'beffroi';
 }

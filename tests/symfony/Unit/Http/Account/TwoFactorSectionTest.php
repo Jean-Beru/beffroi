@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\Account;
+namespace Beffroi\Bundle\Tests\Unit\Http\Account;
 
-use Heidi\Bundle\Http\Account\TwoFactorSection;
-use Heidi\Core\Application\Credential\ActiveCredentials;
-use Heidi\Core\Application\Totp\ActiveTotp;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\Credential;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Bundle\Http\Account\TwoFactorSection;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -76,7 +76,7 @@ final class TwoFactorSectionTest extends TestCase
         $route = $section->route();
 
         // Then
-        static::assertSame('heidi_interaction_account_two_factor', $route);
+        static::assertSame('beffroi_interaction_account_two_factor', $route);
     }
 
     /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Message;
+namespace Beffroi\Bundle\Message;
 
 /**
  * The timed step of decision 0009: the clients that registered themselves and that nobody uses any more are

@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\JwtLibrary;
+namespace Beffroi\Core\Tests\Bridge\JwtLibrary;
 
-use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Core\Domain\Key\GeneratedKeyPair;
-use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
-use Heidi\Core\Domain\Key\KeyUse;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidJweException;
-use Heidi\Core\Exception\InvalidJwsException;
-use Heidi\Core\Exception\KeyNotFoundException;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\EnvelopesThatThrow;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Core\Domain\Key\GeneratedKeyPair;
+use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
+use Beffroi\Core\Domain\Key\KeyUse;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidJweException;
+use Beffroi\Core\Exception\InvalidJwsException;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Encryption\Algorithm\ContentEncryption\A128GCM;

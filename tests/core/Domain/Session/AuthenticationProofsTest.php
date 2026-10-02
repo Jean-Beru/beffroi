@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Session;
+namespace Beffroi\Core\Tests\Domain\Session;
 
 use function array_map;
-use Heidi\Core\Domain\Session\AuthenticationFactor;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Session\AuthenticationFactor;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -242,7 +242,7 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     /**
-     * RFC 8176 §3: the registry is extensible; an upstream provider may send values Symfony and Heidi do not
+     * RFC 8176 §3: the registry is extensible; an upstream provider may send values Symfony and Beffroi do not
      * know, and they are carried as received.
      */
     #[Test]

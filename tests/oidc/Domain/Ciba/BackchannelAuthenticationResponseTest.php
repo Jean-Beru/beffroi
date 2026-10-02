@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Ciba;
+namespace Beffroi\Oidc\Tests\Domain\Ciba;
 
-use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationResponse;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationResponse;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

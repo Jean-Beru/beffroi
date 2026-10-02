@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Exception;
+namespace Beffroi\Oidc\Tests\Exception;
 
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Exception\AccessDeniedException;
-use Heidi\Oidc\Exception\ConsentRequiredException;
-use Heidi\Oidc\Exception\InsufficientScopeException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\InvalidGrantException;
-use Heidi\Oidc\Exception\InvalidRequestException;
-use Heidi\Oidc\Exception\InvalidRequestObjectException;
-use Heidi\Oidc\Exception\InvalidRequestUriException;
-use Heidi\Oidc\Exception\InvalidScopeException;
-use Heidi\Oidc\Exception\InvalidTokenException;
-use Heidi\Oidc\Exception\LoginRequiredException;
-use Heidi\Oidc\Exception\MissingBearerTokenException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Exception\UnauthorizedClientException;
-use Heidi\Oidc\Exception\UnsupportedGrantTypeException;
-use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Exception\AccessDeniedException;
+use Beffroi\Oidc\Exception\ConsentRequiredException;
+use Beffroi\Oidc\Exception\InsufficientScopeException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\InvalidGrantException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Exception\InvalidRequestObjectException;
+use Beffroi\Oidc\Exception\InvalidRequestUriException;
+use Beffroi\Oidc\Exception\InvalidScopeException;
+use Beffroi\Oidc\Exception\InvalidTokenException;
+use Beffroi\Oidc\Exception\LoginRequiredException;
+use Beffroi\Oidc\Exception\MissingBearerTokenException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Exception\UnauthorizedClientException;
+use Beffroi\Oidc\Exception\UnsupportedGrantTypeException;
+use Beffroi\Oidc\Exception\UnsupportedResponseTypeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Application\Token\Confirmations;
-use Heidi\Oidc\Domain\Token\CertificateConfirmationKind;
-use Heidi\Oidc\Domain\Token\KeyConfirmationKind;
+use Beffroi\Oidc\Application\Token\Confirmations;
+use Beffroi\Oidc\Domain\Token\CertificateConfirmationKind;
+use Beffroi\Oidc\Domain\Token\KeyConfirmationKind;
 
 /**
  * The two ways this provider binds a token, wired as the bundle wires them: the certificate of the

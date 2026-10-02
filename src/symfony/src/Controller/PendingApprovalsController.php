@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\FormToken;
-use Heidi\Bundle\Http\LoginTarget;
-use Heidi\Bundle\Http\PendingApprovalsPage;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Bundle\Http\StepUpOffer;
-use Heidi\Oidc\Application\Ciba\BackchannelApproval;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\FormToken;
+use Beffroi\Bundle\Http\LoginTarget;
+use Beffroi\Bundle\Http\PendingApprovalsPage;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Http\StepUpOffer;
+use Beffroi\Oidc\Application\Ciba\BackchannelApproval;
 use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -43,9 +43,9 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class PendingApprovalsController
 {
-    public const string ROUTE = 'heidi_interaction_account_approvals';
+    public const string ROUTE = 'beffroi_interaction_account_approvals';
 
-    public const string CSRF_TOKEN_ID = 'heidi_approvals';
+    public const string CSRF_TOKEN_ID = 'beffroi_approvals';
 
     public const string REQUEST_PARAMETER = 'request';
 

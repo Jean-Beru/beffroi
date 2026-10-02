@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Ciba;
+namespace Beffroi\Bundle\Ciba;
 
-use Heidi\Bundle\Message\TellUserOfPendingApproval;
-use Heidi\Oidc\Domain\Ciba\PendingApproval;
-use Heidi\Oidc\Port\PendingApprovalNotifierInterface;
+use Beffroi\Bundle\Message\TellUserOfPendingApproval;
+use Beffroi\Oidc\Domain\Ciba\PendingApproval;
+use Beffroi\Oidc\Port\PendingApprovalNotifierInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**

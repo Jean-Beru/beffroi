@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
@@ -27,13 +27,13 @@ final class Version20260929180000 extends AbstractMigration
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql("ALTER TABLE heidi_client ADD registration_access_token CHAR(64) DEFAULT '0000000000000000000000000000000000000000000000000000000000000000' NOT NULL");
+        $this->addSql("ALTER TABLE beffroi_client ADD registration_access_token CHAR(64) DEFAULT '0000000000000000000000000000000000000000000000000000000000000000' NOT NULL");
     }
 
     public function down(Schema $schema): void
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('ALTER TABLE heidi_client DROP registration_access_token');
+        $this->addSql('ALTER TABLE beffroi_client DROP registration_access_token');
     }
 }

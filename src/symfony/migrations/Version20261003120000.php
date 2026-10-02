@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use function array_keys;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
-use Heidi\Bundle\Doctrine\Migration\SealingMigration;
+use Beffroi\Bundle\Doctrine\Migration\SealingMigration;
 use function sprintf;
 
 /**
@@ -19,7 +19,7 @@ use function sprintf;
  * **Neither table needs a blind index, for a different reason each.** What a ceremony finds a passkey by
  * is its credential ID and its user handle, both of which stay in the clear, being published by the
  * authenticator and drawn at random; nobody searches a passkey by the name its owner typed. And
- * `heidi_push_subscription` already holds the digest of its endpoint in a column of its own, with the
+ * `beffroi_push_subscription` already holds the digest of its endpoint in a column of its own, with the
  * unique constraint and the lookup on it, which is the shape a blind index would have had to build: it was
  * built there for its own reason, an endpoint being longer than a key may be, and sealing the endpoint
  * takes nothing away from it.
@@ -39,10 +39,10 @@ final class Version20261003120000 extends SealingMigration
      *                                                        whether it accepts a null
      */
     private const array CLEARTEXT = [
-        'heidi_passkey_credential' => [
+        'beffroi_passkey_credential' => [
             'name' => ['VARCHAR(255)', false],
         ],
-        'heidi_push_subscription' => [
+        'beffroi_push_subscription' => [
             'endpoint' => ['TEXT', false],
             'label' => ['VARCHAR(255)', true],
         ],

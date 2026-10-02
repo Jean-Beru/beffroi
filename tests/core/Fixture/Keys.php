@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Core\Domain\Key\GeneratedKeyPair;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use function sodium_crypto_aead_xchacha20poly1305_ietf_keygen;
 use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 use Symfony\Component\KeyManagement\KeyLoader\InMemoryKeyLoader;

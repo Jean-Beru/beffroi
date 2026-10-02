@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Message;
+namespace Beffroi\Bundle\Message;
 
 /**
  * The timed steps of the key lifecycle (architecture §3.3): activate the staged keys whose delay elapsed,

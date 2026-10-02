@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Key;
+namespace Beffroi\Bundle\Key;
 
 use function base64_decode;
 use function base64_encode;
@@ -10,11 +10,11 @@ use function bin2hex;
 use function chmod;
 use function file_get_contents;
 use function file_put_contents;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Port\RandomnessInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Oidc\Port\PairwiseSaltInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\RandomnessInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Oidc\Port\PairwiseSaltInterface;
 use function is_dir;
 use function is_string;
 use function link;

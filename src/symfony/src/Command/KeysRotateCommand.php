@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
 use DateTimeInterface;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\KeyAlgorithmsInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\KeyAlgorithmsInterface;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -25,12 +25,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * asks for now, or one that replaces a compromised key.
  */
 #[AsCommand(
-    name: 'heidi:keys:rotate',
+    name: 'beffroi:keys:rotate',
     description: 'Stage a new key, sealed by the configured KMS and published at once; it takes over once the staging delay elapsed, or at once with --now; --compromised retires the previous key with no window.',
 )]
 final readonly class KeysRotateCommand
 {
-    public const string NAME = 'heidi:keys:rotate';
+    public const string NAME = 'beffroi:keys:rotate';
 
     public function __construct(
         private ConfiguredTenant $tenant,
@@ -90,7 +90,7 @@ final readonly class KeysRotateCommand
             $key = $this->rotator->stage($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
             $io->note(sprintf(
-                'The key "%s" is the active one until then; the scheduled step activates the new key at %s, "heidi:keys:activate %s" does it earlier.',
+                'The key "%s" is the active one until then; the scheduled step activates the new key at %s, "beffroi:keys:activate %s" does it earlier.',
                 $previous->kid,
                 $key->activationDueAt->format(DateTimeInterface::RFC3339),
                 $key->kid,

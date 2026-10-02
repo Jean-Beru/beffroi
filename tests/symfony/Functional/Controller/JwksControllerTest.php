@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -42,7 +42,7 @@ final class JwksControllerTest extends BrowserTestCase
     }
 
     /**
-     * The lifetime is the one configured, "heidi.keys.jwks_max_age", two minutes in this kernel: the same
+     * The lifetime is the one configured, "beffroi.keys.jwks_max_age", two minutes in this kernel: the same
      * value the staging window of a rotation derives from (architecture §3.3).
      */
     #[Test]

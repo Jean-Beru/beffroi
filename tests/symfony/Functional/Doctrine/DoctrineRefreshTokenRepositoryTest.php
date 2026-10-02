@@ -2,32 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientPresentation;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
-use Heidi\Oidc\Port\RefreshTokensOfAConsentInterface;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
-use Heidi\Oidc\Tests\Fixture\Shapes;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
  * Architecture §4.6, §5.3: a token keyed by its hash, its family on every token of the lineage, found by
@@ -313,7 +313,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
 
     private static function refreshTokensOfAConsent(): RefreshTokensOfAConsentInterface
     {
-        return self::service('test.heidi.refresh_tokens_of_a_consent', RefreshTokensOfAConsentInterface::class);
+        return self::service('test.beffroi.refresh_tokens_of_a_consent', RefreshTokensOfAConsentInterface::class);
     }
 
     /**
@@ -328,6 +328,6 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
 
     private static function tokens(): RefreshTokenRepositoryInterface
     {
-        return self::service('test.heidi.refresh_tokens', RefreshTokenRepositoryInterface::class);
+        return self::service('test.beffroi.refresh_tokens', RefreshTokenRepositoryInterface::class);
     }
 }

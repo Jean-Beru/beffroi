@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\IssuedInitialAccessTokensInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
 use function is_numeric;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The initial access tokens of a tenant, in heidi_initial_access_token (RFC 7591 §1.2). The value is
+ * The initial access tokens of a tenant, in beffroi_initial_access_token (RFC 7591 §1.2). The value is
  * never here: a row is found by the digest of what the caller presented, so whoever reads the table
  * holds nothing to present.
  *

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use Closure;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
-use Heidi\Oidc\Tests\Fixture\RequestObjects;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\RequestObjects;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -271,7 +271,7 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
 
     private function issue(): void
     {
-        self::service('test.heidi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
+        self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
             ->save(new InitialAccessToken(
                 Uuid::v7(),
                 self::tenant(),

@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery;
+namespace Beffroi\Oidc\Tests\Application\Discovery;
 
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use function array_column;
 use function array_map;
-use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
-use Heidi\Oidc\Domain\Token\UserAuthorization;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Jwts;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use function is_array;
 use function is_string;
 use Jose\Component\Core\AlgorithmManager;
@@ -33,7 +33,7 @@ use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Heidi\Oidc\Tests\Fixture\Subjects;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\TestCase;
 
 final class JwksHandlerTest extends TestCase

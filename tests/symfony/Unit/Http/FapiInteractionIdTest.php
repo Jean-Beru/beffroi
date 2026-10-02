@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace Beffroi\Bundle\Tests\Unit\Http;
 
-use Heidi\Bundle\Http\FapiInteractionId;
-use Heidi\Bundle\Http\ServesAProtectedResourceInterface;
-use Heidi\Core\Bridge\Uid\FixedUuidGenerator;
+use Beffroi\Bundle\Http\FapiInteractionId;
+use Beffroi\Bundle\Http\ServesAProtectedResourceInterface;
+use Beffroi\Core\Bridge\Uid\FixedUuidGenerator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

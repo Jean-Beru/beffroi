@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
 use function sprintf;
 use function str_starts_with;
 use function strlen;
@@ -26,7 +26,7 @@ use function substr;
  */
 final readonly class Sealed implements ColumnClassificationInterface
 {
-    private const string TABLE_PREFIX = 'heidi_';
+    private const string TABLE_PREFIX = 'beffroi_';
 
     public function __construct(
         public string $family,

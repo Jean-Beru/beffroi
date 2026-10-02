@@ -1,3 +1,3 @@
-# heidi/symfony-bundle
+# beffroi/symfony-bundle
 
-Part of [heidi/framework](https://github.com/beffroi-php/heidi). See the monorepo for documentation and contributions.
+Part of [beffroi/framework](https://github.com/beffroi-php/beffroi). See the monorepo for documentation and contributions.

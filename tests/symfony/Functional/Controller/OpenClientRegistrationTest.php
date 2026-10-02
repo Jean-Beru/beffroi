@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Bundle\Message\RemoveUnusedClients;
-use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
-use Heidi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Bundle\Message\RemoveUnusedClients;
+use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Beffroi\Oidc\Port\ClientStoreInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -30,14 +30,14 @@ final class OpenClientRegistrationTest extends BrowserTestCase
 
     protected function setUp(): void
     {
-        $_SERVER['HEIDI_TEST_REGISTRATION_MODE'] = OpenRegistrationAuthorization::MODE;
+        $_SERVER['BEFFROI_TEST_REGISTRATION_MODE'] = OpenRegistrationAuthorization::MODE;
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
         parent::tearDown();
-        unset($_SERVER['HEIDI_TEST_REGISTRATION_MODE'], $_ENV['HEIDI_TEST_REGISTRATION_MODE']);
+        unset($_SERVER['BEFFROI_TEST_REGISTRATION_MODE'], $_ENV['BEFFROI_TEST_REGISTRATION_MODE']);
     }
 
     /**
@@ -120,7 +120,7 @@ final class OpenClientRegistrationTest extends BrowserTestCase
         self::mockTime(self::currentSecond()->add(new ClientRegistrationPolicy('a-mode')->keepsAClientNeverUsedFor)->modify('+1 minute'));
 
         // When
-        self::service('test.heidi.command_bus', MessageBusInterface::class)->dispatch(new RemoveUnusedClients());
+        self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new RemoveUnusedClients());
         self::reload();
 
         // Then
@@ -143,7 +143,7 @@ final class OpenClientRegistrationTest extends BrowserTestCase
 
     private function record(string $clientId): ?ClientRecord
     {
-        return self::service('test.heidi.client_store', ClientStoreInterface::class)->findRecord(self::tenant(), $clientId);
+        return self::service('test.beffroi.client_store', ClientStoreInterface::class)->findRecord(self::tenant(), $clientId);
     }
 
     /**

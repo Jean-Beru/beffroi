@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\PushedAuthorization;
+namespace Beffroi\Oidc\Tests\Domain\PushedAuthorization;
 
-use Heidi\Oidc\Tests\Fixture\Secrets;
-use Heidi\Oidc\Domain\PushedAuthorization\PushedAuthorizationResponse;
-use Heidi\Oidc\Domain\PushedAuthorization\RequestUri;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationResponse;
+use Beffroi\Oidc\Domain\PushedAuthorization\RequestUri;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

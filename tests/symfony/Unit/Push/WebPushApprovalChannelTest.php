@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Push;
+namespace Beffroi\Bundle\Tests\Unit\Push;
 
-use Heidi\Bundle\Ciba\WebPushApprovalChannel;
-use Heidi\Bundle\Locale\ServedLocales;
-use Heidi\Bundle\Locale\UserLocale;
-use Heidi\Bundle\Push\WebPushSender;
-use Heidi\Core\Application\Push\PushSubscriptionRevocation;
-use Heidi\Core\Bridge\InMemory\InMemoryPushSubscriptionRepository;
-use Heidi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\PushSubscription;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Oidc\Domain\Ciba\BindingMessage;
-use Heidi\Oidc\Domain\Ciba\PendingApproval;
+use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
+use Beffroi\Bundle\Locale\ServedLocales;
+use Beffroi\Bundle\Locale\UserLocale;
+use Beffroi\Bundle\Push\WebPushSender;
+use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
+use Beffroi\Core\Bridge\InMemory\InMemoryPushSubscriptionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Domain\Ciba\BindingMessage;
+use Beffroi\Oidc\Domain\Ciba\PendingApproval;
 use function array_shift;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine;
+namespace Beffroi\Bundle\Doctrine;
 
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\AmbientTenantInterface;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\AmbientTenantInterface;
 use function implode;
 use Symfony\Contracts\Service\ResetInterface;
 

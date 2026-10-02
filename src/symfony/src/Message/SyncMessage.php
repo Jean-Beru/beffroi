@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Message;
+namespace Beffroi\Bundle\Message;
 
 /**
  * A write the protocol needs the result of before answering (architecture §5.6). Every implementation

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
@@ -39,14 +39,14 @@ final class Version20261001120000 extends AbstractMigration
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('CREATE TABLE heidi_data_key (id BYTEA NOT NULL, scope VARCHAR(191) NOT NULL, key_material BYTEA NOT NULL, master_key_id VARCHAR(255) NOT NULL, client VARCHAR(64) NOT NULL, PRIMARY KEY (id))');
-        $this->addSql('CREATE INDEX heidi_data_key_scope_idx ON heidi_data_key (scope, id)');
+        $this->addSql('CREATE TABLE beffroi_data_key (id BYTEA NOT NULL, scope VARCHAR(191) NOT NULL, key_material BYTEA NOT NULL, master_key_id VARCHAR(255) NOT NULL, client VARCHAR(64) NOT NULL, PRIMARY KEY (id))');
+        $this->addSql('CREATE INDEX beffroi_data_key_scope_idx ON beffroi_data_key (scope, id)');
     }
 
     public function down(Schema $schema): void
     {
         $this->abortIf(! $this->platform instanceof PostgreSQLPlatform, 'This migration is written for PostgreSQL.');
 
-        $this->addSql('DROP TABLE heidi_data_key');
+        $this->addSql('DROP TABLE beffroi_data_key');
     }
 }

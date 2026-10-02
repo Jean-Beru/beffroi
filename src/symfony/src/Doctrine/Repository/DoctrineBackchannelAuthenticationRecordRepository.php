@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use function array_filter;
 use function array_values;
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
-use Heidi\Oidc\Port\RecordedGrantsInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
+use Beffroi\Oidc\Port\RecordedGrantsInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use function is_string;
 use function sprintf;
 
 /**
- * The records of backchannel authentication requests, in heidi_backchannel_authentication_request (CIBA
+ * The records of backchannel authentication requests, in beffroi_backchannel_authentication_request (CIBA
  * Core §7). A record of a client no longer registered is not found, as an identifier of one is not.
  *
  * @extends DoctrineRepository<BackchannelAuthenticationRecord>

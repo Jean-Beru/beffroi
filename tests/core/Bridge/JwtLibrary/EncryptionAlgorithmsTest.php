@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\JwtLibrary;
+namespace Beffroi\Core\Tests\Bridge\JwtLibrary;
 
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
-use Heidi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
-use Heidi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
+use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

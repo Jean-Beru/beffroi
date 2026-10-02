@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Identity;
+namespace Beffroi\Core\Tests\Domain\Identity;
 
-use Heidi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\Address;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

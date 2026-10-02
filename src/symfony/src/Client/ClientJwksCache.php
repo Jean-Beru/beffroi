@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Client;
+namespace Beffroi\Bundle\Client;
 
 use DateTimeImmutable;
 use function hash;
-use Heidi\Oidc\Domain\Client\CachedClientJwks;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientJwks;
-use Heidi\Oidc\Port\ClientJwksCacheInterface;
+use Beffroi\Oidc\Domain\Client\CachedClientJwks;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Port\ClientJwksCacheInterface;
 use function is_array;
 use function is_int;
 use Psr\Cache\CacheItemPoolInterface;
@@ -68,6 +68,6 @@ final readonly class ClientJwksCache implements ClientJwksCacheInterface
      */
     private static function key(Client $client): string
     {
-        return 'heidi.client_keys.' . hash('xxh128', sprintf('%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId));
+        return 'beffroi.client_keys.' . hash('xxh128', sprintf('%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId));
     }
 }

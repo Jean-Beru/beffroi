@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedAuthorizationDetails;
-use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
-use Heidi\Oidc\Tests\Fixture\InventedAuthorizationDetailType;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedAuthorizationDetails;
+use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\InventedAuthorizationDetailType;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

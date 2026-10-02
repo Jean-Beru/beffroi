@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
-use Heidi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
-use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Beffroi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
+use Beffroi\Oidc\Domain\Client\Certificate\CertificateIdentities;
 use function is_array;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;

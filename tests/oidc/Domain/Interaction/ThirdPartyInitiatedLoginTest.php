@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Interaction;
+namespace Beffroi\Oidc\Tests\Domain\Interaction;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Client\InitiateLoginUri;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Interaction\ThirdPartyInitiatedLogin;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Client\InitiateLoginUri;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Interaction\ThirdPartyInitiatedLogin;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

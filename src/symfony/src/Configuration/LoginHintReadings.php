@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
 use function array_keys;
-use Heidi\Oidc\Application\Hint\SubjectLoginHint;
-use Heidi\Oidc\Application\Hint\UsernameLoginHint;
+use Beffroi\Oidc\Application\Hint\SubjectLoginHint;
+use Beffroi\Oidc\Application\Hint\UsernameLoginHint;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
 /**

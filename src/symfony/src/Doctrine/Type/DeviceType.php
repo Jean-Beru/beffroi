@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
-use Heidi\Core\Domain\Session\Device;
-use Heidi\Core\Domain\Session\DeviceType as DeviceKind;
+use Beffroi\Core\Domain\Session\Device;
+use Beffroi\Core\Domain\Session\DeviceType as DeviceKind;
 
 /**
  * What a user agent parser said (architecture §3.5), as one JSON document on the session.
@@ -15,7 +15,7 @@ use Heidi\Core\Domain\Session\DeviceType as DeviceKind;
  */
 final class DeviceType extends JsonObjectType
 {
-    public const string NAME = 'heidi_device';
+    public const string NAME = 'beffroi_device';
 
     /**
      * The document of a device, and the device of a document, for the type that nests this one

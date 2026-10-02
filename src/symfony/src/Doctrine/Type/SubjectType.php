@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\Subject;
 
 /**
  * The "sub" of a user (OIDC Core §2), stored as is.
@@ -13,7 +13,7 @@ use Heidi\Core\Domain\Identity\Subject;
  */
 final class SubjectType extends StringObjectType
 {
-    public const string NAME = 'heidi_subject';
+    public const string NAME = 'beffroi_subject';
 
     protected function encode(object $value): string
     {

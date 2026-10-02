@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_filter;
 use function basename;
@@ -17,37 +17,37 @@ use Doctrine\Migrations\AbstractMigration;
 use Doctrine\Migrations\Exception\AbortMigration;
 use Doctrine\Migrations\Query\Query;
 use Doctrine\ORM\Tools\SchemaTool;
-use Heidi\Bundle\Migrations\Version20260915171732;
-use Heidi\Bundle\Migrations\Version20260917180000;
-use Heidi\Bundle\Migrations\Version20260919150000;
-use Heidi\Bundle\Migrations\Version20260920120000;
-use Heidi\Bundle\Migrations\Version20260920180000;
-use Heidi\Bundle\Migrations\Version20260922120000;
-use Heidi\Bundle\Migrations\Version20260922180000;
-use Heidi\Bundle\Migrations\Version20260923090000;
-use Heidi\Bundle\Migrations\Version20260923170000;
-use Heidi\Bundle\Migrations\Version20260923190000;
-use Heidi\Bundle\Migrations\Version20260925120000;
-use Heidi\Bundle\Migrations\Version20260925180000;
-use Heidi\Bundle\Migrations\Version20260926090000;
-use Heidi\Bundle\Migrations\Version20260926210000;
-use Heidi\Bundle\Migrations\Version20260926220000;
-use Heidi\Bundle\Migrations\Version20260927090000;
-use Heidi\Bundle\Migrations\Version20260927100000;
-use Heidi\Bundle\Migrations\Version20260927140000;
-use Heidi\Bundle\Migrations\Version20260927180000;
-use Heidi\Bundle\Migrations\Version20260928120000;
-use Heidi\Bundle\Migrations\Version20260929120000;
-use Heidi\Bundle\Migrations\Version20260929180000;
-use Heidi\Bundle\Migrations\Version20260930120000;
-use Heidi\Bundle\Migrations\Version20260930180000;
-use Heidi\Bundle\Migrations\Version20261001120000;
-use Heidi\Bundle\Migrations\Version20261001180000;
-use Heidi\Bundle\Migrations\Version20261002120000;
-use Heidi\Bundle\Migrations\Version20261002180000;
-use Heidi\Bundle\Migrations\Version20261003120000;
-use Heidi\Bundle\Migrations\Version20261003180000;
-use Heidi\Bundle\Migrations\Version20261004120000;
+use Beffroi\Bundle\Migrations\Version20260915171732;
+use Beffroi\Bundle\Migrations\Version20260917180000;
+use Beffroi\Bundle\Migrations\Version20260919150000;
+use Beffroi\Bundle\Migrations\Version20260920120000;
+use Beffroi\Bundle\Migrations\Version20260920180000;
+use Beffroi\Bundle\Migrations\Version20260922120000;
+use Beffroi\Bundle\Migrations\Version20260922180000;
+use Beffroi\Bundle\Migrations\Version20260923090000;
+use Beffroi\Bundle\Migrations\Version20260923170000;
+use Beffroi\Bundle\Migrations\Version20260923190000;
+use Beffroi\Bundle\Migrations\Version20260925120000;
+use Beffroi\Bundle\Migrations\Version20260925180000;
+use Beffroi\Bundle\Migrations\Version20260926090000;
+use Beffroi\Bundle\Migrations\Version20260926210000;
+use Beffroi\Bundle\Migrations\Version20260926220000;
+use Beffroi\Bundle\Migrations\Version20260927090000;
+use Beffroi\Bundle\Migrations\Version20260927100000;
+use Beffroi\Bundle\Migrations\Version20260927140000;
+use Beffroi\Bundle\Migrations\Version20260927180000;
+use Beffroi\Bundle\Migrations\Version20260928120000;
+use Beffroi\Bundle\Migrations\Version20260929120000;
+use Beffroi\Bundle\Migrations\Version20260929180000;
+use Beffroi\Bundle\Migrations\Version20260930120000;
+use Beffroi\Bundle\Migrations\Version20260930180000;
+use Beffroi\Bundle\Migrations\Version20261001120000;
+use Beffroi\Bundle\Migrations\Version20261001180000;
+use Beffroi\Bundle\Migrations\Version20261002120000;
+use Beffroi\Bundle\Migrations\Version20261002180000;
+use Beffroi\Bundle\Migrations\Version20261003120000;
+use Beffroi\Bundle\Migrations\Version20261003180000;
+use Beffroi\Bundle\Migrations\Version20261004120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -142,7 +142,7 @@ final class MigrationTest extends DatabaseTestCase
      * of no package: the bundle declares it to Doctrine Migrations, which loads the version files it finds
      * there, and only the `autoload-dev` of the monorepo maps the namespace. So a class placed there
      * resolves in this suite and not in a deployment, which is what this refuses. Anything several
-     * migrations share lives under `src/`, where `Heidi\Bundle\` autoloads it.
+     * migrations share lives under `src/`, where `Beffroi\Bundle\` autoloads it.
      */
     #[Test]
     public function theDirectoryOfTheMigrationsHoldsVersionFilesAndNothingElse(): void
@@ -205,7 +205,7 @@ final class MigrationTest extends DatabaseTestCase
         // Then
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
-        static::assertContains('ALTER TABLE heidi_refresh_token RENAME COLUMN family_authorization_code_hash TO family_granting_record_hash', $statements);
+        static::assertContains('ALTER TABLE beffroi_refresh_token RENAME COLUMN family_authorization_code_hash TO family_granting_record_hash', $statements);
     }
 
     #[Test]
@@ -223,7 +223,7 @@ final class MigrationTest extends DatabaseTestCase
         // Then
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         foreach ($statements as $statement) {
-            static::assertStringContainsString('heidi_access_token', $statement);
+            static::assertStringContainsString('beffroi_access_token', $statement);
         }
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
@@ -247,7 +247,7 @@ final class MigrationTest extends DatabaseTestCase
         // Then
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         foreach ($statements as $statement) {
-            static::assertStringContainsString('heidi_passkey_credential', $statement);
+            static::assertStringContainsString('beffroi_passkey_credential', $statement);
         }
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
@@ -271,7 +271,10 @@ final class MigrationTest extends DatabaseTestCase
         // Then
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         static::assertCount(1, $statements);
-        static::assertStringStartsWith('ALTER TABLE heidi_tenant ADD authentication_context_policy JSON DEFAULT \'{"classes":[{"name":"phrh"', $statements[0]);
+        static::assertStringStartsWith(
+            'ALTER TABLE beffroi_tenant ADD authentication_context_policy JSON DEFAULT \'{"classes":[{"name":"phrh"',
+            $statements[0],
+        );
         static::assertStringEndsWith('NOT NULL', $statements[0]);
     }
 
@@ -294,7 +297,7 @@ final class MigrationTest extends DatabaseTestCase
         // Then
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         foreach ($statements as $statement) {
-            static::assertStringContainsString('heidi_totp_credential', $statement);
+            static::assertStringContainsString('beffroi_totp_credential', $statement);
         }
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
@@ -318,7 +321,7 @@ final class MigrationTest extends DatabaseTestCase
         // Then
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         foreach ($statements as $statement) {
-            static::assertStringContainsString('heidi_pushed_authorization_request', $statement);
+            static::assertStringContainsString('beffroi_pushed_authorization_request', $statement);
         }
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }

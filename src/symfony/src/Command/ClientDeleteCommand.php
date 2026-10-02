@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
-use Heidi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Oidc\Application\Client\Registration\RegisteredClientRemoval;
+use Beffroi\Oidc\Port\ClientStoreInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -29,7 +29,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final readonly class ClientDeleteCommand
 {
-    public const string NAME = 'heidi:client:delete';
+    public const string NAME = 'beffroi:client:delete';
 
     public function __construct(
         private ConfiguredTenant $tenant,
@@ -42,7 +42,7 @@ final readonly class ClientDeleteCommand
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument(description: 'The identifier of the client, as "heidi:client:list" shows it.')]
+        #[Argument(description: 'The identifier of the client, as "beffroi:client:list" shows it.')]
         string $clientId,
     ): int {
         $tenant = $this->tenant->orTold($io);
@@ -55,7 +55,7 @@ final readonly class ClientDeleteCommand
         }
         if (! $client->wasRegisteredHere()) {
             $io->error(sprintf(
-                'The client "%s" is declared in the configuration of the deployment, so this provider cannot take it back; remove its block from "heidi.yaml" instead.',
+                'The client "%s" is declared in the configuration of the deployment, so this provider cannot take it back; remove its block from "beffroi.yaml" instead.',
                 $client->clientId,
             ));
 

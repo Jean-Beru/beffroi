@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Tls;
+namespace Beffroi\Bundle\Http\Tls;
 
 use RuntimeException;
 use function sprintf;

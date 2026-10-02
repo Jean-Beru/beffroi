@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Oidc\Port\EndpointLocatorInterface;
-use Heidi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer;
-use Heidi\Oidc\Tests\Fixture\InventedClaimsProvider;
+use Beffroi\Oidc\Port\EndpointLocatorInterface;
+use Beffroi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer;
+use Beffroi\Oidc\Tests\Fixture\InventedClaimsProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -253,7 +253,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     public function theRouterLocatesTheEndpoints(): void
     {
         // When
-        $endpoints = self::service('test.heidi.endpoints', EndpointLocatorInterface::class)->locate(self::tenant());
+        $endpoints = self::service('test.beffroi.endpoints', EndpointLocatorInterface::class)->locate(self::tenant());
 
         // Then
         static::assertSame('https://op.test/authorize', $endpoints->authorization);

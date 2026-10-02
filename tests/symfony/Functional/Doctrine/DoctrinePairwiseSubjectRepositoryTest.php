@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Oidc\Domain\Claims\PairwiseSubject;
-use Heidi\Oidc\Domain\Claims\SectorIdentifier;
-use Heidi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Oidc\Domain\Claims\PairwiseSubject;
+use Beffroi\Oidc\Domain\Claims\SectorIdentifier;
+use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
@@ -92,7 +92,7 @@ final class DoctrinePairwiseSubjectRepositoryTest extends DatabaseTestCase
 
     private static function subjectOf(Subject $of): PairwiseSubject
     {
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
             ->findBySubject(self::tenant(), $of) ?? static::fail('The user was not stored.');
 
         return new PairwiseSubject(
@@ -106,6 +106,6 @@ final class DoctrinePairwiseSubjectRepositoryTest extends DatabaseTestCase
 
     private static function assigned(): PairwiseSubjectRepositoryInterface
     {
-        return self::service('test.heidi.pairwise_subjects', PairwiseSubjectRepositoryInterface::class);
+        return self::service('test.beffroi.pairwise_subjects', PairwiseSubjectRepositoryInterface::class);
     }
 }

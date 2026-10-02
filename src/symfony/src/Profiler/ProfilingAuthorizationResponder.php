@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
-use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Profiler\Decision\DecisionObservations;
-use Heidi\Oidc\Domain\Authorization\RedirectTarget;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Exception\InteractionCompletedException;
-use Heidi\Oidc\Exception\InteractionExpiredException;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Http\AuthorizationResponderInterface;
+use Beffroi\Bundle\Profiler\Decision\DecisionObservations;
+use Beffroi\Oidc\Domain\Authorization\RedirectTarget;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Exception\InteractionCompletedException;
+use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 

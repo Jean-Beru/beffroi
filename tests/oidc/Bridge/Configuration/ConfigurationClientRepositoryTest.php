@@ -2,41 +2,41 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Bridge\Configuration;
+namespace Beffroi\Oidc\Tests\Bridge\Configuration;
 
 use function array_column;
-use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\NativePasswordHasher;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use function array_map;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Token\ServedGrants;
-use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
-use Heidi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Exchange\MayAct;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Domain\Client\ClientJwks;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\LogicException;
-use Heidi\Oidc\Port\ServedGrantsInterface;
-use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakeGrant;
-use Heidi\Oidc\Tests\Fixture\Grants;
-use Heidi\Oidc\Tests\Fixture\Registrations;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Bridge\Configuration\ClientDefinition;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Beffroi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Exchange\MayAct;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Port\ServedGrantsInterface;
+use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeGrant;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Registrations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
-use Heidi\Oidc\Tests\Fixture\TokenTypes;
+use Beffroi\Oidc\Tests\Fixture\TokenTypes;
 
 final class ConfigurationClientRepositoryTest extends TestCase
 {
@@ -57,7 +57,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     private const array SUITE = [
         'client_name' => 'Conformance suite, second client',
         'secret' => Clients::SECRET,
-        'redirect_uris' => ['https://localhost:8443/test/a/heidi/callback', 'https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'],
+        'redirect_uris' => ['https://localhost:8443/test/a/beffroi/callback', 'https://localhost:8443/test/a/beffroi/callback?dummy1=lorem&dummy2=ipsum'],
         'grant_types' => ['authorization_code'],
         'scope' => 'openid email',
         'token_endpoint_auth_method' => 'client_secret_post',
@@ -193,7 +193,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             'mtls-client' => [
                 'redirect_uris' => ['https://mtls.example/callback'],
                 'token_endpoint_auth_method' => 'tls_client_auth',
-                'tls_client_auth_subject_dn' => 'C=FR,O=Heidi Test,CN=heidi mtls client',
+                'tls_client_auth_subject_dn' => 'C=FR,O=Beffroi Test,CN=beffroi mtls client',
             ],
         ]);
 
@@ -202,7 +202,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
 
         // Then
         static::assertInstanceOf(SubjectDistinguishedName::class, $client->registration->certificateIdentity);
-        static::assertSame('c=FR,o=Heidi Test,cn=heidi mtls client', $client->registration->certificateIdentity->distinguishedName);
+        static::assertSame('c=FR,o=Beffroi Test,cn=beffroi mtls client', $client->registration->certificateIdentity->distinguishedName);
     }
 
     /**
@@ -210,7 +210,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     public static function provideCertificateRegistrations(): iterable
     {
-        yield 'tls_client_auth_subject_dn' => ['tls_client_auth_subject_dn', 'cn=heidi mtls client'];
+        yield 'tls_client_auth_subject_dn' => ['tls_client_auth_subject_dn', 'cn=beffroi mtls client'];
 
         yield 'tls_client_auth_san_dns' => ['tls_client_auth_san_dns', 'client.example.com'];
 
@@ -517,7 +517,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame('Conformance suite, second client', $suite->registration->presentation->name);
         static::assertSame('client_secret_post', $suite->registration->authenticationMethod->name());
         static::assertTrue($suite->registration->requiresConsent);
-        static::assertTrue($suite->registration->hasRedirectUri('https://localhost:8443/test/a/heidi/callback?dummy1=lorem&dummy2=ipsum'));
+        static::assertTrue($suite->registration->hasRedirectUri('https://localhost:8443/test/a/beffroi/callback?dummy1=lorem&dummy2=ipsum'));
         static::assertFalse($suite->registration->hasPostLogoutRedirectUri('https://localhost:8443/'));
         static::assertEquals([Grants::authorizationCode()], $suite->registration->grantTypes);
         static::assertSame(['openid', 'email'], $suite->registration->allowedScopes->values());
@@ -1006,7 +1006,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
             $base
                 + [
                     'token_endpoint_auth_method' => 'tls_client_auth',
-                    'tls_client_auth_subject_dn' => 'heidi mtls client',
+                    'tls_client_auth_subject_dn' => 'beffroi mtls client',
                 ],
             'must be a distinguished name of RFC 4514',
         ];

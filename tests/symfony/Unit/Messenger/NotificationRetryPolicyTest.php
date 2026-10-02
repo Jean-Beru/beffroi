@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Messenger;
+namespace Beffroi\Bundle\Tests\Unit\Messenger;
 
-use Heidi\Bundle\Configuration\BackChannelLogoutSection;
+use Beffroi\Bundle\Configuration\BackChannelLogoutSection;
 use function array_map;
-use Heidi\Bundle\Message\AdvanceKeyLifecycle;
-use Heidi\Bundle\Messenger\NotificationRetryPolicy;
+use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
+use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

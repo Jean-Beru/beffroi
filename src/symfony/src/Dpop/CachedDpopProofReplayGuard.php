@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Dpop;
+namespace Beffroi\Bundle\Dpop;
 
 use DateTimeImmutable;
 use function hash;
-use Heidi\Oidc\Domain\Token\KeyConfirmation;
-use Heidi\Oidc\Port\DpopProofReplayGuardInterface;
-use Heidi\Bundle\Cache\SeenOnce;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Port\DpopProofReplayGuardInterface;
+use Beffroi\Bundle\Cache\SeenOnce;
 use function sprintf;
 
 /**
@@ -34,6 +34,6 @@ final readonly class CachedDpopProofReplayGuard implements DpopProofReplayGuardI
      */
     private static function key(KeyConfirmation $key, string $jti): string
     {
-        return 'heidi.dpop_proofs.' . hash('xxh128', sprintf('%s|%s', $key->thumbprint, $jti));
+        return 'beffroi.dpop_proofs.' . hash('xxh128', sprintf('%s|%s', $key->thumbprint, $jti));
     }
 }

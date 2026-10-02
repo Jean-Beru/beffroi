@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\MessageHandler;
+namespace Beffroi\Bundle\MessageHandler;
 
-use Heidi\Bundle\Ciba\PendingApprovalChannelInterface;
-use Heidi\Bundle\Message\TellUserOfPendingApproval;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Ciba\PendingApprovalChannelInterface;
+use Beffroi\Bundle\Message\TellUserOfPendingApproval;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**

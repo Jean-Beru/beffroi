@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Migrations;
+namespace Beffroi\Bundle\Migrations;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
-use Heidi\Bundle\Doctrine\Migration\SealingMigration;
+use Beffroi\Bundle\Doctrine\Migration\SealingMigration;
 use function sprintf;
 
 /**
@@ -35,7 +35,7 @@ use function sprintf;
  */
 final class Version20261004120000 extends SealingMigration
 {
-    private const string TABLE = 'heidi_client';
+    private const string TABLE = 'beffroi_client';
 
     /**
      * What each column held before it sealed and what it is once it seals, which is what `down` and `up`

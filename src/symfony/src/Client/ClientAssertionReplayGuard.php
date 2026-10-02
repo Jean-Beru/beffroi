@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Client;
+namespace Beffroi\Bundle\Client;
 
 use DateTimeImmutable;
 use function hash;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
-use Heidi\Bundle\Cache\SeenOnce;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Beffroi\Bundle\Cache\SeenOnce;
 use function sprintf;
 
 /**
@@ -34,6 +34,6 @@ final readonly class ClientAssertionReplayGuard implements ClientAssertionReplay
      */
     private static function key(Client $client, string $jti): string
     {
-        return 'heidi.client_assertions.' . hash('xxh128', sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId, $jti));
+        return 'beffroi.client_assertions.' . hash('xxh128', sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId, $jti));
     }
 }

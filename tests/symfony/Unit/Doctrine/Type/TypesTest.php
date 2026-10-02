@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Doctrine\Type;
+namespace Beffroi\Bundle\Tests\Unit\Doctrine\Type;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
@@ -10,60 +10,60 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\DBAL\Types\Type;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
-use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2i;
-use Heidi\Core\Bridge\Password\WiredPasswordAlgorithms;
-use Heidi\Bundle\Doctrine\Type\PasswordAlgorithmType;
-use Heidi\Bundle\Doctrine\Type\ActorType;
-use Heidi\Bundle\Doctrine\Type\AddressType;
-use Heidi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
-use Heidi\Bundle\Doctrine\Type\AuthenticationProofsType;
-use Heidi\Bundle\Doctrine\Type\BackupCodesType;
-use Heidi\Bundle\Doctrine\Type\ClaimsRequestType;
-use Heidi\Bundle\Doctrine\Type\ClientSecretType;
-use Heidi\Bundle\Doctrine\Type\CodeChallengeType;
-use Heidi\Bundle\Doctrine\Type\DeviceType;
-use Heidi\Bundle\Doctrine\Type\EmailAddressType;
-use Heidi\Bundle\Doctrine\Type\GeoLocationType;
-use Heidi\Bundle\Doctrine\Type\IssuerType;
-use Heidi\Bundle\Doctrine\Type\PasskeyUserHandleType;
-use Heidi\Bundle\Doctrine\Type\RedirectUriType;
-use Heidi\Bundle\Doctrine\Type\AuthorizationDetailsType;
-use Heidi\Bundle\Doctrine\Type\ResourceIndicatorsType;
-use Heidi\Bundle\Doctrine\Type\ScopesType;
-use Heidi\Bundle\Doctrine\Type\SubjectType;
-use Heidi\Bundle\HeidiBundle;
-use Heidi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
-use Heidi\Oidc\Tests\Fixture\ChallengeMethods;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationPredicate;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
-use Heidi\Core\Domain\Session\Device;
-use Heidi\Core\Domain\Session\DeviceType as DeviceKind;
-use Heidi\Core\Domain\Session\GeoLocation;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Exchange\Actor;
-use Heidi\Oidc\Domain\Resource\ResourceIndicators;
-use Heidi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2i;
+use Beffroi\Core\Bridge\Password\WiredPasswordAlgorithms;
+use Beffroi\Bundle\Doctrine\Type\PasswordAlgorithmType;
+use Beffroi\Bundle\Doctrine\Type\ActorType;
+use Beffroi\Bundle\Doctrine\Type\AddressType;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
+use Beffroi\Bundle\Doctrine\Type\BackupCodesType;
+use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
+use Beffroi\Bundle\Doctrine\Type\ClientSecretType;
+use Beffroi\Bundle\Doctrine\Type\CodeChallengeType;
+use Beffroi\Bundle\Doctrine\Type\DeviceType;
+use Beffroi\Bundle\Doctrine\Type\EmailAddressType;
+use Beffroi\Bundle\Doctrine\Type\GeoLocationType;
+use Beffroi\Bundle\Doctrine\Type\IssuerType;
+use Beffroi\Bundle\Doctrine\Type\PasskeyUserHandleType;
+use Beffroi\Bundle\Doctrine\Type\RedirectUriType;
+use Beffroi\Bundle\Doctrine\Type\AuthorizationDetailsType;
+use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
+use Beffroi\Bundle\Doctrine\Type\ScopesType;
+use Beffroi\Bundle\Doctrine\Type\SubjectType;
+use Beffroi\Bundle\BeffroiBundle;
+use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\ChallengeMethods;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\Device;
+use Beffroi\Core\Domain\Session\DeviceType as DeviceKind;
+use Beffroi\Core\Domain\Session\GeoLocation;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Exchange\Actor;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scopes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -466,7 +466,7 @@ final class TypesTest extends TestCase
      */
     public static function provideDeclaredTypes(): iterable
     {
-        foreach (HeidiBundle::DBAL_TYPES as $name => $class) {
+        foreach (BeffroiBundle::DBAL_TYPES as $name => $class) {
             yield $name => [$name, $class];
         }
     }
@@ -475,7 +475,7 @@ final class TypesTest extends TestCase
     public function theBundleDeclaresTwentySixTypes(): void
     {
         // When / Then
-        static::assertCount(26, HeidiBundle::DBAL_TYPES);
+        static::assertCount(26, BeffroiBundle::DBAL_TYPES);
     }
 
     /**

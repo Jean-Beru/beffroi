@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
 use function explode;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Port\CodeChallengeMethodsInterface;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Port\CodeChallengeMethodsInterface;
 use LogicException;
 use function sprintf;
 use function str_contains;
@@ -22,7 +22,7 @@ use function str_contains;
  */
 final class CodeChallengeType extends StringObjectType implements NeedsCodeChallengeMethodsInterface
 {
-    public const string NAME = 'heidi_code_challenge';
+    public const string NAME = 'beffroi_code_challenge';
 
     private static ?CodeChallengeMethodsInterface $methods = null;
 

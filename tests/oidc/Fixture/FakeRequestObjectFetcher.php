@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\RequestObjectUnavailableException;
-use Heidi\Oidc\Port\RequestObjectFetcherInterface;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\RequestObjectUnavailableException;
+use Beffroi\Oidc\Port\RequestObjectFetcherInterface;
 
 /**
  * A "request_uri" that answers what the test told it to, and records what was read. A fetcher that was

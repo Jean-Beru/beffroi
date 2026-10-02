@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Http\AuthorizationResponder;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Bundle\Http\AuthorizationResponder;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
@@ -542,7 +542,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
         ]);
 
         // Then
-        $pending = self::service('test.heidi.interactions', InteractionRepositoryInterface::class)
+        $pending = self::service('test.beffroi.interactions', InteractionRepositoryInterface::class)
             ->find($interaction) ?? static::fail('The interaction is gone.');
         static::assertFalse($pending->isCompleted());
     }

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Heidi\Oidc\Domain\Client\Registration\InitialAccessToken;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -41,14 +41,14 @@ final class DefaultScopeRegistrationTest extends BrowserTestCase
 
     protected function setUp(): void
     {
-        $_SERVER['HEIDI_TEST_REGISTRATION_DEFAULT_SCOPE'] = self::DEFAULT_SCOPE;
+        $_SERVER['BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE'] = self::DEFAULT_SCOPE;
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
         parent::tearDown();
-        unset($_SERVER['HEIDI_TEST_REGISTRATION_DEFAULT_SCOPE'], $_ENV['HEIDI_TEST_REGISTRATION_DEFAULT_SCOPE']);
+        unset($_SERVER['BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE'], $_ENV['BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE']);
     }
 
     /**
@@ -63,7 +63,8 @@ final class DefaultScopeRegistrationTest extends BrowserTestCase
         self::reload();
 
         // When
-        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::string($registered['client_id']));
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)
+            ->findByClientId(self::tenant(), self::string($registered['client_id']));
 
         // Then
         static::assertSame(self::DEFAULT_SCOPE, (string) $client?->registration->allowedScopes);
@@ -83,7 +84,8 @@ final class DefaultScopeRegistrationTest extends BrowserTestCase
         self::reload();
 
         // When
-        $client = self::service('test.heidi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::string($registered['client_id']));
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)
+            ->findByClientId(self::tenant(), self::string($registered['client_id']));
 
         // Then
         static::assertSame('openid', (string) $client?->registration->allowedScopes);
@@ -149,7 +151,7 @@ final class DefaultScopeRegistrationTest extends BrowserTestCase
 
     private function issue(): void
     {
-        self::service('test.heidi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
+        self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
             ->save(new InitialAccessToken(
                 Uuid::v7(),
                 self::tenant(),

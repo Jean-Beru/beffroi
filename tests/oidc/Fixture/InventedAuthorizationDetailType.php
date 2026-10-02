@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function array_is_list;
-use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetail;
-use Heidi\Oidc\Domain\AuthorizationDetails\AuthorizationDetailTypeInterface;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetail;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetailTypeInterface;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function implode;
 use function is_array;
 use function is_string;

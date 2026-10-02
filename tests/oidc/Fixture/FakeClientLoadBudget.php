@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function count;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\LoadBudgetSpentException;
-use Heidi\Oidc\Port\ClientLoadBudgetInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Oidc\Port\ClientLoadBudgetInterface;
 use const PHP_INT_MAX;
 use function sprintf;
 

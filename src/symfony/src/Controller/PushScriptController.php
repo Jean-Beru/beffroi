@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\BundleScript;
+use Beffroi\Bundle\Http\BundleScript;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -17,7 +17,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class PushScriptController
 {
-    public const string ROUTE = 'heidi_interaction_push_script';
+    public const string ROUTE = 'beffroi_interaction_push_script';
 
     public const string FILE = 'push.js';
 

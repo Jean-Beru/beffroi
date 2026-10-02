@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Load;
+namespace Beffroi\Bundle\Tests\Unit\Load;
 
 use DateInterval;
-use Heidi\Bundle\Load\LoadBudget;
-use Heidi\Bundle\Load\OriginLoadListener;
-use Heidi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Bundle\Load\LoadBudget;
+use Beffroi\Bundle\Load\OriginLoadListener;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -37,7 +37,7 @@ final class OriginLoadListenerTest extends TestCase
     {
         yield 'a route of the host application' => ['app_home'];
         yield 'the profiler, in development' => ['_profiler'];
-        yield 'an endpoint of the FIDO conformance tools, in development' => ['heidi_fido_conformance_attestation_options'];
+        yield 'an endpoint of the FIDO conformance tools, in development' => ['beffroi_fido_conformance_attestation_options'];
         yield 'no route at all' => [null];
     }
 
@@ -61,13 +61,13 @@ final class OriginLoadListenerTest extends TestCase
     {
         // Given
         $listener = self::listener();
-        $listener(self::event('heidi_protocol_token'));
+        $listener(self::event('beffroi_protocol_token'));
 
         // Then
         $this->expectException(LoadBudgetSpentException::class);
 
         // When
-        $listener(self::event('heidi_protocol_token'));
+        $listener(self::event('beffroi_protocol_token'));
     }
 
     /**
@@ -78,10 +78,10 @@ final class OriginLoadListenerTest extends TestCase
     {
         // Given
         $listener = self::listener();
-        $listener(self::event('heidi_protocol_token', HttpKernelInterface::SUB_REQUEST));
+        $listener(self::event('beffroi_protocol_token', HttpKernelInterface::SUB_REQUEST));
 
         // When
-        $listener(self::event('heidi_protocol_token', HttpKernelInterface::SUB_REQUEST));
+        $listener(self::event('beffroi_protocol_token', HttpKernelInterface::SUB_REQUEST));
 
         // Then
         $this->expectNotToPerformAssertions();
@@ -96,10 +96,10 @@ final class OriginLoadListenerTest extends TestCase
     {
         // Given
         $listener = self::listener();
-        $listener(self::event('heidi_protocol_token', address: '198.51.100.7'));
+        $listener(self::event('beffroi_protocol_token', address: '198.51.100.7'));
 
         // When
-        $listener(self::event('heidi_protocol_token', address: '198.51.100.8'));
+        $listener(self::event('beffroi_protocol_token', address: '198.51.100.8'));
 
         // Then
         $this->expectNotToPerformAssertions();

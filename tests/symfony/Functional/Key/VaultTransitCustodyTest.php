@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace Beffroi\Bundle\Tests\Functional\Key;
 
 use function base64_encode;
 use function getenv;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Port\TenantKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use function is_string;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -22,23 +22,23 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Issue #57, against a real Vault: the Transit key of the tenant is what docker/vault/init.sh creates, the
- * OP holds a token under the policy of docker/vault/heidi-op.hcl and that policy allows the sealing and
- * nothing else. Skipped unless the kernel seals with Vault (HEIDI_TEST_KMS_DSN), which the CI does in a
+ * OP holds a token under the policy of docker/vault/beffroi-op.hcl and that policy allows the sealing and
+ * nothing else. Skipped unless the kernel seals with Vault (BEFFROI_TEST_KMS_DSN), which the CI does in a
  * job of its own against a Vault service; every other test of the suite then runs against it too.
  */
 final class VaultTransitCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'hashicorp-vault-transit://';
 
-    private const string TRANSIT_KEY = 'heidi-default';
+    private const string TRANSIT_KEY = 'beffroi-default';
 
     private HttpClientInterface $vault;
 
     protected function setUp(): void
     {
-        $dsn = getenv('HEIDI_TEST_KMS_DSN');
+        $dsn = getenv('BEFFROI_TEST_KMS_DSN');
         if (! is_string($dsn) || ! str_starts_with($dsn, self::SCHEME)) {
-            static::markTestSkipped('The kernel seals with sodium; set HEIDI_TEST_KMS_DSN to a Vault DSN to run this test.');
+            static::markTestSkipped('The kernel seals with sodium; set BEFFROI_TEST_KMS_DSN to a Vault DSN to run this test.');
         }
         parent::setUp();
         $this->vault = self::vaultClient(Dsn::fromString($dsn));
@@ -52,13 +52,13 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
     public function theDataKeyOfASealedKeyIsWrappedByTheTransitKeyOfTheTenant(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', TenantKeyRotator::class);
+        $rotator = self::service('test.beffroi.key_rotator', TenantKeyRotator::class);
 
         // When
         $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
-        $stored = self::service('test.heidi.keys', TenantKeyRepositoryInterface::class)
+        $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
             ->find(self::tenant(), $rotated->kid) ?? static::fail('The key is stored.');
         $envelope = Envelope::fromBytes($stored->sealedPrivateJwk);
         static::assertSame(self::TRANSIT_KEY, $envelope->keyId);
@@ -97,7 +97,7 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         $response = $this->vault->request('POST', 'transit/datakey/plaintext/' . self::TRANSIT_KEY, [
             'json' => [
                 'bits' => 256,
-                'context' => base64_encode('heidi:signing-key:v2:default'),
+                'context' => base64_encode('beffroi:signing-key:v2:default'),
             ],
         ]);
 
@@ -111,7 +111,7 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
 
     /**
      * What the policy of the OP refuses: every path that would read, move, replace or delete the key
-     * material, and every key outside the "heidi-" prefix.
+     * material, and every key outside the "beffroi-" prefix.
      */
     #[Test]
     #[DataProvider('provideRefusedRequests')]
@@ -134,13 +134,13 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         yield 'rotating the key' => ['POST', 'transit/keys/' . self::TRANSIT_KEY . '/rotate'];
         yield 'changing the configuration of the key' => ['POST', 'transit/keys/' . self::TRANSIT_KEY . '/config'];
         yield 'deleting the key' => ['DELETE', 'transit/keys/' . self::TRANSIT_KEY];
-        yield 'creating a key of another tenant' => ['POST', 'transit/keys/heidi-other'];
+        yield 'creating a key of another tenant' => ['POST', 'transit/keys/beffroi-other'];
         yield 'listing the keys' => ['GET', 'transit/keys?list=true'];
         yield 'encrypting directly' => ['POST', 'transit/encrypt/' . self::TRANSIT_KEY];
         yield 'a data key outside the prefix' => ['POST', 'transit/datakey/plaintext/other'];
         yield 'decrypting outside the prefix' => ['POST', 'transit/decrypt/other'];
         yield 'reading a key outside the prefix' => ['GET', 'transit/keys/other'];
-        yield 'the policies' => ['GET', 'sys/policies/acl/heidi-op'];
+        yield 'the policies' => ['GET', 'sys/policies/acl/beffroi-op'];
     }
 
     /**

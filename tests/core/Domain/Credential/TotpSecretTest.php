@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;

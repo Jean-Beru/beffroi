@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Domain\EndSession\LogoutChannel;
-use Heidi\Oidc\Port\ServedLogoutChannelsInterface;
+use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
+use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
 
 /**
  * The ways of telling a client that a session ended an integration wired: both, as the bundle wires

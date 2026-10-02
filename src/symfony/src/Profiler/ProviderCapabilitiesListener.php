@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Profiler;
+namespace Beffroi\Bundle\Profiler;
 
 use function array_map;
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
+use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Oidc\Application\Discovery\DiscoveryHandler;
 use function implode;
 use function is_array;
 use function is_bool;

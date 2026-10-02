@@ -2,41 +2,41 @@
 
 declare(strict_types=1);
 
-use Heidi\Bundle\Http\AuthorizationRequestReaderInterface;
-use Heidi\Bundle\Http\AuthorizationResponderInterface;
-use Heidi\Bundle\Profiler\KmsClient;
-use Heidi\Bundle\Profiler\OpCollector;
-use Heidi\Bundle\Profiler\OpEndpointListener;
-use Heidi\Bundle\Profiler\OpProfile;
-use Heidi\Bundle\Profiler\OpResponseListener;
-use Heidi\Bundle\Profiler\PanelValues;
-use Heidi\Bundle\Profiler\ProfilingAccessTokenIssuer;
-use Heidi\Bundle\Profiler\ProfilingAuthenticationSessionRepository;
-use Heidi\Bundle\Profiler\ProfilingAuthorizationRequestReader;
-use Heidi\Bundle\Profiler\Decision\ConsentRequiredObservation;
-use Heidi\Bundle\Profiler\Decision\DecisionObservations;
-use Heidi\Bundle\Profiler\Decision\GrantedObservation;
-use Heidi\Bundle\Profiler\Decision\LoginRequiredObservation;
-use Heidi\Bundle\Profiler\ProfilingAuthorizationResponder;
-use Heidi\Bundle\Profiler\ProfilingClientRepository;
-use Heidi\Bundle\Profiler\ProfilingCompactJwtReader;
-use Heidi\Bundle\Profiler\ProfilingConsentRepository;
-use Heidi\Bundle\Profiler\ProfilingDecryptionKeyProvider;
-use Heidi\Bundle\Profiler\ProfilingEventDispatcher;
-use Heidi\Bundle\Profiler\ProfilingIdTokenIssuer;
-use Heidi\Bundle\Profiler\ProfilingInteractionRepository;
-use Heidi\Bundle\Profiler\ProfilingSigningKeyProvider;
-use Heidi\Bundle\Profiler\ProviderCapabilitiesListener;
-use Heidi\Bundle\Messenger\EventBusDispatcher;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\DecryptionKeyProviderInterface;
-use Heidi\Core\Port\SigningKeyProviderInterface;
-use Heidi\Oidc\Port\AccessTokenIssuerInterface;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
-use Heidi\Oidc\Port\CompactJwtReaderInterface;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
-use Heidi\Oidc\Port\IdTokenIssuerInterface;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use Beffroi\Bundle\Http\AuthorizationRequestReaderInterface;
+use Beffroi\Bundle\Http\AuthorizationResponderInterface;
+use Beffroi\Bundle\Profiler\KmsClient;
+use Beffroi\Bundle\Profiler\OpCollector;
+use Beffroi\Bundle\Profiler\OpEndpointListener;
+use Beffroi\Bundle\Profiler\OpProfile;
+use Beffroi\Bundle\Profiler\OpResponseListener;
+use Beffroi\Bundle\Profiler\PanelValues;
+use Beffroi\Bundle\Profiler\ProfilingAccessTokenIssuer;
+use Beffroi\Bundle\Profiler\ProfilingAuthenticationSessionRepository;
+use Beffroi\Bundle\Profiler\ProfilingAuthorizationRequestReader;
+use Beffroi\Bundle\Profiler\Decision\ConsentRequiredObservation;
+use Beffroi\Bundle\Profiler\Decision\DecisionObservations;
+use Beffroi\Bundle\Profiler\Decision\GrantedObservation;
+use Beffroi\Bundle\Profiler\Decision\LoginRequiredObservation;
+use Beffroi\Bundle\Profiler\ProfilingAuthorizationResponder;
+use Beffroi\Bundle\Profiler\ProfilingClientRepository;
+use Beffroi\Bundle\Profiler\ProfilingCompactJwtReader;
+use Beffroi\Bundle\Profiler\ProfilingConsentRepository;
+use Beffroi\Bundle\Profiler\ProfilingDecryptionKeyProvider;
+use Beffroi\Bundle\Profiler\ProfilingEventDispatcher;
+use Beffroi\Bundle\Profiler\ProfilingIdTokenIssuer;
+use Beffroi\Bundle\Profiler\ProfilingInteractionRepository;
+use Beffroi\Bundle\Profiler\ProfilingSigningKeyProvider;
+use Beffroi\Bundle\Profiler\ProviderCapabilitiesListener;
+use Beffroi\Bundle\Messenger\EventBusDispatcher;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\DecryptionKeyProviderInterface;
+use Beffroi\Core\Port\SigningKeyProviderInterface;
+use Beffroi\Oidc\Port\AccessTokenIssuerInterface;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Oidc\Port\CompactJwtReaderInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Oidc\Port\IdTokenIssuerInterface;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -58,7 +58,7 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->set(OpCollector::class)->tag('data_collector', [
         'id' => OpCollector::NAME,
-        'template' => '@Heidi/profiler/panel.html.twig',
+        'template' => '@Beffroi/profiler/panel.html.twig',
         'priority' => 300,
     ]);
     $services->set(PanelValues::class);
@@ -74,10 +74,10 @@ return static function (ContainerConfigurator $container): void {
         ->decorate(AuthorizationRequestReaderInterface::class)
         ->args([service('.inner')]);
     // what the panel says about a decision, one class per decision, as the renderers of the decisions are
-    $services->set(LoginRequiredObservation::class)->tag('heidi.profiler.authorization_decision');
-    $services->set(ConsentRequiredObservation::class)->tag('heidi.profiler.authorization_decision');
-    $services->set(GrantedObservation::class)->tag('heidi.profiler.authorization_decision');
-    $services->set(DecisionObservations::class)->args([tagged_iterator('heidi.profiler.authorization_decision')]);
+    $services->set(LoginRequiredObservation::class)->tag('beffroi.profiler.authorization_decision');
+    $services->set(ConsentRequiredObservation::class)->tag('beffroi.profiler.authorization_decision');
+    $services->set(GrantedObservation::class)->tag('beffroi.profiler.authorization_decision');
+    $services->set(DecisionObservations::class)->args([tagged_iterator('beffroi.profiler.authorization_decision')]);
     $services
         ->set(ProfilingAuthorizationResponder::class)
         ->decorate(AuthorizationResponderInterface::class)

@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Heidi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
+use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Users in heidi_user (architecture §3.4); a lookup is scoped by the tenant and exact.
+ * Users in beffroi_user (architecture §3.4); a lookup is scoped by the tenant and exact.
  *
  * The username is sealed, so no lookup matches it: the format seals every value under a random
  * initialisation vector, and two writes of one username give two ciphertexts. What a lookup matches is its

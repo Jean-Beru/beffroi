@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\ResponseMode;
+namespace Beffroi\Bundle\Http\ResponseMode;
 
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

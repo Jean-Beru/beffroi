@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function array_column;
 use function array_keys;
 use Closure;
-use Heidi\Bundle\Http\LogoutTokenSender;
-use Heidi\Bundle\Message\SendLogoutToken;
-use Heidi\Bundle\MessageHandler\SendLogoutTokenHandler;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use Beffroi\Bundle\Http\LogoutTokenSender;
+use Beffroi\Bundle\Message\SendLogoutToken;
+use Beffroi\Bundle\MessageHandler\SendLogoutTokenHandler;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -238,7 +238,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     private static function queued(): array
     {
         $envelopes = [];
-        foreach (self::service('test.heidi.notification_queue', TransportInterface::class)->get() as $envelope) {
+        foreach (self::service('test.beffroi.notification_queue', TransportInterface::class)->get() as $envelope) {
             static::assertInstanceOf(Envelope::class, $envelope);
             $envelopes[] = $envelope;
         }
@@ -272,7 +272,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
 
     private static function handler(): SendLogoutTokenHandler
     {
-        return self::service('test.heidi.logout_token_delivery', SendLogoutTokenHandler::class);
+        return self::service('test.beffroi.logout_token_delivery', SendLogoutTokenHandler::class);
     }
 
     /**

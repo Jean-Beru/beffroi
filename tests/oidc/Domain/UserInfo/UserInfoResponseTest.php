@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\UserInfo;
+namespace Beffroi\Oidc\Tests\Domain\UserInfo;
 
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Tests\Fixture\Bindings;
-use Heidi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
-use Heidi\Oidc\Domain\UserInfo\UserInfoResponse;
-use Heidi\Oidc\Exception\InsufficientScopeException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\InvalidRequestException;
-use Heidi\Oidc\Exception\InvalidTokenException;
-use Heidi\Oidc\Exception\MissingBearerTokenException;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Tests\Fixture\Bindings;
+use Beffroi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
+use Beffroi\Oidc\Domain\UserInfo\UserInfoResponse;
+use Beffroi\Oidc\Exception\InsufficientScopeException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Exception\InvalidTokenException;
+use Beffroi\Oidc\Exception\MissingBearerTokenException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

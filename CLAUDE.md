@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Monorepo of an identity provider for the Symfony ecosystem (code name "Heidi"; the product name comes later). The design lives in the parent repository: `../docs/11-architecture.md` and `../docs/decisions/`. Those decisions are settled; do not reopen them here.
+Monorepo of an identity provider for the Symfony ecosystem. The design lives in the parent repository: `../docs/11-architecture.md` and `../docs/decisions/`. Those decisions are settled; do not reopen them here.
 
 Work is organised in spikes, each one a question with a success criterion, a failure criterion and an end date, written before it starts. The spike in progress owns what gets built: **nothing outside its scope is built, even when it is easy** (decision 0005). The spike READMEs live in `../spikes/`.
 
@@ -8,10 +8,10 @@ Work is organised in spikes, each one a question with a success criterion, a fai
 
 | Directory | Package | Namespace | Rule |
 |---|---|---|---|
-| `src/core` | `heidi/core` | `Heidi\Core` | Identity core. Pure PHP. Knows no protocol, no HTTP, no container, no Doctrine. |
-| `src/oidc` | `heidi/oidc` | `Heidi\Oidc` | OAuth 2.0 / OpenID Connect. Pure PHP. Depends on the core only. |
-| `src/symfony` | `heidi/symfony-bundle` | `Heidi\Bundle` | Symfony integration. The only place where `Request`, DI and Doctrine appear. |
-| `apps/op` | `heidi/op` | `App` | Standalone application, FrankenPHP. |
+| `src/core` | `beffroi/core` | `Beffroi\Core` | Identity core. Pure PHP. Knows no protocol, no HTTP, no container, no Doctrine. |
+| `src/oidc` | `beffroi/oidc` | `Beffroi\Oidc` | OAuth 2.0 / OpenID Connect. Pure PHP. Depends on the core only. |
+| `src/symfony` | `beffroi/symfony-bundle` | `Beffroi\Bundle` | Symfony integration. The only place where `Request`, DI and Doctrine appear. |
+| `apps/op` | `beffroi/op` | `App` | Standalone application, FrankenPHP. |
 
 Inside each pure-PHP package: `Domain`, `Port`, `Application`, `Bridge`. Deptrac enforces both the package graph and the layers (`.ci-tools/deptrac.yaml`).
 
@@ -25,7 +25,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 - **Before the pull request.** `castor prepare-pr`, then `castor phpunit`, `castor phpstan`, `castor deptrac`. Infection runs on the diff in CI; run `castor infect --diff` yourself when the change is a rule rather than plumbing.
 - **Opening it.** `gh pr create --head <branch>` always: another session can move the current branch of a shared checkout under you.
 - **Status.** A long-running issue keeps **one** status comment, edited in place. Never a new comment per update.
-- **The documentation pull request** goes to `beffroi-php/heidi-design`, branch `docs/<issue>-<slug>`: the journal row of the spike, and whatever page the change makes false (`docs/11-architecture.md` first). Its rules are that repository's `CLAUDE.md`; the one that bites most often is that a page states the present state and never how it got there.
+- **The documentation pull request** goes to `beffroi-php/design`, branch `docs/<issue>-<slug>`: the journal row of the spike, and whatever page the change makes false (`docs/11-architecture.md` first). Its rules are that repository's `CLAUDE.md`; the one that bites most often is that a page states the present state and never how it got there.
 - **What the spike cannot absorb** becomes an issue tied to the spike that makes it necessary, naming the pattern to reproduce. It is not built ahead, and it is not left unwritten.
 
 ## Closing a spike
@@ -69,7 +69,7 @@ gh workflow run conformance.yml [-f plan=P] [-f module=X] [-f strict=false]  # t
 castor mtls [--host H] [--ordinary-host H]  # the client certificate from the edge to PHP: presented, its x5t#S256 compared with the one the application computes, absent, and carried in a header (refused)
 castor login-cost [--journeys N] [--baseline MS]  # complete logins played one after another against the stack: the p95 of the journey and the count of what the KMS was asked, read in the audit device of Vault and never in the application, against the threshold of the decision that fixed it; it refuses a stack that collects profiles or runs in debug, where what it would measure is the instrumentation as much as the provider, and the result says the mode it took; taken by hand, twice, on one machine, and written in the journal of the spike with its commit
 castor dump-search [--keep]            # a pg_dump of the running database searched byte by byte for what the provision and the walks wrote: a finding names the value, the encoding, the table, the column and the offset, and the same search finds a value the schema declares readable, so a green run is a search that was looking; the backend played is the one apps/op/.env.local names and the list it prints carries the one that cannot be played yet with its issue
-castor rewrap-live [--logins N]        # the data keys of the tenant moved from one KMS client to the other while complete logins are played: not one fails, every scope ends up on the other client, the sealed values of heidi_user are compared byte by byte before and after, and a dry run from the old client lists nothing; it needs HEIDI_KMS_DSN_SECOND, which "castor provision --kms sodium" writes, and it plays the direction the store leaves available, a run leaving the keys where it moved them, so two runs in a row play the move both ways; the direction the criterion names waits on the data key store under a derived Transit key
+castor rewrap-live [--logins N]        # the data keys of the tenant moved from one KMS client to the other while complete logins are played: not one fails, every scope ends up on the other client, the sealed values of beffroi_user are compared byte by byte before and after, and a dry run from the old client lists nothing; it needs BEFFROI_KMS_DSN_SECOND, which "castor provision --kms sodium" writes, and it plays the direction the store leaves available, a run leaving the keys where it moved them, so two runs in a row play the move both ways; the direction the criterion names waits on the data key store under a derived Transit key
 castor demo [--check] [--rotate] [--passkey] [--form-post] [--logout-others] [--resource-server] [--dpop] [--ladder] [--device] [--service] [--ciba] [--assertion] [--rar] [--native] [--push] [--register] [--attested]
 ```
 
@@ -78,8 +78,8 @@ castor demo [--check] [--rotate] [--passkey] [--form-post] [--logout-others] [--
 **FIDO.**
 
 ```bash
-castor console heidi:webauthn:mds-refresh [--url U] [--root R]  # the FIDO Metadata BLOB downloaded and verified under the pinned root (GlobalSign Root CA - R3), stored in var/webauthn of the op container; by hand, never scheduled (a hosted-offer service)
-castor console heidi:webauthn:mds-import <file>                 # a statement of a manufacturer or of the FIDO conformance tools
+castor console beffroi:webauthn:mds-refresh [--url U] [--root R]  # the FIDO Metadata BLOB downloaded and verified under the pinned root (GlobalSign Root CA - R3), stored in var/webauthn of the op container; by hand, never scheduled (a hosted-offer service)
+castor console beffroi:webauthn:mds-import <file>                 # a statement of a manufacturer or of the FIDO conformance tools
 ```
 
 The FIDO Conformance Tools are run by hand against `https://op.localhost/fido/conformance` (`tests/conformance/README.md`); those endpoints are imported by the application in dev only.
@@ -110,10 +110,10 @@ Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `
 - Every secret string comes from `random_bytes()`, every secret comparison goes through `hash_equals()`, no boolean coming from a third party is ever cast.
 - Security rules of decision 0006 are code, not configuration: no `insecure_*` option, no global compatibility switch.
 - Functional tests boot `tests/symfony/Functional/AppKernel.php` with `APP_DEBUG=0`; bundles are listed in `tests/symfony/config/bundles.php`.
-- Controllers are `final readonly`, one action per class, `#[Route]` on `__invoke()`. Route names carry their plane: `heidi_interaction_*` (browser: authorize, login, consent, logout) or `heidi_protocol_*` (server to server: discovery, jwks, token, userinfo, introspect, revoke). `HEIDI_PLANE` restricts a process to one plane. The endpoints of the FIDO conformance tools (`heidi_fido_conformance_*`, `src/symfony/src/Fido/Conformance/`) belong to no plane and to no environment but dev: their route file is imported by the application only, never by the bundle's `config/routes.php`, and the application never imports Symfony's `routing.controllers` resource, which would route every `#[Route]` service unprefixed.
-- No write is synchronous unless the protocol needs its result in the same request; every exception is listed in `apps/op/config/packages/messenger.yaml` with its reason. Messages implement `Heidi\Bundle\Message\{Command,Query,Event,SyncMessage}`; handlers live in `MessageHandler/` and call the use cases of the core. The core dispatches PSR-14 events only.
+- Controllers are `final readonly`, one action per class, `#[Route]` on `__invoke()`. Route names carry their plane: `beffroi_interaction_*` (browser: authorize, login, consent, logout) or `beffroi_protocol_*` (server to server: discovery, jwks, token, userinfo, introspect, revoke). `BEFFROI_PLANE` restricts a process to one plane. The endpoints of the FIDO conformance tools (`beffroi_fido_conformance_*`, `src/symfony/src/Fido/Conformance/`) belong to no plane and to no environment but dev: their route file is imported by the application only, never by the bundle's `config/routes.php`, and the application never imports Symfony's `routing.controllers` resource, which would route every `#[Route]` service unprefixed.
+- No write is synchronous unless the protocol needs its result in the same request; every exception is listed in `apps/op/config/packages/messenger.yaml` with its reason. Messages implement `Beffroi\Bundle\Message\{Command,Query,Event,SyncMessage}`; handlers live in `MessageHandler/` and call the use cases of the core. The core dispatches PSR-14 events only.
 - An event is built where it is raised: its constructor takes exactly what it carries, and nothing on it reads a domain object to fill it (no `static of()` on a class of `Domain/Event`, in either package). What it carries is what survives the queue it is written to, so it holds a domain object only when that object leaves the process whole (`CredentialEnrolled` holds its credential) and the facts by identifier otherwise (`TokensIssued` names its client: a client carries the reader of its `jwks_uri`, which no broker can be sent). `EventsLeaveTheProcessTest` writes every event of the module to a queue and reads it back, and fails on an event it does not cover. A reading several events need is a named mapper beside the objects it reads (`RevokedTokenHashes`), never a method of the event.
-- Every user-facing string is translated (XLIFF intl-icu, domain `heidi`, `en` and `fr`). The locale of an interaction comes from `ui_locales`, then `Accept-Language`, never from the URL.
+- Every user-facing string is translated (XLIFF intl-icu, domain `beffroi`, `en` and `fr`). The locale of an interaction comes from `ui_locales`, then `Accept-Language`, never from the URL.
 - Every session and event carries a `RequestContext` (IP, user agent, later GeoIP and device); enrichment is always asynchronous.
 - A test never sleeps. Time is moved with the mocked clock (`BrowserTestCase::aSecondLater()`), which the Symfony `clock` service reads globally and which survives a kernel reboot.
 
@@ -121,7 +121,7 @@ Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `
 
 A rule of every PR, not a theme of a review. Each form below names the class to imitate.
 
-- **One responsibility per class.** A block written a second time becomes a use case or a value object, never a third copy: opening a session is `SessionOpener` (the counterpart of `SessionTerminator`), revoking a set of refresh tokens is `RefreshTokenRevocation`, reading a scope list is `Scope::parseList()`, what a session had proven at a grant is `AuthenticationSnapshot`, a consent extends itself (`Consent::extendedWith()`). A use case orchestrates; a rule of an entity lives on the entity. A command that reads is not the command that writes (`heidi:user:show`, `heidi:user:profile`).
+- **One responsibility per class.** A block written a second time becomes a use case or a value object, never a third copy: opening a session is `SessionOpener` (the counterpart of `SessionTerminator`), revoking a set of refresh tokens is `RefreshTokenRevocation`, reading a scope list is `Scope::parseList()`, what a session had proven at a grant is `AuthenticationSnapshot`, a consent extends itself (`Consent::extendedWith()`). A use case orchestrates; a rule of an entity lives on the entity. A command that reads is not the command that writes (`beffroi:user:show`, `beffroi:user:profile`).
 - **Open by addition.** A new credential kind, grant, hasher, token format, client authentication method, PKCE method, signature algorithm or confirmation is a class that implements the interface of its capability (`CredentialEnrolmentInterface`, `GrantInterface`, `AlgorithmPasswordHasherInterface`, `AccessTokenIssuerInterface` per format, `ClientAuthenticationMethodInterface`, `CodeChallengeMethodInterface`, `SignatureAlgorithmInterface`, `ConfirmationInterface`), tagged or listed in the wiring; never a `match` on kinds, an enum of kinds, a registry by class or a class name read. A kind names itself (`Credential::kind()`) and declares what it can do by an interface (`RevocableCredentialInterface`, `ExternallyIdentifiedCredentialInterface`). An enum is for a closed set the protocol fixes **that a value carries and nothing acts on** (`Prompt`, `Display`, `LogoutChannel`, the reason enumerations of both packages); what behaves is a class per case, whatever the specification does about the set, because the behaviour is what every caller wants of it (a PKCE method computes a challenge and compares it, `CodeChallengeMethodInterface`). A set the wiring decides may not be an enum at all.
 - **One source of truth.** What the provider announces is derived from what is wired: the discovery document reads the tagged grants, the wired client authentication methods and the wired algorithms, never an enumeration kept in parallel. Two places that must agree are one place.
 - **Substitutable.** What an implementation throws is in the contract of its interface (`@throws`, and a precondition such as `supports()` is on the contract that has it, not on the port a use case sees). A subtype narrows a return type, never widens a precondition. Intersection types (`Credential&RevocableCredentialInterface`) over downcasts.

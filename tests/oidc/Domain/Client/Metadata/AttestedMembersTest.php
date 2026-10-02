@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client\Metadata;
+namespace Beffroi\Oidc\Tests\Domain\Client\Metadata;
 
-use Heidi\Oidc\Domain\Client\Metadata\AttestedMembers;
+use Beffroi\Oidc\Domain\Client\Metadata\AttestedMembers;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

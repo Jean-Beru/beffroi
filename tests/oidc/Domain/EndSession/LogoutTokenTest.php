@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\EndSession;
+namespace Beffroi\Oidc\Tests\Domain\EndSession;
 
 use function array_keys;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Oidc\Domain\EndSession\LogoutToken;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Oidc\Domain\EndSession\LogoutToken;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Tests\Fixture\Jwts;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

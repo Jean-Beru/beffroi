@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\ProtocolAnswer;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Bundle\Http\RequestParameters;
-use Heidi\Bundle\Http\Tls\PresentedClientCertificate;
-use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
-use Heidi\Oidc\Domain\Device\DeviceAuthorizationResponse;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\ProtocolAnswer;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Http\Tls\PresentedClientCertificate;
+use Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler;
+use Beffroi\Oidc\Domain\Device\DeviceAuthorizationResponse;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -25,7 +25,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class DeviceAuthorizationController
 {
-    public const string ROUTE = 'heidi_protocol_device_authorization';
+    public const string ROUTE = 'beffroi_protocol_device_authorization';
 
     public function __construct(
         private TenantProvider $tenants,

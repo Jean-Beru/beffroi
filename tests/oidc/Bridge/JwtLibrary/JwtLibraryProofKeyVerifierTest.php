@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Bridge\JwtLibrary;
+namespace Beffroi\Oidc\Tests\Bridge\JwtLibrary;
 
 use DateTimeImmutable;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
-use Heidi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
-use Heidi\Oidc\Domain\Token\KeyConfirmation;
-use Heidi\Oidc\Exception\InvalidJwtException;
-use Heidi\Oidc\Tests\Fixture\Proofs;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Exception\InvalidJwtException;
+use Beffroi\Oidc\Tests\Fixture\Proofs;
 use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

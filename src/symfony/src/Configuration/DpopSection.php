@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Dpop\CachedDpopNonce;
-use Heidi\Oidc\Application\Dpop\DpopProofValidator;
-use Heidi\Oidc\Bridge\Null\NoDpopNonce;
-use Heidi\Oidc\Port\DpopNonceInterface;
+use Beffroi\Bundle\Dpop\CachedDpopNonce;
+use Beffroi\Oidc\Application\Dpop\DpopProofValidator;
+use Beffroi\Oidc\Bridge\Null\NoDpopNonce;
+use Beffroi\Oidc\Port\DpopNonceInterface;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 

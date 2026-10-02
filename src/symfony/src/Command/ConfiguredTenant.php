@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Command;
+namespace Beffroi\Bundle\Command;
 
-use Heidi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
@@ -29,7 +29,7 @@ final readonly class ConfiguredTenant
         try {
             return $this->tenants->provide();
         } catch (TenantNotSynchronizedException $exception) {
-            $io->error([$exception->getMessage(), 'Run "heidi:tenant:synchronize" first.']);
+            $io->error([$exception->getMessage(), 'Run "beffroi:tenant:synchronize" first.']);
 
             return null;
         }

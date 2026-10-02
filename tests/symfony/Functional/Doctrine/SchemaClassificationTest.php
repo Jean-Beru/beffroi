@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_keys;
 use function count;
 use function explode;
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\BundleSchema;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedSchema;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\NoPersonalDatum;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Owed;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\BundleSchema;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedSchema;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\NoPersonalDatum;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Owed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
@@ -65,12 +65,12 @@ final class SchemaClassificationTest extends DatabaseTestCase
     {
         // Given
         $classification = new ClassifiedSchema([
-            'heidi_user' => ['id' => new NoPersonalDatum(SchemaColumns::DRAWN_AT_RANDOM)],
+            'beffroi_user' => ['id' => new NoPersonalDatum(SchemaColumns::DRAWN_AT_RANDOM)],
         ]);
 
         // When
         $findings = $classification->findings([
-            'heidi_user' => [
+            'beffroi_user' => [
                 'id' => null,
                 'favourite_colour' => null,
             ],
@@ -79,7 +79,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
         // Then
         static::assertSame(
             [
-                'heidi_user.favourite_colour is in the schema and in no list: declare it readable with the reason a dump of it gives nothing away, sealed, or owed to the issue that seals it.',
+                'beffroi_user.favourite_colour is in the schema and in no list: declare it readable with the reason a dump of it gives nothing away, sealed, or owed to the issue that seals it.',
             ],
             $findings,
         );
@@ -96,7 +96,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
 
         // When
         $findings = $classification->findings([
-            'heidi_new_table' => [
+            'beffroi_new_table' => [
                 'id' => null,
                 'tenant_id' => null,
             ],
@@ -111,16 +111,16 @@ final class SchemaClassificationTest extends DatabaseTestCase
     {
         // Given
         $classification = new ClassifiedSchema([
-            'heidi_user' => ['email' => new Owed('heidi#402', 'the electronic address of a person')],
+            'beffroi_user' => ['email' => new Owed('beffroi#402', 'the electronic address of a person')],
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['email' => 'heidi_encrypted_user_email_address']]);
+        $findings = $classification->findings(['beffroi_user' => ['email' => 'beffroi_encrypted_user_email_address']]);
 
         // Then
         static::assertSame(
             [
-                'heidi_user.email is sealed and heidi#402 still owes it ("the electronic address of a person"): delete its line and declare it sealed.',
+                'beffroi_user.email is sealed and beffroi#402 still owes it ("the electronic address of a person"): delete its line and declare it sealed.',
             ],
             $findings,
         );
@@ -131,16 +131,16 @@ final class SchemaClassificationTest extends DatabaseTestCase
     {
         // Given
         $classification = new ClassifiedSchema([
-            'heidi_user' => ['email' => new Sealed('user')],
+            'beffroi_user' => ['email' => new Sealed('user')],
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['email' => null]]);
+        $findings = $classification->findings(['beffroi_user' => ['email' => null]]);
 
         // Then
         static::assertSame(
             [
-                'heidi_user.email is declared sealed under the "user" family and its Doctrine type does not seal it.',
+                'beffroi_user.email is declared sealed under the "user" family and its Doctrine type does not seal it.',
             ],
             $findings,
         );
@@ -156,16 +156,16 @@ final class SchemaClassificationTest extends DatabaseTestCase
     {
         // Given
         $classification = new ClassifiedSchema([
-            'heidi_interaction' => ['login_hint' => new Sealed('user')],
+            'beffroi_interaction' => ['login_hint' => new Sealed('user')],
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_interaction' => ['login_hint' => 'heidi_encrypted_user_text']]);
+        $findings = $classification->findings(['beffroi_interaction' => ['login_hint' => 'beffroi_encrypted_user_text']]);
 
         // Then
         static::assertSame(
             [
-                'heidi_interaction.login_hint is declared sealed under the "user" family, and a column seals under its own table, so under "interaction".',
+                'beffroi_interaction.login_hint is declared sealed under the "user" family, and a column seals under its own table, so under "interaction".',
             ],
             $findings,
         );
@@ -181,16 +181,16 @@ final class SchemaClassificationTest extends DatabaseTestCase
     {
         // Given
         $classification = new ClassifiedSchema([
-            'heidi_consent' => ['login_hint' => new Sealed('consent')],
+            'beffroi_consent' => ['login_hint' => new Sealed('consent')],
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_consent' => ['login_hint' => 'heidi_encrypted_interaction_text']]);
+        $findings = $classification->findings(['beffroi_consent' => ['login_hint' => 'beffroi_encrypted_interaction_text']]);
 
         // Then
         static::assertSame(
             [
-                'heidi_consent.login_hint is declared sealed under the "consent" family and carries "heidi_encrypted_interaction_text", which seals under another: a column of an embeddable several entities embed cannot carry the type of one of their tables.',
+                'beffroi_consent.login_hint is declared sealed under the "consent" family and carries "beffroi_encrypted_interaction_text", which seals under another: a column of an embeddable several entities embed cannot carry the type of one of their tables.',
             ],
             $findings,
         );
@@ -201,16 +201,16 @@ final class SchemaClassificationTest extends DatabaseTestCase
     {
         // Given
         $classification = new ClassifiedSchema([
-            'heidi_user' => ['id' => new NoPersonalDatum(SchemaColumns::DRAWN_AT_RANDOM)],
+            'beffroi_user' => ['id' => new NoPersonalDatum(SchemaColumns::DRAWN_AT_RANDOM)],
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['id' => 'heidi_encrypted_user_string']]);
+        $findings = $classification->findings(['beffroi_user' => ['id' => 'beffroi_encrypted_user_string']]);
 
         // Then
         static::assertSame(
             [
-                'heidi_user.id is sealed, and is declared readable ("' . SchemaColumns::DRAWN_AT_RANDOM . '"): move its line to the sealed list.',
+                'beffroi_user.id is sealed, and is declared readable ("' . SchemaColumns::DRAWN_AT_RANDOM . '"): move its line to the sealed list.',
             ],
             $findings,
         );
@@ -221,19 +221,19 @@ final class SchemaClassificationTest extends DatabaseTestCase
     {
         // Given
         $classification = new ClassifiedSchema([
-            'heidi_user' => [
+            'beffroi_user' => [
                 'id' => new NoPersonalDatum(SchemaColumns::DRAWN_AT_RANDOM),
-                'pager_number' => new Owed('heidi#402', 'the pager number of a person'),
+                'pager_number' => new Owed('beffroi#402', 'the pager number of a person'),
             ],
         ]);
 
         // When
-        $findings = $classification->findings(['heidi_user' => ['id' => null]]);
+        $findings = $classification->findings(['beffroi_user' => ['id' => null]]);
 
         // Then
         static::assertSame(
             [
-                'heidi_user.pager_number is classified and the schema does not declare it: delete its line.',
+                'beffroi_user.pager_number is classified and the schema does not declare it: delete its line.',
             ],
             $findings,
         );
@@ -339,7 +339,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
                 if (! $line instanceof Owed) {
                     continue;
                 }
-                static::assertSame(1, preg_match('/^heidi#\d+$/', $line->issue), $table . '.' . $column);
+                static::assertSame(1, preg_match('/^beffroi#\d+$/', $line->issue), $table . '.' . $column);
                 static::assertGreaterThanOrEqual(5, count(explode(' ', $line->reason)), $table . '.' . $column);
             }
         }

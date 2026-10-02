@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
-use Heidi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
-use Heidi\Oidc\Application\Device\DeviceAuthorizationHandler;
-use Heidi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
-use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
-use Heidi\Oidc\Application\Token\BackchannelAuthenticationGrant;
-use Heidi\Oidc\Application\Token\DeviceCodeGrant;
-use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
-use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
-use Heidi\Oidc\Application\Token\TokenIssuer;
+use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
+use Beffroi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
+use Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler;
+use Beffroi\Oidc\Application\PushedAuthorization\PushedAuthorizationHandler;
+use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Beffroi\Oidc\Application\Token\BackchannelAuthenticationGrant;
+use Beffroi\Oidc\Application\Token\DeviceCodeGrant;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 

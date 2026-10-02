@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Device;
+namespace Beffroi\Oidc\Tests\Application\Device;
 
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Bridge\Uid\SymfonyUuidGenerator;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Consent\ConsentGranting;
-use Heidi\Oidc\Application\Device\DeviceApproval;
-use Heidi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryDeviceAuthorizationRecordRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
-use Heidi\Oidc\Domain\Device\UserCode;
-use Heidi\Oidc\Domain\Event\ConsentGranted;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Scope\Scopes;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\Consent\ConsentGranting;
+use Beffroi\Oidc\Application\Device\DeviceApproval;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryDeviceAuthorizationRecordRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
+use Beffroi\Oidc\Domain\Device\UserCode;
+use Beffroi\Oidc\Domain\Event\ConsentGranted;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -4,7 +4,7 @@
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- The lineage of refresh tokens descending from one code (architecture §4.6), carried by each of its tokens. -->
-    <embeddable name="Heidi\Oidc\Domain\Token\RefreshTokenFamily">
+    <embeddable name="Beffroi\Oidc\Domain\Token\RefreshTokenFamily">
         <field name="id" type="uuid" column="id"/>
         <field name="grantingRecordHash" type="string" column="granting_record_hash" length="64">
             <options>

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Tls;
+namespace Beffroi\Bundle\Http\Tls;
 
-use Heidi\Oidc\Domain\Client\Certificate\ClientCertificate;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Request;
 
 /**

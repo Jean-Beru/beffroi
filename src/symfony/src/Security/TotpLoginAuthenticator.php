@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Bundle\Controller\LoginCodeController;
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\PendingLoginStore;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Totp\TotpAuthentication;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Controller\LoginCodeController;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\PendingLoginStore;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Totp\TotpAuthentication;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;

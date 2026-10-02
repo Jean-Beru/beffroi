@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\PasskeysPage;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\PasskeysPage;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class AccountPasskeysController
 {
-    public const string ROUTE = 'heidi_interaction_account_passkeys';
+    public const string ROUTE = 'beffroi_interaction_account_passkeys';
 
     public function __construct(
         private AccountAccess $account,

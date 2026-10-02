@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
-use Heidi\Core\Exception\ExceptionTrail;
+use Beffroi\Core\Exception\ExceptionTrail;
 use function sprintf;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;

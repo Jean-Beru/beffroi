@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Bundle\Http\PasskeyOptionsStore;
-use Heidi\Bundle\Http\PasskeysPage;
-use Heidi\Bundle\Http\RequestContextFactory;
-use Heidi\Core\Application\Passkey\PasskeyEnrolment;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\PasskeyOptionsStore;
+use Beffroi\Bundle\Http\PasskeysPage;
+use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use function mb_strlen;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,9 +28,9 @@ use function trim;
 #[AsController]
 final readonly class PasskeyEnrolmentController
 {
-    public const string ROUTE = 'heidi_interaction_account_passkeys_enrol';
+    public const string ROUTE = 'beffroi_interaction_account_passkeys_enrol';
 
-    public const string CSRF_TOKEN_ID = 'heidi_passkey_enrol';
+    public const string CSRF_TOKEN_ID = 'beffroi_passkey_enrol';
 
     public const string NAME_PARAMETER = 'name';
 

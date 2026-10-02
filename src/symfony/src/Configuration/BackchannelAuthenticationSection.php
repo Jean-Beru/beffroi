@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Configuration;
+namespace Beffroi\Bundle\Configuration;
 
-use Heidi\Bundle\Http\ClientNotificationSender;
+use Beffroi\Bundle\Http\ClientNotificationSender;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
@@ -49,6 +49,6 @@ final readonly class BackchannelAuthenticationSection extends ConfigurationSecti
     {
         $backchannel = $this->own($config);
         $services->get(ClientNotificationSender::class)->arg('$timeout', self::float($backchannel, 'client_notification_timeout'));
-        LoginHintReadings::tag($services, self::string($backchannel, 'login_hint'), 'heidi.oidc.ciba_user_hint');
+        LoginHintReadings::tag($services, self::string($backchannel, 'login_hint'), 'beffroi.oidc.ciba_user_hint');
     }
 }

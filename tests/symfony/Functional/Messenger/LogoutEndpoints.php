@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Messenger;
+namespace Beffroi\Bundle\Tests\Functional\Messenger;
 
 use function array_shift;
 use Closure;

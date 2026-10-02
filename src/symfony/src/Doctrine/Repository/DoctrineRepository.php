@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\QueryBuilder;
-use Heidi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\EntityManagers;
 
 /**
  * What the Doctrine implementations of the ports share. The manager is asked for at every call, never

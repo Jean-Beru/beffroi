@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery;
+namespace Beffroi\Oidc\Tests\Application\Discovery;
 
 use function array_keys;
 use function array_slice;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\DiscoveryHandler;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Port\MetadataContributorInterface;
-use Heidi\Oidc\Tests\Fixture\ProviderDocument;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\DiscoveryHandler;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Port\MetadataContributorInterface;
+use Beffroi\Oidc\Tests\Fixture\ProviderDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

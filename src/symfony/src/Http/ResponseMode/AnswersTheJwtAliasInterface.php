@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\ResponseMode;
+namespace Beffroi\Bundle\Http\ResponseMode;
 
 /**
  * The one way of answering that "response_mode=jwt" resolves to (JARM §2.1): the alias delivers nothing of

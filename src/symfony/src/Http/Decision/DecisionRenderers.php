@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Decision;
+namespace Beffroi\Bundle\Http\Decision;
 
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 use LogicException;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Request;

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Doctrine\TenantProvider;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\InteractionPages;
-use Heidi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
+use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -26,7 +26,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class ThirdPartyInitiatedLoginController
 {
-    public const string ROUTE = 'heidi_interaction_initiate_login';
+    public const string ROUTE = 'beffroi_interaction_initiate_login';
 
     /**
      * OIDC Core §4: the client to begin a login at, and where that client is asked to land the user.

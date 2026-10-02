@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use DateInterval;
-use Heidi\Oidc\Port\LogoutTokenDeliveryInterface;
+use Beffroi\Oidc\Port\LogoutTokenDeliveryInterface;
 
 /**
  * A delivery whose patience is the one given. The real one, LogoutTokenDeliveryBudget of the bundle,

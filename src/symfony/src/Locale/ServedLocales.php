@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Locale;
+namespace Beffroi\Bundle\Locale;
 
 use function array_filter;
 use function array_map;

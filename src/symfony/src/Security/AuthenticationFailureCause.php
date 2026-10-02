@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Security;
+namespace Beffroi\Bundle\Security;
 
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\DisabledException;
 use Symfony\Component\Security\Core\Exception\TooManyLoginAttemptsAuthenticationException;

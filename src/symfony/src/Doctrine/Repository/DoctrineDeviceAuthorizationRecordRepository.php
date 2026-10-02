@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Device\DeviceAuthorizationRecord;
-use Heidi\Oidc\Port\CanRevokeGrantsByConsentInterface;
-use Heidi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
-use Heidi\Oidc\Port\RecordedGrantsInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
+use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
+use Beffroi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
+use Beffroi\Oidc\Port\RecordedGrantsInterface;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use function array_filter;
@@ -22,7 +22,7 @@ use function is_string;
 use function sprintf;
 
 /**
- * The records of device authorization requests, in heidi_device_authorization_request (RFC 8628 §3.2). A
+ * The records of device authorization requests, in beffroi_device_authorization_request (RFC 8628 §3.2). A
  * record of a client no longer registered is not found, as a code of one is not.
  *
  * @extends DoctrineRepository<DeviceAuthorizationRecord>

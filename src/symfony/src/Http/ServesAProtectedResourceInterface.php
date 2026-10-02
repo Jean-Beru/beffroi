@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 /**
  * What a controller of a protected resource of the provider declares (OIDC Core §5.3, architecture

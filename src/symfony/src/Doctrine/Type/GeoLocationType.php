@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Core\Domain\Session\GeoLocation;
+use Beffroi\Core\Domain\Session\GeoLocation;
 
 /**
  * What a GeoIP lookup said (architecture §3.5), as one JSON document on the session.
@@ -13,7 +13,7 @@ use Heidi\Core\Domain\Session\GeoLocation;
  */
 final class GeoLocationType extends JsonObjectType
 {
-    public const string NAME = 'heidi_geo_location';
+    public const string NAME = 'beffroi_geo_location';
 
     /**
      * The document of a geolocation, and the geolocation of a document, for the type that nests this one

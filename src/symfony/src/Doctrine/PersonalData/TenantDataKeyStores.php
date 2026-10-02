@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\PersonalData;
+namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use Doctrine\DBAL\Connection;
-use Heidi\Core\Bridge\KeyManagement\KmsKeyId;
+use Beffroi\Core\Bridge\KeyManagement\KmsKeyId;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Ciphertext;
@@ -37,7 +37,7 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
      * its migrations: the bridge is clear that a table carrying anything its store does not know about is
      * a table the application declares itself, and this one carries exactly the five columns it names.
      */
-    public const string TABLE = 'heidi_data_key';
+    public const string TABLE = 'beffroi_data_key';
 
     /**
      * How many bytes a data key holds, which is what AES-256-GCM takes.

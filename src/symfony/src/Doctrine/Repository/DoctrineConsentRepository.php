@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Bundle\Doctrine\Listener\ClientResolver;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Port\ActiveConsentsInterface;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use function array_values;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
- * Consents in heidi_consent (architecture §4.3); the one in force is the active one granted last.
+ * Consents in beffroi_consent (architecture §4.3); the one in force is the active one granted last.
  *
  * @extends DoctrineRepository<Consent>
  */

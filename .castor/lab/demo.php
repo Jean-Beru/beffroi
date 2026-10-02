@@ -25,7 +25,7 @@ use Symfony\Component\Process\Process;
 /**
  * oidc-demo, the reference client of the core (Symfony's oidc_login): where it is checked out, next to this
  * repository or next to the repository this one is nested in, where its server listens, and the client the
- * application registers for it (apps/op/config/packages/heidi.yaml).
+ * application registers for it (apps/op/config/packages/beffroi.yaml).
  */
 const DEMO_DIRS = ['../oidc-demo', '../../oidc-demo'];
 
@@ -180,7 +180,7 @@ function demo(
 
     io()->title('oidc-demo against the development OP');
     $env = load_dot_env(getcwd() . '/apps/op/.env');
-    foreach (['HEIDI_ISSUER', 'OIDC_DEMO_SECRET', 'HEIDI_DEV_USER_PASSWORD'] as $name) {
+    foreach (['BEFFROI_ISSUER', 'OIDC_DEMO_SECRET', 'BEFFROI_DEV_USER_PASSWORD'] as $name) {
         if (($env[$name] ?? '') === '') {
             io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
             exit(1);
@@ -190,7 +190,7 @@ function demo(
     io()->section('Configuration');
     // .env.local only: the .env of the demo, which its repository holds, is not touched
     demo_write_env_local($dir . '/.env.local', [
-        'OIDC_PROVIDER_URI' => $env['HEIDI_ISSUER'],
+        'OIDC_PROVIDER_URI' => $env['BEFFROI_ISSUER'],
         'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
         'OIDC_CLIENT_SECRET' => $env['OIDC_DEMO_SECRET'],
         // the rungs keep secrets of their own, which the walks above never swap (demo_ladder_values)
@@ -205,7 +205,7 @@ function demo(
         $ca,
         $ca,
     ));
-    io()->text(sprintf('Issuer %s, client "%s", secret from apps/op/.env.local, CA of Caddy in %s.', $env['HEIDI_ISSUER'], DEMO_CLIENT_ID, $ca));
+    io()->text(sprintf('Issuer %s, client "%s", secret from apps/op/.env.local, CA of Caddy in %s.', $env['BEFFROI_ISSUER'], DEMO_CLIENT_ID, $ca));
 
     io()->section('Server');
     // the discovery document of the previous issuer may still be cached
@@ -216,39 +216,52 @@ function demo(
     } else {
         run(['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'], context: $server);
     }
-    io()->success(sprintf('%s/profile signs in on %s as "%s", password %s.', DEMO_URL, $env['HEIDI_ISSUER'], DEV_USERNAME, $env['HEIDI_DEV_USER_PASSWORD']));
+    io()->success(sprintf(
+        '%s/profile signs in on %s as "%s", password %s.',
+        DEMO_URL,
+        $env['BEFFROI_ISSUER'],
+        DEV_USERNAME,
+        $env['BEFFROI_DEV_USER_PASSWORD'],
+    ));
 
     if ($check) {
-        demo_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($rotate) {
-        demo_rotation_check($server, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_rotation_check($server, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($passkey) {
-        demo_passkey_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_passkey_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($formPost) {
-        demo_form_post_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_form_post_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($resourceServer) {
         if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
             io()->error('OIDC_DEMO_OPAQUE_SECRET is empty: run "castor provision" first.');
             exit(1);
         }
-        demo_resource_server_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_OPAQUE_SECRET'], $env['OIDC_DEMO_SECRET'], $ca);
+        demo_resource_server_check(
+            $dir,
+            $env['BEFFROI_ISSUER'],
+            $env['BEFFROI_DEV_USER_PASSWORD'],
+            $env['OIDC_DEMO_OPAQUE_SECRET'],
+            $env['OIDC_DEMO_SECRET'],
+            $ca,
+        );
     }
     if ($dpop) {
         if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
             io()->error('OIDC_DEMO_OPAQUE_SECRET is empty: run "castor provision" first.');
             exit(1);
         }
-        demo_dpop_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $env['OIDC_DEMO_OPAQUE_SECRET'], $ca);
+        demo_dpop_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $env['OIDC_DEMO_OPAQUE_SECRET'], $ca);
     }
     if ($ladder) {
-        demo_ladder_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_ladder_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($device) {
-        demo_device_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_device_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($service) {
         foreach (['DEMO_SERVICE_SECRET', 'DEMO_GATEWAY_SECRET'] as $name) {
@@ -257,7 +270,7 @@ function demo(
                 exit(1);
             }
         }
-        demo_service_check($dir, $env['HEIDI_ISSUER'], $env['DEMO_SERVICE_SECRET'], $env['DEMO_GATEWAY_SECRET'], $ca);
+        demo_service_check($dir, $env['BEFFROI_ISSUER'], $env['DEMO_SERVICE_SECRET'], $env['DEMO_GATEWAY_SECRET'], $ca);
     }
     if ($ciba) {
         $secrets = [];
@@ -268,11 +281,11 @@ function demo(
             }
             $secrets[$registration['secret']] = $env[$registration['secret']];
         }
-        if (($env['HEIDI_DEV_USER_SUBJECT'] ?? '') === '') {
-            io()->error('HEIDI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user.');
+        if (($env['BEFFROI_DEV_USER_SUBJECT'] ?? '') === '') {
+            io()->error('BEFFROI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user.');
             exit(1);
         }
-        demo_ciba_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['HEIDI_DEV_USER_SUBJECT'], $secrets, $byHand);
+        demo_ciba_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca, $env['BEFFROI_DEV_USER_SUBJECT'], $secrets, $byHand);
     }
     if ($assertion) {
         if (($env['DEMO_ASSERTION_SECRET'] ?? '') === '') {
@@ -283,23 +296,23 @@ function demo(
             io()->error(sprintf('%s does not exist: run "castor provision" first, which generates the key of the trusted issuer.', DEMO_ASSERTION_JWKS));
             exit(1);
         }
-        demo_assertion_check($env['HEIDI_ISSUER'], $ca, $env['DEMO_ASSERTION_SECRET']);
+        demo_assertion_check($env['BEFFROI_ISSUER'], $ca, $env['DEMO_ASSERTION_SECRET']);
     }
     if ($rar) {
         if (($env['DEMO_RAR_SECRET'] ?? '') === '') {
             io()->error('DEMO_RAR_SECRET is empty: run "castor provision" first.');
             exit(1);
         }
-        demo_rar_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, $env['DEMO_RAR_SECRET']);
+        demo_rar_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca, $env['DEMO_RAR_SECRET']);
     }
     if ($native) {
-        demo_native_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_native_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($register) {
-        demo_register_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_register_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($attested) {
-        demo_attested_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca);
+        demo_attested_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($push) {
         $registration = DEMO_CIBA_CLIENTS['poll'];
@@ -308,20 +321,20 @@ function demo(
             exit(1);
         }
         if ($byHand) {
-            if (($env['HEIDI_DEV_USER_SUBJECT'] ?? '') === '') {
-                io()->error('HEIDI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user.');
+            if (($env['BEFFROI_DEV_USER_SUBJECT'] ?? '') === '') {
+                io()->error('BEFFROI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user.');
                 exit(1);
             }
             demo_push_by_hand(
-                $env['HEIDI_ISSUER'],
-                $env['HEIDI_DEV_USER_PASSWORD'],
+                $env['BEFFROI_ISSUER'],
+                $env['BEFFROI_DEV_USER_PASSWORD'],
                 $ca,
                 $registration['client'],
                 $env[$registration['secret']],
-                $env['HEIDI_DEV_USER_SUBJECT'],
+                $env['BEFFROI_DEV_USER_SUBJECT'],
             );
         } else {
-            demo_push_check($env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $ca, [
+            demo_push_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca, [
                 $registration['secret'] => $env[$registration['secret']],
             ]);
         }
@@ -331,7 +344,7 @@ function demo(
             io()->error('OIDC_DEMO_SECOND_SECRET is empty: run "castor provision" first.');
             exit(1);
         }
-        demo_logout_others_check($dir, $env['HEIDI_ISSUER'], $env['HEIDI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECOND_SECRET'], $ca);
+        demo_logout_others_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECOND_SECRET'], $ca);
     }
 }
 
@@ -620,15 +633,15 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         sprintf('id_token_hint of the step-up verified (kid %s), back to %s/, the OP asks for a login again', $kid, DEMO_URL),
     ];
 
-    // the passkey of the run is revoked: heidi:user:show lists it by its name, heidi:user:revoke-credential takes its identifier
-    $shown = op_console(['heidi:user:show', DEV_USERNAME], context()->withQuiet())->getOutput();
+    // the passkey of the run is revoked: beffroi:user:show lists it by its name, beffroi:user:revoke-credential takes its identifier
+    $shown = op_console(['beffroi:user:show', DEV_USERNAME], context()->withQuiet())->getOutput();
     $name = 'castor demo --passkey';
     demo_expect(
         preg_match('/^\s*passkey\s+([0-9a-f-]{36})\s+' . preg_quote($name, '/') . '/m', $shown, $found) === 1,
-        'heidi:user:show lists the passkey of the run',
+        'beffroi:user:show lists the passkey of the run',
     );
-    op_console(['heidi:user:revoke-credential', DEV_USERNAME, $found[1]], context()->withQuiet());
-    $verified[] = ['Cleanup', sprintf('passkey %s revoked (heidi:user:revoke-credential)', $found[1])];
+    op_console(['beffroi:user:revoke-credential', DEV_USERNAME, $found[1]], context()->withQuiet());
+    $verified[] = ['Cleanup', sprintf('passkey %s revoked (beffroi:user:revoke-credential)', $found[1])];
 
     io()->table(['Step', 'Verified'], $verified);
     io()->success(sprintf(
@@ -985,7 +998,7 @@ function demo_wait_for_logout(array &$cookies, string $ca, float|int $startedAt,
 }
 
 /**
- * The client the OP issues opaque access tokens to (apps/op/config/packages/heidi.yaml): the same
+ * The client the OP issues opaque access tokens to (apps/op/config/packages/beffroi.yaml): the same
  * demonstration, registered a second time, so that the two shapes of access token are played one after
  * the other without the OP being reconfigured between them.
  */
@@ -1129,7 +1142,7 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
 
         io()->table(['Step', 'Verified'], $verified);
         io()->success('oidc-demo checked its access token in the three ways Symfony offers, on the two shapes the OP issues, without a patch.');
-        io()->note('An "at+jwt" is accepted by a resource server that verifies it offline until it expires (ten minutes here, HEIDI_ACCESS_TOKEN_TTL), whatever the OP knows of it: a deployment that needs a withdrawal to be felt at once registers its client for opaque tokens, and its resource server introspects them (architecture §4.6). The OP itself is not in that case: it knows where its sessions live, and refuses at UserInfo and at the introspection endpoint the token of a session that ended, whatever its shape (issue #150).');
+        io()->note('An "at+jwt" is accepted by a resource server that verifies it offline until it expires (ten minutes here, BEFFROI_ACCESS_TOKEN_TTL), whatever the OP knows of it: a deployment that needs a withdrawal to be felt at once registers its client for opaque tokens, and its resource server introspects them (architecture §4.6). The OP itself is not in that case: it knows where its sessions live, and refuses at UserInfo and at the introspection endpoint the token of a session that ended, whatever its shape (issue #150).');
     } finally {
         demo_write_env_local($dir . '/.env.local', [
             'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
@@ -1266,7 +1279,7 @@ const DEMO_LADDER_RUNGS = [
         // (RFC 7523 §3, FAPI 2.0 §5.2.2). The walk asserts the refusal rather than quieting it, and the
         // day the decision of the issue lands, this line is deleted and the rung is green or red for
         // real.
-        'known' => 'https://github.com/beffroi-php/heidi/issues/204',
+        'known' => 'https://github.com/beffroi-php/beffroi/issues/204',
     ],
     'rar' => [
         // the literal, as the three rungs below it: the constant of this client is declared with the walk
@@ -1787,8 +1800,8 @@ function demo_dpop_binding(string $issuer, string $ca, string $clientId, string 
 
 /**
  * The JWK Set max-age and the JWS lifetimes of the rotation run, seconds: written into apps/op/.env.local
- * for the time of the run (HEIDI_JWKS_MAX_AGE, HEIDI_ACCESS_TOKEN_TTL, HEIDI_ID_TOKEN_TTL, which
- * config/packages/heidi.yaml reads at runtime), so that the staging delay (max-age plus the 60 s cooldown,
+ * for the time of the run (BEFFROI_JWKS_MAX_AGE, BEFFROI_ACCESS_TOKEN_TTL, BEFFROI_ID_TOKEN_TTL, which
+ * config/packages/beffroi.yaml reads at runtime), so that the staging delay (max-age plus the 60 s cooldown,
  * StagingDelay) and the retirement window (the longest lifetime) fit in minutes rather than in a quarter
  * of an hour. The max-age stays above the cooldown, or the last section could not tell the two apart: a
  * copy that expires before the cooldown elapsed is refreshed, never refetched.
@@ -1808,7 +1821,7 @@ const DEMO_ROTATION_ENV_MARKER = 'castor demo --rotate';
 /**
  * The second success criterion of spike 2 (issue #59): oidc-demo, on Symfony's oidc_login without a
  * patch, notices nothing across a rotation. The seven steps of the issue against the running OP and demo,
- * with the windows shortened for the run (DEMO_ROTATION_*): sign in twice; "heidi:keys:rotate", a second
+ * with the windows shortened for the run (DEMO_ROTATION_*): sign in twice; "beffroi:keys:rotate", a second
  * key in the JWK Set, staged; the scheduled step of the worker activates it when the staging delay
  * elapsed; a fresh browser session signs in and its ID token names the new key; the first session
  * refreshes its access token, signed by the new key; the second session logs out with the ID token of its
@@ -1832,7 +1845,7 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     demo_expect(
         count($active) === 1 && $staged === [],
         sprintf(
-            'the tenant has one active key and none staged before the run (got %d active, %d staged: "castor console heidi:keys:list" says which)',
+            'the tenant has one active key and none staged before the run (got %d active, %d staged: "castor console beffroi:keys:list" says which)',
             count($active),
             count($staged),
         ),
@@ -1872,7 +1885,7 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     $firstFetch = $fetched[0];
 
     // 2. The rotation as an operator does it: the new key is published at once and signs later.
-    io()->text('<comment>2.</comment> heidi:keys:rotate');
+    io()->text('<comment>2.</comment> beffroi:keys:rotate');
     $kid2 = demo_rotate([]);
     $keys = demo_keys();
     $activationDue = $keys[$kid2]['activates_at'] ?? null;
@@ -1883,7 +1896,7 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         sprintf('the JWK Set has one key more, the staged one (got %s)', implode(', ', $published)),
     );
     $verified[] = [
-        '2. heidi:keys:rotate',
+        '2. beffroi:keys:rotate',
         sprintf('%s staged, activates at %s; the JWK Set has %d keys, %s still signs', $kid2, $at($activationDue), count($published), $kid1),
     ];
 
@@ -1895,7 +1908,7 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         sleep(3);
     }
     demo_expect($keys[$kid2]['status'] === 'active', sprintf(
-        'the scheduled step activated "%s" within 90 s of its date: is the worker running ("docker compose ps worker")? "castor console heidi:keys:activate %s" does it by hand',
+        'the scheduled step activated "%s" within 90 s of its date: is the worker running ("docker compose ps worker")? "castor console beffroi:keys:activate %s" does it by hand',
         $kid2,
         $kid2,
     ));
@@ -2017,9 +2030,9 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     // 7. The retirement, when due: every JWS the old key signed has expired.
     io()->text('<comment>7.</comment> The old key retires');
     demo_wait_until($retirementDue, sprintf('the retirement window of "%s"', $kid1));
-    $retirement = op_console(['heidi:keys:retire', '--due', '--no-ansi'], context()->withAllowFailure()->withQuiet());
-    demo_expect($retirement->isSuccessful(), 'heidi:keys:retire --due ran (' . trim($retirement->getErrorOutput() . $retirement->getOutput()) . ')');
-    $byWhom = str_contains($retirement->getOutput(), 'No key') ? 'by the scheduled step, before the command' : 'by heidi:keys:retire --due';
+    $retirement = op_console(['beffroi:keys:retire', '--due', '--no-ansi'], context()->withAllowFailure()->withQuiet());
+    demo_expect($retirement->isSuccessful(), 'beffroi:keys:retire --due ran (' . trim($retirement->getErrorOutput() . $retirement->getOutput()) . ')');
+    $byWhom = str_contains($retirement->getOutput(), 'No key') ? 'by the scheduled step, before the command' : 'by beffroi:keys:retire --due';
     $keys = demo_keys();
     demo_expect(($keys[$kid1]['status'] ?? null) === 'retired', sprintf('the key "%s" is retired (%s)', $kid1, $byWhom));
     $published = demo_jwks($issuer, $ca);
@@ -2030,7 +2043,7 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     $status = demo_userinfo($issuer, $ca, $sessionA['tokens']['access_token']['raw']);
     demo_expect($status === 401, sprintf('the access token of step 1 is refused at UserInfo (got %d)', $status));
     $verified[] = [
-        '7. heidi:keys:retire --due',
+        '7. beffroi:keys:retire --due',
         sprintf('%s retired %s, out of the JWK Set (%d key(s)); the access token of step 1 gets 401 at UserInfo', $kid1, $byWhom, count($published)),
     ];
 
@@ -2110,7 +2123,7 @@ function demo_rotation_lifetimes(string $issuer, string $ca, bool $shorten): voi
     $content = rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n";
     if ($shorten) {
         $content .= sprintf(
-            "\n###> %1\$s ###\nHEIDI_JWKS_MAX_AGE=%2\$d\nHEIDI_ACCESS_TOKEN_TTL=%3\$d\nHEIDI_ID_TOKEN_TTL=%3\$d\n###< %1\$s ###\n",
+            "\n###> %1\$s ###\nBEFFROI_JWKS_MAX_AGE=%2\$d\nBEFFROI_ACCESS_TOKEN_TTL=%3\$d\nBEFFROI_ID_TOKEN_TTL=%3\$d\n###< %1\$s ###\n",
             DEMO_ROTATION_ENV_MARKER,
             DEMO_ROTATION_JWKS_MAX_AGE,
             DEMO_ROTATION_TOKEN_TTL,
@@ -2165,13 +2178,13 @@ function demo_jwks(string $issuer, string $ca): array
 }
 
 /**
- * The keys of the tenant with their status and the two dates the run waits for, read from heidi:keys:list.
+ * The keys of the tenant with their status and the two dates the run waits for, read from beffroi:keys:list.
  *
  * @return array<string, array{status: string, activates_at: ?DateTimeImmutable, retirement_due_at: ?DateTimeImmutable}>
  */
 function demo_keys(): array
 {
-    $output = (string) preg_replace('/\s+/', ' ', op_console(['heidi:keys:list', '--all', '--no-ansi'], context()->withQuiet())->getOutput());
+    $output = (string) preg_replace('/\s+/', ' ', op_console(['beffroi:keys:list', '--all', '--no-ansi'], context()->withQuiet())->getOutput());
     $keys = [];
     preg_match_all('/Key identifier (\S+) Algorithm \S+ Status (\S+)(.*?)(?=Key identifier|$)/', $output, $matches, \PREG_SET_ORDER);
     foreach ($matches as $match) {
@@ -2187,15 +2200,15 @@ function demo_keys(): array
 }
 
 /**
- * Runs heidi:keys:rotate on the OP, shows its output, and returns the identifier of the new key.
+ * Runs beffroi:keys:rotate on the OP, shows its output, and returns the identifier of the new key.
  *
  * @param array<string> $options
  */
 function demo_rotate(array $options): string
 {
-    $rotated = op_console(['heidi:keys:rotate', ...$options, '--no-ansi'], context()->withAllowFailure()->withQuiet());
-    demo_expect($rotated->isSuccessful(), 'heidi:keys:rotate ran (' . trim($rotated->getErrorOutput() . $rotated->getOutput()) . ')');
-    demo_expect(preg_match('/Key identifier\s+(\S+)/', $rotated->getOutput(), $match) === 1, 'heidi:keys:rotate named the new key');
+    $rotated = op_console(['beffroi:keys:rotate', ...$options, '--no-ansi'], context()->withAllowFailure()->withQuiet());
+    demo_expect($rotated->isSuccessful(), 'beffroi:keys:rotate ran (' . trim($rotated->getErrorOutput() . $rotated->getOutput()) . ')');
+    demo_expect(preg_match('/Key identifier\s+(\S+)/', $rotated->getOutput(), $match) === 1, 'beffroi:keys:rotate named the new key');
 
     return $match[1];
 }
@@ -2362,7 +2375,7 @@ function demo_resume(array &$cookies, string $ca, string $issuer, string $url, ?
     // resumes into what the provider answers the request with. The two are the same redirection, so this is
     // where a refusal is named, rather than three requests later (LoginController, the page of the login).
     demo_expect(! str_contains($page, 'data-error="authentication_failed"'), sprintf(
-        'the login page does not come back saying the sign-in was refused ("heidi:user:show %s" says which credentials that user holds, and a second factor is one no walk of this file answers)',
+        'the login page does not come back saying the sign-in was refused ("beffroi:user:show %s" says which credentials that user holds, and a second factor is one no walk of this file answers)',
         DEV_USERNAME,
     ));
     if ($status !== 302 || ! str_starts_with($location, $issuer . '/consent?')) {
@@ -2975,7 +2988,7 @@ const DEMO_CIBA_CLIENTS = [
 
 /**
  * Where the client of the "ping" walk listens, as the worker of the stack reaches it: the port is registered
- * with that client (apps/op/config/packages/heidi.yaml), so it is fixed rather than drawn.
+ * with that client (apps/op/config/packages/beffroi.yaml), so it is fixed rather than drawn.
  */
 const DEMO_CIBA_NOTIFICATION_PORT = 8004;
 
@@ -2996,7 +3009,7 @@ const DEMO_CIBA_BINDING_MESSAGE = 'Invoice 4711';
  * times the client had to ask.
  *
  * @param string $subject what a "login_hint" names for this tenant: the subject this provider issued, which is
- *                        the reading the application wired (heidi.backchannel_authentication.login_hint) and
+ *                        the reading the application wired (beffroi.backchannel_authentication.login_hint) and
  *                        what CIBA Core §15 asks for, an identifier that says nothing outside this provider
  * @param array<string, string> $secrets apps/op/.env.local, by the name of the variable each client's is under
  */
@@ -3711,7 +3724,7 @@ const DEMO_PUSH_CERTIFICATE = 'var/demo/push-service.crt';
 
 const DEMO_PUSH_KEY = 'var/demo/push-service.key';
 
-const DEMO_PUSH_TRUSTED_CERTIFICATE = '/usr/local/share/ca-certificates/heidi-lab-push.crt';
+const DEMO_PUSH_TRUSTED_CERTIFICATE = '/usr/local/share/ca-certificates/beffroi-lab-push.crt';
 
 /**
  * The user this walk asks for, and never the development user. What it measures of a push service that
@@ -3732,7 +3745,7 @@ const DEMO_PUSH_LABEL = 'The browser of the push walk';
 
 /**
  * The "sub" of every signed request this provider sends a push service (RFC 8292 §2.1), as the
- * application wires it (apps/op/config/packages/heidi.yaml, heidi.web_push.subject).
+ * application wires it (apps/op/config/packages/beffroi.yaml, beffroi.web_push.subject).
  */
 const DEMO_PUSH_SUBJECT = 'mailto:operator@op.localhost';
 
@@ -4070,17 +4083,17 @@ function demo_push_user(string $password): string
 {
     // created if it is not there, kept if it is: the command says so itself and the run reads its own user
     op_console(
-        ['heidi:user:create', DEMO_PUSH_USERNAME, '--email', DEMO_PUSH_USERNAME . '@op.localhost', '--email-verified'],
+        ['beffroi:user:create', DEMO_PUSH_USERNAME, '--email', DEMO_PUSH_USERNAME . '@op.localhost', '--email-verified'],
         context()->withAllowFailure()->withQuiet(),
     );
     // never on the command line: the command reads it on its standard input
     op_console(
-        ['heidi:user:set-password', DEMO_PUSH_USERNAME, '--password-stdin'],
+        ['beffroi:user:set-password', DEMO_PUSH_USERNAME, '--password-stdin'],
         context()->withQuiet()->withInput($password . "\n"),
     );
-    $shown = op_console(['heidi:user:show', DEMO_PUSH_USERNAME, '--no-ansi'], context()->withQuiet())->getOutput();
+    $shown = op_console(['beffroi:user:show', DEMO_PUSH_USERNAME, '--no-ansi'], context()->withQuiet())->getOutput();
     if (preg_match('/^\s*Subject\s+(\S+)\s*$/m', $shown, $subject) !== 1) {
-        io()->error(sprintf('"heidi:user:show %s" does not say which subject the user was issued.', DEMO_PUSH_USERNAME));
+        io()->error(sprintf('"beffroi:user:show %s" does not say which subject the user was issued.', DEMO_PUSH_USERNAME));
         exit(1);
     }
     io()->text(sprintf('The walk asks for "%s", whose only browser is the one it draws.', DEMO_PUSH_USERNAME));
@@ -4424,7 +4437,7 @@ const DEMO_REGISTER_SCOPE = 'openid profile email';
  * had never seen registers itself and gets exactly what a declared client gets, and exactly the same
  * refusals.
  *
- * Every other client of this demonstration is a registration in apps/op/config/packages/heidi.yaml. This
+ * Every other client of this demonstration is a registration in apps/op/config/packages/beffroi.yaml. This
  * walk is the one that declares nothing: the console issues a credential, a program of tests/demo/ spends
  * it, and what it is answered is what it signs a user in with. The pairwise pair is the property of the
  * spike that a unit test proves and a walk shows: the same user, two clients, two subjects, printed side
@@ -4442,7 +4455,7 @@ function demo_register_check(string $issuer, string $password, string $ca): void
     $token = demo_register_token();
     $verified[] = [
         'Initial access token',
-        sprintf('"%s", worth %d registrations (heidi:client:token:issue)', DEMO_REGISTER_TOKEN_NAME, DEMO_REGISTER_REGISTRATIONS),
+        sprintf('"%s", worth %d registrations (beffroi:client:token:issue)', DEMO_REGISTER_TOKEN_NAME, DEMO_REGISTER_REGISTRATIONS),
     ];
 
     // Phase one: the two registrations, then one more than the credential was issued for.
@@ -4720,7 +4733,7 @@ function demo_register_check(string $issuer, string $password, string $ca): void
         DEV_USERNAME,
     ));
     io()->note(sprintf(
-        'The client on %s is left registered: it was used, so the scheduled step deletes it after the period this tenant named (decision 0009, keep_a_client_unused_for). "heidi:client:list" shows it until then.',
+        'The client on %s is left registered: it was used, so the scheduled step deletes it after the period this tenant named (decision 0009, keep_a_client_unused_for). "beffroi:client:list" shows it until then.',
         parse_url(DEMO_REGISTER_CLIENTS['second']['redirect_uri'], \PHP_URL_HOST),
     ));
 }
@@ -4742,7 +4755,7 @@ function demo_registration_mode(string $issuer, string $ca, string $marker, ?str
     $content = rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n";
     if ($mode !== null) {
         $content .= sprintf(
-            "\n###> %1\$s ###\nHEIDI_REGISTRATION_MODE=%2\$s\n###< %1\$s ###\n",
+            "\n###> %1\$s ###\nBEFFROI_REGISTRATION_MODE=%2\$s\n###< %1\$s ###\n",
             $marker,
             $mode,
         );
@@ -4807,7 +4820,7 @@ function demo_register_token(): string
         'op',
         'php',
         'bin/console',
-        'heidi:client:token:issue',
+        'beffroi:client:token:issue',
         DEMO_REGISTER_TOKEN_NAME,
         '--registrations',
         (string) DEMO_REGISTER_REGISTRATIONS,
@@ -5079,7 +5092,7 @@ function demo_attested_check(string $issuer, string $password, string $ca): void
         DEV_USERNAME,
     ));
     io()->note(sprintf(
-        'The client is left registered: it was used, so the scheduled step deletes it after the period this tenant named (decision 0009, keep_a_client_unused_for). "heidi:client:list" shows it until then, and "heidi:client:delete %s" now.',
+        'The client is left registered: it was used, so the scheduled step deletes it after the period this tenant named (decision 0009, keep_a_client_unused_for). "beffroi:client:list" shows it until then, and "beffroi:client:delete %s" now.',
         $clientId,
     ));
 }

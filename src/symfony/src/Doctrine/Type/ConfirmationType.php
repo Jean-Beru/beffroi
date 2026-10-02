@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Type;
+namespace Beffroi\Bundle\Doctrine\Type;
 
-use Heidi\Oidc\Domain\Token\ConfirmationInterface;
-use Heidi\Oidc\Port\ConfirmationReaderInterface;
+use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
+use Beffroi\Oidc\Port\ConfirmationReaderInterface;
 use LogicException;
 
 /**
@@ -17,7 +17,7 @@ use LogicException;
  */
 final class ConfirmationType extends JsonObjectType implements NeedsConfirmationReaderInterface
 {
-    public const string NAME = 'heidi_confirmation';
+    public const string NAME = 'beffroi_confirmation';
 
     private static ?ConfirmationReaderInterface $confirmations = null;
 

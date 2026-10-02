@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Decision;
+namespace Beffroi\Bundle\Http\Decision;
 
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
-use Heidi\Oidc\Domain\Authorization\AuthorizationAnswer;
-use Heidi\Oidc\Domain\Interaction\AuthorizationDecision;
-use Heidi\Oidc\Domain\Interaction\Granted;
+use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
+use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
+use Beffroi\Oidc\Domain\Interaction\Granted;
 use LogicException;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Request;

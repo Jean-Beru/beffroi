@@ -23,7 +23,7 @@ const MTLS_PATH = '/mtls/client-certificate';
 
 /**
  * One of the headers a proxy of somebody else carries a client certificate in, and which nothing in
- * front of this application sets (Heidi\Bundle\Http\Tls\EdgeClientCertificateResolver).
+ * front of this application sets (Beffroi\Bundle\Http\Tls\EdgeClientCertificateResolver).
  */
 const MTLS_FORGED_HEADER = 'X-Client-Cert';
 

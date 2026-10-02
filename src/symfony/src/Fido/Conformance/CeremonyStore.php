@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Fido\Conformance;
+namespace Beffroi\Bundle\Fido\Conformance;
 
 use function hash;
 use function is_array;
@@ -77,6 +77,6 @@ final readonly class CeremonyStore
 
     private static function key(string $ceremony, string $challenge): string
     {
-        return 'heidi.fido.conformance.' . $ceremony . '.' . hash('sha256', $challenge);
+        return 'beffroi.fido.conformance.' . $ceremony . '.' . hash('sha256', $challenge);
     }
 }

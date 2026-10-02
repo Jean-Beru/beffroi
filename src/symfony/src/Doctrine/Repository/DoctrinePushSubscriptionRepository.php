@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Core\Domain\Identity\PushSubscription;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The browsers of a user this provider may push to, in heidi_push_subscription (architecture §3.1). A
+ * The browsers of a user this provider may push to, in beffroi_push_subscription (architecture §3.1). A
  * browser is recognised by the digest of its endpoint, as the unique constraint of the table is: an
  * endpoint is as long as its push service decided, and comparing a digest compares the whole of it.
  *

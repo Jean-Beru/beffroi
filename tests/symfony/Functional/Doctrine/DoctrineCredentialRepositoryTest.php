@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Heidi\Bundle\Doctrine\Type\BytesType;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Bridge\Password\Algorithm\Argon2id;
-use Heidi\Core\Bridge\Password\Algorithm\Bcrypt;
-use Heidi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Bundle\Doctrine\Type\BytesType;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Totps;
 use function is_string;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
@@ -276,7 +276,8 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->id->equals($totp->id));
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
-        static::assertSame(Totps::SEED, self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $found->sealedSecret));
+        static::assertSame(Totps::SEED, self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)
+            ->unseal(self::tenant(), $found->sealedSecret));
         static::assertSame(59_000_001, $found->lastAcceptedStep);
         static::assertCount(10, $found->backupCodes);
         static::assertTrue($found->backupCodes[3]->isSpent());
@@ -300,7 +301,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         self::credentials()->save($totp);
 
         // When
-        $row = self::entityManager()->getConnection()->fetchAssociative('SELECT * FROM heidi_totp_credential WHERE id = ?', [$totp->id->toBinary()]);
+        $row = self::entityManager()->getConnection()->fetchAssociative('SELECT * FROM beffroi_totp_credential WHERE id = ?', [$totp->id->toBinary()]);
 
         // Then
         static::assertIsArray($row);
@@ -322,7 +323,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
      */
     private static function totp(User $user): TotpCredential
     {
-        $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), Totps::SEED);
+        $sealed = self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), Totps::SEED);
 
         return new TotpCredential(Uuid::v7(), $user, $sealed, Totps::credential($user, new FakePasswordHasher())->backupCodes, 59_000_000, self::now());
     }
@@ -350,6 +351,6 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
 
     private static function credentials(): CredentialRepositoryInterface
     {
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class);
+        return self::service('test.beffroi.credentials', CredentialRepositoryInterface::class);
     }
 }

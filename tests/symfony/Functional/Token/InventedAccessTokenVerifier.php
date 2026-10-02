@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Token;
+namespace Beffroi\Bundle\Tests\Functional\Token;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
-use Heidi\Oidc\Domain\Token\VerifiedAccessToken;
-use Heidi\Oidc\Port\AccessTokenVerifierInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
+use Beffroi\Oidc\Domain\Token\VerifiedAccessToken;
+use Beffroi\Oidc\Port\AccessTokenVerifierInterface;
 use SensitiveParameter;
 use function str_starts_with;
 use function strlen;

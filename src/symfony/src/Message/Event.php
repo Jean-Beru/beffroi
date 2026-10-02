@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Message;
+namespace Beffroi\Bundle\Message;
 
 /**
  * Something that happened, routed to the low-priority transport; no handler is allowed. The events of

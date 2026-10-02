@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit;
+namespace Beffroi\Bundle\Tests\Unit;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Configuration\ClientRegistrationSection;
-use Heidi\Bundle\Configuration\TenantSection;
-use Heidi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
+use Beffroi\Bundle\Configuration\ClientRegistrationSection;
+use Beffroi\Bundle\Configuration\TenantSection;
+use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
 use function sprintf;
-use Heidi\Bundle\Configuration\TokensSection;
-use Heidi\Bundle\HeidiBundle;
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Session\AuthenticationContextPolicy;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Application\Token\GrantNames;
-use Heidi\Oidc\Bridge\Configuration\ClientDefinition;
-use Heidi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
-use Heidi\Oidc\Tests\Fixture\Registrations;
+use Beffroi\Bundle\Configuration\TokensSection;
+use Beffroi\Bundle\BeffroiBundle;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Oidc\Application\Token\GrantNames;
+use Beffroi\Oidc\Bridge\Configuration\ClientDefinition;
+use Beffroi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
+use Beffroi\Oidc\Tests\Fixture\Registrations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -35,7 +35,7 @@ use Symfony\Component\DependencyInjection\Extension\ConfigurationExtensionInterf
 /**
  * The configuration tree of architecture §5.1, read through the Config component as the kernel reads it.
  */
-final class HeidiBundleConfigurationTest extends TestCase
+final class BeffroiBundleConfigurationTest extends TestCase
 {
     private const array MINIMAL = [
         'tenant' => [
@@ -471,7 +471,7 @@ final class HeidiBundleConfigurationTest extends TestCase
 
     private static function configuration(): ConfigurationInterface
     {
-        $extension = new HeidiBundle()->getContainerExtension();
+        $extension = new BeffroiBundle()->getContainerExtension();
         static::assertInstanceOf(ConfigurationExtensionInterface::class, $extension);
         $configuration = $extension->getConfiguration([], new ContainerBuilder());
         static::assertInstanceOf(ConfigurationInterface::class, $configuration);

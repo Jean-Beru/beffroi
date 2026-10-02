@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function array_keys;
-use Heidi\Core\Domain\Key\TenantKey;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use Jose\Component\Core\JWKSet;
 use Jose\Component\Signature\JWSVerifier;
 use Jose\Component\Signature\Serializer\CompactSerializer;

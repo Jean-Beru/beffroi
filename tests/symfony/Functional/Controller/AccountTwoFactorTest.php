@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Http\TotpProvisioningStore;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\TotpAlgorithmInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Bundle\Http\TotpProvisioningStore;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\TotpAlgorithmInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use function intdiv;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
@@ -443,7 +443,8 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
     private static function codeOf(TotpSecret $secret, DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)->codeAt($secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
+        return self::service('test.beffroi.totp_algorithm', TotpAlgorithmInterface::class)
+            ->codeAt($secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
     /**
@@ -452,8 +453,8 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     private static function totpsOf(User $user): array
     {
         self::reload();
-        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $managed = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
 
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($managed, TotpCredential::class);
+        return self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($managed, TotpCredential::class);
     }
 }

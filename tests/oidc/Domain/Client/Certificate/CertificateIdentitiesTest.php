@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client\Certificate;
+namespace Beffroi\Oidc\Tests\Domain\Client\Certificate;
 
-use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentities;
-use Heidi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Client\Certificate\CertificateIdentities;
+use Beffroi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -63,7 +63,7 @@ final class CertificateIdentitiesTest extends TestCase
      */
     public static function provideRegistrations(): iterable
     {
-        yield 'tls_client_auth_subject_dn' => ['tls_client_auth_subject_dn', 'cn=client,o=Heidi Test'];
+        yield 'tls_client_auth_subject_dn' => ['tls_client_auth_subject_dn', 'cn=client,o=Beffroi Test'];
 
         yield 'tls_client_auth_san_dns' => ['tls_client_auth_san_dns', 'client.example.com'];
 

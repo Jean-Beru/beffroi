@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Ciba;
+namespace Beffroi\Bundle\Ciba;
 
-use Heidi\Bundle\Locale\UserLocale;
-use Heidi\Bundle\Push\PushMessage;
-use Heidi\Bundle\Push\WebPushSender;
-use Heidi\Core\Application\Push\PushSubscriptionRevocation;
-use Heidi\Core\Domain\Identity\PushSubscription;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\PushSubscriptionRepositoryInterface;
-use Heidi\Oidc\Domain\Ciba\PendingApproval;
+use Beffroi\Bundle\Locale\UserLocale;
+use Beffroi\Bundle\Push\PushMessage;
+use Beffroi\Bundle\Push\WebPushSender;
+use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Oidc\Domain\Ciba\PendingApproval;
 use function implode;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -37,7 +37,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final readonly class WebPushApprovalChannel implements PendingApprovalChannelInterface
 {
-    public const string TRANSLATION_DOMAIN = 'heidi';
+    public const string TRANSLATION_DOMAIN = 'beffroi';
 
     public function __construct(
         private PushSubscriptionRepositoryInterface $subscriptions,

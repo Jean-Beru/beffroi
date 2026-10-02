@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Doctrine\Repository;
+namespace Beffroi\Bundle\Doctrine\Repository;
 
 use Doctrine\DBAL\Types\Types;
 use Symfony\Bridge\Doctrine\Types\UuidType;
-use Heidi\Bundle\Doctrine\EntityManagers;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Application\Client\ClientMetadataReader;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientRecord;
-use Heidi\Oidc\Domain\Client\ClientRegistration;
-use Heidi\Oidc\Domain\Client\InventoriedClient;
-use Heidi\Oidc\Domain\Client\Registration\ClientRetention;
-use Heidi\Oidc\Port\ClientInventoryInterface;
-use Heidi\Oidc\Port\ClientSourceInterface;
-use Heidi\Oidc\Port\ClientStoreInterface;
-use Heidi\Oidc\Port\UnusedClientsInterface;
+use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Application\Client\ClientMetadataReader;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\InventoriedClient;
+use Beffroi\Oidc\Domain\Client\Registration\ClientRetention;
+use Beffroi\Oidc\Port\ClientInventoryInterface;
+use Beffroi\Oidc\Port\ClientSourceInterface;
+use Beffroi\Oidc\Port\ClientStoreInterface;
+use Beffroi\Oidc\Port\UnusedClientsInterface;
 use function is_string;
 
 /**
- * The clients this provider registered itself, in heidi_client (RFC 7591 §3.2.1): a source of clients
+ * The clients this provider registered itself, in beffroi_client (RFC 7591 §3.2.1): a source of clients
  * like the configuration of the deployment, and the store the registration endpoint writes to. Nothing
  * downstream learns that a client came from a row rather than from a declaration.
  *

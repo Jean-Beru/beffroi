@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http;
+namespace Beffroi\Bundle\Http;
 
 use function is_array;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -18,9 +18,9 @@ use Webauthn\PublicKeyCredentialRequestOptions;
  */
 final readonly class PasskeyOptionsStore
 {
-    public const string CREATION_KEY = 'heidi.passkey.creation';
+    public const string CREATION_KEY = 'beffroi.passkey.creation';
 
-    public const string REQUEST_KEY = 'heidi.passkey.request';
+    public const string REQUEST_KEY = 'beffroi.passkey.request';
 
     public function storeCreation(SessionInterface $session, Uuid $userId, PublicKeyCredentialCreationOptions $options): void
     {

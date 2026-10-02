@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
-use Heidi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Heidi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedType;
@@ -70,7 +70,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     public function aValueSealedByAnEncryptedTypeIsReadBackAsTheDomainObjectItWas(): void
     {
         // Given
-        $type = Type::getTypeRegistry()->get(EncryptedColumnTypes::name('user', 'heidi_email_address'));
+        $type = Type::getTypeRegistry()->get(EncryptedColumnTypes::name('user', 'beffroi_email_address'));
         $platform = self::connection()->getDatabasePlatform();
         $address = new EmailAddress('alice@example.com');
 
@@ -93,7 +93,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         // Given
         $connection = self::connection();
         $connection->executeStatement('CREATE TABLE ' . self::TABLE . ' (id INTEGER PRIMARY KEY, value BLOB)');
-        $name = EncryptedColumnTypes::name('user', 'heidi_email_address');
+        $name = EncryptedColumnTypes::name('user', 'beffroi_email_address');
 
         // When
         $connection->insert(
@@ -124,7 +124,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     public function aKernelBootedASecondTimeRegistersTheSameNamesAgain(): void
     {
         // Given
-        $name = EncryptedColumnTypes::name('user', 'heidi_email_address');
+        $name = EncryptedColumnTypes::name('user', 'beffroi_email_address');
         $before = Type::getTypeRegistry()->get($name);
 
         // When
@@ -158,12 +158,12 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
      */
     public static function provideNames(): iterable
     {
-        yield 'a type of the platform' => ['user', 'string', 'heidi_encrypted_user_string'];
-        yield 'a type of the bundle, whose prefix is dropped' => ['user', 'heidi_address', 'heidi_encrypted_user_address'];
+        yield 'a type of the platform' => ['user', 'string', 'beffroi_encrypted_user_string'];
+        yield 'a type of the bundle, whose prefix is dropped' => ['user', 'beffroi_address', 'beffroi_encrypted_user_address'];
         yield 'a family whose name is a sentence' => [
             'backchannel_authentication_request',
-            'heidi_request_context',
-            'heidi_encrypted_backchannel_authentication_request_request_context',
+            'beffroi_request_context',
+            'beffroi_encrypted_backchannel_authentication_request_request_context',
         ];
     }
 
@@ -176,10 +176,10 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('The family "interaction" seals no column of type "heidi_address". The families are user, linked_identity, passkey_credential, push_subscription, authentication_session, interaction, pushed_authorization_request, device_authorization_request, backchannel_authentication_request, client.');
+        $this->expectExceptionMessageIs('The family "interaction" seals no column of type "beffroi_address". The families are user, linked_identity, passkey_credential, push_subscription, authentication_session, interaction, pushed_authorization_request, device_authorization_request, backchannel_authentication_request, client.');
 
         // When
-        EncryptedColumnTypes::name('interaction', 'heidi_address');
+        EncryptedColumnTypes::name('interaction', 'beffroi_address');
     }
 
     /**

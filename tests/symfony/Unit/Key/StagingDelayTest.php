@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Key;
+namespace Beffroi\Bundle\Tests\Unit\Key;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Key\StagingDelay;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery\Metadata;
+namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
-use Heidi\Oidc\Application\Token\ServedGrants;
-use Heidi\Oidc\Tests\Fixture\FakeGrant;
-use Heidi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedGrants;
+use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Tests\Fixture\FakeGrant;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

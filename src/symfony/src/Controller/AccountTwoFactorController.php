@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Controller;
+namespace Beffroi\Bundle\Controller;
 
-use Heidi\Bundle\Http\AccountAccess;
-use Heidi\Bundle\Http\TwoFactorPage;
+use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\TwoFactorPage;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -20,7 +20,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class AccountTwoFactorController
 {
-    public const string ROUTE = 'heidi_interaction_account_two_factor';
+    public const string ROUTE = 'beffroi_interaction_account_two_factor';
 
     public function __construct(
         private AccountAccess $account,

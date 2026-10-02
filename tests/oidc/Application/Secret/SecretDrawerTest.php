@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Secret;
+namespace Beffroi\Oidc\Tests\Application\Secret;
 
-use Heidi\Core\Bridge\Random\FixedRandomness;
-use Heidi\Core\Bridge\Random\PlatformRandomness;
-use Heidi\Oidc\Application\Secret\SecretDrawer;
-use Heidi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Core\Bridge\Random\FixedRandomness;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Oidc\Application\Secret\SecretDrawer;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;

@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace Beffroi\Bundle\Tests\Unit\Security;
 
 use function array_map;
-use Heidi\Bundle\Security\PasskeyCredentials;
-use Heidi\Bundle\Security\PasskeyLogin;
-use Heidi\Bundle\Security\PassportProofs;
-use Heidi\Bundle\Security\DatedPasswordCredential;
-use Heidi\Bundle\Security\PasswordLogin;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Bundle\Security\ProvingLoginInterface;
-use Heidi\Bundle\Security\TotpCredentials;
-use Heidi\Bundle\Security\TotpLogin;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\VerifiedPasskeyAssertion;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\PendingLogin;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Bundle\Security\PasskeyCredentials;
+use Beffroi\Bundle\Security\PasskeyLogin;
+use Beffroi\Bundle\Security\PassportProofs;
+use Beffroi\Bundle\Security\DatedPasswordCredential;
+use Beffroi\Bundle\Security\PasswordLogin;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Bundle\Security\ProvingLoginInterface;
+use Beffroi\Bundle\Security\TotpCredentials;
+use Beffroi\Bundle\Security\TotpLogin;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\VerifiedPasskeyAssertion;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\PendingLogin;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

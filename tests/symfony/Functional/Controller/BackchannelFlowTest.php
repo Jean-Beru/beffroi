@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
-use Heidi\Bundle\Message\SendClientNotification;
-use Heidi\Bundle\Message\TellUserOfPendingApproval;
+use Beffroi\Bundle\Message\SendClientNotification;
+use Beffroi\Bundle\Message\TellUserOfPendingApproval;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
@@ -500,7 +500,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     private static function queued(): array
     {
         $envelopes = [];
-        foreach (self::service('test.heidi.notification_queue', TransportInterface::class)->get() as $envelope) {
+        foreach (self::service('test.beffroi.notification_queue', TransportInterface::class)->get() as $envelope) {
             static::assertInstanceOf(Envelope::class, $envelope);
             $envelopes[] = $envelope;
         }

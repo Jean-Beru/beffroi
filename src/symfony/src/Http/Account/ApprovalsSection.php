@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Http\Account;
 
 use function count;
-use Heidi\Bundle\Controller\PendingApprovalsController;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Application\Ciba\BackchannelApproval;
+use Beffroi\Bundle\Controller\PendingApprovalsController;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Application\Ciba\BackchannelApproval;
 
 /**
  * What is waiting for an answer from this user, on the home page (CIBA Core §10.1). First of the sections

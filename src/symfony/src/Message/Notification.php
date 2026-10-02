@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Message;
+namespace Beffroi\Bundle\Message;
 
 /**
  * Something the provider carries to a third party it does not own (architecture §5.6): a logout token to

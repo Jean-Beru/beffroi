@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit;
+namespace Beffroi\Bundle\Tests\Unit;
 
 use DateInterval;
-use Heidi\Bundle\HeidiBundle;
-use Heidi\Bundle\Key\FileTenantKeyRepository;
-use Heidi\Bundle\Key\StagingDelay;
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Application\Key\TenantKeyRotator;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
-use Heidi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
-use Heidi\Oidc\Application\Token\AuthorizationCodeGrant;
-use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
-use Heidi\Oidc\Application\Token\JwtAccessTokenVerifier;
-use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
-use Heidi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
-use Heidi\Oidc\Application\Token\TokenIssuer;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
-use Heidi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Beffroi\Bundle\BeffroiBundle;
+use Beffroi\Bundle\Key\FileTenantKeyRepository;
+use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
+use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
+use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenVerifier;
+use Beffroi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
+use Beffroi\Oidc\Application\Token\TokenIssuer;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -29,10 +29,10 @@ use Symfony\Component\DependencyInjection\Definition;
 
 /**
  * What the extension hands the services from the configuration, read on the definitions before the
- * container is compiled: the values of "heidi.tokens" become the DateIntervals of the use cases, the
- * values of "heidi.keys" and "heidi.tenant" the arguments of the bridges.
+ * container is compiled: the values of "beffroi.tokens" become the DateIntervals of the use cases, the
+ * values of "beffroi.keys" and "beffroi.tenant" the arguments of the bridges.
  */
-final class HeidiBundleExtensionTest extends TestCase
+final class BeffroiBundleExtensionTest extends TestCase
 {
     #[Test]
     public function theLifetimesOfTheConfigurationReachTheUseCases(): void
@@ -70,7 +70,7 @@ final class HeidiBundleExtensionTest extends TestCase
             'keys' => [
                 'kms' => 'op',
                 'key_id' => 'k',
-                'storage' => '/var/lib/heidi/keys',
+                'storage' => '/var/lib/beffroi/keys',
             ],
         ]);
 
@@ -79,9 +79,9 @@ final class HeidiBundleExtensionTest extends TestCase
         static::assertSame('https://op.test/tenant-a', $factory->getArgument('$issuer'));
         static::assertSame('tenant-a', $factory->getArgument('$slug'));
         static::assertSame('Tenant A', $factory->getArgument('$name'));
-        static::assertSame('key_management.op', (string) $container->getAlias('heidi.kms'));
+        static::assertSame('key_management.op', (string) $container->getAlias('beffroi.kms'));
         static::assertSame('k', $container->getDefinition(EnvelopeKeySealer::class)->getArgument('$kmsKeyId'));
-        static::assertSame('/var/lib/heidi/keys', $container->getDefinition(FileTenantKeyRepository::class)->getArgument('$directory'));
+        static::assertSame('/var/lib/beffroi/keys', $container->getDefinition(FileTenantKeyRepository::class)->getArgument('$directory'));
     }
 
     /**
@@ -231,15 +231,15 @@ final class HeidiBundleExtensionTest extends TestCase
 
         // Then
         foreach ([JwtAccessTokenIssuer::class, OpaqueAccessTokenIssuer::class] as $issuer) {
-            static::assertArrayHasKey('heidi.oidc.access_token_issuer', $container->getDefinition($issuer)->getTags());
+            static::assertArrayHasKey('beffroi.oidc.access_token_issuer', $container->getDefinition($issuer)->getTags());
         }
         foreach ([JwtAccessTokenVerifier::class, OpaqueAccessTokenVerifier::class] as $verifier) {
-            static::assertArrayHasKey('heidi.oidc.access_token_verifier', $container->getDefinition($verifier)->getTags());
+            static::assertArrayHasKey('beffroi.oidc.access_token_verifier', $container->getDefinition($verifier)->getTags());
         }
     }
 
     /**
-     * Architecture §5.2: a process serves both planes unless HEIDI_PLANE says otherwise.
+     * Architecture §5.2: a process serves both planes unless BEFFROI_PLANE says otherwise.
      */
     #[Test]
     public function theDefaultPlaneIsBoth(): void
@@ -248,7 +248,7 @@ final class HeidiBundleExtensionTest extends TestCase
         $container = self::load([]);
 
         // Then
-        static::assertSame('all', $container->getParameterBag()->all()['env(HEIDI_PLANE)']);
+        static::assertSame('all', $container->getParameterBag()->all()['env(BEFFROI_PLANE)']);
     }
 
     /**
@@ -259,13 +259,13 @@ final class HeidiBundleExtensionTest extends TestCase
     {
         // Given
         $container = new ContainerBuilder();
-        $container->setParameter('env(HEIDI_PLANE)', 'protocol');
+        $container->setParameter('env(BEFFROI_PLANE)', 'protocol');
 
         // When
         self::load([], $container);
 
         // Then
-        static::assertSame('protocol', $container->getParameterBag()->all()['env(HEIDI_PLANE)']);
+        static::assertSame('protocol', $container->getParameterBag()->all()['env(BEFFROI_PLANE)']);
     }
 
     /**
@@ -281,7 +281,7 @@ final class HeidiBundleExtensionTest extends TestCase
         $container = self::load([]);
 
         // Then
-        $encrypter = $container->getDefinition('heidi.personal_data.encrypter');
+        $encrypter = $container->getDefinition('beffroi.personal_data.encrypter');
         static::assertTrue($encrypter->isLazy());
         static::assertTrue($encrypter->isPublic());
     }
@@ -292,7 +292,7 @@ final class HeidiBundleExtensionTest extends TestCase
     private static function load(array $config, ?ContainerBuilder $container = null): ContainerBuilder
     {
         $container ??= new ContainerBuilder();
-        $extension = new HeidiBundle()->getContainerExtension();
+        $extension = new BeffroiBundle()->getContainerExtension();
         static::assertNotNull($extension);
         $extension->load([
             $config
