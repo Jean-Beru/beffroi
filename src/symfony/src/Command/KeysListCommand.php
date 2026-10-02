@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heidi\Bundle\Command;
 
+use function array_map;
 use function count;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -14,6 +15,7 @@ use Heidi\Core\Exception\ExceptionTrail;
 use Heidi\Core\Port\KeySealerInterface;
 use Heidi\Core\Port\TenantKeyRepositoryInterface;
 use function implode;
+use function in_array;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -26,6 +28,10 @@ use Throwable;
  * (architecture §3.3): the ones the JWK Set publishes, and the retired ones on request. On request too,
  * whether the KMS still opens the keys in use or about to be: a KMS that lost its master key leaves
  * envelopes nothing can open, which the first signature, or the first JWE, would be the one to find out.
+ *
+ * A key it cannot open is named with its algorithm, and so is the run that reaches it: a rotation reaches
+ * one algorithm, and a tenant publishes one key per algorithm it serves, so a KMS that forgot its master
+ * key leaves as many dead keys as the tenant has algorithms and as many rotations to do.
  */
 #[AsCommand(
     name: 'heidi:keys:list',
@@ -61,6 +67,7 @@ final readonly class KeysListCommand
             return Command::SUCCESS;
         }
 
+        /** @var list<TenantKey> $dead */
         $dead = [];
         foreach ($keys as $key) {
             $rows = self::describe($key);
@@ -70,7 +77,7 @@ final readonly class KeysListCommand
                     'Opens with the KMS' => $failure === null ? 'yes' : 'no: ' . $failure,
                 ];
                 if ($failure !== null) {
-                    $dead[] = $key->kid;
+                    $dead[] = $key;
                 }
             }
             $io->definitionList(...$rows);
@@ -80,17 +87,48 @@ final readonly class KeysListCommand
                 sprintf(
                     'The KMS cannot open the key%s %s of "%s": nothing is done with %s.',
                     count($dead) === 1 ? '' : 's',
-                    implode(', ', $dead),
+                    implode(', ', array_map(
+                        static fn (TenantKey $key): string => sprintf('%s (%s)', $key->kid, $key->algorithm->name()),
+                        $dead,
+                    )),
                     $tenant->slug,
                     count($dead) === 1 ? 'it' : 'them',
                 ),
-                'If the KMS is not reachable, start it and run this command again. If the KMS lost the master key (Vault in dev mode and LocalStack forget everything when they restart), the envelopes sealed under it are dead: "heidi:keys:rotate --now" publishes a key sealed under the key it has now and signs with it at once, the dead key retires with its window, its public half still verifying what it signed. Nothing is deleted.',
+                'If the KMS is not reachable, start it and run this command again. If the KMS lost the master key (Vault in dev mode and LocalStack forget everything when they restart), the envelopes sealed under it are dead: a rotation publishes a key sealed under the master key the KMS has now and signs with it at once, the dead key retires with its window, its public half still verifying what it signed. Nothing is deleted.',
+                // One entry and not one per run, so that the runs read as a list a block does not space out.
+                'A rotation reaches one algorithm, the default one when none is named, so each algorithm above has its own run:'
+                    . \PHP_EOL
+                    . implode(\PHP_EOL, array_map(
+                        static fn (string $algorithm): string => sprintf('  %s --now --algorithm=%s', KeysRotateCommand::NAME, $algorithm),
+                        self::algorithmsOf($dead),
+                    )),
             ]);
 
             return Command::FAILURE;
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The algorithms of the keys the KMS cannot open, each once and in the order they were listed: one
+     * rotation reaches one algorithm, so two dead keys of the same one are one run and not two.
+     *
+     * @param list<TenantKey> $dead
+     *
+     * @return list<string>
+     */
+    private static function algorithmsOf(array $dead): array
+    {
+        $algorithms = [];
+        foreach ($dead as $key) {
+            $algorithm = $key->algorithm->name();
+            if (! in_array($algorithm, $algorithms, true)) {
+                $algorithms[] = $algorithm;
+            }
+        }
+
+        return $algorithms;
     }
 
     /**

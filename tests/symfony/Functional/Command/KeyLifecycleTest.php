@@ -15,6 +15,7 @@ use Heidi\Core\Domain\Event\TenantKeyRetired;
 use Heidi\Core\Domain\Event\TenantKeyRotated;
 use Heidi\Core\Domain\Event\TenantKeyStaged;
 use Heidi\Core\Domain\Key\KeyStatus;
+use Heidi\Core\Domain\Key\KeyAlgorithmInterface;
 use Heidi\Core\Domain\Key\KeyUse;
 use Heidi\Core\Domain\Key\RetirementReason;
 use Heidi\Core\Domain\Key\TenantKey;
@@ -26,6 +27,7 @@ use Heidi\Oidc\Application\Discovery\JwksHandler;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
+use function preg_match_all;
 use function preg_quote;
 use function random_bytes;
 use function sprintf;
@@ -573,9 +575,57 @@ final class KeyLifecycleTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringStartsWith('no: The sealed key could not be opened.', self::displayed($tester, 'Opens with the KMS'));
-        static::assertStringContainsString(sprintf('The KMS cannot open the key %s of "default"', $dead->kid), self::flattened($tester));
-        static::assertStringContainsString('"heidi:keys:rotate --now" publishes a key sealed under the key it has now', self::flattened($tester));
+        static::assertStringContainsString(sprintf('The KMS cannot open the key %s (RS256) of "default"', $dead->kid), self::flattened($tester));
+        static::assertStringContainsString('a rotation publishes a key sealed under the master key the KMS has now', self::flattened($tester));
+        static::assertStringContainsString('heidi:keys:rotate --now --algorithm=RS256', self::flattened($tester));
         static::assertSame(KeyStatus::Staged, self::key($dead->kid)->status);
+    }
+
+    /**
+     * The case the development tenant is in when its KMS forgets its master key: it publishes one key per
+     * algorithm it serves, so every one of them is dead at once. A rotation reaches one algorithm, so the
+     * message names the algorithm of each dead key and the run that reaches it, as many runs as there are
+     * algorithms, instead of one command that closes a quarter of the problem.
+     */
+    #[Test]
+    public function everyDeadKeyNamesTheRotationThatReachesIt(): void
+    {
+        // Given
+        $signing = self::stagedKeySealedUnderAnotherMasterKey();
+        $elliptic = self::stagedKeySealedUnderAnotherMasterKey(Algorithms::es256());
+
+        // When
+        $tester = self::console('heidi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        $said = self::flattened($tester);
+        static::assertStringContainsString(sprintf('%s (RS256)', $signing->kid), $said);
+        static::assertStringContainsString(sprintf('%s (ES256)', $elliptic->kid), $said);
+        static::assertStringContainsString('heidi:keys:rotate --now --algorithm=RS256', $said);
+        static::assertStringContainsString('heidi:keys:rotate --now --algorithm=ES256', $said);
+    }
+
+    /**
+     * Two dead keys of one algorithm are one run and not two: what a rotation reaches is the algorithm.
+     */
+    #[Test]
+    public function twoDeadKeysOfOneAlgorithmNameOneRotation(): void
+    {
+        // Given
+        self::stagedKeySealedUnderAnotherMasterKey();
+        self::stagedKeySealedUnderAnotherMasterKey();
+
+        // When
+        $tester = self::console('heidi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(1, preg_match_all('/--algorithm=RS256/', self::flattened($tester)));
     }
 
     /**
@@ -785,16 +835,17 @@ final class KeyLifecycleTest extends ConsoleTestCase
      * A staged key sealed under a sodium master key this kernel does not have: what the files hold once the
      * KMS lost its key, or once the DSN names another backend.
      */
-    private static function stagedKeySealedUnderAnotherMasterKey(): TenantKey
+    private static function stagedKeySealedUnderAnotherMasterKey(?KeyAlgorithmInterface $algorithm = null): TenantKey
     {
-        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
+        $algorithm ??= Algorithms::rs256();
+        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate($algorithm);
         $sealer = new EnvelopeKeySealer(new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
             'signing' => random_bytes(32),
         ]))), 'signing');
         $key = new TenantKey(
             $pair->kid,
             self::tenant(),
-            Algorithms::rs256(),
+            $algorithm,
             $pair->publicJwk,
             $sealer->seal(self::tenant(), $pair->privateJwk),
             self::currentSecond(),
