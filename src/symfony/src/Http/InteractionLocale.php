@@ -16,10 +16,10 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Translation\LocaleSwitcher;
 
 /**
- * The language of the pages of the interaction plane (architecture §5.7): "ui_locales" (OIDC Core
- * §3.1.2.1), then "Accept-Language", then the default locale, each read against the locales this
- * deployment serves; a tag nothing matches is skipped. Chosen once on "/authorize", recorded on the
- * interaction, never in the URL.
+ * The language of the pages of the interaction plane (architecture §5.7): what the visitor asked for
+ * (ChosenLocale), then "ui_locales" (OIDC Core §3.1.2.1), then "Accept-Language", then the default
+ * locale, each read against the locales this deployment serves; a tag nothing matches is skipped. Chosen
+ * once on "/authorize", recorded on the interaction, never in the URL.
  */
 final readonly class InteractionLocale
 {
@@ -31,15 +31,27 @@ final readonly class InteractionLocale
     public function __construct(
         private LocaleSwitcher $switcher,
         private ServedLocales $served,
+        private ChosenLocale $chosen,
     ) {
     }
 
     /**
+     * What a visitor asked for comes first, and that is the one thing decided here: "ui_locales" is what
+     * a client guesses of the preference of whoever it sends over, which OIDC Core §3.1.2.1 calls a hint,
+     * and a visitor who asks is that person saying it. Then the hint, then the languages the browser
+     * sends, then the default; each read against what this deployment serves, and a tag nothing matches
+     * is skipped.
+     *
      * @param list<string> $uiLocales most preferred first
      */
     public function choose(Request $request, array $uiLocales = []): string
     {
-        return $this->served->match($uiLocales) ?? $this->served->match(array_values($request->getLanguages())) ?? $this->served->default;
+        return (
+            $this->chosen->current($request)
+            ?? $this->served->match($uiLocales)
+            ?? $this->served->match(array_values($request->getLanguages()))
+            ?? $this->served->default
+        );
     }
 
     /**

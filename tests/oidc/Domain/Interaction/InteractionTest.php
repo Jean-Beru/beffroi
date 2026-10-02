@@ -55,6 +55,47 @@ final class InteractionTest extends TestCase
     }
 
     #[Test]
+    public function itRecordsTheLanguageAVisitorAsksFor(): void
+    {
+        // Given
+        $interaction = new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client),
+            'en',
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+
+        // When
+        $interaction->readIn('fr');
+
+        // Then
+        static::assertSame('fr', $interaction->locale);
+    }
+
+    #[Test]
+    public function aLanguageItIsAskedToBeReadInIsNotEmpty(): void
+    {
+        // Given
+        $interaction = new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client),
+            'en',
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The locale of an interaction is either absent or non-empty.');
+
+        // When
+        $interaction->readIn('');
+    }
+
+    #[Test]
     public function aNewInteractionHasNoSessionNoConsentAndIsNotCompleted(): void
     {
         // When

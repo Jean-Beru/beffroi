@@ -1,0 +1,21 @@
+{# The language of the pages (issue #448, architecture §5.7): one button per language this deployment
+   serves, in a form and with no script, so that it answers a keyboard and a browser that runs nothing.
+   The provider keeps the choice for this browser and records it on the journey in progress, which is why
+   the interaction travels with it; the language is never in the URL.
+
+   The bundle ships the shape and the words, never a class: "data-locale" is what a stylesheet reads, and
+   an application that wants this control somewhere else includes this one file. #}
+{% set locales = beffroi_locales() %}
+{% if locales|length > 1 %}
+    {% set interaction = app.request.query.get('interaction') %}
+    <form method="post" action="{{ path('beffroi_interaction_locale') }}" data-locale="choice" aria-label="{{ 'locale.choose'|trans([], 'beffroi') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('beffroi_locale') }}">
+        <input type="hidden" name="target" value="{{ app.request.requestUri }}">
+        {% if interaction %}<input type="hidden" name="interaction" value="{{ interaction }}">{% endif %}
+        {% for locale in locales %}
+            <button type="submit" name="locale" value="{{ locale }}" data-locale="{{ locale }}"{% if locale == app.request.locale %} aria-current="true"{% endif %}>
+                {{ ('language.' ~ locale)|trans([], 'beffroi') }}
+            </button>
+        {% endfor %}
+    </form>
+{% endif %}
