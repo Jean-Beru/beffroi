@@ -245,7 +245,9 @@ final class WebauthnMdsCommandsTest extends TestCase
 
     private function import(): CommandTester
     {
-        return new CommandTester(new Command('beffroi:webauthn:mds-import')->setCode(new WebauthnMdsImportCommand($this->store, new MockClock(Fixtures::now()))));
+        return new CommandTester(new Command('beffroi:webauthn:mds-import')->setCode(
+            new WebauthnMdsImportCommand($this->store, new MockClock(Fixtures::now())),
+        ));
     }
 
     private static function flattened(CommandTester $tester): string

@@ -14,6 +14,7 @@ use Symfony\Component\KeyManagement\EnvelopeEncrypterInterface;
 use function in_array;
 use function sprintf;
 use function str_starts_with;
+use function strlen;
 use function substr;
 
 /**
@@ -99,7 +100,7 @@ final readonly class EncryptedColumnTypes
             ));
         }
 
-        return self::PREFIX . $family . '_' . (str_starts_with($type, 'beffroi_') ? substr($type, 6) : $type);
+        return self::PREFIX . $family . '_' . (str_starts_with($type, 'beffroi_') ? substr($type, strlen('beffroi_')) : $type);
     }
 
     /**

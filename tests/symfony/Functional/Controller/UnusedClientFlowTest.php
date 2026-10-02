@@ -204,7 +204,8 @@ final class UnusedClientFlowTest extends BrowserTestCase
 
     private function record(): ?ClientRecord
     {
-        return self::service('test.beffroi.client_store', ClientStoreInterface::class)->findRecord(self::tenant(), self::string($this->registered['client_id']));
+        return self::service('test.beffroi.client_store', ClientStoreInterface::class)
+            ->findRecord(self::tenant(), self::string($this->registered['client_id']));
     }
 
     private function issue(): void

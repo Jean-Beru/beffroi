@@ -443,7 +443,8 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
     private static function codeOf(TotpSecret $secret, DateTimeImmutable $at): string
     {
-        return self::service('test.beffroi.totp_algorithm', TotpAlgorithmInterface::class)->codeAt($secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
+        return self::service('test.beffroi.totp_algorithm', TotpAlgorithmInterface::class)
+            ->codeAt($secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
     /**

@@ -126,7 +126,8 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
 
     private static function envelopeOf(TenantKey $key): Envelope
     {
-        $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
+        $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
+            ->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
 
         return Envelope::fromBytes($stored->sealedPrivateJwk);
     }

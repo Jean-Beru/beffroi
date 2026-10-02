@@ -887,7 +887,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ConfigurationClientRepository::class)->tag('beffroi.oidc.client_source')->tag('beffroi.oidc.client_inventory');
     // the second source holds rows, so it is also the one thing the removal of the clients nobody uses
     // any more asks (decision 0009); the first holds declarations and is asked nothing
-    $services->set(DoctrineClientRepository::class)->tag('beffroi.oidc.client_source')->tag('beffroi.oidc.client_inventory')->tag('beffroi.oidc.unused_clients');
+    $services
+        ->set(DoctrineClientRepository::class)
+        ->tag('beffroi.oidc.client_source')
+        ->tag('beffroi.oidc.client_inventory')
+        ->tag('beffroi.oidc.unused_clients');
     $services->set(RegisteredClients::class)->args([tagged_iterator('beffroi.oidc.client_source')]);
     $services->alias(ClientRepositoryInterface::class, RegisteredClients::class);
     // RFC 9126 §5: whether the document says a request must be pushed is what the registered clients
@@ -998,7 +1002,10 @@ return static function (ContainerConfigurator $container): void {
     // with HS256 and nothing else (RFC 8725 §3.1)
     $services->set(JwtLibraryCompactJwtReader::class);
     $services->alias(CompactJwtReaderInterface::class, JwtLibraryCompactJwtReader::class);
-    $services->set('beffroi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)->factory([service(JoseSignatureAlgorithms::class), 'manager']);
+    $services->set('beffroi.oidc.client_assertion.signature_algorithms', AlgorithmManager::class)->factory([
+        service(JoseSignatureAlgorithms::class),
+        'manager',
+    ]);
     $services->set(JwtLibraryJwtKeyVerifier::class)->args([service('beffroi.oidc.client_assertion.signature_algorithms')]);
     $services->alias(JwtKeyVerifierInterface::class, JwtLibraryJwtKeyVerifier::class);
     // What the provider encrypts for a client: the key management and content encryption algorithms it is

@@ -276,7 +276,8 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->id->equals($totp->id));
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
-        static::assertSame(Totps::SEED, self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $found->sealedSecret));
+        static::assertSame(Totps::SEED, self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)
+            ->unseal(self::tenant(), $found->sealedSecret));
         static::assertSame(59_000_001, $found->lastAcceptedStep);
         static::assertCount(10, $found->backupCodes);
         static::assertTrue($found->backupCodes[3]->isSpent());

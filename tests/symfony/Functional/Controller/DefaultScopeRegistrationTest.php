@@ -63,7 +63,8 @@ final class DefaultScopeRegistrationTest extends BrowserTestCase
         self::reload();
 
         // When
-        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::string($registered['client_id']));
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)
+            ->findByClientId(self::tenant(), self::string($registered['client_id']));
 
         // Then
         static::assertSame(self::DEFAULT_SCOPE, (string) $client?->registration->allowedScopes);
@@ -83,7 +84,8 @@ final class DefaultScopeRegistrationTest extends BrowserTestCase
         self::reload();
 
         // When
-        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), self::string($registered['client_id']));
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)
+            ->findByClientId(self::tenant(), self::string($registered['client_id']));
 
         // Then
         static::assertSame('openid', (string) $client?->registration->allowedScopes);

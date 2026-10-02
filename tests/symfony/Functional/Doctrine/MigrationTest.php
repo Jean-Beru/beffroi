@@ -271,7 +271,10 @@ final class MigrationTest extends DatabaseTestCase
         // Then
         $statements = array_map(static fn (Query $query): string => $query->getStatement(), $migration->getSql());
         static::assertCount(1, $statements);
-        static::assertStringStartsWith('ALTER TABLE beffroi_tenant ADD authentication_context_policy JSON DEFAULT \'{"classes":[{"name":"phrh"', $statements[0]);
+        static::assertStringStartsWith(
+            'ALTER TABLE beffroi_tenant ADD authentication_context_policy JSON DEFAULT \'{"classes":[{"name":"phrh"',
+            $statements[0],
+        );
         static::assertStringEndsWith('NOT NULL', $statements[0]);
     }
 

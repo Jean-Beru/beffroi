@@ -216,7 +216,13 @@ function demo(
     } else {
         run(['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'], context: $server);
     }
-    io()->success(sprintf('%s/profile signs in on %s as "%s", password %s.', DEMO_URL, $env['BEFFROI_ISSUER'], DEV_USERNAME, $env['BEFFROI_DEV_USER_PASSWORD']));
+    io()->success(sprintf(
+        '%s/profile signs in on %s as "%s", password %s.',
+        DEMO_URL,
+        $env['BEFFROI_ISSUER'],
+        DEV_USERNAME,
+        $env['BEFFROI_DEV_USER_PASSWORD'],
+    ));
 
     if ($check) {
         demo_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
@@ -235,7 +241,14 @@ function demo(
             io()->error('OIDC_DEMO_OPAQUE_SECRET is empty: run "castor provision" first.');
             exit(1);
         }
-        demo_resource_server_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_OPAQUE_SECRET'], $env['OIDC_DEMO_SECRET'], $ca);
+        demo_resource_server_check(
+            $dir,
+            $env['BEFFROI_ISSUER'],
+            $env['BEFFROI_DEV_USER_PASSWORD'],
+            $env['OIDC_DEMO_OPAQUE_SECRET'],
+            $env['OIDC_DEMO_SECRET'],
+            $ca,
+        );
     }
     if ($dpop) {
         if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
