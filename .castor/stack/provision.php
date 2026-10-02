@@ -315,7 +315,7 @@ function provision(
         $check = op_console(['heidi:keys:list', '--check'], context()->withAllowFailure());
         if (! $check->isSuccessful()) {
             io()->error(sprintf(
-                'The KMS of %s cannot open a published key (above). Run "castor console heidi:keys:rotate --now" once the KMS is back with its key, or with its new one, then this task again.',
+                'The KMS of %s cannot open a published key (above). Run the rotations the check just named, one per algorithm, once the KMS is back with its key or with a new one, then this task again.',
                 DEV_ENV_LOCAL,
             ));
             exit(1);
