@@ -945,6 +945,50 @@
         <source>application.take_it_back_means</source>
         <target>Elle vous le demandera à nouveau la prochaine fois qu’elle en aura besoin, et ce qu’elle détient cesse de se renouveler.</target>
       </trans-unit>
+      <trans-unit id="sign_ins.title" resname="sign_ins.title">
+        <source>sign_ins.title</source>
+        <target>Connexions récentes</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.signed_in_as" resname="sign_ins.signed_in_as">
+        <source>sign_ins.signed_in_as</source>
+        <target>Connecté en tant que {username}.</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.explanation" resname="sign_ins.explanation">
+        <source>sign_ins.explanation</source>
+        <target>Les fois où quelqu'un s'est connecté en votre nom, et celles où quelqu'un a essayé sans y parvenir. Une ligne que vous ne reconnaissez pas vaut un nouveau mot de passe.</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.none" resname="sign_ins.none">
+        <source>sign_ins.none</source>
+        <target>Rien n'a encore été enregistré.</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.outcome" resname="sign_ins.outcome">
+        <source>sign_ins.outcome</source>
+        <target>Résultat</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.when" resname="sign_ins.when">
+        <source>sign_ins.when</source>
+        <target>Quand</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.from" resname="sign_ins.from">
+        <source>sign_ins.from</source>
+        <target>D'où</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.succeeded" resname="sign_ins.succeeded">
+        <source>sign_ins.succeeded</source>
+        <target>Connexion</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.failed" resname="sign_ins.failed">
+        <source>sign_ins.failed</source>
+        <target>Refusée</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.unknown_address" resname="sign_ins.unknown_address">
+        <source>sign_ins.unknown_address</source>
+        <target>adresse non enregistrée</target>
+      </trans-unit>
+      <trans-unit id="account.sign_ins.state" resname="account.sign_ins.state">
+        <source>account.sign_ins.state</source>
+        <target>{count, plural, =0 {aucune tentative refusée} one {# tentative refusée} other {# tentatives refusées}}</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

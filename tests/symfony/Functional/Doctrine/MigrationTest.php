@@ -49,6 +49,7 @@ use Beffroi\Bundle\Migrations\Version20261003120000;
 use Beffroi\Bundle\Migrations\Version20261003180000;
 use Beffroi\Bundle\Migrations\Version20261004120000;
 use Beffroi\Bundle\Migrations\Version20261005120000;
+use Beffroi\Bundle\Migrations\Version20261006120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -108,6 +109,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20261003180000::class,
         Version20261004120000::class,
         Version20261005120000::class,
+        Version20261006120000::class,
     ];
 
     #[Test]
@@ -168,7 +170,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheTwentyFourTablesOfTheBundle(): void
+    public function theMigrationsCreateTheTwentyFiveTablesOfTheBundle(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -180,7 +182,7 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(24, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(25, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**

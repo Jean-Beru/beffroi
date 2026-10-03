@@ -87,6 +87,17 @@ final readonly class SchemaColumns
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],
+            // Every act of the provider, written down (issue #454): four facts and two names, and no column
+            // a caller fills with whatever it has.
+            'beffroi_journal' => [
+                'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
+                'act' => new NoPersonalDatum('the name of the act, which an event gives itself and which names no person'),
+                'occurred_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'context' => new Sealed('journal'),
+                'subject' => new NoPersonalDatum(self::THE_SUBJECT),
+                'client' => new NoPersonalDatum('the client the act concerned, by the identifier it was registered under'),
+            ],
             'beffroi_user' => [
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
                 'username' => new Sealed('user'),

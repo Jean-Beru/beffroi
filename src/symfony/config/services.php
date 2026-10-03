@@ -67,6 +67,7 @@ use Beffroi\Bundle\Http\ChosenLocale;
 use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\SessionsPage;
+use Beffroi\Bundle\Http\SignInsPage;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Bundle\Locale\UserLocale;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -128,7 +129,12 @@ use Beffroi\Bundle\Security\TotpLoginAuthenticator;
 use Beffroi\Bundle\Security\UserChecker;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Bundle\Locale\UserTimeZone;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineJournal;
 use Beffroi\Core\Application\Identity\LanguageRecording;
+use Beffroi\Core\Application\Journal\ActRecording;
+use Beffroi\Core\Application\Journal\JournalRetention;
+use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\JournalInterface;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
@@ -473,6 +479,7 @@ use Beffroi\Bundle\Http\NotificationsPage;
 use Beffroi\Bundle\Http\BundleScript;
 use Beffroi\Bundle\Http\Account\NotificationsSection;
 use Beffroi\Bundle\Http\Account\SessionsSection;
+use Beffroi\Bundle\Http\Account\SignInsSection;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
 use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
 
@@ -542,6 +549,11 @@ return static function (ContainerConfigurator $container): void {
     // reading the page and "beffroi:user:applications" both ask for
     $services->set(ApplicationHoldings::class);
     $services->set(ApplicationPage::class);
+    // what the journal holds of the sign-ins of this person, successes and refusals (issue #454): after
+    // where they are signed in, because a refusal somebody else caused is read once and a session is read
+    // again, and before the browsers the provider can reach
+    $services->set(SignInsSection::class)->tag('beffroi.account_section');
+    $services->set(SignInsPage::class);
     $services->set(NotificationsSection::class)->tag('beffroi.account_section');
     $services->set(AccountSections::class)->args([tagged_iterator('beffroi.account_section')]);
     $services->set(AccountHomePage::class);
@@ -556,6 +568,12 @@ return static function (ContainerConfigurator $container): void {
     // what a visitor asked for, on one cookie, read back against the list above (issue #448)
     $services->set(ChosenLocale::class);
     $services->set(LocaleExtension::class);
+    // every act of the provider, written down, read and forgotten again (issue #454)
+    $services->set(DoctrineJournal::class);
+    $services->alias(JournalInterface::class, DoctrineJournal::class);
+    $services->alias(ActsOfAPersonInterface::class, DoctrineJournal::class);
+    $services->set(ActRecording::class);
+    $services->set(JournalRetention::class);
     // the language a person chose, written on their account (issue #471)
     $services->set(LanguageRecording::class);
     // the clock a date is read on, and the one filter that writes it (issue #469)

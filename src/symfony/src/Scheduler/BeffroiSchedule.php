@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Scheduler;
 
 use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
+use Beffroi\Bundle\Message\ForgetTheActsPastTheirRetention;
 use Beffroi\Bundle\Message\RemoveUnusedClients;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
@@ -34,11 +35,19 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
      */
     public const string UNUSED_CLIENTS_EVERY = '1 hour';
 
+    /**
+     * What the retention of the journal is worth waiting for (issue #454): the duration it reads is months
+     * long, a run is bounded and the next one takes what it left, so a day is short enough that a backlog
+     * is worked through and long enough that a deployment with nothing to forget reads its journal once a
+     * day and no more.
+     */
+    public const string JOURNAL_RETENTION_EVERY = '1 day';
+
     public function getSchedule(): Schedule
     {
         return new Schedule()->add(RecurringMessage::every(self::KEY_LIFECYCLE_EVERY, new AdvanceKeyLifecycle()))->add(RecurringMessage::every(
             self::UNUSED_CLIENTS_EVERY,
             new RemoveUnusedClients(),
-        ));
+        ))->add(RecurringMessage::every(self::JOURNAL_RETENTION_EVERY, new ForgetTheActsPastTheirRetention()));
     }
 }
