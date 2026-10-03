@@ -53,6 +53,24 @@ final readonly class TenantSection extends ConfigurationSection
             ->info('Display name; the host of the issuer when absent.')
             ->defaultNull()
             ->end()
+            ->arrayNode('look')
+            ->info('What this tenant shows of itself on every page of its provider besides its name (issue #449). A deployment that declares none of it is served the pages it has always been served.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->scalarNode('logo_uri')
+            ->info('Where the logo of the tenant is served from: an absolute HTTPS URL, no fragment, no credentials; plain HTTP on a loopback host only. The browser of the visitor loads it, never the provider, and the pages name its origin in their Content-Security-Policy.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('primary_color')
+            ->info('The colour the buttons and the links of the pages are drawn in: three or six hexadecimal digits behind a hash, as "#1b4b8f". It needs "primary_content_color", a colour being unusable without the colour of what is written on it.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('primary_content_color')
+            ->info('The colour of what is written on "primary_color", the two being declared together or not at all.')
+            ->defaultNull()
+            ->end()
+            ->end()
+            ->end()
             ->arrayNode('authentication_classes')
             ->info('The "acr" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider; the default policy ("phrh", "phr", "2", "1") when absent.')
             ->useAttributeAsKey('name')
@@ -69,9 +87,15 @@ final readonly class TenantSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $tenant = $this->own($config);
-        $services->get(TenantFactory::class)->arg('$issuer', self::string($tenant, 'issuer'))->arg('$slug', self::string($tenant, 'slug'))->arg(
-            '$name',
-            is_string($tenant['name'] ?? null) ? $tenant['name'] : null,
-        )->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'));
+        $services
+            ->get(TenantFactory::class)
+            ->arg('$issuer', self::string($tenant, 'issuer'))
+            ->arg('$slug', self::string($tenant, 'slug'))
+            ->arg(
+                '$name',
+                is_string($tenant['name'] ?? null) ? $tenant['name'] : null,
+            )
+            ->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'))
+            ->arg('$look', self::section($tenant, 'look'));
     }
 }

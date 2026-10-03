@@ -9,7 +9,10 @@ use Beffroi\Core\Domain\Session\AuthenticationContextClass;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
 use Beffroi\Core\Domain\Session\AuthenticationPredicate;
 use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Tenant\TenantLook;
+use function is_string;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -27,6 +30,8 @@ final readonly class TenantFactory
 
     /**
      * @param array<array-key, string> $authenticationClasses class name to predicate, in order
+     * @param array<array-key, mixed> $look the "beffroi.tenant.look" section, every value of it absent or
+     *                                      null for a deployment that declares no look (issue #449)
      */
     public function __construct(
         private string $issuer,
@@ -34,6 +39,7 @@ final readonly class TenantFactory
         private ?string $name,
         private ClockInterface $clock,
         private array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
+        private array $look = [],
     ) {
     }
 
@@ -48,6 +54,25 @@ final readonly class TenantFactory
             $this->name ?? $issuer->host,
             $this->clock->now(),
             $this->authenticationContextPolicy(),
+            $this->look(),
+        );
+    }
+
+    /**
+     * What the configuration declares of the look of this tenant; the value object refuses a colour that
+     * is not hexadecimal and a logo that is not an absolute HTTPS URL, which is what makes a mistake in
+     * the configuration refuse the start rather than reach a page.
+     */
+    public function look(): TenantLook
+    {
+        $logoUri = $this->look['logo_uri'] ?? null;
+        $primaryColor = $this->look['primary_color'] ?? null;
+        $primaryContentColor = $this->look['primary_content_color'] ?? null;
+
+        return new TenantLook(
+            is_string($logoUri) ? new LogoUri($logoUri) : null,
+            is_string($primaryColor) ? $primaryColor : null,
+            is_string($primaryContentColor) ? $primaryContentColor : null,
         );
     }
 

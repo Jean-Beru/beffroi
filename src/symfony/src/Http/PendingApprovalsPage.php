@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -37,7 +36,6 @@ final readonly class PendingApprovalsPage
      * @param string|null $refusal a code the template translates
      */
     public function renderList(
-        Tenant $tenant,
         User $user,
         array $records,
         ?string $refusal = null,
@@ -46,7 +44,6 @@ final readonly class PendingApprovalsPage
         return $this->pages->render(
             'approvals.html.twig',
             [
-                'tenant' => $tenant,
                 'user' => $user,
                 'records' => $records,
                 'refusal' => $refusal,

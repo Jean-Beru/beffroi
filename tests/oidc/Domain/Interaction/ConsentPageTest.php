@@ -6,6 +6,8 @@ namespace Beffroi\Oidc\Tests\Domain\Interaction;
 
 use function array_keys;
 use function array_map;
+use Beffroi\Core\Domain\Tenant\LogoUri;
+use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Oidc\Domain\Client\ClientPresentation;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Domain\Interaction\ConsentPage;
@@ -140,6 +142,53 @@ final class ConsentPageTest extends TestCase
         yield 'a host of its own' => ['https://cdn.rp.example/logo.png', 'https://cdn.rp.example'];
 
         yield 'a loopback host (RFC 8252 §7.3)' => ['http://127.0.0.1:8080/logo.png', 'http://127.0.0.1:8080'];
+    }
+
+    /**
+     * Issue #449: the page carries the logo of the tenant as every page of the plane does, so its policy
+     * names where that one is served from as well as the client's.
+     */
+    #[Test]
+    public function thePolicyAllowsTheLogoOfTheTenantToo(): void
+    {
+        // When
+        $policy = new ConsentPage(
+            self::presentation(),
+            new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg')),
+        )->contentSecurityPolicy();
+
+        // Then
+        static::assertSame("img-src 'self' https://rp.example https://cdn.acme.example; frame-ancestors 'none'", $policy);
+    }
+
+    /**
+     * A source expression repeated is the same source: a tenant that serves its logo from where the
+     * client serves its own is named once.
+     */
+    #[Test]
+    public function anOriginTheTwoLogosShareIsNamedOnce(): void
+    {
+        // When
+        $policy = new ConsentPage(
+            self::presentation(),
+            new TenantLook(new LogoUri('https://rp.example/tenant.svg')),
+        )->contentSecurityPolicy();
+
+        // Then
+        static::assertSame("img-src 'self' https://rp.example; frame-ancestors 'none'", $policy);
+    }
+
+    #[Test]
+    public function thePolicyOfATenantWithALogoAndAClientWithoutOneNamesTheTenantAlone(): void
+    {
+        // When
+        $policy = new ConsentPage(
+            new ClientPresentation('An application'),
+            new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg')),
+        )->contentSecurityPolicy();
+
+        // Then
+        static::assertSame("img-src 'self' https://cdn.acme.example; frame-ancestors 'none'", $policy);
     }
 
     private static function presentation(): ClientPresentation

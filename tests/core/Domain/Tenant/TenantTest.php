@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Domain\Tenant;
 
 use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -38,6 +40,30 @@ final class TenantTest extends TestCase
         yield 'trailing hyphen' => ['acme-'];
         yield 'space' => ['ac me'];
         yield 'too long' => [str_repeat('a', 64)];
+    }
+
+    #[Test]
+    public function aTenantDeclaresNoLookUntilItAdoptsOne(): void
+    {
+        // When / Then
+        static::assertFalse(Fixtures::tenant()->look->isDeclared());
+    }
+
+    /**
+     * Issue #449: what the pages show of the tenant is replaced whole, as its "acr" vocabulary is.
+     */
+    #[Test]
+    public function itAdoptsTheLookOfItsPages(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $look = new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff');
+
+        // When
+        $tenant->adoptLook($look);
+
+        // Then
+        static::assertTrue($tenant->look->equals($look));
     }
 
     #[Test]

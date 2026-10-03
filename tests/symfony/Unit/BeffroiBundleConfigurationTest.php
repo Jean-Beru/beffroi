@@ -62,6 +62,12 @@ final class BeffroiBundleConfigurationTest extends TestCase
                 'issuer' => 'https://op.test',
                 'slug' => 'default',
                 'name' => null,
+                // a tenant that declares no look is served the pages it has always been served (issue #449)
+                'look' => [
+                    'logo_uri' => null,
+                    'primary_color' => null,
+                    'primary_content_color' => null,
+                ],
                 'authentication_classes' => TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
             ],
             $config['tenant'],
