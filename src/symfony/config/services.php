@@ -6,6 +6,7 @@ use Beffroi\Oidc\Application\Secret\SecretDrawer;
 use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
 use Beffroi\Core\Port\RandomnessInterface;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Bundle\Account\ApplicationHoldings;
 use Beffroi\Bundle\Ciba\QueuedPendingApprovalNotifier;
 use Beffroi\Bundle\Cache\SeenOnce;
 use Beffroi\Bundle\Client\ClientAssertionReplayGuard;
@@ -533,7 +534,9 @@ return static function (ContainerConfigurator $container): void {
     // where this person is signed in, and the page that ends one of those sessions (issue #450)
     $services->set(SessionsSection::class)->tag('beffroi.account_section');
     $services->set(SessionsPage::class);
-    // what one application holds of a person, behind each line of what they agreed to (issue #451)
+    // what one application holds of a person, behind each line of what they agreed to (issue #451): the
+    // reading the page and "beffroi:user:applications" both ask for
+    $services->set(ApplicationHoldings::class);
     $services->set(ApplicationPage::class);
     $services->set(NotificationsSection::class)->tag('beffroi.account_section');
     $services->set(AccountSections::class)->args([tagged_iterator('beffroi.account_section')]);

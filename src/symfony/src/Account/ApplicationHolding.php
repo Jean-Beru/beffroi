@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Http\Account;
+namespace Beffroi\Bundle\Account;
 
 use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Beffroi\Oidc\Domain\Consent\Consent;
@@ -12,15 +12,15 @@ use function array_filter;
 use function array_values;
 
 /**
- * What one application holds of a person at this instant, for the page that shows it (issue #451): what
- * they agreed to, what of it can still be renewed, and what that application has asked that is waiting
- * for an answer of theirs.
+ * What one application holds of a person at this instant (issue #451): what they agreed to, what of it can
+ * still be renewed, and what that application has asked that is waiting for an answer of theirs. The page
+ * of that application and the console both read it, through ApplicationHoldings.
  *
- * A reading beside the objects it reads, and not a method of any of them: the question is the page's, and
- * what answers it is three stores. "Renewable" is the only honest count of what is held: a refresh token
- * that was rotated, revoked or expired renews nothing, and a self-contained access token already issued
- * lives to its expiry whatever is done here (RFC 9068 §4), which the page says in words rather than
- * counting it.
+ * A reading beside the objects it reads, and not a method of any of them: the question belongs to none of
+ * them, and what answers it is three stores. "Renewable" is the only honest count of what is held: a
+ * refresh token that was rotated, revoked or expired renews nothing, and a self-contained access token
+ * already issued lives to its expiry whatever is done here (RFC 9068 §4), which both readers say in words
+ * rather than counting it.
  */
 final readonly class ApplicationHolding
 {
