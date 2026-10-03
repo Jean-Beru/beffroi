@@ -33,6 +33,37 @@ final class ProfileTest extends TestCase
         yield 'unknown year' => ['0000'];
     }
 
+    /**
+     * Issue #471: the language a person says they read replaces that claim and leaves what they said of
+     * themselves alone, a profile being held whole by whoever holds it.
+     */
+    #[Test]
+    public function readingItInAnotherLanguageReplacesThatClaimAlone(): void
+    {
+        // Given
+        $profile = new Profile(name: 'Alice Lovelace', givenName: 'Alice', zoneinfo: 'Europe/London', locale: 'en-GB');
+
+        // When
+        $read = $profile->readIn('fr');
+
+        // Then
+        static::assertSame('fr', $read->locale);
+        static::assertSame('Alice Lovelace', $read->name);
+        static::assertSame('Alice', $read->givenName);
+        static::assertSame('Europe/London', $read->zoneinfo);
+    }
+
+    #[Test]
+    public function aProfileIsNotReadInNoLanguage(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The language a profile is read in is either absent or non-empty.');
+
+        // When
+        Profile::empty()->readIn('');
+    }
+
     #[Test]
     public function anEmptyProfileHasNoBirthdate(): void
     {

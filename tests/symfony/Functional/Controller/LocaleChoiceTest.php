@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use Beffroi\Bundle\Http\ChosenLocale;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Port\InteractionRepositoryInterface;
@@ -140,6 +142,58 @@ final class LocaleChoiceTest extends BrowserTestCase
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
         static::assertNull(self::chosenIn($this->browser->getResponse()));
         static::assertNull(self::reread($interaction)->locale);
+    }
+
+    /**
+     * Issue #471: a person who is signed in has told this provider which language they read, and the
+     * claim of their account is what it writes to them in when no request of theirs is there to read one
+     * from (UserLocale).
+     */
+    #[Test]
+    public function aChoiceMadeBySomebodySignedInIsWrittenOnTheirAccount(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $token = $this->token();
+
+        // When
+        $this->browser->request('POST', '/locale', [
+            '_token' => $token,
+            'locale' => 'fr',
+            'target' => '/account',
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_FOUND, $this->browser->getResponse()->getStatusCode());
+        static::assertSame('fr', self::rereadUser($alice)->profile->locale);
+    }
+
+    #[Test]
+    public function aChoiceMadeBySomebodySignedInAsNobodyIsWrittenOnNoAccount(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $token = $this->token();
+
+        // When
+        $this->browser->request('POST', '/locale', [
+            '_token' => $token,
+            'locale' => 'fr',
+            'target' => '/login',
+        ]);
+
+        // Then
+        static::assertSame('fr', self::chosenIn($this->browser->getResponse()));
+        static::assertNull(self::rereadUser($alice)->profile->locale);
+    }
+
+    private static function rereadUser(User $user): User
+    {
+        $reread = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id);
+        static::assertInstanceOf(User::class, $reread);
+
+        return $reread;
     }
 
     private function loginPage(): Crawler

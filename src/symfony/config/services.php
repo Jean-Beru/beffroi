@@ -128,6 +128,7 @@ use Beffroi\Bundle\Security\TotpLoginAuthenticator;
 use Beffroi\Bundle\Security\UserChecker;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Bundle\Locale\UserTimeZone;
+use Beffroi\Core\Application\Identity\LanguageRecording;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
@@ -555,6 +556,8 @@ return static function (ContainerConfigurator $container): void {
     // what a visitor asked for, on one cookie, read back against the list above (issue #448)
     $services->set(ChosenLocale::class);
     $services->set(LocaleExtension::class);
+    // the language a person chose, written on their account (issue #471)
+    $services->set(LanguageRecording::class);
     // the clock a date is read on, and the one filter that writes it (issue #469)
     $services->set(UserTimeZone::class);
     $services->set(MomentExtension::class);
