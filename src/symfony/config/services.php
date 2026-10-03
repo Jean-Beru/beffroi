@@ -36,9 +36,11 @@ use Beffroi\Bundle\Doctrine\Repository\DoctrineLinkedIdentityRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineGroupMembershipRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePersonalArchiveRepository;
 use Beffroi\Bundle\Http\Account\ArchiveSection;
+use Beffroi\Bundle\Archive\ZipArchiveContainer;
 use Beffroi\Bundle\Http\ArchivePage;
 use Beffroi\Core\Application\Archive\ArchiveAssembly;
 use Beffroi\Core\Application\Archive\ArchiveHandout;
+use Beffroi\Core\Port\ArchiveContainerInterface;
 use Beffroi\Core\Application\Archive\ArchiveRequest;
 use Beffroi\Core\Application\Archive\ArchiveRetention;
 use Beffroi\Core\Application\Archive\Chapter\CredentialsChapter;
@@ -646,6 +648,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ArchiveRequest::class);
     $services->set(ArchiveHandout::class);
     $services->set(ArchiveRetention::class);
+    // The container a ready file may leave in, under the passphrase of the person who asks (issue #483).
+    // A second format is a class here and a line of the page it is read by, which names no format.
+    $services->set(ZipArchiveContainer::class);
+    $services->alias(ArchiveContainerInterface::class, ZipArchiveContainer::class);
     $services->set(ArchivePage::class)->args([
         '$chapters' => tagged_iterator('beffroi.archive_chapter'),
     ]);

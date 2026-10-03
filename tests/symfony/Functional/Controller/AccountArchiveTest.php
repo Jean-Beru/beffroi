@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
+use Beffroi\Bundle\Archive\ZipArchiveContainer;
+use Beffroi\Core\Domain\Archive\ArchivePassword;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
@@ -13,7 +15,13 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
+use function file_put_contents;
 use function sprintf;
+use function str_repeat;
+use function sys_get_temp_dir;
+use function tempnam;
+use function unlink;
+use ZipArchive;
 use function array_column;
 use function array_keys;
 use const JSON_THROW_ON_ERROR;
@@ -33,6 +41,11 @@ use Symfony\Component\Uid\Uuid;
  */
 final class AccountArchiveTest extends BrowserTestCase
 {
+    /**
+     * What a person types to have their file leave under it (issue #483), several words as the page asks.
+     */
+    private const string PASSPHRASE = 'correct horse battery staple';
+
     #[Test]
     public function aPersonWhoNeverAskedIsToldWhatAskingGivesThem(): void
     {
@@ -314,6 +327,151 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
     }
 
+    /**
+     * Issue #483: a file that is ready leaves in one of two forms, and which container the other one is is
+     * read from what is wired rather than named on the page.
+     */
+    #[Test]
+    public function aReadyArchiveOffersTheFormThatWrapsIt(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->ask();
+
+        // When
+        $page = $this->archivePage();
+
+        // Then
+        static::assertSame(['zip'], $page->filter('form[data-archive-wrap]')->extract(['data-archive-wrap']));
+        static::assertCount(1, $page->filter('a[data-archive-file]'));
+    }
+
+    #[Test]
+    public function theFileLeavesWrappedUnderThePassphraseThatWasTyped(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $this->ask();
+
+        // When
+        $this->wrap(self::PASSPHRASE);
+        $response = $this->browser->getResponse();
+
+        // Then
+        $archive = self::archives()->latestOf(self::reread($alice)) ?? static::fail('The archive was not stored.');
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertSame(ZipArchiveContainer::MEDIA_TYPE, $response->headers->get('Content-Type'));
+        static::assertStringContainsString($archive->fileName('zip'), self::string($response->headers->get('Content-Disposition')));
+        static::assertSame(
+            self::string($archive->content),
+            self::readFromZip(self::string($response->getContent()), $archive->fileName(), self::PASSPHRASE),
+        );
+    }
+
+    /**
+     * The one file where everything this provider knows of somebody stands in clear at once leaves saying
+     * nothing of them to whoever ends up holding it.
+     */
+    #[Test]
+    public function theWrappedFileCarriesNothingOfThePersonInTheClear(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->ask();
+
+        // When
+        $this->wrap(self::PASSPHRASE);
+
+        // Then
+        static::assertStringNotContainsString('alice', self::string($this->browser->getResponse()->getContent()));
+    }
+
+    /**
+     * The floor is refused and not warned about (decision 0006), and the page says it was refused without
+     * saying what was typed nor how far off it was.
+     */
+    #[Test]
+    public function aPassphraseShorterThanTheFloorIsRefused(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->ask();
+
+        // When
+        $this->browser->request('POST', '/account/archive/file', [
+            '_token' => $this->wrapToken(),
+            'password' => str_repeat('a', ArchivePassword::MINIMUM_LENGTH - 1),
+        ]);
+        $page = $this->afterTheForm();
+
+        // Then
+        static::assertSame(['passphrase_refused'], $page->filter('p[data-error]')->extract(['data-error']));
+    }
+
+    /**
+     * A passphrase that is refused takes nothing with it: it is judged before the archive is asked for, so
+     * nothing left and the journal does not say it did.
+     */
+    #[Test]
+    public function aPassphraseThatWasRefusedIsNotAnActOfTakingTheFile(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $this->ask();
+
+        // When
+        $this->browser->request('POST', '/account/archive/file', [
+            '_token' => $this->wrapToken(),
+            'password' => 'too short',
+        ]);
+        self::reload();
+
+        // Then
+        $acts = self::service('test.beffroi.acts', ActsOfAPersonInterface::class)->lastOf(self::reread($alice), [PersonTookTheirArchive::NAME], 10);
+        static::assertSame([], $acts);
+    }
+
+    #[Test]
+    public function aPersonWithNoArchiveReadyIsGivenNoWrappedFile(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $this->ask();
+        $token = $this->wrapToken();
+        // the row forgotten the way the timed step forgets it once the file has expired, the form of the
+        // page this person still holds naming a file that is not there any more
+        self::archives()->forgetExpired(self::reread($alice)->tenant, self::currentSecond()->modify('+1 year'));
+        self::reload();
+
+        // When
+        $this->browser->request('POST', '/account/archive/file', [
+            '_token' => $token,
+            'password' => self::PASSPHRASE,
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+    }
+
+    #[Test]
+    public function wrappingWithoutTheFormTokenIsRefused(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->ask();
+
+        // When
+        $this->browser->request('POST', '/account/archive/file', [
+            'password' => self::PASSPHRASE,
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
+    }
+
     private static function announce(DomainEventInterface $event): void
     {
         self::service('event.bus', MessageBusInterface::class)->dispatch($event);
@@ -410,6 +568,47 @@ final class AccountArchiveTest extends BrowserTestCase
         self::reload();
 
         return $archive;
+    }
+
+    /**
+     * The wrapped file asked for the way a browser asks for it, by the form of the page.
+     */
+    private function wrap(string $passphrase): void
+    {
+        $this->browser->request('POST', '/account/archive/file', [
+            '_token' => $this->wrapToken(),
+            'password' => $passphrase,
+        ]);
+    }
+
+    private function wrapToken(): string
+    {
+        return self::string($this->archivePage()->filter('form[data-archive-wrap] input[name="_token"]')->attr('value'));
+    }
+
+    /**
+     * The entry read back the way whoever downloaded the file reads it, by a tool that knows the format and
+     * the passphrase.
+     */
+    private static function readFromZip(string $wrapped, string $name, string $passphrase): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'beffroi-read-');
+        if ($path === false) {
+            static::fail('No temporary file could be opened.');
+        }
+        file_put_contents($path, $wrapped);
+
+        try {
+            $zip = new ZipArchive();
+            static::assertTrue($zip->open($path));
+            $zip->setPassword($passphrase);
+            $read = $zip->getFromName($name);
+            $zip->close();
+
+            return $read === false ? static::fail('The passphrase did not open the file.') : $read;
+        } finally {
+            unlink($path);
+        }
     }
 
     private static function reread(User $user): User

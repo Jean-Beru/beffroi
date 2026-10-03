@@ -146,6 +146,23 @@ final class PersonalArchiveTest extends TestCase
         static::assertStringNotContainsString('ada-subject', $name);
     }
 
+    /**
+     * Issue #483: a container names its own extension and the name itself is one rule, so the wrapped file
+     * and the plain one are the same name and differ by what the file is.
+     */
+    #[Test]
+    public function theFileWrappedInAContainerCarriesTheExtensionOfThatContainer(): void
+    {
+        // Given
+        $archive = self::asked();
+
+        // When
+        $name = $archive->fileName('zip');
+
+        // Then
+        static::assertSame(sprintf('archive-%s.zip', $archive->id->toRfc4122()), $name);
+    }
+
     private static function asked(): PersonalArchive
     {
         return PersonalArchive::asked(Uuid::v7(), Fixtures::user(), Fixtures::now());

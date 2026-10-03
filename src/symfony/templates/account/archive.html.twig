@@ -12,6 +12,8 @@
     {{ include('@Beffroi/account/back.html.twig') }}
     <p>{{ 'archive.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'archive.explanation'|trans }}</p>
+    {# The one refusal this page carries, which crossed the redirection in the session (issue #481). #}
+    {% if refusal is not null %}<p data-error="{{ refusal }}">{{ ('archive.' ~ refusal)|trans({minimum: passphrase_minimum}) }}</p>{% endif %}
 
     {# What the file holds is the chapters it is assembled from, so a kind of fact this provider comes to
        hold about a person is named here by being wired and this page is not edited. #}
@@ -30,6 +32,18 @@
         <p><time datetime="{{ archive.builtAt|date('c') }}">{{ 'archive.built_at'|trans({moment: archive.builtAt|beffroi_moment(user)}) }}</time></p>
         <p><time datetime="{{ archive.expiresAt|date('c') }}">{{ 'archive.expires_at'|trans({moment: archive.expiresAt|beffroi_moment(user)}) }}</time></p>
         <p><a href="{{ path('beffroi_interaction_account_archive_file') }}" data-archive-file download>{{ 'archive.download'|trans }}</a></p>
+
+        {# The same file under a passphrase this person chose (issue #483). A POST, because a passphrase
+           belongs in a body and never in a query string, and the one form of these pages whose answer is
+           not a redirection: its answer is the file, and a passphrase kept to be used after a redirection
+           would be a passphrase written to a session. #}
+        <form method="post" action="{{ path('beffroi_interaction_account_archive_wrapped_file') }}" data-archive-wrap="{{ container }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_archive_wrap') }}">
+            <p>{{ 'archive.wrapped_explanation'|trans({minimum: passphrase_minimum, container: container}) }}</p>
+            <label for="archive-passphrase">{{ 'archive.passphrase'|trans }}</label>
+            <input type="password" id="archive-passphrase" name="password" minlength="{{ passphrase_minimum }}" autocomplete="new-password" required>
+            <button type="submit">{{ 'archive.download_wrapped'|trans }}</button>
+        </form>
     {% endif %}
 
     {# Asking again replaces what is there, so the one state with no button is the one being built: there
