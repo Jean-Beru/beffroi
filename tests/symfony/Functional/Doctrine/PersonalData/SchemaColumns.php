@@ -113,6 +113,19 @@ final readonly class SchemaColumns
                 'built_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'content' => new Sealed('personal_archive'),
             ],
+            // What a claim of a person used to say, and what they made it say (issue #482): the two values
+            // are that person's own, so they are sealed as the column they came from is, and the
+            // provenance beside them as every provenance is.
+            'beffroi_claim_change' => [
+                'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
+                'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'claim' => new NoPersonalDatum('the name of the claim that changed, which is a name of OIDC Core §5.1 and never a value'),
+                'was' => new Sealed('claim_change'),
+                'became' => new Sealed('claim_change'),
+                'changed_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'context' => new Sealed('claim_change'),
+            ],
             'beffroi_user' => [
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
                 'username' => new Sealed('user'),

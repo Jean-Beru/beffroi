@@ -82,6 +82,7 @@ final readonly class EncryptedColumnTypes
         'client' => ['json', 'beffroi_client_secret'],
         'journal' => ['beffroi_request_context'],
         'personal_archive' => ['text'],
+        'claim_change' => ['string', 'beffroi_request_context'],
     ];
 
     /**

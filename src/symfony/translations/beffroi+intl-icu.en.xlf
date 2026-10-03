@@ -1065,6 +1065,10 @@
         <source>archive.chapter.journal</source>
         <target>Everything recorded about what you did here</target>
       </trans-unit>
+      <trans-unit id="archive.chapter.changes" resname="archive.chapter.changes">
+        <source>archive.chapter.changes</source>
+        <target>What you have changed of your record, and what it said before</target>
+      </trans-unit>
       <trans-unit id="archive.your_request" resname="archive.your_request">
         <source>archive.your_request</source>
         <target>Your request</target>
@@ -1128,6 +1132,30 @@
       <trans-unit id="account.archive.expired" resname="account.archive.expired">
         <source>account.archive.expired</source>
         <target>the last file has expired</target>
+      </trans-unit>
+      <trans-unit id="profile.what_you_changed" resname="profile.what_you_changed">
+        <source>profile.what_you_changed</source>
+        <target>What you have changed</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_nothing" resname="profile.changed_nothing">
+        <source>profile.changed_nothing</source>
+        <target>You have not changed anything of your record yet.</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_what" resname="profile.changed_what">
+        <source>profile.changed_what</source>
+        <target>What</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_from" resname="profile.changed_from">
+        <source>profile.changed_from</source>
+        <target>It said</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_to" resname="profile.changed_to">
+        <source>profile.changed_to</source>
+        <target>It says</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_when" resname="profile.changed_when">
+        <source>profile.changed_when</source>
+        <target>When</target>
       </trans-unit>
     </body>
   </file>

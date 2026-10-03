@@ -1065,6 +1065,10 @@
         <source>archive.chapter.journal</source>
         <target>Tout ce qui a été enregistré de ce que vous avez fait ici</target>
       </trans-unit>
+      <trans-unit id="archive.chapter.changes" resname="archive.chapter.changes">
+        <source>archive.chapter.changes</source>
+        <target>Ce que vous avez changé de votre dossier, et ce qu'il disait avant</target>
+      </trans-unit>
       <trans-unit id="archive.your_request" resname="archive.your_request">
         <source>archive.your_request</source>
         <target>Votre demande</target>
@@ -1128,6 +1132,30 @@
       <trans-unit id="account.archive.expired" resname="account.archive.expired">
         <source>account.archive.expired</source>
         <target>le dernier fichier a expiré</target>
+      </trans-unit>
+      <trans-unit id="profile.what_you_changed" resname="profile.what_you_changed">
+        <source>profile.what_you_changed</source>
+        <target>Ce que vous avez changé</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_nothing" resname="profile.changed_nothing">
+        <source>profile.changed_nothing</source>
+        <target>Vous n'avez encore rien changé de votre dossier.</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_what" resname="profile.changed_what">
+        <source>profile.changed_what</source>
+        <target>Quoi</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_from" resname="profile.changed_from">
+        <source>profile.changed_from</source>
+        <target>Il disait</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_to" resname="profile.changed_to">
+        <source>profile.changed_to</source>
+        <target>Il dit</target>
+      </trans-unit>
+      <trans-unit id="profile.changed_when" resname="profile.changed_when">
+        <source>profile.changed_when</source>
+        <target>Quand</target>
       </trans-unit>
     </body>
   </file>

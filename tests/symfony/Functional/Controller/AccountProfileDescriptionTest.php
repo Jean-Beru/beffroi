@@ -194,6 +194,41 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
     }
 
     /**
+     * Issue #482: the page shows what this person changed of their own record, with what the claim said
+     * and what they made it say, which is the question they ask first when they read that they changed
+     * something.
+     */
+    #[Test]
+    public function thePageShowsWhatThePersonChangedOfTheirRecord(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->describe('nickname', 'Ada');
+
+        // When
+        $page = $this->describe('nickname', 'Augusta');
+
+        // Then
+        static::assertSame(['nickname', 'nickname'], $page->filter('tr[data-change]')->extract(['data-change']));
+        $last = $page->filter('tr[data-change]')->first()->filter('td');
+        static::assertSame('Ada', $last->eq(1)->text());
+        static::assertSame('Augusta', $last->eq(2)->text());
+    }
+
+    #[Test]
+    public function aPersonWhoChangedNothingIsToldSo(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->profilePage();
+
+        // Then
+        static::assertCount(1, $page->filter('p[data-changes="none"]'));
+    }
+
+    /**
      * Issue #481: the form answers with a redirection, so reloading the page it came back to does not say
      * the same thing of that person again, and the refusal that crossed the redirection is shown once.
      */

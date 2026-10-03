@@ -721,6 +721,12 @@ services:
     test.beffroi.archives:
         alias: Beffroi\Core\Port\PersonalArchiveRepositoryInterface
         public: true
+    test.beffroi.claim_history:
+        alias: Beffroi\Core\Port\ClaimHistoryInterface
+        public: true
+    test.beffroi.changes:
+        alias: Beffroi\Core\Port\ChangesOfAPersonInterface
+        public: true
     test.beffroi.groups_of_a_person:
         alias: Beffroi\Core\Port\GroupsOfAPersonInterface
         public: true
