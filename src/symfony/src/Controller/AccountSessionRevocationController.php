@@ -17,7 +17,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -43,7 +42,6 @@ final readonly class AccountSessionRevocationController
         private BrowserSession $browser,
         private RequestContextFactory $contexts,
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
@@ -67,7 +65,7 @@ final readonly class AccountSessionRevocationController
         }
         $this->terminator->end($ended, SessionEnd::User, $this->contexts->fromRequest($request));
         if (! $ended->id->equals($session->id)) {
-            return $this->pages->redirect($this->router->generate(AccountSessionsController::ROUTE));
+            return $this->pages->afterTheForm(AccountSessionsController::ROUTE);
         }
         $this->browser->unbind($request->getSession());
 

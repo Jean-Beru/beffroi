@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\TwoFactorPage;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,6 +25,7 @@ final readonly class AccountTwoFactorController
 
     public function __construct(
         private AccountAccess $account,
+        private WhatWasRefused $refusals,
         private TwoFactorPage $page,
     ) {
     }
@@ -36,6 +38,7 @@ final readonly class AccountTwoFactorController
             return $session;
         }
 
-        return $this->page->render($session->user);
+        // what a form of this page was refused, if one was, shown this once (issue #481)
+        return $this->page->render($session->user, $this->refusals->take($request)?->code);
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\AccountAccess;
-use Beffroi\Bundle\Http\ArchivePage;
+use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Core\Application\Archive\ArchiveRequest;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,8 +17,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * A person asks for everything this provider holds about them (RGPD article 15, issue #453).
  *
  * **It builds nothing.** The row is written, the act is announced, and the archive is assembled off this
- * request by whatever carries the events (BuildThePersonalArchiveHandler): nine tables read and one file
- * signed is not work a browser waits for, and the page it comes back to says the file is being built.
+ * request by whatever carries the events (BuildThePersonalArchiveHandler): seven tables read and one file
+ * sealed is not work a browser waits for, and the page it comes back to says where the file has got to.
+ *
+ * It answers with a redirection and never the page itself (issue #481), so that a browser reloading does
+ * not ask for a second archive.
  */
 #[AsController]
 final readonly class AccountArchiveRequestController
@@ -31,7 +34,7 @@ final readonly class AccountArchiveRequestController
         private AccountAccess $account,
         private ArchiveRequest $request,
         private RequestContextFactory $contexts,
-        private ArchivePage $page,
+        private InteractionPages $pages,
     ) {
     }
 
@@ -44,6 +47,6 @@ final readonly class AccountArchiveRequestController
         }
         $this->request->askedBy($session->user, $this->contexts->fromRequest($request));
 
-        return $this->page->render($session->user);
+        return $this->pages->afterTheForm(AccountArchiveController::ROUTE);
     }
 }

@@ -60,6 +60,7 @@ use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Beffroi\Bundle\EndSession\LogoutChannels;
 use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\AccountHomePage;
 use Beffroi\Bundle\Http\Account\AccountSections;
 use Beffroi\Bundle\Http\Account\PasskeysSection;
@@ -548,6 +549,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
     // what every page of the account asks first: the session of this browser, and the form token when it posts
+    // what carries a refusal across the redirection every form of these pages answers with (issue #481)
+    $services->set(WhatWasRefused::class);
     $services->set(FormToken::class);
     // where a page of the provider that is not an authorization request sends a browser to sign in, and
     // where the login of the firewall sends it back (RFC 8628 §3.3)

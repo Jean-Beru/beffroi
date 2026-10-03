@@ -7,7 +7,9 @@ namespace Beffroi\Bundle\Controller;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\TotpProvisioningStore;
+use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\TwoFactorPage;
+use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,6 +22,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * (architecture §5.2): verified by the enrolment of the core against the provisioning this browser holds
  * for this user; the credential exists from here, and the backup codes are shown, this once. A code that
  * does not match shows the same QR code again; without a provisioning, the page of the account says so.
+ *
+ * It answers with a redirection whether the step went through or was refused (issue #481), so that a
+ * browser reloading does not post it again; what was refused crosses it in the session (WhatWasRefused).
  */
 #[AsController]
 final readonly class TotpEnrolmentController
@@ -39,7 +44,9 @@ final readonly class TotpEnrolmentController
         private RequestContextFactory $contexts,
         private TotpEnrolment $enrolment,
         private TotpProvisioningStore $provisionings,
+        private WhatWasRefused $refusals,
         private TwoFactorPage $page,
+        private InteractionPages $pages,
     ) {
     }
 
@@ -54,13 +61,17 @@ final readonly class TotpEnrolmentController
         $context = $this->contexts->fromRequest($request);
         $provisioning = $this->provisionings->provisioning($request->getSession(), $user, $context->receivedAt);
         if ($provisioning === null) {
-            return $this->page->render($user, self::NO_PROVISIONING, Response::HTTP_UNPROCESSABLE_ENTITY);
+            $this->refusals->keep($request, self::NO_PROVISIONING);
+
+            return $this->pages->afterTheForm(AccountTwoFactorController::ROUTE);
         }
         $code = $request->request->getString(self::CODE_PARAMETER);
         try {
             $this->enrolment->complete($user, $provisioning, $code, $context);
         } catch (CredentialEnrolmentFailedException) {
-            return $this->page->renderEnrolment($user, $provisioning, self::REFUSED, Response::HTTP_UNPROCESSABLE_ENTITY);
+            $this->refusals->keep($request, self::REFUSED);
+
+            return $this->pages->afterTheForm(AccountTwoFactorEnrolmentController::ROUTE);
         }
         $this->provisionings->forget($request->getSession());
 

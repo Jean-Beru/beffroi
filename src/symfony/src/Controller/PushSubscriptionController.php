@@ -6,7 +6,7 @@ namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Http\NotificationsPage;
+use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\KeyNotFoundException;
@@ -16,7 +16,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use function trim;
 
 /**
@@ -27,6 +26,10 @@ use function trim;
  *
  * A browser that subscribes again hands back the endpoint it already had, and that is one browser and not
  * two: the row it has is what changes.
+ *
+ * It answers with a redirection whether the ceremony was completed or refused (issue #481): a browser
+ * reloading the page it comes back to does not present the same thing again, and what was refused crosses
+ * the redirection in the session (WhatWasRefused).
  */
 #[AsController]
 final readonly class PushSubscriptionController
@@ -56,9 +59,8 @@ final readonly class PushSubscriptionController
         private AccountAccess $account,
         private ApplicationServerAlgorithmsInterface $algorithms,
         private PushSubscriptionEnrolment $enrolment,
-        private NotificationsPage $page,
+        private WhatWasRefused $refusals,
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
@@ -72,7 +74,7 @@ final readonly class PushSubscriptionController
         $user = $session->user;
         $algorithm = $this->algorithms->all()[0] ?? null;
         if ($algorithm === null) {
-            return $this->page->render($user, self::NOT_SERVED, Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->refused($request, self::NOT_SERVED);
         }
         $label = trim($request->request->getString(self::LABEL_PARAMETER));
         try {
@@ -85,11 +87,18 @@ final readonly class PushSubscriptionController
                 $label === '' || mb_strlen($label) > self::LABEL_MAX_LENGTH ? null : $label,
             );
         } catch (InvalidArgumentException) {
-            return $this->page->render($user, self::REFUSED, Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->refused($request, self::REFUSED);
         } catch (KeyNotFoundException) {
-            return $this->page->render($user, self::NOT_SERVED, Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->refused($request, self::NOT_SERVED);
         }
 
-        return $this->pages->redirect($this->router->generate(AccountNotificationsController::ROUTE));
+        return $this->pages->afterTheForm(AccountNotificationsController::ROUTE);
+    }
+
+    private function refused(Request $request, string $code): Response
+    {
+        $this->refusals->keep($request, $code);
+
+        return $this->pages->afterTheForm(AccountNotificationsController::ROUTE);
     }
 }

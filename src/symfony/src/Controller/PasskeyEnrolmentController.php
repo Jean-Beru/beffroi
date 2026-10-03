@@ -6,8 +6,8 @@ namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\PasskeyOptionsStore;
-use Beffroi\Bundle\Http\PasskeysPage;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
@@ -17,13 +17,16 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use function trim;
 
 /**
  * The attestation of a new passkey, posted by the page of the account with the name the user gave it and
  * the CSRF token (architecture §5.2): verified by the enrolment of the core against the options this
  * browser was given for this user; the page comes back with the passkey listed, or with what went wrong.
+ *
+ * It answers with a redirection whether the ceremony was completed or refused (issue #481): a browser
+ * reloading the page it comes back to does not present the same thing again, and what was refused crosses
+ * the redirection in the session (WhatWasRefused).
  */
 #[AsController]
 final readonly class PasskeyEnrolmentController
@@ -47,9 +50,8 @@ final readonly class PasskeyEnrolmentController
         private RequestContextFactory $contexts,
         private PasskeyEnrolment $enrolment,
         private PasskeyOptionsStore $options,
-        private PasskeysPage $page,
+        private WhatWasRefused $refusals,
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
@@ -63,19 +65,26 @@ final readonly class PasskeyEnrolmentController
         $user = $session->user;
         $name = trim($request->request->getString(self::NAME_PARAMETER));
         if ($name === '' || mb_strlen($name) > PasskeyCredential::NAME_MAX_LENGTH) {
-            return $this->page->render($user, self::INVALID_NAME, Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->refused($request, self::INVALID_NAME);
         }
         $attestation = $request->request->getString(self::ATTESTATION_PARAMETER);
         $options = $this->options->takeCreation($request->getSession(), $user->id);
         if ($attestation === '' || $options === null) {
-            return $this->page->render($user, self::NO_CEREMONY, Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->refused($request, self::NO_CEREMONY);
         }
         try {
             $this->enrolment->complete($user, $name, $options, $attestation, $this->contexts->fromRequest($request));
         } catch (CredentialEnrolmentFailedException) {
-            return $this->page->render($user, self::REFUSED, Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->refused($request, self::REFUSED);
         }
 
-        return $this->pages->redirect($this->router->generate(AccountPasskeysController::ROUTE));
+        return $this->pages->afterTheForm(AccountPasskeysController::ROUTE);
+    }
+
+    private function refused(Request $request, string $code): Response
+    {
+        $this->refusals->keep($request, $code);
+
+        return $this->pages->afterTheForm(AccountPasskeysController::ROUTE);
     }
 }
