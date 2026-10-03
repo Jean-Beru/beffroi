@@ -165,7 +165,7 @@ beffroi:
         issuer: 'https://op.test'
         # Two of the claims a person may say of themselves (issue #452), so that both ends of the rule are
         # played: what this tenant opens is written, and what it does not is refused on the server.
-        self_served_claims: ['nickname', 'zoneinfo']
+        self_served_claims: ['nickname', 'zoneinfo', 'locale']
     load:
         origin:
             limit: '%env(int:BEFFROI_TEST_ORIGIN_BUDGET)%'

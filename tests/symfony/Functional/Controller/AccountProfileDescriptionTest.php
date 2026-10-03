@@ -27,7 +27,31 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         $page = $this->profilePage();
 
         // Then
-        static::assertSame(['nickname', 'zoneinfo'], $page->filter('form[data-changeable]')->extract(['data-changeable']));
+        // in the order the claims are wired and not the order the tenant named them, which is what the
+        // page says of itself (WiredClaims)
+        static::assertSame(['nickname', 'locale', 'zoneinfo'], $page->filter('form[data-changeable]')->extract(['data-changeable']));
+    }
+
+    /**
+     * Issue #476: the page renders the field the claim says it is, and a text box stops standing in for
+     * every one of them.
+     */
+    #[Test]
+    public function theFieldIsOfTheKindTheClaimSays(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->profilePage();
+
+        // Then
+        static::assertSame(['text'], $page->filter('form[data-changeable="nickname"] input[name="value"]')->extract(['data-field']));
+        // a closed set is chosen from, and the languages served are the one closed set these claims have
+        static::assertSame(['choice'], $page->filter('form[data-changeable="locale"] select[name="value"]')->extract(['data-field']));
+        static::assertSame(['en', 'fr'], $page->filter('form[data-changeable="locale"] option[value!=""]')->extract(['value']));
+        // six hundred names of a database are a picker and not a choice: what a zone gets is an example
+        static::assertSame(['Europe/Paris'], $page->filter('form[data-changeable="zoneinfo"] input[name="value"]')->extract(['placeholder']));
     }
 
     #[Test]

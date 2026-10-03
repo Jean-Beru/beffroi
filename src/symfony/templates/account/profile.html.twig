@@ -37,12 +37,34 @@
         <p data-changeable="none">{{ 'profile.change_nothing'|trans }}</p>
     {% else %}
         <p>{{ 'profile.change_explanation'|trans }}</p>
-        {% for claim, held in changeable %}
+        {% for claim, offered in changeable %}
+            {% set field = offered.field %}
             <form method="post" action="{{ path('beffroi_interaction_account_profile_describe') }}" data-changeable="{{ claim }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('beffroi_profile_describe') }}">
                 <input type="hidden" name="claim" value="{{ claim }}">
                 <label for="claim-{{ claim }}">{{ ('profile.' ~ claim)|trans }}</label>
-                <input type="text" id="claim-{{ claim }}" name="value" value="{{ held }}" autocomplete="off">
+                {# What kind of field this is, the claim says (issue #476): a closed set is chosen from, and
+                   anything else is typed into an input of the kind it named, with what the browser may
+                   check before anything is sent. #}
+                {% if field.choices is not empty %}
+                    <select id="claim-{{ claim }}" name="value" data-field="choice">
+                        <option value=""{% if offered.held is null %} selected{% endif %}>{{ 'profile.nothing'|trans }}</option>
+                        {% for choice in field.choices %}
+                            <option value="{{ choice }}"{% if choice == offered.held %} selected{% endif %}>{{ choice }}</option>
+                        {% endfor %}
+                    </select>
+                {% else %}
+                    <input
+                        type="{{ field.kind }}"
+                        id="claim-{{ claim }}"
+                        name="value"
+                        value="{{ offered.held }}"
+                        data-field="{{ field.kind }}"
+                        autocomplete="off"
+                        {%- if field.pattern is not null %} pattern="{{ field.pattern }}"{% endif %}
+                        {%- if field.example is not null %} placeholder="{{ field.example|trans }}"{% endif %}
+                    >
+                {% endif %}
                 <button type="submit">{{ 'profile.save'|trans }}</button>
             </form>
         {% endfor %}

@@ -1013,6 +1013,18 @@
         <source>profile.claim_refused</source>
         <target>Ce n'est pas une valeur que ce fournisseur peut retenir pour cela.</target>
       </trans-unit>
+      <trans-unit id="profile.nothing" resname="profile.nothing">
+        <source>profile.nothing</source>
+        <target>Rien</target>
+      </trans-unit>
+      <trans-unit id="profile.birthdate.example" resname="profile.birthdate.example">
+        <source>profile.birthdate.example</source>
+        <target>1815-12-10, ou 1815</target>
+      </trans-unit>
+      <trans-unit id="profile.zoneinfo.example" resname="profile.zoneinfo.example">
+        <source>profile.zoneinfo.example</source>
+        <target>Europe/Paris</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
