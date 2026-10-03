@@ -8,8 +8,8 @@ use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Domain\Tenant\Tenant;
 
 /**
- * Writes the row of the configured tenant: created, renamed, its "acr" policy or its look replaced, or
- * left alone. A changed issuer is refused, every token issued so far names it.
+ * Writes the row of the configured tenant: created, renamed, its "acr" policy, its look or what its
+ * people may change of themselves replaced, or left alone. A changed issuer is refused, every token issued so far names it.
  */
 final readonly class TenantSynchronizer
 {
@@ -44,6 +44,9 @@ final readonly class TenantSynchronizer
         }
         if (! $tenant->look->equals($configured->look)) {
             $tenant->adoptLook($configured->look);
+        }
+        if (! $tenant->selfServedClaims->equals($configured->selfServedClaims)) {
+            $tenant->adoptSelfServedClaims($configured->selfServedClaims);
         }
         $manager->flush();
 

@@ -58,6 +58,8 @@ final class ProvisioningTest extends ConsoleTestCase
         // this deployment declares none, and the two lines are empty rather than absent
         static::assertStringContainsString('Logo', $tester->getDisplay());
         static::assertStringContainsString('Colours', $tester->getDisplay());
+        // and what its people may change of themselves (issue #452), which the same command writes
+        static::assertStringContainsString('Changeable', $tester->getDisplay());
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Doctrine;
 
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Core\Port\AmbientTenantInterface;
@@ -55,11 +56,28 @@ final class TenantProvider implements AmbientTenantInterface, ResetInterface
             );
         }
 
+        if (! $tenant->selfServedClaims->equals($configured->selfServedClaims)) {
+            throw TenantNotSynchronizedException::differs(
+                $configured->slug,
+                'self_served_claims',
+                self::describedClaims($tenant->selfServedClaims),
+                self::describedClaims($configured->selfServedClaims),
+            );
+        }
         if (! $tenant->look->equals($configured->look)) {
             throw TenantNotSynchronizedException::differs($configured->slug, 'look', self::described($tenant->look), self::described($configured->look));
         }
 
         return $this->tenant = $tenant;
+    }
+
+    /**
+     * What a person may change of themselves, in one line, for the refusal above to say which of the two
+     * is which; a tenant that opens nothing says so rather than saying an empty line.
+     */
+    private static function describedClaims(SelfServedClaims $claims): string
+    {
+        return $claims->names === [] ? 'none' : implode(' ', $claims->names);
     }
 
     /**

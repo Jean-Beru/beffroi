@@ -39,6 +39,12 @@ final class DeviceType extends JsonObjectType
         return $value instanceof Device ? $value : null;
     }
 
+    /**
+     * Keyed, and said so here: the document of this type is nested in another one (`document()` above),
+     * which answers for its own keys.
+     *
+     * @return array<string, mixed>
+     */
     protected function encode(object $value): array
     {
         return [

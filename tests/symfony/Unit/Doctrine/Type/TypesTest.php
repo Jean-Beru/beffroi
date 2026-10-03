@@ -33,8 +33,10 @@ use Beffroi\Bundle\Doctrine\Type\AuthorizationDetailsType;
 use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Beffroi\Bundle\Doctrine\Type\ScopesType;
 use Beffroi\Bundle\Doctrine\Type\SubjectType;
+use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
 use Beffroi\Bundle\Doctrine\Type\TenantLookType;
 use Beffroi\Core\Domain\Tenant\LogoUri;
+use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
@@ -178,6 +180,12 @@ final class TypesTest extends TestCase
             ]),
             '{"classes":[{"name":"urn:okta:loa:2fa:any","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}',
         ];
+        yield 'what a person may change of themselves' => [
+            SelfServedClaimsType::class,
+            new SelfServedClaims(['nickname', 'zoneinfo']),
+            '["nickname","zoneinfo"]',
+        ];
+        yield 'a tenant that lets a person change nothing' => [SelfServedClaimsType::class, SelfServedClaims::none(), '[]'];
         yield 'the look of a tenant' => [
             TenantLookType::class,
             new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff'),
@@ -483,10 +491,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTwentySevenTypes(): void
+    public function theBundleDeclaresTwentyEightTypes(): void
     {
         // When / Then
-        static::assertCount(27, BeffroiBundle::DBAL_TYPES);
+        static::assertCount(28, BeffroiBundle::DBAL_TYPES);
     }
 
     /**

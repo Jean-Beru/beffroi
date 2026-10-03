@@ -312,13 +312,25 @@ final class TenantProviderTest extends DatabaseTestCase
      * @param array<array-key, string> $authenticationClasses
      * @param array<array-key, mixed> $look
      */
+    /**
+     * The claims the kernel of these tests opens (config_test.yml), so a factory built here says what the
+     * row says and a test about one thing is not a test about that too.
+     */
+    private const array SELF_SERVED_CLAIMS = ['nickname', 'zoneinfo'];
+
+    /**
+     * @param array<array-key, string> $authenticationClasses
+     * @param array<array-key, mixed> $look
+     * @param array<array-key, mixed> $selfServedClaims
+     */
     private static function factory(
         string $issuer,
         string $slug,
         ?string $name,
         array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
         array $look = [],
+        array $selfServedClaims = self::SELF_SERVED_CLAIMS,
     ): TenantFactory {
-        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses, $look);
+        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses, $look, $selfServedClaims);
     }
 }

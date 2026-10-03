@@ -23,6 +23,11 @@
                 <option name="default">{}</option>
             </options>
         </field>
+        <field name="selfServedClaims" type="beffroi_self_served_claims" column="self_served_claims">
+            <options>
+                <option name="default">[]</option>
+            </options>
+        </field>
         <field name="createdAt" type="datetime_immutable" column="created_at"/>
     </entity>
 </doctrine-mapping>

@@ -9,6 +9,7 @@ use function dirname;
 use Beffroi\Bundle\Doctrine\Type\ActorType;
 use Beffroi\Bundle\Doctrine\Type\AddressType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
+use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
 use Beffroi\Bundle\Doctrine\Type\TenantLookType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Beffroi\Bundle\Doctrine\Type\BackupCodesType;
@@ -118,6 +119,7 @@ final class BeffroiBundle extends AbstractBundle
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
         TenantLookType::NAME => TenantLookType::class,
+        SelfServedClaimsType::NAME => SelfServedClaimsType::class,
         BackupCodesType::NAME => BackupCodesType::class,
     ];
 

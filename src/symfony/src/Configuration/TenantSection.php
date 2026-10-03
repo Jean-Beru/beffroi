@@ -71,6 +71,12 @@ final readonly class TenantSection extends ConfigurationSection
             ->end()
             ->end()
             ->end()
+            ->arrayNode('self_served_claims')
+            ->info('The claims the people of this tenant may change of themselves on the page of their account (issue #452), by the names of OIDC Core §5.1. It is a rule of the tenant and never an option of the deployment: a tenant whose directory owns the data opens none, a tenant that creates its people by hand may open all of them, and one instance serves both. Nothing by default, because opening a claim is a decision somebody takes where closing one would be a decision nobody took. A name no claim of this provider answers refuses the start.')
+            ->scalarPrototype()
+            ->end()
+            ->defaultValue([])
+            ->end()
             ->arrayNode('authentication_classes')
             ->info('The "acr" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider; the default policy ("phrh", "phr", "2", "1") when absent.')
             ->useAttributeAsKey('name')
@@ -96,6 +102,7 @@ final readonly class TenantSection extends ConfigurationSection
                 is_string($tenant['name'] ?? null) ? $tenant['name'] : null,
             )
             ->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'))
-            ->arg('$look', self::section($tenant, 'look'));
+            ->arg('$look', self::section($tenant, 'look'))
+            ->arg('$selfServedClaims', self::section($tenant, 'self_served_claims'));
     }
 }
