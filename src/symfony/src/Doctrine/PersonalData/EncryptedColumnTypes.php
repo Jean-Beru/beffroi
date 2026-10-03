@@ -81,6 +81,7 @@ final readonly class EncryptedColumnTypes
         'backchannel_authentication_request' => ['beffroi_binding_message', 'beffroi_request_context'],
         'client' => ['json', 'beffroi_client_secret'],
         'journal' => ['beffroi_request_context'],
+        'personal_archive' => ['text'],
     ];
 
     /**

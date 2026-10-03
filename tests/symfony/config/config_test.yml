@@ -718,6 +718,15 @@ services:
     test.beffroi.acts:
         alias: Beffroi\Core\Port\ActsOfAPersonInterface
         public: true
+    test.beffroi.archives:
+        alias: Beffroi\Core\Port\PersonalArchiveRepositoryInterface
+        public: true
+    test.beffroi.groups_of_a_person:
+        alias: Beffroi\Core\Port\GroupsOfAPersonInterface
+        public: true
+    test.beffroi.archive_request:
+        alias: Beffroi\Core\Application\Archive\ArchiveRequest
+        public: true
     test.beffroi.interactions:
         alias: Beffroi\Oidc\Port\InteractionRepositoryInterface
         public: true

@@ -1,0 +1,44 @@
+{# Everything this provider holds about the signed-in person, in one file they ask for (RGPD articles 15
+   and 20, issue #453), in the language of the browser: what the file holds, where their last request has
+   got to, and the button that asks for one. The four states are one page and never an empty one: a person
+   who clicked learns whether their file is being built, waiting for them, or gone.
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
+
+{% block title %}{{ 'archive.title'|trans }}{% endblock %}
+
+{% block content %}
+    {{ include('@Beffroi/account/back.html.twig') }}
+    <p>{{ 'archive.signed_in_as'|trans({username: user.username}) }}</p>
+    <p>{{ 'archive.explanation'|trans }}</p>
+
+    {# What the file holds is the chapters it is assembled from, so a kind of fact this provider comes to
+       hold about a person is named here by being wired and this page is not edited. #}
+    <h2>{{ 'archive.what_it_holds'|trans }}</h2>
+    <ul data-chapters="{{ chapters|length }}">
+        {% for chapter in chapters %}
+            <li data-chapter="{{ chapter }}">{{ ('archive.chapter.' ~ chapter)|trans }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>{{ 'archive.your_request'|trans }}</h2>
+    <p data-archive="{{ state }}">{{ ('archive.' ~ state)|trans }}</p>
+    {% if state == 'being_built' %}
+        <p><time datetime="{{ archive.askedAt|date('c') }}">{{ 'archive.asked_at'|trans({moment: archive.askedAt|beffroi_moment(user)}) }}</time></p>
+    {% elseif state == 'ready' %}
+        <p><time datetime="{{ archive.builtAt|date('c') }}">{{ 'archive.built_at'|trans({moment: archive.builtAt|beffroi_moment(user)}) }}</time></p>
+        <p><time datetime="{{ archive.expiresAt|date('c') }}">{{ 'archive.expires_at'|trans({moment: archive.expiresAt|beffroi_moment(user)}) }}</time></p>
+        <p><a href="{{ path('beffroi_interaction_account_archive_file') }}" data-archive-file download>{{ 'archive.download'|trans }}</a></p>
+    {% endif %}
+
+    {# Asking again replaces what is there, so the one state with no button is the one being built: there
+       is nothing a second click would do but queue the same work twice. #}
+    {% if state != 'being_built' %}
+        <form method="post" action="{{ path('beffroi_interaction_account_archive_ask') }}" data-archive-ask>
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_archive_ask') }}">
+            <p>{{ 'archive.kept_for'|trans({days: kept_for_days}) }}</p>
+            <button type="submit">{{ (state == 'never' ? 'archive.ask' : 'archive.ask_again')|trans }}</button>
+        </form>
+    {% endif %}
+{% endblock %}

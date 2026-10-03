@@ -8,8 +8,11 @@ use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\LinkedIdentitiesOfAPersonInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
  * The identities of a user at an upstream provider, in beffroi_linked_identity (architecture §3.1); a lookup is
@@ -22,7 +25,9 @@ use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
  *
  * @extends DoctrineRepository<LinkedIdentity>
  */
-final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository implements LinkedIdentityRepositoryInterface
+final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository implements
+    LinkedIdentitiesOfAPersonInterface,
+    LinkedIdentityRepositoryInterface
 {
     public function __construct(
         EntityManagers $managers,
@@ -45,6 +50,23 @@ final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository
             $providerColumn->tag => $this->indexes->of($providerColumn)->of($provider),
             $subjectColumn->tag => $this->indexes->of($subjectColumn)->of($subject),
         ]);
+    }
+
+    /**
+     * The identities of one person, which is a walk of their rows and matches nothing: it asks for the
+     * person and not for a value, so no blind index is in it.
+     */
+    public function of(User $user): array
+    {
+        /** @var list<LinkedIdentity> $identities */
+        $identities = $this->queryBuilder('i')
+            ->where('i.user = :user')
+            ->orderBy('i.linkedAt', 'DESC')
+            ->setParameter('user', $user->id, UuidType::NAME)
+            ->getQuery()
+            ->getResult();
+
+        return $identities;
     }
 
     public function save(LinkedIdentity $identity): void

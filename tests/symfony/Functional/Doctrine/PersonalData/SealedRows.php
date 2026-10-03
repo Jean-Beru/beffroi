@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
 use DateTimeImmutable;
 use function array_values;
+use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
@@ -22,6 +23,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
 use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -137,6 +139,12 @@ final readonly class SealedRows
         'beffroi_journal' => [
             'context' => self::IP_ADDRESS,
         ],
+        // the archive a person asked for (issue #453): the one column in which everything the other
+        // families seal stands in clear at once, so what is searched for in the dump is the document and
+        // the two values of this fixture it holds
+        'beffroi_personal_archive' => [
+            'content' => '{"profile":[{"name":"Augusta Ada King-Noel","email":"ada@example.org"}]}',
+        ],
         'beffroi_backchannel_authentication_request' => [
             'binding_message' => 'Payment of 42 euros to the Analytical Engine Company',
             'requested_from' => self::USER_AGENT,
@@ -236,6 +244,7 @@ final readonly class SealedRows
         $this->pushedRequest($client);
         $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']));
         $this->act($user);
+        $this->archive($user);
     }
 
     /**
@@ -255,6 +264,20 @@ final readonly class SealedRows
         $this->service('test.beffroi.journal', JournalInterface::class)->record($entry);
 
         return $entry;
+    }
+
+    /**
+     * The archive a person asked for and that was built (issue #453), whose document is sealed in a scope
+     * of its own: it is the one file in which everything this provider knows of somebody stands in clear
+     * at once, so a dump that gave it away would give away all of it.
+     */
+    public function archive(User $user): PersonalArchive
+    {
+        $archive = PersonalArchive::asked(Uuid::v7(), $user, $this->now);
+        $archive->fill(self::VALUES['beffroi_personal_archive']['content'], $this->now);
+        $this->service('test.beffroi.archives', PersonalArchiveRepositoryInterface::class)->save($archive);
+
+        return $archive;
     }
 
     public function user(): User

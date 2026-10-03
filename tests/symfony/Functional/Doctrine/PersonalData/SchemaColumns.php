@@ -100,6 +100,19 @@ final readonly class SchemaColumns
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
                 'client' => new NoPersonalDatum('the client the act concerned, by the identifier it was registered under'),
             ],
+            // Everything this provider holds about one person, in one file they asked for (issue #453). The
+            // one column of this schema where everything the other families seal stands in clear at once,
+            // which is why it is sealed like the rest and carries no exemption: a dump that read this one
+            // would read all of it.
+            'beffroi_personal_archive' => [
+                'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
+                'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'asked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'expires_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'built_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'content' => new Sealed('personal_archive'),
+            ],
             'beffroi_user' => [
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
                 'username' => new Sealed('user'),
