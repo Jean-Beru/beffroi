@@ -9,7 +9,7 @@
 
 {% block content %}
     <p>{{ 'account.signed_in_as'|trans({username: user.username}) }}</p>
-    <p><time datetime="{{ signed_in_since|date('c') }}">{{ 'account.signed_in_since'|trans({date: signed_in_since|date('Y-m-d H:i')}) }}</time></p>
+    <p><time datetime="{{ signed_in_since|date('c') }}">{{ 'account.signed_in_since'|trans({date: signed_in_since|beffroi_moment(user)}) }}</time></p>
     <ul data-sections="{{ sections|length }}">
         {% for section in sections %}
             <li data-section="{{ section.route }}">

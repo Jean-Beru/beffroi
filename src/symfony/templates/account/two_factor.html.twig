@@ -21,10 +21,10 @@
             <button type="submit">{{ 'two_factor.set_up'|trans }}</button>
         </form>
     {% else %}
-        <p data-two-factor="{{ totp.id }}" data-backup-codes-left="{{ backup_codes_left }}">{{ 'two_factor.active'|trans({date: totp.createdAt|date('Y-m-d H:i')}) }}</p>
+        <p data-two-factor="{{ totp.id }}" data-backup-codes-left="{{ backup_codes_left }}">{{ 'two_factor.active'|trans({date: totp.createdAt|beffroi_moment(user)}) }}</p>
         <dl>
             <dt>{{ 'two_factor.last_used_at'|trans }}</dt>
-            <dd>{% if totp.lastUsedAt is not null %}<time datetime="{{ totp.lastUsedAt|date('c') }}">{{ totp.lastUsedAt|date('Y-m-d H:i') }}</time>{% else %}{{ 'two_factor.never_used'|trans }}{% endif %}</dd>
+            <dd>{% if totp.lastUsedAt is not null %}<time datetime="{{ totp.lastUsedAt|date('c') }}">{{ totp.lastUsedAt|beffroi_moment(user) }}</time>{% else %}{{ 'two_factor.never_used'|trans }}{% endif %}</dd>
             <dt>{{ 'two_factor.backup_codes'|trans }}</dt>
             <dd>{{ 'two_factor.backup_codes_left'|trans({count: backup_codes_left}) }}</dd>
         </dl>

@@ -127,7 +127,9 @@ use Beffroi\Bundle\Security\TotpLogin;
 use Beffroi\Bundle\Security\TotpLoginAuthenticator;
 use Beffroi\Bundle\Security\UserChecker;
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Bundle\Locale\UserTimeZone;
 use Beffroi\Bundle\Twig\LocaleExtension;
+use Beffroi\Bundle\Twig\MomentExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
 use Beffroi\Core\Application\Authentication\DecoyHash;
@@ -553,6 +555,9 @@ return static function (ContainerConfigurator $container): void {
     // what a visitor asked for, on one cookie, read back against the list above (issue #448)
     $services->set(ChosenLocale::class);
     $services->set(LocaleExtension::class);
+    // the clock a date is read on, and the one filter that writes it (issue #469)
+    $services->set(UserTimeZone::class);
+    $services->set(MomentExtension::class);
     // what the pages read of the organisation the visitor came for (issue #449)
     $services->set(TenantExtension::class);
     $services->set(InteractionLocale::class);
