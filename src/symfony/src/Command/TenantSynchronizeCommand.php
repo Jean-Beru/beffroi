@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Command;
 
 use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
+use function implode;
 use function sprintf;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -50,6 +51,9 @@ final readonly class TenantSynchronizeCommand
             ],
             [
                 'Logo' => $tenant->look->logoUri->value ?? '',
+            ],
+            [
+                'Changeable' => $tenant->selfServedClaims->names === [] ? 'nothing' : implode(', ', $tenant->selfServedClaims->names),
             ],
             [
                 'Colours' => $tenant->look->primaryColor === null
