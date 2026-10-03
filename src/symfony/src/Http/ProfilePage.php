@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  * record holds, read at every visit, never a copy this page keeps.
  *
  * It also offers what the tenant lets that person change of themselves (issue #452), one field per claim
- * it opens, in the order the claims are wired. What the tenant opens none of is a page that reads as it
+ * it opens, in the order the claims are wired, each of the kind the claim says it is (issue #476). What the tenant opens none of is a page that reads as it
  * always did, which is what a deployment that says nothing is served: the list above it says what is
  * held either way, so a claim that cannot be changed here is on the page and not offered.
  */
@@ -44,7 +44,10 @@ final readonly class ProfilePage
     {
         $changeable = [];
         foreach ($this->claims->openedBy($user->tenant) as $claim) {
-            $changeable[$claim->name()] = $claim->of($user);
+            $changeable[$claim->name()] = [
+                'held' => $claim->of($user),
+                'field' => $claim->field(),
+            ];
         }
 
         return $this->pages->render(

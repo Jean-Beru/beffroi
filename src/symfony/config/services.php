@@ -130,6 +130,7 @@ use Beffroi\Bundle\Security\UserChecker;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Bundle\Locale\UserTimeZone;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineJournal;
+use Beffroi\Bundle\Identity\LocaleClaimFactory;
 use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Application\Identity\LanguageRecording;
 use Beffroi\Core\Application\Identity\SelfDescription;
@@ -601,7 +602,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PreferredUsername::class)->tag('beffroi.claim');
     $services->set(Birthdate::class)->tag('beffroi.claim');
     $services->set(Gender::class)->tag('beffroi.claim');
-    $services->set(Locale::class)->tag('beffroi.claim');
+    // the language a person reads is a choice of the ones this deployment serves, which only the
+    // integration knows (issue #476)
+    $services
+        ->set(Locale::class)
+        ->factory(LocaleClaimFactory::of(...))
+        ->args([service(ServedLocales::class)])
+        ->tag('beffroi.claim');
     $services->set(Zoneinfo::class)->tag('beffroi.claim');
     $services->set(ProfileUrl::class)->tag('beffroi.claim');
     $services->set(PictureUrl::class)->tag('beffroi.claim');
