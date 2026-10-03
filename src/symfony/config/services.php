@@ -86,6 +86,7 @@ use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\SessionsPage;
 use Beffroi\Bundle\Http\SignInsPage;
+use Beffroi\Bundle\Locale\KnownLocales;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Bundle\Locale\UserLocale;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -649,12 +650,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PreferredUsername::class)->tag('beffroi.claim');
     $services->set(Birthdate::class)->tag('beffroi.claim');
     $services->set(Gender::class)->tag('beffroi.claim');
-    // the language a person reads is a choice of the ones this deployment serves, which only the
-    // integration knows (issue #476)
+    // the language a person reads is a choice of the ones that exist, which only ICU knows (issue #479),
+    // and not of the ones this deployment serves: that list answers which language a page is in
+    $services->set(KnownLocales::class);
     $services
         ->set(Locale::class)
         ->factory(LocaleClaimFactory::of(...))
-        ->args([service(ServedLocales::class)])
+        ->args([service(KnownLocales::class)])
         ->tag('beffroi.claim');
     $services->set(Zoneinfo::class)->tag('beffroi.claim');
     $services->set(ProfileUrl::class)->tag('beffroi.claim');

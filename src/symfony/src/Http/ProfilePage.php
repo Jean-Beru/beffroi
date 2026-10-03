@@ -44,9 +44,13 @@ final readonly class ProfilePage
     {
         $changeable = [];
         foreach ($this->claims->openedBy($user->tenant) as $claim) {
+            $held = $claim->of($user);
             $changeable[$claim->name()] = [
-                'held' => $claim->of($user),
-                'field' => $claim->field(),
+                'held' => $held,
+                // the field a page offers for what is already held, which is the claim's unless the input
+                // cannot carry that value: a save on an input a browser rendered empty would erase it
+                // (issue #479)
+                'field' => $claim->field()->forHolding($held),
             ];
         }
 

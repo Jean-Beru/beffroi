@@ -29,7 +29,7 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         // Then
         // in the order the claims are wired and not the order the tenant named them, which is what the
         // page says of itself (WiredClaims)
-        static::assertSame(['nickname', 'locale', 'zoneinfo'], $page->filter('form[data-changeable]')->extract(['data-changeable']));
+        static::assertSame(['nickname', 'birthdate', 'locale', 'zoneinfo'], $page->filter('form[data-changeable]')->extract(['data-changeable']));
     }
 
     /**
@@ -47,11 +47,101 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
 
         // Then
         static::assertSame(['text'], $page->filter('form[data-changeable="nickname"] input[name="value"]')->extract(['data-field']));
-        // a closed set is chosen from, and the languages served are the one closed set these claims have
-        static::assertSame(['choice'], $page->filter('form[data-changeable="locale"] select[name="value"]')->extract(['data-field']));
-        static::assertSame(['en', 'fr'], $page->filter('form[data-changeable="locale"] option[value!=""]')->extract(['value']));
-        // six hundred names of a database are a picker and not a choice: what a zone gets is an example
-        static::assertSame(['Europe/Paris'], $page->filter('form[data-changeable="zoneinfo"] input[name="value"]')->extract(['placeholder']));
+        // a browser offers a calendar for a date, and the pattern comes with it for one that does not
+        static::assertSame(['date'], $page->filter('form[data-changeable="birthdate"] input[name="value"]')->extract(['data-field']));
+        static::assertSame(['\d{4}(-\d{2}-\d{2})?'], $page->filter('form[data-changeable="birthdate"] input[name="value"]')->extract(['pattern']));
+    }
+
+    /**
+     * Issue #479: a set of several hundred is typed into with the whole set suggested, which is what the
+     * languages that exist and the names of the zoneinfo database both are.
+     */
+    #[Test]
+    public function aSetTooLongToReadIsTypedIntoWithTheWholeSetSuggested(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->profilePage();
+
+        // Then
+        static::assertSame(['picker'], $page->filter('form[data-changeable="locale"] input[name="value"]')->extract(['data-field']));
+        static::assertSame(['picker'], $page->filter('form[data-changeable="zoneinfo"] input[name="value"]')->extract(['data-field']));
+        static::assertGreaterThan(400, $page->filter('form[data-changeable="locale"] datalist option')->count());
+        static::assertGreaterThan(400, $page->filter('form[data-changeable="zoneinfo"] datalist option')->count());
+    }
+
+    /**
+     * Issue #479: the name of a language in that language, the only thing recognisable in a list of
+     * several hundred.
+     */
+    #[Test]
+    public function aLanguageIsSuggestedUnderItsOwnName(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->profilePage();
+
+        // Then
+        static::assertSame(
+            ['日本語'],
+            $page->filter('form[data-changeable="locale"] datalist option[value="ja"]')->extract(['_text']),
+        );
+    }
+
+    /**
+     * Issue #479: a language this deployment does not serve is one a person may say they read, "locale"
+     * being a claim of OIDC Core §5.1 and not a setting of this provider.
+     */
+    #[Test]
+    public function aPersonSaysTheyReadALanguageThisDeploymentDoesNotServe(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $this->describe('locale', 'ja');
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertSame('ja', self::reread($alice)->profile->locale);
+    }
+
+    /**
+     * Issue #479: what a closed set does not hold is refused on the server, a page that offers a list
+     * being a page whose form can be sent with anything.
+     */
+    #[Test]
+    public function aValueTheClosedSetDoesNotHoldIsRefused(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $this->describe('zoneinfo', 'Europe/Atlantis');
+
+        // Then
+        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
+        static::assertNull(self::reread($alice)->profile->zoneinfo);
+    }
+
+    #[Test]
+    public function aNameOfTheZoneinfoDatabaseIsAccepted(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $this->describe('zoneinfo', 'Pacific/Chatham');
+
+        // Then
+        static::assertSame('Pacific/Chatham', self::reread($alice)->profile->zoneinfo);
     }
 
     #[Test]

@@ -1021,10 +1021,6 @@
         <source>profile.birthdate.example</source>
         <target>1815-12-10, ou 1815</target>
       </trans-unit>
-      <trans-unit id="profile.zoneinfo.example" resname="profile.zoneinfo.example">
-        <source>profile.zoneinfo.example</source>
-        <target>Europe/Paris</target>
-      </trans-unit>
       <trans-unit id="archive.title" resname="archive.title">
         <source>archive.title</source>
         <target>Vos données</target>
