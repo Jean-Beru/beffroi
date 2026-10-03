@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Http;
 use Beffroi\Bundle\Http\Account\RecordedInformation;
 use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\ChangesOfAPersonInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,7 +16,9 @@ use Symfony\Component\HttpFoundation\Response;
  * record holds, read at every visit, never a copy this page keeps.
  *
  * It also offers what the tenant lets that person change of themselves (issue #452), one field per claim
- * it opens, in the order the claims are wired, each of the kind the claim says it is (issue #476). What the tenant opens none of is a page that reads as it
+ * it opens, in the order the claims are wired, each of the kind the claim says it is (issue #476), and
+ * what they have changed of it so far (issue #482): the question a person asks first when they read that
+ * they changed something is what it said before. What the tenant opens none of is a page that reads as it
  * always did, which is what a deployment that says nothing is served: the list above it says what is
  * held either way, so a claim that cannot be changed here is on the page and not offered.
  */
@@ -31,8 +34,15 @@ final readonly class ProfilePage
      */
     public const string REFUSED = 'claim_refused';
 
+    /**
+     * How many changes of their own record a person reads here (issue #482). As many as reads at a glance;
+     * the whole of it is in the archive they ask for (issue #453).
+     */
+    public const int CHANGES_SHOWN = 10;
+
     public function __construct(
         private WiredClaims $claims,
+        private ChangesOfAPersonInterface $changes,
         private InteractionPages $pages,
     ) {
     }
@@ -61,6 +71,8 @@ final readonly class ProfilePage
                 'identity' => RecordedInformation::identityOf($user),
                 'claims' => RecordedInformation::claimsOf($user),
                 'changeable' => $changeable,
+                // what they changed of their own record, the last few (issue #482)
+                'changes' => $this->changes->lastOf($user, self::CHANGES_SHOWN),
                 'refusal' => $refusal,
             ],
             $status,

@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Scheduler;
 
 use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
 use Beffroi\Bundle\Message\ForgetTheActsPastTheirRetention;
+use Beffroi\Bundle\Message\ForgetTheChangesPastTheirRetention;
 use Beffroi\Bundle\Message\ForgetTheExpiredArchives;
 use Beffroi\Bundle\Message\RemoveUnusedClients;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
@@ -52,6 +53,13 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
      */
     public const string EXPIRED_ARCHIVES_EVERY = '1 hour';
 
+    /**
+     * What the retention of the history of a record is worth waiting for (issue #482): the same day the
+     * journal waits, a change and the act that announced it being two halves of one answer and read
+     * together.
+     */
+    public const string HISTORY_RETENTION_EVERY = '1 day';
+
     public function getSchedule(): Schedule
     {
         return new Schedule()
@@ -64,6 +72,10 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
             ->add(RecurringMessage::every(
                 self::EXPIRED_ARCHIVES_EVERY,
                 new ForgetTheExpiredArchives(),
+            ))
+            ->add(RecurringMessage::every(
+                self::HISTORY_RETENTION_EVERY,
+                new ForgetTheChangesPastTheirRetention(),
             ));
     }
 }

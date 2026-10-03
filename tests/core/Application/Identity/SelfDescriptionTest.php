@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Application\Identity;
 
 use Beffroi\Core\Application\Identity\SelfDescription;
+use Beffroi\Core\Bridge\InMemory\InMemoryClaimHistory;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
 use Beffroi\Core\Domain\Identity\Claim\Birthdate;
@@ -137,9 +138,106 @@ final class SelfDescriptionTest extends TestCase
         static::assertFalse($announced[0]->takenBack);
     }
 
-    private static function describing(?RecordingEventDispatcher $events = null): SelfDescription
+    /**
+     * Issue #482: what the claim used to say and what it says now are written down, in the unit of work
+     * that changed the record, because a record changed whose history was not is a hole in the one thing
+     * a history is for.
+     */
+    #[Test]
+    public function whatTheClaimUsedToSayIsWrittenDownWithWhatItSaysNow(): void
     {
-        return new SelfDescription(new InMemoryUserRepository(), $events ?? new RecordingEventDispatcher(), new MockClock(Fixtures::now()));
+        // Given
+        $user = self::user(['nickname']);
+        $user->updateProfile(new Profile(nickname: 'Ada'), Fixtures::now());
+        $history = new InMemoryClaimHistory();
+
+        // When
+        self::describing(history: $history)->describe($user, new Nickname(), 'Augusta', Fixtures::context());
+
+        // Then
+        $changes = $history->lastOf($user, 10);
+        static::assertCount(1, $changes);
+        static::assertSame('nickname', $changes[0]->claim);
+        static::assertSame('Ada', $changes[0]->was);
+        static::assertSame('Augusta', $changes[0]->became);
+    }
+
+    #[Test]
+    public function aClaimFilledInForTheFirstTimeIsAChangeFromNothing(): void
+    {
+        // Given
+        $user = self::user(['nickname']);
+        $history = new InMemoryClaimHistory();
+
+        // When
+        self::describing(history: $history)->describe($user, new Nickname(), 'Ada', Fixtures::context());
+
+        // Then
+        static::assertNull($history->lastOf($user, 10)[0]->was);
+    }
+
+    #[Test]
+    public function takingAValueBackIsAChangeToNothing(): void
+    {
+        // Given
+        $user = self::user(['nickname']);
+        $user->updateProfile(new Profile(nickname: 'Ada'), Fixtures::now());
+        $history = new InMemoryClaimHistory();
+
+        // When
+        self::describing(history: $history)->describe($user, new Nickname(), null, Fixtures::context());
+
+        // Then
+        static::assertNull($history->lastOf($user, 10)[0]->became);
+    }
+
+    /**
+     * Saying again what a claim already said is an act, which the journal has, and not a change.
+     */
+    #[Test]
+    public function sayingAgainWhatAClaimAlreadySaidIsNoChange(): void
+    {
+        // Given
+        $user = self::user(['nickname']);
+        $user->updateProfile(new Profile(nickname: 'Ada'), Fixtures::now());
+        $history = new InMemoryClaimHistory();
+
+        // When
+        self::describing(history: $history)->describe($user, new Nickname(), 'Ada', Fixtures::context());
+
+        // Then
+        static::assertSame([], $history->lastOf($user, 10));
+    }
+
+    /**
+     * Issue #482: the phone number is in it, which is not a claim of the profile and is written its own
+     * way, the use case reading every claim through the same interface.
+     */
+    #[Test]
+    public function theTelephoneNumberIsInTheHistoryToo(): void
+    {
+        // Given
+        $user = self::user(['phone_number']);
+        $user->changePhoneNumber('+44 1865 000000', true, Fixtures::now());
+        $history = new InMemoryClaimHistory();
+
+        // When
+        self::describing(history: $history)->describe($user, new PhoneNumber(), '+33 1 23 45 67 89', Fixtures::context());
+
+        // Then
+        $changes = $history->lastOf($user, 10);
+        static::assertSame('+44 1865 000000', $changes[0]->was);
+        static::assertSame('+33 1 23 45 67 89', $changes[0]->became);
+    }
+
+    private static function describing(?RecordingEventDispatcher $events = null, ?InMemoryClaimHistory $history = null): SelfDescription
+    {
+        return new SelfDescription(
+            new InMemoryUserRepository(),
+            $history ?? new InMemoryClaimHistory(),
+            $events ?? new RecordingEventDispatcher(),
+            new MockClock(Fixtures::now()),
+        );
     }
 
     /**

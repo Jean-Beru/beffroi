@@ -171,7 +171,12 @@ use Beffroi\Core\Domain\Identity\Claim\PhoneNumber;
 use Beffroi\Core\Application\Journal\ActRecording;
 use Beffroi\Core\Application\Journal\JournalRetention;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineClaimHistory;
+use Beffroi\Core\Application\Archive\Chapter\ChangesChapter;
+use Beffroi\Core\Application\Identity\ClaimHistoryRetention;
 use Beffroi\Core\Port\AmbientTenantInterface;
+use Beffroi\Core\Port\ChangesOfAPersonInterface;
+use Beffroi\Core\Port\ClaimHistoryInterface;
 use Beffroi\Core\Port\JournalInterface;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
@@ -634,6 +639,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ConsentsChapter::class)->tag('beffroi.archive_chapter');
     $services->set(SessionsChapter::class)->tag('beffroi.archive_chapter');
     $services->set(JournalChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(ChangesChapter::class)->tag('beffroi.archive_chapter');
     $services->set(ArchiveAssembly::class)->args([
         '$chapters' => tagged_iterator('beffroi.archive_chapter'),
     ]);
@@ -669,6 +675,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PhoneNumber::class)->tag('beffroi.claim');
     $services->set(WiredClaims::class)->args([tagged_iterator('beffroi.claim')]);
     $services->set(SelfDescription::class);
+    // what a claim of a person used to say, and what they made it say (issue #482): written in the unit of
+    // work that changed the record, because a record changed whose history was not is a hole in the one
+    // thing a history is for
+    $services->set(DoctrineClaimHistory::class);
+    $services->alias(ClaimHistoryInterface::class, DoctrineClaimHistory::class);
+    $services->alias(ChangesOfAPersonInterface::class, DoctrineClaimHistory::class);
+    $services->set(ClaimHistoryRetention::class);
     // the language a person chose, written on their account (issue #471)
     $services->set(LanguageRecording::class);
     // the clock a date is read on, and the one filter that writes it (issue #469)

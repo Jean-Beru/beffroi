@@ -9,6 +9,7 @@ use function array_values;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\ClaimChange;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\Profile;
@@ -21,6 +22,7 @@ use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\ClaimHistoryInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
@@ -145,6 +147,13 @@ final readonly class SealedRows
         'beffroi_personal_archive' => [
             'content' => '{"profile":[{"name":"Augusta Ada King-Noel","email":"ada@example.org"}]}',
         ],
+        // what a claim of a person used to say, and what they made it say (issue #482): two values of
+        // that person and the provenance of the request that changed them
+        'beffroi_claim_change' => [
+            'was' => 'Ada-of-the-notes',
+            'became' => 'the-enchantress-of-numbers',
+            'context' => self::USER_AGENT,
+        ],
         'beffroi_backchannel_authentication_request' => [
             'binding_message' => 'Payment of 42 euros to the Analytical Engine Company',
             'requested_from' => self::USER_AGENT,
@@ -245,6 +254,7 @@ final readonly class SealedRows
         $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']));
         $this->act($user);
         $this->archive($user);
+        $this->change($user);
     }
 
     /**
@@ -278,6 +288,26 @@ final readonly class SealedRows
         $this->service('test.beffroi.archives', PersonalArchiveRepositoryInterface::class)->save($archive);
 
         return $archive;
+    }
+
+    /**
+     * One change of a claim of a person (issue #482), whose two values are sealed in a scope of their own:
+     * what that person used to be called is a personal datum as much as what they are called now.
+     */
+    public function change(User $user): ClaimChange
+    {
+        $change = new ClaimChange(
+            Uuid::v7(),
+            $user,
+            'nickname',
+            self::VALUES['beffroi_claim_change']['was'],
+            self::VALUES['beffroi_claim_change']['became'],
+            $this->now,
+            $this->context(),
+        );
+        $this->service('test.beffroi.claim_history', ClaimHistoryInterface::class)->record($change);
+
+        return $change;
     }
 
     public function user(): User

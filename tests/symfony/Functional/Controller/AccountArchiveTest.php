@@ -62,7 +62,7 @@ final class AccountArchiveTest extends BrowserTestCase
 
         // Then
         static::assertSame(
-            ['profile', 'credentials', 'linked_identities', 'groups', 'consents', 'sessions', 'journal'],
+            ['profile', 'credentials', 'linked_identities', 'groups', 'consents', 'sessions', 'journal', 'changes'],
             $page->filter('li[data-chapter]')->extract(['data-chapter']),
         );
     }
@@ -87,7 +87,7 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode(), self::string($this->browser->getResponse()->getContent()));
         static::assertSame('fr', $page->filter('html')->attr('lang'));
         static::assertSame('Vos données', $page->filter('h1')->text());
-        static::assertCount(7, $page->filter('li[data-chapter]'));
+        static::assertCount(8, $page->filter('li[data-chapter]'));
     }
 
     #[Test]
@@ -155,7 +155,7 @@ final class AccountArchiveTest extends BrowserTestCase
 
         // Then
         static::assertSame(
-            ['archive', 'profile', 'credentials', 'linked_identities', 'groups', 'consents', 'sessions', 'journal'],
+            ['archive', 'profile', 'credentials', 'linked_identities', 'groups', 'consents', 'sessions', 'journal', 'changes'],
             array_keys($document),
         );
     }

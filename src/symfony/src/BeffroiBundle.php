@@ -31,6 +31,7 @@ use Beffroi\Bundle\Configuration\InteractionSection;
 use Beffroi\Bundle\Configuration\ConfigurationSectionInterface;
 use Beffroi\Bundle\Configuration\DpopSection;
 use Beffroi\Bundle\Configuration\KeysSection;
+use Beffroi\Bundle\Configuration\HistorySection;
 use Beffroi\Bundle\Configuration\JournalSection;
 use Beffroi\Bundle\Configuration\LoadSection;
 use Beffroi\Bundle\Configuration\MutualTlsSection;
@@ -349,6 +350,7 @@ final class BeffroiBundle extends AbstractBundle
             new TokensSection(),
             new LoadSection(),
             new JournalSection(),
+            new HistorySection(),
             new InteractionSection(),
             new BackChannelLogoutSection(),
             new BackchannelAuthenticationSection(),
