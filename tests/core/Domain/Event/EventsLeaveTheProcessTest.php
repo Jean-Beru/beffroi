@@ -22,7 +22,9 @@ use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
 use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use Beffroi\Core\Domain\Event\PasskeyUsed;
+use Beffroi\Core\Domain\Event\PersonAskedForTheirArchive;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
+use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
 use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
 use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
@@ -48,6 +50,7 @@ use function serialize;
 use function sort;
 use function sprintf;
 use function unserialize;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Architecture §5.6: the events of the provider are handled asynchronously, so every one of them is
@@ -95,6 +98,10 @@ final class EventsLeaveTheProcessTest extends TestCase
         )];
         yield 'a person who said something of themselves' => [new PersonDescribedThemselves($user, 'nickname', false, $now, $context)];
         yield 'a person who took something back' => [new PersonDescribedThemselves($user, 'nickname', true, $now, $context)];
+        // the identifier of the archive and never the archive, which holds in the clear everything this
+        // provider knows of a person (issue #453)
+        yield 'a person who asked for their archive' => [new PersonAskedForTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
+        yield 'a person who took their archive' => [new PersonTookTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a credential enrolled' => [new CredentialEnrolled($passkey, $now, $context)];
         yield 'a credential revoked' => [new CredentialRevoked($passkey, $now, $context)];
         yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context, false)];

@@ -1025,6 +1025,114 @@
         <source>profile.zoneinfo.example</source>
         <target>Europe/Paris</target>
       </trans-unit>
+      <trans-unit id="archive.title" resname="archive.title">
+        <source>archive.title</source>
+        <target>Your data</target>
+      </trans-unit>
+      <trans-unit id="archive.signed_in_as" resname="archive.signed_in_as">
+        <source>archive.signed_in_as</source>
+        <target>Signed in as {username}.</target>
+      </trans-unit>
+      <trans-unit id="archive.explanation" resname="archive.explanation">
+        <source>archive.explanation</source>
+        <target>Everything this provider holds about you, in one file. Ask for it here; it is built in the background, and you download it once it is ready.</target>
+      </trans-unit>
+      <trans-unit id="archive.what_it_holds" resname="archive.what_it_holds">
+        <source>archive.what_it_holds</source>
+        <target>What the file holds</target>
+      </trans-unit>
+      <trans-unit id="archive.chapter.profile" resname="archive.chapter.profile">
+        <source>archive.chapter.profile</source>
+        <target>Your account and everything you have said about yourself</target>
+      </trans-unit>
+      <trans-unit id="archive.chapter.credentials" resname="archive.chapter.credentials">
+        <source>archive.chapter.credentials</source>
+        <target>How you prove who you are, without the secrets themselves</target>
+      </trans-unit>
+      <trans-unit id="archive.chapter.linked_identities" resname="archive.chapter.linked_identities">
+        <source>archive.chapter.linked_identities</source>
+        <target>The accounts you sign in with elsewhere, and what they told us</target>
+      </trans-unit>
+      <trans-unit id="archive.chapter.groups" resname="archive.chapter.groups">
+        <source>archive.chapter.groups</source>
+        <target>The groups you belong to, and where each membership comes from</target>
+      </trans-unit>
+      <trans-unit id="archive.chapter.consents" resname="archive.chapter.consents">
+        <source>archive.chapter.consents</source>
+        <target>The applications you agreed to, and what each may obtain</target>
+      </trans-unit>
+      <trans-unit id="archive.chapter.sessions" resname="archive.chapter.sessions">
+        <source>archive.chapter.sessions</source>
+        <target>Where you are signed in right now</target>
+      </trans-unit>
+      <trans-unit id="archive.chapter.journal" resname="archive.chapter.journal">
+        <source>archive.chapter.journal</source>
+        <target>Everything recorded about what you did here</target>
+      </trans-unit>
+      <trans-unit id="archive.your_request" resname="archive.your_request">
+        <source>archive.your_request</source>
+        <target>Your request</target>
+      </trans-unit>
+      <trans-unit id="archive.never" resname="archive.never">
+        <source>archive.never</source>
+        <target>You have not asked for your data yet.</target>
+      </trans-unit>
+      <trans-unit id="archive.being_built" resname="archive.being_built">
+        <source>archive.being_built</source>
+        <target>Your file is being built. Come back to this page in a few minutes.</target>
+      </trans-unit>
+      <trans-unit id="archive.ready" resname="archive.ready">
+        <source>archive.ready</source>
+        <target>Your file is ready.</target>
+      </trans-unit>
+      <trans-unit id="archive.expired" resname="archive.expired">
+        <source>archive.expired</source>
+        <target>Your file was kept for a while and is gone. Ask for a new one.</target>
+      </trans-unit>
+      <trans-unit id="archive.asked_at" resname="archive.asked_at">
+        <source>archive.asked_at</source>
+        <target>Asked for on {moment}.</target>
+      </trans-unit>
+      <trans-unit id="archive.built_at" resname="archive.built_at">
+        <source>archive.built_at</source>
+        <target>Built on {moment}.</target>
+      </trans-unit>
+      <trans-unit id="archive.expires_at" resname="archive.expires_at">
+        <source>archive.expires_at</source>
+        <target>Available until {moment}.</target>
+      </trans-unit>
+      <trans-unit id="archive.download" resname="archive.download">
+        <source>archive.download</source>
+        <target>Download your data</target>
+      </trans-unit>
+      <trans-unit id="archive.kept_for" resname="archive.kept_for">
+        <source>archive.kept_for</source>
+        <target>A file is kept for {days, plural, one {# day} other {# days}}, then deleted.</target>
+      </trans-unit>
+      <trans-unit id="archive.ask" resname="archive.ask">
+        <source>archive.ask</source>
+        <target>Ask for my data</target>
+      </trans-unit>
+      <trans-unit id="archive.ask_again" resname="archive.ask_again">
+        <source>archive.ask_again</source>
+        <target>Ask for a new file</target>
+      </trans-unit>
+      <trans-unit id="account.archive.never" resname="account.archive.never">
+        <source>account.archive.never</source>
+        <target>never asked for</target>
+      </trans-unit>
+      <trans-unit id="account.archive.being_built" resname="account.archive.being_built">
+        <source>account.archive.being_built</source>
+        <target>being built</target>
+      </trans-unit>
+      <trans-unit id="account.archive.ready" resname="account.archive.ready">
+        <source>account.archive.ready</source>
+        <target>ready to download</target>
+      </trans-unit>
+      <trans-unit id="account.archive.expired" resname="account.archive.expired">
+        <source>account.archive.expired</source>
+        <target>the last file has expired</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

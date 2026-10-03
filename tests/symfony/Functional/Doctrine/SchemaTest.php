@@ -45,6 +45,7 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_initial_access_token',
         'beffroi_pairwise_subject',
         'beffroi_journal',
+        'beffroi_personal_archive',
         // The one table of this schema no mapping of the bundle describes: the store of the data keys puts
         // it there, through the schema listener of the ORM bridge, so that "doctrine:schema:update" does
         // not offer to drop what it did not put there (decisions 0011 and 0018).

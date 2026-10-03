@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Http;
 
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -75,6 +76,22 @@ final readonly class InteractionPages
             $status,
             $headers,
         );
+    }
+
+    /**
+     * A file this provider hands a person, with the headers of the plane and the two of a download: the
+     * archive of everything held about them (issue #453) is the one there is, and it is not cached, not
+     * framed and not referred, as every answer of this plane is.
+     *
+     * The file name is the caller's, and it names the thing and never the person: it travels in a header
+     * that proxies and browsers write down.
+     */
+    public function download(string $content, string $mediaType, string $fileName): Response
+    {
+        return new Response($content, Response::HTTP_OK, [
+            'Content-Type' => $mediaType,
+            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $fileName),
+        ] + self::HEADERS);
     }
 
     public function redirect(string $uri): RedirectResponse

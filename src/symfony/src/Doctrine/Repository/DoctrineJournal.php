@@ -12,6 +12,7 @@ use Beffroi\Core\Port\ActsOfAPersonInterface;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\JournalInterface;
 use function count;
+use Symfony\Component\Uid\Uuid;
 use function sprintf;
 use DateTimeImmutable;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -105,5 +106,31 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
             ->getResult();
 
         return $last;
+    }
+
+    /**
+     * The whole journal of one person, in pages past the last act read: the identifier is a UUIDv7, so
+     * "greater than" is "later than" and a page costs a lookup.
+     */
+    public function everyActOf(User $user, int $howMany, ?Uuid $after = null): array
+    {
+        if ($howMany < 1) {
+            return [];
+        }
+        $query = $this->queryBuilder('a')
+            ->where('a.tenant = :tenant')
+            ->andWhere('a.subject = :subject')
+            ->orderBy('a.id', 'ASC')
+            ->setMaxResults($howMany)
+            ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
+            ->setParameter('subject', $user->subject->value);
+        if ($after !== null) {
+            $query->andWhere('a.id > :after')->setParameter('after', $after, UuidType::NAME);
+        }
+
+        /** @var list<JournalEntry> $page */
+        $page = $query->getQuery()->getResult();
+
+        return $page;
     }
 }

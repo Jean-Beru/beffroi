@@ -33,6 +33,24 @@ use Beffroi\Bundle\Doctrine\Repository\DoctrineBackchannelAuthenticationRecordRe
 use Beffroi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineLinkedIdentityRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineGroupMembershipRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrinePersonalArchiveRepository;
+use Beffroi\Bundle\Http\Account\ArchiveSection;
+use Beffroi\Bundle\Http\ArchivePage;
+use Beffroi\Core\Application\Archive\ArchiveAssembly;
+use Beffroi\Core\Application\Archive\ArchiveHandout;
+use Beffroi\Core\Application\Archive\ArchiveRequest;
+use Beffroi\Core\Application\Archive\ArchiveRetention;
+use Beffroi\Core\Application\Archive\Chapter\CredentialsChapter;
+use Beffroi\Core\Application\Archive\Chapter\GroupsChapter;
+use Beffroi\Core\Application\Archive\Chapter\JournalChapter;
+use Beffroi\Core\Application\Archive\Chapter\LinkedIdentitiesChapter;
+use Beffroi\Core\Application\Archive\Chapter\ProfileChapter;
+use Beffroi\Core\Application\Archive\Chapter\SessionsChapter;
+use Beffroi\Core\Port\GroupsOfAPersonInterface;
+use Beffroi\Core\Port\LinkedIdentitiesOfAPersonInterface;
+use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
+use Beffroi\Oidc\Application\Archive\ConsentsChapter;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
@@ -572,6 +590,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SignInsSection::class)->tag('beffroi.account_section');
     $services->set(SignInsPage::class);
     $services->set(NotificationsSection::class)->tag('beffroi.account_section');
+    // everything this provider holds about this person, in one file they ask for (issue #453): last of
+    // the sections, because it is the one thing none of the pages above replaces
+    $services->set(ArchiveSection::class)->tag('beffroi.account_section');
     $services->set(AccountSections::class)->args([tagged_iterator('beffroi.account_section')]);
     $services->set(AccountHomePage::class);
     // the languages this deployment has, read by the pages of the interaction plane and by whatever
@@ -591,6 +612,32 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ActsOfAPersonInterface::class, DoctrineJournal::class);
     $services->set(ActRecording::class);
     $services->set(JournalRetention::class);
+    // Everything this provider holds about one person, in one file they ask for (RGPD articles 15 and 20,
+    // issue #453). The chapters are what the document is assembled from and what the page names: one per
+    // kind of fact, tagged, in the order the file holds them, so a table this provider comes to hold about
+    // a person is a chapter added here and nothing else edited. One of them is the module's, a consent
+    // being what a protocol calls the permission a person gave a client.
+    $services->set(DoctrinePersonalArchiveRepository::class);
+    $services->alias(PersonalArchiveRepositoryInterface::class, DoctrinePersonalArchiveRepository::class);
+    $services->set(DoctrineGroupMembershipRepository::class);
+    $services->alias(GroupsOfAPersonInterface::class, DoctrineGroupMembershipRepository::class);
+    $services->alias(LinkedIdentitiesOfAPersonInterface::class, DoctrineLinkedIdentityRepository::class);
+    $services->set(ProfileChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(CredentialsChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(LinkedIdentitiesChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(GroupsChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(ConsentsChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(SessionsChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(JournalChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(ArchiveAssembly::class)->args([
+        '$chapters' => tagged_iterator('beffroi.archive_chapter'),
+    ]);
+    $services->set(ArchiveRequest::class);
+    $services->set(ArchiveHandout::class);
+    $services->set(ArchiveRetention::class);
+    $services->set(ArchivePage::class)->args([
+        '$chapters' => tagged_iterator('beffroi.archive_chapter'),
+    ]);
     // What a person may say of themselves (issue #452), in the order a page offers them: a claim is a
     // class tagged here, and the policy of a tenant names the ones its people may say. The phone number
     // is last and is not a claim of the profile: saying it takes back what was verified of the old one.
