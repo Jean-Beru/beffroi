@@ -905,6 +905,46 @@
         <source>account.sessions.state</source>
         <target>{count, plural, =0 {no session open} one {one session open} other {# sessions open}}</target>
       </trans-unit>
+      <trans-unit id="a1c4e7f2b9" resname="application.granted">
+        <source>application.granted</source>
+        <target>What you agreed to</target>
+      </trans-unit>
+      <trans-unit id="b4f8a2c6e1" resname="application.holds">
+        <source>application.holds</source>
+        <target>What it can still do</target>
+      </trans-unit>
+      <trans-unit id="c7a1d4f8b2" resname="application.renewable">
+        <source>application.renewable</source>
+        <target>{count, plural, =0 {Nothing it holds can be renewed.} one {One token it holds can still be renewed.} other {# tokens it holds can still be renewed.}}</target>
+      </trans-unit>
+      <trans-unit id="d2b8f1a7c4" resname="application.last_issued">
+        <source>application.last_issued</source>
+        <target>Last issued</target>
+      </trans-unit>
+      <trans-unit id="e5c1a8d2f7" resname="application.self_contained">
+        <source>application.self_contained</source>
+        <target>An access token it was already issued stays usable until it expires, whatever is taken back here; what this provider is asked about it says the truth from that instant.</target>
+      </trans-unit>
+      <trans-unit id="f8d2b7a1c5" resname="application.pending">
+        <source>application.pending</source>
+        <target>What it is waiting for</target>
+      </trans-unit>
+      <trans-unit id="a3e9c2f7b4" resname="application.nothing_pending">
+        <source>application.nothing_pending</source>
+        <target>It is waiting for nothing from you.</target>
+      </trans-unit>
+      <trans-unit id="b6f2d8a3c9" resname="application.answer_them">
+        <source>application.answer_them</source>
+        <target>Answer what is waiting</target>
+      </trans-unit>
+      <trans-unit id="c9a3e1f8b5" resname="application.take_it_back">
+        <source>application.take_it_back</source>
+        <target>Take it all back</target>
+      </trans-unit>
+      <trans-unit id="d4b9f2a8c3" resname="application.take_it_back_means">
+        <source>application.take_it_back_means</source>
+        <target>It will ask you afresh the next time it needs something, and what it holds stops renewing.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

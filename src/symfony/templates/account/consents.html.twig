@@ -25,7 +25,7 @@
             <tbody>
                 {% for consent in consents %}
                     <tr data-consent="{{ consent.id }}" data-client="{{ consent.clientId }}">
-                        <td>{{ consent.client.registration.presentation.name }}</td>
+                        <td><a href="{{ path('beffroi_interaction_account_application', {id: consent.id}) }}">{{ consent.client.registration.presentation.name }}</a></td>
                         <td>
                             {{ include('@Beffroi/scopes.html.twig', {scopes: consent.scopes}) }}
                             {% if consent.authorizationDetails is not null %}

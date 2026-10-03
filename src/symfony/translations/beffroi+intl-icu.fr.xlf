@@ -905,6 +905,46 @@
         <source>account.sessions.state</source>
         <target>{count, plural, =0 {aucune session ouverte} one {une session ouverte} other {# sessions ouvertes}}</target>
       </trans-unit>
+      <trans-unit id="a1c4e7f2b9" resname="application.granted">
+        <source>application.granted</source>
+        <target>Ce que vous avez accepté</target>
+      </trans-unit>
+      <trans-unit id="b4f8a2c6e1" resname="application.holds">
+        <source>application.holds</source>
+        <target>Ce qu’elle peut encore faire</target>
+      </trans-unit>
+      <trans-unit id="c7a1d4f8b2" resname="application.renewable">
+        <source>application.renewable</source>
+        <target>{count, plural, =0 {Rien de ce qu’elle détient ne peut être renouvelé.} one {Un jeton qu’elle détient peut encore être renouvelé.} other {# jetons qu’elle détient peuvent encore être renouvelés.}}</target>
+      </trans-unit>
+      <trans-unit id="d2b8f1a7c4" resname="application.last_issued">
+        <source>application.last_issued</source>
+        <target>Dernière délivrance</target>
+      </trans-unit>
+      <trans-unit id="e5c1a8d2f7" resname="application.self_contained">
+        <source>application.self_contained</source>
+        <target>Un jeton d’accès déjà délivré reste utilisable jusqu’à son expiration, quoi qu’on reprenne ici ; ce que ce fournisseur en dit, si on le lui demande, est la vérité à partir de cet instant.</target>
+      </trans-unit>
+      <trans-unit id="f8d2b7a1c5" resname="application.pending">
+        <source>application.pending</source>
+        <target>Ce qu’elle attend</target>
+      </trans-unit>
+      <trans-unit id="a3e9c2f7b4" resname="application.nothing_pending">
+        <source>application.nothing_pending</source>
+        <target>Elle n’attend rien de vous.</target>
+      </trans-unit>
+      <trans-unit id="b6f2d8a3c9" resname="application.answer_them">
+        <source>application.answer_them</source>
+        <target>Répondre à ce qui attend</target>
+      </trans-unit>
+      <trans-unit id="c9a3e1f8b5" resname="application.take_it_back">
+        <source>application.take_it_back</source>
+        <target>Tout reprendre</target>
+      </trans-unit>
+      <trans-unit id="d4b9f2a8c3" resname="application.take_it_back_means">
+        <source>application.take_it_back_means</source>
+        <target>Elle vous le demandera à nouveau la prochaine fois qu’elle en aura besoin, et ce qu’elle détient cesse de se renouveler.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
