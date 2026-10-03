@@ -23,6 +23,8 @@ use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
+use function array_column;
+use function array_filter;
 use function count;
 use function sprintf;
 use Throwable;
@@ -150,7 +152,18 @@ final class DataKeysTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
         static::assertStringContainsString('erased', self::flattened($tester));
-        static::assertSame([], self::rows());
+        // the destruction is itself an act, and the provenance of an act is sealed (issue #454), so the
+        // journal of this erasure mints one key of its own; what it does not do is bring a sealed value
+        // back, which the read below is the proof of
+        static::assertSame(
+            [
+                [
+                    'scope' => self::tenant()->slug . '.journal',
+                    'client' => 'test',
+                ],
+            ],
+            self::rows(),
+        );
         static::assertSame(
             $sealed,
             self::connection()->fetchOne('SELECT username FROM beffroi_user WHERE id = ?', [$user->id->toBinary()]),
@@ -246,7 +259,10 @@ final class DataKeysTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
         foreach (self::rows() as $row) {
-            static::assertSame('second', $row['client']);
+            // the rewrap is itself an act, and the provenance of an act is sealed (issue #454), so the
+            // journal of this run mints one key under the client the configuration names, after the run
+            // moved what there was: everything is on the other client except the scope of the journal
+            static::assertSame($row['scope'] === self::tenant()->slug . '.journal' ? 'test' : 'second', $row['client']);
         }
         self::reload();
         $read = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id);
@@ -274,11 +290,12 @@ final class DataKeysTest extends ConsoleTestCase
     }
 
     /**
-     * A run from the client the keys have left lists nothing, which is what says the previous run moved
-     * them all.
+     * A run from the client the keys have left lists what has been written since and nothing more, which
+     * is what says the previous run moved them all. What has been written since is one key: the journal of
+     * that run itself, whose provenance is sealed under the client the configuration names (issue #454).
      */
     #[Test]
-    public function aSecondDryRunFromTheOldClientListsNothing(): void
+    public function aSecondDryRunFromTheOldClientListsOnlyWhatWasWrittenSince(): void
     {
         // Given
         self::sealSomething();
@@ -295,7 +312,11 @@ final class DataKeysTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
-        static::assertStringContainsString('holds no data key wrapped by "test"', self::flattened($tester));
+        static::assertStringContainsString('1 data key(s) would move', self::flattened($tester));
+        static::assertSame([self::tenant()->slug . '.journal'], array_column(array_filter(
+            self::rows(),
+            static fn (array $row): bool => $row['client'] === 'test',
+        ), 'scope'));
     }
 
     /**

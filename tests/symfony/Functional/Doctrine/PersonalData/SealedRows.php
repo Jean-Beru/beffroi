@@ -53,6 +53,9 @@ use LogicException;
 use Psr\Container\ContainerInterface;
 use function random_bytes;
 use function sprintf;
+use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Journal\JournalEntry;
+use Beffroi\Core\Port\JournalInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -128,6 +131,11 @@ final readonly class SealedRows
         ],
         'beffroi_device_authorization_request' => [
             'requested_from' => self::IP_ADDRESS,
+        ],
+        // the provenance of one act of the journal (issue #454), which is what the request carried of a
+        // person and what a dump must not give away either
+        'beffroi_journal' => [
+            'context' => self::IP_ADDRESS,
         ],
         'beffroi_backchannel_authentication_request' => [
             'binding_message' => 'Payment of 42 euros to the Analytical Engine Company',
@@ -227,6 +235,26 @@ final readonly class SealedRows
         $this->interaction($client);
         $this->pushedRequest($client);
         $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']));
+        $this->act($user);
+    }
+
+    /**
+     * One act of the journal (issue #454), whose provenance is sealed in a scope of its own: it is what
+     * the request carried of a person, which a dump must not give away either.
+     */
+    public function act(User $user): JournalEntry
+    {
+        $entry = new JournalEntry(
+            Uuid::v7(),
+            $user->tenant,
+            UserAuthenticated::NAME,
+            $this->now,
+            $this->context(),
+            $user->subject,
+        );
+        $this->service('test.beffroi.journal', JournalInterface::class)->record($entry);
+
+        return $entry;
     }
 
     public function user(): User

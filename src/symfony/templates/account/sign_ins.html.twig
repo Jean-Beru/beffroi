@@ -1,0 +1,43 @@
+{# The recent sign-ins of the signed-in user (architecture §5.2, issue #454), in the language of the
+   browser: one line per time somebody signed in as them and per time somebody tried, with the moment on
+   their own clock and what the request carried of where it came from. The failures are there on purpose:
+   a line a person does not recognise is what this page is for. Overridable by an application under
+   templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
+
+{% block title %}{{ 'sign_ins.title'|trans }}{% endblock %}
+
+{% block content %}
+    {{ include('@Beffroi/account/back.html.twig') }}
+    <p>{{ 'sign_ins.signed_in_as'|trans({username: user.username}) }}</p>
+    {% if acts is empty %}
+        <p data-sign-ins="none">{{ 'sign_ins.none'|trans }}</p>
+    {% else %}
+        <p>{{ 'sign_ins.explanation'|trans }}</p>
+        <table data-sign-ins="{{ acts|length }}">
+            <thead>
+                <tr>
+                    <th>{{ 'sign_ins.outcome'|trans }}</th>
+                    <th>{{ 'sign_ins.when'|trans }}</th>
+                    <th>{{ 'sign_ins.from'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for act in acts %}
+                    {% set ok = act.act == succeeded %}
+                    <tr data-act="{{ act.act }}" data-outcome="{{ ok ? 'succeeded' : 'failed' }}">
+                        <td><span data-outcome="{{ ok ? 'succeeded' : 'failed' }}">{{ (ok ? 'sign_ins.succeeded' : 'sign_ins.failed')|trans }}</span></td>
+                        <td><time datetime="{{ act.occurredAt|date('c') }}">{{ act.occurredAt|beffroi_moment(user) }}</time></td>
+                        <td>
+                            {{ act.context.ipAddress ?? 'sign_ins.unknown_address'|trans }}
+                            {% if act.context.userAgent is not null %}
+                                <span data-user-agent>{{ act.context.userAgent }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

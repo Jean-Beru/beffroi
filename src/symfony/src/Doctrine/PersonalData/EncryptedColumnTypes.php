@@ -80,6 +80,7 @@ final readonly class EncryptedColumnTypes
         'device_authorization_request' => ['beffroi_request_context'],
         'backchannel_authentication_request' => ['beffroi_binding_message', 'beffroi_request_context'],
         'client' => ['json', 'beffroi_client_secret'],
+        'journal' => ['beffroi_request_context'],
     ];
 
     /**

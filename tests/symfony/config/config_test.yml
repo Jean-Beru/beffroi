@@ -709,6 +709,12 @@ services:
     test.beffroi.sessions:
         alias: Beffroi\Core\Port\AuthenticationSessionRepositoryInterface
         public: true
+    test.beffroi.journal:
+        alias: Beffroi\Core\Port\JournalInterface
+        public: true
+    test.beffroi.acts:
+        alias: Beffroi\Core\Port\ActsOfAPersonInterface
+        public: true
     test.beffroi.interactions:
         alias: Beffroi\Oidc\Port\InteractionRepositoryInterface
         public: true
