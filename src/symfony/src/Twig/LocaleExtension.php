@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Twig;
 
+use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Locale\ServedLocales;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Twig\Attribute\AsTwigFunction;
 
 /**
@@ -17,6 +19,7 @@ final readonly class LocaleExtension
 {
     public function __construct(
         private ServedLocales $served,
+        private RequestStack $requests,
     ) {
     }
 
@@ -27,5 +30,22 @@ final readonly class LocaleExtension
     public function locales(): array
     {
         return $this->served->all;
+    }
+
+    /**
+     * The languages this visitor may choose between, which is none when the record of a person answered
+     * the language of this page (issue #485): somebody who is signed in reads these pages in the language
+     * their record names, and changes it where that record is changed. So the control is for whoever is
+     * not known yet, and a control that offers nothing is not rendered, which is the rule it already
+     * follows under two languages.
+     *
+     * @return list<string>
+     */
+    #[AsTwigFunction(name: 'beffroi_locale_choice')]
+    public function choice(): array
+    {
+        $request = $this->requests->getMainRequest();
+
+        return $request?->attributes->getBoolean(InteractionLocale::OF_THE_ACCOUNT) === true ? [] : $this->served->all;
     }
 }

@@ -6,7 +6,13 @@ namespace Beffroi\Bundle\Tests\Unit\Http;
 
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
+use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\ChosenLocale;
+use Beffroi\Bundle\Locale\UserLocale;
+use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
+use Symfony\Component\Clock\MockClock;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Core\Domain\Tenant\Issuer;
@@ -241,8 +247,20 @@ final class InteractionLocaleTest extends TestCase
         return new Interaction(Secrets::draw(), $tenant, $request, $locale, $now, $now->modify('+10 minutes'));
     }
 
+    /**
+     * No session of the core and no tenant: what this reads of a visitor nobody knows (issue #485), which
+     * is every case below. What a page of somebody who is signed in speaks is played where a session
+     * exists, in the functional suite.
+     */
     private static function locale(LocaleSwitcher $switcher, ServedLocales $served): InteractionLocale
     {
-        return new InteractionLocale($switcher, $served, new ChosenLocale($served));
+        return new InteractionLocale(
+            $switcher,
+            $served,
+            new ChosenLocale($served),
+            new BrowserSession(new InMemoryAuthenticationSessionRepository(), new InMemoryInteractionRepository(), new MockClock()),
+            new AmbientTenant(null),
+            new UserLocale($served),
+        );
     }
 }

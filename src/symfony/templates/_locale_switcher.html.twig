@@ -3,9 +3,13 @@
    The provider keeps the choice for this browser and records it on the journey in progress, which is why
    the interaction travels with it; the language is never in the URL.
 
+   It is for whoever is not known yet (issue #485): somebody who is signed in reads these pages in the
+   language their record names and changes it where that record is changed, so there is nothing here to
+   offer them and the control is not rendered, as it is not rendered under two languages.
+
    The bundle ships the shape and the words, never a class: "data-locale" is what a stylesheet reads, and
    an application that wants this control somewhere else includes this one file. #}
-{% set locales = beffroi_locales() %}
+{% set locales = beffroi_locale_choice() %}
 {% if locales|length > 1 %}
     {% set interaction = app.request.query.get('interaction') %}
     <form method="post" action="{{ path('beffroi_interaction_locale') }}" data-locale="choice" aria-label="{{ 'locale.choose'|trans([], 'beffroi') }}">
