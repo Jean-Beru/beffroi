@@ -52,7 +52,7 @@ abstract class PasskeyTestCase extends BrowserTestCase
             '_passkey' => $device->create($this->creationOptions()),
         ]);
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
 
         return self::passkeyOf($user, $device);
     }

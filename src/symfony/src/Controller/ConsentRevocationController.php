@@ -16,7 +16,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * A consent of the signed-in user taken back from the page of the account (architecture §4.3, §5.2): the
@@ -40,7 +39,6 @@ final readonly class ConsentRevocationController
         private ConsentRevocation $revocation,
         private RequestContextFactory $contexts,
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
@@ -67,6 +65,6 @@ final readonly class ConsentRevocationController
         }
         $this->revocation->revoke($consent, $this->contexts->fromRequest($request));
 
-        return $this->pages->redirect($this->router->generate(AccountConsentsController::ROUTE));
+        return $this->pages->afterTheForm(AccountConsentsController::ROUTE);
     }
 }

@@ -14,7 +14,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * The authenticator app of the signed-in user removed from the page of the account (architecture §5.2):
@@ -35,7 +34,6 @@ final readonly class TotpRevocationController
         private ActiveTotp $activeTotp,
         private CredentialRevocation $revocation,
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
@@ -49,6 +47,6 @@ final readonly class TotpRevocationController
         $totp = $this->activeTotp->of($session->user) ?? throw new NotFoundHttpException('No authenticator app is set up.');
         $this->revocation->revoke($totp, $this->contexts->fromRequest($request));
 
-        return $this->pages->redirect($this->router->generate(AccountTwoFactorController::ROUTE));
+        return $this->pages->afterTheForm(AccountTwoFactorController::ROUTE);
     }
 }

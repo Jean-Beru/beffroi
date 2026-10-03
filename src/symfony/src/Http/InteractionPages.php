@@ -94,6 +94,22 @@ final readonly class InteractionPages
         ] + self::HEADERS);
     }
 
+    /**
+     * Where a form of these pages comes back to (issue #481): the page it was sent from, by a redirection
+     * a browser re-issues as a GET, so that reloading that page does not post the form again.
+     *
+     * 303 and not 302, which is what RFC 9110 §15.4.4 says of an answer to a POST that is not itself the
+     * result of it: a browser is told to go and read the page, not to repeat what it sent. What was refused
+     * crosses it in the session (WhatWasRefused), and the page that answers does so with 200: a page being
+     * read is not an unprocessable entity, whatever was refused a moment ago.
+     *
+     * @param array<string, string> $parameters
+     */
+    public function afterTheForm(string $route, array $parameters = []): RedirectResponse
+    {
+        return new RedirectResponse($this->router->generate($route, $parameters), Response::HTTP_SEE_OTHER, self::HEADERS);
+    }
+
     public function redirect(string $uri): RedirectResponse
     {
         return new RedirectResponse($uri, Response::HTTP_FOUND, self::HEADERS);

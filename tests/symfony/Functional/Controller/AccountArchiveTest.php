@@ -320,13 +320,17 @@ final class AccountArchiveTest extends BrowserTestCase
         self::reload();
     }
 
+    /**
+     * Asking answers with a redirection (issue #481), so what this reads is the page it comes back to.
+     */
     private function ask(): Crawler
     {
         $token = self::string($this->archivePage()->filter('form[data-archive-ask] input[name="_token"]')->attr('value'));
-
-        return $this->browser->request('POST', '/account/archive', [
+        $this->browser->request('POST', '/account/archive', [
             '_token' => $token,
         ]);
+
+        return $this->afterTheForm();
     }
 
     /**

@@ -126,8 +126,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $crawler = $this->submitFirstCode('000000');
 
         // Then
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertSame('refused', $crawler->filter('p[data-error]')->attr('data-error'));
         static::assertSame($key, self::keyOf($crawler));
         static::assertSame([], self::totpsOf($alice));
@@ -233,14 +232,13 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         });
 
         // When
-        $crawler = $this->browser->request('POST', '/account/two-factor', [
+        $this->browser->request('POST', '/account/two-factor', [
             '_token' => $token,
             'code' => '000000',
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('no_provisioning', $crawler->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('no_provisioning', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
     }
 
     /**
@@ -257,13 +255,49 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
 
         // When
-        $crawler = $this->browser->request('POST', '/account/two-factor/begin', [
+        $this->browser->request('POST', '/account/two-factor/begin', [
             '_token' => $token,
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('already_enrolled', $crawler->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('already_enrolled', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
+    }
+
+    /**
+     * Issue #481: the step that draws a provisioning redirects to the page of the enrolment in progress,
+     * which reads what was drawn from the session of this browser. A reload of that page is a reload and
+     * not a second secret drawn, which is what a reload of the POST was.
+     */
+    #[Test]
+    public function theEnrolmentInProgressIsAPageThatCanBeReadAgain(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $key = self::keyOf($this->begin());
+
+        // When
+        $again = $this->browser->request('GET', '/account/two-factor/enrol');
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertSame($key, self::keyOf($again));
+    }
+
+    /**
+     * Issue #481: and a browser with nothing drawn, which is what a person reloading that page past the
+     * ten minutes of a provisioning has, is sent back to the page of the second factor saying so.
+     */
+    #[Test]
+    public function theEnrolmentPageWithNothingDrawnSendsBackSayingSo(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $this->browser->request('GET', '/account/two-factor/enrol');
+
+        // Then
+        static::assertSame('no_provisioning', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
     }
 
     #[Test]
@@ -299,7 +333,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode());
         static::assertSame('/account/two-factor', $response->headers->get('Location'));
         $totps = self::totpsOf($alice);
         static::assertCount(1, $totps);
@@ -390,19 +424,30 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Clicks the button of the page that sets up an app: the enrolment page comes back.
+     * Clicks the button of the page that sets up an app: the page of the enrolment in progress comes back,
+     * through the redirection the form answers with (issue #481).
      */
     private function begin(): Crawler
     {
-        return $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
+        $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
+
+        return $this->afterTheForm();
     }
 
+    /**
+     * The first code of an enrolment. A code the provider refuses comes back to the page of the enrolment
+     * by a redirection; one it accepts answers with the backup codes, which is a page shown once and the
+     * one form of these pages that does not redirect (issue #481).
+     */
     private function submitFirstCode(string $code): Crawler
     {
         $form = $this->browser->getCrawler()->selectButton('Confirm')->form();
         $form['code'] = $code;
+        $crawler = $this->browser->submit($form);
 
-        return $this->browser->submit($form);
+        return $this->browser->getResponse()->getStatusCode() === Response::HTTP_SEE_OTHER
+            ? $this->browser->followRedirect()
+            : $crawler;
     }
 
     private function revoke(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\NotificationsPage;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,7 @@ final readonly class AccountNotificationsController
 
     public function __construct(
         private AccountAccess $account,
+        private WhatWasRefused $refusals,
         private NotificationsPage $page,
     ) {
     }
@@ -35,6 +37,7 @@ final readonly class AccountNotificationsController
             return $session;
         }
 
-        return $this->page->render($session->user);
+        // what a form of this page was refused, if one was, shown this once (issue #481)
+        return $this->page->render($session->user, $this->refusals->take($request)?->code);
     }
 }

@@ -141,7 +141,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/account/passkeys', $response->headers->get('Location'));
         $enrolled = self::events(CredentialEnrolled::class);
         static::assertCount(1, $enrolled);
@@ -197,12 +197,10 @@ final class AccountPasskeysTest extends PasskeyTestCase
         static::assertIsString($token);
 
         // When
-        $crawler = $post($this, $token);
+        $post($this, $token);
 
         // Then
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode(), self::string($response->getContent()));
-        static::assertSame($error, $crawler->filter('p[data-error]')->attr('data-error'));
+        static::assertSame($error, $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
         static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
         static::assertSame([], self::events(CredentialEnrolled::class));
     }
@@ -293,15 +291,14 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
 
         // When
-        $crawler = $this->browser->request('POST', '/account/passkeys', [
+        $this->browser->request('POST', '/account/passkeys', [
             '_token' => $token,
             'name' => 'Again',
             '_passkey' => $device->create($this->creationOptions()),
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('refused', $crawler->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('refused', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
         static::assertCount(1, self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
     }
 
@@ -342,15 +339,14 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
 
         // When
-        $crawler = $this->browser->request('POST', '/account/passkeys', [
+        $this->browser->request('POST', '/account/passkeys', [
             '_token' => $token,
             'name' => 'Key',
             '_passkey' => self::device()->create($options),
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('no_ceremony', $crawler->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('no_ceremony', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
         static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, PasskeyCredential::class));
     }
 
@@ -371,7 +367,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/account/passkeys', $response->headers->get('Location'));
         $revoked = self::events(CredentialRevoked::class);
         static::assertCount(1, $revoked);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
+use Beffroi\Bundle\Http\ProfilePage;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -123,10 +124,10 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         $this->signIn($alice);
 
         // When
-        $this->describe('zoneinfo', 'Europe/Atlantis');
+        $page = $this->describe('zoneinfo', 'Europe/Atlantis');
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
+        static::assertSame([ProfilePage::REFUSED], $page->filter('p[data-error]')->extract(['data-error']));
         static::assertNull(self::reread($alice)->profile->zoneinfo);
     }
 
@@ -185,11 +186,30 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         $this->signIn($alice);
 
         // When
-        $this->describe('family_name', 'Lovelace');
+        $page = $this->describe('family_name', 'Lovelace');
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
+        static::assertSame([ProfilePage::NOT_OPEN], $page->filter('p[data-error]')->extract(['data-error']));
         static::assertNull(self::reread($alice)->profile->familyName);
+    }
+
+    /**
+     * Issue #481: the form answers with a redirection, so reloading the page it came back to does not say
+     * the same thing of that person again, and the refusal that crossed the redirection is shown once.
+     */
+    #[Test]
+    public function aFormAnsweredWithARedirectionAndTheRefusalIsShownOnce(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $refused = $this->describe('zoneinfo', 'Europe/Atlantis');
+
+        // Then
+        static::assertSame('http://localhost/account/profile', $this->browser->getHistory()->current()->getUri());
+        static::assertCount(1, $refused->filter('p[data-error]'));
+        static::assertCount(0, $this->profilePage()->filter('p[data-error]'));
     }
 
     #[Test]
@@ -199,7 +219,13 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         $this->signIn(self::user('alice'));
 
         // When
-        $this->describe('favourite_colour', 'blue');
+        // posted here and not through the helper: there is no page to be redirected to about a claim that
+        // does not exist, so this one never reaches the use case and never redirects
+        $this->browser->request('POST', '/account/profile', [
+            '_token' => self::string($this->profilePage()->filter('form[data-changeable="nickname"] input[name="_token"]')->attr('value')),
+            'claim' => 'favourite_colour',
+            'value' => 'blue',
+        ]);
 
         // Then
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
@@ -236,7 +262,11 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         static::assertSame(Response::HTTP_UNAUTHORIZED, $this->browser->getResponse()->getStatusCode());
     }
 
-    private function describe(string $claim, string $value): void
+    /**
+     * Saying answers with a redirection (issue #481), so what this reads is the page it comes back to and
+     * what was refused is on it.
+     */
+    private function describe(string $claim, string $value): Crawler
     {
         $token = self::string($this->profilePage()->filter('form[data-changeable="nickname"] input[name="_token"]')->attr('value'));
         $this->browser->request('POST', '/account/profile', [
@@ -244,6 +274,8 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
             'claim' => $claim,
             'value' => $value,
         ]);
+
+        return $this->afterTheForm();
     }
 
     private function profilePage(): Crawler

@@ -53,6 +53,7 @@ use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -122,6 +123,19 @@ abstract class BrowserTestCase extends DatabaseTestCase
      * the reboot the browser does between two requests keeps: the mock set here is what the next
      * request reads, and the trait restores the real clock after the test.
      */
+    /**
+     * The page a form of these pages comes back to (issue #481): every one of them answers with a
+     * redirection a browser re-issues as a GET, so what a test reads after submitting is the page that
+     * redirection names, and what was refused is on it.
+     */
+    protected function afterTheForm(): Crawler
+    {
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
+
+        return $this->browser->followRedirect();
+    }
+
     protected static function aSecondLater(): void
     {
         self::mockTime(Clock::get()->now()->modify('+1 second'));

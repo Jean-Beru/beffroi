@@ -75,7 +75,7 @@ final class AccountApplicationTest extends BrowserTestCase
         $this->browser->submit($this->applicationPage(self::CONFIDENTIAL)->selectButton('Take it all back')->form());
 
         // Then
-        static::assertSame(Response::HTTP_FOUND, $this->browser->getResponse()->getStatusCode());
+        static::assertSame(Response::HTTP_SEE_OTHER, $this->browser->getResponse()->getStatusCode());
         static::assertSame([], self::service('test.beffroi.active_consents', ActiveConsentsInterface::class)->activeOf($alice));
         $renewals = self::service('test.beffroi.refresh_tokens', RefreshTokensOfAConsentInterface::class)->ofConsent($consent);
         static::assertNotSame([], $renewals);

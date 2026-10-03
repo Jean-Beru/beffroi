@@ -179,9 +179,7 @@ final class PushSubscriptionTest extends BrowserTestCase
         $this->subscribe(endpoint: 'http://push.example/f/AbCdEf');
 
         // Then
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-        static::assertCount(1, $this->browser->getCrawler()->filter('p[data-error="refused"]'));
+        static::assertCount(1, $this->afterTheForm()->filter('p[data-error="refused"]'));
     }
 
     /**

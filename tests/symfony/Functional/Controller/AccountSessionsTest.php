@@ -51,7 +51,7 @@ final class AccountSessionsTest extends BrowserTestCase
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/account/sessions', $response->headers->get('Location'));
         static::assertTrue(self::reread($other)->hasEnded());
         static::assertSame(SessionEnd::User, self::reread($other)->endedBy);

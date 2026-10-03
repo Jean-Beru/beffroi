@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\ProfilePage;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Application\Identity\SelfDescription;
 use Beffroi\Core\Exception\InvalidArgumentException;
@@ -25,6 +27,9 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * A claim this provider does not hold at all is not a refusal but nothing: there is no such field, as
  * there is no such page for an application somebody agreed to nothing for.
+ *
+ * It answers with a redirection whether the use case accepted or refused (issue #481), so that a browser
+ * reloading the page does not say the same thing of that person again.
  */
 #[AsController]
 final readonly class AccountProfileDescriptionController
@@ -42,7 +47,8 @@ final readonly class AccountProfileDescriptionController
         private WiredClaims $claims,
         private SelfDescription $description,
         private RequestContextFactory $contexts,
-        private ProfilePage $page,
+        private WhatWasRefused $refusals,
+        private InteractionPages $pages,
     ) {
     }
 
@@ -65,14 +71,15 @@ final readonly class AccountProfileDescriptionController
             $this->description->describe($session->user, $claim, $said, $this->contexts->fromRequest($request));
         } catch (InvalidArgumentException) {
             // the tenant does not open it, or the value is not one the claim holds; which of the two is
-            // what the page says, and neither is a reason to say more than that
-            return $this->page->render(
-                $session->user,
+            // what the page says, and neither is a reason to say more than that. It crosses the
+            // redirection in the session and never the value that was refused (issue #481).
+            $this->refusals->keep(
+                $request,
                 $session->user->tenant->selfServedClaims->opens($claim->name()) ? ProfilePage::REFUSED : ProfilePage::NOT_OPEN,
-                Response::HTTP_UNPROCESSABLE_ENTITY,
+                $claim->name(),
             );
         }
 
-        return $this->page->render($session->user);
+        return $this->pages->afterTheForm(AccountProfileController::ROUTE);
     }
 }

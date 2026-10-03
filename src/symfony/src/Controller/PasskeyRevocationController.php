@@ -15,7 +15,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -36,7 +35,6 @@ final readonly class PasskeyRevocationController
         private CredentialRepositoryInterface $credentials,
         private CredentialRevocation $revocation,
         private InteractionPages $pages,
-        private UrlGeneratorInterface $router,
     ) {
     }
 
@@ -60,6 +58,6 @@ final readonly class PasskeyRevocationController
         }
         $this->revocation->revoke($passkey, $this->contexts->fromRequest($request));
 
-        return $this->pages->redirect($this->router->generate(AccountPasskeysController::ROUTE));
+        return $this->pages->afterTheForm(AccountPasskeysController::ROUTE);
     }
 }

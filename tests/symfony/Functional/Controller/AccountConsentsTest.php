@@ -218,7 +218,7 @@ final class AccountConsentsTest extends BrowserTestCase
     private function takeBack(): void
     {
         $this->browser->submit($this->consentsPage()->selectButton('Take back')->form());
-        static::assertSame(Response::HTTP_FOUND, $this->browser->getResponse()->getStatusCode());
+        static::assertSame(Response::HTTP_SEE_OTHER, $this->browser->getResponse()->getStatusCode());
     }
 
     private function exchange(string $code): void

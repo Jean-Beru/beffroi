@@ -233,7 +233,8 @@ final class KmsOutageTest extends PasskeyTestCase
         // Given
         $alice = self::user('alice');
         $this->signIn($alice);
-        $crawler = $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
+        $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
+        $crawler = $this->afterTheForm();
         $this->secret = new TotpSecret(Base32::decodeUpper(str_replace(' ', '', $crawler->filter('code[data-two-factor="key"]')->text())));
         $form = $crawler->selectButton('Confirm')->form();
         $form['code'] = $this->codeAt(new DateTimeImmutable());
