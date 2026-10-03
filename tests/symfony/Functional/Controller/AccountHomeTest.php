@@ -68,7 +68,7 @@ final class AccountHomeTest extends PasskeyTestCase
         $crawler = $this->accountPage();
 
         // Then
-        static::assertCount(6, $crawler->filter('ul[data-sections="6"] li'));
+        static::assertCount(7, $crawler->filter('ul[data-sections="7"] li'));
         // first of them: it is what makes the page of what somebody is waiting on findable (BCP 10027 §5.2)
         $approvals = $crawler->filter('li[data-section="beffroi_interaction_account_approvals"]');
         static::assertSame('/account/approvals', $approvals->filter('a')->attr('href'));
@@ -89,6 +89,10 @@ final class AccountHomeTest extends PasskeyTestCase
         static::assertSame('/account/consents', $consents->filter('a')->attr('href'));
         static::assertSame('Applications you have allowed', $consents->filter('a')->text());
         static::assertSame('No application', $consents->filter('span[data-state]')->text());
+        $sessions = $crawler->filter('li[data-section="beffroi_interaction_account_sessions"]');
+        static::assertSame('/account/sessions', $sessions->filter('a')->attr('href'));
+        static::assertSame('Where you are signed in', $sessions->filter('a')->text());
+        static::assertSame('one session open', $sessions->filter('span[data-state]')->text());
         $notifications = $crawler->filter('li[data-section="beffroi_interaction_account_notifications"]');
         static::assertSame('/account/notifications', $notifications->filter('a')->attr('href'));
         static::assertSame('Notifications', $notifications->filter('a')->text());
