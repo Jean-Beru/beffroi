@@ -30,8 +30,18 @@ final readonly class UserLocale
 
     public function of(User $user): string
     {
+        return $this->claimedBy($user) ?? $this->served->default;
+    }
+
+    /**
+     * The language the record of that person names, when this deployment serves it, and null otherwise:
+     * what the pages they read are in, where the reading above is what a message sent to them is written
+     * in and must name a language whatever the record says (issue #485).
+     */
+    public function claimedBy(User $user): ?string
+    {
         $claimed = $user->profile->locale;
 
-        return ($claimed === null ? null : $this->served->match([$claimed])) ?? $this->served->default;
+        return $claimed === null ? null : $this->served->match([$claimed]);
     }
 }

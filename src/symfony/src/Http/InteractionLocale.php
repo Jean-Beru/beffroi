@@ -6,7 +6,10 @@ namespace Beffroi\Bundle\Http;
 
 use function array_values;
 use Beffroi\Bundle\Locale\ServedLocales;
+use Beffroi\Bundle\Locale\UserLocale;
 use Beffroi\Bundle\Plane\Plane;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\AmbientTenantInterface;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use function str_starts_with;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -16,10 +19,16 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Translation\LocaleSwitcher;
 
 /**
- * The language of the pages of the interaction plane (architecture §5.7): what the visitor asked for
- * (ChosenLocale), then "ui_locales" (OIDC Core §3.1.2.1), then "Accept-Language", then the default
- * locale, each read against the locales this deployment serves; a tag nothing matches is skipped. Chosen
- * once on "/authorize", recorded on the interaction, never in the URL.
+ * The language of the pages of the interaction plane (architecture §5.7): what the record of whoever is
+ * signed in says, then what the visitor asked for (ChosenLocale), then "ui_locales" (OIDC Core §3.1.2.1),
+ * then "Accept-Language", then the default locale, each read against the locales this deployment serves;
+ * a tag nothing matches is skipped. Chosen once on "/authorize", recorded on the interaction, never in
+ * the URL.
+ *
+ * **A person who is signed in reads these pages in the language of their record** (issue #485), and
+ * changes it where that record is changed (§5.2). So the control that offers a language is for whoever is
+ * not known yet, and a page that an account answered for says so, which is what the control reads to
+ * offer nothing (Twig\LocaleExtension).
  */
 final readonly class InteractionLocale
 {
@@ -28,10 +37,19 @@ final readonly class InteractionLocale
      */
     public const int PRIORITY = 17;
 
+    /**
+     * The attribute a page carries when the record of a person answered its language, which is what says
+     * there is nothing to offer that person.
+     */
+    public const string OF_THE_ACCOUNT = '_beffroi_locale_of_the_account';
+
     public function __construct(
         private LocaleSwitcher $switcher,
         private ServedLocales $served,
         private ChosenLocale $chosen,
+        private BrowserSession $browser,
+        private AmbientTenantInterface $tenants,
+        private UserLocale $persons,
     ) {
     }
 
@@ -46,12 +64,36 @@ final readonly class InteractionLocale
      */
     public function choose(Request $request, array $uiLocales = []): string
     {
+        $theirs = $this->ofTheAccount($request);
+        if ($theirs !== null) {
+            $request->attributes->set(self::OF_THE_ACCOUNT, true);
+
+            return $theirs;
+        }
+
         return (
             $this->chosen->current($request)
             ?? $this->served->match($uiLocales)
             ?? $this->served->match(array_values($request->getLanguages()))
             ?? $this->served->default
         );
+    }
+
+    /**
+     * The language the record of whoever is signed in names, and null when nobody is or when the record
+     * names none, or one this deployment does not serve. A unit of work with no tenant has nobody signed
+     * in either, which is what a deployment before its first provisioning is, and that is not a question
+     * of language (AmbientTenantInterface).
+     */
+    private function ofTheAccount(Request $request): ?string
+    {
+        try {
+            $session = $this->browser->authenticationSession($request, $this->tenants->provide());
+        } catch (RuntimeException) {
+            return null;
+        }
+
+        return $session === null ? null : $this->persons->claimedBy($session->user);
     }
 
     /**

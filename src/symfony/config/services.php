@@ -171,6 +171,7 @@ use Beffroi\Core\Domain\Identity\Claim\PhoneNumber;
 use Beffroi\Core\Application\Journal\ActRecording;
 use Beffroi\Core\Application\Journal\JournalRetention;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\AmbientTenantInterface;
 use Beffroi\Core\Port\JournalInterface;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
@@ -675,7 +676,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(MomentExtension::class);
     // what the pages read of the organisation the visitor came for (issue #449)
     $services->set(TenantExtension::class);
-    $services->set(InteractionLocale::class);
+    $services->set(InteractionLocale::class)->args([
+        // the port and not the provider: what it asks is the tenant of this unit of work, and a unit of
+        // work that has none has nobody signed in either (issue #485)
+        '$tenants' => service(AmbientTenantInterface::class),
+    ]);
     // how the answer of the authorization endpoint reaches the client (Multiple Response Type Encoding
     // Practices §2.1): one class per mode, and what is tagged is what the parser accepts and what the
     // discovery document announces, never an enumeration kept beside them
@@ -813,6 +818,10 @@ return static function (ContainerConfigurator $container): void {
     ])->tag('doctrine.event_listener', [
         'event' => 'onClear',
     ]);
+    // the tenant of the unit of work in progress, for the few callers that receive none in a parameter
+    // (decision 0018): a Doctrine type takes it from here, and so does what reads whether somebody is
+    // signed in before there is any tenant at all (issue #485)
+    $services->alias(AmbientTenantInterface::class, TenantProvider::class);
     $services->set(TenantSynchronizer::class);
     $services->set(ClientResolver::class)->tag('doctrine.orm.entity_listener');
     $services->set(DoctrineUserRepository::class);

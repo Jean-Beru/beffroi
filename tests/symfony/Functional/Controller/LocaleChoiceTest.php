@@ -149,6 +149,73 @@ final class LocaleChoiceTest extends BrowserTestCase
      * claim of their account is what it writes to them in when no request of theirs is there to read one
      * from (UserLocale).
      */
+    /**
+     * Issue #485: a page of somebody who is signed in speaks the language their record names, whatever
+     * their browser asks for, and nothing is offered to them to choose: they change it where the record
+     * is changed (§5.2).
+     */
+    #[Test]
+    public function aPageOfSomebodySignedInSpeaksTheLanguageTheirRecordNames(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $alice->updateProfile($alice->profile->readIn('fr'), self::currentSecond());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->browser->request('GET', '/account', server: [
+            'HTTP_ACCEPT_LANGUAGE' => 'en-US,en;q=0.9',
+        ]);
+
+        // Then
+        static::assertSame('fr', $page->filter('html')->attr('lang'));
+        static::assertCount(0, $page->filter('form[data-locale="choice"]'));
+    }
+
+    /**
+     * Issue #485: and a record that names no language leaves the chain of a visitor nobody knows in
+     * place, which is most people, so the control is there for them.
+     */
+    #[Test]
+    public function aRecordThatNamesNoLanguageLeavesTheBrowserToAnswer(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->browser->request('GET', '/account', server: [
+            'HTTP_ACCEPT_LANGUAGE' => 'fr-FR,fr;q=0.9',
+        ]);
+
+        // Then
+        static::assertSame('fr', $page->filter('html')->attr('lang'));
+        static::assertCount(1, $page->filter('form[data-locale="choice"]'));
+    }
+
+    /**
+     * Issue #485: a language the record names that this deployment does not serve changes nothing, as it
+     * changes nothing anywhere else.
+     */
+    #[Test]
+    public function aLanguageTheRecordNamesAndNobodyServesChangesNothing(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $alice->updateProfile($alice->profile->readIn('ja'), self::currentSecond());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->browser->request('GET', '/account', server: [
+            'HTTP_ACCEPT_LANGUAGE' => 'fr-FR,fr;q=0.9',
+        ]);
+
+        // Then
+        static::assertSame('fr', $page->filter('html')->attr('lang'));
+        static::assertCount(1, $page->filter('form[data-locale="choice"]'));
+    }
+
     #[Test]
     public function aChoiceMadeBySomebodySignedInIsWrittenOnTheirAccount(): void
     {
