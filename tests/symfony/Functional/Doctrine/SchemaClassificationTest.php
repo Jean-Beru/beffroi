@@ -37,7 +37,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
      */
     private const int TABLES = 24;
 
-    private const int COLUMNS = 301;
+    private const int COLUMNS = 302;
 
     #[Test]
     public function everyColumnOfEveryTableIsClassified(): void
