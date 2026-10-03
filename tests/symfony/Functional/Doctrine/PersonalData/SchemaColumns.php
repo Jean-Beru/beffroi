@@ -431,6 +431,9 @@ final readonly class SchemaColumns
                 'key_material' => new NoPersonalDatum(self::AN_ENVELOPE),
                 'master_key_id' => new NoPersonalDatum('the key of the KMS that wrapped this row, written here so that a read resolves whatever wrote it'),
                 'client' => new NoPersonalDatum('the name the configuration gives the KMS that wrapped this row, for the same reason'),
+                'binding' => new NoPersonalDatum(
+                    'a 32-byte proof, over the reference and the scope this row states and the key it holds, that the key was minted for them: a row copied under another reference or another scope is refused once its key is open, which is the parade of the bridge to a sealed value crossing a tenant',
+                ),
             ],
         ];
     }
