@@ -11,8 +11,13 @@ use Beffroi\Core\Domain\Session\AuthenticationPredicate;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Bundle\Identity\WiredClaims;
+use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Domain\Tenant\TenantLook;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use function implode;
 use function is_string;
+use function sprintf;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -30,6 +35,8 @@ final readonly class TenantFactory
 
     /**
      * @param array<array-key, string> $authenticationClasses class name to predicate, in order
+     * @param array<array-key, mixed> $selfServedClaims the names of "beffroi.tenant.self_served_claims"
+     * @param WiredClaims|null $claims the claims this provider holds, against which those names are read
      * @param array<array-key, mixed> $look the "beffroi.tenant.look" section, every value of it absent or
      *                                      null for a deployment that declares no look (issue #449)
      */
@@ -40,6 +47,8 @@ final readonly class TenantFactory
         private ClockInterface $clock,
         private array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
         private array $look = [],
+        private array $selfServedClaims = [],
+        private ?WiredClaims $claims = null,
     ) {
     }
 
@@ -55,7 +64,33 @@ final readonly class TenantFactory
             $this->clock->now(),
             $this->authenticationContextPolicy(),
             $this->look(),
+            $this->selfServedClaims(),
         );
+    }
+
+    /**
+     * What the configuration says a person may change of themselves, read against the claims this provider
+     * holds: a name no wired claim answers is a mistake nobody would see on a page, so it refuses the
+     * start, as a policy of authentication classes that does not hold does.
+     */
+    public function selfServedClaims(): SelfServedClaims
+    {
+        $names = [];
+        foreach ($this->selfServedClaims as $name) {
+            if (! is_string($name)) {
+                throw new InvalidArgumentException('A claim a person may change of themselves is named by a string.');
+            }
+            if ($this->claims !== null && $this->claims->named($name) === null) {
+                throw new InvalidArgumentException(sprintf(
+                    'This provider holds no claim "%s" a person could change of themselves; it holds %s.',
+                    $name,
+                    implode(', ', $this->claims->names()),
+                ));
+            }
+            $names[] = $name;
+        }
+
+        return new SelfServedClaims($names);
     }
 
     /**

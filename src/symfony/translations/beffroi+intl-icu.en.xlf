@@ -989,6 +989,30 @@
         <source>account.sign_ins.state</source>
         <target>{count, plural, =0 {no refused attempt} one {# refused attempt} other {# refused attempts}}</target>
       </trans-unit>
+      <trans-unit id="profile.what_you_may_change" resname="profile.what_you_may_change">
+        <source>profile.what_you_may_change</source>
+        <target>What you may change</target>
+      </trans-unit>
+      <trans-unit id="profile.change_explanation" resname="profile.change_explanation">
+        <source>profile.change_explanation</source>
+        <target>What this provider lets you say of yourself here. An empty field takes back what you had said.</target>
+      </trans-unit>
+      <trans-unit id="profile.change_nothing" resname="profile.change_nothing">
+        <source>profile.change_nothing</source>
+        <target>This provider does not let you change here what it holds of you. What is above is what it holds.</target>
+      </trans-unit>
+      <trans-unit id="profile.save" resname="profile.save">
+        <source>profile.save</source>
+        <target>Save</target>
+      </trans-unit>
+      <trans-unit id="profile.claim_not_open" resname="profile.claim_not_open">
+        <source>profile.claim_not_open</source>
+        <target>This provider does not let you change that here.</target>
+      </trans-unit>
+      <trans-unit id="profile.claim_refused" resname="profile.claim_refused">
+        <source>profile.claim_refused</source>
+        <target>That is not a value this provider can hold for that.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

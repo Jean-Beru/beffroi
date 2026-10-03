@@ -22,6 +22,7 @@ use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
 use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use Beffroi\Core\Domain\Event\PasskeyUsed;
+use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
 use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
 use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
@@ -92,6 +93,8 @@ final class EventsLeaveTheProcessTest extends TestCase
             'alice',
             $user,
         )];
+        yield 'a person who said something of themselves' => [new PersonDescribedThemselves($user, 'nickname', false, $now, $context)];
+        yield 'a person who took something back' => [new PersonDescribedThemselves($user, 'nickname', true, $now, $context)];
         yield 'a credential enrolled' => [new CredentialEnrolled($passkey, $now, $context)];
         yield 'a credential revoked' => [new CredentialRevoked($passkey, $now, $context)];
         yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context, false)];

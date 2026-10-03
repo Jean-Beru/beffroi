@@ -68,6 +68,8 @@ final class BeffroiBundleConfigurationTest extends TestCase
                     'primary_color' => null,
                     'primary_content_color' => null,
                 ],
+                // nothing is a person's to change until the tenant says which claims are (issue #452)
+                'self_served_claims' => [],
                 'authentication_classes' => TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
             ],
             $config['tenant'],

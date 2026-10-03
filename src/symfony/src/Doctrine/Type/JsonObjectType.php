@@ -31,9 +31,13 @@ use function sprintf;
 abstract class JsonObjectType extends Type
 {
     /**
+     * What the column holds, as a JSON document. Keyed by names where the value is a record of them, and a
+     * list where the value is a set: an empty list of backup codes and a tenant that lets a person change
+     * nothing of themselves both write "[]", which is what that value is and not a document with no keys.
+     *
      * @param T $value
      *
-     * @return array<string, mixed>
+     * @return array<array-key, mixed>
      */
     abstract protected function encode(object $value): array;
 

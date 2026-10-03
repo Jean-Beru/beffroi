@@ -130,7 +130,23 @@ use Beffroi\Bundle\Security\UserChecker;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Bundle\Locale\UserTimeZone;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineJournal;
+use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Application\Identity\LanguageRecording;
+use Beffroi\Core\Application\Identity\SelfDescription;
+use Beffroi\Core\Domain\Identity\Claim\Name;
+use Beffroi\Core\Domain\Identity\Claim\GivenName;
+use Beffroi\Core\Domain\Identity\Claim\FamilyName;
+use Beffroi\Core\Domain\Identity\Claim\MiddleName;
+use Beffroi\Core\Domain\Identity\Claim\Nickname;
+use Beffroi\Core\Domain\Identity\Claim\PreferredUsername;
+use Beffroi\Core\Domain\Identity\Claim\Birthdate;
+use Beffroi\Core\Domain\Identity\Claim\Gender;
+use Beffroi\Core\Domain\Identity\Claim\Locale;
+use Beffroi\Core\Domain\Identity\Claim\Zoneinfo;
+use Beffroi\Core\Domain\Identity\Claim\ProfileUrl;
+use Beffroi\Core\Domain\Identity\Claim\PictureUrl;
+use Beffroi\Core\Domain\Identity\Claim\WebsiteUrl;
+use Beffroi\Core\Domain\Identity\Claim\PhoneNumber;
 use Beffroi\Core\Application\Journal\ActRecording;
 use Beffroi\Core\Application\Journal\JournalRetention;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
@@ -574,6 +590,25 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ActsOfAPersonInterface::class, DoctrineJournal::class);
     $services->set(ActRecording::class);
     $services->set(JournalRetention::class);
+    // What a person may say of themselves (issue #452), in the order a page offers them: a claim is a
+    // class tagged here, and the policy of a tenant names the ones its people may say. The phone number
+    // is last and is not a claim of the profile: saying it takes back what was verified of the old one.
+    $services->set(Name::class)->tag('beffroi.claim');
+    $services->set(GivenName::class)->tag('beffroi.claim');
+    $services->set(FamilyName::class)->tag('beffroi.claim');
+    $services->set(MiddleName::class)->tag('beffroi.claim');
+    $services->set(Nickname::class)->tag('beffroi.claim');
+    $services->set(PreferredUsername::class)->tag('beffroi.claim');
+    $services->set(Birthdate::class)->tag('beffroi.claim');
+    $services->set(Gender::class)->tag('beffroi.claim');
+    $services->set(Locale::class)->tag('beffroi.claim');
+    $services->set(Zoneinfo::class)->tag('beffroi.claim');
+    $services->set(ProfileUrl::class)->tag('beffroi.claim');
+    $services->set(PictureUrl::class)->tag('beffroi.claim');
+    $services->set(WebsiteUrl::class)->tag('beffroi.claim');
+    $services->set(PhoneNumber::class)->tag('beffroi.claim');
+    $services->set(WiredClaims::class)->args([tagged_iterator('beffroi.claim')]);
+    $services->set(SelfDescription::class);
     // the language a person chose, written on their account (issue #471)
     $services->set(LanguageRecording::class);
     // the clock a date is read on, and the one filter that writes it (issue #469)

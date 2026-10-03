@@ -27,4 +27,24 @@
             {% endfor %}
         </dl>
     {% endif %}
+
+    {# What the tenant lets this person change of themselves (issue #452): one field per claim it opens, in
+       the order the claims are wired. A tenant that opens none says so, and the list above says what is
+       held either way, so what cannot be changed here is read and not offered. #}
+    <h2>{{ 'profile.what_you_may_change'|trans }}</h2>
+    {% if refusal is not null %}<p data-error="{{ refusal }}">{{ ('profile.' ~ refusal)|trans }}</p>{% endif %}
+    {% if changeable is empty %}
+        <p data-changeable="none">{{ 'profile.change_nothing'|trans }}</p>
+    {% else %}
+        <p>{{ 'profile.change_explanation'|trans }}</p>
+        {% for claim, held in changeable %}
+            <form method="post" action="{{ path('beffroi_interaction_account_profile_describe') }}" data-changeable="{{ claim }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('beffroi_profile_describe') }}">
+                <input type="hidden" name="claim" value="{{ claim }}">
+                <label for="claim-{{ claim }}">{{ ('profile.' ~ claim)|trans }}</label>
+                <input type="text" id="claim-{{ claim }}" name="value" value="{{ held }}" autocomplete="off">
+                <button type="submit">{{ 'profile.save'|trans }}</button>
+            </form>
+        {% endfor %}
+    {% endif %}
 {% endblock %}
