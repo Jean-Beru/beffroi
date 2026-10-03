@@ -12,6 +12,8 @@
 
 {% block title %}{{ 'approvals.title'|trans }}{% endblock %}
 
+{% set tenant = beffroi_tenant() %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p data-provider="{{ tenant.name }}">{{ 'approvals.provider'|trans({provider: tenant.name}) }}</p>

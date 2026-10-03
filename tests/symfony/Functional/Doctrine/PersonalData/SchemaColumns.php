@@ -83,6 +83,7 @@ final readonly class SchemaColumns
                 'issuer' => new NoPersonalDatum(self::THE_TENANT),
                 'name' => new NoPersonalDatum(self::THE_TENANT),
                 'authentication_context_policy' => new NoPersonalDatum('the authentication classes the tenant announces, which name predicates and no person'),
+                'look' => new NoPersonalDatum('the logo and the two colours a tenant gives its pages (issue #449), beside the name it is already named by: what every page hands to every visitor before anybody has signed in'),
                 'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
             ],

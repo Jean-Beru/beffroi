@@ -6,8 +6,10 @@ namespace Beffroi\Bundle\Doctrine;
 
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Core\Port\AmbientTenantInterface;
 use function implode;
+use function sprintf;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -53,7 +55,31 @@ final class TenantProvider implements AmbientTenantInterface, ResetInterface
             );
         }
 
+        if (! $tenant->look->equals($configured->look)) {
+            throw TenantNotSynchronizedException::differs($configured->slug, 'look', self::described($tenant->look), self::described($configured->look));
+        }
+
         return $this->tenant = $tenant;
+    }
+
+    /**
+     * The look of a tenant in one line, for the refusal above to say which of the two is which; nothing
+     * else reads it, which is why it is here and not on the value object.
+     */
+    private static function described(TenantLook $look): string
+    {
+        if (! $look->isDeclared()) {
+            return 'none';
+        }
+        $parts = [];
+        if ($look->logoUri !== null) {
+            $parts[] = 'logo ' . $look->logoUri->value;
+        }
+        if ($look->primaryColor !== null) {
+            $parts[] = sprintf('%s on %s', $look->primaryColor, (string) $look->primaryContentColor);
+        }
+
+        return implode(', ', $parts);
     }
 
     public function reset(): void

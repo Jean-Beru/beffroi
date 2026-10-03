@@ -35,6 +35,62 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
+     * Issue #449: what the pages show of the tenant is the configuration's too, read into the value
+     * object that refuses a colour a style attribute must not carry.
+     */
+    #[Test]
+    public function theTenantCarriesTheConfiguredLook(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test', 'main', null, new MockClock(Fixtures::now()), look: [
+            'logo_uri' => 'https://acme.example/logo.svg',
+            'primary_color' => '#1b4b8f',
+            'primary_content_color' => '#ffffff',
+        ]);
+
+        // When
+        $look = $factory->create()->look;
+
+        // Then
+        static::assertSame('https://acme.example/logo.svg', $look->logoUri?->value);
+        static::assertSame('#1b4b8f', $look->primaryColor);
+        static::assertSame('#ffffff', $look->primaryContentColor);
+    }
+
+    /**
+     * A deployment that declares no look is served the pages it has always been served.
+     */
+    #[Test]
+    public function aConfigurationThatDeclaresNoLookGivesTheTenantNone(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test', 'main', null, new MockClock(Fixtures::now()), look: [
+            'logo_uri' => null,
+            'primary_color' => null,
+            'primary_content_color' => null,
+        ]);
+
+        // When / Then
+        static::assertFalse($factory->create()->look->isDeclared());
+    }
+
+    #[Test]
+    public function aLogoTheConfigurationNamesWronglyRefusesTheStart(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test', 'main', null, new MockClock(Fixtures::now()), look: [
+            'logo_uri' => 'logo.svg',
+        ]);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('is not an absolute URL');
+
+        // When
+        $factory->create();
+    }
+
+    /**
      * Decision 0010: the tenant carries the configured classes in their order; a name that is a number
      * in the configuration is a name.
      */

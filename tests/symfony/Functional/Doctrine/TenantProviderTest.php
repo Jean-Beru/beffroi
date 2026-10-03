@@ -246,6 +246,63 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertTrue(AuthenticationContextPolicy::default()->equals($tenant->authenticationContextPolicy));
     }
 
+    /**
+     * Issue #449: what the pages show of the tenant is the tenant's too, stored with it, and the row must
+     * speak what the configuration declares before requests are served.
+     */
+    #[Test]
+    public function aTenantWithAnotherLookRefusesToServeUntilSynchronised(): void
+    {
+        // Given
+        $provider = new TenantProvider(self::factory('https://op.test', 'default', null, look: self::LOOK), self::managers());
+
+        // Then
+        $this->expectException(TenantNotSynchronizedException::class);
+        $this->expectExceptionMessageIsOrContains('stored with the look "none" and configured with "logo https://acme.example/logo.svg, #1b4b8f on #ffffff"');
+
+        // When
+        $provider->provide();
+    }
+
+    #[Test]
+    public function synchronisingATenantWithAnotherLookWritesIt(): void
+    {
+        // Given
+        $factory = self::factory('https://op.test', 'default', null, look: self::LOOK);
+        $provider = new TenantProvider($factory, self::managers());
+
+        // When
+        $synchronized = new TenantSynchronizer($factory, self::managers())->synchronize();
+        self::reload();
+
+        // Then
+        static::assertSame('https://acme.example/logo.svg', $synchronized->look->logoUri?->value);
+        $stored = $provider->provide()->look;
+        static::assertSame('https://acme.example/logo.svg', $stored->logoUri?->value);
+        static::assertSame('#1b4b8f', $stored->primaryColor);
+        static::assertSame('#ffffff', $stored->primaryContentColor);
+    }
+
+    /**
+     * A tenant that declares no look has none, as the row of a deployment written before the column
+     * existed has none: the column defaults to an empty document.
+     */
+    #[Test]
+    public function aTenantThatDeclaresNoLookHasNone(): void
+    {
+        // When
+        $tenant = new TenantProvider(self::factory('https://op.test', 'default', null), self::managers())->provide();
+
+        // Then
+        static::assertFalse($tenant->look->isDeclared());
+    }
+
+    private const array LOOK = [
+        'logo_uri' => 'https://acme.example/logo.svg',
+        'primary_color' => '#1b4b8f',
+        'primary_content_color' => '#ffffff',
+    ];
+
     private const array OKTA_CLASSES = [
         'urn:okta:loa:2fa:any' => 'two_factors',
         'urn:okta:loa:1fa:any' => 'single_factor',
@@ -253,13 +310,15 @@ final class TenantProviderTest extends DatabaseTestCase
 
     /**
      * @param array<array-key, string> $authenticationClasses
+     * @param array<array-key, mixed> $look
      */
     private static function factory(
         string $issuer,
         string $slug,
         ?string $name,
         array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
+        array $look = [],
     ): TenantFactory {
-        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses);
+        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses, $look);
     }
 }

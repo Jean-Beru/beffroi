@@ -86,7 +86,7 @@ final readonly class PendingApprovalsController
         $this->loginTargets->forget($request->getSession());
         $user = $session->user;
         if (! $request->isMethod('POST')) {
-            return $this->page->renderList($tenant, $user, $this->approval->awaitingAnAnswerBy($user));
+            return $this->page->renderList($user, $this->approval->awaitingAnAnswerBy($user));
         }
 
         $handle = $parameters[self::REQUEST_PARAMETER] ?? null;
@@ -95,7 +95,6 @@ final readonly class PendingApprovalsController
         if ($record === null || $answer !== self::ANSWER_ALLOW && $answer !== self::ANSWER_DENY) {
             // the request was answered, expired or was never this user's: the list says what is left
             return $this->page->renderList(
-                $tenant,
                 $user,
                 $this->approval->awaitingAnAnswerBy($user),
                 PendingApprovalsPage::NOTHING_TO_ANSWER,

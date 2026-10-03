@@ -18,6 +18,11 @@
                 <option name="default">{"classes":[{"name":"phrh","predicate":"phishing_resistant_hardware"},{"name":"phr","predicate":"phishing_resistant"},{"name":"2","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}</option>
             </options>
         </field>
+        <field name="look" type="beffroi_tenant_look" column="look">
+            <options>
+                <option name="default">{}</option>
+            </options>
+        </field>
         <field name="createdAt" type="datetime_immutable" column="created_at"/>
     </entity>
 </doctrine-mapping>

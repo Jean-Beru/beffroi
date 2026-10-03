@@ -48,6 +48,14 @@ final readonly class TenantSynchronizeCommand
             [
                 'Identifier' => $tenant->id->toRfc4122(),
             ],
+            [
+                'Logo' => $tenant->look->logoUri->value ?? '',
+            ],
+            [
+                'Colours' => $tenant->look->primaryColor === null
+                    ? ''
+                    : sprintf('%s on %s', $tenant->look->primaryColor, (string) $tenant->look->primaryContentColor),
+            ],
         );
         $io->success(sprintf('The tenant "%s" is synchronised with the configuration.', $tenant->slug));
 

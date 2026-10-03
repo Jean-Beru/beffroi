@@ -128,6 +128,7 @@ use Beffroi\Bundle\Security\TotpLoginAuthenticator;
 use Beffroi\Bundle\Security\UserChecker;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Bundle\Twig\LocaleExtension;
+use Beffroi\Bundle\Twig\TenantExtension;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
 use Beffroi\Core\Application\Authentication\DecoyHash;
 use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
@@ -552,6 +553,8 @@ return static function (ContainerConfigurator $container): void {
     // what a visitor asked for, on one cookie, read back against the list above (issue #448)
     $services->set(ChosenLocale::class);
     $services->set(LocaleExtension::class);
+    // what the pages read of the organisation the visitor came for (issue #449)
+    $services->set(TenantExtension::class);
     $services->set(InteractionLocale::class);
     // how the answer of the authorization endpoint reaches the client (Multiple Response Type Encoding
     // Practices §2.1): one class per mode, and what is tagged is what the parser accepts and what the

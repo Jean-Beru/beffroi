@@ -42,6 +42,10 @@ final readonly class InteractionPages
     }
 
     /**
+     * What the pages show of their tenant is not in this context (issue #449): the layout, and the two
+     * pages that name the provider in a sentence, read "beffroi_tenant()", so a page passes nothing that
+     * the layout shows and a page that asks for nothing costs nothing (Twig\TenantExtension).
+     *
      * @param array<string, mixed> $context
      * @param array<string, string> $headers what this page carries over the headers of the plane, a
      *                                       stricter Content-Security-Policy for one

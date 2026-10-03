@@ -84,7 +84,9 @@ final readonly class ConsentController
             return $this->responder->respond($request, $decision);
         }
 
-        $page = new ConsentPage($interaction->request->client->registration->presentation);
+        // the page shows the logo of the client and the one of the tenant, so its policy names where both
+        // are served from (ConsentPage); it is the one page whose policy is part of its answer
+        $page = new ConsentPage($interaction->request->client->registration->presentation, $tenant->look);
 
         return $this->pages->render(
             'consent.html.twig',

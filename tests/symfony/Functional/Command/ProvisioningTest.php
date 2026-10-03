@@ -54,6 +54,10 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringContainsString('https://op.test', $tester->getDisplay());
         static::assertStringContainsString('The tenant "default" is synchronised', $tester->getDisplay());
+        // what the pages show of it is written with the rest of the row, so the command says it (issue #449);
+        // this deployment declares none, and the two lines are empty rather than absent
+        static::assertStringContainsString('Logo', $tester->getDisplay());
+        static::assertStringContainsString('Colours', $tester->getDisplay());
     }
 
     /**

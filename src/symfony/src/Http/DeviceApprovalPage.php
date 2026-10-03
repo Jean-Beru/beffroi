@@ -62,7 +62,6 @@ final readonly class DeviceApprovalPage
         return $this->pages->render('device_approval.html.twig', [
             'record' => $record,
             'client' => $record->client,
-            'tenant' => $record->tenant,
             'user' => $user,
             'scopes' => $record->scopes,
             'requested_from' => $record->requestedFrom,

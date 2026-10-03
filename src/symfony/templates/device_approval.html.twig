@@ -11,6 +11,8 @@
 
 {% block title %}{{ 'device.approval.title'|trans({client: client.registration.presentation.name}) }}{% endblock %}
 
+{% set tenant = beffroi_tenant() %}
+
 {% block content %}
     <p data-provider="{{ tenant.name }}">{{ 'device.approval.provider'|trans({provider: tenant.name}) }}</p>
     <p>{{ 'device.approval.signed_in_as'|trans({username: user.username}) }}</p>

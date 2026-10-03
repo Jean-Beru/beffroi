@@ -12,6 +12,7 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    {% block brand %}{% include '@Beffroi/_brand.html.twig' %}{% endblock %}
     {% block body %}
         <main>
             <h1>{% block heading %}{{ block('title') }}{% endblock %}</h1>

@@ -33,6 +33,9 @@ use Beffroi\Bundle\Doctrine\Type\AuthorizationDetailsType;
 use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Beffroi\Bundle\Doctrine\Type\ScopesType;
 use Beffroi\Bundle\Doctrine\Type\SubjectType;
+use Beffroi\Bundle\Doctrine\Type\TenantLookType;
+use Beffroi\Core\Domain\Tenant\LogoUri;
+use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Beffroi\Oidc\Tests\Fixture\ChallengeMethods;
@@ -175,6 +178,14 @@ final class TypesTest extends TestCase
             ]),
             '{"classes":[{"name":"urn:okta:loa:2fa:any","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}',
         ];
+        yield 'the look of a tenant' => [
+            TenantLookType::class,
+            new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff'),
+            '{"logo_uri":"https://acme.example/logo.svg","primary_color":"#1b4b8f","primary_content_color":"#ffffff"}',
+        ];
+        // a tenant that declared nothing is an empty document and not three nulls (issue #449), which PHP
+        // writes as a JSON array; the default of the column is "{}" and both read back as the same look
+        yield 'the look of a tenant that declared none' => [TenantLookType::class, TenantLook::none(), '[]'];
         yield 'backup codes' => [
             BackupCodesType::class,
             [new BackupCode(new PasswordHash(new Argon2id(), '$argon2id$one')), new BackupCode(new PasswordHash(
@@ -472,10 +483,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTwentySixTypes(): void
+    public function theBundleDeclaresTwentySevenTypes(): void
     {
         // When / Then
-        static::assertCount(26, BeffroiBundle::DBAL_TYPES);
+        static::assertCount(27, BeffroiBundle::DBAL_TYPES);
     }
 
     /**
