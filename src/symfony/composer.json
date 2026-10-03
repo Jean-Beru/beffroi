@@ -17,6 +17,7 @@
     ],
     "require": {
         "php": ">=8.4",
+        "ext-intl": "*",
         "bacon/bacon-qr-code": "^3.0",
         "doctrine/dbal": "^4.4",
         "doctrine/doctrine-bundle": "^3.3",

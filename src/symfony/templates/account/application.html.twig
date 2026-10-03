@@ -21,13 +21,13 @@
             {% endif %}
         </dd>
         <dt>{{ 'consents.granted_at'|trans }}</dt>
-        <dd><time datetime="{{ consent.grantedAt|date('c') }}">{{ consent.grantedAt|date('Y-m-d H:i') }}</time></dd>
+        <dd><time datetime="{{ consent.grantedAt|date('c') }}">{{ consent.grantedAt|beffroi_moment(user) }}</time></dd>
     </dl>
 
     <h2>{{ 'application.holds'|trans }}</h2>
     <p data-application="renewable" data-renewable="{{ holding.renewable }}">{{ 'application.renewable'|trans({count: holding.renewable}) }}</p>
     {% if holding.lastIssued is not null %}
-        <p data-application="last-issued">{{ 'application.last_issued'|trans }} <time datetime="{{ holding.lastIssued|date('c') }}">{{ holding.lastIssued|date('Y-m-d H:i') }}</time></p>
+        <p data-application="last-issued">{{ 'application.last_issued'|trans }} <time datetime="{{ holding.lastIssued|date('c') }}">{{ holding.lastIssued|beffroi_moment(user) }}</time></p>
     {% endif %}
     <p>{{ 'application.self_contained'|trans }}</p>
 

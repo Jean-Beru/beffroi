@@ -37,8 +37,8 @@
                 {% for subscription in subscriptions %}
                     <tr data-subscription="{{ subscription.id }}">
                         <td>{{ subscription.label ?? 'notifications.unnamed'|trans }}</td>
-                        <td><time datetime="{{ subscription.createdAt|date('c') }}">{{ subscription.createdAt|date('Y-m-d H:i') }}</time></td>
-                        <td>{% if subscription.lastPushedAt is not null %}<time datetime="{{ subscription.lastPushedAt|date('c') }}">{{ subscription.lastPushedAt|date('Y-m-d H:i') }}</time>{% else %}{{ 'notifications.never_pushed'|trans }}{% endif %}</td>
+                        <td><time datetime="{{ subscription.createdAt|date('c') }}">{{ subscription.createdAt|beffroi_moment(user) }}</time></td>
+                        <td>{% if subscription.lastPushedAt is not null %}<time datetime="{{ subscription.lastPushedAt|date('c') }}">{{ subscription.lastPushedAt|beffroi_moment(user) }}</time>{% else %}{{ 'notifications.never_pushed'|trans }}{% endif %}</td>
                         <td>
                             <form method="post" action="{{ path('beffroi_interaction_account_notifications_revoke', {id: subscription.id}) }}">
                                 <input type="hidden" name="_token" value="{{ csrf_token('beffroi_push_revoke') }}">

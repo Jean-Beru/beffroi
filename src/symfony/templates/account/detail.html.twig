@@ -7,7 +7,7 @@
 <dt>{{ ('profile.' ~ detail.key)|trans }}</dt>
 <dd data-detail="{{ detail.key }}">
     {%- if detail.moment is not null -%}
-        <time datetime="{{ detail.moment|date('c') }}">{{ detail.moment|date('Y-m-d H:i') }}</time>
+        <time datetime="{{ detail.moment|date('c') }}">{{ detail.moment|beffroi_moment(user) }}</time>
     {%- else -%}
         {{ detail.value }}
     {%- endif -%}

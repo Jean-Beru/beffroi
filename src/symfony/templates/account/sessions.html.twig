@@ -29,8 +29,8 @@
                         <span data-acr="{{ session.authenticationContextClass.value }}">{{ session.authenticationContextClass.value }}</span>
                         <span data-amr="{{ session.proofs.methodReferences|join(' ') }}">{{ session.proofs.methodReferences|join(', ') }}</span>
                     </td>
-                    <td><time datetime="{{ session.establishedAt|date('c') }}">{{ session.establishedAt|date('Y-m-d H:i') }}</time></td>
-                    <td><time datetime="{{ session.lastSeenAt|date('c') }}">{{ session.lastSeenAt|date('Y-m-d H:i') }}</time></td>
+                    <td><time datetime="{{ session.establishedAt|date('c') }}">{{ session.establishedAt|beffroi_moment(user) }}</time></td>
+                    <td><time datetime="{{ session.lastSeenAt|date('c') }}">{{ session.lastSeenAt|beffroi_moment(user) }}</time></td>
                     <td>
                         {{ session.lastSeenFrom.ipAddress ?? 'sessions.unknown_address'|trans }}
                         {% if session.lastSeenFrom.userAgent is not null %}

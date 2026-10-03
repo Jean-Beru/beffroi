@@ -35,9 +35,9 @@
                 {% for passkey in passkeys %}
                     <tr data-passkey="{{ passkey.id }}" data-revoked="{{ passkey.revoked ? 'yes' : 'no' }}">
                         <td>{{ passkey.name }}</td>
-                        <td><time datetime="{{ passkey.createdAt|date('c') }}">{{ passkey.createdAt|date('Y-m-d H:i') }}</time></td>
-                        <td>{% if passkey.lastUsedAt is not null %}<time datetime="{{ passkey.lastUsedAt|date('c') }}">{{ passkey.lastUsedAt|date('Y-m-d H:i') }}</time>{% else %}{{ 'passkeys.never_used'|trans }}{% endif %}</td>
-                        <td>{% if passkey.revoked %}{{ 'passkeys.revoked_at'|trans({date: passkey.revokedAt|date('Y-m-d H:i')}) }}{% else %}{{ 'passkeys.active'|trans }}{% endif %}</td>
+                        <td><time datetime="{{ passkey.createdAt|date('c') }}">{{ passkey.createdAt|beffroi_moment(user) }}</time></td>
+                        <td>{% if passkey.lastUsedAt is not null %}<time datetime="{{ passkey.lastUsedAt|date('c') }}">{{ passkey.lastUsedAt|beffroi_moment(user) }}</time>{% else %}{{ 'passkeys.never_used'|trans }}{% endif %}</td>
+                        <td>{% if passkey.revoked %}{{ 'passkeys.revoked_at'|trans({date: passkey.revokedAt|beffroi_moment(user)}) }}{% else %}{{ 'passkeys.active'|trans }}{% endif %}</td>
                         <td>
                             {% if not passkey.revoked %}
                                 <form method="post" action="{{ path('beffroi_interaction_account_passkeys_revoke', {id: passkey.id}) }}">
