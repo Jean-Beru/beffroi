@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Command;
 
 use function array_map;
 use function count;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Beffroi\Core\Domain\Key\KeyStatus;
@@ -14,6 +15,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\ExceptionTrail;
 use Beffroi\Core\Port\KeySealerInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Psr\Clock\ClockInterface;
 use function implode;
 use function in_array;
 use function sprintf;
@@ -32,17 +34,27 @@ use Throwable;
  * A key it cannot open is named with its algorithm, and so is the run that reaches it: a rotation reaches
  * one algorithm, and a tenant publishes one key per algorithm it serves, so a KMS that forgot its master
  * key leaves as many dead keys as the tenant has algorithms and as many rotations to do.
+ *
+ * **It also says when a key has worked past its age with nothing staged behind it** (issue #455), which is
+ * what a planning that has stopped looks like from outside: the step that stages a successor runs every
+ * minute, so an active key past its age and no staged key of its algorithm is a worker that is not
+ * consuming, and nothing else.
  */
 #[AsCommand(
     name: 'beffroi:keys:list',
-    description: 'List the keys of the tenant with their use, status and dates: the published ones, or every key with --all; --check opens the keys in use, or about to be, with the KMS and fails on one it cannot open.',
+    description: 'List the keys of the tenant with their use, status and dates: the published ones, or every key with --all; --check opens the keys in use, or about to be, with the KMS and fails on one it cannot open or that has worked past its age with nothing staged behind it.',
 )]
 final readonly class KeysListCommand
 {
+    /**
+     * @param DateInterval $age how long a key works before the planning stages a successor (KeyAge)
+     */
     public function __construct(
         private ConfiguredTenant $tenant,
         private TenantKeyRepositoryInterface $keys,
         private KeySealerInterface $sealer,
+        private DateInterval $age,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -51,7 +63,7 @@ final readonly class KeysListCommand
         #[Option(description: 'Include the retired keys, out of the JWK Set for good.')]
         bool $all = false,
         #[Option(
-            description: 'Open the active and the staged keys with the KMS and say whether each one opens; a retiring key is opened only to read what was encrypted to it. Fails when one does not open.',
+            description: 'Open the active and the staged keys with the KMS and say whether each one opens; a retiring key is opened only to read what was encrypted to it. Says of an active key whether it has worked past its age and whether a successor is staged behind it. Fails when a key does not open, or has worked past its age with nothing staged.',
         )]
         bool $check = false,
     ): int {
@@ -69,6 +81,12 @@ final readonly class KeysListCommand
 
         /** @var list<TenantKey> $dead */
         $dead = [];
+        /** @var list<TenantKey> $overdue */
+        $overdue = [];
+        $now = $this->clock->now();
+        // read over every key given, so that a successor staged behind an old one is seen whichever list
+        // was asked for
+        $awaited = self::algorithmsAwaiting($keys);
         foreach ($keys as $key) {
             $rows = self::describe($key);
             if ($check && ($key->status === KeyStatus::Staged || $key->status === KeyStatus::Active)) {
@@ -80,7 +98,38 @@ final readonly class KeysListCommand
                     $dead[] = $key;
                 }
             }
+            if ($check && $key->status === KeyStatus::Active) {
+                $reached = $key->hasReachedItsAge($now, $this->age);
+                $staged = in_array($key->algorithm->name(), $awaited, true);
+                $rows[] = [
+                    'Has worked past its age' => $reached ? ($staged ? 'yes, and a successor is staged' : 'yes, and nothing is staged') : 'no',
+                ];
+                if ($reached && ! $staged) {
+                    $overdue[] = $key;
+                }
+            }
             $io->definitionList(...$rows);
+        }
+        if ($overdue !== []) {
+            $io->error([
+                sprintf(
+                    'The key%s %s of "%s" %s worked past the age of a key and nothing is staged behind %s.',
+                    count($overdue) === 1 ? '' : 's',
+                    implode(', ', array_map(
+                        static fn (TenantKey $key): string => sprintf('%s (%s)', $key->kid, $key->algorithm->name()),
+                        $overdue,
+                    )),
+                    $tenant->slug,
+                    count($overdue) === 1 ? 'has' : 'have',
+                    count($overdue) === 1 ? 'it' : 'them',
+                ),
+                'The planning stages a successor every minute, so this is a worker that is not consuming the schedule: start it, or consume the transport by hand ("messenger:consume scheduler_beffroi"). A rotation by hand does the same thing for one algorithm:'
+                    . \PHP_EOL
+                    . implode(\PHP_EOL, array_map(
+                        static fn (string $algorithm): string => sprintf('  %s --algorithm=%s', KeysRotateCommand::NAME, $algorithm),
+                        self::algorithmsOf($overdue),
+                    )),
+            ]);
         }
         if ($dead !== []) {
             $io->error([
@@ -107,7 +156,27 @@ final readonly class KeysListCommand
             return Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        return $overdue === [] ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /**
+     * The algorithms a staged key is waiting for, which is what tells an active key past its age from one
+     * whose successor is already in the JWK Set.
+     *
+     * @param list<TenantKey> $keys
+     *
+     * @return list<string>
+     */
+    private static function algorithmsAwaiting(array $keys): array
+    {
+        $awaited = [];
+        foreach ($keys as $key) {
+            if ($key->status === KeyStatus::Staged && ! in_array($key->algorithm->name(), $awaited, true)) {
+                $awaited[] = $key->algorithm->name();
+            }
+        }
+
+        return $awaited;
     }
 
     /**

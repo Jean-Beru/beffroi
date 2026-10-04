@@ -49,6 +49,12 @@ final class TenantKeyRotatorTest extends TestCase
      */
     private const string STAGING_DELAY = 'PT6M';
 
+    /**
+     * The age of a key under test: thirty days, longer than the hour the longest JWS of this tenant lives,
+     * which is what the rotation requires of an age.
+     */
+    private const string AGE = 'P30D';
+
     private Tenant $tenant;
 
     private InMemoryTenantKeyRepository $repository;
@@ -654,6 +660,121 @@ final class TenantKeyRotatorTest extends TestCase
     }
 
     /**
+     * Issue #455: an active key that has worked for the age of a key gets a successor, staged and not
+     * activated, so that a relying party sees the new "kid" before anything is signed with it.
+     */
+    #[Test]
+    public function aKeyThatHasWorkedForItsAgeGetsASuccessorStaged(): void
+    {
+        // Given
+        $first = $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+30 days');
+
+        // When
+        $staged = $this->rotator->stageSuccessorsDue($this->tenant, $this->context);
+
+        // Then
+        static::assertCount(1, $staged);
+        static::assertTrue($staged[0]->isStaged());
+        static::assertSame(Algorithms::rs256()->name(), $staged[0]->algorithm->name());
+        static::assertEquals($this->clock->now()->add(new DateInterval(self::STAGING_DELAY)), $staged[0]->activationDueAt);
+        static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
+    }
+
+    #[Test]
+    public function aKeyInsideItsAgeGetsNothing(): void
+    {
+        // Given
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+29 days');
+
+        // When
+        $staged = $this->rotator->stageSuccessorsDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $staged);
+    }
+
+    /**
+     * The tick that follows finds the successor of the previous one and stages nothing: what makes it
+     * idempotent is the key it looks at, not a flag it keeps.
+     */
+    #[Test]
+    public function theTickThatFollowsStagesNothing(): void
+    {
+        // Given
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+30 days');
+        $this->rotator->stageSuccessorsDue($this->tenant, $this->context);
+
+        // When
+        $again = $this->rotator->stageSuccessorsDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $again);
+    }
+
+    /**
+     * The age is counted from the activation and not from the creation: a key that waited its staging
+     * window has not worked for that window.
+     */
+    #[Test]
+    public function theAgeIsCountedFromTheActivationAndNotFromTheCreation(): void
+    {
+        // Given
+        $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+6 minutes');
+        $this->rotator->activateDue($this->tenant, $this->context);
+        $this->clock->modify('+30 days');
+        $this->clock->modify('-7 minutes');
+
+        // When
+        $staged = $this->rotator->stageSuccessorsDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $staged);
+    }
+
+    /**
+     * A staged key that is not due for activation yet is still a successor: the step looks at what the
+     * JWK Set publishes and not at what it would activate.
+     */
+    #[Test]
+    public function anAlgorithmWhoseSuccessorIsStagedByHandGetsNothing(): void
+    {
+        // Given
+        $this->rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+30 days');
+        $this->rotator->stage($this->tenant, Algorithms::rs256(), $this->context);
+
+        // When
+        $staged = $this->rotator->stageSuccessorsDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $staged);
+    }
+
+    /**
+     * An age shorter than the window a retiring key holds the JWK Set open for would leave a key behind
+     * at every rotation, so the step refuses rather than growing the set (decision 0006).
+     */
+    #[Test]
+    public function anAgeShorterThanTheRetirementWindowIsRefused(): void
+    {
+        // Given
+        $rotator = $this->rotator($this->issuedJws(), 'PT30M');
+        $rotator->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+1 hour');
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIsOrContains('the age of a key is longer than that window');
+
+        // When
+        $rotator->stageSuccessorsDue($this->tenant, $this->context);
+    }
+
+    /**
      * Every state of the lifecycle is the same whatever the algorithm: a tenant that signs EdDSA rotates
      * its Ed25519 keys the way it rotates its RSA ones, and the keys of one algorithm ignore the other.
      */
@@ -667,6 +788,7 @@ final class TenantKeyRotatorTest extends TestCase
             Keys::sealer(),
             $this->issuedJws(),
             new DateInterval(self::STAGING_DELAY),
+            new DateInterval(self::AGE),
             $this->clock,
             $this->events,
         );
@@ -695,7 +817,7 @@ final class TenantKeyRotatorTest extends TestCase
     /**
      * @param list<KeyBoundArtifactInterface> $issuedJws
      */
-    private function rotator(array $issuedJws): TenantKeyRotator
+    private function rotator(array $issuedJws, ?string $age = null): TenantKeyRotator
     {
         return new TenantKeyRotator(
             $this->repository,
@@ -703,6 +825,7 @@ final class TenantKeyRotatorTest extends TestCase
             Keys::sealer(),
             $issuedJws,
             new DateInterval(self::STAGING_DELAY),
+            new DateInterval($age ?? self::AGE),
             $this->clock,
             $this->events,
         );

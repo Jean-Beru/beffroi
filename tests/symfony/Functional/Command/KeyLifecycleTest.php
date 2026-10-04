@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Command;
 
+use function array_filter;
 use function array_map;
+use function array_values;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
@@ -798,6 +800,99 @@ final class KeyLifecycleTest extends ConsoleTestCase
     /**
      * What the worker does on a tick: the recurring message, handled on the command bus.
      */
+    /**
+     * Issue #455: the step stages a successor for a key that has worked for the age of a key, and stages
+     * it rather than rotating, so the staging window still happens.
+     */
+    #[Test]
+    public function theScheduledStepStagesASuccessorForAKeyPastItsAge(): void
+    {
+        // Given
+        $old = self::keyPastItsAge();
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertSame(KeyStatus::Active, self::key($old->kid)->status);
+        static::assertCount(1, self::stagedKeys());
+        static::assertSame('RS256', self::stagedKeys()[0]->algorithm->name());
+    }
+
+    /**
+     * Idempotent: the tick that follows finds the successor and stages nothing, so a worker that ticks
+     * every minute does not publish a key a minute.
+     */
+    #[Test]
+    public function theScheduledStepStagesOneSuccessorAndNotOnePerTick(): void
+    {
+        // Given
+        self::keyPastItsAge();
+        self::tick();
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertCount(1, self::stagedKeys());
+    }
+
+    #[Test]
+    public function theScheduledStepLeavesAKeyInsideItsAge(): void
+    {
+        // Given
+        self::console('beffroi:keys:rotate');
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertSame([], self::stagedKeys());
+    }
+
+    /**
+     * What a planning that has stopped looks like from outside: an active key past its age with nothing
+     * staged behind it. The check names it, says it is a worker and not a key, and fails.
+     */
+    #[Test]
+    public function theCheckFailsOnAKeyThatWorkedPastItsAgeWithNothingStaged(): void
+    {
+        // Given
+        $old = self::keyPastItsAge();
+
+        // When
+        $tester = self::console('beffroi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('yes, and nothing is staged', self::displayed($tester, 'Has worked past its age'));
+        static::assertStringContainsString($old->kid, $tester->getDisplay());
+        static::assertStringContainsString('worker that is not consuming the schedule', self::flattened($tester));
+    }
+
+    /**
+     * The same key once the step has run: past its age still, and the successor behind it is what says
+     * the planning is working, so the check passes.
+     */
+    #[Test]
+    public function theCheckPassesOnAKeyPastItsAgeWhoseSuccessorIsStaged(): void
+    {
+        // Given
+        self::keyPastItsAge();
+        self::tick();
+
+        // When
+        $tester = self::console('beffroi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('yes, and a successor is staged', self::displayed($tester, 'Has worked past its age'));
+    }
+
     private static function tick(): void
     {
         self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new AdvanceKeyLifecycle());
@@ -868,6 +963,32 @@ final class KeyLifecycleTest extends ConsoleTestCase
         self::keys()->save($key);
 
         return $key;
+    }
+
+    /**
+     * A key written as the files would hold it a quarter after its rotation: active since ninety-one days
+     * ago, which is past the age a key works for in this kernel, and what no command can write in the
+     * present.
+     */
+    private static function keyPastItsAge(): TenantKey
+    {
+        $activated = self::currentSecond()->modify('-91 days');
+        $key = self::stagedKeyDated($activated, $activated);
+        $key->activate($activated);
+        self::keys()->save($key);
+
+        return $key;
+    }
+
+    /**
+     * @return list<TenantKey>
+     */
+    private static function stagedKeys(): array
+    {
+        return array_values(array_filter(
+            self::keys()->findPublished(self::tenant()),
+            static fn (TenantKey $key): bool => $key->status === KeyStatus::Staged,
+        ));
     }
 
     private static function key(string $kid): TenantKey

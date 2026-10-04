@@ -152,6 +152,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
             self::service('test.beffroi.key_sealer', KeySealerInterface::class),
             [],
             new DateInterval('PT6M'),
+            new DateInterval('P90D'),
             new NativeClock(),
             new RecordingEventDispatcher(),
         );

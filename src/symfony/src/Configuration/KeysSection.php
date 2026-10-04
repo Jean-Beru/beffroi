@@ -9,6 +9,7 @@ use Doctrine\DBAL\Connection;
 use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexListener;
 use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
 use Beffroi\Bundle\Command\DataKeysRewrapCommand;
+use Beffroi\Bundle\Command\KeysListCommand;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Messenger\EventBusDispatcher;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
@@ -19,6 +20,7 @@ use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Key\FilePairwiseSalt;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
+use Beffroi\Bundle\Key\KeyAge;
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Profiler\KmsClient;
 use Beffroi\Core\Application\Key\TenantKeyRotator;
@@ -80,6 +82,11 @@ final readonly class KeysSection extends ConfigurationSection
             ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it.')
             ->defaultNull()
             ->min(0)
+            ->end()
+            ->integerNode('age')
+            ->info('How long a key works before the planning stages a successor for it, in seconds, counted from its activation (architecture §3.3): ninety days by default, which is inside the one to three years NIST SP 800-57 Part 1 Rev. 5 §5.3.6 gives a private signature key and short enough that the rotation path is walked four times a year rather than first walked during an incident. It has to be longer than the window a retiring key holds the JWK Set open for, which is the longest lifetime of what a key of that use is bound to, or every rotation would leave a key behind; the rotation refuses an age that is not.')
+            ->defaultValue(KeyAge::DEFAULT_SECONDS)
+            ->min(1)
             ->end()
             ->end()
             ->end();
@@ -241,5 +248,10 @@ final readonly class KeysSection extends ConfigurationSection
         $services->get(TenantKeyRotator::class)->arg('$stagingDelay', inline_service(DateInterval::class)
             ->factory(StagingDelay::interval(...))
             ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]));
+        // one definition each: an inline service is a definition and not a value, so the same object given
+        // to two arguments is one of them left empty
+        $seconds = self::integer($keys, 'age');
+        $services->get(TenantKeyRotator::class)->arg('$age', inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([$seconds]));
+        $services->get(KeysListCommand::class)->arg('$age', inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([$seconds]));
     }
 }

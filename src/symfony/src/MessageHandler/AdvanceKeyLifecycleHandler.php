@@ -13,8 +13,14 @@ use Beffroi\Core\Application\Key\TenantKeyRotator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * The two timed steps of architecture §3.3, in the order that lets one tick finish a rotation the previous
- * one started: what the console does by hand with "beffroi:keys:activate" and "beffroi:keys:retire --due".
+ * The three timed steps of architecture §3.3, in the order that lets one tick finish a rotation the
+ * previous one started: what the console does by hand with "beffroi:keys:rotate", "beffroi:keys:activate"
+ * and "beffroi:keys:retire --due".
+ *
+ * The first one starts a rotation nobody asked for (issue #455), and it comes first for the same reason
+ * the other two are in this order: a successor staged here waits its staging window, so the tick that
+ * stages it is never the tick that activates it, and a deployment nobody watches does not sign with the
+ * same key for ever.
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class AdvanceKeyLifecycleHandler
@@ -35,6 +41,7 @@ final readonly class AdvanceKeyLifecycleHandler
             return;
         }
         $context = $this->contexts->fromSchedule(BeffroiSchedule::NAME);
+        $this->rotator->stageSuccessorsDue($tenant, $context);
         $this->rotator->activateDue($tenant, $context);
         $this->rotator->retireDue($tenant, $context);
     }
