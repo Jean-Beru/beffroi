@@ -1568,8 +1568,9 @@ const DEMO_DPOP_INTROSPECTED_PATH = '/api/me/dpop/introspected';
  * The binding is checked on both shapes of access token, the "cnf.jkt" of an "at+jwt" read by the resource
  * server itself, and the "cnf" of an opaque token read from the introspection response (§7.1).
  *
- * That check is `RS-05` of the Symfony status document, written during this spike on the branch
- * `security-dpop-resource-server`; the demonstration runs on it until it merges.
+ * That check is `RS-05` of the Symfony status document, written during this spike and merged into 8.2
+ * (symfony/symfony#66465), so the demonstration asks for it of the released component like everything
+ * else it uses.
  */
 function demo_dpop_check(string $dir, string $issuer, string $password, string $demoSecret, string $opaqueSecret, string $ca): void
 {
@@ -1718,7 +1719,7 @@ function demo_dpop_check(string $dir, string $issuer, string $password, string $
 
         io()->table(['Step', 'Verified'], $verified);
         io()->success('oidc-demo signed in as before on a provider serving all of FAPI 2, and its resource server accepted a DPoP-bound token from the holder of the key and from nobody else.');
-        io()->note('The demonstration runs on the Symfony branch "security-dpop-resource-server" (RS-05 of docs/specs/symfony-oauth-oidc-status.md) until it merges. A resource server that binds its tokens declares "dpop: true" on the "access_token" firewall; nothing of it reaches the firewalls that do not.');
+        io()->note('A resource server that binds its tokens declares "dpop: true" on its "access_token" firewall (RS-05 of docs/specs/symfony-oauth-oidc-status.md, symfony/symfony#66465); nothing of it reaches the firewalls that do not.');
     } finally {
         demo_write_env_local($dir . '/.env.local', [
             'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
