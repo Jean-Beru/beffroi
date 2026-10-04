@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Doctrine\PersonalData;
 
+use function array_unique;
+use function array_values;
 use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
 use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\KeyManagement\BlindIndex;
+use Symfony\Component\KeyManagement\BlindIndexInterface;
 use Symfony\Component\KeyManagement\Test\InMemoryKms;
 
 /**
@@ -62,12 +64,13 @@ final class BlindIndexedColumnsTest extends TestCase
     }
 
     /**
-     * One index key per tenant, so the two columns of one tenant derive their tags under one key: a
-     * username that happens to be an address and that address share a tag. The columns are distinct and no
-     * query confuses them, and this is the fact rather than a defect (decision 0011).
+     * One index key per tenant, and each column names its index after itself, so the two columns of one
+     * tenant derive their tags under subkeys that differ: a username that happens to be an address does
+     * not share the tag of that address, and whoever reads the two columns learns nothing of which rows of
+     * one hold a value of the other (decision 0011).
      */
     #[Test]
-    public function theTwoColumnsOfOneTenantDeriveTheirTagsUnderOneKey(): void
+    public function theTwoColumnsOfOneTenantDoNotShareTheirTagForOneValue(): void
     {
         // Given
         $kms = new InMemoryKms();
@@ -78,7 +81,22 @@ final class BlindIndexedColumnsTest extends TestCase
         $email = BlindIndexedColumns::of(User::class, 'email')->index($kms, $wrapped);
 
         // Then
-        static::assertSame($username->of('ada@example.org'), $email->of('ada@example.org'));
+        static::assertNotSame($username->of('ada@example.org'), $email->of('ada@example.org'));
+    }
+
+    /**
+     * An index is named after the column its tags are written to, and that name is what separates its
+     * subkey from that of every other index over the key of the tenant: two columns named alike would be
+     * two columns sharing their tags, which naming them exists to prevent.
+     */
+    #[Test]
+    public function noTwoColumnsNameTheirIndexAlike(): void
+    {
+        // When
+        $tags = BlindIndexedColumns::tags();
+
+        // Then
+        static::assertSame($tags, array_values(array_unique($tags)));
     }
 
     /**
@@ -107,7 +125,7 @@ final class BlindIndexedColumnsTest extends TestCase
         static::assertArrayNotHasKey(BlindIndexedColumns::SCOPE, EncryptedColumnTypes::FAMILIES);
     }
 
-    private static function index(string $property): BlindIndex
+    private static function index(string $property): BlindIndexInterface
     {
         $kms = new InMemoryKms();
 

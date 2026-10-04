@@ -8,10 +8,8 @@ use function array_map;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\InvalidArgumentException;
-use Symfony\Component\KeyManagement\BlindIndex;
-use Symfony\Component\KeyManagement\BlindIndex\Email;
-use Symfony\Component\KeyManagement\Ciphertext;
-use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
+use Symfony\Component\KeyManagement\BlindIndex\Projection\Email;
+use Symfony\Component\KeyManagement\BlindIndex\Projection\Verbatim;
 use function sprintf;
 
 /**
@@ -35,10 +33,10 @@ use function sprintf;
  * because the unique constraint of its table is on the pair, not because anything looks a provider up on
  * its own, and that price is written in the mapping beside the constraint that asks for it.
  *
- * **One index key per tenant**, not one per column, so a username that happens to be an address and that
- * address share their tag. The two columns are distinct and no query confuses them, and the alternative, a
- * key per projection, is a second key the day a tenant's keys are destroyed and a second thing to never
- * rotate.
+ * **One index key per tenant**, not one per column: a key per projection would be a second key the day a
+ * tenant's keys are destroyed and a second thing to never rotate. Each column names its index after itself
+ * all the same (`BlindIndexedColumn::index()`), so the tags are derived under subkeys that differ and a
+ * username that happens to be an address does not share the tag of that address.
  */
 final readonly class BlindIndexedColumns
 {
@@ -64,7 +62,7 @@ final readonly class BlindIndexedColumns
                 User::class,
                 'username',
                 'usernameIndex',
-                static fn (DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex => new BlindIndex($kms, $wrapped),
+                new Verbatim(),
             ),
             // An address has its domain folded and its local part left alone, which is what RFC 5321 says:
             // the domain is case-insensitive, the local part is the receiving server's business and
@@ -73,7 +71,7 @@ final readonly class BlindIndexedColumns
                 User::class,
                 'email',
                 'emailIndex',
-                static fn (DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex => new Email($kms, $wrapped),
+                new Email(),
             ),
             // The pair a federated login recognises an identity by, and what the unique constraint of the
             // table is held on. Both byte for byte: what an upstream provider gave is compared as it gave
@@ -82,13 +80,13 @@ final readonly class BlindIndexedColumns
                 LinkedIdentity::class,
                 'provider',
                 'providerIndex',
-                static fn (DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex => new BlindIndex($kms, $wrapped),
+                new Verbatim(),
             ),
             new BlindIndexedColumn(
                 LinkedIdentity::class,
                 'subject',
                 'subjectIndex',
-                static fn (DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex => new BlindIndex($kms, $wrapped),
+                new Verbatim(),
             ),
         ];
     }

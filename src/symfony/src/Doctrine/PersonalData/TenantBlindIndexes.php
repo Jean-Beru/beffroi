@@ -13,7 +13,7 @@ use Psr\Container\ContainerInterface;
 use SensitiveParameter;
 use function sprintf;
 use function stream_get_contents;
-use Symfony\Component\KeyManagement\BlindIndex;
+use Symfony\Component\KeyManagement\BlindIndexInterface;
 use Symfony\Component\KeyManagement\Ciphertext;
 use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
 use Symfony\Component\KeyManagement\DataKeyStoreInterface;
@@ -41,14 +41,14 @@ use Throwable;
  * differently from the store. A second row in an index scope is a rotation nothing asked for, and reading
  * it would leave every tag already written unreachable; reading the first keeps them.
  *
- * One index per tenant and per projection, built at its first use and held for as long as this object,
+ * One index per tenant and per column, built at its first use and held for as long as this object,
  * which is as long as the process: nothing here carries `kernel.reset`, for the reason decision 0018 gives
  * the stores.
  */
 final class TenantBlindIndexes
 {
     /**
-     * @var array<string, array<string, BlindIndex>> by the slug of the tenant, then by the property the
+     * @var array<string, array<string, BlindIndexInterface>> by the slug of the tenant, then by the property the
      *                                               tag is written to
      */
     private array $indexes = [];
@@ -70,14 +70,14 @@ final class TenantBlindIndexes
     /**
      * @throws RuntimeException when no tenant is ambient
      */
-    public function of(BlindIndexedColumn $column): BlindIndex
+    public function of(BlindIndexedColumn $column): BlindIndexInterface
     {
         $slug = $this->slug($column);
 
         return $this->indexes[$slug][$column->tag] ??= $this->build($slug, $column);
     }
 
-    private function build(string $slug, BlindIndexedColumn $column): BlindIndex
+    private function build(string $slug, BlindIndexedColumn $column): BlindIndexInterface
     {
         $scope = TenantScopedEncrypter::scope($slug, BlindIndexedColumns::SCOPE);
         $row = $this->row($scope);
