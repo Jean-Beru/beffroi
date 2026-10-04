@@ -13,6 +13,7 @@ use Beffroi\Bundle\Configuration\TokensSection;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
+use Beffroi\Bundle\Key\KeyAge;
 use Beffroi\Oidc\Application\Discovery\JwksHandler;
 use Beffroi\Oidc\Application\Token\GrantNames;
 use Beffroi\Oidc\Bridge\Configuration\ClientDefinition;
@@ -81,6 +82,7 @@ final class BeffroiBundleConfigurationTest extends TestCase
                 'storage' => '%kernel.project_dir%/var/keys',
                 'jwks_max_age' => JwksHandler::DEFAULT_MAX_AGE,
                 'staging_delay' => null,
+                'age' => KeyAge::DEFAULT_SECONDS,
             ],
             $config['keys'],
         );
@@ -316,6 +318,16 @@ final class BeffroiBundleConfigurationTest extends TestCase
                     ],
             ],
             'jwks_max_age',
+        ];
+        yield 'an age of nothing' => [
+            [
+                'tenant' => self::MINIMAL['tenant'],
+                'keys' => self::MINIMAL['keys']
+                    + [
+                        'age' => 0,
+                    ],
+            ],
+            'age',
         ];
         yield 'a negative staging delay' => [
             [

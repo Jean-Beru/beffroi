@@ -175,6 +175,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new ResponseDocumentJwsKind($this->documents(new DateInterval('PT5M')), ServedModes::signedToo()),
             ],
             new DateInterval('PT6M'),
+            new DateInterval('P90D'),
             $clock,
             new RecordingEventDispatcher(),
         );
@@ -254,6 +255,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::backChannelOnly()),
             ],
             new DateInterval('PT6M'),
+            new DateInterval('P90D'),
             $clock,
             new RecordingEventDispatcher(),
         );
@@ -355,6 +357,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 new PushedRequestJweKind($this->pushedRequests(new DateInterval('PT90S'))),
             ],
             new DateInterval('PT6M'),
+            new DateInterval('P90D'),
             $clock,
             new RecordingEventDispatcher(),
         );

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Domain\Key;
 
 use function array_map;
+use DateInterval;
 use DateTimeImmutable;
 use Beffroi\Core\Domain\Key\KeyStatus;
 use Beffroi\Core\Domain\Key\KeyUse;
@@ -524,6 +525,66 @@ final class TenantKeyTest extends TestCase
         );
     }
 
+    /**
+     * Issue #455: the age of a key is read on the key, counted from the moment it became the one in use.
+     */
+    #[Test]
+    public function aKeyHasNotReachedItsAgeBeforeIt(): void
+    {
+        // Given
+        $key = self::activeKey();
+
+        // When / Then
+        static::assertFalse($key->hasReachedItsAge(Fixtures::now()->modify('+29 days 23 hours'), new DateInterval('P30D')));
+    }
+
+    #[Test]
+    public function aKeyHasReachedItsAgeFromIt(): void
+    {
+        // Given
+        $key = self::activeKey();
+
+        // When / Then
+        static::assertTrue($key->hasReachedItsAge(Fixtures::now()->modify('+30 days'), new DateInterval('P30D')));
+    }
+
+    /**
+     * Counted from the activation and not from the creation: the staging window a key waited through is
+     * not time it worked.
+     */
+    #[Test]
+    public function theAgeOfAKeyIsCountedFromItsActivation(): void
+    {
+        // Given
+        $key = self::stagedKey(Fixtures::now()->modify('+6 minutes'));
+        $key->activate(Fixtures::now()->modify('+6 minutes'));
+
+        // When / Then
+        static::assertFalse($key->hasReachedItsAge(Fixtures::now()->modify('+30 days'), new DateInterval('P30D')));
+    }
+
+    /**
+     * A key that is not the one in use has no age to reach: a staged key has not started working, and a
+     * retiring one has stopped.
+     */
+    #[Test]
+    #[DataProvider('provideKeysThatAreNotActive')]
+    public function aKeyThatIsNotActiveNeverReachesItsAge(TenantKey $key): void
+    {
+        // When / Then
+        static::assertFalse($key->hasReachedItsAge(Fixtures::now()->modify('+1 year'), new DateInterval('P30D')));
+    }
+
+    /**
+     * @return iterable<string, array{TenantKey}>
+     */
+    public static function provideKeysThatAreNotActive(): iterable
+    {
+        yield 'staged' => [self::stagedKey(Fixtures::now())];
+        yield 'retiring' => [self::retiringKey()];
+        yield 'retired' => [self::retiredKey()];
+    }
+
     private static function stagedKey(DateTimeImmutable $activationDueAt): TenantKey
     {
         return new TenantKey(Keys::pair()->kid, Fixtures::tenant(), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), $activationDueAt);
@@ -533,6 +594,14 @@ final class TenantKeyTest extends TestCase
     {
         $key = self::key();
         $key->activate(Fixtures::now());
+
+        return $key;
+    }
+
+    private static function retiringKey(): TenantKey
+    {
+        $key = self::activeKey();
+        $key->startRetiring(Fixtures::now(), Fixtures::now()->modify('+1 hour'));
 
         return $key;
     }
