@@ -28,27 +28,20 @@ framework:
     # (architecture §5.6); synchronous here like the rest.
     scheduler:
         use_messenger_routing: true
-    # The three buses of architecture §5.6, everything synchronous under test.
-    messenger:
-        default_bus: command.bus
-        buses:
-            command.bus: ~
-            query.bus: ~
-            event.bus:
-                default_middleware: allow_no_handlers
-        transports:
-            sync: 'sync://'
-            # What the provider tells a third party, which the protocol must not wait for: a relying
-            # party that hangs would hold the logout response (architecture §4.9, §5.6). Queued here as
-            # it is queued in production, and the tests of the delivery play the worker on the queue.
-            notifications: 'in-memory://'
-        routing:
-            Beffroi\Core\Domain\Event\DomainEventInterface: sync
-            Beffroi\Bundle\Message\Notification: notifications
-            Beffroi\Bundle\Message\Command: sync
-            Beffroi\Bundle\Message\Event: sync
-            Beffroi\Bundle\Message\Query: sync
-            Beffroi\Bundle\Message\SyncMessage: sync
+
+# The three buses, their middleware and where each marker is sent are prepended by the bundle
+# (architecture §5.6, issue #456). What this kernel says is what a test kernel owes: every lane of its
+# own writes played in the request, so that a test reads what a handler did without a worker.
+messenger:
+    transports:
+        # What the provider tells a third party, which the protocol must not wait for: a relying
+        # party that hangs would hold the logout response (architecture §4.9, §5.6). Queued here as
+        # it is queued in production, and the tests of the delivery play the worker on the queue.
+        async_notifications: 'in-memory://'
+        async_priority_high: 'sync://'
+        async_priority_medium: 'sync://'
+        async_priority_low: 'sync://'
+        failed: 'in-memory://'
 
 # The pages of the bundle, and nothing else: a missing variable is a defect of a template.
 twig:
@@ -753,7 +746,7 @@ services:
         public: true
     # the delivery of a logout token: the queue it waits in, and the handler called as the worker calls it
     test.beffroi.notification_queue:
-        alias: messenger.transport.notifications
+        alias: messenger.transport.async_notifications
         public: true
     test.beffroi.logout_token_delivery:
         alias: Beffroi\Bundle\MessageHandler\SendLogoutTokenHandler
