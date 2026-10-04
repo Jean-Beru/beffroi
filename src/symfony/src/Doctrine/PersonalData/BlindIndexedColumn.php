@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\PersonalData;
 
-use Closure;
 use Symfony\Component\KeyManagement\BlindIndex;
+use Symfony\Component\KeyManagement\BlindIndex\ProjectionInterface;
+use Symfony\Component\KeyManagement\BlindIndexInterface;
 use Symfony\Component\KeyManagement\Ciphertext;
 use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
 
@@ -18,9 +19,10 @@ use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
  * the mapping of this bundle is XML beside it. So the declaration lives with the mapping, and the listener
  * that fills the column is the bundle's own (`BlindIndexListener`).
  *
- * The projection is a closure rather than the name of a class, because what a tag is derived from is a
- * rule and not a setting: a column that needs another projection is a line added here with the class the
- * component ships or one written beside it, and nothing anywhere reads a class name to find out which.
+ * The projection is an object of the component and not the name of a class, because what a tag is derived
+ * from is a rule and not a setting: a column that needs another projection is a line added here with the
+ * class the component ships or one written beside it, and nothing anywhere reads a class name to find out
+ * which.
  */
 final readonly class BlindIndexedColumn
 {
@@ -28,24 +30,30 @@ final readonly class BlindIndexedColumn
      * @param class-string $entity the entity both properties are declared on
      * @param string $value the property whose value is indexed
      * @param string $tag the property the tag is written to, which the mapping maps to a column
-     * @param Closure(DataKeyGeneratorInterface, Ciphertext): BlindIndex $projection what of the value is
-     *                                                                              actually indexed, on
-     *                                                                              the way in and on the
-     *                                                                              way out alike
+     * @param ProjectionInterface $projection what of the value is actually indexed, on the way in and on
+     *                                        the way out alike
      */
     public function __construct(
         public string $entity,
         public string $value,
         public string $tag,
-        private Closure $projection,
+        private ProjectionInterface $projection,
     ) {
     }
 
     /**
      * The index of one tenant for this column, over the index key that tenant's KMS wrapped.
+     *
+     * **An index is named after the column its tags are written to.** The name is what separates the tags
+     * of one index from those of every other index over the same data key, and the key of a tenant serves
+     * every column of `BlindIndexedColumns`: unnamed, a username that happens to be an address and that
+     * address would share a tag, and whoever reads the two columns would learn which rows of one hold a
+     * value of the other. The column is what names it rather than the entity and the property, because a
+     * name that changes is a reindexing of every row already written, and a column that is renamed is a
+     * migration that rewrites it anyway.
      */
-    public function index(DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndex
+    public function index(DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndexInterface
     {
-        return ($this->projection)($kms, $wrapped);
+        return new BlindIndex($kms, $wrapped, $this->tag, $this->projection);
     }
 }
