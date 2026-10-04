@@ -102,7 +102,11 @@ final readonly class KeysListCommand
                 $reached = $key->hasReachedItsAge($now, $this->age);
                 $staged = in_array($key->algorithm->name(), $awaited, true);
                 $rows[] = [
-                    'Has worked past its age' => $reached ? ($staged ? 'yes, and a successor is staged' : 'yes, and nothing is staged') : 'no',
+                    'Has worked past its age' => match (true) {
+                        ! $reached => 'no',
+                        $staged => 'yes, and a successor is staged',
+                        default => 'yes, and nothing is staged',
+                    },
                 ];
                 if ($reached && ! $staged) {
                     $overdue[] = $key;
