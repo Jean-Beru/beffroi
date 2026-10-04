@@ -1274,12 +1274,6 @@ const DEMO_LADDER_RUNGS = [
         'client' => 'demo-key',
         'response' => 'query',
         'adds' => 'private_key_jwt: the client proves a key and holds no secret at all',
-        // The provider refuses the assertion of this rung, and says why: "oidc_login" names the token
-        // endpoint as its audience (OIDC Core §9), where this provider takes the issuer and nothing else
-        // (RFC 7523 §3, FAPI 2.0 §5.2.2). The walk asserts the refusal rather than quieting it, and the
-        // day the decision of the issue lands, this line is deleted and the rung is green or red for
-        // real.
-        'known' => 'https://github.com/beffroi-php/beffroi/issues/204',
     ],
     'rar' => [
         // the literal, as the three rungs below it: the constant of this client is declared with the walk
