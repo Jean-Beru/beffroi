@@ -36,6 +36,7 @@ final class LogoutTokenTest extends TestCase
         static::assertSame('alice-for-the-client', $claims['sub']);
         static::assertSame('oidc-demo', $claims['aud']);
         static::assertSame(1789639200, $claims['iat']);
+        static::assertSame(1789639400, $claims['exp']);
         static::assertSame(self::JTI, $claims['jti']);
         static::assertSame(self::SESSION, $claims['sid']);
     }
@@ -56,7 +57,7 @@ final class LogoutTokenTest extends TestCase
 
     /**
      * Back-Channel Logout 1.0 §2.4: a "nonce" is forbidden, so that a logout token can never be taken
-     * for an ID token; RFC 8417 §2: a security event token states what happened and does not expire.
+     * for an ID token, and nothing of an ID token that §2.4 does not list is carried either.
      */
     #[Test]
     #[DataProvider('provideForbiddenClaims')]
@@ -75,7 +76,6 @@ final class LogoutTokenTest extends TestCase
     public static function provideForbiddenClaims(): iterable
     {
         yield 'nonce (Back-Channel Logout 1.0 §2.4)' => ['nonce'];
-        yield 'exp (RFC 8417 §2)' => ['exp'];
         yield 'at_hash' => ['at_hash'];
         yield 'auth_time' => ['auth_time'];
     }
@@ -105,7 +105,7 @@ final class LogoutTokenTest extends TestCase
         $claims = Jwts::decode(JwtPayload::encode(self::token()->claims()));
 
         // Then
-        static::assertSame(['iss', 'sub', 'aud', 'iat', 'jti', 'events', 'sid'], array_keys($claims));
+        static::assertSame(['iss', 'sub', 'aud', 'iat', 'exp', 'jti', 'events', 'sid'], array_keys($claims));
     }
 
     private static function token(): LogoutToken
@@ -117,6 +117,7 @@ final class LogoutTokenTest extends TestCase
             Uuid::fromString(self::SESSION),
             Uuid::fromString(self::JTI),
             new DateTimeImmutable('@1789639200'),
+            new DateTimeImmutable('@1789639400'),
         );
     }
 }
