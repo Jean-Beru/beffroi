@@ -1105,6 +1105,22 @@
         <source>archive.download</source>
         <target>Télécharger vos données</target>
       </trans-unit>
+      <trans-unit id="archive.passphrase" resname="archive.passphrase">
+        <source>archive.passphrase</source>
+        <target>Phrase secrète</target>
+      </trans-unit>
+      <trans-unit id="archive.wrapped_explanation" resname="archive.wrapped_explanation">
+        <source>archive.wrapped_explanation</source>
+        <target>Vous pouvez aussi télécharger le même fichier dans un conteneur que seule votre phrase secrète ouvre. Choisissez une phrase d'au moins {minimum} caractères, plusieurs mots plutôt qu'un mot de passe : rien ici ne la conserve, donc personne ne peut vous la redonner, et elle est la seule chose entre ce fichier et qui finira par le détenir. Ouvrir un .{container} chiffré ainsi demande un outil d'archivage comme 7-Zip ou Keka ; les gestionnaires de fichiers de Windows et de macOS ne le lisent pas.</target>
+      </trans-unit>
+      <trans-unit id="archive.download_wrapped" resname="archive.download_wrapped">
+        <source>archive.download_wrapped</source>
+        <target>Télécharger sous cette phrase</target>
+      </trans-unit>
+      <trans-unit id="archive.passphrase_refused" resname="archive.passphrase_refused">
+        <source>archive.passphrase_refused</source>
+        <target>Ce n'est pas une phrase secrète sous laquelle ce fichier peut partir. Plusieurs mots, au moins {minimum, number} caractères.</target>
+      </trans-unit>
       <trans-unit id="archive.kept_for" resname="archive.kept_for">
         <source>archive.kept_for</source>
         <target>Un fichier est conservé {days, plural, one {# jour} other {# jours}}, puis supprimé.</target>

@@ -1105,6 +1105,22 @@
         <source>archive.download</source>
         <target>Download your data</target>
       </trans-unit>
+      <trans-unit id="archive.passphrase" resname="archive.passphrase">
+        <source>archive.passphrase</source>
+        <target>Passphrase</target>
+      </trans-unit>
+      <trans-unit id="archive.wrapped_explanation" resname="archive.wrapped_explanation">
+        <source>archive.wrapped_explanation</source>
+        <target>You can also download the same file inside a container only your passphrase opens. Choose a passphrase of at least {minimum} characters, several words rather than a password: nothing here keeps it, so nobody can give it back to you, and it is the only thing standing between that file and whoever ends up holding it. Opening a .{container} encrypted this way needs an archive tool such as 7-Zip or Keka; the file managers built into Windows and macOS do not read it.</target>
+      </trans-unit>
+      <trans-unit id="archive.download_wrapped" resname="archive.download_wrapped">
+        <source>archive.download_wrapped</source>
+        <target>Download under this passphrase</target>
+      </trans-unit>
+      <trans-unit id="archive.passphrase_refused" resname="archive.passphrase_refused">
+        <source>archive.passphrase_refused</source>
+        <target>That is not a passphrase this file can leave under. Several words, at least {minimum, number} characters.</target>
+      </trans-unit>
       <trans-unit id="archive.kept_for" resname="archive.kept_for">
         <source>archive.kept_for</source>
         <target>A file is kept for {days, plural, one {# day} other {# days}}, then deleted.</target>
