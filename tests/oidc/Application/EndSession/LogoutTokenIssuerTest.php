@@ -19,8 +19,10 @@ use Beffroi\Oidc\Domain\Client\RedirectUri;
 use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use Beffroi\Oidc\Tests\Fixture\ClientEncryption;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeLogoutTokenDelivery;
 use Beffroi\Oidc\Tests\Fixture\Jwts;
 use Beffroi\Oidc\Tests\Fixture\Methods;
+use DateInterval;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
@@ -32,7 +34,19 @@ use Beffroi\Oidc\Tests\Fixture\Shapes;
  */
 final class LogoutTokenIssuerTest extends TestCase
 {
-    private const array MANDATORY = ['iss', 'aud', 'iat'];
+    /**
+     * What a relying party asks of the token before it reads a claim of it (Back-Channel Logout 1.0 §2.6,
+     * which asks for "exp" to be checked the way the one of an ID token is): every test of this class
+     * therefore proves the token passes a checker that requires it, which is what refused the token of a
+     * provider that sent none (issue #495).
+     */
+    private const array MANDATORY = ['iss', 'aud', 'iat', 'exp'];
+
+    /**
+     * The patience of the sender the delivery of this test is wired with, which is what the "exp" of the
+     * token is set from.
+     */
+    private const int BUDGET = 200;
 
     private AuthenticationSession $session;
 
@@ -47,7 +61,13 @@ final class LogoutTokenIssuerTest extends TestCase
         $this->session = Fixtures::session();
         $this->client = Clients::withBackChannelLogout($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new LogoutTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator());
+        $this->issuer = new LogoutTokenIssuer(
+            $this->jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            new FakeLogoutTokenDelivery(new DateInterval('PT' . self::BUDGET . 'S')),
+        );
     }
 
     /**
@@ -144,12 +164,31 @@ final class LogoutTokenIssuerTest extends TestCase
         ['claims' => $claims] = $this->jwts->verify($token, 'spa', Fixtures::now(), self::MANDATORY);
 
         // Then
-        static::assertSame(['iss', 'sub', 'aud', 'iat', 'jti', 'events', 'sid'], array_keys($claims));
+        static::assertSame(['iss', 'sub', 'aud', 'iat', 'exp', 'jti', 'events', 'sid'], array_keys($claims));
         static::assertSame('https://id.acme.example', $claims['iss']);
         static::assertSame('alice-subject', $claims['sub']);
         static::assertSame('spa', $claims['aud']);
         static::assertSame(Fixtures::now()->getTimestamp(), $claims['iat']);
         static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.4 requires an "exp", and the instant is the end of the delivery this
+     * provider is willing to attempt: a token still being tried again is still valid, and one that
+     * arrives after the sender gave up is refused by whoever receives it. The claim and the patience of
+     * the sender are therefore the same number, read where it is set (issue #155).
+     */
+    #[Test]
+    public function theTokenExpiresWhenTheProviderStopsTryingToDeliverIt(): void
+    {
+        // Given
+        $token = $this->issuer->issue($this->client, $this->session, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token, 'spa', Fixtures::now(), self::MANDATORY);
+
+        // Then
+        static::assertSame(Fixtures::now()->getTimestamp() + self::BUDGET, $claims['exp']);
     }
 
     /**

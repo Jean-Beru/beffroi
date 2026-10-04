@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\EndSession;
 
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use DateInterval;
 use function array_map;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
@@ -17,6 +18,7 @@ use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeLogoutTokenDelivery;
 use Beffroi\Oidc\Tests\Fixture\Jwts;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
@@ -49,6 +51,7 @@ final class BackChannelLogoutTest extends TestCase
                 Subjects::publicKind(),
                 Algorithms::all(),
                 new SymfonyUuidGenerator(),
+                new FakeLogoutTokenDelivery(new DateInterval('PT200S')),
             ),
             $this->events,
             new MockClock(Fixtures::now()),
