@@ -7,6 +7,7 @@ namespace Beffroi\Bundle;
 use function is_a;
 use function dirname;
 use Beffroi\Bundle\Doctrine\Type\ActorType;
+use Beffroi\Bundle\Messenger\MessengerContract;
 use Beffroi\Bundle\Doctrine\Type\AddressType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
@@ -289,6 +290,24 @@ final class BeffroiBundle extends AbstractBundle
                         ],
                     ],
                 ],
+            ]);
+        }
+        // The three buses, their middleware and where each marker is sent are the contract of this
+        // provider and not a preference of an operator (issue #456, architecture §5.6): an installation
+        // that wires them itself and gets "dispatch_after_current_bus" or "doctrine_transaction" wrong
+        // breaks the asynchronous half of the provider, quietly. What is left to an application is its
+        // transports, and the lanes default to the database so that a new installation needs no broker.
+        if ($builder->hasExtension('messenger')) {
+            if (! $builder->hasParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')')) {
+                $builder->setParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')', MessengerContract::DEFAULT_DSN);
+            }
+            $builder->prependExtensionConfig('messenger', MessengerContract::configuration());
+        }
+        // The recurring messages of the schedule are routed by their class like every other message, and
+        // not handled inside the worker that ticks: the worker that holds the clock only says when.
+        if ($builder->hasExtension('scheduler')) {
+            $builder->prependExtensionConfig('scheduler', [
+                'use_messenger_routing' => true,
             ]);
         }
         if ($builder->hasExtension('doctrine_migrations')) {

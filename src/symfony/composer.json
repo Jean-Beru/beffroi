@@ -33,6 +33,7 @@
         "symfony/console": "^8.1",
         "symfony/dependency-injection": "8.2.*",
         "symfony/doctrine-bridge": "8.2.*",
+        "symfony/doctrine-messenger": "8.2.*",
         "symfony/doctrine-dbal-key-management": "8.2.*",
         "symfony/doctrine-orm-key-management": "8.2.*",
         "symfony/event-dispatcher": "8.2.*",
