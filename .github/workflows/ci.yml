@@ -51,7 +51,7 @@ jobs:
           fi
 
   quality:
-    name: "1️⃣ Quality (PHPStan, Mago, Rector, composer.json, syntax, licenses, Deptrac)"
+    name: "1️⃣ Quality (PHPStan, Mago, Rector, composer.json, licenses, Deptrac)"
     needs: [pre_checks]
     runs-on: ubuntu-latest
     container:
