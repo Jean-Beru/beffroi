@@ -142,13 +142,12 @@ final readonly class KeysSection extends ConfigurationSection
             TenantDataKeyStores::TABLE,
             null,
         ]);
-        // The row is read here and not asked of the store, which would open the key once to hand back a
-        // handle and leave BlindIndex to open it again: decision 0018 counts one opening per data key and
-        // per thread. Declared by its class so that what looks a user up is autowired with it
+        // The store opens the index key of a tenant once and every index over it costs that one opening,
+        // which is what decision 0018 counts; the table is read for the reference of its first row and for
+        // nothing else. Declared by its class so that what looks a user up is autowired with it
         // (DoctrineUserRepository).
         $services->set(TenantBlindIndexes::class)->args([
             service(Connection::class),
-            tagged_locator('key_management.client', 'key'),
             service('beffroi.data_keys.index'),
             service(TenantProvider::class),
             TenantDataKeyStores::TABLE,
