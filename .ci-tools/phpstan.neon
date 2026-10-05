@@ -1,5 +1,12 @@
 parameters:
 	level: max
+	# The result cache, which holds the errors of a file and the symbols it depends on, so that a run
+	# analyses only what changed. The directory is of the repository and not the temporary one of the
+	# system, which is where the CI keeps it from one run to the next (ci.yml) and which a container of
+	# the QA image does not carry over. PHPStan validates the cache against a fingerprint of this
+	# configuration, the baseline, the PHP version and the files it analysed, and drops it whole when one
+	# of them moves, so nothing here has to be invalidated by hand.
+	tmpDir: %currentWorkingDirectory%/.ci-tools/cache/phpstan
 	scanDirectories:
 		- %rootDir%/../../../../phpunit/vendor
 		- %currentWorkingDirectory%/vendor
