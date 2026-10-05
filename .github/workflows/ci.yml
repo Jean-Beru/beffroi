@@ -74,20 +74,37 @@ jobs:
         with:
           dependency-versions: highest
           composer-options: --optimize-autoloader
-      # Rector keeps a hash per file (.ci-tools/rector.php names the directory) and re-reads only what
-      # changed; in a dry run it caches a file it leaves alone and never one it would rewrite. Its own
-      # ChangedFilesDetector drops the whole cache when the snapshot of the configuration changes, so
-      # the key below only has to follow the version of the binary, which the rolling tag of the image
-      # moves without the configuration saying anything. The run of a pull request restores what the
-      # maintenance branch left and writes an entry of its own, which expires with the branch.
-      - name: "Version of Rector"
-        id: rector
-        run: echo "version=$(rector --version | head -1 | tr -cd '0-9.')" >> "$GITHUB_OUTPUT"
+      # Rector and PHPStan each re-read only what changed, given the cache of the run before them. Rector
+      # keeps a hash per file and, in a dry run, caches a file it leaves alone and never one it would
+      # rewrite; PHPStan keeps the errors of a file and the symbols it depends on. Both name their cache
+      # directory in their own configuration under .ci-tools/cache, and both drop the cache themselves
+      # when what they fingerprint moves: the snapshot of its configuration for Rector, and for PHPStan
+      # the configuration, the baseline, the PHP version and the files it analysed. So the keys below
+      # only have to follow the version of the binary, which the rolling tag of the image moves without
+      # a configuration saying anything. The run of a pull request restores what the maintenance branch
+      # left and writes an entry of its own, which expires with the branch.
+      - name: "Versions of the tools that cache"
+        id: tools
+        run: |
+          {
+            echo "rector=$(rector --version | head -1 | tr -cd '0-9.')"
+            echo "phpstan=$(phpstan --version | head -1 | tr -cd '0-9.')"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: .ci-tools/cache/rector
-          key: "rector-${{ steps.rector.outputs.version }}-${{ hashFiles('.ci-tools/rector.php') }}-${{ github.sha }}"
-          restore-keys: "rector-${{ steps.rector.outputs.version }}-${{ hashFiles('.ci-tools/rector.php') }}-"
+          key: "rector-${{ steps.tools.outputs.rector }}-${{ hashFiles('.ci-tools/rector.php') }}-${{ github.sha }}"
+          restore-keys: "rector-${{ steps.tools.outputs.rector }}-${{ hashFiles('.ci-tools/rector.php') }}-"
+      # Of what PHPStan writes, only the result cache is kept: its directory is 155 MB, 123 MB of which is
+      # the parser and reflection cache of every analysed file, and restoring that file alone runs the
+      # analysis in the same time as restoring the whole directory (4.7 s against 5.1 s, 23.8 s with
+      # nothing, 6.2 s with one source file changed, on one machine). It compresses to 2.3 MB, so the
+      # 10 GB a repository is given is not spent on entries nobody reads.
+      - uses: actions/cache@v6
+        with:
+          path: .ci-tools/cache/phpstan/resultCache.php
+          key: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan.neon', '.ci-tools/phpstan-baseline.neon') }}-${{ github.sha }}"
+          restore-keys: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan.neon', '.ci-tools/phpstan-baseline.neon') }}-"
       - name: "Static Analysis (PHPStan)"
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: castor phpstan
