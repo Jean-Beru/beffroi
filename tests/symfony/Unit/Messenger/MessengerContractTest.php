@@ -18,6 +18,7 @@ use Beffroi\Bundle\Messenger\MessengerContract;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Symfony\Component\Messenger\MessengerBundle;
 use function count;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -99,16 +100,14 @@ final class MessengerContractTest extends TestCase
     }
 
     /**
-     * The two the issue names, because an installation that gets either wrong breaks the asynchronous half
-     * of the provider: an event announced from a handler has to leave after that handler committed, and a
-     * use case has to be one unit of work.
+     * A use case is one unit of work, and it is the last entry of the list that makes it one: everything a
+     * handler does happens inside the transaction, and nothing of this provider runs after the commit on
+     * this bus.
      */
     #[Test]
     public function theCommandBusCarriesWhatMakesAUseCaseOneUnitOfWork(): void
     {
         // When / Then
-        static::assertContains('dispatch_after_current_bus', MessengerContract::COMMAND_MIDDLEWARE);
-        static::assertContains('doctrine_transaction', MessengerContract::COMMAND_MIDDLEWARE);
         static::assertSame('doctrine_transaction', MessengerContract::COMMAND_MIDDLEWARE[count(MessengerContract::COMMAND_MIDDLEWARE) - 1]);
     }
 
@@ -126,6 +125,65 @@ final class MessengerContractTest extends TestCase
         foreach ($counts as $middleware => $times) {
             static::assertSame(1, $times, (string) $middleware);
         }
+    }
+
+    /**
+     * Messenger puts its default middleware in front of what a bus lists, so an entry of that chain named
+     * again runs twice (issue #493). `dispatch_after_current_bus` is the one that matters here: it is what
+     * makes an event announced from a handler leave after that handler committed, and it is in the chain
+     * without being named.
+     */
+    #[Test]
+    #[DataProvider('provideDefaultMiddleware')]
+    public function theCommandBusNamesNothingTheDefaultsAlreadyCarry(string $middleware): void
+    {
+        // When / Then
+        static::assertNotContains($middleware, MessengerContract::COMMAND_MIDDLEWARE);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideDefaultMiddleware(): iterable
+    {
+        yield 'add_bus_name_stamp_middleware' => ['add_bus_name_stamp_middleware'];
+        yield 'dispatch_after_current_bus' => ['dispatch_after_current_bus'];
+        yield 'failed_message_processing_middleware' => ['failed_message_processing_middleware'];
+        yield 'send_message' => ['send_message'];
+        yield 'handle_message' => ['handle_message'];
+    }
+
+    /**
+     * What the deferral of an event rests on, now that no bus names it: the default middleware is on
+     * everywhere. `allow_no_handlers` keeps it on and only lets an event nothing listens to yet be
+     * announced all the same; `false` would take `dispatch_after_current_bus` out of the chain.
+     */
+    #[Test]
+    public function noBusTurnsTheDefaultMiddlewareOff(): void
+    {
+        // When
+        $buses = self::buses();
+
+        // Then
+        $command = $buses['command.bus'];
+        $event = $buses['event.bus'];
+        static::assertIsArray($command);
+        static::assertIsArray($event);
+        static::assertNull($buses['query.bus']);
+        static::assertArrayNotHasKey('default_middleware', $command);
+        static::assertSame('allow_no_handlers', $event['default_middleware'] ?? null);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function buses(): array
+    {
+        $buses = MessengerContract::configuration()['buses'] ?? null;
+        static::assertIsArray($buses);
+
+        /** @var array<string, mixed> $buses */
+        return $buses;
     }
 
     /**

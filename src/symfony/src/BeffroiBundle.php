@@ -294,7 +294,7 @@ final class BeffroiBundle extends AbstractBundle
         }
         // The three buses, their middleware and where each marker is sent are the contract of this
         // provider and not a preference of an operator (issue #456, architecture §5.6): an installation
-        // that wires them itself and gets "dispatch_after_current_bus" or "doctrine_transaction" wrong
+        // that wires them itself and turns the default middleware off or gets "doctrine_transaction" wrong
         // breaks the asynchronous half of the provider, quietly. What is left to an application is its
         // transports, and the lanes default to the database so that a new installation needs no broker.
         if ($builder->hasExtension('messenger')) {

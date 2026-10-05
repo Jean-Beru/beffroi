@@ -15,12 +15,13 @@ use Beffroi\Core\Domain\Event\DomainEventInterface;
  * The buses of this provider, their middleware and where each marker is sent (architecture §5.6), written
  * here and prepended by the bundle (issue #456).
  *
- * **It is a contract and not a preference.** `dispatch_after_current_bus` is what makes an event announced
- * from a handler leave after the transaction of that handler committed, and `doctrine_transaction` is what
- * makes a use case one unit of work: an installation that wires the three buses itself and gets either of
- * them wrong breaks the asynchronous half of the provider, and it breaks it quietly, in the half nothing
- * in a browser shows. So the bundle says it and an application is left with what is actually its own, the
- * transports, which is where a broker and its credentials live.
+ * **It is a contract and not a preference.** `doctrine_transaction` is what makes a use case one unit of
+ * work, and the default middleware of Messenger, which no bus here turns off, is what makes an event
+ * announced from a handler leave after the transaction of that handler committed
+ * (`dispatch_after_current_bus`): an installation that wires the three buses itself and gets either wrong
+ * breaks the asynchronous half of the provider, and it breaks it quietly, in the half nothing in a browser
+ * shows. So the bundle says it and an application is left with what is actually its own, the transports,
+ * which is where a broker and its credentials live.
  *
  * **One marker, one transport.** Messenger sends a message to every transport its class, its parents and
  * its interfaces are routed to, so two markers on one class send it twice. That is why each marker below
@@ -71,24 +72,20 @@ final readonly class MessengerContract
      * are final classes without logic that carry no constraint for it to check. An application that
      * validates its own messages adds it to this bus itself.
      *
-     * `dispatch_after_current_bus` is restated although the default middleware already carries it, which
-     * `default_middleware.enabled` leaves on: the chain is the one this provider has run on since spike 1,
-     * and taking the restatement out is a change of behaviour and not of place (issue #493).
+     * **What is here is what the defaults do not carry.** `default_middleware` stays enabled, so Messenger
+     * puts `add_bus_name_stamp_middleware`, `dispatch_after_current_bus` and
+     * `failed_message_processing_middleware` in front of this list and `handle_message` behind it: an event
+     * announced from a handler leaves after that handler committed without this list naming it, and naming
+     * it again would run it twice (issue #493).
      *
      * @var list<string>
      */
     public const array COMMAND_MIDDLEWARE = [
-        'dispatch_after_current_bus',
         'router_context',
         'doctrine_ping_connection',
         'doctrine_close_connection',
         'doctrine_transaction',
     ];
-
-    /**
-     * @var list<string>
-     */
-    public const array EVENT_MIDDLEWARE = ['dispatch_after_current_bus'];
 
     /**
      * Where each marker is sent. The events of the core and of the module are routed by the interface they
@@ -140,8 +137,9 @@ final readonly class MessengerContract
                 'command.bus' => [
                     'middleware' => self::COMMAND_MIDDLEWARE,
                 ],
+                // Nothing of its own: the defaults carry the deferral it needs, and "allow_no_handlers"
+                // is what lets an event nothing listens to yet be announced all the same.
                 'event.bus' => [
-                    'middleware' => self::EVENT_MIDDLEWARE,
                     'default_middleware' => 'allow_no_handlers',
                 ],
             ],
