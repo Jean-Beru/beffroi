@@ -30,6 +30,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\PendingLogin;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Core\Tests\Fixture\FakeAttemptLimiter;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -70,19 +71,32 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->users = new InMemoryUserRepository();
         $this->users->save($this->alice);
         $this->credentials = new InMemoryCredentialRepository();
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, new NativePasswordHasher()->hash('correct horse'), Fixtures::now()));
+        $hasher = new FakePasswordHasher();
+        $this->credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, $hasher->hash('correct horse'), Fixtures::now()));
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->events = new RecordingEventDispatcher();
         $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $hasher = new NativePasswordHasher();
-        $this->authenticator = new PasswordAuthenticator(
+        $this->authenticator = $this->authenticatorOn($hasher);
+    }
+
+    /**
+     * The authenticator on a hasher the test names. What belongs to the authenticator takes the cheap
+     * hasher of the fixtures: Argon2id at the cost RFC 9106 §4 asks for is paid for the stored
+     * credential and once more for the decoy hash of every refusal, and what it proves of that cost is
+     * NativePasswordHasherTest's. The two tests whose subject is the stored hash take the native one.
+     */
+    private function authenticatorOn(
+        PasswordHasherInterface $hasher,
+        ?FakeAttemptLimiter $attempts = null,
+    ): PasswordAuthenticator {
+        return new PasswordAuthenticator(
             $this->users,
             $this->credentials,
             $hasher,
             new DecoyHash($hasher, new SymfonyUuidGenerator()),
             new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
-            $this->attempts,
+            $attempts ?? $this->attempts,
             new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
             new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
@@ -342,7 +356,7 @@ final class PasswordAuthenticatorTest extends TestCase
         );
 
         // When
-        $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
+        $this->authenticatorOn(new NativePasswordHasher())->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
 
         // Then
         $credential = $this->credentials->findByUser($carol, PasswordCredential::class)[0];
@@ -367,7 +381,7 @@ final class PasswordAuthenticatorTest extends TestCase
         );
 
         // When
-        $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
+        $this->authenticatorOn(new NativePasswordHasher())->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
 
         // Then
         static::assertCount(1, $this->events->of(PasswordRehashed::class));
@@ -437,18 +451,7 @@ final class PasswordAuthenticatorTest extends TestCase
         // Given
         $this->users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $hasher = new FakePasswordHasher();
-        $authenticator = new PasswordAuthenticator(
-            $this->users,
-            $this->credentials,
-            $hasher,
-            new DecoyHash($hasher, new SymfonyUuidGenerator()),
-            new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
-            new FakeAttemptLimiter($allowedAttempts),
-            new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
-            new AuthenticationRefusal($this->clock, $this->events),
-            $this->clock,
-            $this->events,
-        );
+        $authenticator = $this->authenticatorOn($hasher, new FakeAttemptLimiter($allowedAttempts));
 
         // When
         try {
