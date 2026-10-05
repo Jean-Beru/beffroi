@@ -1,0 +1,90 @@
+name: Mutation Testing
+
+# The mutation score of the whole source is the one thing "ci.yml" cannot ask for. Its "infection" job
+# mutates the lines of an event, a pull request against its base branch and a push against the commit
+# before it, because that is all a merge can be made to wait for. Mutating "src/core/src" and
+# "src/oidc/src" entire takes hours: every mutant runs the test cases that cover its line, and the
+# functional tests cover most of the source. So it is a workflow of its own, asked for by hand and run
+# once a week, and no merge waits on it.
+#
+# It is the lean CI rule "conformance.yml" states, applied once more: what does not have to be paid on
+# every event is not, and the week is what catches what no event looked at. Here what no event looks at
+# is a mutant on a line nobody has touched since the line was written.
+#
+# The schedule runs on the default branch, which "auto-switch-default-branch.yml" keeps pointed at the
+# newest maintenance branch; a dispatch runs on whatever branch it is given. Saturday and not Monday, as
+# the certification plans have: the run holds a runner for hours and nothing of the week waits on it.
+#
+# Nothing gates on the score. The two thresholds are inputs, zero by default, so a run reports and fails
+# only on an error of its own; naming a floor is a decision, and the figure to name one from is what
+# these runs are here to give.
+
+on:
+  schedule:
+    # Saturday 01:29 UTC. The minute is off the top of the hour, which is when the scheduler of GitHub is
+    # at its busiest.
+    - cron: '29 1 * * 6'
+  workflow_dispatch:
+    inputs:
+      min_msi:
+        description: 'Fail below this mutation score indicator, in percent; 0 reports without failing on it'
+        type: number
+        required: false
+        default: 0
+      min_covered_msi:
+        description: 'Fail below this mutation score indicator of the covered code, in percent; 0 reports without failing on it'
+        type: number
+        required: false
+        default: 0
+      threads:
+        description: 'Mutant processes in parallel; "max" is the cores of the runner minus one'
+        type: string
+        required: false
+        default: '2'
+
+# One run at a time per branch, and a run already going is never cancelled: hours of mutants are not
+# thrown away because somebody asked for a second one, and the weekly run does not kill what a human
+# started.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mutation:
+    name: "Mutation Testing (beffroi/core and beffroi/oidc, the whole source)"
+    runs-on: ubuntu-latest
+    # The ceiling GitHub gives a job on a hosted runner. What the run costs of it is one of the things
+    # these runs are here to tell.
+    timeout-minutes: 360
+    container:
+      image: ghcr.io/spomky-labs/phpqa:8.5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ramsey/composer-install@v4
+        with:
+          dependency-versions: highest
+          composer-options: --optimize-autoloader
+      # "castor infect" runs the suite itself for the coverage Infection reads: this workflow stands on its
+      # own, with no job beside it to take an artifact from. Two threads for the reason the "infection" job
+      # of "ci.yml" gives, which is that "max" leaves one of the two cores of the runner idle. Every input
+      # reaches the task through the environment and is never expanded into this script by the template
+      # engine; a schedule sends none, and the fallbacks below are what it runs with.
+      - name: "Mutate the whole source"
+        env:
+          MIN_MSI: ${{ inputs.min_msi }}
+          MIN_COVERED_MSI: ${{ inputs.min_covered_msi }}
+          THREADS: ${{ inputs.threads }}
+        run: |
+          castor infect \
+            --min-msi="${MIN_MSI:-0}" \
+            --min-covered-msi="${MIN_COVERED_MSI:-0}" \
+            --threads="${THREADS:-2}"
+      # The text log "infection.json.dist" names: which mutant escaped, on which line, and what it changed.
+      # Kept whatever the outcome, a red run being the one whose log is read.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: infection-log
+          path: .ci-tools/infection.txt
+          retention-days: 30
+          if-no-files-found: error

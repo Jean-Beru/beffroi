@@ -7,6 +7,11 @@ on:
     tags: ['*']
   pull_request: ~
   workflow_dispatch: ~
+  schedule:
+    # Monday 02:11 UTC, ahead of the certification plans of "conformance.yml" at 03:17: the state of the
+    # maintenance branch is there when the week starts. The minute is off the top of the hour, which is
+    # when the scheduler of GitHub is at its busiest.
+    - cron: '11 2 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -25,9 +30,15 @@ concurrency:
 # start as soon as the pre-checks pass, and only the mutations wait, for the coverage the tests
 # upload. The time of a pull request is the longest of the three, not their sum.
 #
-# The certification plans are not here: they are "conformance.yml", asked for by hand and run once a
-# week. They drive a real browser through a real OP for twenty-odd minutes whatever the change, and
-# nothing of this workflow reads their result, so no merge waits on them.
+# The week is a run of its own: nothing of this workflow fires unless somebody pushes, and the quality
+# and test jobs install "dependency-versions: highest" on a rolling image tag, the application following
+# the dev branches of Symfony until release. What moves under the branch therefore turns it red with no
+# commit to blame, and the schedule is what reads that before the next person to push does. A schedule
+# carries no diff of its own, so the mutation job below runs on none.
+#
+# What is not here: the certification plans, which are "conformance.yml", and the whole source mutated,
+# which is "mutation.yml". Both are asked for by hand and run once a week, both take far longer than this
+# workflow, and nothing here reads their result, so no merge waits on them.
 
 jobs:
   pre_checks:
@@ -172,8 +183,8 @@ jobs:
     name: "3️⃣ Mutation Testing"
     needs: [tests]
     # Every run mutates only the lines added or modified: a pull request against its base branch, a push against
-    # the commit before it (the pull request just merged). The whole source takes hours with the functional tests
-    # covering most of it; "castor infect" without --diff stays a local, deliberate run.
+    # the commit before it (the pull request just merged). A schedule has neither and runs none of this; the whole
+    # source, which takes hours with the functional tests covering most of it, is "mutation.yml".
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && endsWith(github.ref, '.x') && github.event.before != '0000000000000000000000000000000000000000')
     runs-on: ubuntu-latest
     container:
