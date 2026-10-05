@@ -13,7 +13,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\KeyManagement\BlindIndexInterface;
-use Symfony\Component\KeyManagement\Test\InMemoryKms;
+use Symfony\Component\KeyManagement\Test\InMemoryDataKeyStore;
 
 /**
  * Decision 0011: what of a value is actually indexed is a rule of the column and not of the call sites,
@@ -73,12 +73,12 @@ final class BlindIndexedColumnsTest extends TestCase
     public function theTwoColumnsOfOneTenantDoNotShareTheirTagForOneValue(): void
     {
         // Given
-        $kms = new InMemoryKms();
-        $wrapped = $kms->generateDataKey('acme.blind_index')->wrapped;
+        $store = new InMemoryDataKeyStore();
+        $reference = $store->current('acme.blind_index')->reference;
 
         // When
-        $username = BlindIndexedColumns::of(User::class, 'username')->index($kms, $wrapped);
-        $email = BlindIndexedColumns::of(User::class, 'email')->index($kms, $wrapped);
+        $username = BlindIndexedColumns::of(User::class, 'username')->index($store, $reference);
+        $email = BlindIndexedColumns::of(User::class, 'email')->index($store, $reference);
 
         // Then
         static::assertNotSame($username->of('ada@example.org'), $email->of('ada@example.org'));
@@ -127,8 +127,8 @@ final class BlindIndexedColumnsTest extends TestCase
 
     private static function index(string $property): BlindIndexInterface
     {
-        $kms = new InMemoryKms();
+        $store = new InMemoryDataKeyStore();
 
-        return BlindIndexedColumns::of(User::class, $property)->index($kms, $kms->generateDataKey('acme.blind_index')->wrapped);
+        return BlindIndexedColumns::of(User::class, $property)->index($store, $store->current('acme.blind_index')->reference);
     }
 }

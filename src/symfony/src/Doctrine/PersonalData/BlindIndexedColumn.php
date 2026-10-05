@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\PersonalData;
 
-use Symfony\Component\KeyManagement\BlindIndex;
 use Symfony\Component\KeyManagement\BlindIndex\ProjectionInterface;
 use Symfony\Component\KeyManagement\BlindIndexInterface;
-use Symfony\Component\KeyManagement\Ciphertext;
-use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
+use Symfony\Component\KeyManagement\DataKeyStoreInterface;
+use Symfony\Component\KeyManagement\StoredKeyBlindIndex;
 
 /**
  * One sealed column and the sibling column that holds its blind index (decision 0011).
@@ -42,7 +41,8 @@ final readonly class BlindIndexedColumn
     }
 
     /**
-     * The index of one tenant for this column, over the index key that tenant's KMS wrapped.
+     * The index of one tenant for this column, over the index key the store holds under that reference. The
+     * store is what opens it, so every index over that key costs the one opening it did (decision 0018).
      *
      * **An index is named after the column its tags are written to.** The name is what separates the tags
      * of one index from those of every other index over the same data key, and the key of a tenant serves
@@ -52,8 +52,8 @@ final readonly class BlindIndexedColumn
      * name that changes is a reindexing of every row already written, and a column that is renamed is a
      * migration that rewrites it anyway.
      */
-    public function index(DataKeyGeneratorInterface $kms, Ciphertext $wrapped): BlindIndexInterface
+    public function index(DataKeyStoreInterface $store, string $reference): BlindIndexInterface
     {
-        return new BlindIndex($kms, $wrapped, $this->tag, $this->projection);
+        return new StoredKeyBlindIndex($store, $reference, $this->tag, $this->projection);
     }
 }

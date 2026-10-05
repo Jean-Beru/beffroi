@@ -9,13 +9,10 @@ use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AmbientTenantInterface;
 use function is_resource;
 use function is_string;
-use Psr\Container\ContainerInterface;
 use SensitiveParameter;
 use function sprintf;
 use function stream_get_contents;
 use Symfony\Component\KeyManagement\BlindIndexInterface;
-use Symfony\Component\KeyManagement\Ciphertext;
-use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
 use Symfony\Component\KeyManagement\DataKeyStoreInterface;
 use Throwable;
 
@@ -29,17 +26,17 @@ use Throwable;
  * along when a deployment changes master key or backend, which is the fourth success criterion of the
  * spike, with no second command to forget.
  *
- * **The row is read here rather than asked of the store.** `BlindIndex` takes a wrapped key and unwraps it
- * itself, and no method of the store hands a wrapped key back: `current()` returns a handle, having
- * unwrapped it already, so going through it would open one key twice where decision 0018 counts one
- * opening per data key and per thread. The store is only asked when the row is missing, which happens once
- * in the life of a tenant and which mints rather than opens. That a store cannot hand back the wrapped key
- * of a scope is the third thing this spike asks of the bridges, and it is written in decision 0018 rather
- * than worked around quietly.
+ * **The key is opened by the store, once for every index over it.** `StoredKeyBlindIndex` derives its tags
+ * under a data key the store holds and names it by reference, so the four columns of a tenant share the one
+ * opening that store did, which is what decision 0018 counts: one opening per data key and per thread. The
+ * store is asked for the row only when there is none, which happens once in the life of a tenant and which
+ * mints rather than opens.
  *
- * **The key of a scope is its first row and not its newest**, which is the one place this reads the table
- * differently from the store. A second row in an index scope is a rotation nothing asked for, and reading
- * it would leave every tag already written unreachable; reading the first keeps them.
+ * **By reference and not by scope**, which is also what the component asks of a caller: `current()` is free
+ * to retire a key and mint another, and for an index that would leave every tag already written unreachable.
+ * The reference is read from the table, and it is that of the **first** row of the scope and not of its
+ * newest, which is the one place this reads the table differently from the store: a second row in an index
+ * scope is a rotation nothing asked for, and the first is the one every tag was derived under.
  *
  * One index per tenant and per column, built at its first use and held for as long as this object,
  * which is as long as the process: nothing here carries `kernel.reset`, for the reason decision 0018 gives
@@ -54,13 +51,11 @@ final class TenantBlindIndexes
     private array $indexes = [];
 
     /**
-     * @param ContainerInterface $clients the KMS clients of the deployment, by the name the configuration
-     *                                    gives them, so that a row is unwrapped by whoever wrapped it
-     * @param DataKeyStoreInterface $store the store of the index scopes, the one whose keys never retire
+     * @param DataKeyStoreInterface $store the store of the index scopes, the one whose keys never retire,
+     *                                     and the one that opens a row for every index over it
      */
     public function __construct(
         private readonly Connection $connection,
-        private readonly ContainerInterface $clients,
         private readonly DataKeyStoreInterface $store,
         private readonly AmbientTenantInterface $tenants,
         private readonly string $table,
@@ -80,74 +75,38 @@ final class TenantBlindIndexes
     private function build(string $slug, BlindIndexedColumn $column): BlindIndexInterface
     {
         $scope = TenantScopedEncrypter::scope($slug, BlindIndexedColumns::SCOPE);
-        $row = $this->row($scope);
+        $reference = $this->reference($scope);
 
-        if ($row === null) {
+        if ($reference === null) {
             // The scope has no key yet. Asking the store for its current one mints it, which costs the KMS
             // a generation and not an opening, and the row is then there to be read.
             $this->store->current($scope);
-            $row = $this->row($scope) ?? throw new RuntimeException(sprintf(
+            $reference = $this->reference($scope) ?? throw new RuntimeException(sprintf(
                 'The data key store minted no row for the index scope "%s", so no blind index can be derived for that tenant.',
                 $scope,
             ));
         }
 
-        [$wrapped, $client] = $row;
-
-        return $column->index($this->generator($client), $wrapped);
+        return $column->index($this->store, $reference);
     }
 
     /**
-     * The wrapped index key of a scope and the client that can open it, or null when the scope has none.
-     *
-     * @return array{Ciphertext, string}|null
-     *
-     * @throws RuntimeException if the row says nothing of what wrapped it
+     * The reference of the index key of a scope, which is that of its first row, or null when the scope has
+     * no row at all.
      */
-    private function row(string $scope): ?array
+    private function reference(string $scope): ?string
     {
-        $row = $this->connection
+        $reference = $this->connection
             ->createQueryBuilder()
-            ->select('key_material', 'master_key_id', 'client')
+            ->select('id')
             ->from($this->table)
             ->where('scope = :scope')
             ->setParameter('scope', $scope)
             ->orderBy('id', 'ASC')
             ->setMaxResults(1)
-            ->fetchAssociative();
+            ->fetchOne();
 
-        if ($row === false) {
-            return null;
-        }
-
-        $masterKeyId = $row['master_key_id'];
-        $client = $row['client'];
-
-        if (! is_string($masterKeyId) || ! is_string($client)) {
-            throw new RuntimeException(sprintf(
-                'The row of the index scope "%s" names no master key or no KMS client, so nothing can open it: a data key is unwrapped by whoever wrapped it.',
-                $scope,
-            ));
-        }
-
-        return [new Ciphertext(self::bytes($row['key_material']), $masterKeyId), $client];
-    }
-
-    /**
-     * @throws RuntimeException when the row names a client this deployment does not have
-     */
-    private function generator(string $client): DataKeyGeneratorInterface
-    {
-        $kms = $this->clients->has($client) ? $this->clients->get($client) : null;
-
-        if (! $kms instanceof DataKeyGeneratorInterface) {
-            throw new RuntimeException(sprintf(
-                'The index key of this tenant was wrapped by the KMS client "%s", which this deployment does not have, so no blind index can be derived: configure that client, or rewrap the row with "key-management:rewrap-data-keys".',
-                $client,
-            ));
-        }
-
-        return $kms;
+        return $reference === false ? null : self::bytes($reference);
     }
 
     /**

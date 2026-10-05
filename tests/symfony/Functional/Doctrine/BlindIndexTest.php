@@ -14,10 +14,7 @@ use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
-use Psr\Container\ContainerInterface;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Component\DependencyInjection\ServiceLocator;
-use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
 
 /**
  * The index key of a tenant, where it lives and what it costs (decisions 0011 and 0018).
@@ -93,14 +90,13 @@ final class BlindIndexTest extends DatabaseTestCase
     }
 
     /**
-     * One key per tenant, and one opening per projection: `BlindIndex` takes a wrapped key and unwraps it
-     * itself, so the two projections of one tenant each open the one key of that tenant. Decision 0018
-     * counts one opening per data key, and this is the one place where the count is per projection; what
-     * would remove it is a `BlindIndex` that accepted an open handle, which is a change in the component
-     * (beffroi#418). The login journey touches one of the two, the lookup being by username.
+     * One key per tenant and one opening for every index over it: the store opens the row once and
+     * `StoredKeyBlindIndex` derives under the handle it holds, so the two columns of one tenant cost the
+     * opening of one and not of each. Decision 0018 counts one opening per data key and per thread, and
+     * this is where the count is read.
      */
     #[Test]
-    public function eachProjectionOpensTheOneIndexKeyOfTheTenantOnItsOwn(): void
+    public function thePairOfColumnsOfOneTenantCostsOneOpeningOfItsIndexKey(): void
     {
         // Given
         $indexes = self::indexesOf(self::tenant()->slug);
@@ -112,7 +108,7 @@ final class BlindIndexTest extends DatabaseTestCase
         // Then
         static::assertCount(1, self::scopes());
         static::assertSame(1, self::kms()->minted);
-        static::assertSame(2, self::kms()->unwrapped);
+        static::assertSame(1, self::kms()->unwrapped);
     }
 
     /**
@@ -144,7 +140,6 @@ final class BlindIndexTest extends DatabaseTestCase
         // Given
         $indexes = new TenantBlindIndexes(
             self::connection(),
-            self::clients(),
             self::store(),
             new AmbientTenant(null),
             TenantDataKeyStores::TABLE,
@@ -185,22 +180,10 @@ final class BlindIndexTest extends DatabaseTestCase
     {
         return new TenantBlindIndexes(
             self::connection(),
-            self::clients(),
             self::store(),
             new AmbientTenant(Fixtures::tenant($slug)),
             TenantDataKeyStores::TABLE,
         );
-    }
-
-    /**
-     * The one KMS client of this kernel, by the name the configuration gives it, which is the name every
-     * row of the store carries.
-     */
-    private static function clients(): ContainerInterface
-    {
-        return new ServiceLocator([
-            'test' => static fn (): DataKeyGeneratorInterface => self::service('test.beffroi.kms', DataKeyGeneratorInterface::class),
-        ]);
     }
 
     private static function store(): TenantDataKeyStores
