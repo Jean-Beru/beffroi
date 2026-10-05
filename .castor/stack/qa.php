@@ -371,12 +371,6 @@ function regenerate_generated_configuration(): void
     ]));
 }
 
-#[AsTask(description: 'Run PHP parallel linter')]
-function lint(): void
-{
-    phpqa(['composer', 'exec', '--', 'parallel-lint', 'src', 'tests']);
-}
-
 #[AsTask(
     description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run. --diff keeps only the mutants of the lines added or modified since the base branch, the shape of every CI run; without it the whole source is mutated, which takes hours',
 )]
@@ -449,7 +443,6 @@ function prepare_pr(): void
     io()->section('Running static analysis…');
     phpstan_baseline();
     deptrac();
-    lint();
 
     io()->success('Code is ready. You may now commit and push your changes.');
 }

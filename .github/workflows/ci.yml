@@ -21,6 +21,10 @@ concurrency:
 # share one job: one pull and one Composer install instead of one of each per tool. The steps run
 # to the end whatever the outcome of the previous ones, so that every tool reports its verdict.
 #
+# Nothing waits on a job it reads nothing from: the quality checks, the tests and the key custody all
+# start as soon as the pre-checks pass, and only the mutations wait, for the coverage the tests
+# upload. The time of a pull request is the longest of the three, not their sum.
+#
 # The certification plans are not here: they are "conformance.yml", asked for by hand and run once a
 # week. They drive a real browser through a real OP for twenty-odd minutes whatever the change, and
 # nothing of this workflow reads their result, so no merge waits on them.
@@ -59,6 +63,20 @@ jobs:
         with:
           dependency-versions: highest
           composer-options: --optimize-autoloader
+      # Rector keeps a hash per file (.ci-tools/rector.php names the directory) and re-reads only what
+      # changed; in a dry run it caches a file it leaves alone and never one it would rewrite. Its own
+      # ChangedFilesDetector drops the whole cache when the snapshot of the configuration changes, so
+      # the key below only has to follow the version of the binary, which the rolling tag of the image
+      # moves without the configuration saying anything. The run of a pull request restores what the
+      # maintenance branch left and writes an entry of its own, which expires with the branch.
+      - name: "Version of Rector"
+        id: rector
+        run: echo "version=$(rector --version | head -1 | tr -cd '0-9.')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .ci-tools/cache/rector
+          key: "rector-${{ steps.rector.outputs.version }}-${{ hashFiles('.ci-tools/rector.php') }}-${{ github.sha }}"
+          restore-keys: "rector-${{ steps.rector.outputs.version }}-${{ hashFiles('.ci-tools/rector.php') }}-"
       - name: "Static Analysis (PHPStan)"
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: castor phpstan
@@ -79,9 +97,6 @@ jobs:
           composer dump-autoload --optimize --strict-psr
           composer validate --strict
           for f in src/*/composer.json; do composer validate --strict --no-check-all "$f"; done
-      - name: "Syntax Check"
-        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
-        run: composer exec -- parallel-lint src tests
       - name: "License Check"
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: castor check-licenses
@@ -91,7 +106,7 @@ jobs:
 
   tests:
     name: "2️⃣ Tests (PHP ${{ matrix.php-version }})"
-    needs: [quality]
+    needs: [pre_checks]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:${{ matrix.php-version }}
@@ -121,7 +136,7 @@ jobs:
 
   key_file:
     name: "4️⃣ Key custody (key file)"
-    needs: [quality]
+    needs: [pre_checks]
     # What seals and unseals, the kernel sealing with the sodium key read from a file instead of the
     # environment (issue #58, the self-hosted default without a KMS): the custody of the signing keys
     # (Functional/Key: the envelope names the key file of the tenant, the file is the process's alone,

@@ -32,6 +32,11 @@ $builder->withSkip([
     PreferPHPUnitThisCallRector::class,
 ]);
 $builder->withParallel();
+// A hash per file, so a run re-reads only what changed. The directory is of the repository and not of
+// the system temporary one, which is where the CI keeps it from one run to the next (ci.yml) and which
+// a container of the QA image does not carry over. Rector drops the whole cache itself when the
+// snapshot of this configuration changes, so nothing here has to be invalidated by hand.
+$builder->withCache(__DIR__ . '/cache/rector');
 $builder->withImportNames();
 
 return $builder;
