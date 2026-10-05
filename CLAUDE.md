@@ -97,7 +97,8 @@ castor deptrac / castor check-licenses
 castor config-reference / castor config-reference-fix   # apps/op/config/reference.php and apps/op/config/schema.json against the configuration trees of the bundles; boots the application (its own Composer install, host PHP, no QA image) and, like the formatter, the check fails rather than fixes
 castor prepare-pr         # mago-lint-fix, rector-fix, mago-format-fix, phpstan-baseline, deptrac
 castor infect --diff      # mutation testing of the lines changed since origin/HEAD (--base to change), what CI runs on every PR and push; --reuse-coverage skips the PHPUnit run when .ci-tools/coverage is fresh
-castor infect             # the whole source (core and oidc): hours, deliberate only
+castor infect             # the whole source (core and oidc): hours, taken deliberately
+gh workflow run mutation.yml [-f min_msi=N] [-f min_covered_msi=N] [-f threads=N]  # the same whole-source run on a runner, the workflow that also runs it every Saturday on the default branch; nothing gates on the score, the two thresholds being zero unless a dispatch names them
 ```
 
 Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `-i` on its own. `PHP_VERSION` picks the tag of the QA image and defaults to the PHP of the host; leave it alone, an 8.4 image is not what the tools are installed for.
