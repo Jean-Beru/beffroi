@@ -60,7 +60,7 @@ const DUMP_BACKENDS = [
     'sodium' => 'played: "castor provision --kms sodium", the default of a development stack',
     'file' => 'played: "castor provision --kms file", the self-hosted default without a KMS',
     'aws' => 'played: "castor start --kms aws" and "castor provision --kms aws", LocalStack',
-    'vault' => 'not playable yet: the data key store cannot wrap under a derived Transit key, which is the only kind docker/vault/init.sh creates, so the provision fails before a row is written (beffroi#420, fixed upstream in symfony/symfony#66527 and not released)',
+    'vault' => 'not playable yet: the data key store cannot wrap under a derived Transit key, which is the only kind docker/vault/init.sh creates, so the provision fails before a row is written (beffroi#420, open: the store calls generateDataKey() on two arguments where the interface takes an AAD as its third)',
 ];
 
 /**
