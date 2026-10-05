@@ -134,7 +134,7 @@ function dump_search(
     if ($findings !== []) {
         io()->table(['Value', 'Written', 'Where', 'Offset'], $findings);
         io()->error(sprintf(
-            '%d personal datum/data of the stack appear in the clear in a dump of its database. A sealed column is a column whose Doctrine type seals it: the mapping of the table named above is where that is declared, and "castor console doctrine:migrations:list" says whether the migration that seals it has run here.',
+            '%d value(s) the provision or a walk wrote appear in the clear in a dump of the database, in the column named above. Two readings, and the classification of the schema decides between them (SchemaColumns, tests/symfony/Functional/Doctrine/PersonalData): a column it declares sealed is a leak, the mapping of its table being where the sealing type is declared and "castor console doctrine:migrations:list" saying whether the migration that seals it has run here; a column it declares readable holds those bytes legitimately, and what is wrong is then the value searched for, which collides with one of them.',
             count($findings),
         ));
 

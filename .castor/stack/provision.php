@@ -51,8 +51,11 @@ const DEV_USER_PROFILE = [
     'https://op.localhost/alice',
     '--picture',
     'https://op.localhost/alice.png',
+    // Not a URL of this provider: what the search of a dump looks for must collide with nothing a
+    // readable column holds, and the base URL of the provider is the prefix of the logo of its tenant
+    // (issue #505).
     '--website',
-    'https://op.localhost/',
+    'https://liddell.example/',
     '--gender',
     'female',
     '--birthdate',
