@@ -459,6 +459,24 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
+     * The lineage carries a tenant of its own, and a revocation walks the family: a token naming the
+     * family of another tenant would put the tokens of two tenants in one lineage.
+     */
+    #[Test]
+    public function itRefusesAFamilyOfAnotherTenant(): void
+    {
+        // Given
+        $elsewhere = Tokens::family(Fixtures::now(), Fixtures::tenant('other', 'https://id.other.example'));
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A refresh token binds a family and a client of the same tenant.');
+
+        // When
+        $this->token(family: $elsewhere);
+    }
+
+    /**
      * RFC 8176: a session always has at least one proof, so a token always has at least one method.
      */
     #[Test]
@@ -497,6 +515,7 @@ final class RefreshTokenTest extends TestCase
     private function token(
         ?string $tokenHash = null,
         ?Client $client = null,
+        ?RefreshTokenFamily $family = null,
         ?Scopes $scopes = null,
         ?array $methods = null,
         ?DateTimeImmutable $issuedAt = null,
@@ -504,7 +523,7 @@ final class RefreshTokenTest extends TestCase
     ): RefreshToken {
         return new RefreshToken(
             $tokenHash ?? DrawnSecret::digestOf('the-token'),
-            $this->family,
+            $family ?? $this->family,
             $client ?? $this->client,
             $this->session,
             $scopes ?? new Scopes([Scope::openid()]),
