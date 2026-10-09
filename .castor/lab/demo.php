@@ -171,9 +171,8 @@ function demo(
         io()->error(sprintf('oidc-demo is not in %s (no oidc_login firewall in config/packages/security.yaml). Pass --dir.', implode(' nor ', $candidates)));
         exit(1);
     }
-    $server = context()->withWorkingDirectory($dir);
     if ($stop) {
-        run(['symfony', 'server:stop'], context: $server->withAllowFailure());
+        run(['symfony', 'server:stop'], context: demo_context($dir)->withAllowFailure());
 
         return;
     }
@@ -188,14 +187,15 @@ function demo(
     }
 
     io()->section('Configuration');
-    // .env.local only: the .env of the demo, which its repository holds, is not touched
-    demo_write_env_local($dir . '/.env.local', [
+    $fixture = [
         'OIDC_PROVIDER_URI' => $env['BEFFROI_ISSUER'],
         'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
         'OIDC_CLIENT_SECRET' => $env['OIDC_DEMO_SECRET'],
         // the rungs keep secrets of their own, which the walks above never swap (demo_ladder_values)
         ...demo_ladder_values($env),
-    ]);
+    ];
+    // .env.local only: the .env of the demo, which its repository holds, is not touched
+    demo_write_env_local($dir . '/.env.local', $fixture);
     // The OP serves a certificate of Caddy's internal CA, which the PHP of the host does not know unless
     // the CA was installed on the machine: the demo runs with a php.ini of its own that trusts it, which
     // the Symfony CLI reads from the root of the project.
@@ -208,14 +208,8 @@ function demo(
     io()->text(sprintf('Issuer %s, client "%s", secret from apps/op/.env.local, CA of Caddy in %s.', $env['BEFFROI_ISSUER'], DEMO_CLIENT_ID, $ca));
 
     io()->section('Server');
-    // the discovery document of the previous issuer may still be cached
-    run(['php', 'bin/console', 'cache:clear'], context: $server->withQuiet());
-    $status = run(['symfony', 'server:status'], context: $server->withAllowFailure()->withQuiet())->getOutput();
-    if (str_contains($status, 'Listening on')) {
-        io()->note('The server of oidc-demo runs already; "castor demo --stop" stops it.');
-    } else {
-        run(['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'], context: $server);
-    }
+    $server = demo_context($dir);
+    demo_server($server, $fixture);
     io()->success(sprintf(
         '%s/profile signs in on %s as "%s", password %s.',
         DEMO_URL,
@@ -346,6 +340,124 @@ function demo(
         }
         demo_logout_others_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECOND_SECRET'], $ca);
     }
+}
+
+/**
+ * The context the commands of the demonstration run in: its directory, and not one of the names its
+ * .env.local carries, the file this walk writes its secrets into.
+ *
+ * This walk reads the dotenv of the provider to hand the demonstration its secrets, and reading it puts
+ * every value in the environment of this process, from where every child inherits it as a real
+ * environment variable. A real environment variable wins over a dotenv file, and a server started as a
+ * daemon keeps the environment it was started with for as long as it lives. Two names are the same on
+ * both sides, DEMO_FORM_POST_SECRET and DEMO_RAR_SECRET, so a server older than the "castor provision"
+ * that regenerated them authenticated two rungs of the ladder with the secrets of the provisioning
+ * before it, and the provider answered "401 invalid_client" to a client that had asked for nothing wrong
+ * (issue #491). What that file says is what the server serves, and it is read again at every request:
+ * the walks already count on that, demo_form_post_check writing a response mode and playing it without
+ * starting anything again.
+ */
+function demo_context(string $dir): Context
+{
+    $written = [];
+    $path = $dir . '/.env.local';
+    if (is_file($path)) {
+        preg_match_all('/^([A-Z][A-Z0-9_]*)=/m', (string) file_get_contents($path), $names);
+        foreach ($names[1] as $name) {
+            // "false" takes the name out of the environment of the child, where "null" would hand it the
+            // empty string, which is a value and wins over the file just the same
+            $written[$name] = false;
+        }
+    }
+
+    return context()->withWorkingDirectory($dir)->withEnvironment($written);
+}
+
+/**
+ * The server of the demonstration, listening and serving the fixture this walk has just written.
+ *
+ * A server that is up already is compared with that fixture before anything is played against it, and
+ * the run stops on a name it holds another value for: the walk that hands the demonstration its secrets
+ * is the walk that must know the server has them, and a red read at the token endpoint of the provider
+ * would be a red that is not the provider's (issue #491).
+ *
+ * @param array<string, string> $fixture what demo_write_env_local has just written
+ */
+function demo_server(Context $server, array $fixture): void
+{
+    // the discovery document of the previous issuer may still be cached
+    run(['php', 'bin/console', 'cache:clear'], context: $server->withQuiet());
+    $status = run(['symfony', 'server:status', '--no-ansi'], context: $server->withAllowFailure()->withQuiet())->getOutput();
+    if (! str_contains($status, 'Listening on')) {
+        demo_server_start($server);
+
+        return;
+    }
+
+    $stale = demo_server_stale_values($status, $fixture);
+    if ($stale === null) {
+        // nothing here says what a running process was started with, so there is nothing to compare: the
+        // server is started again rather than played against on trust, which is the other way to answer
+        // the same question
+        io()->note('What the server of oidc-demo was started with cannot be read here, so it is started again.');
+        run(['symfony', 'server:stop'], context: $server->withQuiet()->withAllowFailure());
+        demo_server_start($server);
+
+        return;
+    }
+    if ($stale !== []) {
+        io()->error([
+            sprintf(
+                'The server of oidc-demo holds another value than the one just written for %s.',
+                implode(' and ', $stale),
+            ),
+            'It keeps the environment it was started with for as long as it lives, and a real environment variable wins over the .env.local this walk writes: it authenticates with the secret of the provisioning it was started after, and the provider answers "401 invalid_client" to a client that asked for nothing wrong. Run "castor demo --stop", then run this again.',
+        ]);
+        exit(1);
+    }
+
+    io()->note('The server of oidc-demo runs already; "castor demo --stop" stops it.');
+}
+
+/**
+ * Starts the server of the demonstration as a daemon, on the port of DEMO_URL.
+ */
+function demo_server_start(Context $server): void
+{
+    run(['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'], context: $server);
+}
+
+/**
+ * The names of the fixture the running server of the demonstration holds another value for, read from the
+ * environment of the processes "symfony server:status" names, or null where the environment of a running
+ * process cannot be read, nothing of the fixture being then comparable with anything.
+ *
+ * @param array<string, string> $fixture
+ *
+ * @return list<string>|null
+ */
+function demo_server_stale_values(string $status, array $fixture): ?array
+{
+    preg_match_all('/^\s*PID (\d+):/m', $status, $matches);
+    if ($matches[1] === []) {
+        return null;
+    }
+
+    $stale = [];
+    foreach ($matches[1] as $pid) {
+        $environment = sprintf('/proc/%s/environ', $pid);
+        if (! is_readable($environment)) {
+            return null;
+        }
+        foreach (explode("\0", (string) file_get_contents($environment)) as $variable) {
+            [$name, $value] = array_pad(explode('=', $variable, 2), 2, '');
+            if (isset($fixture[$name]) && ! hash_equals($fixture[$name], $value)) {
+                $stale[$name] = $name;
+            }
+        }
+    }
+
+    return array_values($stale);
 }
 
 /**
@@ -2804,11 +2916,9 @@ function demo_service_check(string $dir, string $issuer, string $serviceSecret, 
     demo_write_env_local($dir . '/.env.local', [
         'OIDC_RESOURCE' => DEMO_SERVICE_RESOURCE,
     ]);
-    run(['symfony', 'server:stop'], context: context()->withWorkingDirectory($dir)->withQuiet()->withAllowFailure());
-    run(
-        ['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'],
-        context: context()->withWorkingDirectory($dir)->withQuiet(),
-    );
+    $server = demo_context($dir)->withQuiet();
+    run(['symfony', 'server:stop'], context: $server->withAllowFailure());
+    demo_server_start($server);
 
     // RFC 6749 §4.4: the service asks for itself, and names what the token is for
     $service = demo_client_credentials($issuer, $ca, DEMO_SERVICE_CLIENT_ID, $serviceSecret, DEMO_SERVICE_RESOURCE);
