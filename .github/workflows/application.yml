@@ -17,7 +17,9 @@ concurrency:
   cancel-in-progress: true
 
 # What the application can be judged on without a stack, which is the pair it makes with the packages,
-# what its kernel writes and what its own files say.
+# what its kernel writes, what its own files say, and what its pages answer: a database service is not a
+# stack, and the suite at the end of this job drives the kernel of the application without one process of
+# the development stack being started.
 #
 # The pair first. apps/op/composer.json resolves beffroi/* through path repositories to ../../src/*, so the
 # packages come from the branch, while apps/op/composer.lock pins every third-party dependency at the
@@ -40,6 +42,15 @@ concurrency:
 # The three linters then read the container that step compiled: a template of the bundle this application
 # overrides, a configuration file of its own, a catalogue it adds to.
 #
+# Then the suite of the application (issue #521), which is why this job carries a PostgreSQL service. The
+# kernel of apps/op is the one a deployment boots, and the page this application owns writes a person: a
+# sealed column needs the KMS of apps/op/.env.test, and every column needs a database that answers, so a
+# functional test here cannot be an in-memory one. The migrations of the bundle write the schema before the
+# first test, as they write it on a deployment, which also makes this the one run of the repository that
+# plays them against PostgreSQL without being asked by hand. The suite judges what only this kernel can
+# answer, its own configuration, its own routes and its own templates; the rules of the provider are judged
+# by the three suites of ci.yml, on a test kernel of their own.
+#
 # A workflow of its own rather than a job of ci.yml, and the reason is the lean CI rule: this is the only
 # check of a pull request that needs the Composer install of apps/op and PHP on the host, where every job
 # of ci.yml runs in the phpqa image (735 MB, pulled before its first step) and needs neither. "paths" is
@@ -49,15 +60,35 @@ concurrency:
 
 jobs:
   application:
-    name: "The application boots, and what its kernel writes is what is committed"
+    name: "The application boots, what its kernel writes is what is committed, and its suite is green"
     runs-on: ubuntu-latest
+    # The database the suite of the application needs, at the address apps/op/.env names: the suite writes
+    # the "_test" database beside the one named here, which its test environment appends the suffix to
+    # (apps/op/config/packages/doctrine.yaml), and "castor app-phpunit" creates it. The version is the one
+    # compose.yaml serves the development stack with.
+    services:
+      database:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: beffroi
+          POSTGRES_USER: beffroi
+          POSTGRES_PASSWORD: beffroi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -d beffroi -U beffroi"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v7
       # PHP on the host, not the phpqa image: what runs here is the application's own kernel, and none of
-      # the tools that image carries is used.
+      # the tools that image carries is used. pdo_pgsql is what the suite reads the rows of its page
+      # through, asked for rather than assumed of the default set of a runner.
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
+          extensions: pdo_pgsql
           coverage: none
       # The application is pinned by its own lock, the way a developer runs it. Without its scripts: what is
       # compiled here is the container, and the assets the auto-scripts install are no part of it.
@@ -132,3 +163,7 @@ jobs:
           php bin/console lint:twig templates
           php bin/console lint:yaml config
           php bin/console lint:xliff translations
+      # The migrations of the bundle, then the suite: both are in the task, so the command here is the
+      # command on a desk.
+      - name: "The suite of the application, on its own kernel"
+        run: castor app-phpunit

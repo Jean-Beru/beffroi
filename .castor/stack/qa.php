@@ -11,6 +11,7 @@ declare(strict_types=1);
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsRawTokens;
 use Castor\Attribute\AsTask;
+use Castor\Context;
 use function Castor\context;
 use function Castor\io;
 use function Castor\run;
@@ -224,6 +225,77 @@ function phpunit(
 }
 
 /*
+ * The suite of the standalone application (issue #521), which is not the suite of the packages and does not
+ * run where it runs. The three suites of ".ci-tools/phpunit.xml.dist" judge the rules of the provider on a
+ * test kernel of their own, on SQLite, in the phpqa image; this one boots the kernel of "apps/op", the one a
+ * deployment boots, so it needs what that kernel needs: a PostgreSQL, and a KMS to seal the personal columns
+ * the page of a person writes (decisions 0011 and 0018). Which is why it is a task and not a line of the
+ * suites above, and why the job that runs it carries a database service.
+ *
+ * It runs on the host, with the PHP that made the application's own Composer install, as the check of the
+ * generated configuration does and for the same reason.
+ */
+#[AsTask(
+    description: 'Run the suite of the standalone application: its own kernel, on the PostgreSQL that DATABASE_URL names and the KMS of apps/op/.env.test, the schema written by the migrations of the bundle before the first test. It needs a PostgreSQL reachable from the host, which "castor start" publishes on the loopback address',
+    ignoreValidationErrors: true,
+)]
+function app_phpunit(#[AsRawTokens] array $args = []): void
+{
+    io()->title('Running the suite of the application');
+
+    // The database the suite writes is never the one the stack serves: the test environment of the
+    // application appends "_test" to the name DATABASE_URL carries (apps/op/config/packages/doctrine.yaml),
+    // and a run empties every table of it before every test.
+    application_console(['doctrine:database:create', '--if-not-exists']);
+    // The schema comes from the migrations of the bundle, the way a deployment gets it, which is also the
+    // one place of this repository where they are played against PostgreSQL by a run nobody started by
+    // hand. The suite creates nothing and drops nothing: it empties the rows.
+    application_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
+
+    run(
+        [application_php(), 'vendor/bin/phpunit', '--configuration', 'phpunit.dist.xml', ...$args],
+        context: application_context(),
+    );
+}
+
+/**
+ * A console command of the application, on the host and in the environment its suite runs in. Not
+ * op_console() of .castor/stack/stack.php, which runs in the container of a stack that is up.
+ *
+ * @param array<string> $args
+ */
+function application_console(array $args): void
+{
+    run([application_php(), 'bin/console', ...$args], context: application_context()->withEnvironment([
+        'APP_ENV' => 'test',
+        'APP_DEBUG' => '0',
+    ]));
+}
+
+/**
+ * Where the application is installed, which is where everything of it runs: "apps/op/composer.json" resolves
+ * the packages through path repositories and its "vendor" is its own.
+ */
+function application_context(): Context
+{
+    if (! is_file(getcwd() . '/apps/op/vendor/autoload.php')) {
+        io()->error('The application is not installed: run "(cd apps/op && composer install)" first.');
+        exit(1);
+    }
+
+    return context()->withWorkingDirectory(getcwd() . '/apps/op');
+}
+
+/**
+ * The PHP the application runs with. The static binary of Castor carries its own runtime and reports no
+ * PHP_BINARY, so the PHP of the PATH is what boots the application there; a Castor running on a PHP names it.
+ */
+function application_php(): string
+{
+    return \PHP_BINARY === '' ? 'php' : \PHP_BINARY;
+}
+
+/*
  * Mago (https://mago.carthage.software/), the toolchain of Carthage Software: one Rust binary, no PHP
  * runtime, already installed in the phpqa image (/tools/mago), configured by mago.toml at the root of
  * the repository, which is where its editor integrations look for it. It holds the formatter and the
@@ -408,16 +480,7 @@ function generated_configuration(): array
  */
 function regenerate_generated_configuration(): void
 {
-    if (! is_file(getcwd() . '/apps/op/vendor/autoload.php')) {
-        io()->error('The application is not installed: run "(cd apps/op && composer install)" first.');
-        exit(1);
-    }
-
-    // The static binary of Castor carries its own runtime and reports no PHP_BINARY, so the PHP of the PATH
-    // is what boots the application there; a Castor running on a PHP names it.
-    $php = \PHP_BINARY === '' ? 'php' : \PHP_BINARY;
-
-    run([$php, 'apps/op/bin/console', 'cache:clear'], context: context()->withEnvironment([
+    run([application_php(), 'bin/console', 'cache:clear'], context: application_context()->withEnvironment([
         'APP_ENV' => 'dev',
         'APP_DEBUG' => '1',
     ]));
