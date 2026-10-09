@@ -483,6 +483,7 @@ final class LoginCodeTest extends PasskeyTestCase
         for ($attempt = 1; $attempt <= 5; ++$attempt) {
             $this->submitCode($interaction, '000000');
         }
+        self::forgetEvents();
 
         // When
         $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()));
@@ -608,6 +609,7 @@ final class LoginCodeTest extends PasskeyTestCase
         ]);
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
         static::assertSame('/login/code?interaction=' . $interaction, $this->browser->getResponse()->headers->get('Location'));
+        self::forgetEvents();
 
         // When
         $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()->modify(sprintf('+%d seconds', TotpCredential::PERIOD))));

@@ -7,7 +7,6 @@ namespace Beffroi\Bundle\Tests\Functional\Controller;
 use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
@@ -143,24 +142,5 @@ final class AccountSessionsTest extends BrowserTestCase
         static::assertInstanceOf(AuthenticationSession::class, $reread);
 
         return $reread;
-    }
-
-    /**
-     * @template T of object
-     *
-     * @param class-string<T> $class
-     *
-     * @return list<T>
-     */
-    private static function events(string $class): array
-    {
-        $events = [];
-        foreach (self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events as $event) {
-            if ($event instanceof $class) {
-                $events[] = $event;
-            }
-        }
-
-        return $events;
     }
 }
