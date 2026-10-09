@@ -22,4 +22,13 @@ final class RecordingEventHandler
     {
         $this->events[] = $event;
     }
+
+    /**
+     * Forgets what has been recorded, for a test whose fixture raises events of the class its act is
+     * judged on: what it asserts is then what its own act raised.
+     */
+    public function forget(): void
+    {
+        $this->events = [];
+    }
 }

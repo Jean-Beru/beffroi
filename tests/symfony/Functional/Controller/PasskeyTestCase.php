@@ -6,7 +6,6 @@ namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use DateTimeImmutable;
 use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -200,26 +199,5 @@ abstract class PasskeyTestCase extends BrowserTestCase
         }
 
         return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, new DateTimeImmutable());
-    }
-
-    /**
-     * The events of a class that reached the event bus during the last request.
-     *
-     * @template T of object
-     *
-     * @param class-string<T> $class
-     *
-     * @return list<T>
-     */
-    protected static function events(string $class): array
-    {
-        $events = [];
-        foreach (self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events as $event) {
-            if ($event instanceof $class) {
-                $events[] = $event;
-            }
-        }
-
-        return $events;
     }
 }

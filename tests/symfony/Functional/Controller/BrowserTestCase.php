@@ -13,6 +13,7 @@ use function explode;
 use function hash;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Application\Key\TenantKeyRotator;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
@@ -86,6 +87,13 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected function setUp(): void
     {
         $this->browser = self::browser($this->configureContainer(), static::kernelOptions());
+        // One kernel for the whole test, where a KernelBrowser reboots one per request by default. A login
+        // is ten requests and a reboot pays for the re-instantiation of everything the next one touches:
+        // the functional suite is 213 s this way against 339 s rebooting, same 1 271 tests (issue #510).
+        // What it changes for a test: a service keeps what it holds from one request to the next, which is
+        // what the provider does in production, and the recorded events span the test instead of the last
+        // request, so a fixture that raises some calls forgetEvents() before its act.
+        $this->browser->disableReboot();
         new Filesystem()->remove(self::keyStorage());
     }
 
@@ -497,5 +505,36 @@ abstract class BrowserTestCase extends DatabaseTestCase
         $this->browser->getCookieJar()->set(
             new Cookie($httpSession->getName(), $httpSession->getId(), null, $cookie?->getPath() ?? '/', $cookie?->getDomain() ?? ''),
         );
+    }
+
+    /**
+     * The events of a class that reached the event bus since the test began, or since the last
+     * forgetEvents(). One kernel serves the whole test, so this is not the last request alone.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $class
+     *
+     * @return list<T>
+     */
+    protected static function events(string $class): array
+    {
+        $events = [];
+        foreach (self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events as $event) {
+            if ($event instanceof $class) {
+                $events[] = $event;
+            }
+        }
+
+        return $events;
+    }
+
+    /**
+     * Forgets what the fixture of a test raised, so that events() answers for its act alone. Under
+     * "// Given", as its last statement.
+     */
+    protected static function forgetEvents(): void
+    {
+        self::service(RecordingEventHandler::class, RecordingEventHandler::class)->forget();
     }
 }

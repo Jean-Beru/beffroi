@@ -11,7 +11,6 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
 use Beffroi\Bundle\Message\RemoveUnusedClients;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Domain\Event\TenantKeyRetired;
 use Beffroi\Core\Domain\Event\TenantKeyRotated;
@@ -1007,24 +1006,5 @@ final class KeyLifecycleTest extends ConsoleTestCase
     private static function keys(): TenantKeyRepositoryInterface
     {
         return self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class);
-    }
-
-    /**
-     * @template T of object
-     *
-     * @param class-string<T> $class
-     *
-     * @return list<T>
-     */
-    private static function events(string $class): array
-    {
-        $events = [];
-        foreach (self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events as $event) {
-            if ($event instanceof $class) {
-                $events[] = $event;
-            }
-        }
-
-        return $events;
     }
 }

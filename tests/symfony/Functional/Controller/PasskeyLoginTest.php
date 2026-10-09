@@ -210,6 +210,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $this->loginWithPasskey($this->authorize(), $device);
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
+        self::forgetEvents();
 
         // When
         $this->loginWithPasskey($interaction, $device->withSignCount(0));
