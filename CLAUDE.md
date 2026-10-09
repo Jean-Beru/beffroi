@@ -84,6 +84,14 @@ castor console beffroi:webauthn:mds-import <file>                 # a statement 
 
 The FIDO Conformance Tools are run by hand against `https://op.localhost/fido/conformance` (`tests/conformance/README.md`); those endpoints are imported by the application in dev only.
 
+**Addresses.**
+
+```bash
+castor console beffroi:geoip:refresh [--url U]  # the GeoLite2 city and ASN databases downloaded under GEOIP_LICENSE_KEY, refused unless they are editions the enrichment reads, stored in var/geoip, which op and worker share; --url for a mirror or a database already unpacked, repeatable
+```
+
+What says where a provenance came from (`../docs/11-architecture/coeur.md` §3.5). The weekly step of the schedule runs the same object, so the command is for installing the databases the day a deployment subscribes and for reading why a refresh was refused; a deployment that names no licence key downloads nothing and serves every flow with a provenance that says an address and no place.
+
 **Quality.**
 
 ```bash

@@ -8,6 +8,7 @@ use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
 use Beffroi\Bundle\Message\ForgetTheActsPastTheirRetention;
 use Beffroi\Bundle\Message\ForgetTheChangesPastTheirRetention;
 use Beffroi\Bundle\Message\ForgetTheExpiredArchives;
+use Beffroi\Bundle\Message\RefreshTheAddressDatabases;
 use Beffroi\Bundle\Message\RemoveUnusedClients;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
@@ -60,6 +61,14 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
      */
     public const string HISTORY_RETENTION_EVERY = '1 day';
 
+    /**
+     * What the databases of addresses are worth waiting for (issue #473): MaxMind publishes GeoLite2 once
+     * a week, so a week is the cadence of what is being followed and not a guess. A week in which nothing
+     * was published costs one request and no download, the ETag of what is stored going out with it, and a
+     * deployment that names no licence key downloads nothing at all.
+     */
+    public const string ADDRESS_DATABASES_EVERY = '1 week';
+
     public function getSchedule(): Schedule
     {
         return new Schedule()
@@ -76,6 +85,10 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
             ->add(RecurringMessage::every(
                 self::HISTORY_RETENTION_EVERY,
                 new ForgetTheChangesPastTheirRetention(),
+            ))
+            ->add(RecurringMessage::every(
+                self::ADDRESS_DATABASES_EVERY,
+                new RefreshTheAddressDatabases(),
             ));
     }
 }

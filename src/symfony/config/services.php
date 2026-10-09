@@ -171,6 +171,8 @@ use Beffroi\Core\Domain\Identity\Claim\PictureUrl;
 use Beffroi\Core\Domain\Identity\Claim\WebsiteUrl;
 use Beffroi\Core\Domain\Identity\Claim\PhoneNumber;
 use Beffroi\Core\Application\Journal\ActRecording;
+use Beffroi\Core\Application\Session\ProvenancePlace;
+use Beffroi\Core\Application\Session\SessionProvenanceEnrichment;
 use Beffroi\Core\Application\Journal\JournalRetention;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineClaimHistory;
@@ -182,6 +184,7 @@ use Beffroi\Core\Port\ClaimHistoryInterface;
 use Beffroi\Core\Port\JournalInterface;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
+use Beffroi\Bundle\Twig\PlaceExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
 use Beffroi\Core\Application\Authentication\DecoyHash;
@@ -222,7 +225,9 @@ use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Beffroi\Core\Bridge\Null\NullGeoLocator;
+use Beffroi\Bundle\Geo\GeoLite2Databases;
+use Beffroi\Bundle\Geo\GeoLite2GeoLocator;
+use Beffroi\Bundle\Geo\GeoLite2Refresh;
 use Beffroi\Core\Bridge\Null\NullUserAgentParser;
 use Beffroi\Core\Bridge\Otphp\OtphpTotpAlgorithm;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2i;
@@ -693,6 +698,8 @@ return static function (ContainerConfigurator $container): void {
     // the clock a date is read on, and the one filter that writes it (issue #469)
     $services->set(UserTimeZone::class);
     $services->set(MomentExtension::class);
+    // where a provenance came from, on the two pages that show one (issue #473)
+    $services->set(PlaceExtension::class);
     // what the pages read of the organisation the visitor came for (issue #449)
     $services->set(TenantExtension::class);
     $services->set(InteractionLocale::class)->args([
@@ -994,9 +1001,18 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpCodeMatcher::class);
     $services->set(ActiveTotp::class);
 
-    // The core: request context enrichment (architecture §3.5)
-    $services->set(NullGeoLocator::class);
-    $services->alias(GeoLocatorInterface::class, NullGeoLocator::class);
+    // The core: request context enrichment (architecture §3.5). The place of an address is read in the
+    // GeoLite2 databases of the deployment and nowhere else: the reader is local, so no address of this
+    // provider is ever sent to anybody (issue #473, decision 0006). A deployment that holds no database
+    // gets no place out of it and every flow all the same, which is why there is no option here and no
+    // null adapter to alias instead; the core keeps one for whoever wires the core by hand.
+    $services->set(GeoLite2Databases::class);
+    $services->set(GeoLite2Refresh::class);
+    $services->set(GeoLite2GeoLocator::class);
+    $services->alias(GeoLocatorInterface::class, GeoLite2GeoLocator::class);
+    $services->set(ProvenancePlace::class);
+    $services->set(SessionProvenanceEnrichment::class);
+    // the user agent of a provenance, which nothing reads yet
     $services->set(NullUserAgentParser::class);
     $services->alias(UserAgentParserInterface::class, NullUserAgentParser::class);
 
