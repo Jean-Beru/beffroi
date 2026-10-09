@@ -80,7 +80,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         $clientId = $client->registration->clientId;
         $now = Fixtures::now();
         $code = Tokens::code('the-code', $client, $session, $now);
-        $family = Tokens::family($now);
+        $family = Tokens::family($now, $client->tenant);
         $previous = Tokens::refreshToken('previous', $client, $session, $now, $family);
         $next = Tokens::refreshToken('next', $client, $session, $now, $family);
         $accessToken = Tokens::storedAccessToken('opaque', $client, $session, $now);

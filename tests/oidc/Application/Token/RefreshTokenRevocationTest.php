@@ -50,12 +50,18 @@ final class RefreshTokenRevocationTest extends TestCase
         $this->clock = new MockClock('2026-09-20T10:00:00+00:00');
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $issuedAt = $this->clock->now()->modify('-1 hour');
-        $this->family = Tokens::family($issuedAt, 'the-code');
+        $this->family = Tokens::family($issuedAt, $this->client->tenant, 'the-code');
         $this->first = Tokens::refreshToken('first', $this->client, $this->session, $issuedAt, $this->family);
         $this->second = Tokens::refreshToken('second', $this->client, $this->session, $issuedAt->modify('+10 minutes'), $this->family);
         $this->alreadyRevoked = Tokens::refreshToken('revoked', $this->client, $this->session, $issuedAt, $this->family);
         $this->alreadyRevoked->revoke($issuedAt->modify('+5 minutes'));
-        $this->ofAnotherFamily = Tokens::refreshToken('other', $this->client, $this->session, $issuedAt, Tokens::family($issuedAt, 'another-code'));
+        $this->ofAnotherFamily = Tokens::refreshToken(
+            'other',
+            $this->client,
+            $this->session,
+            $issuedAt,
+            Tokens::family($issuedAt, $this->client->tenant, 'another-code'),
+        );
         foreach ([$this->first, $this->second, $this->alreadyRevoked, $this->ofAnotherFamily] as $token) {
             $this->refreshTokens->save($token);
         }
@@ -164,7 +170,7 @@ final class RefreshTokenRevocationTest extends TestCase
     public function anUnknownFamilyRevokesNothing(): void
     {
         // When
-        $revoked = $this->revocation->revokeFamily(Tokens::family($this->clock->now())->id, $this->clock->now());
+        $revoked = $this->revocation->revokeFamily(Tokens::family($this->clock->now(), $this->client->tenant)->id, $this->clock->now());
 
         // Then
         static::assertSame([], $revoked);

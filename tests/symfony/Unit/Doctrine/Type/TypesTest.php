@@ -491,10 +491,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresTwentyEightTypes(): void
+    public function theBundleDeclaresThirtyTypes(): void
     {
         // When / Then
-        static::assertCount(28, BeffroiBundle::DBAL_TYPES);
+        static::assertCount(30, BeffroiBundle::DBAL_TYPES);
     }
 
     /**

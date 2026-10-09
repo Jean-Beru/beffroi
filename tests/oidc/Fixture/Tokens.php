@@ -14,7 +14,6 @@ use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
 use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
 use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
 use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
-use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
@@ -28,6 +27,8 @@ use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
 use Beffroi\Oidc\Domain\Token\StoredClientAccessToken;
 use Beffroi\Oidc\Domain\Token\StoredSubjectAccessToken;
@@ -270,9 +271,9 @@ final class Tokens
     /**
      * A family started now, from a code, for ninety days.
      */
-    public static function family(DateTimeImmutable $startedAt, string $code = 'the-code', ?Uuid $grantId = null): RefreshTokenFamily
+    public static function family(DateTimeImmutable $startedAt, Tenant $tenant, string $code = 'the-code', ?Uuid $grantId = null): RefreshTokenFamily
     {
-        return new RefreshTokenFamily(Uuid::v7(), DrawnSecret::digestOf($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
+        return new RefreshTokenFamily(Uuid::v7(), $tenant, DrawnSecret::digestOf($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
     }
 
     /**
@@ -295,7 +296,7 @@ final class Tokens
         ?ResourceIndicators $resources = null,
         ?AuthorizationDetails $authorizationDetails = null,
     ): RefreshToken {
-        $family ??= self::family($issuedAt);
+        $family ??= self::family($issuedAt, $client->tenant);
 
         return new RefreshToken(
             DrawnSecret::digestOf($value),

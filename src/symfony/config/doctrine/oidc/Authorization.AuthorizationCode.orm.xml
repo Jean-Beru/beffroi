@@ -40,7 +40,11 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <embedded name="authentication" class="Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
+        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <entity-listeners>

@@ -88,7 +88,7 @@ final class StoredUserAccessTokenTest extends TestCase
                 $this->client,
                 $this->session,
                 Fixtures::now(),
-                Tokens::family(Fixtures::now(), grantId: $code->grantId),
+                Tokens::family(Fixtures::now(), $this->client->tenant, grantId: $code->grantId),
                 ['openid', 'email'],
             ),
             new Scopes([new Scope('email')]),

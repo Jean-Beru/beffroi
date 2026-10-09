@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Doctrine\Repository;
 
 use function array_filter;
 use function array_values;
+use function is_array;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
 use Beffroi\Oidc\Domain\Consent\Consent;
@@ -40,15 +41,27 @@ final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository i
     public function findByFamily(Uuid $family): array
     {
         return $this->resolved([
-            'family.id' => $family,
+            'family' => $family,
         ]);
     }
 
+    /**
+     * The tokens one record read once granted, which their family names. A join and not a criterion: the
+     * family is a row of its own, and a criterion of findBy() does not reach through an association
+     * (issue #440).
+     */
     public function findByAuthorizationCode(string $codeHash): array
     {
-        return $this->resolved([
-            'family.grantingRecordHash' => $codeHash,
-        ]);
+        $tokens = $this->queryBuilder('token')
+            ->join('token.family', 'family')
+            ->where('family.grantingRecordHash = :hash')
+            ->setParameter('hash', $codeHash)
+            ->orderBy('token.issuedAt', 'ASC')
+            ->addOrderBy('token.tokenHash', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $this->onlyResolved(is_array($tokens) ? $tokens : []);
     }
 
     public function findBySession(Uuid $session): array
@@ -90,11 +103,22 @@ final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository i
      */
     private function resolved(array $criteria): array
     {
-        $tokens = $this->repository()->findBy($criteria, [
+        return $this->onlyResolved($this->repository()->findBy($criteria, [
             'issuedAt' => 'ASC',
             'tokenHash' => 'ASC',
-        ]);
+        ]));
+    }
 
-        return array_values(array_filter($tokens, ClientResolver::isResolved(...)));
+    /**
+     * @param array<array-key, mixed> $tokens
+     *
+     * @return list<RefreshToken>
+     */
+    private function onlyResolved(array $tokens): array
+    {
+        return array_values(array_filter(
+            $tokens,
+            static fn (mixed $token): bool => $token instanceof RefreshToken && ClientResolver::isResolved($token),
+        ));
     }
 }

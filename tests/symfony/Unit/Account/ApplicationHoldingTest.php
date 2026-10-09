@@ -115,9 +115,9 @@ final class ApplicationHoldingTest extends TestCase
             // forty days ago, in a family of its own age: a token lives thirty days at most
             $old = $now->modify('-40 days');
 
-            return Tokens::refreshToken('the-token', $client, $session, $old, Tokens::family($old));
+            return Tokens::refreshToken('the-token', $client, $session, $old, Tokens::family($old, $client->tenant));
         }
-        $token = Tokens::refreshToken('the-token', $client, $session, $issuedAt, Tokens::family($issuedAt));
+        $token = Tokens::refreshToken('the-token', $client, $session, $issuedAt, Tokens::family($issuedAt, $client->tenant));
         if ($state === 'rotated') {
             $token->rotate($now);
         }

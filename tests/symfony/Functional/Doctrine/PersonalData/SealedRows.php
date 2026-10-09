@@ -103,19 +103,9 @@ final readonly class SealedRows
             'email' => 'ada@example.org',
             'phone_number' => '+441632960541',
             'address' => '12 Grand Rue, Saint-Germain',
-            'name' => 'Augusta Ada King-Noel',
-            'given_name' => 'Augusta',
-            'family_name' => 'King-Noel',
-            'middle_name' => 'Adaline',
-            'nickname' => 'Ada-of-the-notes',
-            'preferred_username' => 'the-enchantress-of-numbers',
-            'profile_url' => 'https://ada.example.org/profile',
-            'picture_url' => 'https://ada.example.org/portrait.jpg',
-            'website_url' => 'https://ada.example.org',
-            'gender' => 'female-and-nothing-else',
-            'birthdate' => '1815-12-10',
-            'zoneinfo' => 'Europe/London',
-            'locale' => 'en-GB',
+            // The thirteen claims of a profile share one column and one type, so one of them exercises the
+            // path all thirteen take; the other twelve left with the columns they had (issue #440).
+            'profile' => 'Augusta Ada King-Noel',
         ],
         'beffroi_linked_identity' => [
             'provider' => 'login.acme-federation.example',
@@ -323,21 +313,12 @@ final readonly class SealedRows
         );
         $user->changePhoneNumber($values['phone_number'], false, $this->now);
         $user->changeAddress(new Address($values['address']), $this->now);
-        $user->updateProfile(new Profile(
-            $values['name'],
-            $values['given_name'],
-            $values['family_name'],
-            $values['middle_name'],
-            $values['nickname'],
-            $values['preferred_username'],
-            $values['profile_url'],
-            $values['picture_url'],
-            $values['website_url'],
-            $values['gender'],
-            $values['birthdate'],
-            $values['zoneinfo'],
-            $values['locale'],
-        ), $this->now);
+        $user->updateProfile(
+            new Profile(
+                $values['profile'],
+            ),
+            $this->now,
+        );
         $this->service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
 
         return $user;

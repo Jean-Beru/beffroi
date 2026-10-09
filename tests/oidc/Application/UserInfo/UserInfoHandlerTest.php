@@ -1054,7 +1054,7 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function refreshed(array $granted, ?Scopes $scopes): UserAuthorization
     {
-        $family = Tokens::family(Fixtures::now(), grantId: $this->code($granted)->grantId);
+        $family = Tokens::family(Fixtures::now(), $this->client->tenant, grantId: $this->code($granted)->grantId);
 
         return UserAuthorization::fromRefreshToken(
             Grants::refreshToken(),

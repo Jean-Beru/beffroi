@@ -22,7 +22,11 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
-        <embedded name="authentication" class="Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot" use-column-prefix="false"/>
+        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <entity-listeners>
             <entity-listener class="Beffroi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>

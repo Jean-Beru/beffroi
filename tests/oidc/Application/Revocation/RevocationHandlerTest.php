@@ -134,7 +134,7 @@ final class RevocationHandlerTest extends TestCase
     public function itRevokesARefreshTokenAndTheAccessTokensOfItsGrant(): void
     {
         // Given
-        $family = Tokens::family($this->clock->now()->modify('-2 days'));
+        $family = Tokens::family($this->clock->now()->modify('-2 days'), $this->client->tenant);
         $rotated = Tokens::refreshToken('rotated', $this->client, $this->session, $this->clock->now()->modify('-1 day'), $family);
         $rotated->rotate($this->clock->now()->modify('-1 hour'));
         $current = Tokens::refreshToken('current', $this->client, $this->session, $this->clock->now()->modify('-1 hour'), $family);

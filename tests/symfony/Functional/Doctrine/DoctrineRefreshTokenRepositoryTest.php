@@ -253,6 +253,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     {
         return new RefreshTokenFamily(
             Uuid::v7(),
+            self::tenant(),
             DrawnSecret::digestOf(Secrets::draw()),
             Uuid::v7(),
             self::now(),

@@ -484,7 +484,7 @@ final class RefreshTokenGrantTest extends TestCase
     {
         // Given
         $first = $this->token('first', ['openid', 'profile']);
-        $other = $this->token('other', family: Tokens::family($this->clock->now(), 'other-code'));
+        $other = $this->token('other', family: Tokens::family($this->clock->now(), $this->client->tenant, 'other-code'));
         [$second, $third] = $this->twoRotationsOf('first');
 
         // When
@@ -586,7 +586,7 @@ final class RefreshTokenGrantTest extends TestCase
     public function itRefusesATokenWhoseFamilyExpired(): void
     {
         // Given
-        $this->token('absolute', family: Tokens::family($this->clock->now()->modify('-89 days'), 'old-code'));
+        $this->token('absolute', family: Tokens::family($this->clock->now()->modify('-89 days'), $this->client->tenant, 'old-code'));
         $this->clock->sleep(30 * 86400);
 
         // Then

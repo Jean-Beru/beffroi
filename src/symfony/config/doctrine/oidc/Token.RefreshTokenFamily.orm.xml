@@ -3,9 +3,15 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- The lineage of refresh tokens descending from one code (architecture §4.6), carried by each of its tokens. -->
-    <embeddable name="Beffroi\Oidc\Domain\Token\RefreshTokenFamily">
-        <field name="id" type="uuid" column="id"/>
+    <!-- The lineage of refresh tokens descending from one record read once (architecture §4.6), a row of its own that every token of the lineage names. It is a table and not an embeddable because two of its fields are what the provider searches by, the family of a token and the record that granted it, and a search is what a column answers. The hash of that record is unique: a record read once grants one lineage, and a second row under it would be a code spent twice. -->
+    <entity name="Beffroi\Oidc\Domain\Token\RefreshTokenFamily" table="beffroi_refresh_token_family">
+        <unique-constraints>
+            <unique-constraint name="beffroi_refresh_token_family_granting_record" columns="granting_record_hash"/>
+        </unique-constraints>
+        <id name="id" type="uuid" column="id"/>
+        <many-to-one field="tenant" target-entity="Beffroi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
         <field name="grantingRecordHash" type="string" column="granting_record_hash" length="64">
             <options>
                 <option name="fixed">true</option>
@@ -14,5 +20,5 @@
         <field name="grantId" type="uuid" column="grant_id"/>
         <field name="startedAt" type="datetime_immutable" column="started_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
-    </embeddable>
+    </entity>
 </doctrine-mapping>
