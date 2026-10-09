@@ -2,7 +2,12 @@
 # It is imported after routes/beffroi.yaml, which the glob of config/routes/ orders alphabetically, and it
 # carries the two route names of the bundle on purpose: the page of the bundle is bare HTML with a form
 # token, and this one is the same thing written with symfony/form, so every link of the bundle that names
-# those routes lands here.
+# those routes lands here. One file per controller, as every route file of this application is, the page
+# and the form it posts to being one action each.
 app_profile:
     resource: ../../src/Controller/AccountProfileController.php
+    type: attribute
+
+app_profile_describe:
+    resource: ../../src/Controller/AccountProfileDescriptionController.php
     type: attribute
