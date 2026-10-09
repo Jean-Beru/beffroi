@@ -22,7 +22,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 - **Worktree.** `git worktree add` under the session scratchpad, branched from `origin/HEAD`, the maintenance branch the clone points at. The shared checkout at `~/Projects/idp/code` belongs to whoever is using it; never move its branch.
 - **Branch.** `feat|fix|test|refactor|ci|chore/<issue>-<slug>`, for instance `feat/162-dpop`.
 - **Commit.** `type(scope): what it does, lowercase, no final period (issue #N)`. Scopes: `core`, `oidc`, `symfony`, `app`, `conformance`. English, here as everywhere in the code.
-- **Before the pull request.** `castor prepare-pr`, then `castor phpunit`, `castor phpstan`, `castor deptrac`. Infection runs on the diff in CI; run `castor infect --diff` yourself when the change is a rule rather than plumbing.
+- **Before the pull request.** `castor prepare-pr`, then `castor phpunit`, `castor phpstan`, `castor deptrac`, and `castor app-phpunit` when the change touches the application or anything its kernel wires. Infection runs on the diff in CI; run `castor infect --diff` yourself when the change is a rule rather than plumbing.
 - **Opening it.** `gh pr create --head <branch>` always: another session can move the current branch of a shared checkout under you.
 - **Status.** A long-running issue keeps **one** status comment, edited in place. Never a new comment per update.
 - **The documentation pull request** goes to `beffroi-php/design`, branch `docs/<issue>-<slug>`: the journal row of the spike, and whatever page the change makes false (`docs/11-architecture.md` first). Its rules are that repository's `CLAUDE.md`; the one that bites most often is that a page states the present state and never how it got there.
@@ -53,7 +53,7 @@ composer install                  # monorepo (packages, tests)
 **The stack.**
 
 ```bash
-castor start                      # https://op.localhost (FrankenPHP worker), PostgreSQL, RabbitMQ, and https://mtls.op.localhost behind a listener that asks for a client certificate
+castor start                      # https://op.localhost (FrankenPHP worker), PostgreSQL (published on the loopback address, where the suite of the application reads it), RabbitMQ, and https://mtls.op.localhost behind a listener that asks for a client certificate
 castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443, profiler off
 castor start --kms vault|aws      # plus HashiCorp Vault (dev mode) or LocalStack 4.14.0, KMS only; both initialised at every start
 castor provision [--kms sodium|file|vault|aws]  # apps/op/.env.local, the migrations, the tenant, the signing key and the encryption key, the user "alice", what the tenant holds in data keys, and the self-signed client certificate of var/mtls/
@@ -88,6 +88,7 @@ The FIDO Conformance Tools are run by hand against `https://op.localhost/fido/co
 
 ```bash
 castor phpunit            # tests with coverage, which pcov produces (.ci-tools/php/coverage/pcov.ini, read only by this task)
+castor app-phpunit        # the suite of the standalone application, which the three suites of the task above do not cover: the kernel of apps/op, on the PostgreSQL the stack publishes on the loopback address and the KMS of apps/op/.env.test, the migrations of the bundle played before the first test and the rows emptied before each one; the Application workflow runs the same task with a database service beside it
 castor phpstan            # level max
 castor mago-format / castor mago-format-fix   # Mago, the formatter, in place of ECS; mago.toml at the root (where its editor integrations look for it)
 castor mago-lint / castor mago-lint-fix       # Mago, the linter, in place of the rules of ECS that are not whitespace

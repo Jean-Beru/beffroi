@@ -231,6 +231,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+    # Published on the loopback interface alone, for the suite of the application, which runs on the host
+    # with the PHP that installed it ("castor app-phpunit", issue #521): it is the same command there and on
+    # a runner, where a service container answers at the same address. It writes the database the test
+    # environment of the application names, "<name>_test", and never the one this server serves to the stack.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - database_data:/var/lib/postgresql/data:rw
 
