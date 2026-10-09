@@ -898,6 +898,27 @@
                         },
                         "description": "What a claim of a person used to say, and what they made it say (issue #482). Nothing turns it on; what is configured is how long a change is kept."
                     },
+                    "geoip": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "storage": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": "%kernel.project_dir%/var/geoip",
+                                "description": "Directory of the GeoLite2 databases the enrichment reads, next to the keys: the files \"beffroi:geoip:refresh\" and the weekly step store, empty until one of them ran, which every flow of the provider is served without."
+                            },
+                            "license_key": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": "",
+                                "description": "Licence key of the MaxMind account the GeoLite2 editions are downloaded under; empty by default, and a deployment that leaves it empty downloads nothing and says no place. The databases are published by MaxMind under their own licence, which is why nothing is shipped and nothing is fetched without this."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "default": {
+                            "storage": "%kernel.project_dir%/var/geoip",
+                            "license_key": ""
+                        },
+                        "description": "The databases of addresses the enrichment of a provenance reads (architecture §3.5): where they are kept and what they are downloaded under."
+                    },
                     "interaction": {
                         "$ref": "#/$defs/types/object_null",
                         "properties": {

@@ -9,6 +9,8 @@ use Beffroi\Core\Domain\Session\AuthenticationContextClass;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\GeoLocation;
+use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\LogicException;
@@ -404,5 +406,45 @@ final class AuthenticationSessionTest extends TestCase
 
         // When
         $session->touch(Fixtures::context(), Fixtures::now()->modify('+1 day'));
+    }
+
+    /**
+     * Issue #473: the enrichment adds a place to each provenance and rewrites nothing of what the
+     * requests carried, which is why it is given the places and not two provenances.
+     */
+    #[Test]
+    public function locatingASessionAddsAPlaceToEachProvenanceAndChangesNothingElse(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $session->touch(new RequestContext(Fixtures::now()->modify('+1 hour'), '198.51.100.7', 'curl/8.5.0'), $session->expiresAt);
+
+        // When
+        $session->locate(new GeoLocation('GB', city: 'Oxford'), new GeoLocation('FR', city: 'Lyon'));
+
+        // Then
+        static::assertSame('Oxford', $session->createdFrom->location?->city);
+        static::assertSame('203.0.113.10', $session->createdFrom->ipAddress);
+        static::assertSame('Lyon', $session->lastSeenFrom->location?->city);
+        static::assertSame('198.51.100.7', $session->lastSeenFrom->ipAddress);
+        static::assertSame('curl/8.5.0', $session->lastSeenFrom->userAgent);
+    }
+
+    /**
+     * A message of the lane may arrive after a logout, which is late and not wrong: there is a row, and
+     * it says where it was seen from.
+     */
+    #[Test]
+    public function anEndedSessionIsStillLocated(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $session->end(SessionEnd::User, Fixtures::now()->modify('+1 minute'));
+
+        // When
+        $session->locate(new GeoLocation('GB', city: 'Oxford'), new GeoLocation('GB', city: 'Oxford'));
+
+        // Then
+        static::assertSame('Oxford', $session->createdFrom->location?->city);
     }
 }

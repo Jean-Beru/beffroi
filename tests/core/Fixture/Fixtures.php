@@ -33,6 +33,12 @@ use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 final class Fixtures
 {
     /**
+     * The address every provenance of the fixtures came from, read from here by whatever answers something
+     * of that address (GeoLocatorOfPlaces): two lists of the same address are two lists that disagree.
+     */
+    public const string IP_ADDRESS = '203.0.113.10';
+
+    /**
      * A handle of the shape an authenticator stores, for a test that does not care which.
      */
     public static function userHandle(): PasskeyUserHandle
@@ -52,7 +58,7 @@ final class Fixtures
 
     public static function context(
         ?DateTimeImmutable $receivedAt = null,
-        ?string $ipAddress = '203.0.113.10',
+        ?string $ipAddress = self::IP_ADDRESS,
         ?string $userAgent = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0',
     ): RequestContext {
         return new RequestContext($receivedAt ?? self::now(), $ipAddress, $userAgent);

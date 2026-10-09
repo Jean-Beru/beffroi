@@ -72,6 +72,12 @@ deptrac:
         # spomky-labs/web-push-lib, the Web Push brick (docs/09-briques.md): the bundle encrypts a
         # notification to a browser and signs the request with it, nothing else speaks RFC 8291
         - { type: classLike, value: '^WebPush\\' }
+    - name: 'MaxMindDb'
+      collectors:
+        # maxmind-db/reader, the brick that reads a GeoLite2 database (docs/09-briques.md): the bundle
+        # reads the place of an address with it, and the reader alone, so that nothing of this provider
+        # holds a client that would send an address to MaxMind (issue #473, decision 0006)
+        - { type: classLike, value: '^MaxMind\\' }
     - name: 'QrCode'
       collectors:
         # bacon/bacon-qr-code, what draws the QR code of a TOTP enrolment as an SVG in the bundle (architecture §5.2): the pages embed it, nothing else reads it
@@ -163,6 +169,7 @@ deptrac:
       - 'Webauthn'
       - 'Otphp'
       - 'WebPush'
+      - 'MaxMindDb'
       - 'QrCode'
       - 'Serializer'
       - 'Doctrine'

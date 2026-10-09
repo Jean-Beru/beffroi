@@ -33,6 +33,7 @@ use Beffroi\Bundle\Configuration\ClientsSection;
 use Beffroi\Bundle\Configuration\InteractionSection;
 use Beffroi\Bundle\Configuration\ConfigurationSectionInterface;
 use Beffroi\Bundle\Configuration\DpopSection;
+use Beffroi\Bundle\Configuration\GeoipSection;
 use Beffroi\Bundle\Configuration\KeysSection;
 use Beffroi\Bundle\Configuration\HistorySection;
 use Beffroi\Bundle\Configuration\JournalSection;
@@ -374,6 +375,7 @@ final class BeffroiBundle extends AbstractBundle
             new LoadSection(),
             new JournalSection(),
             new HistorySection(),
+            new GeoipSection(),
             new InteractionSection(),
             new BackChannelLogoutSection(),
             new BackchannelAuthenticationSection(),
