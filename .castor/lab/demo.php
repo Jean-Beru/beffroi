@@ -77,7 +77,7 @@ const DEMO_LADDER_KEYS = [
 const DEMO_LADDER_DIRECTORY = 'var/demo';
 
 #[AsTask(
-    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
+    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --flows opens the pages where every flow this provider serves is drawn and plays two of them hop by hop; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
 )]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
@@ -116,6 +116,10 @@ function demo(
         description: 'The first interoperability criterion of spike 6 (issue #228): a PHP CLI with no browser and no secret obtains a token by the device grant (tests/demo/device-cli.php), the code it shows is confirmed in a browser meanwhile, and every step is asserted',
     )]
     bool $device = false,
+    #[AsOption(
+        description: 'Issue #462: the pages of the demonstration where every flow this provider serves is drawn, the set of pictures read against the discovery document, then a device grant run and a backchannel run played hop by hop from a page, each hop showing the request that was sent and the answer that came back',
+    )]
+    bool $flows = false,
     #[AsOption(
         description: 'The second and third interoperability criteria of spike 6 (issue #228): a service obtains a token for itself for a resource it named, a gateway exchanges it to act on its behalf, and the resource server of the demonstration accepts the exchanged token, names the subject and the actor, and refuses a token addressed to another resource',
     )]
@@ -256,6 +260,17 @@ function demo(
     }
     if ($device) {
         demo_device_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
+    }
+    if ($flows) {
+        if (($env[DEMO_CIBA_CLIENTS['poll']['secret']] ?? '') === '') {
+            io()->error(sprintf('%s is empty: run "castor provision" first.', DEMO_CIBA_CLIENTS['poll']['secret']));
+            exit(1);
+        }
+        if (($env['BEFFROI_DEV_USER_SUBJECT'] ?? '') === '') {
+            io()->error('BEFFROI_DEV_USER_SUBJECT is empty: run "castor provision" first, which writes the subject this provider issued the development user and which the backchannel flow of the demonstration names its user by.');
+            exit(1);
+        }
+        demo_flows_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($service) {
         foreach (['DEMO_SERVICE_SECRET', 'DEMO_GATEWAY_SECRET'] as $name) {
@@ -1503,7 +1518,7 @@ function demo_ladder_check(string $issuer, string $password, string $ca): void
         }
 
         if (isset($rung['known'])) {
-            $verified[] = [$slug, $carried, $returned, demo_ladder_known($cookies, $ca, $slug, $status, $location, $rung['known'])];
+            $verified[] = [$slug, $carried, $returned, demo_ladder_known($cookies, $ca, $slug, $status, $location, $rung['known']), 'nothing to replay'];
 
             continue;
         }
@@ -1512,10 +1527,16 @@ function demo_ladder_check(string $issuer, string $password, string $ca): void
         [$status, , $page] = demo_request($cookies, $ca, 'GET', $profile);
         demo_expect($status === 200, sprintf('%s: the page of the rung opens (got %d)', $slug, $status));
 
-        $verified[] = [$slug, $carried, $returned, demo_ladder_tokens($slug, demo_ladder_jwts($page), $page)];
+        $verified[] = [
+            $slug,
+            $carried,
+            $returned,
+            demo_ladder_tokens($slug, demo_ladder_jwts($page), $page),
+            demo_ladder_replay($cookies, $ca, $issuer, $slug, (string) $rung['client']),
+        ];
     }
 
-    io()->table(['Rung', 'To the provider', 'Back from it', 'What the rung holds'], $verified);
+    io()->table(['Rung', 'To the provider', 'Back from it', 'What the rung holds', 'Replayed'], $verified);
     foreach (DEMO_LADDER_RUNGS as $slug => $rung) {
         if (isset($rung['known'])) {
             io()->note(sprintf('The rung "%s" is refused on purpose and the run says so: %s', $slug, $rung['known']));
@@ -1663,6 +1684,388 @@ const DEMO_DPOP_CLIENT = 'tests/demo/dpop-client.php';
 const DEMO_DPOP_PATH = '/api/me/dpop';
 
 const DEMO_DPOP_INTROSPECTED_PATH = '/api/me/dpop/introspected';
+
+/**
+ * The pages of the demonstration (issue #462), where the flows of this provider are drawn: the index,
+ * the page of one flow, and the two calls a live run is played with. A flow travels in the query and
+ * not in a path, a grant type being named by an absolute URI often enough.
+ */
+const DEMO_FLOWS_PATH = '/demonstration/';
+
+const DEMO_FLOW_PATH = '/demonstration/flow';
+
+const DEMO_FLOW_ADVANCE_PATH = '/demonstration/flow/advance';
+
+const DEMO_FLOW_OPEN_PATH = '/demonstration/flow/open';
+
+/**
+ * The two flows the demonstration plays from a page, named by the registries that name them (RFC 8628
+ * §3.1, CIBA Core §4): what the demonstration can play is what the lab registered a client for, and
+ * these two are the ones this walk follows hop by hop.
+ */
+const DEMO_DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
+
+const DEMO_CIBA_GRANT_TYPE = 'urn:openid:params:grant-type:ciba';
+
+/**
+ * A name no grant of this provider gives itself (decision 0006 wired no password grant): the page of a
+ * flow it does not serve is a 404, which is what says the set of pages is the set of pictures.
+ */
+const DEMO_UNSERVED_GRANT = 'password';
+
+/**
+ * How many advances a live run is given before this walk gives up on it: a device flow is three hops of
+ * the client and one poll per interval, and a run needing more than this is a run that will not end.
+ */
+const DEMO_FLOW_ADVANCES = 24;
+
+/**
+ * Seconds between two polls, which is the interval this provider asks a client to wait (RFC 8628 §3.5).
+ */
+const DEMO_FLOW_POLL_INTERVAL = 5;
+
+/**
+ * Issue #462: every flow this provider serves is drawn, and two of them are played hop by hop from a
+ * page, each hop showing the request that was sent and the answer that came back.
+ *
+ * What is asserted of the pictures is that they are the wiring: the page of every grant the discovery
+ * document announces answers, the page of a grant it does not announce is a 404, and the index draws
+ * those grants in that order. Nothing here writes down which flows those are.
+ *
+ * What is asserted of a run is that the demonstration took the hops of the client and stood in for
+ * nobody: the code of the device flow is typed in a browser of this walk, the backchannel request is
+ * allowed on the page of the user, and both of those hops are in the trace because this provider
+ * recorded them while it served them.
+ */
+function demo_flows_check(string $issuer, string $password, string $ca): void
+{
+    io()->section('Every flow, drawn');
+    $cookies = [];
+
+    $announced = demo_metadata($issuer . '/.well-known/openid-configuration', $ca)['grant_types_supported'] ?? null;
+    demo_expect(is_array($announced) && $announced !== [], 'the provider announces the grants it is wired with (OIDC Discovery §3)');
+    $announced = array_values(array_map(strval(...), (array) $announced));
+
+    [$status, , $index] = demo_request($cookies, $ca, 'GET', $issuer . DEMO_FLOWS_PATH);
+    demo_expect($status === 200, sprintf('the index of the demonstration opens (got %d)', $status));
+    preg_match_all('/' . preg_quote(DEMO_FLOW_PATH, '/') . '\?flow=([^"&]+)"/', $index, $links);
+    $drawn = array_map(urldecode(...), $links[1]);
+    demo_expect(
+        $drawn === $announced,
+        sprintf('the flows drawn are the grants announced, in that order (%s)', implode(', ', $drawn)),
+    );
+
+    foreach ($announced as $grantType) {
+        [$status] = demo_request($cookies, $ca, 'GET', $issuer . DEMO_FLOW_PATH . '?flow=' . rawurlencode($grantType));
+        demo_expect($status === 200, sprintf('the flow "%s" has its page (got %d)', $grantType, $status));
+    }
+    [$status] = demo_request($cookies, $ca, 'GET', $issuer . DEMO_FLOW_PATH . '?flow=' . DEMO_UNSERVED_GRANT);
+    demo_expect($status === 404, sprintf('a flow this provider does not serve has no page (got %d)', $status));
+
+    $verified = [
+        ['Pictures', sprintf('%d, one per wired grant', count($drawn))],
+        ['A grant nobody wired', sprintf('"%s": 404', DEMO_UNSERVED_GRANT)],
+        demo_flow_device_run($issuer, $password, $ca),
+        demo_flow_backchannel_run($issuer, $password, $ca),
+    ];
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success('Every flow this provider serves is drawn, and two of them were followed hop by hop, each hop showing what really travelled.');
+}
+
+/**
+ * RFC 8628 played from a page, one hop per advance: the client asks, is handed a code to show, and polls
+ * while nobody has answered; the user types that code in a browser that holds nothing else; the client
+ * is answered and spends what it was given. Every poll is in the trace, each refusal with the reason
+ * the provider gave for it.
+ *
+ * @return array{string, string}
+ */
+function demo_flow_device_run(string $issuer, string $password, string $ca): array
+{
+    $cookies = [];
+    demo_flow_open($cookies, $ca, $issuer, DEMO_DEVICE_GRANT_TYPE);
+
+    $drawing = demo_flow_advance($cookies, $ca, $issuer, DEMO_DEVICE_GRANT_TYPE);
+    $asked = demo_flow_hop($drawing, 'device_authorization_response');
+    demo_expect(($asked['status'] ?? null) === 200, 'the client with no browser is handed a code to show (RFC 8628 §3.2)');
+    $answer = (array) json_decode((string) ($asked['raw'] ?? ''), true);
+    $userCode = (string) ($answer['user_code'] ?? '');
+    demo_expect(
+        preg_match('/^[A-Z0-9]{4}-[A-Z0-9]{4}$/', $userCode) === 1,
+        sprintf('the page shows the code the provider really answered (got "%s")', $userCode),
+    );
+    $sent = demo_flow_hop($drawing, 'device_authorization_request');
+    demo_expect(
+        str_contains((string) ($sent['raw'] ?? ''), 'client_id=' . DEMO_DEVICE_CLIENT_ID),
+        'the request drawn is the request sent, a public client naming itself in it (RFC 6749 §3.2.1)',
+    );
+
+    $drawing = demo_flow_advance($cookies, $ca, $issuer, DEMO_DEVICE_GRANT_TYPE);
+    $pending = demo_flow_hop($drawing, 'token_response');
+    demo_expect(
+        ($pending['failed'] ?? null) === true && str_contains((string) ($pending['reason'] ?? ''), 'authorization_pending'),
+        sprintf('a hop that failed is drawn as it failed (%s)', (string) ($pending['reason'] ?? '')),
+    );
+
+    // the other device: a browser that holds nothing of the flow but the code it was read
+    demo_device_confirm($issuer, $password, $ca, $userCode);
+
+    $drawing = demo_flow_run($cookies, $ca, $issuer, DEMO_DEVICE_GRANT_TYPE);
+    $polls = demo_flow_taken($drawing, 'token_request');
+    demo_expect($polls >= 2, sprintf('the polling is drawn every time it was asked (%d times)', $polls));
+    $typed = demo_flow_hop($drawing, 'user_code');
+    demo_expect(
+        str_contains((string) ($typed['raw'] ?? ''), $userCode),
+        'the hop the user took is in the trace with what their browser posted: the demonstration stood in for nobody',
+    );
+    $tokens = demo_flow_hop($drawing, 'token_response', true);
+    demo_expect(($tokens['failed'] ?? null) === false, 'the client is answered its tokens once the user has answered (RFC 8628 §3.5)');
+    demo_expect(
+        count((array) ($tokens['jwts'] ?? [])) >= 1,
+        'a compact JWT of that answer is drawn raw and decoded, header and claims',
+    );
+    demo_expect(
+        (demo_flow_hop($drawing, 'userinfo_response')['status'] ?? null) === 200,
+        'and the client is told who the user is with the token it holds (OIDC Core §5.3.2)',
+    );
+    demo_flow_drawn_is_planned($drawing);
+
+    return ['A device flow, hop by hop', sprintf('%d hops, %d polls, the code typed in a browser', count((array) $drawing['hops']), $polls)];
+}
+
+/**
+ * CIBA Core played from a page the same way: the client names the user it is asking for and waits, this
+ * provider reaches them, and the answer comes from the page of what is waiting for that user.
+ *
+ * @return array{string, string}
+ */
+function demo_flow_backchannel_run(string $issuer, string $password, string $ca): array
+{
+    $cookies = [];
+    demo_flow_open($cookies, $ca, $issuer, DEMO_CIBA_GRANT_TYPE);
+
+    $drawing = demo_flow_advance($cookies, $ca, $issuer, DEMO_CIBA_GRANT_TYPE);
+    demo_expect(
+        (demo_flow_hop($drawing, 'backchannel_authentication_response')['status'] ?? null) === 200,
+        'the client is told the request was taken (CIBA Core §7.3)',
+    );
+    $sent = (string) (demo_flow_hop($drawing, 'backchannel_authentication_request')['raw'] ?? '');
+    parse_str($sent, $fields);
+    demo_expect(
+        ($fields['login_hint'] ?? '') !== '',
+        'the request drawn names the user it is for, as it was sent (§7.1)',
+    );
+    $binding = (string) ($fields['binding_message'] ?? '');
+
+    $drawing = demo_flow_advance($cookies, $ca, $issuer, DEMO_CIBA_GRANT_TYPE);
+    $pending = demo_flow_hop($drawing, 'token_response');
+    demo_expect(
+        ($pending['failed'] ?? null) === true,
+        sprintf('the client is told to wait (%s)', (string) ($pending['reason'] ?? '')),
+    );
+
+    // the user, on a device they already hold, reading the message the client wrote
+    demo_ciba_approve($issuer, $password, $ca, DEMO_CIBA_CLIENTS['poll']['client'], $binding);
+
+    $drawing = demo_flow_run($cookies, $ca, $issuer, DEMO_CIBA_GRANT_TYPE);
+    demo_expect(
+        demo_flow_hop($drawing, 'approval') !== null,
+        'the answer of the user is in the trace: this provider recorded it as it served it',
+    );
+    demo_expect(
+        (demo_flow_hop($drawing, 'token_response', true)['failed'] ?? null) === false,
+        'the client is answered once the user has allowed the request (§10.1)',
+    );
+    demo_expect(
+        (demo_flow_hop($drawing, 'introspection_response')['status'] ?? null) === 200,
+        'and the resource server is told what that token is (RFC 7662 §2.2)',
+    );
+    demo_flow_drawn_is_planned($drawing);
+
+    return ['A backchannel flow, hop by hop', sprintf('%d hops, allowed on the page of the user', count((array) $drawing['hops']))];
+}
+
+/**
+ * A sign-in replayed after the fact (issue #462): the trace this provider recorded while a rung of the
+ * ladder signed its user in, read from the page that draws it. The back-channel token request is in it,
+ * which is the whole reason a narrator living in the page of a client cannot do this.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_ladder_replay(array &$cookies, string $ca, string $issuer, string $slug, string $clientId): string
+{
+    $drawing = demo_flow_trace($cookies, $ca, $issuer, 'authorization_code', $clientId);
+    foreach (['authorization_request', 'authorization_response', 'token_request', 'token_response'] as $hop) {
+        demo_expect(
+            demo_flow_hop($drawing, $hop) !== null,
+            sprintf('%s: the hop "%s" of the sign-in is replayed from what this provider recorded', $slug, $hop),
+        );
+    }
+    $sent = (string) (demo_flow_hop($drawing, 'token_request')['raw'] ?? '');
+    demo_expect(
+        str_contains($sent, 'grant_type=authorization_code'),
+        sprintf('%s: the request no browser was in is one of the hops (RFC 6749 §4.1.3)', $slug),
+    );
+    demo_flow_drawn_is_planned($drawing);
+
+    return sprintf('%d hops replayed', count((array) $drawing['hops']));
+}
+
+/**
+ * A run started over: what the previous one exchanged is forgotten with it.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_flow_open(array &$cookies, string $ca, string $issuer, string $flow): void
+{
+    [$status] = demo_request($cookies, $ca, 'POST', $issuer . DEMO_FLOW_OPEN_PATH . '?flow=' . rawurlencode($flow));
+    demo_expect($status === 302, sprintf('the run of "%s" is started over (got %d)', $flow, $status));
+}
+
+/**
+ * One advance of a live run, which is what the next button of the page is: the demonstration takes the
+ * next hop of the flow, for real, and answers the trace as it is once it has.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ *
+ * @return array<string, mixed>
+ */
+function demo_flow_advance(array &$cookies, string $ca, string $issuer, string $flow): array
+{
+    [$status, , $body] = demo_request($cookies, $ca, 'POST', $issuer . DEMO_FLOW_ADVANCE_PATH . '?flow=' . rawurlencode($flow));
+    demo_expect($status === 200, sprintf('the next hop of "%s" is taken (got %d: %s)', $flow, $status, $body));
+
+    return (array) json_decode($body, true);
+}
+
+/**
+ * The trace drawn on the page of a flow, read from the page as every walk of this file reads a page: it
+ * carries what it draws in an attribute, so that the script of the page and this walk read one thing.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ *
+ * @return array<string, mixed>
+ */
+function demo_flow_trace(array &$cookies, string $ca, string $issuer, string $flow, ?string $clientId = null): array
+{
+    $url = $issuer . DEMO_FLOW_PATH . '?flow=' . rawurlencode($flow) . ($clientId === null ? '' : '&client=' . rawurlencode($clientId));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $url);
+    demo_expect($status === 200, sprintf('the page of "%s" opens (got %d)', $flow, $status));
+    demo_expect(preg_match('/data-trace="([^"]*)"/', $page, $trace) === 1, sprintf('the page of "%s" carries the trace it draws', $flow));
+
+    return [
+        'hops' => (array) json_decode(html_entity_decode($trace[1], \ENT_QUOTES), true),
+        'plan' => demo_flow_plan($page),
+    ];
+}
+
+/**
+ * The plan drawn on the page of a flow: one row per hop of the picture, with how many times it was
+ * taken, read from the rows themselves.
+ *
+ * @return list<array{name: string, taken: int}>
+ */
+function demo_flow_plan(string $page): array
+{
+    preg_match_all('/data-hop="([^"]+)"(?:\s+data-taken="(\d+)")?/', $page, $rows, \PREG_SET_ORDER);
+    $plan = [];
+    foreach ($rows as $row) {
+        $plan[] = [
+            'name' => $row[1],
+            'taken' => (int) ($row[2] ?? 0),
+        ];
+    }
+
+    return $plan;
+}
+
+/**
+ * A run advanced until the flow has nothing left to take, waiting out the interval this provider asks a
+ * client to poll on: a client that asks faster is told to slow down, and the demonstration is a client
+ * like any other.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ *
+ * @return array<string, mixed>
+ */
+function demo_flow_run(array &$cookies, string $ca, string $issuer, string $flow): array
+{
+    $drawing = [];
+    $hops = -1;
+    for ($advance = 0; $advance < DEMO_FLOW_ADVANCES; ++$advance) {
+        $drawing = demo_flow_advance($cookies, $ca, $issuer, $flow);
+        $taken = count((array) ($drawing['hops'] ?? []));
+        if ($taken === $hops) {
+            return $drawing;
+        }
+        $hops = $taken;
+        $answer = demo_flow_hop($drawing, 'token_response', true);
+        if (($answer['failed'] ?? null) === true) {
+            sleep(DEMO_FLOW_POLL_INTERVAL);
+        }
+    }
+    demo_expect(false, sprintf('the run of "%s" ends within %d advances', $flow, DEMO_FLOW_ADVANCES));
+
+    return $drawing;
+}
+
+/**
+ * One hop of a drawing by name, the first one drawn or the last.
+ *
+ * @param array<string, mixed> $drawing
+ *
+ * @return array<string, mixed>|null
+ */
+function demo_flow_hop(array $drawing, string $name, bool $last = false): ?array
+{
+    $found = null;
+    foreach ((array) ($drawing['hops'] ?? []) as $hop) {
+        if (! is_array($hop) || ($hop['name'] ?? null) !== $name) {
+            continue;
+        }
+        if (! $last) {
+            return $hop;
+        }
+        $found = $hop;
+    }
+
+    return $found;
+}
+
+/**
+ * How many times a hop was taken, as the plan of the drawing counts it.
+ *
+ * @param array<string, mixed> $drawing
+ */
+function demo_flow_taken(array $drawing, string $name): int
+{
+    foreach ((array) ($drawing['plan'] ?? []) as $planned) {
+        if (is_array($planned) && ($planned['name'] ?? null) === $name) {
+            return (int) ($planned['taken'] ?? 0);
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * No page shows a payload that was not exchanged, and nothing is drawn that the picture does not plan:
+ * every hop of the trace is a hop of the plan, and every hop that was answered says what it carried.
+ *
+ * @param array<string, mixed> $drawing
+ */
+function demo_flow_drawn_is_planned(array $drawing): void
+{
+    $planned = array_column(array_filter((array) ($drawing['plan'] ?? []), is_array(...)), 'name');
+    $unplanned = [];
+    foreach ((array) ($drawing['hops'] ?? []) as $hop) {
+        if (is_array($hop) && ! in_array((string) ($hop['name'] ?? ''), $planned, true)) {
+            $unplanned[] = (string) ($hop['name'] ?? '');
+        }
+    }
+    demo_expect($unplanned === [], sprintf('every hop drawn is a hop the picture plans (%s)', implode(', ', $unplanned)));
+}
 
 /**
  * The two criteria of spike 5 that are judged at the client and not by the conformance suite (issue #167).
@@ -3267,8 +3670,9 @@ function demo_ciba_wait_for_you(string $issuer, array $asked): void
  * one of the device grant: what reaches a user from outside says that something is waiting, and what they
  * find at the provider is found by who they are.
  */
-function demo_ciba_approve(string $issuer, string $password, string $ca, string $clientId): void
+function demo_ciba_approve(string $issuer, string $password, string $ca, string $clientId, ?string $bindingMessage = null): void
 {
+    $bindingMessage ??= DEMO_CIBA_BINDING_MESSAGE;
     $cookies = [];
     $page = $issuer . '/account/approvals';
 
@@ -3279,7 +3683,7 @@ function demo_ciba_approve(string $issuer, string $password, string $ca, string 
         'the page of what is waiting has something on it',
     );
     demo_expect(
-        preg_match('/data-binding-message="([^"]*)"/', $approvals, $binding) === 1 && $binding[1] === DEMO_CIBA_BINDING_MESSAGE,
+        preg_match('/data-binding-message="([^"]*)"/', $approvals, $binding) === 1 && $binding[1] === $bindingMessage,
         sprintf('the page shows the message the client wrote, as it was sent (CIBA Core §7.1: "%s")', $binding[1] ?? ''),
     );
     demo_expect(
