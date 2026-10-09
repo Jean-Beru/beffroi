@@ -9,7 +9,10 @@ name: gitsplit
 # whatever the default branch happens to declare at that moment.
 #
 # The container is not given the repository credentials: it pushes with
-# GITSPLIT_TOKEN, which must reach the four target repositories. It never
+# GITSPLIT_TOKEN, which must reach the four target repositories, and the step
+# after it reads that same secret. One credential does everything that is done
+# to a mirror and nothing that is done here, so it carries write access to
+# their code and, for their default branch, to their administration. It never
 # reads origin either, which is why .gitsplit.yml declares no cache url; the
 # cache volume below is mounted and left unused, as in jwt-framework.
 #
@@ -57,32 +60,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
 
-      # Changing the default branch needs the "administration" permission, which the GITHUB_TOKEN of
-      # Actions cannot be granted, and touching a branch of another repository needs a credential for
-      # it: both are ORGANIZATION_ADMIN_TOKEN, the token the release already runs on. A secret cannot
-      # be read in the condition of a step, so it is read here and the step below asks this one
-      # whether there is anything it can do.
-      - name: "The credential this run is given"
-        id: "admin"
-        env:
-          ADMIN_TOKEN: ${{ secrets.ORGANIZATION_ADMIN_TOKEN }}
-        run: |
-          if [ -z "${ADMIN_TOKEN}" ]; then
-            echo "::warning title=The mirrors were not aligned::ORGANIZATION_ADMIN_TOKEN is not set: the split was pushed, and the default branch of a mirror still points where it did."
-            echo 'available=false' >> "${GITHUB_OUTPUT}"
-          else
-            echo 'available=true' >> "${GITHUB_OUTPUT}"
-          fi
-
+      # The credential of the split, and not the one of this repository: changing a default branch
+      # needs "administration" and deleting a branch needs "contents", neither of which the
+      # GITHUB_TOKEN of Actions can be granted on another repository, and ORGANIZATION_ADMIN_TOKEN,
+      # which can do everything here, reaches no mirror and is not given one. There is nothing to
+      # check before running: this step is reached only when the split above has pushed, which is what
+      # a secret that is missing or too narrow stops.
+      #
       # The targets and the patterns are read from .gitsplit.yml, so a prefix added there is a mirror
       # this step aligns without being told twice. The newest branch is taken from what the mirror
       # carries and never from what this repository carries: a default branch is a branch that exists,
       # and the push above is what makes it exist. The default is moved before anything is deleted,
       # because a default branch cannot be deleted.
       - name: "Align the mirrors on this repository"
-        if: "steps.admin.outputs.available == 'true'"
         env:
-          GH_TOKEN: ${{ secrets.ORGANIZATION_ADMIN_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
         run: |
           mapfile -t PATTERNS < <(sed -n '/^origins:/,$ s/^  - //p' .gitsplit.yml)
           mapfile -t MIRRORS < <(grep -oP '(?<=github\.com/)[^"]+(?=\.git)' .gitsplit.yml)
