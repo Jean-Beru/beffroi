@@ -133,12 +133,15 @@ function phpqa(array $command, array $environment = [], ?string $phpIniDirectory
         return;
     }
 
-    if (! is_dir(getcwd() . '/tmp-phpqa')) {
-        mkdir(getcwd() . '/tmp-phpqa');
-    }
-
     $gitCommonDirectory = git_common_directory();
 
+    // The temporary directory of a run is the container's own /tmp, and it is left there. TMPDIR would move
+    // it under the working directory, where it would outlive the run, and that is what must not happen: the
+    // compiled container of the test kernel lives in it (AppKernel::getCacheDir()) and that kernel boots
+    // with APP_DEBUG=0, where Symfony reuses a dumped container without asking whether the configuration it
+    // was dumped from has moved. What the compilation costs is measured: a run of one test class is 3 532 ms
+    // on an empty cache against 2 180 ms with it already there, so 1 350 ms once per run, which is less than
+    // one afternoon spent on a container nothing invalidated.
     $dockerOptions = [
         '--rm',
         '--init',
@@ -147,8 +150,6 @@ function phpqa(array $command, array $environment = [], ?string $phpIniDirectory
         sprintf('%s:%s', getmyuid(), getmygid()),
         '-v',
         getcwd() . ':/project',
-        '-v',
-        getcwd() . '/tmp-phpqa:/project/tmp-phpqa',
         '-w',
         '/project',
         // Read only: what the container does with it is read the repository, and nothing it runs has
@@ -158,8 +159,6 @@ function phpqa(array $command, array $environment = [], ?string $phpIniDirectory
         $phpIniDirectory === null
             ? 'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d'
             : 'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d:/project/' . $phpIniDirectory,
-        '-e',
-        'PHP_INI_ENTRY=sys_temp_dir=/project/tmp-phpqa',
     ];
     foreach ($environment as $name => $value) {
         $dockerOptions[] = '-e';

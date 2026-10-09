@@ -1,6 +1,5 @@
 /vendor/
 /composer.lock
-/tmp-phpqa/
 /.ci-tools/cache/
 /.ci-tools/coverage/
 /.ci-tools/.phpunit.cache/
