@@ -589,6 +589,9 @@ services:
     test.beffroi.sector_identifiers:
         alias: Beffroi\Oidc\Port\SectorIdentifiersInterface
         public: true
+    test.beffroi.flow_pictures:
+        alias: Beffroi\Oidc\Port\FlowPicturesInterface
+        public: true
     test.beffroi.password_hasher:
         alias: Beffroi\Core\Port\PasswordHasherInterface
         public: true

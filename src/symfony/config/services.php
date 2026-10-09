@@ -405,6 +405,17 @@ use Beffroi\Oidc\Application\Token\PresentedAccessTokenParser;
 use Beffroi\Oidc\Application\Token\RefreshTokenGrant;
 use Beffroi\Oidc\Application\Token\ServedAccessTokenShapes;
 use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Application\Flow\TheClientActsForItself;
+use Beffroi\Oidc\Application\Flow\TheClientAsksForATokenAlone;
+use Beffroi\Oidc\Application\Flow\TheProviderIsAskedWhoTheUserIs;
+use Beffroi\Oidc\Application\Flow\TheRefreshTokenIsSpent;
+use Beffroi\Oidc\Application\Flow\TheResourceServerAsksWhatTheTokenIs;
+use Beffroi\Oidc\Application\Flow\TheTokenIsGivenBack;
+use Beffroi\Oidc\Application\Flow\TheUserIsAskedOnAnotherDevice;
+use Beffroi\Oidc\Application\Flow\TheUserIsAskedThroughABackchannel;
+use Beffroi\Oidc\Application\Flow\TheUserIsSentToTheClient;
+use Beffroi\Oidc\Application\Flow\WiredFlowPictures;
+use Beffroi\Oidc\Port\FlowPicturesInterface;
 use Beffroi\Oidc\Application\Token\RefreshTokenRevocation;
 use Beffroi\Oidc\Application\Token\TokenHandler;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
@@ -1436,6 +1447,25 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwtBearerGrant::class)->tag('beffroi.oidc.grant');
     $services->set(ServedGrants::class)->args([tagged_iterator('beffroi.oidc.grant')]);
     $services->alias(ServedGrantsInterface::class, ServedGrants::class);
+    // one class per shape a flow has (issue #462), tagged as an opening or as a closing, and the
+    // pictures are read from the grants above and from the capabilities they declare: a grant the
+    // provider gains brings its picture, a grant unwired takes its picture away, and no list of flows
+    // is kept beside the wiring. The order of the closings is the order a flow is read in.
+    $services->set(TheUserIsSentToTheClient::class)->tag('beffroi.oidc.flow_opening');
+    $services->set(TheUserIsAskedOnAnotherDevice::class)->tag('beffroi.oidc.flow_opening');
+    $services->set(TheUserIsAskedThroughABackchannel::class)->tag('beffroi.oidc.flow_opening');
+    $services->set(TheClientActsForItself::class)->tag('beffroi.oidc.flow_opening');
+    $services->set(TheClientAsksForATokenAlone::class)->tag('beffroi.oidc.flow_opening');
+    $services->set(TheProviderIsAskedWhoTheUserIs::class)->tag('beffroi.oidc.flow_closing');
+    $services->set(TheResourceServerAsksWhatTheTokenIs::class)->tag('beffroi.oidc.flow_closing');
+    $services->set(TheRefreshTokenIsSpent::class)->tag('beffroi.oidc.flow_closing');
+    $services->set(TheTokenIsGivenBack::class)->tag('beffroi.oidc.flow_closing');
+    $services->set(WiredFlowPictures::class)->args([
+        service(ServedGrantsInterface::class),
+        tagged_iterator('beffroi.oidc.flow_opening'),
+        tagged_iterator('beffroi.oidc.flow_closing'),
+    ]);
+    $services->alias(FlowPicturesInterface::class, WiredFlowPictures::class);
     // one class per type of token the exchange reads (RFC 8693 §3), tagged, and what is tagged is what a
     // request may present and what a client may register, never an enumeration kept beside them
     $services->set(PresentedAccessTokenType::class)->tag('beffroi.oidc.presented_token_type');
