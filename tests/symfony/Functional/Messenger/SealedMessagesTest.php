@@ -12,6 +12,7 @@ use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Application\Key\TenantKeyRotator;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
+use Beffroi\Core\Domain\Event\TenantKeyStaged;
 use Beffroi\Core\Port\MessageSealingAlgorithmsInterface;
 use Beffroi\Core\Port\PublicKeySetProviderInterface;
 use function base64_encode;
@@ -70,6 +71,35 @@ final class SealedMessagesTest extends DatabaseTestCase
     {
         // When / Then
         static::assertInstanceOf(SealedBodySerializer::class, $this->serializer);
+    }
+
+    /**
+     * Issue #548: the first key of a tenant is written and then announced, so what seals a body has to be
+     * the key that has just been written and not the key that is active. A key that could only be sealed to
+     * once active could not seal the event that announces it, and no tenant could be given a first one.
+     *
+     * The sequence is the one of a rotation, played with the serializer of the wiring and the key store of
+     * the kernel: stage the key, then write the event that announces it.
+     */
+    #[Test]
+    public function theFirstMessageKeyOfATenantSealsTheEventThatAnnouncesIt(): void
+    {
+        // Given
+        new Filesystem()->remove($this->directory);
+        $staged = self::service('test.beffroi.key_rotator', TenantKeyRotator::class)
+            ->stage(
+                self::tenant(),
+                self::service('test.beffroi.message_sealing_algorithms', MessageSealingAlgorithmsInterface::class)->defaultAlgorithm(),
+                self::context(),
+            );
+
+        // When
+        $encoded = $this->serializer->encode(new Envelope(new TenantKeyStaged($staged, self::now(), self::context())));
+
+        // Then
+        static::assertTrue($staged->isStaged());
+        static::assertCount(5, explode('.', $encoded['body']));
+        static::assertSame(TenantKeyStaged::class, $encoded['headers'][SealedBodySerializer::TYPE_HEADER] ?? null);
     }
 
     /**

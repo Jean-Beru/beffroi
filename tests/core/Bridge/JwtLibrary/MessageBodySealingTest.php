@@ -110,7 +110,7 @@ final class MessageBodySealingTest extends TestCase
     public function theProtectedHeaderNamesTheKeyTheAlgorithmsAndTheScope(): void
     {
         // Given
-        $key = $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+        $key = $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
 
         // When
         $header = self::protectedHeader($this->sealer->seal($this->tenant, self::BODY));
@@ -156,7 +156,7 @@ final class MessageBodySealingTest extends TestCase
     {
         // Given
         $sealed = $this->sealer->seal($this->tenant, self::BODY);
-        $key = $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+        $key = $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
         $key->startRetiring(Fixtures::now(), Fixtures::now());
         $key->retire(Fixtures::now());
         $this->keys->save($key);
@@ -213,7 +213,7 @@ final class MessageBodySealingTest extends TestCase
     public function aBodySealedUnderAnotherAlgorithmThanTheKeyIsHeldForIsNotOpened(): void
     {
         // Given
-        $key = $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+        $key = $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
         $sealed = $this->sealedWith([
             'alg' => 'ECDH-ES+A256KW',
             'enc' => 'A128GCM',
@@ -252,7 +252,7 @@ final class MessageBodySealingTest extends TestCase
     {
         // Then
         $this->expectException(KeyNotFoundException::class);
-        $this->expectExceptionMessageIsOrContains('has no active MESSAGE-SEAL key');
+        $this->expectExceptionMessageIsOrContains('holds no MESSAGE-SEAL key');
 
         // When
         $this->sealer->seal(Fixtures::tenant('other'), self::BODY);
@@ -266,7 +266,7 @@ final class MessageBodySealingTest extends TestCase
      */
     private function sealedWith(array $header, ?ContentEncryptionAlgorithm $contentEncryption = null): string
     {
-        $key = $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+        $key = $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
 
         return new CompactSerializer()->serialize(
             new JWEBuilder(new AlgorithmManager([new EcdhEsA256Kw()->joseAlgorithm(), $contentEncryption ?? new A256Gcm()->joseAlgorithm()]))
