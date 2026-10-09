@@ -153,7 +153,10 @@ jobs:
         with:
           dependency-versions: highest
           composer-options: --optimize-autoloader
-      - run: castor phpunit
+      # In parallel processes, one per core the runner gives: paratest merges the coverage of its workers
+      # itself, and each of them gets a compiled container, a database and a key storage of its own from the
+      # TEST_TOKEN the kernel reads (issue #529). Measured on sixteen cores, 47 s against 239 s.
+      - run: castor phpunit --processes=auto
       # The XML coverage and the JUnit report feed the mutation testing job, which does not run the tests again.
       - uses: actions/upload-artifact@v7
         with:
