@@ -126,7 +126,9 @@ use Beffroi\Bundle\MessageHandler\TellUserOfPendingApprovalHandler;
 use Beffroi\Bundle\MessageHandler\QueueLogoutTokenHandler;
 use Beffroi\Bundle\Messenger\EventBusDispatcher;
 use Beffroi\Bundle\Messenger\LogoutTokenGivenUpListener;
+use Beffroi\Bundle\Messenger\MessengerContract;
 use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
+use Beffroi\Bundle\Messenger\SealedBodySerializer;
 use Beffroi\Bundle\Plane\Plane;
 use Beffroi\Bundle\Plane\PlaneRequestListener;
 use Beffroi\Bundle\Routing\RouterEndpointLocator;
@@ -203,6 +205,7 @@ use Beffroi\Core\Application\Totp\TotpAuthentication;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\MessageSeal;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Es256;
@@ -214,11 +217,14 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodyOpener;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodySealer;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
@@ -252,6 +258,10 @@ use Beffroi\Core\Port\KeyAlgorithmsInterface;
 use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\KeyPairGeneratorInterface;
 use Beffroi\Core\Port\KeySealerInterface;
+use Beffroi\Core\Port\MessageBodyOpenerInterface;
+use Beffroi\Core\Port\MessageBodySealerInterface;
+use Beffroi\Core\Port\MessageKeyProviderInterface;
+use Beffroi\Core\Port\MessageSealingAlgorithmsInterface;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
 use Beffroi\Core\Port\PasskeyRegistrarInterface;
@@ -777,6 +787,14 @@ return static function (ContainerConfigurator $container): void {
     // how long a notification the provider carries to a third party is tried again: the policy the
     // application gives to the transport of that lane, and the one thing that says so
     $services->set(NotificationRetryPolicy::class);
+    // What every transport encodes with (MessengerContract::SERIALIZER, decision 0020): the body sealed to
+    // the message key of the tenant, the stamps in headers. Named by its identifier because the
+    // configuration of the component names a service, and that identifier is in the contract.
+    $services->set(MessengerContract::SERIALIZER, SealedBodySerializer::class)->args([
+        service(TenantProvider::class),
+        service(MessageBodySealerInterface::class),
+        service(MessageBodyOpenerInterface::class),
+    ]);
 
     // The bundle: security (architecture §5.4); the application names these in its firewall
     $services->set(IdentityUserProvider::class);
@@ -893,6 +911,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(DecryptionKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(PublicKeySetProviderInterface::class, SealedKeyProvider::class);
     $services->alias(ApplicationServerKeyProviderInterface::class, SealedKeyProvider::class);
+    $services->alias(MessageKeyProviderInterface::class, SealedKeyProvider::class);
     // The algorithms the provider signs with: one class per algorithm, tagged; the first tagged one is
     // the default, the one an access token, a signed introspection response and a client that registered
     // none are signed with. A new algorithm is a class and a line here, and the discovery document, the
@@ -932,6 +951,22 @@ return static function (ContainerConfigurator $container): void {
     $services->set(Vapid::class);
     $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('beffroi.application_server_algorithm')]);
     $services->alias(ApplicationServerAlgorithmsInterface::class, JoseApplicationServerAlgorithms::class);
+    // The algorithm of the key the tenant seals what leaves the process to (decision 0020): kept and
+    // never published, so a reader of the discovery document cannot seal a body this provider would open.
+    // The pair it draws and the JOSE pair a sealed body carries are wired here rather than autowired,
+    // because two key encryption algorithms implement that interface, and they are services of their own
+    // rather than the ones above: what seals a message does not depend on a deployment that clients
+    // encrypt nothing to having kept them.
+    $services
+        ->set(MessageSeal::class)
+        ->args([inline_service(EcdhEsA256Kw::class), inline_service(A256Gcm::class)])
+        ->tag('beffroi.message_sealing_algorithm');
+    $services->set(JoseMessageSealingAlgorithms::class)->args([tagged_iterator('beffroi.message_sealing_algorithm')]);
+    $services->alias(MessageSealingAlgorithmsInterface::class, JoseMessageSealingAlgorithms::class);
+    $services->set(JwtLibraryMessageBodySealer::class);
+    $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);
+    $services->set(JwtLibraryMessageBodyOpener::class);
+    $services->alias(MessageBodyOpenerInterface::class, JwtLibraryMessageBodyOpener::class);
     // What a key may be generated for, the two lists read as one: the key commands and the key files
     // resolve an algorithm name against this, whatever the key is published for
     $services->set(JoseKeyAlgorithms::class);
