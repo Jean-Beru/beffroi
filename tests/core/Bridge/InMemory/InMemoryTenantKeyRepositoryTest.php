@@ -44,7 +44,7 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
     public function aTenantWithoutKeysPublishesNothing(): void
     {
         // When / Then
-        static::assertSame([], $this->repository->findPublished($this->acme));
+        static::assertSame([], $this->repository->findInService($this->acme));
     }
 
     #[Test]
@@ -68,7 +68,7 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
 
         // When / Then
         static::assertSame($acmeKey, $this->repository->findActive($this->acme, Algorithms::rs256()));
-        static::assertSame([$acmeKey], $this->repository->findPublished($this->acme));
+        static::assertSame([$acmeKey], $this->repository->findInService($this->acme));
     }
 
     #[Test]
@@ -88,7 +88,7 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
 
         // When / Then
         static::assertNull($this->repository->findActive($this->acme, Algorithms::rs256()));
-        static::assertSame([$key], $this->repository->findPublished($this->acme));
+        static::assertSame([$key], $this->repository->findInService($this->acme));
     }
 
     #[Test]
@@ -100,7 +100,7 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
 
         // When / Then
         static::assertNull($this->repository->findActive($this->acme, Algorithms::rs256()));
-        static::assertSame([$key], $this->repository->findPublished($this->acme));
+        static::assertSame([$key], $this->repository->findInService($this->acme));
     }
 
     #[Test]
@@ -114,11 +114,11 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
 
         // When / Then
         static::assertSame($key, $this->repository->find($this->acme, Keys::pair()->kid));
-        static::assertSame([], $this->repository->findPublished($this->acme));
+        static::assertSame([], $this->repository->findInService($this->acme));
     }
 
     /**
-     * TenantKeyRepositoryInterface::findPublished(): in creation order, whatever the order of the writes.
+     * TenantKeyRepositoryInterface::findInService(): in creation order, whatever the order of the writes.
      */
     #[Test]
     public function thePublishedKeysComeInCreationOrder(): void
@@ -138,7 +138,7 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
         $this->repository->save($oldest);
 
         // When / Then
-        static::assertSame([$oldest, $newest], $this->repository->findPublished($this->acme));
+        static::assertSame([$oldest, $newest], $this->repository->findInService($this->acme));
     }
 
     private static function activeKey(Tenant $tenant, string $kid, ?DateTimeImmutable $createdAt = null): TenantKey

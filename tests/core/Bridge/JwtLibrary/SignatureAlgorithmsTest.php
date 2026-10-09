@@ -214,8 +214,8 @@ final class SignatureAlgorithmsTest extends TestCase
 
     /**
      * Issue #98: a name no registry carries is refused with what each of them had to say about it, so
-     * that an operator who typed one reads what this provider does sign with, is encrypted to with, and
-     * hands out.
+     * that an operator who typed one reads what this provider does sign with, is encrypted to with, hands
+     * out and seals its own messages to.
      */
     #[Test]
     public function aNameNoRegistryCarriesIsRefusedWithWhatEachOfThemServes(): void
@@ -224,7 +224,8 @@ final class SignatureAlgorithmsTest extends TestCase
         $this->expectException(UnsupportedAlgorithmException::class);
         $this->expectExceptionMessageIs('This provider does not sign with "HS256"; it signs with RS256, PS256, ES256, EdDSA. '
         . 'This provider is not encrypted to with "HS256"; it is encrypted to with ECDH-ES+A256KW, RSA-OAEP-256. '
-        . 'This provider hands out no key named "HS256"; it hands out VAPID.');
+        . 'This provider hands out no key named "HS256"; it hands out VAPID. '
+        . 'This provider seals no message body to a key named "HS256"; it seals to MESSAGE-SEAL.');
 
         // When
         Algorithms::everyUse()->named('HS256');
@@ -262,7 +263,12 @@ final class SignatureAlgorithmsTest extends TestCase
         $algorithms = new JoseSignatureAlgorithms([$unwired]);
         $repository = new InMemoryTenantKeyRepository();
         $pair = new JwtLibraryKeyPairGenerator(
-            new JoseKeyAlgorithms($algorithms, Algorithms::noKeyEncryption(), Algorithms::noApplicationServer()),
+            new JoseKeyAlgorithms(
+                $algorithms,
+                Algorithms::noKeyEncryption(),
+                Algorithms::noApplicationServer(),
+                Algorithms::noMessageSealing(),
+            ),
         )->generate($unwired);
         $key = new TenantKey(
             $pair->kid,

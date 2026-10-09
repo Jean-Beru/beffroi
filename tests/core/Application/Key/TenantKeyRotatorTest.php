@@ -109,7 +109,7 @@ final class TenantKeyRotatorTest extends TestCase
         // Then
         static::assertSame(KeyStatus::Staged, $staged->status);
         static::assertEquals($this->clock->now(), $staged->createdAt);
-        static::assertSame([$first, $staged], $this->repository->findPublished($this->tenant));
+        static::assertSame([$first, $staged], $this->repository->findInService($this->tenant));
         static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
@@ -300,7 +300,7 @@ final class TenantKeyRotatorTest extends TestCase
         static::assertSame(KeyStatus::Retiring, $first->status);
         static::assertEquals($this->clock->now(), $first->retiringAt);
         static::assertEquals($this->clock->now()->add(new DateInterval(self::LONGEST_LIFETIME)), $first->retirementDueAt);
-        static::assertSame([$first, $staged], $this->repository->findPublished($this->tenant));
+        static::assertSame([$first, $staged], $this->repository->findInService($this->tenant));
     }
 
     #[Test]
@@ -382,7 +382,7 @@ final class TenantKeyRotatorTest extends TestCase
         static::assertSame(KeyStatus::Retiring, $first->status);
         static::assertEquals($this->clock->now(), $first->retiringAt);
         static::assertEquals($this->clock->now()->add(new DateInterval(self::LONGEST_LIFETIME)), $first->retirementDueAt);
-        static::assertSame([$first, $second], $this->repository->findPublished($this->tenant));
+        static::assertSame([$first, $second], $this->repository->findInService($this->tenant));
     }
 
     #[Test]
@@ -448,7 +448,7 @@ final class TenantKeyRotatorTest extends TestCase
         static::assertEquals($this->clock->now(), $first->retiringAt);
         static::assertEquals($this->clock->now(), $first->retirementDueAt);
         static::assertEquals($this->clock->now(), $first->retiredAt);
-        static::assertSame([$second], $this->repository->findPublished($this->tenant));
+        static::assertSame([$second], $this->repository->findInService($this->tenant));
     }
 
     #[Test]
@@ -499,7 +499,7 @@ final class TenantKeyRotatorTest extends TestCase
         static::assertSame(KeyStatus::Retired, $first->status);
         static::assertEquals($this->clock->now(), $first->retiredAt);
         static::assertSame($savesBefore + 1, $this->repository->saves);
-        static::assertSame([$second], $this->repository->findPublished($this->tenant));
+        static::assertSame([$second], $this->repository->findInService($this->tenant));
     }
 
     #[Test]
@@ -518,7 +518,7 @@ final class TenantKeyRotatorTest extends TestCase
         static::assertSame([], $retired);
         static::assertSame(KeyStatus::Retiring, $first->status);
         static::assertSame($savesBefore, $this->repository->saves);
-        static::assertSame([$first, $second], $this->repository->findPublished($this->tenant));
+        static::assertSame([$first, $second], $this->repository->findInService($this->tenant));
     }
 
     #[Test]
@@ -554,7 +554,7 @@ final class TenantKeyRotatorTest extends TestCase
         // Then
         static::assertSame(KeyStatus::Retired, $first->status);
         static::assertSame(RetirementReason::Due, $this->events->of(TenantKeyRetired::class)[0]->reason);
-        static::assertSame([$second], $this->repository->findPublished($this->tenant));
+        static::assertSame([$second], $this->repository->findInService($this->tenant));
     }
 
     #[Test]
@@ -591,7 +591,7 @@ final class TenantKeyRotatorTest extends TestCase
 
         // Then
         static::assertSame(KeyStatus::Retiring, $first->status);
-        static::assertSame([$first, $second], $this->repository->findPublished($this->tenant));
+        static::assertSame([$first, $second], $this->repository->findInService($this->tenant));
         static::assertSame([], $this->events->of(TenantKeyRetired::class));
     }
 
@@ -610,7 +610,7 @@ final class TenantKeyRotatorTest extends TestCase
         static::assertSame(KeyStatus::Retired, $first->status);
         static::assertEquals($this->clock->now(), $first->retiredAt);
         static::assertSame(RetirementReason::Forced, $this->events->of(TenantKeyRetired::class)[0]->reason);
-        static::assertSame([$second], $this->repository->findPublished($this->tenant));
+        static::assertSame([$second], $this->repository->findInService($this->tenant));
     }
 
     #[Test]

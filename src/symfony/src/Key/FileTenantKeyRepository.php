@@ -84,16 +84,16 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
         return null;
     }
 
-    public function findPublished(Tenant $tenant): array
+    public function findInService(Tenant $tenant): array
     {
-        $published = [];
+        $inService = [];
         foreach ($this->findAll($tenant) as $key) {
-            if ($key->isPublished()) {
-                $published[] = $key;
+            if ($key->isInService()) {
+                $inService[] = $key;
             }
         }
 
-        return $published;
+        return $inService;
     }
 
     public function save(TenantKey $key): void

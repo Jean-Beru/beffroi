@@ -72,7 +72,7 @@ final readonly class KeysListCommand
             return Command::FAILURE;
         }
 
-        $keys = $all ? $this->keys->findAll($tenant) : $this->keys->findPublished($tenant);
+        $keys = $all ? $this->keys->findAll($tenant) : $this->keys->findInService($tenant);
         if ($keys === []) {
             $io->warning(sprintf('The tenant "%s" has no %skey: nothing can be signed. Run "beffroi:keys:rotate".', $tenant->slug, $all ? '' : 'published '));
 

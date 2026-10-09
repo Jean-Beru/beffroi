@@ -28,6 +28,8 @@ final class Keys
 
     private static ?GeneratedKeyPair $applicationServerPair = null;
 
+    private static ?GeneratedKeyPair $messagePair = null;
+
     private static ?EnvelopeEncrypter $envelopes = null;
 
     private static ?EnvelopeKeySealer $sealer = null;
@@ -57,6 +59,15 @@ final class Keys
     public static function applicationServerPair(): GeneratedKeyPair
     {
         return self::$applicationServerPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::vapid());
+    }
+
+    /**
+     * The pair a tenant seals what leaves the process to, over P-256: the one key it keeps and never
+     * hands to anybody (decision 0020).
+     */
+    public static function messagePair(): GeneratedKeyPair
+    {
+        return self::$messagePair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::messageSeal());
     }
 
     /**
