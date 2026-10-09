@@ -17,3 +17,13 @@ framework:
         # Namespaced pools use the above "app" backend by default
         #pools:
             #my.dedicated.cache: null
+
+# The trace of the demonstration (issue #462), where it is wired: a pool of its own, so that what a lab
+# exchanged with itself is cleared on its own and never shares a namespace with the application's.
+when@dev: &demonstration
+    framework:
+        cache:
+            pools:
+                cache.beffroi_demonstration: ~
+
+when@test: *demonstration
