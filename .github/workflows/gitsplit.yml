@@ -30,6 +30,18 @@ name: gitsplit
 # One release queues two runs, the tag and the branch, so the workflow takes
 # one at a time and cancels none: two force-pushes of the same mirror at once
 # is not a thing to find out about afterwards.
+#
+# The image the split runs is pinned by digest and kept in the cache of this
+# repository (issue #541). It used to be pulled anonymously from Docker Hub by
+# the "docker run" below, on every push to a maintenance branch and on every
+# tag, and that limit is counted per address of the runner pool, which this
+# repository shares with everybody else running there: a push that landed on a
+# busy address was answered "toomanyrequests", the four mirrors fell behind,
+# and nothing of the repository was wrong. A cache entry of 19 MB restores in
+# a second, the key is the digest, so the normal path reaches no registry at
+# all and the one pull that fills the entry again is a digest somebody edited
+# here. "latest" of an image nobody has rebuilt in five years was a pin
+# without a name; this is the same pin with its name on it.
 
 on:
   push:
@@ -45,6 +57,13 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
+env:
+  # jderusse/gitsplit, by digest and never by tag, and the name it is loaded under, which is what the
+  # run below names. Taking a newer image is editing this digest: the cache key follows it, so the
+  # edit is also what empties the entry.
+  GITSPLIT_IMAGE: "jderusse/gitsplit@sha256:ca619e08d0608d7ab8067be02db13409ec63a0e241c6308be42593f0c0ac705d"
+  GITSPLIT_LOADED: "gitsplit:pinned"
+
 jobs:
   gitsplit:
     runs-on: ubuntu-latest
@@ -55,8 +74,32 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: "The image of the split"
+        id: image
+        uses: actions/cache@v6
+        with:
+          path: /tmp/gitsplit-image.tar
+          key: "gitsplit-image-${{ env.GITSPLIT_IMAGE }}"
+
+      # Reached only by a run that found no entry, which is the run after a digest was edited and the
+      # first run after an entry expired. An entry is kept for as long as something reads it and this
+      # workflow runs several times a day, so the pull is rare rather than avoided: what it must not be
+      # is the normal path.
+      - name: "The one pull that fills the cache"
+        if: steps.image.outputs.cache-hit != 'true'
+        run: |
+          docker pull "${GITSPLIT_IMAGE}"
+          docker tag "${GITSPLIT_IMAGE}" "${GITSPLIT_LOADED}"
+          docker save -o /tmp/gitsplit-image.tar "${GITSPLIT_LOADED}"
+
+      # The tag and not the digest: a "docker load" restores what was saved under the name it was saved
+      # with, and a digest reference of an image the daemon holds under no repository would send the run
+      # back to the registry.
+      - name: "Load it"
+        run: docker load -i /tmp/gitsplit-image.tar
+
       - name: "Split repositories"
-        run: docker run --rm -t -e GH_TOKEN -v /cache/gitsplit:/cache/gitsplit -v ${{ github.workspace }}:/srv jderusse/gitsplit gitsplit
+        run: docker run --rm -t -e GH_TOKEN -v /cache/gitsplit:/cache/gitsplit -v ${{ github.workspace }}:/srv "${GITSPLIT_LOADED}" gitsplit
         env:
           GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
 

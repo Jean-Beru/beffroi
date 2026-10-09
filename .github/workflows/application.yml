@@ -66,9 +66,16 @@ jobs:
     # the "_test" database beside the one named here, which its test environment appends the suffix to
     # (apps/op/config/packages/doctrine.yaml), and "castor app-phpunit" creates it. The version is the one
     # compose.yaml serves the development stack with.
+    #
+    # From the mirror of the Docker official images that Amazon serves, and not from Docker Hub (issue
+    # #541): the same image, digest for digest, from a registry that asks for no credential and counts no
+    # limit. A service container is pulled by the runner before the first step, out of reach of the cache
+    # that holds the image of the split, so the registry is the only place this one can be answered from;
+    # and an anonymous pull of Docker Hub is counted per address of the runner pool, where it is the split
+    # of the four mirrors that pays for a busy address.
     services:
       database:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_DB: beffroi
           POSTGRES_USER: beffroi
