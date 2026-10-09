@@ -37,6 +37,7 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_device_authorization_request',
         'beffroi_backchannel_authentication_request',
         'beffroi_refresh_token',
+        'beffroi_refresh_token_family',
         'beffroi_access_token',
         'beffroi_client_access_token',
         'beffroi_subject_access_token',
@@ -80,7 +81,7 @@ final class SchemaTest extends DatabaseTestCase
      * Architecture §5.3: the tables of the bundle, every one prefixed "beffroi_", and no other.
      */
     #[Test]
-    public function theBundleDeclaresItsTwentyFourPrefixedTables(): void
+    public function theBundleDeclaresItsTwentyFivePrefixedTables(): void
     {
         // When
         $tables = array_keys(self::tablesOfTheBundle());

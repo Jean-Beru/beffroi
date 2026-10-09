@@ -346,6 +346,14 @@ final readonly class SchemaColumns
                 'token_hash' => new NoPersonalDatum(self::HASHED),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
             ],
+            'beffroi_refresh_token_family' => [
+                'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
+                'granting_record_hash' => new NoPersonalDatum(self::HASHED),
+                'grant_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'started_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'expires_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+            ],
             'beffroi_refresh_token' => [
                 'client_id' => new NoPersonalDatum(self::A_CLIENT),
                 'scopes' => new NoPersonalDatum(self::WHAT_THE_REQUEST_ASKED),
@@ -359,10 +367,7 @@ final readonly class SchemaColumns
                 'revoked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'token_hash' => new NoPersonalDatum(self::HASHED),
                 'family_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
-                'family_granting_record_hash' => new NoPersonalDatum(self::HASHED),
-                'family_grant_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
-                'family_started_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
-                'family_expires_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+
                 'authentication' => new NoPersonalDatum(self::WHAT_THE_SESSION_PROVED),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),

@@ -59,7 +59,7 @@ final class PasswordHashType extends JsonObjectType implements NeedsPasswordAlgo
 
         $kept = [];
         foreach ($parameters as $name => $parameter) {
-            if (! is_string($name) || (! is_int($parameter) && ! is_string($parameter))) {
+            if (! is_string($name) || ! is_int($parameter) && ! is_string($parameter)) {
                 throw ValueNotConvertible::new(
                     $data,
                     self::NAME,

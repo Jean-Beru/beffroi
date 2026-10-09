@@ -50,6 +50,20 @@ final class Version20261009130000 extends AbstractMigration
         $this->addSql('ALTER TABLE beffroi_password_credential DROP hash_encoded');
         $this->addSql('ALTER TABLE beffroi_password_credential DROP hash_parameters');
         $this->addSql('ALTER TABLE beffroi_password_credential ADD hash JSONB NOT NULL');
+
+        // The index of the column comes first: an index and a table share one namespace, and the lineage
+        // is about to become a table of the name that index carries.
+        $this->addSql('ALTER INDEX beffroi_refresh_token_family RENAME TO beffroi_refresh_token_family_id');
+        $this->addSql('DROP INDEX beffroi_refresh_token_granting_record');
+        $this->addSql('CREATE TABLE beffroi_refresh_token_family (id UUID NOT NULL, tenant_id UUID NOT NULL, granting_record_hash CHAR(64) NOT NULL, grant_id UUID NOT NULL, started_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, expires_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY (id))');
+        $this->addSql('CREATE INDEX IDX_DEB3C6789033212A ON beffroi_refresh_token_family (tenant_id)');
+        $this->addSql('CREATE UNIQUE INDEX beffroi_refresh_token_family_granting_record ON beffroi_refresh_token_family (granting_record_hash)');
+        $this->addSql('ALTER TABLE beffroi_refresh_token_family ADD CONSTRAINT FK_DEB3C6789033212A FOREIGN KEY (tenant_id) REFERENCES beffroi_tenant (id)');
+        $this->addSql('ALTER TABLE beffroi_refresh_token DROP family_granting_record_hash');
+        $this->addSql('ALTER TABLE beffroi_refresh_token DROP family_grant_id');
+        $this->addSql('ALTER TABLE beffroi_refresh_token DROP family_started_at');
+        $this->addSql('ALTER TABLE beffroi_refresh_token DROP family_expires_at');
+        $this->addSql('ALTER TABLE beffroi_refresh_token ADD CONSTRAINT FK_574B97DEC35E566A FOREIGN KEY (family_id) REFERENCES beffroi_refresh_token_family (id)');
     }
 
     public function down(Schema $schema): void
@@ -67,5 +81,14 @@ final class Version20261009130000 extends AbstractMigration
         $this->addSql('ALTER TABLE beffroi_password_credential ADD hash_algorithm VARCHAR(32) NOT NULL');
         $this->addSql('ALTER TABLE beffroi_password_credential ADD hash_encoded TEXT NOT NULL');
         $this->addSql('ALTER TABLE beffroi_password_credential ADD hash_parameters JSONB NOT NULL');
+
+        $this->addSql('ALTER TABLE beffroi_refresh_token DROP CONSTRAINT FK_574B97DEC35E566A');
+        $this->addSql('ALTER TABLE beffroi_refresh_token ADD family_granting_record_hash CHAR(64) NOT NULL');
+        $this->addSql('ALTER TABLE beffroi_refresh_token ADD family_grant_id UUID NOT NULL');
+        $this->addSql('ALTER TABLE beffroi_refresh_token ADD family_started_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL');
+        $this->addSql('ALTER TABLE beffroi_refresh_token ADD family_expires_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL');
+        $this->addSql('ALTER INDEX beffroi_refresh_token_family_id RENAME TO beffroi_refresh_token_family');
+        $this->addSql('CREATE INDEX beffroi_refresh_token_granting_record ON beffroi_refresh_token (family_granting_record_hash)');
+        $this->addSql('DROP TABLE beffroi_refresh_token_family');
     }
 }

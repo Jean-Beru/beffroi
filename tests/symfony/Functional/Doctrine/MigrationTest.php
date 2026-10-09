@@ -178,7 +178,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheTwentySevenTablesOfTheBundle(): void
+    public function theMigrationsCreateTheTwentyEightTablesOfTheBundle(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -190,7 +190,7 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(27, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(28, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**

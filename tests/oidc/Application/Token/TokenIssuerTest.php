@@ -122,7 +122,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $authorization = $this->authorizationFromCode();
-        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now()), $authorization, Fixtures::now());
+        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now(), $authorization->tenant), $authorization, Fixtures::now());
 
         // When
         $issued = $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now());
@@ -139,7 +139,7 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $authorization = $this->authorizationFromCode();
-        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now()), $authorization, Fixtures::now());
+        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now(), $authorization->tenant), $authorization, Fixtures::now());
 
         // When
         $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now());

@@ -49,7 +49,7 @@ final class RefreshTokenTest extends TestCase
     {
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
-        $this->family = Tokens::family(Fixtures::now());
+        $this->family = Tokens::family(Fixtures::now(), $this->client->tenant);
     }
 
     /**

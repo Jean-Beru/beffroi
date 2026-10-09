@@ -390,7 +390,7 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryRefreshTokenRepository();
-        $family = Tokens::family(Fixtures::now(), 'first-code');
+        $family = Tokens::family(Fixtures::now(), $this->client->tenant, 'first-code');
 
         // When / Then
         static::assertSame([], $repository->all());
@@ -425,9 +425,15 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryRefreshTokenRepository();
-        $family = Tokens::family(Fixtures::now(), 'first-code');
+        $family = Tokens::family(Fixtures::now(), $this->client->tenant, 'first-code');
         $lineage = $this->lineage($family);
-        $other = Tokens::refreshToken('other', $this->client, $this->session, Fixtures::now(), Tokens::family(Fixtures::now(), 'other-code'));
+        $other = Tokens::refreshToken(
+            'other',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            Tokens::family(Fixtures::now(), $this->client->tenant, 'other-code'),
+        );
         foreach ([...$lineage, $other] as $token) {
             $repository->save($token);
         }
@@ -446,9 +452,15 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryRefreshTokenRepository();
-        $family = Tokens::family(Fixtures::now(), 'first-code');
+        $family = Tokens::family(Fixtures::now(), $this->client->tenant, 'first-code');
         $lineage = $this->lineage($family);
-        $other = Tokens::refreshToken('other', $this->client, $this->session, Fixtures::now(), Tokens::family(Fixtures::now(), 'other-code'));
+        $other = Tokens::refreshToken(
+            'other',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            Tokens::family(Fixtures::now(), $this->client->tenant, 'other-code'),
+        );
         foreach ([...$lineage, $other] as $token) {
             $repository->save($token);
         }
@@ -467,8 +479,14 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryRefreshTokenRepository();
-        $lineage = $this->lineage(Tokens::family(Fixtures::now(), 'first-code'));
-        $other = Tokens::refreshToken('other', $this->client, $this->session, Fixtures::now(), Tokens::family(Fixtures::now(), 'other-code'));
+        $lineage = $this->lineage(Tokens::family(Fixtures::now(), $this->client->tenant, 'first-code'));
+        $other = Tokens::refreshToken(
+            'other',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            Tokens::family(Fixtures::now(), $this->client->tenant, 'other-code'),
+        );
         $elsewhere = Tokens::refreshToken(
             'elsewhere',
             $this->client,

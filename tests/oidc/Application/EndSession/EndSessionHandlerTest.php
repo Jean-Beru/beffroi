@@ -172,7 +172,7 @@ final class EndSessionHandlerTest extends TestCase
     public function theRefreshTokensOfTheSessionAreRevoked(): void
     {
         // Given
-        $family = Tokens::family(Fixtures::now());
+        $family = Tokens::family(Fixtures::now(), $this->client->tenant);
         $rotated = $this->refreshToken('rotated', $this->session, $family);
         $rotated->rotate(Fixtures::now()->modify('+1 day'));
         $current = $this->refreshToken('current', $this->session, $family, '+2 days');
@@ -239,7 +239,7 @@ final class EndSessionHandlerTest extends TestCase
     public function onlyTheTokensRevokedNowAreSaved(): void
     {
         // Given
-        $family = Tokens::family(Fixtures::now());
+        $family = Tokens::family(Fixtures::now(), $this->client->tenant);
         $revoked = $this->refreshToken('revoked', $this->session, $family, '+1 day');
         $revoked->revoke(Fixtures::now()->modify('+2 days'));
         $this->refreshToken('current', $this->session, $family, '+2 days');
