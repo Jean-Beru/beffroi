@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Bridge\JwtLibrary;
 
 use function base64_decode;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodyOpener;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodySealer;
@@ -20,6 +22,12 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use function explode;
+use Jose\Component\Core\AlgorithmManager;
+use Jose\Component\Core\JWK;
+use Jose\Component\Encryption\Algorithm\ContentEncryption\A128GCM as JoseA128Gcm;
+use Jose\Component\Encryption\Algorithm\ContentEncryptionAlgorithm;
+use Jose\Component\Encryption\JWEBuilder;
+use Jose\Component\Encryption\Serializer\CompactSerializer;
 use function json_decode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -161,6 +169,69 @@ final class MessageBodySealingTest extends TestCase
         $this->opener->open($this->tenant, $sealed);
     }
 
+    /**
+     * RFC 7516 §4.1.6 again, from the other side: a body that names no key is refused rather than tried
+     * against the keys the tenant holds.
+     *
+     * @param array<string, string> $header
+     */
+    #[Test]
+    #[DataProvider('provideHeadersThatNameNoKey')]
+    public function aBodyThatNamesNoKeyIsNotOpened(array $header): void
+    {
+        // Given
+        $sealed = $this->sealedWith([
+            'alg' => 'ECDH-ES+A256KW',
+            'enc' => 'A256GCM',
+            SealedMessageBody::TENANT_HEADER => $this->tenant->slug,
+            ...$header,
+        ]);
+
+        // Then
+        $this->expectException(InvalidJweException::class);
+        $this->expectExceptionMessageIs('The body of the message does not name the key it was sealed to (RFC 7516 section 4.1.6).');
+
+        // When
+        $this->opener->open($this->tenant, $sealed);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string>}>
+     */
+    public static function provideHeadersThatNameNoKey(): iterable
+    {
+        yield 'no "kid" at all' => [[]];
+        yield 'an empty "kid"' => [['kid' => '']];
+    }
+
+    /**
+     * What a body was sealed under is asserted against what the key it names is held for, and not read as
+     * what to open it with: a body sealed under something else is refused, whatever this provider is wired
+     * to open elsewhere.
+     */
+    #[Test]
+    public function aBodySealedUnderAnotherAlgorithmThanTheKeyIsHeldForIsNotOpened(): void
+    {
+        // Given
+        $key = $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+        $sealed = $this->sealedWith([
+            'alg' => 'ECDH-ES+A256KW',
+            'enc' => 'A128GCM',
+            'kid' => $key->kid,
+            SealedMessageBody::TENANT_HEADER => $this->tenant->slug,
+        ], new JoseA128Gcm());
+
+        // Then
+        $this->expectException(InvalidJweException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The body of the message was sealed under another algorithm than the key "%s" is held for.',
+            $key->kid,
+        ));
+
+        // When
+        $this->opener->open($this->tenant, $sealed);
+    }
+
     #[Test]
     public function aBodyThatIsNotACompactJweIsNotOpened(): void
     {
@@ -185,6 +256,29 @@ final class MessageBodySealingTest extends TestCase
 
         // When
         $this->sealer->seal(Fixtures::tenant('other'), self::BODY);
+    }
+
+    /**
+     * A body sealed by hand, under a protected header nothing of this provider writes: what the opener
+     * does with such a header is the rule, and a sealer that cannot write one cannot be asked.
+     *
+     * @param array<string, string> $header
+     */
+    private function sealedWith(array $header, ?ContentEncryptionAlgorithm $contentEncryption = null): string
+    {
+        $key = $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+
+        return new CompactSerializer()->serialize(
+            new JWEBuilder(new AlgorithmManager([new EcdhEsA256Kw()->joseAlgorithm(), $contentEncryption ?? new A256Gcm()->joseAlgorithm()]))
+                ->create()
+                ->withPayload(self::BODY)
+                ->withSharedProtectedHeader($header)
+                ->addRecipient(new JWK([
+                    ...$key->publicJwk,
+                    'alg' => 'ECDH-ES+A256KW',
+                ]))
+                ->build(),
+        );
     }
 
     /**
