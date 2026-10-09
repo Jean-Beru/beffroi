@@ -52,20 +52,31 @@ concurrency:
 # by the three suites of ci.yml, on a test kernel of their own.
 #
 # A workflow of its own rather than a job of ci.yml, and the reason is the lean CI rule: this is the only
-# check of a pull request that needs the Composer install of apps/op and PHP on the host, where every job
-# of ci.yml runs in the phpqa image (735 MB, pulled before its first step) and needs neither. "paths" is
-# what keeps a pull request that touches neither the packages nor the application from paying the half
-# minute this costs, and it names every package rather than the configuration trees alone, because a
-# commit that breaks the pair is not only a commit that moves a tree.
+# check of a pull request that needs the Composer install of apps/op and a database service beside it, and
+# no job of ci.yml needs either. "paths" is what keeps a pull request that touches neither the packages nor
+# the application from paying the half minute this costs, and it names every package rather than the
+# configuration trees alone, because a commit that breaks the pair is not only a commit that moves a tree.
+#
+# It runs in the phpqa image, as every job of ci.yml does and as every task of .castor/stack/qa.php does on
+# a desk: the PHP that boots the application is the one of that image, and the runner of the suite is the
+# PHPUnit it carries, this application declaring none of its own.
 
 jobs:
   application:
     name: "The application boots, what its kernel writes is what is committed, and its suite is green"
     runs-on: ubuntu-latest
-    # The database the suite of the application needs, at the address apps/op/.env names: the suite writes
-    # the "_test" database beside the one named here, which its test environment appends the suffix to
-    # (apps/op/config/packages/doctrine.yaml), and "castor app-phpunit" creates it. The version is the one
-    # compose.yaml serves the development stack with.
+    container:
+      image: ghcr.io/spomky-labs/phpqa:8.5
+    env:
+      # A job that runs in a container is on the network of the services beside it, where this one answers
+      # at its own name and not at the loopback address apps/op/.env names for a desk. A real environment
+      # variable wins over .env and over .env.test, which is what lets the same task run in both places
+      # (apps/op/.env.test). The suite writes the "_test" database beside the one named here, which its
+      # test environment appends the suffix to (apps/op/config/packages/doctrine.yaml), and
+      # "castor app-phpunit" creates it.
+      DATABASE_URL: "postgresql://beffroi:beffroi@database:5432/beffroi?serverVersion=16&charset=utf8"
+    # The database the suite of the application needs. The version is the one compose.yaml serves the
+    # development stack with.
     #
     # From the mirror of the Docker official images that Amazon serves, and not from Docker Hub (issue
     # #541): the same image, digest for digest, from a registry that asks for no credential and counts no
@@ -80,8 +91,6 @@ jobs:
           POSTGRES_DB: beffroi
           POSTGRES_USER: beffroi
           POSTGRES_PASSWORD: beffroi
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -d beffroi -U beffroi"
           --health-interval 10s
@@ -89,14 +98,6 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v7
-      # PHP on the host, not the phpqa image: what runs here is the application's own kernel, and none of
-      # the tools that image carries is used. pdo_pgsql is what the suite reads the rows of its page
-      # through, asked for rather than assumed of the default set of a runner.
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          extensions: pdo_pgsql
-          coverage: none
       # The application is pinned by its own lock, the way a developer runs it. Without its scripts: what is
       # compiled here is the container, and the assets the auto-scripts install are no part of it.
       - uses: ramsey/composer-install@v4
@@ -157,11 +158,6 @@ jobs:
           echo "::error title=The packages of this branch do not boot the application::It fails on its lock and on its dependencies resolved again, so the fix is in src and not in apps/op/composer.lock."
           exit 1
 
-      - name: "Install Castor"
-        run: |
-          curl -fsSL -o "${RUNNER_TEMP}/castor" https://github.com/jolicode/castor/releases/download/v1.7.0/castor.linux-amd64
-          chmod +x "${RUNNER_TEMP}/castor"
-          echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
       - name: "The reference and the schema against the configuration trees"
         run: castor config-reference
       - name: "Templates, configuration and catalogues"

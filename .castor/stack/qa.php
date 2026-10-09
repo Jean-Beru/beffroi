@@ -106,15 +106,24 @@ function git_common_directory(): ?string
 
 /**
  * Runs a command in the phpqa image, or directly when already inside a container (CI) or without Docker.
- * The environment applies in both cases.
+ * The environment, the working directory and the PHP configuration apply in both cases.
  *
  * @param array<string> $command
  * @param array<string, string> $environment
  * @param string|null $phpIniDirectory a directory of the repository, read after the image's own conf.d, for
  *                                     the one task that needs what it turns on (.ci-tools/php/)
+ * @param string|null $workingDirectory a directory of the repository the command runs from, for the task
+ *                                      whose configuration lives beside what it reads (apps/op)
+ * @param bool $hostNetwork the network of the machine instead of one of the container's own, for the task
+ *                          that reaches a port the development stack publishes on the loopback address
  */
-function phpqa(array $command, array $environment = [], ?string $phpIniDirectory = null): void
-{
+function phpqa(
+    array $command,
+    array $environment = [],
+    ?string $phpIniDirectory = null,
+    ?string $workingDirectory = null,
+    bool $hostNetwork = false,
+): void {
     $inContainer = file_exists('/.dockerenv');
     $hasDocker = trim(shell_exec('command -v docker') ?? '') !== '';
     $phpVersion = getenv('PHP_VERSION') ?: \PHP_MAJOR_VERSION . '.' . \PHP_MINOR_VERSION;
@@ -130,7 +139,11 @@ function phpqa(array $command, array $environment = [], ?string $phpIniDirectory
         if ($phpIniDirectory !== null) {
             $environment['PHP_INI_SCAN_DIR'] = ':' . getcwd() . '/' . $phpIniDirectory;
         }
-        run($command, context: context()->withEnvironment($environment));
+        $context = context()->withEnvironment($environment);
+        if ($workingDirectory !== null) {
+            $context = $context->withWorkingDirectory(getcwd() . '/' . $workingDirectory);
+        }
+        run($command, context: $context);
         return;
     }
 
@@ -152,7 +165,10 @@ function phpqa(array $command, array $environment = [], ?string $phpIniDirectory
         '-v',
         getcwd() . ':/project',
         '-w',
-        '/project',
+        $workingDirectory === null ? '/project' : '/project/' . $workingDirectory,
+        // What the container reaches is then what the machine reaches, the loopback address included, which
+        // is where the development stack publishes its PostgreSQL (compose.yaml).
+        ...($hostNetwork ? ['--network', 'host'] : []),
         // Read only: what the container does with it is read the repository, and nothing it runs has
         // business writing in the Git directory of the checkout a worktree hangs from.
         ...($gitCommonDirectory === null ? [] : ['-v', sprintf('%s:%s:ro', $gitCommonDirectory, $gitCommonDirectory)]),
@@ -226,17 +242,20 @@ function phpunit(
 
 /*
  * The suite of the standalone application (issue #521), which is not the suite of the packages and does not
- * run where it runs. The three suites of ".ci-tools/phpunit.xml.dist" judge the rules of the provider on a
- * test kernel of their own, on SQLite, in the phpqa image; this one boots the kernel of "apps/op", the one a
+ * run against what it runs against. The three suites of ".ci-tools/phpunit.xml.dist" judge the rules of the
+ * provider on a test kernel of their own, on SQLite; this one boots the kernel of "apps/op", the one a
  * deployment boots, so it needs what that kernel needs: a PostgreSQL, and a KMS to seal the personal columns
  * the page of a person writes (decisions 0011 and 0018). Which is why it is a task and not a line of the
  * suites above, and why the job that runs it carries a database service.
  *
- * It runs on the host, with the PHP that made the application's own Composer install, as the check of the
- * generated configuration does and for the same reason.
+ * It runs in the phpqa image, as every tool of this repository does, and the runner is the PHPUnit that
+ * image carries: this application declares none of its own, no more than it declares PHPStan or Rector. The
+ * container is given the network of the machine, because what answers on the loopback address is the
+ * PostgreSQL the development stack publishes there, and the application's own "vendor" is read from the
+ * mount of the repository.
  */
 #[AsTask(
-    description: 'Run the suite of the standalone application: its own kernel, on the PostgreSQL that DATABASE_URL names and the KMS of apps/op/.env.test, the schema written by the migrations of the bundle before the first test. It needs a PostgreSQL reachable from the host, which "castor start" publishes on the loopback address',
+    description: 'Run the suite of the standalone application: its own kernel, on the PostgreSQL that DATABASE_URL names and the KMS of apps/op/.env.test, the schema written by the migrations of the bundle before the first test. It needs a PostgreSQL reachable from the machine, which "castor start" publishes on the loopback address',
     ignoreValidationErrors: true,
 )]
 function app_phpunit(#[AsRawTokens] array $args = []): void
@@ -252,38 +271,62 @@ function app_phpunit(#[AsRawTokens] array $args = []): void
     // hand. The suite creates nothing and drops nothing: it empties the rows.
     application_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
 
-    run(
-        [application_php(), 'vendor/bin/phpunit', '--configuration', 'phpunit.dist.xml', ...$args],
-        context: application_context(),
-    );
+    // "phpunit" and not "composer exec -- phpunit": what is played here is the runner of the image, and the
+    // "vendor/bin" of this application carries none for Composer to find first.
+    application_phpqa(['phpunit', '--configuration', 'phpunit.dist.xml', ...$args]);
 }
 
 /**
- * A console command of the application, on the host and in the environment its suite runs in. Not
- * op_console() of .castor/stack/stack.php, which runs in the container of a stack that is up.
+ * A console command of the application, in the environment its suite runs in. Not op_console() of
+ * .castor/stack/stack.php, which runs in the container of a stack that is up.
  *
  * @param array<string> $args
  */
 function application_console(array $args): void
 {
-    run([application_php(), 'bin/console', ...$args], context: application_context()->withEnvironment([
+    application_phpqa(['php', 'bin/console', ...$args], [
         'APP_ENV' => 'test',
         'APP_DEBUG' => '0',
-    ]));
+    ]);
 }
 
 /**
- * Where the application is installed, which is where everything of it runs: "apps/op/composer.json" resolves
- * the packages through path repositories and its "vendor" is its own.
+ * A command of the application in the phpqa image: from "apps/op", where its configuration and its own
+ * "vendor" are, and on the network of the machine, where the PostgreSQL its kernel reads answers.
+ *
+ * @param array<string> $command
+ * @param array<string, string> $environment
+ */
+function application_phpqa(array $command, array $environment = []): void
+{
+    assert_application_installed();
+
+    phpqa($command, $environment, workingDirectory: 'apps/op', hostNetwork: true);
+}
+
+/**
+ * Where the application is installed, which is where the tasks that boot it on the host run:
+ * "apps/op/composer.json" resolves the packages through path repositories and its "vendor" is its own.
  */
 function application_context(): Context
 {
-    if (! is_file(getcwd() . '/apps/op/vendor/autoload.php')) {
-        io()->error('The application is not installed: run "(cd apps/op && composer install)" first.');
-        exit(1);
-    }
+    assert_application_installed();
 
     return context()->withWorkingDirectory(getcwd() . '/apps/op');
+}
+
+/**
+ * Nothing of the application runs before its own Composer install was made, in the image as on the host:
+ * what every task of it reads is "apps/op/vendor".
+ */
+function assert_application_installed(): void
+{
+    if (is_file(getcwd() . '/apps/op/vendor/autoload.php')) {
+        return;
+    }
+
+    io()->error('The application is not installed: run "(cd apps/op && composer install)" first.');
+    exit(1);
 }
 
 /**
