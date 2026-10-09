@@ -70,6 +70,40 @@ function check_licenses(
 }
 
 /**
+ * The Git directory to mount beside the working directory, and null when the working directory already
+ * carries it.
+ *
+ * In a worktree, ".git" is a file holding "gitdir: <main checkout>/.git/worktrees/<name>", an absolute path
+ * of the host that the mount of the working directory does not cover, so every tool that reads the
+ * repository from the container stops on "not a git repository: ...". What carries the objects, the refs and
+ * the worktree's own directory is the common directory, so mounting it at the very path that pointer names
+ * is what makes the repository readable. Every issue is worked on in a worktree (CLAUDE.md), and the one
+ * mutation run a change of a rule asks for by hand, "castor infect --diff", is a tool that reads it.
+ *
+ * A main checkout keeps its common directory under the working directory, where /project already carries
+ * it, and gets no second mount: its command is the one it has always been.
+ */
+function git_common_directory(): ?string
+{
+    $output = shell_exec('git rev-parse --git-common-dir 2>/dev/null');
+    if (! is_string($output) || trim($output) === '') {
+        return null;
+    }
+
+    $common = realpath(trim($output));
+    $workingDirectory = realpath(getcwd());
+    if ($common === false || $workingDirectory === false) {
+        return null;
+    }
+
+    if (str_starts_with($common . \DIRECTORY_SEPARATOR, $workingDirectory . \DIRECTORY_SEPARATOR)) {
+        return null;
+    }
+
+    return $common;
+}
+
+/**
  * Runs a command in the phpqa image, or directly when already inside a container (CI) or without Docker.
  * The environment applies in both cases.
  *
@@ -103,6 +137,8 @@ function phpqa(array $command, array $environment = [], ?string $phpIniDirectory
         mkdir(getcwd() . '/tmp-phpqa');
     }
 
+    $gitCommonDirectory = git_common_directory();
+
     $dockerOptions = [
         '--rm',
         '--init',
@@ -115,6 +151,9 @@ function phpqa(array $command, array $environment = [], ?string $phpIniDirectory
         getcwd() . '/tmp-phpqa:/project/tmp-phpqa',
         '-w',
         '/project',
+        // Read only: what the container does with it is read the repository, and nothing it runs has
+        // business writing in the Git directory of the checkout a worktree hangs from.
+        ...($gitCommonDirectory === null ? [] : ['-v', sprintf('%s:%s:ro', $gitCommonDirectory, $gitCommonDirectory)]),
         '-e',
         $phpIniDirectory === null
             ? 'PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d'
