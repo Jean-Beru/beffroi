@@ -80,6 +80,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     resource_tags?: TagsType,
  *     decorates?: string,
  *     decorates_tag?: string,
+ *     decoration_within?: string|list<string>,
+ *     decoration_around?: string|list<string>,
  *     decoration_inner_name?: string,
  *     decoration_priority?: int,
  *     decoration_on_invalid?: 'exception'|'ignore'|null,
@@ -122,6 +124,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     deprecated?: DeprecationType,
  *     decorates?: string,
  *     decorates_tag?: string,
+ *     decoration_within?: string|list<string>,
+ *     decoration_around?: string|list<string>,
  *     decoration_inner_name?: string,
  *     decoration_priority?: int,
  *     decoration_on_invalid?: 'exception'|'ignore'|null,
@@ -289,7 +293,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     reject_redelivered_messages?: bool|Param, // Whether redeliveries should be rejected and retried through a new message instead of being handled directly. This mostly makes sense for AMQP, which redelivers messages that were neither acknowledged nor rejected. Disabling it avoids losing a message when the retry or the failure transport is unreachable, at the risk of a redelivery loop that blocks the queue. // Default: true
  *     identity_stamps?: bool|Param, // Adds a message id and a causation id to dispatched messages, and a correlation id at the start of each flow. // Default: false
  *     default_bus?: scalar|Param|null, // Default: null
- *     buses?: array<string, array{ // Default: {"messenger.bus.default":{"default_middleware":{"enabled":true,"allow_no_handlers":false,"allow_no_senders":true},"middleware":[]}}
+ *     buses?: array<string, array{ // Default: {"messenger.bus.default":{"default_middleware":{"enabled":true,"allow_no_handlers":false,"allow_no_senders":true},"middleware":[],"messages":[],"unwrap_exceptions":false}}
  *         default_middleware?: Param|bool|string|array{
  *             enabled?: bool|Param, // Default: true
  *             allow_no_handlers?: bool|Param, // Default: false
@@ -299,6 +303,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             id?: scalar|Param|null,
  *             arguments?: list<mixed>,
  *         }>,
+ *         messages?: Param|string|list<scalar|Param|null>,
+ *         unwrap_exceptions?: bool|Param, // Whether the application gets the exception of the failing handler instead of a HandlerFailedException when it dispatches a message. // Default: false
  *     }>,
  * }
  * @psalm-type TypeInfoConfig = bool|array{
@@ -493,6 +499,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     clients?: Param|string|array<string, Param|string|array{ // Default: []
  *         dsn?: scalar|Param|null,
  *         members?: array<string, scalar|Param|null>,
+ *         retired?: list<scalar|Param|null>,
  *     }>,
  *     store?: array{ // Data key store: payloads then refer to a stored data key instead of carrying it, so the KMS is reached once per key and per process, and that key can be rewrapped under another provider without rewriting a payload.
  *         connection?: scalar|Param|null, // Service id of the DBAL connection holding the table. // Default: "doctrine.dbal.default_connection"
@@ -1168,6 +1175,11 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             provider_uri?: scalar|Param|null, // The OIDC Issuer URL (e.g. "https://accounts.example.com"). Used for .well-known/openid-configuration discovery.
  *             http_client?: scalar|Param|null, // The id of the HttpClient service every call to the provider is made with: discovery, JWKS, token and UserInfo endpoints. Defaults to "http_client". A scoped client must scope every host the provider announces, not only the issuer. // Default: null
  *             client_id?: scalar|Param|null, // The OIDC client identifier.
+ *             client_certificate?: Param|string|array{ // The TLS client certificate presented to the token and UserInfo endpoints.
+ *                 certificate?: scalar|Param|null, // Path to the PEM file of the certificate.
+ *                 key?: scalar|Param|null, // Path to the PEM file of the private key, when not in the certificate file. // Default: null
+ *                 passphrase?: scalar|Param|null, // Passphrase of the private key. // Default: null
+ *             },
  *             client_authentication?: Param|string|array{ // How the client authenticates at the token endpoint, which RFC 7591, Section 2 names in its "token_endpoint_auth_method" metadata. Set the method Symfony ships with its parameters, or the id of a service implementing "Symfony\Component\Security\Http\OAuth2\ClientAuthentication\ClientAuthenticationInterface" for a scheme it does not. Exactly one of them.
  *                 client_secret_basic?: scalar|Param|null, // Send the client secret as HTTP Basic credentials, the "client_secret_basic" method of RFC 6749, Section 2.3.1, which the RFC recommends. Takes the client secret.
  *                 client_secret_post?: scalar|Param|null, // Send the client secret in the body of the token request, the "client_secret_post" method of RFC 6749, Section 2.3.1. Takes the client secret. Use it for the providers that support nothing else.
@@ -1176,13 +1188,21 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *                     secret?: scalar|Param|null, // The client secret, whose octets key the HMAC. It must be at least as long as the digest the algorithm produces, which RFC 7518, Section 3.2 requires and the algorithm itself checks: 32 bytes for "HS256", 48 for "HS384", 64 for "HS512".
  *                     algorithm?: "HS256"|"HS384"|"HS512"|Param, // The MAC algorithm the assertion is signed with, which must be one your provider announces in "token_endpoint_auth_signing_alg_values_supported". // Default: "HS256"
  *                     lifetime?: int|Param, // How long an assertion is valid, in seconds. It is built for one request and sent right away, so keep it short: it is the window a provider that does not track the "jti" would accept a captured assertion in. // Default: 60
+ *                     audience?: "issuer"|"token_endpoint"|Param, // The audience of the assertion: the issuer of the provider, or its token endpoint for a provider that refuses the issuer. // Default: "issuer"
  *                 },
  *                 private_key_jwt?: Param|string|array{ // Authenticate with a JWT assertion signed with the private key of the client, the "private_key_jwt" method of OIDC Core 1.0, Section 9, and the one FAPI 2.0 asks for. The provider only holds the public half, registered as the client "jwks" or fetched from its "jwks_uri", so it learns nothing it could authenticate as the client with.
  *                     key?: scalar|Param|null, // JSON-encoded JWK of the private key the assertion is signed with. Give it a "kid" when the client publishes several keys, so that the provider knows which one verifies the signature without trying them all.
  *                     algorithm?: "RS256"|"RS384"|"RS512"|"ES256"|"ES384"|"ES512"|"PS256"|"PS384"|"PS512"|Param, // The signature algorithm the assertion is signed with, which must be one your provider announces in "token_endpoint_auth_signing_alg_values_supported". FAPI 2.0 asks for "PS256" or "ES256". // Default: "RS256"
  *                     lifetime?: int|Param, // How long an assertion is valid, in seconds. It is built for one request and sent right away, so keep it short: it is the window a provider that does not track the "jti" would accept a captured assertion in. // Default: 60
+ *                     audience?: "issuer"|"token_endpoint"|Param, // The audience of the assertion: the issuer of the provider, or its token endpoint for a provider that refuses the issuer. // Default: "issuer"
  *                 },
- *                 id?: scalar|Param|null, // The id of a service implementing "ClientAuthenticationInterface", for a scheme Symfony does not ship, such as the "tls_client_auth" of RFC 8705, Section 2. The method it reports is only known once it is built, so the rules a public client cannot bend are then checked on the first request to this firewall instead of while the container compiles.
+ *                 tls_client_auth?: bool|Param, // Authenticate with "client_certificate", issued by a certificate authority.
+ *                 self_signed_tls_client_auth?: bool|Param, // Authenticate with "client_certificate", self-signed.
+ *                 id?: scalar|Param|null, // The id of a service implementing "ClientAuthenticationInterface", for a scheme Symfony does not ship. The method it reports is only known once it is built, so the rules a public client cannot bend are then checked on the first request to this firewall instead of while the container compiles.
+ *             },
+ *             dpop?: Param|string|array{ // Binds the tokens the provider issues to a key held by this client (DPoP); a token the provider did not bind is refused.
+ *                 key?: scalar|Param|null, // The private key the proofs are signed with, as a JSON-encoded JWK.
+ *                 algorithm?: "ES256"|"ES384"|"ES512"|"PS256"|"PS384"|"PS512"|"RS256"|"RS384"|"RS512"|Param, // The algorithm the proofs are signed with, among the "dpop_signing_alg_values_supported" of the provider. // Default: "ES256"
  *             },
  *             scope?: list<scalar|Param|null>,
  *             start_path?: scalar|Param|null, // The path where the route loader declares a route that starts the flow by redirecting to the provider; link to it e.g. from the login page of a firewall offering several ways to log in. A route name is accepted too, in which case no route is declared for it. // Default: "/oidc/start"
@@ -1207,6 +1227,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             },
  *             enable_end_session?: bool|Param, // Enable RP-Initiated Logout via the OIDC end_session_endpoint. // Default: false
  *             post_logout_redirect_path?: scalar|Param|null, // Path or route to redirect to after OIDC logout. // Default: "/"
+ *             backchannel_logout?: bool|array{ // Accept the logout tokens the OIDC provider posts when one of its sessions ends.
+ *                 enabled?: bool|Param, // Default: false
+ *                 path?: scalar|Param|null, // Path where the OIDC provider posts its logout tokens. // Default: "/oidc/backchannel-logout"
+ *                 cache?: scalar|Param|null, // Id of the cache pool remembering the ended provider sessions, shared by every server of the application. // Default: "cache.app"
+ *                 lifetime?: int|Param, // How long an ended provider session is remembered, in seconds; at least how long a session can stay idle. // Default: 86400
+ *             },
  *         },
  *         form_login?: array{
  *             provider?: scalar|Param|null,
@@ -1369,6 +1395,13 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *                 resource_documentation?: scalar|Param|null, // URL of the developer documentation of this resource. // Default: null
  *                 resource_policy_uri?: scalar|Param|null, // URL of the policy telling how the client may use the data this resource exposes. // Default: null
  *                 resource_tos_uri?: scalar|Param|null, // URL of the terms of service of this resource. // Default: null
+ *             },
+ *             dpop?: bool|array{ // Accepts only the access tokens bound to a key the request proves it holds (DPoP), presented under the "DPoP" scheme.
+ *                 enabled?: bool|Param, // Default: false
+ *                 algorithms?: list<scalar|Param|null>,
+ *                 cache?: scalar|Param|null, // The cache pool proofs are remembered in to refuse a replay, shared by all the instances of the application. // Default: "cache.app"
+ *                 proof_lifetime?: int|Param, // How long a proof is accepted after its "iat", in seconds. // Default: 60
+ *                 allowed_time_drift?: int|Param, // Allowed time drift in seconds for the "iat" of a proof, both ways. // Default: 5
  *             },
  *         },
  *         http_basic?: array{
