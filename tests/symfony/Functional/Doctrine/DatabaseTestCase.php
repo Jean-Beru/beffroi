@@ -78,6 +78,21 @@ abstract class DatabaseTestCase extends WebTestCase
      */
     private static ?string $template = null;
 
+    /**
+     * Where the bundle writes the sealed keys of the tenant of the suite, which config_test.yml points at
+     * "%kernel.cache_dir%/keys". Read from the container and not restated, so that the directory is the one
+     * the kernel of this process was given, token of a parallel worker included.
+     */
+    protected static function keyStorage(): string
+    {
+        $cacheDirectory = static::getContainer()->getParameter('kernel.cache_dir');
+        if (! is_string($cacheDirectory)) {
+            static::fail('The cache directory of the test kernel is not a path.');
+        }
+
+        return $cacheDirectory . '/keys';
+    }
+
     private static function prepareDatabase(): void
     {
         $connection = self::entityManager()->getConnection();

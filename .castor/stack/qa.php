@@ -183,14 +183,28 @@ function phpqa_update(): void
 }
 
 #[AsTask(description: 'Run PHPUnit tests with coverage', ignoreValidationErrors: true)]
-function phpunit(#[AsRawTokens] array $args = []): void
-{
+function phpunit(
+    #[AsOption(
+        description: 'Run the test files in parallel processes, through paratest, which merges the coverage of its workers itself; "auto" is what it makes of the cores it finds. One process is PHPUnit itself, which is what debugging a single test wants',
+    )]
+    string $processes = '1',
+    #[AsRawTokens]
+    array $args = [],
+): void {
+    // paratest takes the options this task already passes, the same coverage and the same JUnit report,
+    // and it merges what its workers produced itself: sharding across runs cannot, PHPUnit refusing to
+    // merge XML coverage reports, and that report is what the mutation job reads. Each worker is given a
+    // TEST_TOKEN, which AppKernel turns into a cache directory of its own, and with it a compiled
+    // container, a database and a key storage of its own (issue #529).
+    $parallel = $processes !== '1';
+
     phpqa(
         [
             'composer',
             'exec',
             '--',
-            'phpunit',
+            $parallel ? 'paratest' : 'phpunit',
+            ...($parallel ? ['--processes=' . $processes] : []),
             '--coverage-xml',
             '.ci-tools/coverage',
             '--log-junit=.ci-tools/coverage/junit.xml',

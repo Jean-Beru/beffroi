@@ -43,8 +43,10 @@ final class BundleBootTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        parent::tearDown();
+        // Before the parent, which shuts the kernel down: keyStorage() asks the container where it
+        // writes, and a container that is down would be booted again just to answer.
         new Filesystem()->remove(self::keyStorage());
+        parent::tearDown();
     }
 
     #[Test]
@@ -298,10 +300,5 @@ final class BundleBootTest extends DatabaseTestCase
     protected static function getKernelClass(): string
     {
         return AppKernel::class;
-    }
-
-    private static function keyStorage(): string
-    {
-        return sys_get_temp_dir() . '/beffroi-bundle-tests/cache/test/keys';
     }
 }

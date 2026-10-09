@@ -59,7 +59,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Uid\Uuid;
-use function sys_get_temp_dir;
 
 /**
  * A browser on the test kernel (architecture §7), with what a flow needs: a user with a password, or a
@@ -120,8 +119,10 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        parent::tearDown();
+        // Before the parent, which shuts the kernel down: keyStorage() asks the container where it
+        // writes, and a container that is down would be booted again just to answer.
         new Filesystem()->remove(self::keyStorage());
+        parent::tearDown();
     }
 
     /**
@@ -427,11 +428,6 @@ abstract class BrowserTestCase extends DatabaseTestCase
         static::assertSame($contentSecurityPolicy, $response->headers->get('Content-Security-Policy'));
         static::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
-    }
-
-    protected static function keyStorage(): string
-    {
-        return sys_get_temp_dir() . '/beffroi-bundle-tests/cache/test/keys';
     }
 
     /**
