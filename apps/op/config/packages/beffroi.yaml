@@ -62,6 +62,13 @@ beffroi:
         # "beffroi:webauthn:mds-import" (a statement of a manufacturer or of the FIDO conformance tools); empty
         # until then, which the enrolment of the provider does not need (it asks for no attestation).
         metadata_storage: '%kernel.project_dir%/var/webauthn'
+    geoip:
+        # The GeoLite2 databases the enrichment of a provenance reads, next to the keys and shared with the
+        # worker that does the enriching (compose.yaml): filled by the weekly step of the schedule and by
+        # "beffroi:geoip:refresh", empty until a licence key is named, which every flow of the provider is
+        # served without, a session and an act of the journal then saying an address and no place.
+        storage: '%kernel.project_dir%/var/geoip'
+        license_key: '%env(GEOIP_LICENSE_KEY)%'
     tokens:
         authorization_code_ttl: 60
         access_token_ttl: '%env(int:BEFFROI_ACCESS_TOKEN_TTL)%'

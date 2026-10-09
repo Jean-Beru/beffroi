@@ -1563,6 +1563,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     history?: array{ // What a claim of a person used to say, and what they made it say (issue #482). Nothing turns it on; what is configured is how long a change is kept.
  *         retention?: int|Param, // Days a change is kept before the timed step forgets it; the duration the journal keeps an act, a change and the act that announced it being two halves of one answer. // Default: 180
  *     },
+ *     geoip?: array{ // The databases of addresses the enrichment of a provenance reads (architecture §3.5): where they are kept and what they are downloaded under.
+ *         storage?: scalar|Param|null, // Directory of the GeoLite2 databases the enrichment reads, next to the keys: the files "beffroi:geoip:refresh" and the weekly step store, empty until one of them ran, which every flow of the provider is served without. // Default: "%kernel.project_dir%/var/geoip"
+ *         license_key?: scalar|Param|null, // Licence key of the MaxMind account the GeoLite2 editions are downloaded under; empty by default, and a deployment that leaves it empty downloads nothing and says no place. The databases are published by MaxMind under their own licence, which is why nothing is shipped and nothing is fetched without this. // Default: ""
+ *     },
  *     interaction?: array{ // The pages a browser is sent to while an authorization request waits for a login or a consent (architecture §4.3).
  *         login_hint?: "sub"|"username"|"none"|Param, // What a "login_hint" of an authorization request names for this tenant, read one way and never searched for (OIDC Core §3.1.2.1): "sub" the subject this provider issued to that client, "username" the name the user signs in with, "none" for a deployment that tags a reader of its own. The login page offers the name of the user the hint names and nothing at all when it names nobody, the value itself being one the person never typed. These are the names the backchannel flow reads its own hint by. // Default: "sub"
  *     },

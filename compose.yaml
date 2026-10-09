@@ -78,6 +78,10 @@ services:
       # outside the web root and outside the sealed keys, shared for the same reason; the process that rotates
       # seals with it, the process that serves opens with it.
       - kms_data:/app/var/kms
+      # The GeoLite2 databases of addresses (architecture §3.5): the console refreshes them here and the
+      # worker below reads them, so they are one directory for both or a refresh asked for in this
+      # container would change nothing where the enrichment runs.
+      - geoip_data:/app/var/geoip
       - caddy_data:/data
       - caddy_config:/config
     ports:
@@ -150,6 +154,7 @@ services:
       - /app/var/
       - keys_data:/app/var/keys
       - kms_data:/app/var/kms
+      - geoip_data:/app/var/geoip
     depends_on:
       op:
         condition: service_healthy
@@ -352,6 +357,7 @@ services:
 volumes:
   keys_data:
   kms_data:
+  geoip_data:
   caddy_data:
   rabbitmq_data:
   caddy_config:
