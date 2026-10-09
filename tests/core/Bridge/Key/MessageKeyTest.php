@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Bridge\Key;
 
 use function array_map;
+use DateTimeImmutable;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
@@ -60,17 +61,17 @@ final class MessageKeyTest extends TestCase
     }
 
     /**
-     * What seals is the active key of that algorithm, and asking for it asks the KMS nothing: what is
-     * answered is the key with its public half in the clear and its private half still sealed.
+     * What seals is the key of that algorithm, and asking for it asks the KMS nothing: what is answered is
+     * the key with its public half in the clear and its private half still sealed.
      */
     #[Test]
-    public function theActiveKeyIsWhatSealsAndItsPrivateHalfStaysSealed(): void
+    public function theKeyThatSealsCarriesItsPublicHalfAndItsPrivateHalfStaysSealed(): void
     {
         // Given
         $key = $this->activeKey(Algorithms::messageSeal(), Keys::messagePair());
 
         // When
-        $sealing = $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+        $sealing = $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
 
         // Then
         static::assertSame($key, $sealing);
@@ -78,18 +79,69 @@ final class MessageKeyTest extends TestCase
     }
 
     /**
-     * A tenant whose keys have not been generated seals nothing, and is told so: a body is not written at
-     * all rather than written in the clear.
+     * Issue #548: a rotation saves the new key and then announces it, so the key a body is sealed to is the
+     * newest in service and never the active one. A key that could only be sealed to once active could not
+     * seal the event that announces it, and no tenant could be given a first one.
      */
     #[Test]
-    public function aTenantWithNoActiveKeySealsNothing(): void
+    public function aKeyThatIsStillStagedIsWhatSeals(): void
+    {
+        // Given
+        $staged = $this->key(Algorithms::messageSeal(), Keys::messagePair());
+
+        // When / Then
+        static::assertSame($staged, $this->provider->sealingKey($this->tenant, Algorithms::messageSeal()));
+    }
+
+    /**
+     * And the successor of a rotation takes the sealing over from the key that is active, the staging
+     * window of such a key having nobody to wait for.
+     */
+    #[Test]
+    public function aSuccessorStagedForTheKeyTakesTheSealingOver(): void
+    {
+        // Given
+        $this->activeKey(Algorithms::messageSeal(), Keys::messagePair());
+        $successor = $this->key(Algorithms::messageSeal(), Keys::otherMessagePair(), Fixtures::now()->modify('+90 days'));
+
+        // When / Then
+        static::assertSame($successor, $this->provider->sealingKey($this->tenant, Algorithms::messageSeal()));
+    }
+
+    /**
+     * A key that has retired seals nothing, and a tenant left with only that one is a tenant that writes
+     * nothing to a transport.
+     */
+    #[Test]
+    public function aKeyThatHasRetiredSealsNothing(): void
+    {
+        // Given
+        $key = $this->activeKey(Algorithms::messageSeal(), Keys::messagePair());
+        $key->startRetiring(Fixtures::now(), Fixtures::now());
+        $key->retire(Fixtures::now());
+        $this->keys->save($key);
+
+        // Then
+        $this->expectException(KeyNotFoundException::class);
+        $this->expectExceptionMessageIsOrContains('holds no MESSAGE-SEAL key');
+
+        // When
+        $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
+    }
+
+    /**
+     * A tenant whose keys have not been generated seals nothing, and is told which key comes first: a body
+     * is not written at all rather than written in the clear.
+     */
+    #[Test]
+    public function aTenantWithNoKeySealsNothingAndIsToldWhichComesFirst(): void
     {
         // Then
         $this->expectException(KeyNotFoundException::class);
-        $this->expectExceptionMessageIs('Tenant "acme" has no active MESSAGE-SEAL key: nothing it writes to a transport can be sealed.');
+        $this->expectExceptionMessageIs('Tenant "acme" holds no MESSAGE-SEAL key: it is the first key a tenant is given, and nothing it writes to a transport leaves the process before it exists.');
 
         // When
-        $this->provider->activeMessageKey($this->tenant, Algorithms::messageSeal());
+        $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
     }
 
     /**
@@ -168,16 +220,29 @@ final class MessageKeyTest extends TestCase
 
     private function activeKey(KeyAlgorithmInterface $algorithm, GeneratedKeyPair $pair): TenantKey
     {
+        $key = $this->key($algorithm, $pair);
+        $key->activate(Fixtures::now());
+        $this->keys->save($key);
+
+        return $key;
+    }
+
+    /**
+     * A key saved and left staged, as a rotation leaves it between the moment it is written and the moment
+     * it takes over.
+     */
+    private function key(KeyAlgorithmInterface $algorithm, GeneratedKeyPair $pair, ?DateTimeImmutable $createdAt = null): TenantKey
+    {
+        $createdAt ??= Fixtures::now();
         $key = new TenantKey(
             $pair->kid,
             $this->tenant,
             $algorithm,
             $pair->publicJwk,
             Keys::sealer()->seal($this->tenant, $pair->privateJwk),
-            Fixtures::now(),
-            Fixtures::now(),
+            $createdAt,
+            $createdAt,
         );
-        $key->activate(Fixtures::now());
         $this->keys->save($key);
 
         return $key;

@@ -30,6 +30,8 @@ final class Keys
 
     private static ?GeneratedKeyPair $messagePair = null;
 
+    private static ?GeneratedKeyPair $otherMessagePair = null;
+
     private static ?EnvelopeEncrypter $envelopes = null;
 
     private static ?EnvelopeKeySealer $sealer = null;
@@ -68,6 +70,14 @@ final class Keys
     public static function messagePair(): GeneratedKeyPair
     {
         return self::$messagePair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::messageSeal());
+    }
+
+    /**
+     * A second pair of the same family, which is what a rotation stages beside the first.
+     */
+    public static function otherMessagePair(): GeneratedKeyPair
+    {
+        return self::$otherMessagePair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::messageSeal());
     }
 
     /**

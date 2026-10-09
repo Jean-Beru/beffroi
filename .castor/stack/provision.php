@@ -184,18 +184,23 @@ const DEV_FAPI_CLIENTS = [
 ];
 
 /**
- * The keys the tenant holds beside the one the provider signs with by default: ES256, because the four
- * clients of the FAPI 2 plans register it for everything the provider signs for them and the profile
- * refuses RS256, the key a client encrypts a request object to, same custody, same four states,
- * published with "use": "enc" (issue #164), the application server key of Web Push, same custody again
- * and one of the two keys the tenant keeps rather than publishing (RFC 8292 §2, issue #265): a browser
- * subscribes under it, so it exists before anybody opens the page of their notifications. The last is the
- * other key it keeps, the one the body of every message it writes to a transport is sealed to
- * (decision 0020, issue #539): a stack without it writes no message at all, the provider refusing to put
- * in a queue what it cannot seal. A key that is published already is kept and rotated by hand; nothing
- * here generates a second one.
+ * The key the body of every message is sealed to (decision 0020, issue #539), and the first key a tenant is
+ * given: a key of any other algorithm announces its own staging on a transport, and nothing leaves the
+ * process before this one exists (issue #548). A stack without it writes no message at all, the provider
+ * refusing to put in a queue what it cannot seal.
  */
-const DEV_KEY_ALGORITHMS = ['ES256', 'ECDH-ES+A256KW', 'VAPID', 'MESSAGE-SEAL'];
+const DEV_MESSAGE_KEY_ALGORITHM = 'MESSAGE-SEAL';
+
+/**
+ * The keys the tenant holds beside that one and beside the one the provider signs with by default: ES256,
+ * because the four clients of the FAPI 2 plans register it for everything the provider signs for them and
+ * the profile refuses RS256, the key a client encrypts a request object to, same custody, same four states,
+ * published with "use": "enc" (issue #164), and the application server key of Web Push, same custody again
+ * and the other key the tenant keeps rather than publishing (RFC 8292 §2, issue #265): a browser subscribes
+ * under it, so it exists before anybody opens the page of their notifications. A key that is there already
+ * is kept and rotated by hand; nothing here generates a second one.
+ */
+const DEV_KEY_ALGORITHMS = ['ES256', 'ECDH-ES+A256KW', 'VAPID'];
 
 /**
  * Where the key material of the rungs of the ladder of demonstration clients lives (issue #201), beside
@@ -311,8 +316,12 @@ function provision(
     op_console(['beffroi:tenant:synchronize']);
 
     io()->section('Keys');
+    // What the tenant holds is read before anything is drawn, and the key the messages are sealed to is
+    // drawn before the rest: every other key announces its own staging on a transport (issue #548).
     $keys = provision_published_keys();
-    if (str_contains($keys, 'no published key')) {
+    $fresh = str_contains($keys, 'no published key');
+    provision_key(DEV_MESSAGE_KEY_ALGORITHM);
+    if ($fresh) {
         op_console(['beffroi:keys:generate']);
     } else {
         // A key is published: before trusting it, ask the KMS to open it. Vault in dev mode and LocalStack
@@ -408,14 +417,14 @@ function provision(
 }
 
 /**
- * Generates the key of one algorithm when the tenant publishes none for it. The command is the one an
- * operator runs, and what it writes is what the section shows.
+ * Generates the key of one algorithm when the tenant holds none for it. The command is the one an operator
+ * runs, and what it writes is what the section shows.
  */
 function provision_key(string $algorithm): void
 {
     if (preg_match(sprintf('/Algorithm %s /', preg_quote($algorithm, '/')), provision_published_keys()) === 1) {
         io()->note(sprintf(
-            'A %1$s key is published already; "castor console beffroi:keys:rotate --algorithm=%1$s" rotates it without an outage.',
+            'A %1$s key is there already; "castor console beffroi:keys:rotate --algorithm=%1$s" rotates it without an outage.',
             $algorithm,
         ));
 
@@ -425,8 +434,8 @@ function provision_key(string $algorithm): void
 }
 
 /**
- * What the tenant publishes, on one line: the console wraps its blocks, and this is searched for a
- * sentence and for an algorithm.
+ * What the tenant holds, on one line: the console wraps its blocks, and this is searched for a sentence and
+ * for an algorithm.
  */
 function provision_published_keys(): string
 {
