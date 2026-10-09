@@ -18,6 +18,7 @@ use Beffroi\Bundle\Doctrine\Type\BindingMessageType;
 use Beffroi\Bundle\Doctrine\Type\BytesType;
 use Beffroi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
 use Beffroi\Bundle\Doctrine\Type\PasswordAlgorithmType;
+use Beffroi\Bundle\Doctrine\Type\PasswordHashType;
 use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
 use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
@@ -118,6 +119,7 @@ final class BeffroiBundle extends AbstractBundle
         KeyConfirmationType::NAME => KeyConfirmationType::class,
         BytesType::NAME => BytesType::class,
         PasswordAlgorithmType::NAME => PasswordAlgorithmType::class,
+        PasswordHashType::NAME => PasswordHashType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
         TenantLookType::NAME => TenantLookType::class,
