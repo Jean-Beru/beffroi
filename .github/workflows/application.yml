@@ -1,0 +1,69 @@
+name: Application
+
+on:
+  push:
+    branches:
+      - '*.*.x'
+  pull_request:
+    paths:
+      - '.github/workflows/application.yml'
+      - '.castor/stack/qa.php'
+      - 'src/symfony/src/BeffroiBundle.php'
+      - 'src/symfony/src/Configuration/**'
+      - 'apps/op/**'
+  workflow_dispatch: ~
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+# What the application can be judged on without a stack, which is what its kernel writes and what its
+# own files say.
+#
+# apps/op/config/reference.php and apps/op/config/schema.json are written by the kernel when it compiles
+# its container, from the configuration trees of the bundles it has installed, and both are committed: an
+# editor reads them to complete a "beffroi.*" key, a reader of the repository reads them to know what the
+# bundle takes. Nothing else writes them, so the check boots the application and fails when either file
+# comes back different, naming it and printing the diff ("castor config-reference", .castor/stack/qa.php).
+# The three linters then read the container that step compiled: a template of the bundle this application
+# overrides, a configuration file of its own, a catalogue it adds to.
+#
+# A workflow of its own rather than a job of ci.yml, and the reason is the lean CI rule: this is the only
+# check of a pull request that needs the Composer install of apps/op and PHP on the host, where every job
+# of ci.yml runs in the phpqa image (735 MB, pulled before its first step) and needs neither. "paths" is
+# what keeps a pull request that touches neither the application nor a configuration tree from paying for
+# it; the push to a maintenance branch runs the check whatever changed, so a tree that moves somewhere the
+# list does not name is caught at the merge and not months later.
+
+jobs:
+  application:
+    name: "The application boots, and what its kernel writes is what is committed"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # PHP on the host, not the phpqa image: what runs here is the application's own kernel, and none of
+      # the tools that image carries is used.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+      # The application is pinned by its own lock, the way a developer runs it. Without its scripts: what is
+      # compiled here is the container, and the assets the auto-scripts install are no part of it.
+      - uses: ramsey/composer-install@v4
+        with:
+          working-directory: apps/op
+          dependency-versions: locked
+          composer-options: --optimize-autoloader --no-scripts
+      - name: "Install Castor"
+        run: |
+          curl -fsSL -o "${RUNNER_TEMP}/castor" https://github.com/jolicode/castor/releases/download/v1.7.0/castor.linux-amd64
+          chmod +x "${RUNNER_TEMP}/castor"
+          echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
+      - name: "The reference and the schema against the configuration trees"
+        run: castor config-reference
+      - name: "Templates, configuration and catalogues"
+        working-directory: apps/op
+        run: |
+          php bin/console lint:twig templates
+          php bin/console lint:yaml config
+          php bin/console lint:xliff translations

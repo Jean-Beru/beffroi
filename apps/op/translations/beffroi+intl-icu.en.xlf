@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="beffroi">
+    <header>
+      <note>What this deployment adds to the strings of the bundle: one message per type of authorization detail it wires (RFC 9396 §2), named after that type, because the type is a class of the deployment and the sentence a user reads before agreeing to one belongs with it. ICU message format; the parameters are the ones the type put in the rendering of its detail.</note>
+    </header>
+    <body>
+      <trans-unit id="a1f0c3e8d2" resname="authorization_details.invoice_payment">
+        <source>authorization_details.invoice_payment</source>
+        <target>Invoice {identifier}: {actions} it, for at most {amount} {currency}</target>
+      </trans-unit>
+      <trans-unit id="b7c1d4e9f0" resname="theme.choose">
+        <source>theme.choose</source>
+        <target>Choose a theme</target>
+      </trans-unit>
+      <trans-unit id="c3d5e7a1b2" resname="theme.light">
+        <source>theme.light</source>
+        <target>Light</target>
+      </trans-unit>
+      <trans-unit id="d9e2f4a6c8" resname="theme.dark">
+        <source>theme.dark</source>
+        <target>Dark</target>
+      </trans-unit>
+      <trans-unit id="e1f3a5b7d2" resname="theme.system">
+        <source>theme.system</source>
+        <target>As the browser asks</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

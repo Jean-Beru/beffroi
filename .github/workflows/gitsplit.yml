@@ -9,9 +9,27 @@ name: gitsplit
 # whatever the default branch happens to declare at that moment.
 #
 # The container is not given the repository credentials: it pushes with
-# GITSPLIT_TOKEN, which must reach the three target repositories. It never
+# GITSPLIT_TOKEN, which must reach the four target repositories, and the step
+# after it reads that same secret. One credential does everything that is done
+# to a mirror and nothing that is done here, so it carries write access to
+# their code and, for their default branch, to their administration. It never
 # reads origin either, which is why .gitsplit.yml declares no cache url; the
 # cache volume below is mounted and left unused, as in jwt-framework.
+#
+# A closed milestone is where a release starts this: "release-on-milestone-
+# closed.yml" tags the version, creates the next maintenance branch and
+# switches the default branch of this repository to it, and the tag and the
+# branch are each a push this workflow listens to. The split sends them to the
+# mirrors, and the step after it is what makes a mirror look like this
+# repository: its default branch becomes the newest branch it carries, and a
+# branch the split does not push is deleted. So a mirror holds the maintained
+# branches and the release tags and nothing else, which is what the "origins"
+# of .gitsplit.yml declare; neither that list nor the list of targets is
+# restated here, both are read from that file.
+#
+# One release queues two runs, the tag and the branch, so the workflow takes
+# one at a time and cancels none: two force-pushes of the same mirror at once
+# is not a thing to find out about afterwards.
 
 on:
   push:
@@ -22,6 +40,10 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   gitsplit:
@@ -37,3 +59,54 @@ jobs:
         run: docker run --rm -t -e GH_TOKEN -v /cache/gitsplit:/cache/gitsplit -v ${{ github.workspace }}:/srv jderusse/gitsplit gitsplit
         env:
           GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
+
+      # The credential of the split, and not the one of this repository: changing a default branch
+      # needs "administration" and deleting a branch needs "contents", neither of which the
+      # GITHUB_TOKEN of Actions can be granted on another repository, and ORGANIZATION_ADMIN_TOKEN,
+      # which can do everything here, reaches no mirror and is not given one. There is nothing to
+      # check before running: this step is reached only when the split above has pushed, which is what
+      # a secret that is missing or too narrow stops.
+      #
+      # The targets and the patterns are read from .gitsplit.yml, so a prefix added there is a mirror
+      # this step aligns without being told twice. The newest branch is taken from what the mirror
+      # carries and never from what this repository carries: a default branch is a branch that exists,
+      # and the push above is what makes it exist. The default is moved before anything is deleted,
+      # because a default branch cannot be deleted.
+      - name: "Align the mirrors on this repository"
+        env:
+          GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
+        run: |
+          mapfile -t PATTERNS < <(sed -n '/^origins:/,$ s/^  - //p' .gitsplit.yml)
+          mapfile -t MIRRORS < <(grep -oP '(?<=github\.com/)[^"]+(?=\.git)' .gitsplit.yml)
+
+          for repo in "${MIRRORS[@]}"; do
+            kept=()
+            stale=()
+            while read -r branch; do
+              matched=false
+              for pattern in "${PATTERNS[@]}"; do
+                if grep -Pq -- "${pattern}" <<< "${branch}"; then
+                  matched=true
+                  break
+                fi
+              done
+              if [ "${matched}" = true ]; then kept+=("${branch}"); else stale+=("${branch}"); fi
+            done < <(gh api "repos/${repo}/branches" --paginate --jq '.[].name')
+
+            if [ ${#kept[@]} -eq 0 ]; then
+              echo "::warning title=${repo}::Not one branch of this mirror is named by the origins of .gitsplit.yml, so none of them can be its default: nothing was touched."
+              continue
+            fi
+
+            newest=$(printf '%s\n' "${kept[@]}" | sort -V | tail -1)
+            current=$(gh repo view "${repo}" --json defaultBranchRef --jq '.defaultBranchRef.name')
+            if [ "${current}" != "${newest}" ]; then
+              gh api -X PATCH "repos/${repo}" -f "default_branch=${newest}" --silent
+              echo "${repo}: default branch ${current} is now ${newest}." >> "${GITHUB_STEP_SUMMARY}"
+            fi
+
+            for branch in "${stale[@]}"; do
+              gh api -X DELETE "repos/${repo}/git/refs/heads/${branch}" --silent
+              echo "${repo}: branch ${branch} deleted, the split does not push it." >> "${GITHUB_STEP_SUMMARY}"
+            done
+          done

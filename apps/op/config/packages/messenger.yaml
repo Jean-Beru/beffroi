@@ -1,0 +1,69 @@
+# What this application owes of Messenger, and nothing more: its transports. The three buses, their
+# middleware and where each marker is sent are the contract of the provider and the bundle prepends them
+# (Beffroi\Bundle\Messenger\MessengerContract, architecture §5.6, issue beffroi-php/beffroi#456): a
+# deployment that wired them itself and got "dispatch_after_current_bus" or "doctrine_transaction" wrong
+# would break the asynchronous half of the provider, quietly.
+#
+# The block lives under "messenger" and not under "framework.messenger": the component has its own
+# extension since Symfony 8.2 split FrameworkBundle per component, and a block nested under "framework" is
+# not overridden by an application through a bundle's prepend.
+#
+# What is said here is the broker. The bundle sends every lane to the database unless the environment names
+# something else, so an installation needs no broker to work; this one has RabbitMQ, so each lane says the
+# exchange and the queue it binds, which is the part of a transport only a deployment knows.
+messenger:
+    transports:
+        async_priority_high:
+            dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+            options:
+                exchange:
+                    name: beffroi_messages
+                    type: direct
+                    default_publish_routing_key: high
+                queues:
+                    beffroi_messages_high:
+                        binding_keys: [high]
+        async_priority_medium:
+            dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+            options:
+                exchange:
+                    name: beffroi_messages
+                    type: direct
+                    default_publish_routing_key: medium
+                queues:
+                    beffroi_messages_medium:
+                        binding_keys: [medium]
+        async_priority_low:
+            dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+            options:
+                exchange:
+                    name: beffroi_messages
+                    type: direct
+                    default_publish_routing_key: low
+                queues:
+                    beffroi_messages_low:
+                        binding_keys: [low]
+        # What the provider carries to a third party it does not own: a lane of its own, because what it
+        # owes is not what our own writes owe. A relying party learns of a logout while the certification
+        # suite waits for it, so the message must not queue behind a batch of enrichments. How long it is
+        # tried again is the bundle's (NotificationRetryPolicy), the same schedule bounding how long a
+        # logout token stays on its way and so how long a signing key is held back from retiring.
+        async_notifications:
+            dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+            options:
+                exchange:
+                    name: beffroi_messages
+                    type: direct
+                    default_publish_routing_key: notifications
+                queues:
+                    beffroi_messages_notifications:
+                        binding_keys: [notifications]
+
+when@test:
+    messenger:
+        transports:
+            async_priority_high: 'sync://'
+            async_priority_medium: 'sync://'
+            async_priority_low: 'sync://'
+            async_notifications: 'sync://'
+            failed: 'sync://'

@@ -1,0 +1,76 @@
+{# The layout of the pages of the bundle, overridden by the application to give them their look
+   (architecture §5.2, §6): the same document and the same blocks as the layout of the bundle, one
+   stylesheet built from assets/styles/app.css (Tailwind and DaisyUI), no script. The pages of the
+   bundle come with it untouched: what they render is styled by its structure and its data-* codes.
+
+   Two shapes, because the pages are of two kinds. A page of an interaction asks one thing of whoever is
+   in front of it, a login, a consent, a code typed from an appliance, and nothing else is on it: a box in
+   the middle of the screen is what that is. A page of the account is a page someone reads and comes back
+   to, holding a list, a table, a heading and the way back: it takes the width of a column of text, at the
+   top of the screen, and carries "account" on its main so the stylesheet can say what a panel looks like
+   there. Which one a request is, is its route (architecture §5.4).
+
+   The theme is on the document and not in a script (issue #447): light and dark are what the stylesheet
+   declares, and a document that names neither leaves the answer to the browser. #}
+{% set account = (app.request.attributes.get('_route') ?? '') starts with 'beffroi_interaction_account' %}
+{% set chosen_theme = theme() %}
+{# The colours the tenant declared (issue beffroi-php/beffroi#449), written on the document as the two
+   custom properties DaisyUI draws a primary surface from: the accent of the buttons and the links, and
+   the colour of what is written on them. They are on the document and not in the stylesheet because the
+   stylesheet is built once for the deployment and these come from a row. The value is three or six
+   hexadecimal digits, which is all the model lets a tenant say, so there is nothing else it could put in
+   this attribute; a tenant that declared no colour leaves the attribute off and the themes answer. #}
+{% set tenant = beffroi_tenant() %}
+{% set colored = tenant is not null and tenant.primaryColor is not null %}
+<!DOCTYPE html>
+<html
+    lang="{{ app.request.locale|replace({'_': '-'}) }}"
+    {%- if chosen_theme.attribute() is not null %} data-theme="{{ chosen_theme.attribute() }}"{% endif %}
+    {%- if colored %} style="--color-primary: {{ tenant.primaryColor }}; --color-primary-content: {{ tenant.primaryContentColor }}"{% endif %}
+>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body class="{{ account ? 'min-h-dvh bg-base-200' : 'min-h-dvh bg-base-200 grid place-items-center p-4' }}">
+    {# The two controls of a page: the language, which the bundle ships as structure and words and this
+       stylesheet dresses, and the theme, which is this application's alone (issues #448 and #447). Where
+       they sit follows the shape of the page, which is why they are rendered once and placed twice. #}
+    {% set controls %}
+        {% include '@Beffroi/_locale_switcher.html.twig' %}
+        {% include '_theme_switcher.html.twig' %}
+    {% endset %}
+    {# The logo of the tenant, which the bundle ships as a header with its name as alternative text (issue
+       beffroi-php/beffroi#449): it heads the column of a page of the account, beside the controls, and
+       sits above the box of a page of an interaction, where whoever is in front of the screen reads who
+       they came for before reading the question. A tenant that declared no logo renders nothing, and the
+       page is the one it was. Rendered once and placed twice, as the controls are. #}
+    {% set brand %}{% include '@Beffroi/_brand.html.twig' %}{% endset %}
+    {% if account %}
+        {# A page of the account is a column someone reads: the controls head that column, aligned with it
+           and scrolling with it, rather than floating over its heading. #}
+        <div class="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-4 pt-6 sm:px-6">
+            {{ brand }}
+            <div class="ml-auto flex items-center gap-2">{{ controls }}</div>
+        </div>
+    {% endif %}
+    {% block body %}
+        {% if not account %}{{ brand }}{% endif %}
+        <main
+            {% if account %}data-page="account"{% endif %}
+            class="{{ account ? 'mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-10 sm:px-6 sm:py-14' : 'card card-body w-full max-w-md bg-base-100 shadow-xl' }}"
+        >
+            <h1 class="{{ account ? 'text-2xl font-bold tracking-tight sm:text-3xl' : 'card-title text-2xl' }}">{% block heading %}{{ block('title') }}{% endblock %}</h1>
+            {% block content %}{% endblock %}
+        </main>
+    {% endblock %}
+    {% if not account %}
+        {# A page of an interaction is one box in the middle of an empty screen, so the two controls take a
+           corner of it: the top one, the bottom of the screen being the web debug toolbar in development. #}
+        <div class="fixed top-4 right-4 z-10 flex items-center gap-2">{{ controls }}</div>
+    {% endif %}
+</body>
+</html>
