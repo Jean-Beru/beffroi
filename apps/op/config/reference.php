@@ -291,6 +291,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     failure_transport?: scalar|Param|null, // Transport name to send failed messages to (after all retries have failed). // Default: null
  *     stop_worker_on_signals?: Param|int|string|list<scalar|Param|null>,
  *     reject_redelivered_messages?: bool|Param, // Whether redeliveries should be rejected and retried through a new message instead of being handled directly. This mostly makes sense for AMQP, which redelivers messages that were neither acknowledged nor rejected. Disabling it avoids losing a message when the retry or the failure transport is unreachable, at the risk of a redelivery loop that blocks the queue. // Default: true
+ *     deduplication?: array{
+ *         lock_factory?: scalar|Param|null, // The service ID of the lock factory used to deduplicate messages, "lock.factory" when not set. // Default: null
+ *     },
  *     identity_stamps?: bool|Param, // Adds a message id and a causation id to dispatched messages, and a correlation id at the start of each flow. // Default: false
  *     default_bus?: scalar|Param|null, // Default: null
  *     buses?: array<string, array{ // Default: {"messenger.bus.default":{"default_middleware":{"enabled":true,"allow_no_handlers":false,"allow_no_senders":true},"middleware":[],"messages":[],"unwrap_exceptions":false}}
@@ -336,6 +339,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  * @psalm-type SchedulerConfig = bool|array{
  *     enabled?: bool|Param, // Default: true
  *     use_messenger_routing?: bool|Param|null, // Whether scheduled messages are routed to the Messenger senders configured for their class, as any other dispatched message is. A class with no sender configured still runs in the scheduler worker, and a "transports" option set on a task still wins. // Default: null
+ *     schedules?: array<string, array{ // Default: []
+ *         stateful?: bool|Param, // Whether the schedule keeps its state in the "cache.scheduler" pool and, when locks are enabled, runs in only one worker at a time. // Default: false
+ *         cache_pool?: scalar|Param|null, // The cache pool that stores the state of the schedule, so that a restarted worker resumes where the previous one stopped. // Default: null
+ *         lock_factory?: scalar|Param|null, // The service ID of the lock factory used to run the schedule in only one worker at a time. // Default: null
+ *         process_only_last_missed_run?: bool|Param, // Whether a task that missed several runs runs only once instead of once per missed run. // Default: false
+ *     }>,
  * }
  * @psalm-type AssetMapperConfig = bool|array{
  *     enabled?: bool|Param, // Default: true
@@ -387,6 +396,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  * @psalm-type HttpClientConfig = bool|array{
  *     enabled?: bool|Param, // Default: true
  *     max_host_connections?: int|Param, // The maximum number of connections to a single host.
+ *     recorder?: bool|array{ // Record HTTP exchanges into HAR files and replay them in tests (see RecorderHttpClient).
+ *         enabled?: bool|Param, // Default: false
+ *         redactor?: scalar|Param|null, // Service id of a RedactorInterface; when set, "redact" and "redact_except" are ignored. // Default: null
+ *         redact?: list<scalar|Param|null>,
+ *         redact_except?: list<scalar|Param|null>,
+ *     },
  *     default_options?: array{
  *         vars?: array<string, mixed>,
  *         headers?: array<string, mixed>,
@@ -623,6 +638,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         gc_maxlifetime?: scalar|Param|null,
  *         save_path?: scalar|Param|null, // Defaults to "%kernel.cache_dir%/sessions" if the "handler_id" option is not null.
  *         metadata_update_threshold?: int|Param, // Seconds to wait between 2 session metadata updates. // Default: 0
+ *         isolate_attributes?: bool|Param, // Whether to deep-clone the values read from and passed to session attributes, so that only values passed to set() are saved. // Default: false
  *     },
  *     request?: bool|array{ // Request configuration
  *         enabled?: bool|Param, // Default: false
