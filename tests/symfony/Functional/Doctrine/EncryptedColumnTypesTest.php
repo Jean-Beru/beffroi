@@ -41,7 +41,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     {
         // When / Then
         static::assertCount(13, EncryptedColumnTypes::FAMILIES);
-        static::assertCount(21, EncryptedColumnTypes::declarations());
+        static::assertCount(22, EncryptedColumnTypes::declarations());
     }
 
     /**

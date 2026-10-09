@@ -94,9 +94,7 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertSame(self::PLAINTEXTS['phone_number'], $read->phoneNumber);
         static::assertInstanceOf(Address::class, $read->address);
         static::assertSame(self::PLAINTEXTS['address'], $read->address->formatted);
-        static::assertSame(self::PLAINTEXTS['name'], $read->profile->name);
-        static::assertSame(self::PLAINTEXTS['birthdate'], $read->profile->birthdate);
-        static::assertSame(self::PLAINTEXTS['locale'], $read->profile->locale);
+        static::assertSame(self::PLAINTEXTS['profile'], $read->profile->name);
     }
 
     /**

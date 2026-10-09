@@ -70,7 +70,7 @@ final readonly class EncryptedColumnTypes
      * @var array<string, list<string>>
      */
     public const array FAMILIES = [
-        'user' => ['string', 'text', 'beffroi_email_address', 'beffroi_address'],
+        'user' => ['string', 'text', 'beffroi_email_address', 'beffroi_address', 'beffroi_profile'],
         'linked_identity' => ['string', 'json'],
         'passkey_credential' => ['string'],
         'push_subscription' => ['string', 'text'],

@@ -44,7 +44,10 @@
         <!-- Nullable because the address is: a user who gave none has no tag to hold. -->
         <field name="emailIndex" type="string" column="email_index" length="64" nullable="true"/>
         <field name="emailVerified" type="boolean" column="email_verified"/>
-        <embedded name="profile" class="Beffroi\Core\Domain\Identity\Profile" use-column-prefix="false"/>
+        <!-- The thirteen claims of OIDC Core §5.1 in one column, sealed under the data key of this tenant
+             in the "user" family. No "jsonb" option: what the column holds is the ciphertext of a JSON
+             document, which no operator of the database can read into, as the address above. -->
+        <field name="profile" type="beffroi_encrypted_user_profile" column="profile"/>
         <field name="phoneNumber" type="beffroi_encrypted_user_string" column="phone_number" length="64" nullable="true"/>
         <field name="phoneNumberVerified" type="boolean" column="phone_number_verified"/>
         <field name="address" type="beffroi_encrypted_user_address" column="address" nullable="true"/>

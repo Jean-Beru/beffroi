@@ -64,6 +64,21 @@ final class Version20261009130000 extends AbstractMigration
         $this->addSql('ALTER TABLE beffroi_refresh_token DROP family_started_at');
         $this->addSql('ALTER TABLE beffroi_refresh_token DROP family_expires_at');
         $this->addSql('ALTER TABLE beffroi_refresh_token ADD CONSTRAINT FK_574B97DEC35E566A FOREIGN KEY (family_id) REFERENCES beffroi_refresh_token_family (id)');
+
+        $this->addSql('ALTER TABLE beffroi_user DROP name');
+        $this->addSql('ALTER TABLE beffroi_user DROP given_name');
+        $this->addSql('ALTER TABLE beffroi_user DROP family_name');
+        $this->addSql('ALTER TABLE beffroi_user DROP middle_name');
+        $this->addSql('ALTER TABLE beffroi_user DROP nickname');
+        $this->addSql('ALTER TABLE beffroi_user DROP preferred_username');
+        $this->addSql('ALTER TABLE beffroi_user DROP profile_url');
+        $this->addSql('ALTER TABLE beffroi_user DROP picture_url');
+        $this->addSql('ALTER TABLE beffroi_user DROP website_url');
+        $this->addSql('ALTER TABLE beffroi_user DROP gender');
+        $this->addSql('ALTER TABLE beffroi_user DROP birthdate');
+        $this->addSql('ALTER TABLE beffroi_user DROP zoneinfo');
+        $this->addSql('ALTER TABLE beffroi_user DROP locale');
+        $this->addSql('ALTER TABLE beffroi_user ADD profile BYTEA NOT NULL');
     }
 
     public function down(Schema $schema): void
@@ -90,5 +105,20 @@ final class Version20261009130000 extends AbstractMigration
         $this->addSql('ALTER INDEX beffroi_refresh_token_family_id RENAME TO beffroi_refresh_token_family');
         $this->addSql('CREATE INDEX beffroi_refresh_token_granting_record ON beffroi_refresh_token (family_granting_record_hash)');
         $this->addSql('DROP TABLE beffroi_refresh_token_family');
+
+        $this->addSql('ALTER TABLE beffroi_user DROP profile');
+        $this->addSql('ALTER TABLE beffroi_user ADD name VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD given_name VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD family_name VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD middle_name VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD nickname VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD preferred_username VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD profile_url TEXT DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD picture_url TEXT DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD website_url TEXT DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD gender VARCHAR(64) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD birthdate VARCHAR(10) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD zoneinfo VARCHAR(64) DEFAULT NULL');
+        $this->addSql('ALTER TABLE beffroi_user ADD locale VARCHAR(35) DEFAULT NULL');
     }
 }
