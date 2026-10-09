@@ -8,8 +8,7 @@ on:
     paths:
       - '.github/workflows/application.yml'
       - '.castor/stack/qa.php'
-      - 'src/symfony/src/BeffroiBundle.php'
-      - 'src/symfony/src/Configuration/**'
+      - 'src/**'
       - 'apps/op/**'
   workflow_dispatch: ~
 
@@ -17,8 +16,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-# What the application can be judged on without a stack, which is what its kernel writes and what its
-# own files say.
+# What the application can be judged on without a stack, which is the pair it makes with the packages,
+# what its kernel writes and what its own files say.
+#
+# The pair first. apps/op/composer.json resolves beffroi/* through path repositories to ../../src/*, so the
+# packages come from the branch, while apps/op/composer.lock pins every third-party dependency at the
+# commit it was written against. Booting the application is therefore the one place where the lock of the
+# application meets the packages of this branch, and the only place either is told the other moved: an API
+# that changes upstream arrives in the packages, which every job of ci.yml installs at its highest
+# resolvable version, and does not arrive in the application, which installs what its lock names. The push
+# to a maintenance branch boots it whatever changed, and a pull request boots it as soon as it touches a
+# package or the application, so the commit that breaks the pair is the commit that is red. When the boot
+# fails, the step after it resolves the application's dependencies again and boots it a second time: a
+# second boot that succeeds says the lock is behind and the fix is a lock bump, one that fails again says
+# the packages of this branch are what broke it. A failure that does not name the side that moved sends
+# somebody reading the wrong diff.
 #
 # apps/op/config/reference.php and apps/op/config/schema.json are written by the kernel when it compiles
 # its container, from the configuration trees of the bundles it has installed, and both are committed: an
@@ -31,9 +43,9 @@ concurrency:
 # A workflow of its own rather than a job of ci.yml, and the reason is the lean CI rule: this is the only
 # check of a pull request that needs the Composer install of apps/op and PHP on the host, where every job
 # of ci.yml runs in the phpqa image (735 MB, pulled before its first step) and needs neither. "paths" is
-# what keeps a pull request that touches neither the application nor a configuration tree from paying for
-# it; the push to a maintenance branch runs the check whatever changed, so a tree that moves somewhere the
-# list does not name is caught at the merge and not months later.
+# what keeps a pull request that touches neither the packages nor the application from paying the half
+# minute this costs, and it names every package rather than the configuration trees alone, because a
+# commit that breaks the pair is not only a commit that moves a tree.
 
 jobs:
   application:
@@ -54,6 +66,59 @@ jobs:
           working-directory: apps/op
           dependency-versions: locked
           composer-options: --optimize-autoloader --no-scripts
+      # The pair, before anything is compared and before a tool is downloaded for it: the container
+      # compiles or it does not, and a failure here is the lock of the application and the packages of this
+      # branch disagreeing. The task further down compiles it a second time, two seconds, which is the
+      # price of a failure that says what it is instead of one failure standing for two causes.
+      - name: "The application boots on its lock and the packages of this branch"
+        id: "boot"
+        working-directory: apps/op
+        env:
+          APP_ENV: dev
+          APP_DEBUG: 1
+        run: php bin/console cache:clear
+
+      # Which of the two moved, asked only of a boot that failed: the dependencies are resolved again, at
+      # the highest version they allow, which is what every job of ci.yml installs for the packages. A
+      # second boot that succeeds names the lock, and what Composer moved is what to bump; one that fails
+      # again names the packages; a resolution that cannot be done at all names itself, and is neither of
+      # the two. The step fails in all three cases, it diagnoses and repairs nothing.
+      #
+      # "failure()" is what makes the condition reached: an "if" that names no status function is given
+      # success() on top of itself, and this step is wanted on a job that has just failed. The log is
+      # redirected rather than piped, because the default shell of a step is "bash -e" without pipefail,
+      # where the status of a pipe is the status of "tee" and a resolution that failed reads as one that
+      # worked.
+      - name: "Which of the two moved"
+        if: "failure() && steps.boot.outcome == 'failure'"
+        working-directory: apps/op
+        env:
+          APP_ENV: dev
+          APP_DEBUG: 1
+        run: |
+          if ! composer update --no-interaction --no-scripts --no-progress > "${RUNNER_TEMP}/update.log" 2>&1; then
+            cat "${RUNNER_TEMP}/update.log"
+            echo "The dependencies of the application do not resolve at all, so neither the lock nor a package of this branch is the whole of it: what Composer refuses is above." >> "${GITHUB_STEP_SUMMARY}"
+            echo "::error title=The dependencies of the application do not resolve::Composer cannot satisfy apps/op/composer.json against the packages of this branch, so the pair cannot be told apart. The log is in the step."
+            exit 1
+          fi
+          cat "${RUNNER_TEMP}/update.log"
+          moved=$(grep -E '^\s+- (Upgrading|Downgrading|Installing|Removing)' "${RUNNER_TEMP}/update.log" || true)
+          if php bin/console cache:clear; then
+            {
+              echo "The application boots once its dependencies are resolved again, so apps/op/composer.lock is behind the packages: the fix is a lock bump here and not a change of the packages. Run \"(cd apps/op && composer update)\", then \"castor config-reference-fix\", and commit both."
+              echo
+              echo '```'
+              echo "${moved:-Composer moved nothing it names, so what moved is a dependency of a dependency.}"
+              echo '```'
+            } >> "${GITHUB_STEP_SUMMARY}"
+            echo "::error title=The lock of the application is behind the packages::It boots with its dependencies resolved again, so the fix is a lock bump in apps/op. The job summary lists what moved."
+            exit 1
+          fi
+          echo "The application boots neither on its lock nor on its dependencies resolved again, so what broke it is in the packages of this branch and no lock bump reaches it." >> "${GITHUB_STEP_SUMMARY}"
+          echo "::error title=The packages of this branch do not boot the application::It fails on its lock and on its dependencies resolved again, so the fix is in src and not in apps/op/composer.lock."
+          exit 1
+
       - name: "Install Castor"
         run: |
           curl -fsSL -o "${RUNNER_TEMP}/castor" https://github.com/jolicode/castor/releases/download/v1.7.0/castor.linux-amd64
