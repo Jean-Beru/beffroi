@@ -8,6 +8,7 @@ use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EcdhEsA256Kw;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\EdDsa;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Es256;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\MessageSeal;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Ps256;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Rs256;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
@@ -18,6 +19,7 @@ use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 
 /**
@@ -50,6 +52,10 @@ final class Algorithms
     private static ?Vapid $vapid = null;
 
     private static ?JoseApplicationServerAlgorithms $applicationServer = null;
+
+    private static ?MessageSeal $messageSeal = null;
+
+    private static ?JoseMessageSealingAlgorithms $messageSealing = null;
 
     private static ?JoseKeyAlgorithms $everyUse = null;
 
@@ -148,10 +154,36 @@ final class Algorithms
     }
 
     /**
+     * The algorithm of the key a tenant seals what leaves the process to (decision 0020).
+     */
+    public static function messageSeal(): MessageSeal
+    {
+        return self::$messageSeal ??= new MessageSeal(self::ecdhEsA256Kw(), self::a256Gcm());
+    }
+
+    public static function messageSealing(): JoseMessageSealingAlgorithms
+    {
+        return self::$messageSealing ??= new JoseMessageSealingAlgorithms([self::messageSeal()]);
+    }
+
+    /**
+     * A deployment wired with nothing to seal a message body to, which writes no message.
+     */
+    public static function noMessageSealing(): JoseMessageSealingAlgorithms
+    {
+        return new JoseMessageSealingAlgorithms([]);
+    }
+
+    /**
      * Every algorithm a key may be generated for, the lists of one use read as one.
      */
     public static function everyUse(): JoseKeyAlgorithms
     {
-        return self::$everyUse ??= new JoseKeyAlgorithms(self::all(), self::keyEncryption(), self::applicationServer());
+        return self::$everyUse ??= new JoseKeyAlgorithms(
+            self::all(),
+            self::keyEncryption(),
+            self::applicationServer(),
+            self::messageSealing(),
+        );
     }
 }

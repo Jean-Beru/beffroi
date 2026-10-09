@@ -985,7 +985,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     private static function stagedKeys(): array
     {
         return array_values(array_filter(
-            self::keys()->findPublished(self::tenant()),
+            self::keys()->findInService(self::tenant()),
             static fn (TenantKey $key): bool => $key->status === KeyStatus::Staged,
         ));
     }
@@ -1000,7 +1000,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     private static function publishedKids(): array
     {
-        return array_map(static fn (TenantKey $key): string => $key->kid, self::keys()->findPublished(self::tenant()));
+        return array_map(static fn (TenantKey $key): string => $key->kid, self::keys()->findInService(self::tenant()));
     }
 
     private static function keys(): TenantKeyRepositoryInterface

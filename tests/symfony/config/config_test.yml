@@ -639,6 +639,14 @@ services:
     test.beffroi.key_provider:
         alias: Beffroi\Core\Port\SigningKeyProviderInterface
         public: true
+    # what every transport encodes with, read through the alias of the component and not through the
+    # service of the bundle: what is asserted is the wiring and not the class (decision 0020)
+    test.beffroi.messenger_serializer:
+        alias: messenger.default_serializer
+        public: true
+    test.beffroi.message_sealing_algorithms:
+        alias: Beffroi\Core\Port\MessageSealingAlgorithmsInterface
+        public: true
     test.beffroi.public_keys:
         alias: Beffroi\Core\Port\PublicKeySetProviderInterface
         public: true

@@ -158,7 +158,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * TenantKeyRepositoryInterface::findPublished(): staged, active and retiring keys, in creation order;
+     * TenantKeyRepositoryInterface::findInService(): staged, active and retiring keys, in creation order;
      * findActive(): never a staged key.
      */
     #[Test]
@@ -183,7 +183,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $this->saveThreeKeys($tenant);
 
         // When
-        $published = $this->repository->findPublished($tenant);
+        $published = $this->repository->findInService($tenant);
 
         // Then
         static::assertSame(['zzz-oldest', 'mmm-newest', 'bbb-staged'], array_map(static fn (TenantKey $key): string => $key->kid, $published));
@@ -198,14 +198,14 @@ final class FileTenantKeyRepositoryTest extends TestCase
         // When / Then
         static::assertNull($this->repository->find($tenant, 'unknown'));
         static::assertNull($this->repository->findActive($tenant, Algorithms::rs256()));
-        static::assertSame([], $this->repository->findPublished($tenant));
+        static::assertSame([], $this->repository->findInService($tenant));
     }
 
     #[Test]
     public function readingCreatesNoStorage(): void
     {
         // When
-        $this->repository->findPublished(Fixtures::tenant());
+        $this->repository->findInService(Fixtures::tenant());
 
         // Then
         static::assertDirectoryDoesNotExist($this->directory);
@@ -222,7 +222,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
         // When / Then
         static::assertNull($this->repository->find($acme, Keys::pair()->kid));
         static::assertNull($this->repository->findActive($acme, Algorithms::rs256()));
-        static::assertSame([], $this->repository->findPublished($acme));
+        static::assertSame([], $this->repository->findInService($acme));
         static::assertNotNull($this->repository->find($other, Keys::pair()->kid));
     }
 
@@ -319,7 +319,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         // When
-        $this->repository->findPublished(Fixtures::tenant());
+        $this->repository->findInService(Fixtures::tenant());
     }
 
     /**

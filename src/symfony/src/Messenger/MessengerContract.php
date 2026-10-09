@@ -32,6 +32,12 @@ use Beffroi\Core\Domain\Event\DomainEventInterface;
  * `doctrine://default` unless `BEFFROI_MESSENGER_DSN` names something else, and a deployment that wants
  * one lane on a broker and another in the database declares that transport itself, which is the one part
  * of this block an application still owns.
+ *
+ * **What leaves the process is sealed** (decision 0020): the serializer of the bundle is the default one
+ * of every transport, so a body on a broker, and a body in the table of a transport, is a JWE to the
+ * message key of the tenant. It is in the contract and not left to a deployment for the same reason the
+ * middleware is: a transport that named the serializer of the component would carry in the clear what
+ * every column of this provider seals at rest, and nothing in a browser would show it.
  */
 final readonly class MessengerContract
 {
@@ -52,6 +58,12 @@ final readonly class MessengerContract
     public const string DEFAULT_BUS = 'command.bus';
 
     public const string FAILURE_TRANSPORT = 'failed';
+
+    /**
+     * What seals a body on its way out and opens it on its way in, for every transport: the failure one
+     * included, which is the transport that keeps what it is given the longest.
+     */
+    public const string SERIALIZER = 'beffroi.messenger.serializer';
 
     /**
      * The lanes, by priority and then by what they carry, each named by what asks for it: the three of our
@@ -130,6 +142,9 @@ final readonly class MessengerContract
         return [
             'default_bus' => self::DEFAULT_BUS,
             'failure_transport' => self::FAILURE_TRANSPORT,
+            'serializer' => [
+                'default_serializer' => self::SERIALIZER,
+            ],
             'transports' => $transports,
             'routing' => self::routing(),
             'buses' => [
