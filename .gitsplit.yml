@@ -1,6 +1,8 @@
 # Split configuration for jderusse/gitsplit. Each directory below is mirrored, read only, into
-# its own package repository. A mirror carries the maintained branches and the release tags
-# listed under origins, and nothing else; the monorepo is where the work happens.
+# its own repository: the three packages, and the standalone application, which is deployed from
+# a build of apps/op and never installed as a dependency. A mirror carries the maintained
+# branches and the release tags listed under origins, and nothing else; the monorepo is where the
+# work happens.
 #
 # The tag pattern is the one laminas/automatic-releases writes when a version milestone is
 # closed: the milestone title itself, without a "v".
@@ -18,6 +20,8 @@ splits:
     target: "https://${GH_TOKEN}@github.com/beffroi-php/oidc.git"
   - prefix: "src/symfony"
     target: "https://${GH_TOKEN}@github.com/beffroi-php/symfony-bundle.git"
+  - prefix: "apps/op"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/op.git"
 
 origins:
   - ^\d+\.\d+\.x$
