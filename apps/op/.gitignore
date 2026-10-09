@@ -1,4 +1,3 @@
-
 ###> symfony/framework-bundle ###
 /.env.local
 /.env.local.php
@@ -14,7 +13,7 @@
 /assets/vendor/
 ###< symfony/asset-mapper ###
 
-###> phpunit/phpunit ###
+# What the suite of this application leaves behind. PHPUnit itself is not a dependency here: it is the one
+# the QA image carries, as every tool of this repository is ("castor app-phpunit").
 /phpunit.xml
 /.phpunit.cache/
-###< phpunit/phpunit ###

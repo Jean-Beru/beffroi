@@ -236,10 +236,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
-    # Published on the loopback interface alone, for the suite of the application, which runs on the host
-    # with the PHP that installed it ("castor app-phpunit", issue #521): it is the same command there and on
-    # a runner, where a service container answers at the same address. It writes the database the test
-    # environment of the application names, "<name>_test", and never the one this server serves to the stack.
+    # Published on the loopback interface alone, for the suite of the application ("castor app-phpunit",
+    # issue #521): that task runs in the QA image and is given the network of this machine, so what it
+    # reaches here is this port, and on a runner it reads the service container beside the job at the name
+    # that workflow sets DATABASE_URL to (.github/workflows/application.yml). It writes the database the
+    # test environment of the application names, "<name>_test", and never the one this server serves to
+    # the stack.
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:

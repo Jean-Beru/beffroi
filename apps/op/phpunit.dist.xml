@@ -9,9 +9,12 @@
     No coverage and no mutation: the lines that would be measured are in "src", which the suites of the
     monorepo cover and Infection mutates. What this one covers is the wiring, which a mutation score does not
     read.
+
+    PHPUnit is no dependency of this application: the runner is the one the QA image carries, as every tool
+    of this repository is, and "castor app-phpunit" is what plays this file (.castor/stack/qa.php). Which is
+    why nothing here names a schema under "vendor".
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
