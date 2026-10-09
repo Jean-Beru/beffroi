@@ -445,6 +445,35 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
+     * Architecture §4.6: a lineage is of one tenant, its own, so the family a revocation walks never holds
+     * the tokens of two.
+     */
+    #[Test]
+    public function itFindsOnlyTheTokensOfTheTenantOfAFamily(): void
+    {
+        // Given
+        $repository = new InMemoryRefreshTokenRepository();
+        $family = Tokens::family(Fixtures::now(), $this->client->tenant, 'first-code');
+        $lineage = $this->lineage($family);
+        $elsewhere = Fixtures::tenant('other', 'https://id.other.example');
+        $elsewhereFamily = Tokens::family(Fixtures::now(), $elsewhere, 'other-code');
+        $stranger = Tokens::refreshToken(
+            'stranger',
+            Clients::public($elsewhere),
+            Fixtures::session(Fixtures::user($elsewhere)),
+            Fixtures::now(),
+            $elsewhereFamily,
+        );
+        foreach ([...$lineage, $stranger] as $token) {
+            $repository->save($token);
+        }
+
+        // When / Then
+        static::assertSame($lineage, $repository->findByFamily($family->id));
+        static::assertSame([$stranger], $repository->findByFamily($elsewhereFamily->id));
+    }
+
+    /**
      * Architecture §4.6: the descendants of a code are the family.
      */
     #[Test]
