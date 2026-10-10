@@ -27,8 +27,9 @@ final class PeriodTest extends TestCase
         $period = Period::ofDays(new DateTimeImmutable('2026-10-01 11:30:00'), new DateTimeImmutable('2026-10-03 08:15:00'));
 
         // Then
-        static::assertSame('2026-10-01 00:00:00.000000', $period?->from?->format('Y-m-d H:i:s.u'));
-        static::assertSame('2026-10-03 23:59:59.999999', $period?->to?->format('Y-m-d H:i:s.u'));
+        static::assertNotNull($period);
+        static::assertSame('2026-10-01 00:00:00.000000', $period->from?->format('Y-m-d H:i:s.u'));
+        static::assertSame('2026-10-03 23:59:59.999999', $period->to?->format('Y-m-d H:i:s.u'));
     }
 
     #[Test]
@@ -73,7 +74,8 @@ final class PeriodTest extends TestCase
         $period = Period::ofDays(new DateTimeImmutable('2026-10-01 23:00:00'), new DateTimeImmutable('2026-10-01 01:00:00'));
 
         // Then
-        static::assertSame('2026-10-01 00:00:00.000000', $period?->from?->format('Y-m-d H:i:s.u'));
-        static::assertSame('2026-10-01 23:59:59.999999', $period?->to?->format('Y-m-d H:i:s.u'));
+        static::assertNotNull($period);
+        static::assertSame('2026-10-01 00:00:00.000000', $period->from?->format('Y-m-d H:i:s.u'));
+        static::assertSame('2026-10-01 23:59:59.999999', $period->to?->format('Y-m-d H:i:s.u'));
     }
 }

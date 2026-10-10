@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Bundle\Http\Account\RecordedInformation;
+use function count;
 use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Domain\Identity\User;
 use Symfony\Component\HttpFoundation\Response;
@@ -61,7 +62,10 @@ final readonly class ProfilePage
             [
                 'user' => $user,
                 'identity' => RecordedInformation::identityOf($user),
-                'claims' => RecordedInformation::claimsOf($user),
+                // every claim this provider can hold, so that the line somebody reads is the line they
+                // correct; how many of them are held is what the page says of the record itself
+                'claims' => RecordedInformation::everyClaimOf($user),
+                'held' => count(RecordedInformation::claimsOf($user)),
                 'changeable' => $changeable,
                 'refusal' => $refusal,
             ],

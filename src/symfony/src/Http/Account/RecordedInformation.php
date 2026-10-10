@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http\Account;
 
 use function array_filter;
+use function array_values;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\User;
 use function implode;
@@ -16,9 +17,11 @@ use function implode;
  * and in the count by one line added.
  *
  * Two readings, because the two halves answer different questions. Keeping an account for someone keeps a
- * name to sign in with, an identifier every client receives (OIDC Core §2) and two dates, whatever the
- * person told us; what they told us is the rest, each one only when it is set, since a detail nobody gave
- * is not a line of a page.
+ * name to sign in with and two dates, whatever the person told us; what they told us is the rest.
+ *
+ * The identifier a client receives is on neither: it is the `sub` of a token and not a thing a person came
+ * to read of themselves, and a client of a sector that asks for a pairwise one receives another identifier
+ * altogether (OIDC Core §8.1), so a page that named this one would be telling them something false.
  */
 final readonly class RecordedInformation
 {
@@ -29,27 +32,42 @@ final readonly class RecordedInformation
     {
         return [
             RecordedDetail::said('username', $user->username),
-            RecordedDetail::said('subject', $user->subject->value),
             RecordedDetail::dated('created_at', $user->createdAt),
             RecordedDetail::dated('updated_at', $user->updatedAt),
         ];
     }
 
     /**
-     * The contact details with their verification and the standard claims of OIDC Core §5.1, in the order
-     * a client asks for them.
+     * What this provider holds of that person: the contact details with their verification and the standard
+     * claims of OIDC Core §5.1, in the order a client asks for them, each only when it is set. What the
+     * home of the account counts.
      *
      * @return list<RecordedDetail>
      */
     public static function claimsOf(User $user): array
     {
+        return array_values(array_filter(
+            self::everyClaimOf($user),
+            static fn (RecordedDetail $detail): bool => $detail->value !== null,
+        ));
+    }
+
+    /**
+     * Every claim this provider can hold of that person, in the same order, the ones it holds nothing of
+     * included: the page where somebody reads their record is the page where they correct it, so a claim
+     * they may fill in is a line of it before they have filled it.
+     *
+     * @return list<RecordedDetail>
+     */
+    public static function everyClaimOf(User $user): array
+    {
         $details = [];
-        if ($user->email !== null) {
-            $details[] = RecordedDetail::verifiable('email', $user->email->value, $user->emailVerified);
-        }
-        if ($user->phoneNumber !== null) {
-            $details[] = RecordedDetail::verifiable('phone_number', $user->phoneNumber, $user->phoneNumberVerified);
-        }
+        $details[] = $user->email === null
+            ? RecordedDetail::nothing('email')
+            : RecordedDetail::verifiable('email', $user->email->value, $user->emailVerified);
+        $details[] = $user->phoneNumber === null
+            ? RecordedDetail::nothing('phone_number')
+            : RecordedDetail::verifiable('phone_number', $user->phoneNumber, $user->phoneNumberVerified);
         $profile = $user->profile;
         $claims = [
             'name' => $profile->name,
@@ -68,9 +86,7 @@ final readonly class RecordedInformation
             'address' => self::address($user->address),
         ];
         foreach ($claims as $key => $value) {
-            if ($value !== null) {
-                $details[] = RecordedDetail::said($key, $value);
-            }
+            $details[] = $value === null ? RecordedDetail::nothing($key) : RecordedDetail::said($key, $value);
         }
 
         return $details;

@@ -273,10 +273,6 @@
         <source>profile.username</source>
         <target>Nom d'utilisateur</target>
       </trans-unit>
-      <trans-unit id="7dfe6bd8ef" resname="profile.subject">
-        <source>profile.subject</source>
-        <target>Identifiant transmis aux applications</target>
-      </trans-unit>
       <trans-unit id="a49dd70115" resname="profile.created_at">
         <source>profile.created_at</source>
         <target>Compte créé le</target>
