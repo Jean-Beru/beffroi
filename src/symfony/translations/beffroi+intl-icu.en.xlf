@@ -385,10 +385,6 @@
         <source>passkeys.revoke</source>
         <target>Revoke</target>
       </trans-unit>
-      <trans-unit id="2879167539" resname="passkeys.new_name">
-        <source>passkeys.new_name</source>
-        <target>Name of the new passkey</target>
-      </trans-unit>
       <trans-unit id="08af99ba89" resname="passkeys.enrol">
         <source>passkeys.enrol</source>
         <target>Add a passkey</target>
@@ -1192,6 +1188,14 @@
       <trans-unit id="filter.clear" resname="filter.clear">
         <source>filter.clear</source>
         <target>Read all of it</target>
+      </trans-unit>
+      <trans-unit id="passkeys.new_default" resname="passkeys.new_default">
+        <source>passkeys.new_default</source>
+        <target>New passkey</target>
+      </trans-unit>
+      <trans-unit id="passkeys.rename" resname="passkeys.rename">
+        <source>passkeys.rename</source>
+        <target>Rename</target>
       </trans-unit>
     </body>
   </file>

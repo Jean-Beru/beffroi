@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRenamed;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function json_decode;
@@ -152,7 +153,8 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $row = $this->passkeysPage()->filter('table[data-passkeys="1"] tr[data-passkey="' . $passkey->id . '"]');
         static::assertCount(1, $row);
         static::assertSame('no', $row->attr('data-revoked'));
-        static::assertStringContainsString('YubiKey 5', $row->text());
+        // the name is the field its holder corrects in that line, so it is read as its value
+        static::assertSame('YubiKey 5', $row->filter('form[data-passkey="rename"] input[name="name"]')->attr('value'));
     }
 
     /**
@@ -411,7 +413,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $bob = self::user('bob', 'bob-subject');
         $own = $this->enrol($bob, self::device());
         $token = $this->passkeysPage()
-            ->filter('tr[data-passkey="' . $own->id . '"] input[name="_token"]')
+            ->filter('tr[data-passkey="' . $own->id . '"] form[data-passkey="revoke"] input[name="_token"]')
             ->attr('value');
 
         // When
@@ -422,6 +424,117 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Then
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
         static::assertFalse(self::passkeyOf($alice, $device)->isRevoked());
+    }
+
+    /**
+     * Issue #446: what tells one passkey from another is a name its holder wrote, so they correct it in
+     * the line where they read it, and the page comes back with the name they gave.
+     */
+    #[Test]
+    public function aPasskeyIsNamedAgainFromItsOwnLine(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $form = $this->passkeysPage()
+            ->filter('tr[data-passkey="' . $passkey->id . '"] form[data-passkey="rename"]')
+            ->form();
+        $form->setValues([
+            'name' => 'The key of my telephone',
+        ]);
+
+        // When
+        $this->browser->submit($form);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame('The key of my telephone', self::passkeyOf($alice, $device)->name);
+        $renamed = self::events(CredentialRenamed::class);
+        static::assertCount(1, $renamed);
+        static::assertSame('YubiKey 5', $renamed[0]->was);
+    }
+
+    /**
+     * What a name may be is the rule of the kind and it is read on the server: a name longer than a
+     * passkey holds is refused where it is written and says so once.
+     */
+    #[Test]
+    public function aNameAPasskeyCannotHoldIsRefused(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $token = self::string(
+            $this->passkeysPage()
+                ->filter('tr[data-passkey="' . $passkey->id . '"] form[data-passkey="rename"] input[name="_token"]')
+                ->attr('value'),
+        );
+
+        // When
+        $this->browser->request('POST', '/account/passkeys/' . $passkey->id . '/name', [
+            '_token' => $token,
+            'name' => str_repeat('k', 256),
+        ]);
+
+        // Then
+        static::assertSame('invalid_name', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('YubiKey 5', self::passkeyOf($alice, $device)->name);
+        static::assertSame([], self::events(CredentialRenamed::class));
+    }
+
+    #[Test]
+    public function somebodyElsesPasskeyIsNotFoundToName(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $this->forgetTheBrowser();
+        $bob = self::user('bob', 'bob-subject');
+        $own = $this->enrol($bob, self::device());
+        $token = self::string(
+            $this->passkeysPage()
+                ->filter('tr[data-passkey="' . $own->id . '"] form[data-passkey="rename"] input[name="_token"]')
+                ->attr('value'),
+        );
+
+        // When
+        $this->browser->request('POST', '/account/passkeys/' . $passkey->id . '/name', [
+            '_token' => $token,
+            'name' => 'Not mine',
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+        static::assertSame('YubiKey 5', self::passkeyOf($alice, $device)->name);
+    }
+
+    /**
+     * A revoked passkey is a record of what was: its name is read and not corrected.
+     */
+    #[Test]
+    public function aRevokedPasskeyIsNotNamedAgain(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $this->browser->submit(
+            $this->passkeysPage()
+                ->filter('tr[data-passkey="' . $passkey->id . '"]')
+                ->selectButton('Revoke')
+                ->form(),
+        );
+
+        // When
+        $row = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey->id . '"]');
+
+        // Then
+        static::assertCount(0, $row->filter('form[data-passkey="rename"]'));
+        static::assertStringContainsString('YubiKey 5', $row->text());
     }
 
     #[Test]

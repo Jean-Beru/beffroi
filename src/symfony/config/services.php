@@ -208,6 +208,7 @@ use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\UserProvisioner;
@@ -1119,6 +1120,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpEnrolment::class);
     $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
+    $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
     $services->set(SessionOpener::class);
     $services->set(SessionTerminator::class);

@@ -12,6 +12,19 @@
     <script src="{{ path('beffroi_interaction_passkey_script') }}" defer></script>
 {% endblock %}
 
+{# Enrolling one is what this page offers, and it is one click: the name that tells one passkey from
+   another is corrected in its own line afterwards, so nothing is asked before the ceremony. The form is
+   hidden until the script of the bundle finds a browser that can create a passkey, and the name it sends
+   is the one this page gives a new one. #}
+{% block action %}
+    <form method="post" action="{{ path('beffroi_interaction_account_passkeys_enrol') }}" data-passkey="enrol" data-options-url="{{ path('beffroi_interaction_account_passkeys_options') }}" hidden>
+        <input type="hidden" name="_token" value="{{ csrf_token('beffroi_passkey_enrol') }}">
+        <input type="hidden" name="_passkey" value="">
+        <input type="hidden" name="name" value="{{ 'passkeys.new_default'|trans }}">
+        <button type="button" data-passkey-button>{{ 'passkeys.enrol'|trans }}</button>
+    </form>
+{% endblock %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     {% if error is not null %}
@@ -30,13 +43,26 @@
         <tbody>
             {% for passkey in passkeys %}
                 <tr data-passkey="{{ passkey.id }}" data-revoked="{{ passkey.revoked ? 'yes' : 'no' }}">
-                    <td>{{ passkey.name }}</td>
+                    <td>
+                        {# The name is the holder's and theirs to correct, in the line where they read it;
+                           a revoked passkey is a record of what was and is not renamed. #}
+                        {% if passkey.revoked %}
+                            {{ passkey.name }}
+                        {% else %}
+                            <form method="post" action="{{ path('beffroi_interaction_account_passkeys_rename', {id: passkey.id}) }}" data-passkey="rename">
+                                <input type="hidden" name="_token" value="{{ csrf_token('beffroi_passkey_rename') }}">
+                                <label for="passkey-{{ passkey.id }}-name">{{ 'passkeys.name'|trans }}</label>
+                                <input type="text" id="passkey-{{ passkey.id }}-name" name="name" value="{{ passkey.name }}" maxlength="255" required>
+                                <button type="submit" data-save>{{ 'passkeys.rename'|trans }}</button>
+                            </form>
+                        {% endif %}
+                    </td>
                     <td><time datetime="{{ passkey.createdAt|date('c') }}">{{ passkey.createdAt|beffroi_moment(user) }}</time></td>
                     <td>{% if passkey.lastUsedAt is not null %}<time datetime="{{ passkey.lastUsedAt|date('c') }}">{{ passkey.lastUsedAt|beffroi_moment(user) }}</time>{% else %}{{ 'passkeys.never_used'|trans }}{% endif %}</td>
                     <td>{% if passkey.revoked %}{{ 'passkeys.revoked_at'|trans({date: passkey.revokedAt|beffroi_moment(user)}) }}{% else %}{{ 'passkeys.active'|trans }}{% endif %}</td>
                     <td>
                         {% if not passkey.revoked %}
-                            <form method="post" action="{{ path('beffroi_interaction_account_passkeys_revoke', {id: passkey.id}) }}">
+                            <form method="post" action="{{ path('beffroi_interaction_account_passkeys_revoke', {id: passkey.id}) }}" data-passkey="revoke">
                                 <input type="hidden" name="_token" value="{{ csrf_token('beffroi_passkey_revoke') }}">
                                 <button type="submit" name="revoke" value="{{ passkey.id }}">{{ 'passkeys.revoke'|trans }}</button>
                             </form>
@@ -51,13 +77,6 @@
         </tbody>
     </table>
     {{ include('@Beffroi/account/pager.html.twig', {listing: passkeys}) }}
-    <form method="post" action="{{ path('beffroi_interaction_account_passkeys_enrol') }}" data-passkey="enrol" data-options-url="{{ path('beffroi_interaction_account_passkeys_options') }}" hidden>
-        <input type="hidden" name="_token" value="{{ csrf_token('beffroi_passkey_enrol') }}">
-        <input type="hidden" name="_passkey" value="">
-        <label for="passkey-name">{{ 'passkeys.new_name'|trans }}</label>
-        <input type="text" id="passkey-name" name="name" maxlength="255" required>
-        <button type="button" data-passkey-button>{{ 'passkeys.enrol'|trans }}</button>
-        <p data-passkey-error hidden>{{ 'passkeys.error.browser'|trans }}</p>
-    </form>
+    <p data-passkey-error hidden>{{ 'passkeys.error.browser'|trans }}</p>
     <p data-passkeys-unsupported>{{ 'passkeys.unsupported'|trans }}</p>
 {% endblock %}
