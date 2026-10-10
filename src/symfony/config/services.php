@@ -43,6 +43,7 @@ use Beffroi\Bundle\Http\Account\ArchiveSection;
 use Beffroi\Bundle\Archive\ZipArchiveContainer;
 use Beffroi\Bundle\Http\ArchivePage;
 use Beffroi\Core\Application\Archive\ArchiveAssembly;
+use Beffroi\Core\Application\Archive\ArchiveDisposal;
 use Beffroi\Core\Application\Archive\ArchiveHandout;
 use Beffroi\Core\Port\ArchiveContainerInterface;
 use Beffroi\Core\Application\Archive\ArchiveRequest;
@@ -106,6 +107,7 @@ use Beffroi\Bundle\Http\PasskeyOptionsStore;
 use Beffroi\Bundle\Http\ClaimChangesPage;
 use Beffroi\Bundle\Http\ProfilePage;
 use Beffroi\Bundle\Http\PasskeysPage;
+use Beffroi\Bundle\Http\PasswordPage;
 use Beffroi\Bundle\Http\ConsentsPage;
 use Beffroi\Bundle\Http\PendingLoginStore;
 use Beffroi\Bundle\Http\QrCode;
@@ -199,6 +201,7 @@ use Beffroi\Core\Port\ClaimHistoryInterface;
 use Beffroi\Core\Port\JournalInterface;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
+use Beffroi\Bundle\Twig\DeviceExtension;
 use Beffroi\Bundle\Twig\PlaceExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
@@ -208,8 +211,10 @@ use Beffroi\Core\Application\Authentication\LoginCompletion;
 use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
 use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Application\Authentication\SessionOpener;
+use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Identity\IdentityLinker;
@@ -220,6 +225,7 @@ use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Application\Totp\TotpAuthentication;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Application\Totp\BackupCodesRenewal;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\MessageSeal;
@@ -558,6 +564,7 @@ use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
 use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
 use Beffroi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
+use Beffroi\Core\Application\Push\PushSubscriptionNaming;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
 use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
 use Beffroi\Bundle\Configuration\WebPushSection;
@@ -566,6 +573,7 @@ use Beffroi\Bundle\Http\NotificationsPage;
 use Beffroi\Bundle\Http\BundleScript;
 use Beffroi\Bundle\Http\Account\NotificationsSection;
 use Beffroi\Bundle\Http\Account\SessionsSection;
+use Beffroi\Bundle\Http\Account\PasswordSection;
 use Beffroi\Bundle\Http\Account\SignInsSection;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
 use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
@@ -618,6 +626,7 @@ return static function (ContainerConfigurator $container): void {
     // The channel and the algorithm of the key are tagged by WebPushSection and only when a deployment
     // names a subject, a channel nobody wired being a channel nobody wanted.
     $services->set(PushSubscriptionEnrolment::class);
+    $services->set(PushSubscriptionNaming::class);
     $services->set(PushSubscriptionRevocation::class);
     $services->set(NotificationsPage::class);
     $services->set(WebPushSender::class)->args([
@@ -647,6 +656,7 @@ return static function (ContainerConfigurator $container): void {
     // what the journal holds of the sign-ins of this person, successes and refusals (issue #454): after
     // where they are signed in, because a refusal somebody else caused is read once and a session is read
     // again, and before the browsers the provider can reach
+    $services->set(PasswordSection::class)->tag('beffroi.account_section');
     $services->set(SignInsSection::class)->tag('beffroi.account_section');
     $services->set(SignInsPage::class);
     $services->set(NotificationsSection::class)->tag('beffroi.account_section');
@@ -695,6 +705,7 @@ return static function (ContainerConfigurator $container): void {
         '$chapters' => tagged_iterator('beffroi.archive_chapter'),
     ]);
     $services->set(ArchiveRequest::class);
+    $services->set(ArchiveDisposal::class);
     $services->set(ArchiveHandout::class);
     $services->set(ArchiveRetention::class);
     // The container a ready file may leave in, under the passphrase of the person who asks (issue #483).
@@ -745,6 +756,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(MomentExtension::class);
     // where a provenance came from, on the two pages that show one (issue #473)
     $services->set(PlaceExtension::class);
+    $services->set(DeviceExtension::class);
     // what the pages read of the organisation the visitor came for (issue #449)
     $services->set(TenantExtension::class);
     $services->set(InteractionLocale::class)->args([
@@ -779,6 +791,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ProfilePage::class);
     $services->set(ClaimChangesPage::class);
     $services->set(PasskeysPage::class);
+    $services->set(PasswordPage::class);
     $services->set(ConsentsPage::class);
     // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
     $services->set(PendingLoginStore::class);
@@ -1136,12 +1149,15 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SecondFactorRequirement::class);
     $services->set(PasskeyEnrolment::class);
     $services->set(PasskeyAuthentication::class);
+    $services->set(BackupCodesRenewal::class);
     $services->set(TotpEnrolment::class);
     $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
+    $services->set(PasswordChange::class);
     $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
     $services->set(SessionOpener::class);
+    $services->set(OtherSessionsTermination::class);
     $services->set(SessionTerminator::class);
     $services->set(AuthenticationRefusal::class);
     $services->set(UserProvisioner::class);

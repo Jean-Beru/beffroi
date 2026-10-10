@@ -52,6 +52,17 @@ abstract readonly class DoctrineRepository
     }
 
     /**
+     * A row that goes away for good: a client that deleted its own registration (RFC 7592 §2.3), an
+     * archive its owner asked this provider to keep no longer. There is no state left to save.
+     */
+    protected function discard(object $entity): void
+    {
+        $manager = $this->manager();
+        $manager->remove($entity);
+        $manager->flush();
+    }
+
+    /**
      * One flush for a set a single call changed, a consent taken back reaching every grant it covers at
      * once (architecture §4.3).
      *

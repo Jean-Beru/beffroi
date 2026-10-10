@@ -122,6 +122,133 @@ final class AccountSessionsTest extends BrowserTestCase
         static::assertSame([], self::events(AuthenticationSessionEnded::class));
     }
 
+    /**
+     * Architecture §5.2: one act for what somebody would otherwise do a line at a time, and the browser
+     * they are reading from stays signed in.
+     */
+    #[Test]
+    public function endingEveryOtherSessionLeavesTheOneBeingReadFrom(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $current = $this->signIn($alice);
+        $elsewhere = self::session($alice, self::currentSecond()->modify('-1 hour'));
+        $again = self::session($alice, self::currentSecond()->modify('-2 hours'));
+
+        // When
+        $this->endEveryOther();
+
+        // Then
+        static::assertTrue(self::reread($elsewhere)->hasEnded());
+        static::assertTrue(self::reread($again)->hasEnded());
+        static::assertFalse(self::reread($current)->hasEnded());
+    }
+
+    /**
+     * Each one leaves the trace every ended session leaves, which is what the back-channel reads.
+     */
+    #[Test]
+    public function eachSessionEndedThatWayIsSaidOnce(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::session($alice, self::currentSecond()->modify('-1 hour'));
+        self::session($alice, self::currentSecond()->modify('-2 hours'));
+
+        // When
+        $this->endEveryOther();
+
+        // Then
+        static::assertCount(2, self::events(AuthenticationSessionEnded::class));
+    }
+
+    /**
+     * A person signed in nowhere else is offered nothing: there is nothing to end.
+     */
+    #[Test]
+    public function aPersonSignedInNowhereElseIsOfferedNothing(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->sessionsPage();
+
+        // Then
+        static::assertCount(0, $page->filter('form[data-sessions="revoke-others"]'));
+    }
+
+    #[Test]
+    public function endingEveryOtherSessionWithoutTheTokenOfItsFormIsRefused(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $elsewhere = self::session($alice, self::currentSecond()->modify('-1 hour'));
+
+        // When
+        $this->browser->request('POST', '/account/sessions/revoke-others', []);
+
+        // Then
+        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
+        static::assertFalse(self::reread($elsewhere)->hasEnded());
+    }
+
+    /**
+     * Architecture §3.5: what a person reads of where a session came from is the browser and the system,
+     * not the sixteen tokens their browser sent, which stay in the document for whoever wants them. A
+     * place nothing could put on a map is unknown and never absent.
+     */
+    #[Test]
+    public function theLineSaysTheBrowserAndNotTheWholeUserAgent(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $page = $this->sessionsPage();
+
+        // Then
+        $agent = $page->filter('tr[data-session] span[data-user-agent]');
+        static::assertSame('Firefox on Linux', $agent->text());
+        static::assertStringContainsString('X11; Linux x86_64', self::string($agent->attr('title')));
+        static::assertSame('Place unknown', $page->filter('tr[data-session] span[data-place="unknown"]')->text());
+    }
+
+    /**
+     * Architecture §5.2: every table of this plane is read over the stretch of time that was asked for,
+     * and a table that holds nothing of those days keeps its head and says so.
+     */
+    #[Test]
+    public function thePeriodNarrowsTheSessionsToTheDaysItNames(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $page = $this->browser->request('GET', '/account/sessions?to=' . self::currentSecond()->modify('-1 day')->format('Y-m-d'));
+
+        // Then
+        static::assertCount(0, $page->filter('tbody tr[data-session]'));
+        static::assertCount(1, $page->filter('tbody tr[data-empty]'));
+    }
+
+    /**
+     * The act is offered at the head of the page, and what it posts is the token that page renders.
+     */
+    private function endEveryOther(): void
+    {
+        $token = self::string(
+            $this->sessionsPage()->filter('form[data-sessions="revoke-others"] input[name="_token"]')->attr('value'),
+        );
+        $this->browser->request('POST', '/account/sessions/revoke-others', [
+            '_token' => $token,
+        ]);
+    }
+
     private function sessionsPage(): Crawler
     {
         return $this->browser->request('GET', '/account/sessions');

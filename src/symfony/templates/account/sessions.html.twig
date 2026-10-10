@@ -7,9 +7,22 @@
 
 {% block title %}{{ 'sessions.title'|trans }}{% endblock %}
 
+{# Ending every other session is what this page offers when there is another one: one act for what
+   somebody would otherwise do a line at a time, and the browser reading the page stays signed in. A
+   person signed in nowhere else is offered nothing, there being nothing to end. #}
+{% block action %}
+    {% if sessions.total > 1 %}
+        <form method="post" action="{{ path('beffroi_interaction_account_sessions_revoke_others') }}" data-sessions="revoke-others">
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_sessions_revoke_others') }}">
+            <button type="submit">{{ 'sessions.end_others'|trans }}</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p>{{ 'sessions.explanation'|trans }}</p>
+    {{ include('@Beffroi/account/period.html.twig', {period: period}) }}
     <table data-sessions="{{ sessions|length }}">
         <thead>
             <tr>
@@ -30,16 +43,7 @@
                     </td>
                     <td><time datetime="{{ session.establishedAt|date('c') }}">{{ session.establishedAt|beffroi_moment(user) }}</time></td>
                     <td><time datetime="{{ session.lastSeenAt|date('c') }}">{{ session.lastSeenAt|beffroi_moment(user) }}</time></td>
-                    <td>
-                        {% set place = session.lastSeenFrom.location|beffroi_place %}
-                        {% if place is not null %}
-                            <span data-place>{{ place }}</span>
-                        {% endif %}
-                        {{ session.lastSeenFrom.ipAddress ?? 'sessions.unknown_address'|trans }}
-                        {% if session.lastSeenFrom.userAgent is not null %}
-                            <span data-user-agent>{{ session.lastSeenFrom.userAgent }}</span>
-                        {% endif %}
-                    </td>
+                    <td>{{ include('@Beffroi/account/provenance.html.twig', {provenance: session.lastSeenFrom}) }}</td>
                     <td>
                         {% if is_current %}<span data-session-current>{{ 'sessions.this_browser'|trans }}</span>{% endif %}
                         <form method="post" action="{{ path('beffroi_interaction_account_sessions_revoke', {id: session.id}) }}">
@@ -48,6 +52,11 @@
                         </form>
                     </td>
                 </tr>
+            {% else %}
+                {# A table that holds nothing keeps its head and says so in one row of its own, which is
+                   how every table of this plane says it. The page of somebody reading it holds their own
+                   session, so the row they see here is the one they asked for days that hold none. #}
+                <tr data-empty><td colspan="5">{{ (period is null ? 'sessions.none' : 'sessions.none_in_period')|trans }}</td></tr>
             {% endfor %}
         </tbody>
     </table>

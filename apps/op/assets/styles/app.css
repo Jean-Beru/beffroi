@@ -14,6 +14,11 @@
  * which the skeleton marks with data-page="account": panels someone reads, where a heading, a table, a list
  * of what the account holds and the way back each have a shape of their own. A page is flat and bordered
  * rather than raised, a border being what tells a panel from the page it sits on at any width.
+ *
+ * Every rule here is written into the utilities layer, where DaisyUI writes its own classes: a layer
+ * declared before that one loses to it whatever the selector says, so a rule of this file sitting in an
+ * earlier layer would be a rule that dresses "btn" or "menu" everywhere except where those classes decide
+ * something themselves.
  */
 
 @import "tailwindcss";
@@ -24,7 +29,7 @@
     themes: light --default, dark --prefersdark;
 }
 
-@layer components {
+@layer utilities {
     /*
      * The skeleton of a page of the account: the column of its pages, the bar above it, and the page.
      */
@@ -147,33 +152,58 @@
 
     /*
      * A control that opens under itself: the language, the theme and who is signed in (issues #448, #447).
-     * Three controls of one shape, which is a details element and a list, because the pages of this
-     * application run no script and a browser opens and closes that one on its own.
+     * Three controls of one shape (templates/layout/_control.html.twig), and no script, because no page of
+     * this application carries one: a radio button holds the state, its label is the button, and the three
+     * share one group, so one of them is open at a time. The veil lies over the page while one is open, so
+     * a click anywhere else closes it, and over the buttons too: a second click on the one that is open is
+     * a click on the veil.
      */
-    /* The triangle a browser draws on a summary of its own: the control is a button and says so with its
-       icon, so the marker goes, and the one Safari draws goes with its own rule. */
-    details[data-control] > summary {
-        @apply list-none gap-1.5;
+    div[data-control]:has(> input[name="layout-control"]) {
+        @apply relative;
     }
 
-    details[data-control] > summary::-webkit-details-marker {
-        @apply hidden;
+    input[name="layout-control"] {
+        @apply sr-only;
     }
 
-    details[data-control] .dropdown-content {
-        @apply z-20 mt-2 w-60 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg;
+    label[data-control="trigger"] {
+        @apply gap-1.5;
     }
 
-    details[data-control] .dropdown-content > p {
-        @apply truncate px-3 py-2 text-xs text-base-content/60;
+    /* The control that is open reads as pressed, and the keyboard says where it is: what a browser focuses
+       is the radio button, and what somebody sees is its label. */
+    input[name="layout-control"]:checked ~ label[data-control="trigger"] {
+        @apply bg-base-200;
     }
 
-    details[data-control] .menu {
+    input[name="layout-control"]:focus-visible ~ label[data-control="trigger"] {
+        @apply ring-2 ring-primary ring-offset-2 ring-offset-base-100;
+    }
+
+    /* Under the button and aligned on its end, as wide as what it holds and never narrower than a line of
+       it: a list of two languages and a list of three themes are the same control. */
+    div[data-control] > div[data-control="panel"] {
+        @apply absolute end-0 top-full z-30 mt-2 hidden w-max min-w-52 max-w-72 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg;
+    }
+
+    input[name="layout-control"]:checked ~ div[data-control="panel"] {
+        @apply block;
+    }
+
+    div[data-control="panel"] .menu {
         @apply w-full gap-0.5 p-0;
     }
 
-    details[data-control] .menu :is(a, button) {
+    div[data-control="panel"] .menu :is(a, button) {
         @apply flex w-full items-center justify-start gap-2.5 text-sm;
+    }
+
+    label[data-control="veil"] {
+        @apply hidden;
+    }
+
+    body:has(div[data-control] > input[name="layout-control"]:checked) label[data-control="veil"] {
+        @apply fixed inset-0 z-20 block;
     }
 
     /* The logo of the tenant (issue beffroi-php/beffroi#449): served by a host the tenant named, so how
@@ -308,6 +338,12 @@
         @apply m-0 mt-0 flex-row items-center;
     }
 
+    /* The one action of the plane that takes something away rather than offering something new reads as
+       the buttons that take a session or a browser out, and not as the thing to do on the page. */
+    main[data-page="account"] div[data-heading-row] form[data-sessions="revoke-others"] button {
+        @apply btn-outline btn-error;
+    }
+
     /* Who is signed in, and since when on the home: the subtitle of the heading, not a paragraph of the page. */
     main[data-page="account"] > p:first-of-type,
     main[data-page="account"] > p:has(> time) {
@@ -432,15 +468,23 @@
      * row and not a panel, because it belongs to the table under it as the control of the pages does.
      */
     main[data-page="account"] form[data-filter="period"] {
-        @apply mt-0 flex flex-row flex-wrap items-end gap-3;
+        @apply mt-0 flex flex-row flex-wrap items-center gap-2;
     }
 
+    /* The word belongs to the field beside it and sits on its line, not under it and not above: what this
+       row says is read as a sentence, "from this day to that one". */
     main[data-page="account"] form[data-filter="period"] label {
-        @apply p-0 pb-1 text-xs text-base-content/60;
+        @apply p-0 text-sm text-base-content/60;
     }
 
+    /* A day is as wide as a day: the field a library gives is made for a sentence. */
     main[data-page="account"] form[data-filter="period"] input[type="date"] {
-        @apply input input-sm;
+        @apply input input-sm w-44;
+    }
+
+    main[data-page="account"] form[data-filter="period"] button[data-filter="apply"],
+    main[data-page="account"] form[data-filter="period"] a[data-filter="clear"] {
+        @apply ms-1;
     }
 
     main[data-page="account"] form[data-filter="period"] button[data-filter="apply"] {
@@ -554,8 +598,11 @@
         @apply badge-sm font-normal;
     }
 
+    /* The last cell of a row is what that row lets somebody do, read from the end of the line: the words
+       that qualify the act and the button that takes it sit on that one line, and never one under the
+       other. */
     main[data-page="account"] td form:not([hidden]) {
-        @apply m-0;
+        @apply m-0 inline-flex align-middle;
     }
 
     main[data-page="account"] form button[type="submit"] {
@@ -563,32 +610,32 @@
     }
 
     /*
-     * A passkey is named in the line where it is read (issue #446), the same editing in place as a claim
-     * of the profile: the name is the value, the label is for whoever does not see the column it is under,
-     * and the button that saves it waits for the line to be touched.
+     * A passkey and a browser are named in the line where they are read (issue #446), the same editing in
+     * place as a claim of the profile: the name is the value, the label is for whoever does not see the
+     * column it is under, and the button that saves it waits for the line to be touched.
      */
-    main[data-page="account"] form[data-passkey="rename"] {
+    main[data-page="account"] form:is([data-passkey="rename"], [data-subscription="rename"]) {
         @apply m-0 mt-0 flex flex-row items-center gap-2;
     }
 
-    main[data-page="account"] form[data-passkey="rename"] label {
+    main[data-page="account"] form:is([data-passkey="rename"], [data-subscription="rename"]) label {
         @apply sr-only;
     }
 
-    main[data-page="account"] form[data-passkey="rename"] input {
+    main[data-page="account"] form:is([data-passkey="rename"], [data-subscription="rename"]) input {
         @apply input input-sm input-ghost w-44 border-transparent bg-transparent px-2 font-medium;
     }
 
-    main[data-page="account"] form[data-passkey="rename"] input:focus {
+    main[data-page="account"] form:is([data-passkey="rename"], [data-subscription="rename"]) input:focus {
         @apply border-base-300 bg-base-100;
     }
 
-    main[data-page="account"] form[data-passkey="rename"] button[data-save] {
+    main[data-page="account"] form:is([data-passkey="rename"], [data-subscription="rename"]) button[data-save] {
         @apply btn btn-primary btn-xs invisible;
     }
 
-    main[data-page="account"] tbody tr:hover form[data-passkey="rename"] button[data-save],
-    main[data-page="account"] form[data-passkey="rename"]:focus-within button[data-save] {
+    main[data-page="account"] tbody tr:hover form:is([data-passkey="rename"], [data-subscription="rename"]) button[data-save],
+    main[data-page="account"] form:is([data-passkey="rename"], [data-subscription="rename"]):focus-within button[data-save] {
         @apply visible;
     }
 
@@ -746,7 +793,16 @@
         @apply block text-xs opacity-60;
     }
 
-    main[data-page="account"] td span[data-session-current] {
+    /* Where a request came from: the place, the address beside it, the browser under both. A place
+       nothing could put on a map says so, dimmer than one that was found, rather than leaving the line
+       looking unfilled. */
+    main[data-page="account"] td span[data-place="unknown"] {
+        @apply opacity-60;
+    }
+
+    /* The row of the browser reading the page, wherever a page of this plane lists browsers: the session
+       it holds and the subscription it is pushed to are the same fact to whoever reads it. */
+    main[data-page="account"] td :is(span[data-session-current], span[data-subscription-current]) {
         @apply badge badge-sm badge-primary badge-soft mr-2 align-middle font-normal;
     }
 
@@ -773,6 +829,12 @@
        and the only link of these pages that is read as the thing to do. */
     main[data-page="account"] a[data-archive-file] {
         @apply btn btn-primary btn-sm w-fit;
+    }
+
+    /* Dropping it is the end of what the page offers, so it reads under both ways of taking the file and
+       looks like what it is: the same button as taking a browser or a passkey out. */
+    main[data-page="account"] form[data-archive-drop] button[type="submit"] {
+        @apply btn-outline btn-error btn-sm;
     }
 
     /* The QR code of an enrolment is black on white whatever the theme reads: an app has to scan it. */

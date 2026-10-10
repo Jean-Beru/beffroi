@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\Repository;
 
+use function array_filter;
+use Beffroi\Core\Domain\Listing\Period;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
 use Beffroi\Core\Domain\Identity\User;
@@ -57,9 +59,15 @@ final readonly class DoctrineConsentRepository extends DoctrineRepository implem
      *
      * @return Listing<Consent>
      */
-    public function pageOfActiveConsents(User $user, Pagination $pagination): Listing
+    public function pageOfActiveConsents(User $user, Pagination $pagination, ?Period $period = null): Listing
     {
-        return Listing::of($this->activeOf($user), $pagination);
+        return Listing::of(
+            array_values(array_filter(
+                $this->activeOf($user),
+                static fn (Consent $consent): bool => $period?->holds($consent->grantedAt) !== false,
+            )),
+            $pagination,
+        );
     }
 
     /**

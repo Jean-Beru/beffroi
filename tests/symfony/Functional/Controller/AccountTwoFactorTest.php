@@ -14,6 +14,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\TotpAlgorithmInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
+use function array_unique;
 use function intdiv;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
@@ -412,6 +413,97 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         // Then
         static::assertSame('/login?interaction=' . $interaction, $this->browser->getResponse()->headers->get('Location'));
         static::assertSame(['pwd'], $this->boundSession()->methodReferences());
+    }
+
+    /**
+     * Architecture §5.2: the person who holds a second factor draws another set of backup codes, which is
+     * what they come to this page for once the list they wrote down is spent or lost.
+     */
+    #[Test]
+    public function theBackupCodesAreDrawnAgainAndShownOnce(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $secret = self::secretOf($this->begin());
+        $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
+
+        // When
+        $crawler = $this->renewBackupCodes();
+
+        // Then
+        static::assertCount(TotpCredential::BACKUP_CODES, $crawler->filter('ul[data-two-factor="backup-codes"] code'));
+        static::assertCount(1, $crawler->filter('p[data-two-factor="backup-codes-renewed"]'));
+        static::assertCount(0, $this->twoFactorPage()->filter('ul[data-two-factor="backup-codes"]'));
+    }
+
+    /**
+     * The codes they had stop working at that instant, spent or not: what is stored is another set of
+     * hashes.
+     */
+    #[Test]
+    public function theCodesDrawnAgainReplaceTheOnesThatWereHeld(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $secret = self::secretOf($this->begin());
+        $before = self::codesOf($this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable())));
+
+        // When
+        $after = self::codesOf($this->renewBackupCodes());
+
+        // Then
+        static::assertCount(TotpCredential::BACKUP_CODES * 2, array_unique([...$before, ...$after]));
+    }
+
+    /**
+     * Somebody who holds no second factor has none to renew, and the page offers them the enrolment
+     * instead.
+     */
+    #[Test]
+    public function aPersonWithoutASecondFactorHasNoCodesToDraw(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->twoFactorPage();
+
+        // Then
+        static::assertCount(0, $page->filter('form[data-two-factor="backup-codes"]'));
+        static::assertCount(1, $page->filter('form[data-two-factor="begin"]'));
+    }
+
+    #[Test]
+    public function drawingCodesWithoutTheTokenOfItsFormIsRefused(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $this->browser->request('POST', '/account/two-factor/backup-codes', []);
+
+        // Then
+        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * The codes are the answer to the form that asked for them, which is why this one does not redirect.
+     */
+    private function renewBackupCodes(): Crawler
+    {
+        return $this->browser->submit($this->twoFactorPage()->selectButton('Draw new backup codes')->form());
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function codesOf(Crawler $page): array
+    {
+        return $page->filter('ul[data-two-factor="backup-codes"] code')->each(
+            static fn (Crawler $code): string => $code->text(),
+        );
     }
 
     private function twoFactorPage(): Crawler

@@ -31,7 +31,7 @@
                 {% endif %}
                 <p data-origin="{{ record.requestedFrom.ipAddress ?? '' }}">{{ 'approvals.origin'|trans({
                     address: record.requestedFrom.ipAddress ?? ('approvals.unknown_address'|trans),
-                    agent: record.requestedFrom.userAgent ?? ('approvals.unknown_agent'|trans),
+                    agent: record.requestedFrom|beffroi_device|default('approvals.unknown_agent'|trans),
                 }) }}</p>
                 <ul>
                     {% for scope in record.scopes %}

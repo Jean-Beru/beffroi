@@ -62,6 +62,11 @@ final readonly class DoctrinePersonalArchiveRepository extends DoctrineRepositor
         $this->store($archive);
     }
 
+    public function forget(PersonalArchive $archive): void
+    {
+        $this->discard($archive);
+    }
+
     public function forgetExpired(Tenant $tenant, DateTimeImmutable $moment): int
     {
         /** @var list<PersonalArchive> $expired */

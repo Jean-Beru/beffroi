@@ -8,11 +8,19 @@
 
 {% block title %}{{ 'two_factor.title'|trans }}{% endblock %}
 
+{# Setting one up is what this page offers to somebody who holds none; to somebody who holds one, it is
+   another set of backup codes, which is what they come here for once the list they wrote down is spent
+   or lost. Neither is a ceremony: the authenticator and what it proves are untouched. #}
 {% block action %}
     {% if totp is null %}
         <form method="post" action="{{ path('beffroi_interaction_account_two_factor_begin') }}" data-two-factor="begin">
             <input type="hidden" name="_token" value="{{ csrf_token('beffroi_two_factor_begin') }}">
             <button type="submit">{{ 'two_factor.set_up'|trans }}</button>
+        </form>
+    {% else %}
+        <form method="post" action="{{ path('beffroi_interaction_account_two_factor_backup_codes') }}" data-two-factor="backup-codes">
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_backup_codes_renew') }}">
+            <button type="submit">{{ 'two_factor.backup_codes.renew'|trans }}</button>
         </form>
     {% endif %}
 {% endblock %}

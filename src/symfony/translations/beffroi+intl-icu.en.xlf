@@ -849,10 +849,6 @@
         <source>sessions.from</source>
         <target>From</target>
       </trans-unit>
-      <trans-unit id="e1b4d9a2c8" resname="sessions.unknown_address">
-        <source>sessions.unknown_address</source>
-        <target>address not recorded</target>
-      </trans-unit>
       <trans-unit id="f3c8a1e7b2" resname="sessions.this_browser">
         <source>sessions.this_browser</source>
         <target>this browser</target>
@@ -940,10 +936,6 @@
       <trans-unit id="sign_ins.failed" resname="sign_ins.failed">
         <source>sign_ins.failed</source>
         <target>Refused</target>
-      </trans-unit>
-      <trans-unit id="sign_ins.unknown_address" resname="sign_ins.unknown_address">
-        <source>sign_ins.unknown_address</source>
-        <target>address not recorded</target>
       </trans-unit>
       <trans-unit id="account.sign_ins.state" resname="account.sign_ins.state">
         <source>account.sign_ins.state</source>
@@ -1196,6 +1188,138 @@
       <trans-unit id="passkeys.rename" resname="passkeys.rename">
         <source>passkeys.rename</source>
         <target>Rename</target>
+      </trans-unit>
+      <trans-unit id="notifications.new_default" resname="notifications.new_default">
+        <source>notifications.new_default</source>
+        <target>New browser</target>
+      </trans-unit>
+      <trans-unit id="notifications.rename" resname="notifications.rename">
+        <source>notifications.rename</source>
+        <target>Rename</target>
+      </trans-unit>
+      <trans-unit id="notifications.this_browser" resname="notifications.this_browser">
+        <source>notifications.this_browser</source>
+        <target>This browser</target>
+      </trans-unit>
+      <trans-unit id="notifications.error.invalid_label" resname="notifications.error.invalid_label">
+        <source>notifications.error.invalid_label</source>
+        <target>That is not a name a browser can hold. Type between 1 and 255 characters.</target>
+      </trans-unit>
+      <trans-unit id="archive.drop" resname="archive.drop">
+        <source>archive.drop</source>
+        <target>Delete this file</target>
+      </trans-unit>
+      <trans-unit id="archive.drop_explanation" resname="archive.drop_explanation">
+        <source>archive.drop_explanation</source>
+        <target>Once you have the file, this provider has no reason to keep it. Deleting it here takes it away now rather than on the date above.</target>
+      </trans-unit>
+      <trans-unit id="archive.nothing_to_drop" resname="archive.nothing_to_drop">
+        <source>archive.nothing_to_drop</source>
+        <target>There was no file to delete. It may have gone away already.</target>
+      </trans-unit>
+      <trans-unit id="sessions.end_others" resname="sessions.end_others">
+        <source>sessions.end_others</source>
+        <target>End every other session</target>
+      </trans-unit>
+      <trans-unit id="sessions.none" resname="sessions.none">
+        <source>sessions.none</source>
+        <target>No session is open in your name.</target>
+      </trans-unit>
+      <trans-unit id="sessions.none_in_period" resname="sessions.none_in_period">
+        <source>sessions.none_in_period</source>
+        <target>No session of yours was opened over those days.</target>
+      </trans-unit>
+      <trans-unit id="consents.none_in_period" resname="consents.none_in_period">
+        <source>consents.none_in_period</source>
+        <target>You allowed no application over those days.</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.none_in_period" resname="sign_ins.none_in_period">
+        <source>sign_ins.none_in_period</source>
+        <target>Nothing was recorded over those days.</target>
+      </trans-unit>
+      <trans-unit id="notifications.none_in_period" resname="notifications.none_in_period">
+        <source>notifications.none_in_period</source>
+        <target>No browser of yours was added over those days.</target>
+      </trans-unit>
+      <trans-unit id="passkeys.none_in_period" resname="passkeys.none_in_period">
+        <source>passkeys.none_in_period</source>
+        <target>You enrolled no passkey over those days.</target>
+      </trans-unit>
+      <trans-unit id="password.title" resname="password.title">
+        <source>password.title</source>
+        <target>Your password</target>
+      </trans-unit>
+      <trans-unit id="password.none" resname="password.none">
+        <source>password.none</source>
+        <target>You hold no password: you sign in by another means. Nothing to replace here.</target>
+      </trans-unit>
+      <trans-unit id="password.changed_at" resname="password.changed_at">
+        <source>password.changed_at</source>
+        <target>Last written {date}.</target>
+      </trans-unit>
+      <trans-unit id="password.what_happens" resname="password.what_happens">
+        <source>password.what_happens</source>
+        <target>Type the password you use now, then the one you want instead. Every other browser signed in as you is signed out; this one stays.</target>
+      </trans-unit>
+      <trans-unit id="password.current" resname="password.current">
+        <source>password.current</source>
+        <target>The password you use now</target>
+      </trans-unit>
+      <trans-unit id="password.new" resname="password.new">
+        <source>password.new</source>
+        <target>The password you want instead</target>
+      </trans-unit>
+      <trans-unit id="password.change" resname="password.change">
+        <source>password.change</source>
+        <target>Replace my password</target>
+      </trans-unit>
+      <trans-unit id="password.error.wrong_password" resname="password.error.wrong_password">
+        <source>password.error.wrong_password</source>
+        <target>That is not the password you use now.</target>
+      </trans-unit>
+      <trans-unit id="password.error.same_as_before" resname="password.error.same_as_before">
+        <source>password.error.same_as_before</source>
+        <target>That is the password you already have. Pose another one.</target>
+      </trans-unit>
+      <trans-unit id="password.error.no_password_held" resname="password.error.no_password_held">
+        <source>password.error.no_password_held</source>
+        <target>You hold no password: there is nothing to replace.</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_a_password" resname="password.error.not_a_password">
+        <source>password.error.not_a_password</source>
+        <target>A password is at least {minimum} characters long.</target>
+      </trans-unit>
+      <trans-unit id="account.password.state" resname="account.password.state">
+        <source>account.password.state</source>
+        <target>{days, plural, =0 {written today} one {written yesterday} other {written # days ago}}</target>
+      </trans-unit>
+      <trans-unit id="account.password.none" resname="account.password.none">
+        <source>account.password.none</source>
+        <target>none held</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.renew" resname="two_factor.backup_codes.renew">
+        <source>two_factor.backup_codes.renew</source>
+        <target>Draw new backup codes</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.title" resname="two_factor.backup_codes.title">
+        <source>two_factor.backup_codes.title</source>
+        <target>Your new backup codes</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.renewed" resname="two_factor.backup_codes.renewed">
+        <source>two_factor.backup_codes.renewed</source>
+        <target>Here are your new backup codes. The ones you had stopped working just now.</target>
+      </trans-unit>
+      <trans-unit id="provenance.device" resname="provenance.device">
+        <source>provenance.device</source>
+        <target>{browser} on {platform}</target>
+      </trans-unit>
+      <trans-unit id="provenance.unknown_place" resname="provenance.unknown_place">
+        <source>provenance.unknown_place</source>
+        <target>Place unknown</target>
+      </trans-unit>
+      <trans-unit id="provenance.unknown_address" resname="provenance.unknown_address">
+        <source>provenance.unknown_address</source>
+        <target>address unknown</target>
       </trans-unit>
     </body>
   </file>

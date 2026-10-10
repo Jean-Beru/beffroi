@@ -19,7 +19,7 @@
     <p>{{ 'device.approval.request'|trans({client: client.registration.presentation.name, code: typed}) }}</p>
     <p data-origin="{{ requested_from.ipAddress ?? '' }}">{{ 'device.approval.origin'|trans({
         address: requested_from.ipAddress ?? ('device.approval.unknown_address'|trans),
-        agent: requested_from.userAgent ?? ('device.approval.unknown_agent'|trans),
+        agent: requested_from|beffroi_device|default('device.approval.unknown_agent'|trans),
     }) }}</p>
     <ul>
         {% for scope in scopes %}

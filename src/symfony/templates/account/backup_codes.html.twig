@@ -1,0 +1,19 @@
+{# The backup codes of a second factor, drawn again because the person asked (architecture §5.2), shown
+   this once: the page is the response to the form that asked for them, and the codes are stored hashed,
+   so that nothing shows them again. The ones they had stopped working when these were drawn.
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
+
+{% block title %}{{ 'two_factor.backup_codes.title'|trans }}{% endblock %}
+
+{% block content %}
+    {{ include('@Beffroi/account/back.html.twig') }}
+    <p data-two-factor="backup-codes-renewed">{{ 'two_factor.backup_codes.renewed'|trans }}</p>
+    <p>{{ 'two_factor.enrolled.codes'|trans }}</p>
+    <ul data-two-factor="backup-codes">
+        {% for code in backup_codes %}
+            <li><code>{{ code }}</code></li>
+        {% endfor %}
+    </ul>
+{% endblock %}

@@ -9,6 +9,7 @@
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p>{{ 'consents.explanation'|trans }}</p>
+    {{ include('@Beffroi/account/period.html.twig', {period: period}) }}
     <table data-consents="{{ consents|length }}">
         <thead>
             <tr>
@@ -39,7 +40,7 @@
             {% else %}
                 {# A table that holds nothing keeps its head and says so in one row of its own, which is
                    how every table of this plane says it. #}
-                <tr data-empty><td colspan="4">{{ 'consents.none'|trans }}</td></tr>
+                <tr data-empty><td colspan="4">{{ (period is null ? 'consents.none' : 'consents.none_in_period')|trans }}</td></tr>
             {% endfor %}
         </tbody>
     </table>

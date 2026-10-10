@@ -29,6 +29,7 @@ final readonly class NotificationsPage
         private ApplicationServerAlgorithmsInterface $algorithms,
         private ApplicationServerKeyProviderInterface $keys,
         private AskedPage $asked,
+        private AskedPeriod $period,
         private InteractionPages $pages,
     ) {
     }
@@ -38,11 +39,14 @@ final readonly class NotificationsPage
      */
     public function render(User $user, ?string $error = null, int $status = Response::HTTP_OK): Response
     {
+        $period = $this->period->asked($user);
+
         return $this->pages->render(
             'account/notifications.html.twig',
             [
                 'user' => $user,
-                'subscriptions' => $this->subscriptions->pageOfActiveSubscriptions($user, $this->asked->asked()),
+                'subscriptions' => $this->subscriptions->pageOfActiveSubscriptions($user, $this->asked->asked(), $period),
+                'period' => $period,
                 'application_server_key' => $this->applicationServerKey($user)?->publicKey,
                 'error' => $error,
             ],

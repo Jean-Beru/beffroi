@@ -10,6 +10,7 @@ use Beffroi\Bundle\Controller\AccountArchiveController;
 use Beffroi\Bundle\Controller\AccountConsentsController;
 use Beffroi\Bundle\Controller\AccountNotificationsController;
 use Beffroi\Bundle\Controller\AccountPasskeysController;
+use Beffroi\Bundle\Controller\AccountPasswordController;
 use Beffroi\Bundle\Controller\AccountProfileController;
 use Beffroi\Bundle\Controller\AccountSessionsController;
 use Beffroi\Bundle\Controller\AccountSignInsController;
@@ -58,6 +59,7 @@ final readonly class AccountNavigation
         [
             'title' => 'navigation.group.sign_in',
             'pages' => [
+                AccountPasswordController::ROUTE => 'lock',
                 AccountPasskeysController::ROUTE => 'key',
                 AccountTwoFactorController::ROUTE => 'shield',
                 AccountNotificationsController::ROUTE => 'bell',

@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Domain\Listing;
 use Beffroi\Core\Domain\Listing\Period;
 use DateTimeImmutable;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -77,5 +78,39 @@ final class PeriodTest extends TestCase
         static::assertNotNull($period);
         static::assertSame('2026-10-01 00:00:00.000000', $period->from?->format('Y-m-d H:i:s.u'));
         static::assertSame('2026-10-01 23:59:59.999999', $period->to?->format('Y-m-d H:i:s.u'));
+    }
+
+    /**
+     * What a store in memory asks of a period: an end nobody named holds everything on that side, and the
+     * two ends are the whole of both days.
+     */
+    #[Test]
+    #[DataProvider('provideMomentsAndWhatHoldsThem')]
+    public function itSaysWhetherItHoldsAMoment(?string $from, ?string $to, string $moment, bool $held): void
+    {
+        // Given
+        $period = Period::ofDays(
+            $from === null ? null : new DateTimeImmutable($from),
+            $to === null ? null : new DateTimeImmutable($to),
+        );
+        static::assertNotNull($period);
+
+        // When / Then
+        static::assertSame($held, $period->holds(new DateTimeImmutable($moment)));
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string|null, string, bool}>
+     */
+    public static function provideMomentsAndWhatHoldsThem(): iterable
+    {
+        yield 'the first second of the first day' => ['2026-09-15', '2026-09-16', '2026-09-15 00:00:00', true];
+        yield 'the last second of the last day' => ['2026-09-15', '2026-09-16', '2026-09-16 23:59:59', true];
+        yield 'the day before the first' => ['2026-09-15', '2026-09-16', '2026-09-14 23:59:59', false];
+        yield 'the day after the last' => ['2026-09-15', '2026-09-16', '2026-09-17 00:00:00', false];
+        yield 'since a day, long after it' => ['2026-09-15', null, '2027-01-01 12:00:00', true];
+        yield 'since a day, before it' => ['2026-09-15', null, '2026-09-14 12:00:00', false];
+        yield 'until a day, long before it' => [null, '2026-09-15', '2020-01-01 12:00:00', true];
+        yield 'until a day, after it' => [null, '2026-09-15', '2026-09-16 00:00:00', false];
     }
 }

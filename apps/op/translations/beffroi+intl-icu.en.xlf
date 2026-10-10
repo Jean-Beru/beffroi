@@ -9,6 +9,10 @@
         <source>authorization_details.invoice_payment</source>
         <target>Invoice {identifier}: {actions} it, for at most {amount} {currency}</target>
       </trans-unit>
+      <trans-unit id="controls.close" resname="controls.close">
+        <source>controls.close</source>
+        <target>Close the menus</target>
+      </trans-unit>
       <trans-unit id="b7c1d4e9f0" resname="theme.choose">
         <source>theme.choose</source>
         <target>Choose a theme</target>
