@@ -209,6 +209,7 @@ use Beffroi\Core\Application\Authentication\LoginCompletion;
 use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
 use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Application\Authentication\SessionOpener;
+use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Credential\CredentialRenaming;
@@ -1146,6 +1147,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
     $services->set(SessionOpener::class);
+    $services->set(OtherSessionsTermination::class);
     $services->set(SessionTerminator::class);
     $services->set(AuthenticationRefusal::class);
     $services->set(UserProvisioner::class);

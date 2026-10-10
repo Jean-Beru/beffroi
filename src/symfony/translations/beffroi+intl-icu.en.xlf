@@ -1225,6 +1225,10 @@
         <source>archive.nothing_to_drop</source>
         <target>There was no file to delete. It may have gone away already.</target>
       </trans-unit>
+      <trans-unit id="sessions.end_others" resname="sessions.end_others">
+        <source>sessions.end_others</source>
+        <target>End every other session</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

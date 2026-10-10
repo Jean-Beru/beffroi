@@ -1225,6 +1225,10 @@
         <source>archive.nothing_to_drop</source>
         <target>Il n'y avait aucun fichier à supprimer. Il est peut-être déjà parti.</target>
       </trans-unit>
+      <trans-unit id="sessions.end_others" resname="sessions.end_others">
+        <source>sessions.end_others</source>
+        <target>Fermer toutes les autres sessions</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

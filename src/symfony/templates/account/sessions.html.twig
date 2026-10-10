@@ -7,6 +7,18 @@
 
 {% block title %}{{ 'sessions.title'|trans }}{% endblock %}
 
+{# Ending every other session is what this page offers when there is another one: one act for what
+   somebody would otherwise do a line at a time, and the browser reading the page stays signed in. A
+   person signed in nowhere else is offered nothing, there being nothing to end. #}
+{% block action %}
+    {% if sessions.total > 1 %}
+        <form method="post" action="{{ path('beffroi_interaction_account_sessions_revoke_others') }}" data-sessions="revoke-others">
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_sessions_revoke_others') }}">
+            <button type="submit">{{ 'sessions.end_others'|trans }}</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p>{{ 'sessions.explanation'|trans }}</p>
