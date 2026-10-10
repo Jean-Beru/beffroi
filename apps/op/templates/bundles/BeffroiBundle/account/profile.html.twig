@@ -3,11 +3,11 @@
    for, and the controllers of this application answer its two routes: the bundle serves the same thing as
    bare HTML with a form token, and this is what it looks like written with symfony/form.
 
-   Four panels, because the page answers four questions and somebody who came to correct one thing should
-   not read the other three to find it: the account this provider keeps, what the person has told us of
-   themselves, what of it they may change, and what they have changed. Reading and changing are two panels
-   and not one list, the first being what every client of this provider is told and the second what this
-   person is allowed to say.
+   Three panels, because the page answers three questions and somebody who came to correct one thing
+   should not read the other two to find it: the account this provider keeps, what the person has told us
+   of themselves, and what of it they may change. Reading and changing are two panels and not one list,
+   the first being what every client of this provider is told and the second what this person is allowed
+   to say; what they have changed is a page of its own.
 
    Edited in place, and with no script: the value a person reads is the field they type into, and the
    button that saves it appears when the line is touched. That is a stylesheet (assets/styles/app.css) and
@@ -16,6 +16,12 @@
 {% trans_default_domain 'beffroi' %}
 
 {% block title %}{{ 'profile.title'|trans }}{% endblock %}
+
+{# What this person has changed of their own record is a page of its own (beffroi-php/beffroi#482), read
+   in pages and over the stretch of time asked for, and the way to it is what this page offers. #}
+{% block action %}
+    <a href="{{ path('beffroi_interaction_account_profile_changes') }}" data-profile="changes">{{ 'changes.title'|trans }}</a>
+{% endblock %}
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
@@ -80,36 +86,4 @@
         {% endif %}
     </section>
 
-    {# What this person has changed of their own record (beffroi-php/beffroi#482): the question they ask
-       first when they read that they changed something is what it said before. The last few; the whole of
-       it is in the archive they ask for. A claim that said nothing on either side says so rather than
-       showing a hole. #}
-    <section data-panel="changes">
-        <h2>{{ 'profile.what_you_changed'|trans }}</h2>
-        <table data-changes="{{ changes|length }}">
-            <thead>
-                <tr>
-                    <th>{{ 'profile.changed_what'|trans }}</th>
-                    <th>{{ 'profile.changed_from'|trans }}</th>
-                    <th>{{ 'profile.changed_to'|trans }}</th>
-                    <th>{{ 'profile.changed_when'|trans }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for change in changes %}
-                    <tr data-change="{{ change.claim }}">
-                        <td>{{ ('profile.' ~ change.claim)|trans }}</td>
-                        <td>{{ change.was ?? 'profile.nothing'|trans }}</td>
-                        <td>{{ change.became ?? 'profile.nothing'|trans }}</td>
-                        <td><time datetime="{{ change.changedAt|date('c') }}">{{ change.changedAt|beffroi_moment(user) }}</time></td>
-                    </tr>
-                {% else %}
-                    {# A table that holds nothing keeps its head and says so in one row of its own, which is
-                       how every table of this plane says it. #}
-                    <tr data-empty><td colspan="4">{{ 'profile.changed_nothing'|trans }}</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {{ include('@Beffroi/account/pager.html.twig', {listing: changes}) }}
-    </section>
 {% endblock %}

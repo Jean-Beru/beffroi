@@ -428,6 +428,30 @@
     }
 
     /*
+     * What a table is narrowed to, read above it: two days and the way back to the whole of it. It is a
+     * row and not a panel, because it belongs to the table under it as the control of the pages does.
+     */
+    main[data-page="account"] form[data-filter="period"] {
+        @apply mt-0 flex flex-row flex-wrap items-end gap-3;
+    }
+
+    main[data-page="account"] form[data-filter="period"] label {
+        @apply p-0 pb-1 text-xs text-base-content/60;
+    }
+
+    main[data-page="account"] form[data-filter="period"] input[type="date"] {
+        @apply input input-sm;
+    }
+
+    main[data-page="account"] form[data-filter="period"] button[data-filter="apply"] {
+        @apply btn btn-sm btn-neutral;
+    }
+
+    main[data-page="account"] form[data-filter="period"] a[data-filter="clear"] {
+        @apply btn btn-sm btn-ghost font-normal;
+    }
+
+    /*
      * The control under a table that is read in pages belongs to that table: it is the foot of its card,
      * which is why the table above it loses its bottom corners and its bottom border and the control
      * closes the box. Which rows of the whole list are shown on the left, the pages on the right.
