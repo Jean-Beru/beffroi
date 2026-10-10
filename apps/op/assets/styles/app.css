@@ -468,15 +468,23 @@
      * row and not a panel, because it belongs to the table under it as the control of the pages does.
      */
     main[data-page="account"] form[data-filter="period"] {
-        @apply mt-0 flex flex-row flex-wrap items-end gap-3;
+        @apply mt-0 flex flex-row flex-wrap items-center gap-2;
     }
 
+    /* The word belongs to the field beside it and sits on its line, not under it and not above: what this
+       row says is read as a sentence, "from this day to that one". */
     main[data-page="account"] form[data-filter="period"] label {
-        @apply p-0 pb-1 text-xs text-base-content/60;
+        @apply p-0 text-sm text-base-content/60;
     }
 
+    /* A day is as wide as a day: the field a library gives is made for a sentence. */
     main[data-page="account"] form[data-filter="period"] input[type="date"] {
-        @apply input input-sm;
+        @apply input input-sm w-44;
+    }
+
+    main[data-page="account"] form[data-filter="period"] button[data-filter="apply"],
+    main[data-page="account"] form[data-filter="period"] a[data-filter="clear"] {
+        @apply ms-1;
     }
 
     main[data-page="account"] form[data-filter="period"] button[data-filter="apply"] {
@@ -590,8 +598,11 @@
         @apply badge-sm font-normal;
     }
 
+    /* The last cell of a row is what that row lets somebody do, read from the end of the line: the words
+       that qualify the act and the button that takes it sit on that one line, and never one under the
+       other. */
     main[data-page="account"] td form:not([hidden]) {
-        @apply m-0;
+        @apply m-0 inline-flex align-middle;
     }
 
     main[data-page="account"] form button[type="submit"] {
