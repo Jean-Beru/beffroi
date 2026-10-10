@@ -105,7 +105,7 @@ function demo(
     )]
     bool $resourceServer = false,
     #[AsOption(
-        description: 'Issue #556: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), one scope per operation, a write refused for the scope it was never granted, and the few seconds the answer of the OP is kept played on both sides',
+        description: 'Issues #556 and #559: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), the document naming the scheme its page offers and the scope each operation needs, a write refused for the scope it was never granted, a token of another client of the same OP refused while the OP reports it active to that client, and the few seconds the answer of the OP is kept played on both sides',
     )]
     bool $api = false,
     #[AsOption(
@@ -253,7 +253,18 @@ function demo(
         );
     }
     if ($api) {
-        demo_api_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $ca);
+        if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
+            io()->error('OIDC_DEMO_OPAQUE_SECRET is empty: run "castor provision" first.');
+            exit(1);
+        }
+        demo_api_check(
+            $dir,
+            $env['BEFFROI_ISSUER'],
+            $env['BEFFROI_DEV_USER_PASSWORD'],
+            $env['OIDC_DEMO_SECRET'],
+            $env['OIDC_DEMO_OPAQUE_SECRET'],
+            $ca,
+        );
     }
     if ($dpop) {
         if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
@@ -1714,7 +1725,22 @@ const DEMO_API_INVOICE_AMOUNT = '45.00';
  */
 const DEMO_API_WRITTEN_INVOICE = ['reference' => 'INV-9000', 'label' => 'Written by the walk', 'amount' => '10.00', 'currency' => 'EUR'];
 
-function demo_api_check(string $dir, string $issuer, string $password, string $demoSecret, string $ca): void
+/**
+ * What the document of the API has to say each operation requires, path and method as OpenAPI writes them.
+ *
+ * It is the expectation of this walk and not a list the API reads: the API derives what it documents from
+ * the "security" expression that enforces it (`ScopesInTheDocument` of the demonstration), and this is the
+ * other end, so a scope that changed on one side without the other shows up here.
+ */
+const DEMO_API_DOCUMENTED_SCOPES = [
+    'get /api/v1/account' => 'profile',
+    'get /api/v1/invoices' => 'invoices.read',
+    'get /api/v1/invoices/{reference}' => 'invoices.read',
+    'post /api/v1/invoices' => 'invoices.write',
+    'post /api/v1/invoices/{reference}/payments' => 'invoices.pay',
+];
+
+function demo_api_check(string $dir, string $issuer, string $password, string $demoSecret, string $opaqueSecret, string $ca): void
 {
     io()->section('An API behind the introspection endpoint');
     $verified = [];
@@ -1749,6 +1775,49 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     [$status] = demo_api_request('GET', DEMO_API_BASE . '/docs');
     demo_expect($status === 200, sprintf('the documentation of the API is served without a token (got %d)', $status));
     $verified[] = ['/api/v1/docs', '200 without a token: the shape of the API is public, the invoices are not'];
+
+    // The document itself, in the media type OpenAPI defines for it: what the page offers to whoever reads
+    // it is one way of being authorized, the bearer token of RFC 6750 §2.1, and what each operation
+    // requires is written where the operation is described rather than left to be discovered by a 403.
+    [$status, $document] = demo_api_request('GET', DEMO_API_BASE . '/docs', accept: 'application/vnd.openapi+json');
+    demo_expect($status === 200, sprintf('the document is served in the media type OpenAPI defines for it (got %d)', $status));
+    $schemes = $document['components']['securitySchemes'] ?? [];
+    demo_expect(
+        ($schemes['bearer']['type'] ?? null) === 'http' && ($schemes['bearer']['scheme'] ?? null) === 'bearer',
+        sprintf('and declares the one scheme this API accepts, so the page has a button to be authorized with (got %s)', json_encode($schemes)),
+    );
+    demo_expect(
+        ($document['security'] ?? null) === [['bearer' => []]],
+        sprintf('required of the whole API, since no operation of it is open (got %s)', json_encode($document['security'] ?? null)),
+    );
+    $documented = [];
+    foreach ((array) ($document['paths'] ?? []) as $path => $methods) {
+        foreach ((array) $methods as $method => $operation) {
+            if (! is_array($operation) || ! isset($operation['summary'])) {
+                continue;
+            }
+            $documented[$method . ' ' . $path] = $operation['description'] ?? '';
+        }
+    }
+    // the same operations, whatever order the document lists them in
+    $listed = array_keys($documented);
+    $expected = array_keys(DEMO_API_DOCUMENTED_SCOPES);
+    sort($listed);
+    sort($expected);
+    demo_expect(
+        $listed === $expected,
+        sprintf('the document describes the operations of the API and no other (got %s)', json_encode($listed)),
+    );
+    foreach (DEMO_API_DOCUMENTED_SCOPES as $operation => $scope) {
+        demo_expect(
+            str_contains($documented[$operation], sprintf('scope "%s"', $scope)),
+            sprintf('%s says it needs "%s" (got "%s")', $operation, $scope, $documented[$operation]),
+        );
+    }
+    $verified[] = [
+        'The OpenAPI document',
+        sprintf('one "http" scheme, "bearer", and %d operations each naming the scope it needs', count(DEMO_API_DOCUMENTED_SCOPES)),
+    ];
 
     // the client signs its user in and holds an access token, which is the one it sends to the API; the
     // token is read raw off the page, as the resource server walk reads it, because what travels to an API
@@ -1828,6 +1897,45 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     );
     $verified[] = ['POST /api/v1/invoices', sprintf('403, %s', $challenge)];
 
+    // RFC 7662 §2.2: the OP describes a token to the client it was issued to and to no other, and this API
+    // asks with the credentials of one client. A token the same user obtained for another client of the
+    // same OP, which is what a rung of the ladder hands whoever reads the documentation, is therefore
+    // reported inactive here and refused, while the OP reports it active to the client it belongs to. It is
+    // the one thing the page that documents the API has to say, because nothing about the token itself
+    // shows it (it is alive, for somebody else).
+    demo_write_env_local($dir . '/.env.local', [
+        'OIDC_CLIENT_ID' => DEMO_OPAQUE_CLIENT_ID,
+        'OIDC_CLIENT_SECRET' => $opaqueSecret,
+        DEMO_INTROSPECTION_ENV => $introspection,
+    ]);
+    $otherCookies = [];
+    $otherToken = demo_resource_server_sign_in($otherCookies, $issuer, $password, $ca, DEMO_OPAQUE_CLIENT_ID)['access_token'];
+    demo_write_env_local($dir . '/.env.local', [
+        'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
+        'OIDC_CLIENT_SECRET' => $demoSecret,
+        DEMO_INTROSPECTION_ENV => $introspection,
+    ]);
+    [$status, $body, $headers] = demo_api_request('GET', DEMO_API_BASE . '/account', $otherToken);
+    demo_expect($status === 401, sprintf(
+        'a token the same user holds for another client of the same OP is refused here (got %d %s)',
+        $status,
+        json_encode($body),
+    ));
+    demo_expect(
+        ! str_contains((string) ($headers['www-authenticate'][0] ?? ''), 'insufficient_scope'),
+        'as a token nothing is known of and not as one that lacks a scope (RFC 6750 §3)',
+    );
+    $described = demo_introspect($introspection, $ca, DEMO_OPAQUE_CLIENT_ID, $opaqueSecret, $otherToken);
+    demo_expect(
+        ($described['active'] ?? null) === true && ($described['client_id'] ?? null) === DEMO_OPAQUE_CLIENT_ID,
+        sprintf('and the OP reports that very token active to the client it was issued to (got %s)', json_encode($described)),
+    );
+    $verified[] = [
+        'A token of another client',
+        sprintf('401 here, active for %s at the introspection endpoint (RFC 7662 §2.2)', DEMO_OPAQUE_CLIENT_ID),
+    ];
+    demo_logout($otherCookies, $issuer, $ca);
+
     // the window, played on both sides. The answer of an active token is read fresh here, so that what
     // follows is measured from a known moment rather than from whatever this walk asked a minute ago.
     sleep($ttl + 1);
@@ -1853,10 +1961,28 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         'An API Platform API served the invoices of its user behind the introspection endpoint of the OP, one scope per operation, and forgot what it was told after %d seconds.',
         $ttl,
     ));
+    io()->note('The page of the document offers one way of being authorized, the bearer token of RFC 6750 §2.1, and the token to paste is one the OP issued to the client this API introspects as: a token the same user holds for another client of the same OP is active at the OP and inactive to this API (RFC 7662 §2.2), which is what the step above plays and what the description of the document says. A flow of an authorization code could not be offered in that page: it runs in a browser, so the client it signed in as would be a public client of its own, and its tokens are the ones this API cannot ask about.');
     io()->note(sprintf(
         'The %d seconds are the trade RFC 7662 §4 leaves to a resource server: a longer window spares the OP a round trip per request and carries a withdrawn token for longer, and the figure is one line of config/services.yaml of the demonstration. It is the other half of what --resource-server shows: an "at+jwt" verified offline is accepted until it expires, whatever the OP knows of it, where this API asks and so stops at the end of the window.',
         $ttl,
     ));
+}
+
+/**
+ * What the OP says of a token to the client it was issued to (RFC 7662 §2.1): the client authenticates,
+ * because an endpoint that described a token to whoever asked would tell a stranger that it exists.
+ *
+ * @return array<string, mixed>
+ */
+function demo_introspect(string $endpoint, string $ca, string $clientId, string $secret, string $token): array
+{
+    $response = http_request('POST', $endpoint, [
+        'cafile' => $ca,
+        'auth_basic' => [$clientId, $secret],
+        'body' => ['token' => $token],
+    ]);
+
+    return (array) json_decode($response->getContent(false), true);
 }
 
 /**
@@ -1867,17 +1993,23 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
  * RFC 6750 names the realm, the error and, for a missing scope, the scope.
  *
  * @param array<string, mixed>|null $payload
+ * @param string $accept The media type the walk asks for, plain JSON unless it is reading the document
  * @return array{0: int, 1: array<mixed>, 2: array<string, list<string>>}
  */
-function demo_api_request(string $method, string $url, ?string $accessToken = null, ?array $payload = null): array
-{
+function demo_api_request(
+    string $method,
+    string $url,
+    ?string $accessToken = null,
+    ?array $payload = null,
+    string $accept = 'application/json',
+): array {
     $options = [
         'max_redirects' => 0,
         'verify_peer' => false,
         'verify_host' => false,
         // the API serves JSON-LD and plain JSON, and a walk reading an object rather than a vocabulary
         // asks for the second (config/packages/api_platform.yaml)
-        'headers' => ['Accept' => 'application/json'],
+        'headers' => ['Accept' => $accept],
     ];
     if ($accessToken !== null) {
         $options['auth_bearer'] = $accessToken;
