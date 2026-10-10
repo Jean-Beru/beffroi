@@ -105,7 +105,7 @@ function demo(
     )]
     bool $resourceServer = false,
     #[AsOption(
-        description: 'Issues #556 and #559: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), the document naming the scheme its page offers and the scope each operation needs, a write refused for the scope it was never granted, a token of another client of the demonstration served because the API asks the OP as each client whose secret it holds, and the few seconds the answer of the OP is kept played on both sides',
+        description: 'Issues #556 and #559: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), the document naming the scheme its page offers and the scope each operation needs, a write refused for the scope it was never granted, a token of another client of the demonstration served because the API asks the OP as each client whose secret it holds, the page where a session calls the API with its own token, and the few seconds the answer of the OP is kept played on both sides',
     )]
     bool $api = false,
     #[AsOption(
@@ -1738,6 +1738,36 @@ const DEMO_API_WRITTEN_INVOICE = ['reference' => 'INV-9000', 'label' => 'Written
  */
 const DEMO_API_UNKNOWN_TOKEN = 'ZZZZnobodyZZZZissuedZZZZthisZZZZvalueZZZZZZZ';
 
+/**
+ * The page of the demonstration that calls the API with the access token of its session.
+ */
+const DEMO_API_PAGE_PATH = '/api-calls';
+
+/**
+ * The path of a call as the document of the API writes it: the reference of an invoice is a variable there
+ * and a value on the page, so the two are compared on the template and not on the string.
+ */
+function demo_api_template(string $path): string
+{
+    return (string) preg_replace('#/invoices/INV-[0-9]+#', '/invoices/{reference}', $path);
+}
+
+/**
+ * The page of the demonstration where the access token of a session calls the API (/api-calls): what each
+ * call it offers is answered, and the scope the page says it needs.
+ *
+ * The page declares the calls itself (CallsOfThePage of the demonstration) and the walk replays what it
+ * declares, as a browser would: a call the page offers and the API refuses, or a scope the page names and
+ * the document does not require, is a page that would mislead whoever reads it.
+ */
+const DEMO_API_PAGE_CALLS = [
+    'account' => ['status' => 200, 'scope' => 'profile'],
+    'invoices' => ['status' => 200, 'scope' => 'invoices.read'],
+    'invoice' => ['status' => 200, 'scope' => 'invoices.read'],
+    'pay' => ['status' => 201, 'scope' => 'invoices.pay'],
+    'write' => ['status' => 403, 'scope' => 'invoices.write'],
+];
+
 const DEMO_API_DOCUMENTED_SCOPES = [
     'get /api/v1/account' => 'profile',
     'get /api/v1/invoices' => 'invoices.read',
@@ -1952,6 +1982,54 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         'as a token nothing is known of and not as one that lacks a scope (RFC 6750 §3)',
     );
     $verified[] = ['A token nobody issued', '401, after every client of the demonstration was asked about it'];
+
+    // The page of the demonstration where a session uses its own access token against the API: the browser
+    // makes the calls, so what the walk can judge is what the page hands it, the token and the calls it
+    // offers, and whether the API answers each of them as the page says it will. The book of invoices is
+    // opened again first, because the payment above is the payment this page offers.
+    run(['php', 'bin/console', 'cache:pool:clear', 'cache.app'], context: demo_context($dir)->withQuiet());
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . DEMO_API_PAGE_PATH);
+    demo_expect($status === 200, sprintf('%s opens on the session of the demonstration (got %d)', DEMO_API_PAGE_PATH, $status));
+    demo_expect(
+        preg_match('/id="api-token"[^>]*>([^<]+)</', $page, $carried) === 1 && trim($carried[1]) === $accessToken,
+        'and carries the access token that session holds, so nothing is pasted by hand',
+    );
+    preg_match_all(
+        '/data-api-call-param="([a-z]+)"\s+data-api-method-param="([A-Z]+)"\s+data-api-path-param="([^"]+)"\s+data-api-body-param="([^"]*)"/',
+        $page,
+        $offered,
+        \PREG_SET_ORDER,
+    );
+    demo_expect(
+        array_column($offered, 1) === array_keys(DEMO_API_PAGE_CALLS),
+        sprintf('and offers the calls of the API, in the order it declares them (got %s)', json_encode(array_column($offered, 1))),
+    );
+    foreach ($offered as [, $key, $method, $path, $body]) {
+        $expected = DEMO_API_PAGE_CALLS[$key];
+        demo_expect(
+            str_contains($page, sprintf('<code>%s %s</code> &middot; scope <code>%s</code>', $method, $path, $expected['scope'])),
+            sprintf('%s: the page says what it asks for and which scope it needs (%s %s, %s)', $key, $method, $path, $expected['scope']),
+        );
+        $documented = DEMO_API_DOCUMENTED_SCOPES[strtolower($method) . ' ' . demo_api_template($path)] ?? null;
+        demo_expect(
+            $documented === $expected['scope'],
+            sprintf('%s: and that scope is the one the document of the API requires (got %s)', $key, json_encode($documented)),
+        );
+        [$status, $answer] = demo_api_request(
+            $method,
+            DEMO_URL . $path,
+            $accessToken,
+            $body === '' ? null : (array) json_decode(html_entity_decode($body), true),
+        );
+        demo_expect(
+            $status === $expected['status'],
+            sprintf('%s: the API answers what the page says it will (expected %d, got %d %s)', $key, $expected['status'], $status, json_encode($answer)),
+        );
+    }
+    $verified[] = [
+        DEMO_API_PAGE_PATH,
+        sprintf('200 with the token of the session, %d calls offered and each answered as the page says', count(DEMO_API_PAGE_CALLS)),
+    ];
 
     // the window, played on both sides. The answer of an active token is read fresh here, so that what
     // follows is measured from a known moment rather than from whatever this walk asked a minute ago.
