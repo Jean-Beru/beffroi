@@ -199,9 +199,11 @@ final class BackchannelFlowTest extends BrowserTestCase
         $this->signIn(self::userWithPassword('alice', self::PASSWORD));
 
         // When
+        $this->browser->catchExceptions(false);
         $crawler = $this->browser->request('GET', '/account/approvals');
 
         // Then
+        static::assertSame(200, $this->browser->getResponse()->getStatusCode(), self::string($this->browser->getResponse()->getContent()));
         static::assertSame('/account', $crawler->filter('nav a[data-back]')->attr('href'));
     }
 
