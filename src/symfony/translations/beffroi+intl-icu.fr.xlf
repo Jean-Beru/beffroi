@@ -1029,6 +1029,10 @@
         <source>archive.being_built</source>
         <target>Votre fichier est en cours de construction. Revenez sur cette page dans quelques minutes.</target>
       </trans-unit>
+      <trans-unit id="archive.stalled" resname="archive.stalled">
+        <source>archive.stalled</source>
+        <target>Votre fichier n'a pas été construit. Plus rien ne s'en occupe : demandez-en un nouveau, ou supprimez la demande.</target>
+      </trans-unit>
       <trans-unit id="archive.ready" resname="archive.ready">
         <source>archive.ready</source>
         <target>Votre fichier est prêt.</target>
@@ -1088,6 +1092,10 @@
       <trans-unit id="account.archive.being_built" resname="account.archive.being_built">
         <source>account.archive.being_built</source>
         <target>en construction</target>
+      </trans-unit>
+      <trans-unit id="account.archive.stalled" resname="account.archive.stalled">
+        <source>account.archive.stalled</source>
+        <target>la dernière demande n'a pas été construite</target>
       </trans-unit>
       <trans-unit id="account.archive.ready" resname="account.archive.ready">
         <source>account.archive.ready</source>
@@ -1205,6 +1213,10 @@
         <source>notifications.error.invalid_label</source>
         <target>Ce n'est pas un nom qu'un navigateur peut porter. Saisissez de 1 à 255 caractères.</target>
       </trans-unit>
+      <trans-unit id="archive.cancel" resname="archive.cancel">
+        <source>archive.cancel</source>
+        <target>Supprimer cette demande</target>
+      </trans-unit>
       <trans-unit id="archive.drop" resname="archive.drop">
         <source>archive.drop</source>
         <target>Supprimer ce fichier</target>
@@ -1215,7 +1227,7 @@
       </trans-unit>
       <trans-unit id="archive.nothing_to_drop" resname="archive.nothing_to_drop">
         <source>archive.nothing_to_drop</source>
-        <target>Il n'y avait aucun fichier à supprimer. Il est peut-être déjà parti.</target>
+        <target>Il n'y avait rien à supprimer. C'est peut-être déjà parti.</target>
       </trans-unit>
       <trans-unit id="sessions.end_others" resname="sessions.end_others">
         <source>sessions.end_others</source>

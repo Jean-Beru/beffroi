@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Authorization;
 
-use Beffroi\Oidc\Domain\Token\Base64Url;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use function str_repeat;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
 use Beffroi\Core\Bridge\Uid\FixedUuidGenerator;

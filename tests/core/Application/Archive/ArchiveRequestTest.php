@@ -6,10 +6,12 @@ namespace Beffroi\Core\Tests\Application\Archive;
 
 use Beffroi\Core\Application\Archive\ArchiveRequest;
 use Beffroi\Core\Bridge\InMemory\InMemoryPersonalArchiveRepository;
+use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Domain\Event\PersonAskedForTheirArchive;
 use DateTimeImmutable;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use function sprintf;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -111,6 +113,59 @@ final class ArchiveRequestTest extends TestCase
         static::assertFalse($again->isReady());
     }
 
+    /**
+     * The row a build never filled holds nothing and nothing will fill it, so a person whose build threw
+     * is a person asking for their data again and not a person waiting out the week it was kept for.
+     */
+    #[Test]
+    public function askingAgainOnceTheBuildDidNotComeBackStartsANewOne(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $archives = new InMemoryPersonalArchiveRepository();
+        $first = self::asking($archives)->askedBy($user, Fixtures::context());
+
+        // When
+        $again = self::asking($archives, at: self::afterTheDelay())->askedBy($user, Fixtures::context());
+
+        // Then
+        static::assertFalse($again->id->equals($first->id));
+        static::assertFalse($again->isReady());
+    }
+
+    #[Test]
+    public function askingAgainOnceTheBuildDidNotComeBackTakesTheRowItReplaces(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $archives = new InMemoryPersonalArchiveRepository();
+        self::asking($archives)->askedBy($user, Fixtures::context());
+
+        // When
+        self::asking($archives, at: self::afterTheDelay())->askedBy($user, Fixtures::context());
+
+        // Then
+        static::assertSame(1, $archives->count());
+    }
+
+    #[Test]
+    public function askingAgainOnceTheBuildDidNotComeBackAnnouncesTheAct(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $archives = new InMemoryPersonalArchiveRepository();
+        self::asking($archives)->askedBy($user, Fixtures::context());
+        $events = new RecordingEventDispatcher();
+
+        // When
+        $again = self::asking($archives, $events, self::afterTheDelay())->askedBy($user, Fixtures::context());
+
+        // Then
+        $announced = $events->of(PersonAskedForTheirArchive::class);
+        static::assertCount(1, $announced);
+        static::assertTrue($announced[0]->archiveId->equals($again->id));
+    }
+
     #[Test]
     public function askingOnceTheLastOneHasExpiredStartsANewOne(): void
     {
@@ -165,6 +220,11 @@ final class ArchiveRequestTest extends TestCase
 
         // Then
         static::assertSame($hers, $archives->latestOf($ada));
+    }
+
+    private static function afterTheDelay(): DateTimeImmutable
+    {
+        return Fixtures::now()->modify(sprintf('+%d minutes', PersonalArchive::BUILT_WITHIN_MINUTES));
     }
 
     private static function asking(

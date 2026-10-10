@@ -13,7 +13,7 @@ use Beffroi\Oidc\Application\Client\RegisteredClients;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
-use Beffroi\Oidc\Domain\Token\Base64Url;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;

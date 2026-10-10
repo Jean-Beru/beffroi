@@ -80,11 +80,11 @@ final class ArchiveDisposalTest extends TestCase
     }
 
     /**
-     * A file still being built is not dropped: there is nothing to drop yet, and the build is on its way
-     * to a row it would then not find.
+     * What is dropped is the request and not a file: a build on its way to a row that went away under it
+     * finds none and writes nothing, which is what makes a request something a person can take back.
      */
     #[Test]
-    public function aFileStillBeingBuiltIsKept(): void
+    public function aRequestStillBeingBuiltIsDropped(): void
     {
         // Given
         $user = Fixtures::user();
@@ -95,8 +95,27 @@ final class ArchiveDisposalTest extends TestCase
         $dropped = self::dropping($archives)->droppedBy($user, Fixtures::context());
 
         // Then
-        static::assertFalse($dropped);
-        static::assertSame(1, $archives->count());
+        static::assertTrue($dropped);
+        static::assertSame(0, $archives->count());
+    }
+
+    #[Test]
+    public function droppingARequestStillBeingBuiltAnnouncesTheAct(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $archives = new InMemoryPersonalArchiveRepository();
+        $archive = PersonalArchive::asked(Uuid::v7(), $user, Fixtures::now());
+        $archives->save($archive);
+        $events = new RecordingEventDispatcher();
+
+        // When
+        self::dropping($archives, $events)->droppedBy($user, Fixtures::context());
+
+        // Then
+        $announced = $events->of(PersonDroppedTheirArchive::class);
+        static::assertCount(1, $announced);
+        static::assertTrue($announced[0]->archiveId->equals($archive->id));
     }
 
     /**

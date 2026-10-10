@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Domain\Archive;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
@@ -115,6 +116,42 @@ final class PersonalArchiveTest extends TestCase
         static::assertTrue($archive->hasExpired($archive->expiresAt));
     }
 
+    /**
+     * Nothing comes back to say a build threw or that nobody was consuming the lane, so a row still empty
+     * past the delay a build is given is a row this provider says it is not building.
+     */
+    #[Test]
+    public function aBuildThatHasNotComeBackInItsDelayHasStalled(): void
+    {
+        // Given
+        $archive = self::asked();
+
+        // When / Then
+        static::assertTrue($archive->hasStalled(self::afterTheDelay($archive)));
+    }
+
+    #[Test]
+    public function aBuildInsideItsDelayHasNotStalled(): void
+    {
+        // When / Then
+        static::assertFalse(self::asked()->hasStalled(Fixtures::now()));
+    }
+
+    /**
+     * A build that took its time is a build that came back: what holds a document is ready, whatever the
+     * clock says of when it was asked for.
+     */
+    #[Test]
+    public function anArchiveThatHoldsItsDocumentNeverStalls(): void
+    {
+        // Given
+        $archive = self::asked();
+        $archive->fill(self::DOCUMENT, Fixtures::now());
+
+        // When / Then
+        static::assertFalse($archive->hasStalled(self::afterTheDelay($archive)));
+    }
+
     #[Test]
     public function anArchiveThatExpiresBeforeItWasAskedForIsRefused(): void
     {
@@ -166,5 +203,10 @@ final class PersonalArchiveTest extends TestCase
     private static function asked(): PersonalArchive
     {
         return PersonalArchive::asked(Uuid::v7(), Fixtures::user(), Fixtures::now());
+    }
+
+    private static function afterTheDelay(PersonalArchive $archive): DateTimeImmutable
+    {
+        return $archive->askedAt->modify(sprintf('+%d minutes', PersonalArchive::BUILT_WITHIN_MINUTES));
     }
 }

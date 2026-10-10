@@ -15,7 +15,7 @@ use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
 use Beffroi\Oidc\Bridge\Null\NoDpopNonce;
 use Beffroi\Oidc\Domain\Dpop\DpopProof;
-use Beffroi\Oidc\Domain\Token\Base64Url;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Port\DpopNonceInterface;
 use Jose\Component\Core\AlgorithmManager;

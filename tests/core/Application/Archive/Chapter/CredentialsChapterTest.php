@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Application\Archive\Chapter;
 use Beffroi\Core\Application\Archive\Chapter\CredentialsChapter;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Totps;
@@ -40,7 +41,7 @@ final class CredentialsChapterTest extends TestCase
                     'kind' => 'passkey',
                     'id' => $passkey->id->toRfc4122(),
                     'name' => 'YubiKey 5',
-                    'external_id' => 'credential-id',
+                    'external_id' => Base64Url::encode('credential-id'),
                     'created_at' => Fixtures::now()->format('c'),
                     'last_used_at' => null,
                     'revoked_at' => null,
@@ -102,6 +103,36 @@ final class CredentialsChapterTest extends TestCase
 
         // Then
         static::assertSame(Fixtures::now()->format('c'), $lines[0]['revoked_at']);
+    }
+
+    /**
+     * A credential ID is what the authenticator issued (WebAuthn Level 3 §6.3.2), octets and not text, so
+     * it reaches the document in the alphabet the column holding it uses. A document is JSON: octets that
+     * are not text are what leaves a person with no document at all.
+     */
+    #[Test]
+    public function theIdentifierAPartyPresentsIsWrittenInTheAlphabetItsColumnUses(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $credentialId = "\x4a\xfb\xff\x00\x80";
+
+        // When
+        $lines = self::chapter([Fixtures::passkey($user, credentialId: $credentialId)])->of($user);
+
+        // Then
+        static::assertSame(Base64Url::encode($credentialId), $lines[0]['external_id']);
+    }
+
+    #[Test]
+    public function aCredentialWhoseIdentifierIsNotTextStillMakesADocument(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $chapter = self::chapter([Fixtures::passkey($user, credentialId: "\x4a\xfb\xff\x00\x80")]);
+
+        // When / Then
+        static::assertJson(json_encode($chapter->of($user), JSON_THROW_ON_ERROR));
     }
 
     #[Test]
