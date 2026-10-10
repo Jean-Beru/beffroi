@@ -40,6 +40,22 @@ final class AccountHomeTest extends PasskeyTestCase
         static::assertStringContainsString('Signed in as alice.', $crawler->filter('main')->text());
     }
 
+    /**
+     * The other pages of the account refuse a browser that holds no session (AccountAccess), and this page
+     * is the way out of that refusal: the login is offered here and on no other page of the account, so a
+     * person who opened a page of their account before signing in is one link from signing in rather than
+     * left on a page that only tells them it cannot be served.
+     */
+    #[Test]
+    public function aRefusedPageOfTheAccountOffersTheWayToThisOne(): void
+    {
+        // When
+        $crawler = $this->browser->request('GET', '/account/profile');
+
+        // Then
+        static::assertSame('/account', $crawler->filter('main a[data-sign-in]')->attr('href'));
+    }
+
     #[Test]
     public function thePageNamesTheUserAndWhenTheySignedIn(): void
     {

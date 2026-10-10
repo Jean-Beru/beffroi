@@ -160,6 +160,24 @@ final class AccountNavigationTest extends BrowserTestCase
         static::assertCount(1, $page->filter('header[data-page-header] form[data-two-factor="begin"]'));
     }
 
+    /**
+     * A refusal is not a page of this plane, whatever route it was asked on: the page the bundle serves
+     * when the request stops there (templates/error.html.twig) says one thing and carries nothing else, so
+     * it is served in the skeleton of an interaction. A browser that holds no session would otherwise read
+     * what it has to do inside the column, the trail and the bar of an account it is not signed in to.
+     */
+    #[Test]
+    public function aRefusalIsNotServedInTheSkeletonOfTheAccount(): void
+    {
+        // When
+        $page = $this->browser->request('GET', '/account/profile');
+
+        // Then
+        static::assertCount(1, $page->filter('#interaction-column p[data-error="login_required"]'));
+        static::assertCount(0, $page->filter('#layout-sidebar'));
+        static::assertCount(0, $page->filter('main[data-page="account"]'));
+    }
+
     private function accountPage(string $path): Crawler
     {
         $page = $this->browser->request('GET', $path);
