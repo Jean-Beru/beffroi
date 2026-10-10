@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Beffroi\Bundle\Command\DoctorCommand;
+use Beffroi\Bundle\Doctor\NotificationsLanePatience;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
 use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
 use Beffroi\Core\Port\RandomnessInterface;
@@ -798,6 +800,23 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle: the console (architecture §5.5)
     $services->load('Beffroi\\Bundle\\Command\\', '../src/Command/');
+    // What "beffroi:doctor" looks at: one point is one class tagged here, so a point added is a class
+    // added and never a branch of the command (issue #196)
+    $services->get(DoctorCommand::class)->args([
+        '$checks' => tagged_iterator('beffroi.doctor_check'),
+    ]);
+    // Whether the transport the notifications are routed to is tried again on the schedule the retirement
+    // of a signing key assumes: the two locators of the component say what the container routes a logout
+    // token to and what tries each transport again, and the policy is the object the window reads (§4.9)
+    $services
+        ->set(NotificationsLanePatience::class)
+        ->args([
+            service('messenger.senders_locator'),
+            service('messenger.retry_strategy_locator'),
+            service(NotificationRetryPolicy::class),
+            service(LogoutTokenDeliveryInterface::class),
+        ])
+        ->tag('beffroi.doctor_check');
 
     // The bundle: the endpoints of the FIDO2 server API for the FIDO Conformance Tools (architecture §7); their
     // routes are a file of their own (config/routes/fido-conformance.php) an application imports in development
