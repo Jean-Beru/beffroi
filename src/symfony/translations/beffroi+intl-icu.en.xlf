@@ -1253,6 +1253,70 @@
         <source>passkeys.none_in_period</source>
         <target>You enrolled no passkey over those days.</target>
       </trans-unit>
+      <trans-unit id="password.title" resname="password.title">
+        <source>password.title</source>
+        <target>Your password</target>
+      </trans-unit>
+      <trans-unit id="password.none" resname="password.none">
+        <source>password.none</source>
+        <target>You hold no password: you sign in by another means. Nothing to replace here.</target>
+      </trans-unit>
+      <trans-unit id="password.changed_at" resname="password.changed_at">
+        <source>password.changed_at</source>
+        <target>Last written {date}.</target>
+      </trans-unit>
+      <trans-unit id="password.what_happens" resname="password.what_happens">
+        <source>password.what_happens</source>
+        <target>Type the password you use now, then the one you want instead. Every other browser signed in as you is signed out; this one stays.</target>
+      </trans-unit>
+      <trans-unit id="password.current" resname="password.current">
+        <source>password.current</source>
+        <target>The password you use now</target>
+      </trans-unit>
+      <trans-unit id="password.new" resname="password.new">
+        <source>password.new</source>
+        <target>The password you want instead</target>
+      </trans-unit>
+      <trans-unit id="password.change" resname="password.change">
+        <source>password.change</source>
+        <target>Replace my password</target>
+      </trans-unit>
+      <trans-unit id="password.error.wrong_password" resname="password.error.wrong_password">
+        <source>password.error.wrong_password</source>
+        <target>That is not the password you use now.</target>
+      </trans-unit>
+      <trans-unit id="password.error.same_as_before" resname="password.error.same_as_before">
+        <source>password.error.same_as_before</source>
+        <target>That is the password you already have. Pose another one.</target>
+      </trans-unit>
+      <trans-unit id="password.error.no_password_held" resname="password.error.no_password_held">
+        <source>password.error.no_password_held</source>
+        <target>You hold no password: there is nothing to replace.</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_a_password" resname="password.error.not_a_password">
+        <source>password.error.not_a_password</source>
+        <target>A password is at least {minimum} characters long.</target>
+      </trans-unit>
+      <trans-unit id="account.password.state" resname="account.password.state">
+        <source>account.password.state</source>
+        <target>{days, plural, =0 {written today} one {written yesterday} other {written # days ago}}</target>
+      </trans-unit>
+      <trans-unit id="account.password.none" resname="account.password.none">
+        <source>account.password.none</source>
+        <target>none held</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.renew" resname="two_factor.backup_codes.renew">
+        <source>two_factor.backup_codes.renew</source>
+        <target>Draw new backup codes</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.title" resname="two_factor.backup_codes.title">
+        <source>two_factor.backup_codes.title</source>
+        <target>Your new backup codes</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.renewed" resname="two_factor.backup_codes.renewed">
+        <source>two_factor.backup_codes.renewed</source>
+        <target>Here are your new backup codes. The ones you had stopped working just now.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

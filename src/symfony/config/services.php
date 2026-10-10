@@ -107,6 +107,7 @@ use Beffroi\Bundle\Http\PasskeyOptionsStore;
 use Beffroi\Bundle\Http\ClaimChangesPage;
 use Beffroi\Bundle\Http\ProfilePage;
 use Beffroi\Bundle\Http\PasskeysPage;
+use Beffroi\Bundle\Http\PasswordPage;
 use Beffroi\Bundle\Http\ConsentsPage;
 use Beffroi\Bundle\Http\PendingLoginStore;
 use Beffroi\Bundle\Http\QrCode;
@@ -212,6 +213,7 @@ use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Identity\IdentityLinker;
@@ -222,6 +224,7 @@ use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Application\Totp\TotpAuthentication;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Application\Totp\BackupCodesRenewal;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\MessageSeal;
@@ -569,6 +572,7 @@ use Beffroi\Bundle\Http\NotificationsPage;
 use Beffroi\Bundle\Http\BundleScript;
 use Beffroi\Bundle\Http\Account\NotificationsSection;
 use Beffroi\Bundle\Http\Account\SessionsSection;
+use Beffroi\Bundle\Http\Account\PasswordSection;
 use Beffroi\Bundle\Http\Account\SignInsSection;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
 use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
@@ -651,6 +655,7 @@ return static function (ContainerConfigurator $container): void {
     // what the journal holds of the sign-ins of this person, successes and refusals (issue #454): after
     // where they are signed in, because a refusal somebody else caused is read once and a session is read
     // again, and before the browsers the provider can reach
+    $services->set(PasswordSection::class)->tag('beffroi.account_section');
     $services->set(SignInsSection::class)->tag('beffroi.account_section');
     $services->set(SignInsPage::class);
     $services->set(NotificationsSection::class)->tag('beffroi.account_section');
@@ -784,6 +789,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ProfilePage::class);
     $services->set(ClaimChangesPage::class);
     $services->set(PasskeysPage::class);
+    $services->set(PasswordPage::class);
     $services->set(ConsentsPage::class);
     // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
     $services->set(PendingLoginStore::class);
@@ -1141,9 +1147,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SecondFactorRequirement::class);
     $services->set(PasskeyEnrolment::class);
     $services->set(PasskeyAuthentication::class);
+    $services->set(BackupCodesRenewal::class);
     $services->set(TotpEnrolment::class);
     $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
+    $services->set(PasswordChange::class);
     $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
     $services->set(SessionOpener::class);

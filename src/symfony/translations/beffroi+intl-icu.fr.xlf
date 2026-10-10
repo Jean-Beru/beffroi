@@ -1253,6 +1253,70 @@
         <source>passkeys.none_in_period</source>
         <target>Vous n'avez enrôlé aucune clé d'accès sur ces jours.</target>
       </trans-unit>
+      <trans-unit id="password.title" resname="password.title">
+        <source>password.title</source>
+        <target>Votre mot de passe</target>
+      </trans-unit>
+      <trans-unit id="password.none" resname="password.none">
+        <source>password.none</source>
+        <target>Vous n'avez pas de mot de passe : vous vous connectez autrement. Rien à remplacer ici.</target>
+      </trans-unit>
+      <trans-unit id="password.changed_at" resname="password.changed_at">
+        <source>password.changed_at</source>
+        <target>Écrit pour la dernière fois {date}.</target>
+      </trans-unit>
+      <trans-unit id="password.what_happens" resname="password.what_happens">
+        <source>password.what_happens</source>
+        <target>Saisissez le mot de passe que vous utilisez, puis celui que vous voulez à la place. Tous les autres navigateurs connectés en votre nom sont déconnectés ; celui-ci reste.</target>
+      </trans-unit>
+      <trans-unit id="password.current" resname="password.current">
+        <source>password.current</source>
+        <target>Le mot de passe que vous utilisez</target>
+      </trans-unit>
+      <trans-unit id="password.new" resname="password.new">
+        <source>password.new</source>
+        <target>Le mot de passe que vous voulez à la place</target>
+      </trans-unit>
+      <trans-unit id="password.change" resname="password.change">
+        <source>password.change</source>
+        <target>Remplacer mon mot de passe</target>
+      </trans-unit>
+      <trans-unit id="password.error.wrong_password" resname="password.error.wrong_password">
+        <source>password.error.wrong_password</source>
+        <target>Ce n'est pas le mot de passe que vous utilisez.</target>
+      </trans-unit>
+      <trans-unit id="password.error.same_as_before" resname="password.error.same_as_before">
+        <source>password.error.same_as_before</source>
+        <target>Ce mot de passe est celui que vous avez déjà. Choisissez-en un autre.</target>
+      </trans-unit>
+      <trans-unit id="password.error.no_password_held" resname="password.error.no_password_held">
+        <source>password.error.no_password_held</source>
+        <target>Vous n'avez pas de mot de passe : il n'y a rien à remplacer.</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_a_password" resname="password.error.not_a_password">
+        <source>password.error.not_a_password</source>
+        <target>Un mot de passe fait au moins {minimum} caractères.</target>
+      </trans-unit>
+      <trans-unit id="account.password.state" resname="account.password.state">
+        <source>account.password.state</source>
+        <target>{days, plural, =0 {écrit aujourd'hui} one {écrit hier} other {écrit il y a # jours}}</target>
+      </trans-unit>
+      <trans-unit id="account.password.none" resname="account.password.none">
+        <source>account.password.none</source>
+        <target>aucun</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.renew" resname="two_factor.backup_codes.renew">
+        <source>two_factor.backup_codes.renew</source>
+        <target>Tirer de nouveaux codes de secours</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.title" resname="two_factor.backup_codes.title">
+        <source>two_factor.backup_codes.title</source>
+        <target>Vos nouveaux codes de secours</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.renewed" resname="two_factor.backup_codes.renewed">
+        <source>two_factor.backup_codes.renewed</source>
+        <target>Voici vos nouveaux codes de secours. Ceux que vous aviez viennent de cesser de fonctionner.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

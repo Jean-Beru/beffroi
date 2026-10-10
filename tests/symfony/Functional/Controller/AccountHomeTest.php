@@ -68,7 +68,7 @@ final class AccountHomeTest extends PasskeyTestCase
         $crawler = $this->accountPage();
 
         // Then
-        static::assertCount(9, $crawler->filter('ul[data-sections="9"] li'));
+        static::assertCount(10, $crawler->filter('ul[data-sections="10"] li'));
         // first of them: it is what makes the page of what somebody is waiting on findable (BCP 10027 §5.2)
         $approvals = $crawler->filter('li[data-section="beffroi_interaction_account_approvals"]');
         static::assertSame('/account/approvals', $approvals->filter('a')->attr('href'));
