@@ -25,6 +25,7 @@ use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use Beffroi\Core\Domain\Event\PasskeyUsed;
 use Beffroi\Core\Domain\Event\PersonAskedForTheirArchive;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
+use Beffroi\Core\Domain\Event\PersonDroppedTheirArchive;
 use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
 use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
@@ -103,6 +104,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         // provider knows of a person (issue #453)
         yield 'a person who asked for their archive' => [new PersonAskedForTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a person who took their archive' => [new PersonTookTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
+        yield 'a person who dropped their archive' => [new PersonDroppedTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a credential enrolled' => [new CredentialEnrolled($passkey, $now, $context)];
         yield 'a credential revoked' => [new CredentialRevoked($passkey, $now, $context)];
         yield 'a credential renamed' => [new CredentialRenamed($passkey, 'The key it was', $now, $context)];

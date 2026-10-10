@@ -11,6 +11,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function str_repeat;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -214,6 +215,69 @@ final class PushSubscriptionTest extends TestCase
 
         // When
         $subscription->resubscribedWith('not base64url', self::OTHER_AUTH_SECRET, 'the-key', null);
+    }
+
+    /**
+     * The name of a browser is its holder's, and theirs to correct: architecture §5.2.
+     */
+    #[Test]
+    public function itIsNamedAgainByItsHolder(): void
+    {
+        // Given
+        $subscription = $this->subscription();
+
+        // When
+        $subscription->rename('  Alice at home  ');
+
+        // Then
+        static::assertSame('Alice at home', $subscription->label);
+    }
+
+    /**
+     * What a browser may be called is the length of the column that holds it, and never nothing: a line
+     * nobody can tell from another is what naming one is for.
+     */
+    #[Test]
+    #[DataProvider('provideNamesABrowserDoesNotHold')]
+    public function aNameABrowserDoesNotHoldIsRefused(string $label): void
+    {
+        // Given
+        $subscription = $this->subscription();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The name of a browser is 1 to 255 characters long.');
+
+        // When
+        $subscription->rename($label);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesABrowserDoesNotHold(): iterable
+    {
+        yield 'empty' => [''];
+        yield 'blank' => ['   '];
+        yield 'longer than the column' => [str_repeat('a', PushSubscription::LABEL_MAX_LENGTH + 1)];
+    }
+
+    /**
+     * Nothing of what a push is sent under moves when the name does.
+     */
+    #[Test]
+    public function namingItLeavesWhatTheBrowserHandedOver(): void
+    {
+        // Given
+        $subscription = $this->subscription();
+
+        // When
+        $subscription->rename('Alice at home');
+
+        // Then
+        static::assertSame(self::PUBLIC_KEY, $subscription->publicKey);
+        static::assertSame(self::AUTH_SECRET, $subscription->authSecret);
+        static::assertSame('the-key', $subscription->applicationServerKid);
     }
 
     private function subscription(
