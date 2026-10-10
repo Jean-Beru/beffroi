@@ -510,6 +510,27 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
+     * Clipboard API §3: the key is the secret an app is given where no camera reads the picture, forty
+     * characters nobody should have to read twice, so the page of the enrolment offers to take it in one
+     * click too, and the button waits for a browser that can write a clipboard.
+     */
+    #[Test]
+    public function theKeyIsOfferedToTheClipboardOfABrowserThatCanTakeIt(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->begin();
+
+        // Then
+        $button = $page->filter('button[data-copy="two-factor-key"]');
+        static::assertSame('two-factor-key', $button->attr('data-copy'));
+        static::assertSame('', $button->attr('hidden'));
+        static::assertCount(1, $page->filter('code#two-factor-key[data-two-factor="key"]'));
+    }
+
+    /**
      * The script is served by the bundle itself, under the path of its pages, so an application that
      * allows its own origin and nothing else has nothing to change.
      */
