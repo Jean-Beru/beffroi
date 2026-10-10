@@ -105,7 +105,7 @@ function demo(
     )]
     bool $resourceServer = false,
     #[AsOption(
-        description: 'Issues #556 and #559: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), the document naming the scheme its page offers and the scope each operation needs, a write refused for the scope it was never granted, a token of another client of the same OP refused while the OP reports it active to that client, and the few seconds the answer of the OP is kept played on both sides',
+        description: 'Issues #556 and #559: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), the document naming the scheme its page offers and the scope each operation needs, a write refused for the scope it was never granted, a token of another client of the demonstration served because the API asks the OP as each client whose secret it holds, and the few seconds the answer of the OP is kept played on both sides',
     )]
     bool $api = false,
     #[AsOption(
@@ -1732,6 +1732,12 @@ const DEMO_API_WRITTEN_INVOICE = ['reference' => 'INV-9000', 'label' => 'Written
  * the "security" expression that enforces it (`ScopesInTheDocument` of the demonstration), and this is the
  * other end, so a scope that changed on one side without the other shows up here.
  */
+/**
+ * A value of the shape an opaque access token of this OP has, which it never issued: what the API answers
+ * when no client of the demonstration is told anything about the token it was handed.
+ */
+const DEMO_API_UNKNOWN_TOKEN = 'ZZZZnobodyZZZZissuedZZZZthisZZZZvalueZZZZZZZ';
+
 const DEMO_API_DOCUMENTED_SCOPES = [
     'get /api/v1/account' => 'profile',
     'get /api/v1/invoices' => 'invoices.read',
@@ -1897,12 +1903,13 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     );
     $verified[] = ['POST /api/v1/invoices', sprintf('403, %s', $challenge)];
 
-    // RFC 7662 §2.2: the OP describes a token to the client it was issued to and to no other, and this API
-    // asks with the credentials of one client. A token the same user obtained for another client of the
-    // same OP, which is what a rung of the ladder hands whoever reads the documentation, is therefore
-    // reported inactive here and refused, while the OP reports it active to the client it belongs to. It is
-    // the one thing the page that documents the API has to say, because nothing about the token itself
-    // shows it (it is alive, for somebody else).
+    // RFC 7662 §2.2: the OP describes a token to the client it was issued to and to no other. The
+    // demonstration is not one client, its main firewall and every rung of its ladder being one each, so
+    // whoever reads one of its pages holds a token of whichever client that page belongs to: the API asks
+    // the OP as each client whose secret the demonstration holds, and the first answer that describes the
+    // token is the one its firewall reads (WhicheverClientKnowsTheToken of the demonstration). A token of
+    // another client is therefore served here, and the account says which client it was issued to, which
+    // is the OP's answer and not something the API decided.
     demo_write_env_local($dir . '/.env.local', [
         'OIDC_CLIENT_ID' => DEMO_OPAQUE_CLIENT_ID,
         'OIDC_CLIENT_SECRET' => $opaqueSecret,
@@ -1915,26 +1922,36 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         'OIDC_CLIENT_SECRET' => $demoSecret,
         DEMO_INTROSPECTION_ENV => $introspection,
     ]);
-    [$status, $body, $headers] = demo_api_request('GET', DEMO_API_BASE . '/account', $otherToken);
-    demo_expect($status === 401, sprintf(
-        'a token the same user holds for another client of the same OP is refused here (got %d %s)',
+    [$status, $other] = demo_api_request('GET', DEMO_API_BASE . '/account', $otherToken);
+    demo_expect($status === 200 && ($other['sub'] ?? null) === $subject, sprintf(
+        'a token the same user holds for another client of the demonstration is served here, for the same subject (got %d %s)',
         $status,
-        json_encode($body),
+        json_encode($other),
     ));
     demo_expect(
-        ! str_contains((string) ($headers['www-authenticate'][0] ?? ''), 'insufficient_scope'),
-        'as a token nothing is known of and not as one that lacks a scope (RFC 6750 §3)',
+        ($other['clientId'] ?? null) === DEMO_OPAQUE_CLIENT_ID,
+        sprintf('and the answer names the client it was issued to, which is what the OP described (got %s)', json_encode($other['clientId'] ?? null)),
     );
     $described = demo_introspect($introspection, $ca, DEMO_OPAQUE_CLIENT_ID, $opaqueSecret, $otherToken);
     demo_expect(
         ($described['active'] ?? null) === true && ($described['client_id'] ?? null) === DEMO_OPAQUE_CLIENT_ID,
-        sprintf('and the OP reports that very token active to the client it was issued to (got %s)', json_encode($described)),
+        sprintf('as the client it belongs to reads it at the introspection endpoint (got %s)', json_encode($described)),
     );
     $verified[] = [
         'A token of another client',
-        sprintf('401 here, active for %s at the introspection endpoint (RFC 7662 §2.2)', DEMO_OPAQUE_CLIENT_ID),
+        sprintf('200, the account naming %s, the client the OP described it to', DEMO_OPAQUE_CLIENT_ID),
     ];
     demo_logout($otherCookies, $issuer, $ca);
+
+    // and a value this OP never issued: every client of the demonstration is asked, none of them is
+    // answered anything about it, and what the firewall reports is what the OP said of it
+    [$status, $body, $headers] = demo_api_request('GET', DEMO_API_BASE . '/account', DEMO_API_UNKNOWN_TOKEN);
+    demo_expect($status === 401, sprintf('a value this OP never issued is refused (got %d %s)', $status, json_encode($body)));
+    demo_expect(
+        ! str_contains((string) ($headers['www-authenticate'][0] ?? ''), 'insufficient_scope'),
+        'as a token nothing is known of and not as one that lacks a scope (RFC 6750 §3)',
+    );
+    $verified[] = ['A token nobody issued', '401, after every client of the demonstration was asked about it'];
 
     // the window, played on both sides. The answer of an active token is read fresh here, so that what
     // follows is measured from a known moment rather than from whatever this walk asked a minute ago.
@@ -1961,7 +1978,7 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         'An API Platform API served the invoices of its user behind the introspection endpoint of the OP, one scope per operation, and forgot what it was told after %d seconds.',
         $ttl,
     ));
-    io()->note('The page of the document offers one way of being authorized, the bearer token of RFC 6750 §2.1, and the token to paste is one the OP issued to the client this API introspects as: a token the same user holds for another client of the same OP is active at the OP and inactive to this API (RFC 7662 §2.2), which is what the step above plays and what the description of the document says. A flow of an authorization code could not be offered in that page: it runs in a browser, so the client it signed in as would be a public client of its own, and its tokens are the ones this API cannot ask about.');
+    io()->note('The page of the document offers one way of being authorized, the bearer token of RFC 6750 §2.1, and the token to paste is any one the demonstration handed out: the OP describes a token to the client it was issued to and to no other (RFC 7662 §2.2), so the API asks it as each client whose secret the demonstration holds, which is what the step above plays. The two rungs that prove a key rather than share a secret are the exception, their tokens being ones no HTTP client can ask about. A flow of an authorization code is not offered in that page: it runs in a browser, so the client it signed in as would hold its secret there.');
     io()->note(sprintf(
         'The %d seconds are the trade RFC 7662 §4 leaves to a resource server: a longer window spares the OP a round trip per request and carries a withdrawn token for longer, and the figure is one line of config/services.yaml of the demonstration. It is the other half of what --resource-server shows: an "at+jwt" verified offline is accepted until it expires, whatever the OP knows of it, where this API asks and so stops at the end of the window.',
         $ttl,
