@@ -541,6 +541,21 @@ services:
     Beffroi\Oidc\Port\ClientJwksFetcherInterface:
         alias: Beffroi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri
 
+    # NIST SP 800-63B §5.1.1.2 (issue #552): the list of compromised passwords a password posed here is
+    # compared against. Nothing of this kernel reaches a host, so the bridge that would is replaced rather
+    # than pointed somewhere: it has its own unit test, and what a functional test needs is the rule that
+    # reads the answer rather than the reading.
+    #
+    # It names no list until a test names one, which is the deployment every other test of this suite runs
+    # as: a password is posed on the rules of the core alone and nobody is asked. A test that wants the rule
+    # arms the fixture through "test.beffroi.breached_passwords", and keeps it for the whole test, one
+    # kernel being what a browser of this suite holds (disableReboot).
+    Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord:
+        arguments:
+            $looksUp: false
+    Beffroi\Core\Port\BreachedPasswordsInterface:
+        alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
+
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
     beffroi_test.kms:
         class: Symfony\Component\KeyManagement\EncrypterInterface
@@ -570,6 +585,9 @@ services:
         public: true
     test.beffroi.geoip_databases:
         alias: Beffroi\Bundle\Geo\GeoLite2Databases
+        public: true
+    test.beffroi.breached_passwords:
+        alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
         public: true
     test.beffroi.clients:
         alias: Beffroi\Oidc\Port\ClientRepositoryInterface

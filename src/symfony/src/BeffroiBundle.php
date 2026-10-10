@@ -39,6 +39,7 @@ use Beffroi\Bundle\Configuration\HistorySection;
 use Beffroi\Bundle\Configuration\JournalSection;
 use Beffroi\Bundle\Configuration\LoadSection;
 use Beffroi\Bundle\Configuration\MutualTlsSection;
+use Beffroi\Bundle\Configuration\PasswordsSection;
 use Beffroi\Bundle\Configuration\RequestObjectsSection;
 use Beffroi\Bundle\Configuration\TenantSection;
 use Beffroi\Bundle\Configuration\TokensSection;
@@ -376,6 +377,7 @@ final class BeffroiBundle extends AbstractBundle
             new JournalSection(),
             new HistorySection(),
             new GeoipSection(),
+            new PasswordsSection(),
             new InteractionSection(),
             new BackChannelLogoutSection(),
             new BackchannelAuthenticationSection(),

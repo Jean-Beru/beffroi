@@ -69,6 +69,17 @@ beffroi:
         # served without, a session and an act of the journal then saying an address and no place.
         storage: '%kernel.project_dir%/var/geoip'
         license_key: '%env(GEOIP_LICENSE_KEY)%'
+    passwords:
+        breached:
+            # The list of compromised passwords a password posed here is compared against (NIST SP
+            # 800-63B §5.1.1.2, issue beffroi-php/beffroi#552): five hexadecimal characters of the SHA-1
+            # leave, the comparison of the thirty-five that are left is local, there is no API key and no
+            # subscription. Empty until a deployment names it, which is what makes the lookup a decision
+            # and not a default; a deployment that leaves it empty poses passwords and signs people in on
+            # the rules of the core alone, how long a password has to be and how hard to guess being rules
+            # and not options. How long a credential goes before it is looked up again is the core's
+            # (PasswordCredential::LOOKUP_AGAIN_AFTER).
+            endpoint: '%env(BEFFROI_BREACHED_PASSWORDS_ENDPOINT)%'
     tokens:
         authorization_code_ttl: 60
         access_token_ttl: '%env(int:BEFFROI_ACCESS_TOKEN_TTL)%'

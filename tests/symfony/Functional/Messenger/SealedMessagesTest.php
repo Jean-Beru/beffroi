@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\Messenger;
 
 use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
+use Beffroi\Bundle\Message\CheckThePasswordAgainstTheBreaches;
 use Beffroi\Bundle\Messenger\MessengerContract;
 use Beffroi\Bundle\Messenger\SealedBodySerializer;
 use Beffroi\Bundle\Messenger\TenantStamp;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Domain\Credential\PasswordDigest;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
 use Beffroi\Core\Domain\Event\TenantKeyStaged;
 use Beffroi\Core\Port\MessageSealingAlgorithmsInterface;
@@ -23,6 +25,7 @@ use function serialize;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Decision 0020, wired: what every transport of this provider encodes with is the serializer of the bundle,
@@ -147,6 +150,25 @@ final class SealedMessagesTest extends DatabaseTestCase
         yield 'the address of the request' => [SealedRows::IP_ADDRESS];
         yield 'the user agent of the request' => [SealedRows::USER_AGENT];
         yield 'what the provider had to say' => ['the vault did not answer'];
+    }
+
+    /**
+     * Issue #552: the digest of a password is the one shape of a password that leaves a request, and what
+     * it leaves in is a sealed body, so neither the broker nor the failure table holds it readable.
+     */
+    #[Test]
+    public function theDigestOfAPasswordLeavesSealed(): void
+    {
+        // Given
+        $digest = PasswordDigest::of('correct horse battery staple');
+        $message = new CheckThePasswordAgainstTheBreaches(Uuid::v7(), $digest->value);
+
+        // When
+        $encoded = $this->serializer->encode(new Envelope($message));
+
+        // Then
+        static::assertStringContainsString($digest->value, serialize($message));
+        static::assertStringNotContainsString($digest->value, $encoded['body']);
     }
 
     /**

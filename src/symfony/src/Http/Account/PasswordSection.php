@@ -12,6 +12,10 @@ use Psr\Clock\ClockInterface;
 /**
  * The password, on the home page of the account (architecture §5.2): when it was last written, which is
  * the one thing a person can read of a password, or that they hold none and sign in by another means.
+ *
+ * A password a list of compromised passwords has found says that first and says nothing else (issue
+ * #552): the date it was written stopped being the thing to read about it the moment somebody else turned
+ * out to hold it, and the page it opens says when it was found and what to do.
  */
 final readonly class PasswordSection implements AccountSectionInterface
 {
@@ -37,6 +41,9 @@ final readonly class PasswordSection implements AccountSectionInterface
 
         if ($password === null) {
             return new AccountSectionState('account.password.none');
+        }
+        if ($password->isBreached()) {
+            return new AccountSectionState('account.password.breached');
         }
 
         // how long ago it was written rather than the day it was: what a line of the home page says of a

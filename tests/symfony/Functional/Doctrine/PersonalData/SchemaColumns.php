@@ -177,6 +177,8 @@ final readonly class SchemaColumns
                 'last_used_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'hash_changed_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'breach_checked_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'breach_found_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'hash' => new NoPersonalDatum(self::HASHED . ', with the algorithm it was computed with and the parameters it was computed under'),
                 'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
                 'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),

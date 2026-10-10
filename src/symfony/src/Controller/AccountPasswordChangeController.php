@@ -6,30 +6,40 @@ namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\RecentLogin;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Domain\Credential\PlainPassword;
-use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\PasswordChangeRefusedException;
+use Beffroi\Core\Exception\PasswordRefusedException;
+use function hash_equals;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The password of the signed-in person replaced by them (architecture §5.2): they type the one in use,
- * pose another, and every other browser signed in as them is signed out.
+ * The password of the signed-in person replaced by them (architecture §5.2): they prove who they are
+ * again, type the one in use, pose another twice, and every other browser signed in as them is signed out.
+ *
+ * **A session alone does not post it** (RecentLogin): the same window the page is read under bounds the
+ * post, because a guard the form does not repeat is a guard a form post goes around. The browser is sent
+ * to the login of the firewall and comes back to the page, where the form is typed again.
+ *
+ * **The password posed is typed twice.** A password nobody can read back is a password nobody can check
+ * they typed right, and somebody who mistypes it twice the same way has lost the account rather than
+ * changed it; the two are compared with hash_equals, as the console does on its two prompts.
  *
  * **Signing the others out is this page's policy and not the core's**, which writes the password and says
- * so: a password is replaced because the one before it is not trusted any more, and a session opened
- * under it is exactly what should not outlive it. The browser this was asked from stays signed in,
- * because asking for a password is not a reason to ask for it twice.
+ * so: a password is replaced because the one before it is not trusted any more, and a session opened under
+ * it is exactly what should not outlive it. The browser this was asked from stays signed in, because
+ * asking for a password is not a reason to ask for it twice.
  *
  * It answers with a redirection whether the password was written or refused (issue #481), so a browser
  * reloading the page it comes back to does not post a password again; what was refused crosses the
- * redirection in the session and the page says which of the refusals it was.
+ * redirection in the session and the page says which rule pronounced it.
  */
 #[AsController]
 final readonly class AccountPasswordChangeController
@@ -42,13 +52,16 @@ final readonly class AccountPasswordChangeController
 
     public const string POSED_PARAMETER = 'new_password';
 
+    public const string POSED_AGAIN_PARAMETER = 'new_password_again';
+
     /**
-     * What was posed is not a password this provider holds: too short, or longer than anything is.
+     * The password was posed twice and the two are not the same, so neither is what was meant.
      */
-    public const string NOT_A_PASSWORD = 'not_a_password';
+    public const string NOT_CONFIRMED = 'not_confirmed';
 
     public function __construct(
         private AccountAccess $account,
+        private RecentLogin $recent,
         private PasswordChange $change,
         private OtherSessionsTermination $others,
         private RequestContextFactory $contexts,
@@ -64,17 +77,26 @@ final readonly class AccountPasswordChangeController
         if ($session instanceof Response) {
             return $session;
         }
+        $login = $this->recent->orSendToLogin($request, $session, AccountPasswordController::ROUTE);
+        if ($login !== null) {
+            return $login;
+        }
+        $posed = $request->request->getString(self::POSED_PARAMETER);
+        if (! hash_equals($posed, $request->request->getString(self::POSED_AGAIN_PARAMETER))) {
+            return $this->refused($request, self::NOT_CONFIRMED);
+        }
         $context = $this->contexts->fromRequest($request);
 
         try {
             $this->change->change(
                 $session->user,
                 $request->request->getString(self::IN_USE_PARAMETER),
-                new PlainPassword($request->request->getString(self::POSED_PARAMETER)),
+                new PlainPassword($posed),
                 $context,
             );
-        } catch (InvalidArgumentException) {
-            return $this->refused($request, self::NOT_A_PASSWORD);
+        } catch (PasswordRefusedException $exception) {
+            // what a password has to be, and what a list of compromised passwords said of this one
+            return $this->refused($request, $exception->refusal->value);
         } catch (PasswordChangeRefusedException $exception) {
             return $this->refused($request, $exception->refusal->value);
         }

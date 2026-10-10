@@ -7,7 +7,7 @@ namespace Beffroi\Bundle\Command;
 use function hash_equals;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Domain\Credential\PlainPassword;
-use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\PasswordRefusedException;
 use function is_string;
 use function preg_replace;
 use function sprintf;
@@ -24,6 +24,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 /**
  * The password of a user (architecture §5.5), asked on the terminal or read from the standard input;
  * never an argument nor an option.
+ *
+ * What a password has to be, and what a list of compromised passwords says of it, are the rules of the
+ * core: this command gets them by construction (PlainPassword, UserProvisioner::setPassword()) rather
+ * than by remembering them, and prints whichever of them pronounced in one flat line. A list that could
+ * not be asked is one of them: an unknown is not a clean answer (decision 0006), so nothing is written
+ * and the operator poses the password again.
  */
 #[AsCommand(
     name: 'beffroi:user:set-password',
@@ -68,7 +74,7 @@ final readonly class UserSetPasswordCommand
 
         try {
             $this->provisioner->setPassword($user, new PlainPassword($password));
-        } catch (InvalidArgumentException $exception) {
+        } catch (PasswordRefusedException $exception) {
             $io->error($exception->getMessage());
 
             return Command::INVALID;

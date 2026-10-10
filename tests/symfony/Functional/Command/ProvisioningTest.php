@@ -14,6 +14,7 @@ use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Key\KeyStatus;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Port\SigningKeyProviderInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
@@ -799,6 +800,97 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
+     * The rule NIST SP 800-63B §5.1.1.2 puts first, on the path an operator writes a password for
+     * somebody: the console gets it by construction and prints it in one flat line.
+     */
+    #[Test]
+    public function aPasswordAListOfCompromisedPasswordsCountsIsRefused(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::breaches()->names([self::PASSWORD]);
+
+        // When
+        $tester = self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
+
+        // Then
+        static::assertSame(Command::INVALID, $tester->getStatusCode());
+        static::assertStringContainsString('list of compromised passwords', $tester->getDisplay());
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
+    }
+
+    /**
+     * Decision 0006: an unknown is not a clean answer. Nothing is written, and the operator is told to
+     * pose the password again rather than handed one nobody checked.
+     */
+    #[Test]
+    public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::breaches()->cannotBeReached();
+
+        // When
+        $tester = self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
+
+        // Then
+        static::assertSame(Command::INVALID, $tester->getStatusCode());
+        static::assertStringContainsString('could not be asked', $tester->getDisplay());
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
+    }
+
+    /**
+     * What the console asked is written on the credential, so that the first login does not ask again
+     * what was just asked.
+     */
+    #[Test]
+    public function thePasswordTheConsoleWroteIsMarkedAsLookedUp(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::breaches()->names(['a password of somebody else']);
+
+        // When
+        self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
+
+        // Then
+        self::reload();
+        $credential = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
+        static::assertNotNull($credential->breachCheckedAt);
+        static::assertFalse($credential->isBreached());
+    }
+
+    /**
+     * The list of this kernel, armed by the test that wants the rule; it names nothing otherwise.
+     */
+    private static function breaches(): BreachedPasswordsOfARecord
+    {
+        return self::service('test.beffroi.breached_passwords', BreachedPasswordsOfARecord::class);
+    }
+
+    /**
      * @param array<string, string|bool> $input
      * @param list<string> $inputs
      */
@@ -837,6 +929,7 @@ final class ProvisioningTest extends ConsoleTestCase
         ];
         yield 'not confirmed' => [$alice, [self::PASSWORD, self::PASSWORD . 'r'], true, Command::INVALID, 'The two passwords differ.'];
         yield 'too short' => [$alice, ['short', 'short'], true, Command::INVALID, 'at least 8 characters'];
+        yield 'too weak' => [$alice, ['password1', 'password1'], true, Command::INVALID, 'short of length and of alphabet'];
         yield 'empty on the terminal' => [$alice, ['', ''], true, Command::INVALID, 'The password is empty.'];
         yield 'empty on the standard input' => [$stdin, [''], true, Command::INVALID, 'The password is empty.'];
         yield 'too long' => [$stdin, [str_repeat('a', 4097)], true, Command::INVALID, 'at most 4096 bytes'];

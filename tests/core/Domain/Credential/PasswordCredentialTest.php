@@ -12,6 +12,7 @@ use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -105,5 +106,122 @@ final class PasswordCredentialTest extends TestCase
         static::assertSame('$argon2id$new', $credential->hash->encoded);
         static::assertSame($changed, $credential->hashChangedAt);
         static::assertSame($used, $credential->lastUsedAt);
+    }
+
+    /**
+     * The mark outlives the login that found it, which is the point: a person is told on the pages of
+     * their account and not in the one request that noticed.
+     */
+    #[Test]
+    public function aPasswordFoundInABreachIsMarkedAsFoundAndAsLookedUp(): void
+    {
+        // Given
+        $credential = self::credential();
+        $found = new DateTimeImmutable('2026-10-10T12:00:00+00:00');
+
+        // When
+        $credential->foundInABreach($found);
+
+        // Then
+        static::assertTrue($credential->isBreached());
+        static::assertSame($found, $credential->breachFoundAt);
+        static::assertSame($found, $credential->breachCheckedAt);
+    }
+
+    #[Test]
+    public function aPasswordNoListHoldsIsMarkedAsLookedUpAndNotAsFound(): void
+    {
+        // Given
+        $credential = self::credential();
+        $checked = new DateTimeImmutable('2026-10-10T12:00:00+00:00');
+
+        // When
+        $credential->notFoundInABreach($checked);
+
+        // Then
+        static::assertFalse($credential->isBreached());
+        static::assertSame($checked, $credential->breachCheckedAt);
+        static::assertNull($credential->breachFoundAt);
+    }
+
+    /**
+     * A password nobody has asked about yet is due, which is every password written before the two dates
+     * existed.
+     */
+    #[Test]
+    public function aPasswordNobodyHasAskedAboutIsDue(): void
+    {
+        // When / Then
+        static::assertTrue(self::credential()->dueForABreachLookup(Fixtures::now()));
+    }
+
+    /**
+     * A login does not ask again what was asked yesterday; past the delay it asks again, the lists being
+     * published in batches.
+     */
+    #[Test]
+    #[DataProvider('provideMomentsAfterALookup')]
+    public function aPasswordIsDueAgainOnlyPastTheDelay(string $modification, bool $due): void
+    {
+        // Given
+        $credential = self::credential();
+        $checked = new DateTimeImmutable('2026-10-10T12:00:00+00:00');
+        $credential->notFoundInABreach($checked);
+
+        // When / Then
+        static::assertSame($due, $credential->dueForABreachLookup($checked->modify($modification)));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideMomentsAfterALookup(): iterable
+    {
+        yield 'the same moment' => ['+0 second', false];
+        yield 'a day later' => ['+1 day', false];
+        yield 'a second short of the delay' => ['+30 days -1 second', false];
+        yield 'the delay to the second' => ['+30 days', true];
+        yield 'a year later' => ['+1 year', true];
+    }
+
+    /**
+     * What a list said of the password that is gone is forgotten with it: a rehash is the same password
+     * and keeps it.
+     */
+    #[Test]
+    public function aPasswordChangeForgetsWhatAListSaidOfTheOneBefore(): void
+    {
+        // Given
+        $credential = self::credential();
+        $credential->foundInABreach(Fixtures::now());
+
+        // When
+        $credential->changePassword(new PasswordHash(new Argon2id(), '$argon2id$new'), new DateTimeImmutable('2026-10-11T08:00:00+00:00'));
+
+        // Then
+        static::assertFalse($credential->isBreached());
+        static::assertNull($credential->breachCheckedAt);
+        static::assertTrue($credential->dueForABreachLookup(Fixtures::now()));
+    }
+
+    #[Test]
+    public function aRehashKeepsWhatAListSaidOfTheSamePassword(): void
+    {
+        // Given
+        $credential = self::credential();
+        $found = new DateTimeImmutable('2026-10-10T12:00:00+00:00');
+        $credential->foundInABreach($found);
+
+        // When
+        $credential->rehash(new PasswordHash(new Argon2id(), '$argon2id$stronger'), new DateTimeImmutable('2026-10-11T08:00:00+00:00'));
+
+        // Then
+        static::assertTrue($credential->isBreached());
+        static::assertSame($found, $credential->breachFoundAt);
+    }
+
+    private static function credential(): PasswordCredential
+    {
+        return new PasswordCredential(Uuid::v7(), Fixtures::user(), new PasswordHash(new Argon2id(), '$argon2id$old'), Fixtures::now());
     }
 }

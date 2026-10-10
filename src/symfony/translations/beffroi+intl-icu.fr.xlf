@@ -1285,9 +1285,57 @@
         <source>password.error.no_password_held</source>
         <target>Vous n'avez pas de mot de passe : il n'y a rien à remplacer.</target>
       </trans-unit>
-      <trans-unit id="password.error.not_a_password" resname="password.error.not_a_password">
-        <source>password.error.not_a_password</source>
+      <trans-unit id="password.again" resname="password.again">
+        <source>password.again</source>
+        <target>Le même, encore</target>
+      </trans-unit>
+      <trans-unit id="password.breached" resname="password.breached">
+        <source>password.breached</source>
+        <target>Ce mot de passe figure dans une liste de mots de passe compromis ({date}) : quelqu'un d'autre le détient. Remplacez-le maintenant.</target>
+      </trans-unit>
+      <trans-unit id="password.strength.nothing" resname="password.strength.nothing">
+        <source>password.strength.nothing</source>
+        <target>deviné tout de suite</target>
+      </trans-unit>
+      <trans-unit id="password.strength.weak" resname="password.strength.weak">
+        <source>password.strength.weak</source>
+        <target>faible</target>
+      </trans-unit>
+      <trans-unit id="password.strength.medium" resname="password.strength.medium">
+        <source>password.strength.medium</source>
+        <target>suffisant</target>
+      </trans-unit>
+      <trans-unit id="password.strength.strong" resname="password.strength.strong">
+        <source>password.strength.strong</source>
+        <target>solide</target>
+      </trans-unit>
+      <trans-unit id="password.strength.very_strong" resname="password.strength.very_strong">
+        <source>password.strength.very_strong</source>
+        <target>très solide</target>
+      </trans-unit>
+      <trans-unit id="password.error.too_short" resname="password.error.too_short">
+        <source>password.error.too_short</source>
         <target>Un mot de passe fait au moins {minimum} caractères.</target>
+      </trans-unit>
+      <trans-unit id="password.error.too_long" resname="password.error.too_long">
+        <source>password.error.too_long</source>
+        <target>C'est plus long qu'un mot de passe ne peut l'être.</target>
+      </trans-unit>
+      <trans-unit id="password.error.too_weak" resname="password.error.too_weak">
+        <source>password.error.too_weak</source>
+        <target>Ce mot de passe est trop facile à deviner. Allongez-le, ou employez plusieurs mots ; rien n'a à être une majuscule, un chiffre ou un symbole.</target>
+      </trans-unit>
+      <trans-unit id="password.error.breached" resname="password.error.breached">
+        <source>password.error.breached</source>
+        <target>Ce mot de passe figure dans une liste de mots de passe compromis : quelqu'un d'autre le détient déjà. Posez-en un autre.</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_checked" resname="password.error.not_checked">
+        <source>password.error.not_checked</source>
+        <target>La liste des mots de passe compromis n'a pas pu être consultée : rien n'a été écrit. Réessayez.</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_confirmed" resname="password.error.not_confirmed">
+        <source>password.error.not_confirmed</source>
+        <target>Les deux mots de passe saisis ne sont pas identiques.</target>
       </trans-unit>
       <trans-unit id="account.password.state" resname="account.password.state">
         <source>account.password.state</source>
@@ -1296,6 +1344,10 @@
       <trans-unit id="account.password.none" resname="account.password.none">
         <source>account.password.none</source>
         <target>aucun</target>
+      </trans-unit>
+      <trans-unit id="account.password.breached" resname="account.password.breached">
+        <source>account.password.breached</source>
+        <target>trouvé dans une fuite</target>
       </trans-unit>
       <trans-unit id="two_factor.backup_codes.renew" resname="two_factor.backup_codes.renew">
         <source>two_factor.backup_codes.renew</source>
