@@ -16,6 +16,8 @@ use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Event\BackupCodesRenewed;
+use Beffroi\Core\Domain\Event\PasswordChanged;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\CredentialRenamed;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
@@ -110,7 +112,9 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a credential renamed' => [new CredentialRenamed($passkey, 'The key it was', $now, $context)];
         yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context, false)];
         yield 'a password rehashed' => [new PasswordRehashed($password, $now, $context)];
+        yield 'a password changed by the person who holds it' => [new PasswordChanged($password, $now, $context)];
         yield 'a TOTP used' => [new TotpUsed($totp, $now, $context, false)];
+        yield 'backup codes renewed' => [new BackupCodesRenewed($totp, $now, $context)];
         yield 'a KMS that could not be reached' => [new KmsUnavailable($now, $tenant, $context, 'the KMS answered 503')];
         yield 'a load budget spent' => [new LoadBudgetSpent($now, $tenant, $context, 'login', 'beffroi_interaction_login', 'oidc-demo')];
         yield 'a key staged' => [new TenantKeyStaged(self::key($tenant, $now), $now, $context)];
