@@ -1197,6 +1197,34 @@
         <source>passkeys.rename</source>
         <target>Renommer</target>
       </trans-unit>
+      <trans-unit id="notifications.new_default" resname="notifications.new_default">
+        <source>notifications.new_default</source>
+        <target>Nouveau navigateur</target>
+      </trans-unit>
+      <trans-unit id="notifications.rename" resname="notifications.rename">
+        <source>notifications.rename</source>
+        <target>Renommer</target>
+      </trans-unit>
+      <trans-unit id="notifications.this_browser" resname="notifications.this_browser">
+        <source>notifications.this_browser</source>
+        <target>Ce navigateur</target>
+      </trans-unit>
+      <trans-unit id="notifications.error.invalid_label" resname="notifications.error.invalid_label">
+        <source>notifications.error.invalid_label</source>
+        <target>Ce n'est pas un nom qu'un navigateur peut porter. Saisissez de 1 à 255 caractères.</target>
+      </trans-unit>
+      <trans-unit id="archive.drop" resname="archive.drop">
+        <source>archive.drop</source>
+        <target>Supprimer ce fichier</target>
+      </trans-unit>
+      <trans-unit id="archive.drop_explanation" resname="archive.drop_explanation">
+        <source>archive.drop_explanation</source>
+        <target>Une fois le fichier récupéré, ce fournisseur n'a aucune raison de le garder. Le supprimer ici le retire maintenant plutôt qu'à la date ci-dessus.</target>
+      </trans-unit>
+      <trans-unit id="archive.nothing_to_drop" resname="archive.nothing_to_drop">
+        <source>archive.nothing_to_drop</source>
+        <target>Il n'y avait aucun fichier à supprimer. Il est peut-être déjà parti.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

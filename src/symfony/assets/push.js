@@ -7,6 +7,12 @@
  * and submits it, so that the answer is a redirection the browser follows, as with every other form of
  * these pages.
  *
+ * Opening the page also says which row is this browser, when one of them is: the page carries the digest
+ * of the endpoint of every browser it lists, which is what this provider recognises one by, and the digest
+ * of what this browser holds is computed here. A browser that is already listed is not offered the button
+ * that associates it; one whose row is on another page of the list is, and pressing it writes the row it
+ * already has rather than a second one.
+ *
  * The worker is registered when the page opens and not only when somebody subscribes, because a
  * registration can go without the subscription going with it: a browser whose site data was cleared keeps
  * neither, but one where the worker alone was removed still holds its subscription, and its push service
@@ -31,7 +37,7 @@
         && typeof Notification === 'function';
 
     const unsupported = document.querySelector('[data-push-unsupported]');
-    const refused = form.querySelector('[data-push-error]');
+    const refused = form.querySelector('[data-push-error]') ?? document.querySelector('[data-push-error]');
 
     if (!supported || !form.dataset.applicationServerKey) {
         if (unsupported) {
@@ -90,6 +96,36 @@
 
     /* A failure here is said when somebody presses the button, which is the only moment it is theirs to act on. */
     worker().catch(() => {});
+
+    /* The hex SHA-256 of an endpoint, which is what a row of the page carries (PushSubscription::digestOf):
+       an endpoint is as long as its push service decided, and comparing a digest compares the whole of it. */
+    const digestOf = async (endpoint) => {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint));
+
+        return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    };
+
+    /* Which row is this browser, if this browser is one of them: what it holds is its own subscription,
+       which this provider may have been told of or not. A browser the user took out holds one that matches
+       no row, and is offered the button again. */
+    const recognise = async () => {
+        const subscription = await (await worker()).pushManager.getSubscription();
+        if (!subscription) {
+            return;
+        }
+        const row = document.querySelector(`tr[data-endpoint="${await digestOf(subscription.endpoint)}"]`);
+        if (!row) {
+            return;
+        }
+        const marker = row.querySelector('[data-subscription-current]');
+        if (marker) {
+            marker.hidden = false;
+        }
+        row.dataset.current = 'yes';
+        form.hidden = true;
+    };
+
+    recognise().catch(() => {});
 
     form.querySelector('[data-push-button]').addEventListener('click', async () => {
         if (refused) {

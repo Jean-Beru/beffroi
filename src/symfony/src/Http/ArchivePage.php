@@ -52,6 +52,12 @@ final readonly class ArchivePage
     public const string EXPIRED = 'expired';
 
     /**
+     * They asked for the file to be dropped and there was none to drop: it had expired, or the page they
+     * clicked on was a page a second click came from.
+     */
+    public const string NOTHING_TO_DROP = 'nothing_to_drop';
+
+    /**
      * What was typed was not a passphrase this provider wraps a file under (issue #483). Which rule it
      * missed is not said: the page asks for several words and says so before anything is typed.
      */

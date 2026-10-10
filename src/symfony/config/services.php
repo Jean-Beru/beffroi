@@ -43,6 +43,7 @@ use Beffroi\Bundle\Http\Account\ArchiveSection;
 use Beffroi\Bundle\Archive\ZipArchiveContainer;
 use Beffroi\Bundle\Http\ArchivePage;
 use Beffroi\Core\Application\Archive\ArchiveAssembly;
+use Beffroi\Core\Application\Archive\ArchiveDisposal;
 use Beffroi\Core\Application\Archive\ArchiveHandout;
 use Beffroi\Core\Port\ArchiveContainerInterface;
 use Beffroi\Core\Application\Archive\ArchiveRequest;
@@ -558,6 +559,7 @@ use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
 use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
 use Beffroi\Core\Bridge\JwtLibrary\JoseApplicationServerAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
+use Beffroi\Core\Application\Push\PushSubscriptionNaming;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
 use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
 use Beffroi\Bundle\Configuration\WebPushSection;
@@ -618,6 +620,7 @@ return static function (ContainerConfigurator $container): void {
     // The channel and the algorithm of the key are tagged by WebPushSection and only when a deployment
     // names a subject, a channel nobody wired being a channel nobody wanted.
     $services->set(PushSubscriptionEnrolment::class);
+    $services->set(PushSubscriptionNaming::class);
     $services->set(PushSubscriptionRevocation::class);
     $services->set(NotificationsPage::class);
     $services->set(WebPushSender::class)->args([
@@ -695,6 +698,7 @@ return static function (ContainerConfigurator $container): void {
         '$chapters' => tagged_iterator('beffroi.archive_chapter'),
     ]);
     $services->set(ArchiveRequest::class);
+    $services->set(ArchiveDisposal::class);
     $services->set(ArchiveHandout::class);
     $services->set(ArchiveRetention::class);
     // The container a ready file may leave in, under the passphrase of the person who asks (issue #483).

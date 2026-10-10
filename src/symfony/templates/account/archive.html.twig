@@ -1,7 +1,9 @@
 {# Everything this provider holds about the signed-in person, in one file they ask for (RGPD articles 15
    and 20, issue #453), in the language of the browser: what the file holds, where their last request has
    got to, and the button that asks for one. The four states are one page and never an empty one: a person
-   who clicked learns whether their file is being built, waiting for them, or gone.
+   who clicked learns whether their file is being built, waiting for them, or gone. A file that is ready
+   leaves in one of two forms and goes away on the word of the person it is of, before the date it would
+   have gone away on by itself.
    Overridable by an application under templates/bundles/BeffroiBundle/. #}
 {% extends '@Beffroi/layout.html.twig' %}
 {% trans_default_domain 'beffroi' %}
@@ -57,6 +59,15 @@
             <label for="archive-passphrase">{{ 'archive.passphrase'|trans }}</label>
             <input type="password" id="archive-passphrase" name="password" minlength="{{ passphrase_minimum }}" autocomplete="new-password" required>
             <button type="submit">{{ 'archive.download_wrapped'|trans }}</button>
+        </form>
+
+        {# The file they have is a file this provider stops holding when they say so (issue #453). A week
+           is how long it would stay by itself, and nobody has to wait it out: the row goes, and the page
+           says again what asking for one would give them. #}
+        <form method="post" action="{{ path('beffroi_interaction_account_archive_drop') }}" data-archive-drop>
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_archive_drop') }}">
+            <p>{{ 'archive.drop_explanation'|trans }}</p>
+            <button type="submit">{{ 'archive.drop'|trans }}</button>
         </form>
     {% endif %}
 {% endblock %}

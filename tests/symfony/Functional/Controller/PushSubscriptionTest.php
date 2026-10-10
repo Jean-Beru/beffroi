@@ -111,7 +111,11 @@ final class PushSubscriptionTest extends BrowserTestCase
 
         // Then
         static::assertCount(1, $crawler->filter('table[data-subscriptions="1"] tr[data-subscription]'));
-        static::assertStringContainsString('Alice at the counter', $crawler->filter('tbody')->text());
+        // the name is the field it is corrected in, so it is read there and not in the text of the row
+        static::assertSame(
+            ['Alice at the counter'],
+            $crawler->filter('tr[data-subscription] form[data-subscription="rename"] input[name="label"]')->extract(['value']),
+        );
     }
 
     /**
@@ -155,7 +159,7 @@ final class PushSubscriptionTest extends BrowserTestCase
         $this->subscribe();
         $subscription = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('Nothing was subscribed.');
         $this->browser->request('POST', '/account/notifications/' . $subscription->id->toRfc4122() . '/revoke', [
-            '_token' => $this->token('tr[data-subscription] form'),
+            '_token' => $this->token('form[data-subscription="revoke"]'),
         ]);
 
         // When
@@ -197,7 +201,7 @@ final class PushSubscriptionTest extends BrowserTestCase
 
         // When
         $this->browser->request('POST', '/account/notifications/' . $subscription->id->toRfc4122() . '/revoke', [
-            '_token' => $this->token('tr[data-subscription] form'),
+            '_token' => $this->token('form[data-subscription="revoke"]'),
         ]);
 
         // Then
@@ -231,6 +235,104 @@ final class PushSubscriptionTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertSame('text/javascript; charset=utf-8', $response->headers->get('Content-Type'));
+    }
+
+    /**
+     * Architecture §5.2: what tells one browser from another is a name its holder wrote, corrected in the
+     * line where it is read.
+     */
+    #[Test]
+    public function aBrowserIsNamedAgainFromTheLineItIsReadIn(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn($alice);
+        self::applicationServerKey();
+        $this->subscribe();
+        $subscription = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('Nothing was subscribed.');
+
+        // When
+        $this->rename($subscription->id->toRfc4122(), 'Alice at home');
+
+        // Then
+        static::assertSame('Alice at home', self::subscriptions()->find($subscription->id)?->label);
+    }
+
+    /**
+     * What a browser may be called is the rule of the row that holds it, read on the server, and the page
+     * says what was refused once (issue #481).
+     */
+    #[Test]
+    public function aNameABrowserDoesNotHoldIsRefusedAndSaidOnThePage(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn($alice);
+        self::applicationServerKey();
+        $this->subscribe();
+        $subscription = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('Nothing was subscribed.');
+
+        // When
+        $this->rename($subscription->id->toRfc4122(), '   ');
+
+        // Then
+        static::assertCount(1, $this->afterTheForm()->filter('p[data-error="invalid_label"]'));
+    }
+
+    /**
+     * Somebody else's browser is not found, as it is not taken out either.
+     */
+    #[Test]
+    public function theBrowserOfSomebodyElseIsNotNamed(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn($alice);
+        self::applicationServerKey();
+        $this->subscribe();
+        $subscription = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('Nothing was subscribed.');
+        $token = $this->token('form[data-subscription="rename"]');
+        $this->signIn(self::userWithPassword('grace', self::PASSWORD));
+
+        // When
+        $this->browser->request('POST', '/account/notifications/' . $subscription->id->toRfc4122() . '/name', [
+            '_token' => $token,
+            'label' => 'Grace at the counter',
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * Push API §4: the page carries the digest of the endpoint of every browser it lists, which is what
+     * the script of the bundle recognises the browser reading the page by. The endpoint itself is on no
+     * page: a digest is what this provider compares too (PushSubscription::digestOf).
+     */
+    #[Test]
+    public function eachRowCarriesTheDigestOfItsEndpointAndNotTheEndpoint(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn($alice);
+        self::applicationServerKey();
+        $this->subscribe();
+        $subscription = self::subscriptions()->findByEndpoint(self::reloaded($alice), self::ENDPOINT) ?? static::fail('Nothing was subscribed.');
+
+        // When
+        $crawler = $this->browser->request('GET', '/account/notifications');
+
+        // Then
+        static::assertSame([$subscription->endpointHash], $crawler->filter('tr[data-subscription]')->extract(['data-endpoint']));
+        static::assertStringNotContainsString(self::ENDPOINT, self::string($this->browser->getResponse()->getContent()));
+    }
+
+    private function rename(string $id, string $label): void
+    {
+        $this->browser->request('POST', '/account/notifications/' . $id . '/name', [
+            '_token' => $this->token('form[data-subscription="rename"]'),
+            'label' => $label,
+        ]);
     }
 
     private function subscribe(string $endpoint = self::ENDPOINT, string $label = 'Alice at the counter'): void

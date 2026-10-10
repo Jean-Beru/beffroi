@@ -8,6 +8,7 @@ use Beffroi\Bundle\Archive\ZipArchiveContainer;
 use Beffroi\Core\Domain\Archive\ArchivePassword;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
+use Beffroi\Core\Domain\Event\PersonDroppedTheirArchive;
 use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -479,6 +480,97 @@ final class AccountArchiveTest extends BrowserTestCase
     }
 
     /**
+     * Issue #453: the file they have is a file this provider stops holding when they say so, before the
+     * date it would have gone away on by itself.
+     */
+    #[Test]
+    public function theFileIsDroppedWhenThePersonAsksForIt(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $this->ask();
+
+        // When
+        $this->drop();
+
+        // Then
+        static::assertNull(self::archives()->latestOf(self::reread($alice)));
+    }
+
+    /**
+     * The row is gone, so the page says again what asking for a file would give them.
+     */
+    #[Test]
+    public function thePageOfAPersonWhoDroppedTheirFileSaysTheyHaveNone(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->ask();
+
+        // When
+        $page = $this->drop();
+
+        // Then
+        static::assertCount(1, $page->filter('p[data-archive="never"]'));
+    }
+
+    /**
+     * The identifier is all that is left of the archive once the row is gone, which is why the act is
+     * written where what became of the request is read.
+     */
+    #[Test]
+    public function droppingTheFileIsWrittenInTheJournal(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $this->ask();
+
+        // When
+        $this->drop();
+        self::reload();
+
+        // Then
+        $acts = self::service('test.beffroi.acts', ActsOfAPersonInterface::class)->lastOf(self::reread($alice), [PersonDroppedTheirArchive::NAME], 10);
+        static::assertCount(1, $acts);
+    }
+
+    /**
+     * A person whose file went away under them, or who clicked twice, is told there was none rather than
+     * shown a page that says nothing happened (issue #481).
+     */
+    #[Test]
+    public function aPersonWithNoFileToDropIsToldThereWasNone(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->ask();
+        $token = $this->dropToken();
+        $this->drop($token);
+
+        // When
+        $page = $this->drop($token);
+
+        // Then
+        static::assertCount(1, $page->filter('p[data-error="nothing_to_drop"]'));
+    }
+
+    #[Test]
+    public function droppingWithoutTheFormTokenIsRefused(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->ask();
+
+        // When
+        $this->browser->request('POST', '/account/archive/drop', []);
+
+        // Then
+        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
      * Asking answers with a redirection (issue #481), so what this reads is the page it comes back to.
      */
     private function ask(): Crawler
@@ -520,6 +612,25 @@ final class AccountArchiveTest extends BrowserTestCase
 
         /** @var list<array<string, mixed>> $chapter */
         return $chapter;
+    }
+
+    /**
+     * Dropping the file answers with a redirection too (issue #481), so what this reads is the page it
+     * comes back to. The token is the one the page renders, and a caller that already holds it says so:
+     * a page offering no file to drop renders no form to read one from.
+     */
+    private function drop(?string $token = null): Crawler
+    {
+        $this->browser->request('POST', '/account/archive/drop', [
+            '_token' => $token ?? $this->dropToken(),
+        ]);
+
+        return $this->afterTheForm();
+    }
+
+    private function dropToken(): string
+    {
+        return self::string($this->archivePage()->filter('form[data-archive-drop] input[name="_token"]')->attr('value'));
     }
 
     private function archivePage(): Crawler
