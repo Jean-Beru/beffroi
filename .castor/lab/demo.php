@@ -5,8 +5,8 @@ declare(strict_types=1);
 /*
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
  * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
- * --logout-others, --resource-server, --dpop, --ladder, --device, --service, --ciba, --assertion, --rar,
- * --native, --push). The last five need no oidc-demo: their clients are the CLIs of tests/demo/ and the walk
+ * --logout-others, --resource-server, --api, --dpop, --ladder, --device, --service, --ciba, --assertion,
+ * --rar, --native, --push). The last five need no oidc-demo: their clients are the CLIs of tests/demo/ and the walk
  * itself, because what they play has no browser of the demonstration in it, or asks for something oidc_login
  * does not send.
  */
@@ -77,7 +77,7 @@ const DEMO_LADDER_KEYS = [
 const DEMO_LADDER_DIRECTORY = 'var/demo';
 
 #[AsTask(
-    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --flows opens the pages where every flow this provider serves is drawn and plays two of them hop by hop; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
+    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --api plays the API Platform API of the demonstration, whose firewall asks the OP about the token at every request and keeps the answer a few seconds; --flows opens the pages where every flow this provider serves is drawn and plays two of them hop by hop; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
 )]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
@@ -104,6 +104,10 @@ function demo(
         description: 'The last acceptance step of issue #61 (issue #64): the demo as a resource server behind the introspection endpoint, with an opaque access token and with an "at+jwt", the introspection response read as JSON and required signed (RFC 9701), and what revoking the token does to each',
     )]
     bool $resourceServer = false,
+    #[AsOption(
+        description: 'Issue #556: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), one scope per operation, a write refused for the scope it was never granted, and the few seconds the answer of the OP is kept played on both sides',
+    )]
+    bool $api = false,
     #[AsOption(
         description: 'The two criteria of spike 5 judged at the client (issue #167): oidc-demo signs in as before on a provider serving PAR, request objects, JARM, DPoP and mTLS, then its resource server is handed a token bound by DPoP, on both shapes of access token, and refuses the same token to whoever holds it without the key',
     )]
@@ -247,6 +251,9 @@ function demo(
             $env['OIDC_DEMO_SECRET'],
             $ca,
         );
+    }
+    if ($api) {
+        demo_api_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $ca);
     }
     if ($dpop) {
         if (($env['OIDC_DEMO_OPAQUE_SECRET'] ?? '') === '') {
@@ -1673,6 +1680,219 @@ function demo_ladder_tokens(string $slug, array $tokens, string $page): string
     }
 
     return sprintf('an at+jwt with no cnf, scope "%s"', $claims['scope'] ?? '?');
+}
+
+/**
+ * The API of the demonstration (issue #556): API Platform serves it under /api/v1 of oidc-demo, behind a
+ * firewall of its own, and the access token the client holds for its user is described by the OP at every
+ * request (RFC 7662).
+ *
+ * The six routes of /api/ next to it answer who a token names and nothing else: what they demonstrate is
+ * how a token is checked. This is an API, so what is seen here is what a resource server does with the
+ * answer it got: one scope per operation, a refusal that names the scope that is missing, and the window
+ * during which the OP is not asked again.
+ *
+ * That window is the one thing a walk has to play on both sides, its whole subject being a few seconds of
+ * disagreement between the two: the token is read fresh, the session is ended, and the same token is
+ * accepted once more inside the window and refused once it has closed, the OP refusing it at UserInfo
+ * throughout. The figure is read from what the API says of itself, so this walk cannot assert a lifetime
+ * other than the one the firewall applies.
+ */
+const DEMO_API_BASE = DEMO_URL . '/api/v1';
+
+/**
+ * The invoice of the book of the API that "castor demo --rar" asks to pay, and what it is for: a scope
+ * says a kind of thing, "invoices.pay" meaning any invoice of whoever holds the token, and the detail of
+ * a rich authorization request names this one and the most that may be moved (RFC 9396 §2). The two
+ * readings meet on the same invoice on purpose, and this walk pays it to the figure that detail bounds.
+ */
+const DEMO_API_INVOICE_AMOUNT = '45.00';
+
+/**
+ * The invoice this walk tries to write, which it never gets to: the demonstration is not granted
+ * "invoices.write" (config/packages/security.yaml of oidc-demo).
+ */
+const DEMO_API_WRITTEN_INVOICE = ['reference' => 'INV-9000', 'label' => 'Written by the walk', 'amount' => '10.00', 'currency' => 'EUR'];
+
+function demo_api_check(string $dir, string $issuer, string $password, string $demoSecret, string $ca): void
+{
+    io()->section('An API behind the introspection endpoint');
+    $verified = [];
+
+    // The book of invoices and the answers the firewall kept both live in the cache pool of the
+    // demonstration, so the run starts from the book a deployment starts with: a payment is something that
+    // happened, and a walk asserting that it happens would pass once and conflict ever after. It is the
+    // fixture of this walk, cleared where every other walk writes the .env.local it needs.
+    run(['php', 'bin/console', 'cache:pool:clear', 'cache.app'], context: demo_context($dir)->withQuiet());
+
+    // RFC 7662 §2.1: where the API asks, and with the credentials of the client the token was issued to,
+    // because the OP describes a token to that client and to no other (§2.2)
+    $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
+    $introspection = (string) ($metadata['introspection_endpoint'] ?? '');
+    demo_expect($introspection !== '', 'the document names the introspection endpoint the API asks at');
+    demo_write_env_local($dir . '/.env.local', [
+        'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
+        'OIDC_CLIENT_SECRET' => $demoSecret,
+        DEMO_INTROSPECTION_ENV => $introspection,
+    ]);
+    $verified[] = ['Introspection endpoint', $introspection];
+
+    // RFC 6750 §3: a request carrying no token is not an authenticated one, and the challenge of the
+    // firewall is what says so, naming the realm and nothing of anybody's invoices
+    [$status, $body, $headers] = demo_api_request('GET', DEMO_API_BASE . '/invoices');
+    demo_expect($status === 401, sprintf('a request carrying no token is refused (got %d %s)', $status, json_encode($body)));
+    $challenge = (string) ($headers['www-authenticate'][0] ?? '');
+    demo_expect(str_starts_with($challenge, 'Bearer realm='), sprintf('with the challenge of RFC 6750 §3 (got "%s")', $challenge));
+    $verified[] = ['No token', sprintf('401, %s', $challenge)];
+
+    // what an API says of itself is public; what it holds is not
+    [$status] = demo_api_request('GET', DEMO_API_BASE . '/docs');
+    demo_expect($status === 200, sprintf('the documentation of the API is served without a token (got %d)', $status));
+    $verified[] = ['/api/v1/docs', '200 without a token: the shape of the API is public, the invoices are not'];
+
+    // the client signs its user in and holds an access token, which is the one it sends to the API; the
+    // token is read raw off the page, as the resource server walk reads it, because what travels to an API
+    // is the string and not what this file could make of it
+    $cookies = [];
+    $tokens = demo_resource_server_sign_in($cookies, $issuer, $password, $ca, DEMO_CLIENT_ID);
+    $accessToken = $tokens['access_token'];
+    $claims = demo_claims_of($accessToken);
+    $granted = explode(' ', (string) ($claims['scope'] ?? ''));
+    demo_expect(
+        in_array('invoices.read', $granted, true) && in_array('invoices.pay', $granted, true) && ! in_array('invoices.write', $granted, true),
+        sprintf(
+            'the token carries invoices.read and invoices.pay, and not invoices.write, which the client registered and never asks for (scope "%s")',
+            $claims['scope'] ?? '',
+        ),
+    );
+    $subject = (string) ($claims['sub'] ?? '?');
+    $verified[] = ['The access token', sprintf('scope "%s", sub %s', $claims['scope'] ?? '', $subject)];
+
+    // what the API knows of the request is what the OP answered about the token, and nothing else
+    [$status, $account] = demo_api_request('GET', DEMO_API_BASE . '/account', $accessToken);
+    demo_expect(
+        $status === 200 && ($account['sub'] ?? null) === $subject,
+        sprintf('/account answers the sub the OP named (got %d %s)', $status, json_encode($account)),
+    );
+    demo_expect(
+        ($account['clientId'] ?? null) === DEMO_CLIENT_ID,
+        sprintf('and the client the token was issued to, which the introspection response carries (got %s)', json_encode($account['clientId'] ?? null)),
+    );
+    demo_expect(
+        preg_match('/at most (\d+) seconds/', (string) ($account['checkedBy'] ?? ''), $window) === 1,
+        sprintf('and says how long it goes on believing that answer (got "%s")', $account['checkedBy'] ?? ''),
+    );
+    $ttl = (int) $window[1];
+    $verified[] = ['/api/v1/account', sprintf('200 on "profile", the answer of the OP kept at most %d seconds', $ttl)];
+
+    // one scope, one operation: the book of this subject
+    [$status, $collection] = demo_api_request('GET', DEMO_API_BASE . '/invoices', $accessToken);
+    $references = array_column($collection, 'reference');
+    demo_expect(
+        $status === 200 && in_array(DEMO_RAR_INVOICE, $references, true),
+        sprintf('the collection is served on "invoices.read", with %s in it (got %d %s)', DEMO_RAR_INVOICE, $status, json_encode($references)),
+    );
+    $verified[] = ['GET /api/v1/invoices', sprintf('200 on "invoices.read", %d invoices, %s among them', count($collection), DEMO_RAR_INVOICE)];
+
+    // the other scope, on the one operation that changes something
+    [$status, $payment] = demo_api_request(
+        'POST',
+        DEMO_API_BASE . '/invoices/' . DEMO_RAR_INVOICE . '/payments',
+        $accessToken,
+        ['amount' => DEMO_API_INVOICE_AMOUNT],
+    );
+    demo_expect(
+        $status === 201 && ($payment['paidAt'] ?? null) !== null,
+        sprintf('the invoice is paid on "invoices.pay", for the amount the detail of --rar bounds (got %d %s)', $status, json_encode($payment)),
+    );
+    [$status, $invoice] = demo_api_request('GET', DEMO_API_BASE . '/invoices/' . DEMO_RAR_INVOICE, $accessToken);
+    demo_expect(
+        $status === 200 && ($invoice['paidAt'] ?? null) === $payment['paidAt'],
+        sprintf('and it is paid from then on, for whoever reads it back (got %d %s)', $status, json_encode($invoice)),
+    );
+    $verified[] = ['POST .../payments', sprintf('201 on "invoices.pay", %s paid at %s', DEMO_RAR_INVOICE, $payment['paidAt'])];
+
+    // RFC 6750 §3.1: a scope the token was never granted is a 403 and not a 401, the token being a good
+    // one, and the challenge names what is missing rather than what was asked for
+    [$status, $refused, $headers] = demo_api_request('POST', DEMO_API_BASE . '/invoices', $accessToken, DEMO_API_WRITTEN_INVOICE);
+    demo_expect($status === 403, sprintf('a write is refused on that token (got %d %s)', $status, json_encode($refused)));
+    $challenge = (string) ($headers['www-authenticate'][0] ?? '');
+    demo_expect(
+        str_contains($challenge, 'error="insufficient_scope"') && str_contains($challenge, 'scope="invoices.write"'),
+        sprintf('with the challenge of RFC 6750 §3.1, naming the scope that is missing (got "%s")', $challenge),
+    );
+    [$status, $book] = demo_api_request('GET', DEMO_API_BASE . '/invoices', $accessToken);
+    demo_expect(
+        $status === 200 && ! in_array(DEMO_API_WRITTEN_INVOICE['reference'], array_column($book, 'reference'), true),
+        sprintf('and nothing was written (got %d %s)', $status, json_encode(array_column($book, 'reference'))),
+    );
+    $verified[] = ['POST /api/v1/invoices', sprintf('403, %s', $challenge)];
+
+    // the window, played on both sides. The answer of an active token is read fresh here, so that what
+    // follows is measured from a known moment rather than from whatever this walk asked a minute ago.
+    sleep($ttl + 1);
+    $readAt = microtime(true);
+    [$status] = demo_api_request('GET', DEMO_API_BASE . '/account', $accessToken);
+    demo_expect($status === 200, sprintf('the token is read again, the OP describing it as active (got %d)', $status));
+
+    demo_logout($cookies, $issuer, $ca);
+    demo_expect(demo_userinfo($issuer, $ca, $accessToken) === 401, 'the session ends, and the OP refuses that very token at UserInfo (issue #150)');
+    $elapsed = microtime(true) - $readAt;
+    demo_expect($elapsed < $ttl, sprintf('the window of %d seconds is still open, %.1f s after the answer was read', $ttl, $elapsed));
+    [$status] = demo_api_request('GET', DEMO_API_BASE . '/account', $accessToken);
+    demo_expect($status === 200, sprintf('and the API accepts the token once more, from the answer it kept (got %d)', $status));
+    $verified[] = ['Inside the window', sprintf('200 while the OP answers 401 at UserInfo, %.1f s after the answer was read', microtime(true) - $readAt)];
+
+    sleep(max(1, (int) ceil($ttl - (microtime(true) - $readAt)) + 1));
+    [$status, $body, $headers] = demo_api_request('GET', DEMO_API_BASE . '/account', $accessToken);
+    demo_expect($status === 401, sprintf('the window closes and the same token is refused (got %d %s)', $status, json_encode($body)));
+    $verified[] = ['Window closed', sprintf('401, %.0f s after the answer was read, nothing having been told to the API', microtime(true) - $readAt)];
+
+    io()->table(['Step', 'Verified'], $verified);
+    io()->success(sprintf(
+        'An API Platform API served the invoices of its user behind the introspection endpoint of the OP, one scope per operation, and forgot what it was told after %d seconds.',
+        $ttl,
+    ));
+    io()->note(sprintf(
+        'The %d seconds are the trade RFC 7662 §4 leaves to a resource server: a longer window spares the OP a round trip per request and carries a withdrawn token for longer, and the figure is one line of config/services.yaml of the demonstration. It is the other half of what --resource-server shows: an "at+jwt" verified offline is accepted until it expires, whatever the OP knows of it, where this API asks and so stops at the end of the window.',
+        $ttl,
+    ));
+}
+
+/**
+ * A request to the API of the demonstration: the method, the token if the walk is sending one, and the
+ * JSON of the body for an operation that takes one.
+ *
+ * The answer comes back with its headers, because what a refusal says is in one of them: the challenge of
+ * RFC 6750 names the realm, the error and, for a missing scope, the scope.
+ *
+ * @param array<string, mixed>|null $payload
+ * @return array{0: int, 1: array<mixed>, 2: array<string, list<string>>}
+ */
+function demo_api_request(string $method, string $url, ?string $accessToken = null, ?array $payload = null): array
+{
+    $options = [
+        'max_redirects' => 0,
+        'verify_peer' => false,
+        'verify_host' => false,
+        // the API serves JSON-LD and plain JSON, and a walk reading an object rather than a vocabulary
+        // asks for the second (config/packages/api_platform.yaml)
+        'headers' => ['Accept' => 'application/json'],
+    ];
+    if ($accessToken !== null) {
+        $options['auth_bearer'] = $accessToken;
+    }
+    if ($payload !== null) {
+        $options['headers']['Content-Type'] = 'application/json';
+        $options['body'] = json_encode($payload, \JSON_THROW_ON_ERROR);
+    }
+    $response = http_request($method, $url, $options);
+
+    return [
+        $response->getStatusCode(),
+        (array) json_decode($response->getContent(false), true),
+        $response->getHeaders(false),
+    ];
 }
 
 /**
