@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\Repository;
 
+use Beffroi\Core\Domain\Listing\Period;
+use Beffroi\Bundle\Doctrine\SelectionWithinAPeriod;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\PageOfRows;
 use Beffroi\Core\Domain\Identity\User;
@@ -97,21 +99,22 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
      *
      * @return Listing<JournalEntry>
      */
-    public function pageOfActs(User $user, array $acts, Pagination $pagination): Listing
+    public function pageOfActs(User $user, array $acts, Pagination $pagination, ?Period $period = null): Listing
     {
         if ($acts === []) {
             return Listing::of([], $pagination);
         }
+        $theirs = $this->queryBuilder('a')
+            ->where('a.tenant = :tenant')
+            ->andWhere('a.subject = :subject')
+            ->andWhere('a.act IN (:acts)')
+            ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
+            ->setParameter('subject', $user->subject->value)
+            ->setParameter('acts', $acts);
 
         return $this->rows->of(
             JournalEntry::class,
-            $this->queryBuilder('a')
-                ->where('a.tenant = :tenant')
-                ->andWhere('a.subject = :subject')
-                ->andWhere('a.act IN (:acts)')
-                ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
-                ->setParameter('subject', $user->subject->value)
-                ->setParameter('acts', $acts),
+            SelectionWithinAPeriod::narrow($theirs, 'a.occurredAt', $period),
             'a.id',
             $pagination,
         );

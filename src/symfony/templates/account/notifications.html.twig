@@ -40,6 +40,7 @@
     {% if error is not null %}
         <p data-error="{{ error }}">{{ ('notifications.error.' ~ error)|trans }}</p>
     {% endif %}
+    {{ include('@Beffroi/account/period.html.twig', {period: period}) }}
     <table data-subscriptions="{{ subscriptions|length }}">
         <thead>
             <tr>
@@ -76,7 +77,7 @@
             {% else %}
                 {# A table that holds nothing keeps its head and says so in one row of its own, which is
                    how every table of this plane says it. #}
-                <tr data-empty><td colspan="4">{{ 'notifications.none'|trans }}</td></tr>
+                <tr data-empty><td colspan="4">{{ (period is null ? 'notifications.none' : 'notifications.none_in_period')|trans }}</td></tr>
             {% endfor %}
         </tbody>
     </table>

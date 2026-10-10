@@ -26,15 +26,19 @@ final readonly class SignInsPage
     public function __construct(
         private CanPageActsOfAPersonInterface $acts,
         private AskedPage $asked,
+        private AskedPeriod $period,
         private InteractionPages $pages,
     ) {
     }
 
     public function render(User $user): Response
     {
+        $period = $this->period->asked($user);
+
         return $this->pages->render('account/sign_ins.html.twig', [
             'user' => $user,
-            'acts' => $this->acts->pageOfActs($user, [UserAuthenticated::NAME, AuthenticationFailed::NAME], $this->asked->asked()),
+            'acts' => $this->acts->pageOfActs($user, [UserAuthenticated::NAME, AuthenticationFailed::NAME], $this->asked->asked(), $period),
+            'period' => $period,
             'succeeded' => UserAuthenticated::NAME,
         ]);
     }

@@ -196,14 +196,31 @@ final class AccountSessionsTest extends BrowserTestCase
     }
 
     /**
+     * Architecture §5.2: every table of this plane is read over the stretch of time that was asked for,
+     * and a table that holds nothing of those days keeps its head and says so.
+     */
+    #[Test]
+    public function thePeriodNarrowsTheSessionsToTheDaysItNames(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $page = $this->browser->request('GET', '/account/sessions?to=' . self::currentSecond()->modify('-1 day')->format('Y-m-d'));
+
+        // Then
+        static::assertCount(0, $page->filter('tbody tr[data-session]'));
+        static::assertCount(1, $page->filter('tbody tr[data-empty]'));
+    }
+
+    /**
      * The act is offered at the head of the page, and what it posts is the token that page renders.
      */
     private function endEveryOther(): void
     {
         $token = self::string(
-            $this->sessionsPage()
-                ->filter('form[data-sessions="revoke-others"] input[name="_token"]')
-                ->attr('value'),
+            $this->sessionsPage()->filter('form[data-sessions="revoke-others"] input[name="_token"]')->attr('value'),
         );
         $this->browser->request('POST', '/account/sessions/revoke-others', [
             '_token' => $token,

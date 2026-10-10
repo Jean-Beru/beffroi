@@ -22,6 +22,7 @@
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p>{{ 'sessions.explanation'|trans }}</p>
+    {{ include('@Beffroi/account/period.html.twig', {period: period}) }}
     <table data-sessions="{{ sessions|length }}">
         <thead>
             <tr>
@@ -60,6 +61,11 @@
                         </form>
                     </td>
                 </tr>
+            {% else %}
+                {# A table that holds nothing keeps its head and says so in one row of its own, which is
+                   how every table of this plane says it. The page of somebody reading it holds their own
+                   session, so the row they see here is the one they asked for days that hold none. #}
+                <tr data-empty><td colspan="5">{{ (period is null ? 'sessions.none' : 'sessions.none_in_period')|trans }}</td></tr>
             {% endfor %}
         </tbody>
     </table>

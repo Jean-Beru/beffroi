@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\Repository;
 
+use Beffroi\Core\Domain\Listing\Period;
 use function array_filter;
 use function array_merge;
 use function array_values;
@@ -51,9 +52,15 @@ final class DoctrineCredentialRepository implements CanPageCredentialsInterface,
      *
      * @return Listing<Credential>
      */
-    public function pageOfCredentials(User $user, string $kind, Pagination $pagination): Listing
+    public function pageOfCredentials(User $user, string $kind, Pagination $pagination, ?Period $period = null): Listing
     {
-        return Listing::of($this->findByUser($user, $kind), $pagination);
+        return Listing::of(
+            array_values(array_filter(
+                $this->findByUser($user, $kind),
+                static fn (Credential $credential): bool => $period?->holds($credential->createdAt) !== false,
+            )),
+            $pagination,
+        );
     }
 
     /**

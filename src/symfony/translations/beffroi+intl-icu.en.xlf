@@ -1229,6 +1229,30 @@
         <source>sessions.end_others</source>
         <target>End every other session</target>
       </trans-unit>
+      <trans-unit id="sessions.none" resname="sessions.none">
+        <source>sessions.none</source>
+        <target>No session is open in your name.</target>
+      </trans-unit>
+      <trans-unit id="sessions.none_in_period" resname="sessions.none_in_period">
+        <source>sessions.none_in_period</source>
+        <target>No session of yours was opened over those days.</target>
+      </trans-unit>
+      <trans-unit id="consents.none_in_period" resname="consents.none_in_period">
+        <source>consents.none_in_period</source>
+        <target>You allowed no application over those days.</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.none_in_period" resname="sign_ins.none_in_period">
+        <source>sign_ins.none_in_period</source>
+        <target>Nothing was recorded over those days.</target>
+      </trans-unit>
+      <trans-unit id="notifications.none_in_period" resname="notifications.none_in_period">
+        <source>notifications.none_in_period</source>
+        <target>No browser of yours was added over those days.</target>
+      </trans-unit>
+      <trans-unit id="passkeys.none_in_period" resname="passkeys.none_in_period">
+        <source>passkeys.none_in_period</source>
+        <target>You enrolled no passkey over those days.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

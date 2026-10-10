@@ -1229,6 +1229,30 @@
         <source>sessions.end_others</source>
         <target>Fermer toutes les autres sessions</target>
       </trans-unit>
+      <trans-unit id="sessions.none" resname="sessions.none">
+        <source>sessions.none</source>
+        <target>Aucune session n'est ouverte en votre nom.</target>
+      </trans-unit>
+      <trans-unit id="sessions.none_in_period" resname="sessions.none_in_period">
+        <source>sessions.none_in_period</source>
+        <target>Aucune de vos sessions n'a été ouverte sur ces jours.</target>
+      </trans-unit>
+      <trans-unit id="consents.none_in_period" resname="consents.none_in_period">
+        <source>consents.none_in_period</source>
+        <target>Vous n'avez autorisé aucune application sur ces jours.</target>
+      </trans-unit>
+      <trans-unit id="sign_ins.none_in_period" resname="sign_ins.none_in_period">
+        <source>sign_ins.none_in_period</source>
+        <target>Rien n'a été enregistré sur ces jours.</target>
+      </trans-unit>
+      <trans-unit id="notifications.none_in_period" resname="notifications.none_in_period">
+        <source>notifications.none_in_period</source>
+        <target>Aucun de vos navigateurs n'a été associé sur ces jours.</target>
+      </trans-unit>
+      <trans-unit id="passkeys.none_in_period" resname="passkeys.none_in_period">
+        <source>passkeys.none_in_period</source>
+        <target>Vous n'avez enrôlé aucune clé d'accès sur ces jours.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

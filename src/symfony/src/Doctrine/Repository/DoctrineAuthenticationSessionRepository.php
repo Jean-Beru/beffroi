@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\Repository;
 
+use function array_values;
+use function array_filter;
+use Beffroi\Core\Domain\Listing\Period;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Beffroi\Bundle\Doctrine\EntityManagers;
@@ -90,9 +93,15 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
      *
      * @return Listing<AuthenticationSession>
      */
-    public function pageOfActiveSessions(User $user, DateTimeImmutable $now, Pagination $pagination): Listing
+    public function pageOfActiveSessions(User $user, DateTimeImmutable $now, Pagination $pagination, ?Period $period = null): Listing
     {
-        return Listing::of($this->findActiveByUser($user, $now), $pagination);
+        return Listing::of(
+            array_values(array_filter(
+                $this->findActiveByUser($user, $now),
+                static fn (AuthenticationSession $session): bool => $period?->holds($session->establishedAt) !== false,
+            )),
+            $pagination,
+        );
     }
 
     public function findActiveByUser(User $user, DateTimeImmutable $now): array
