@@ -235,6 +235,12 @@
         @apply alert alert-info alert-soft mt-4;
     }
 
+    /* The way out of a refusal (the error page of the bundle): the one thing there is to do on a page where
+       the request stopped, so it is read as the action it is and not as a line of small print under it. */
+    main a[data-sign-in] {
+        @apply btn btn-primary mt-6;
+    }
+
     /* A form the script of the bundle keeps hidden until it has a browser for it stays hidden. */
     main form:not([hidden]) {
         @apply mt-6 flex flex-col gap-4;
