@@ -9,6 +9,9 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\DeadRecordsInterface;
 use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
 use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
@@ -29,12 +32,43 @@ use function sprintf;
  */
 final readonly class DoctrineDeviceAuthorizationRecordRepository extends DoctrineRepository implements
     CanRevokeGrantsByConsentInterface,
+    DeadRecordsInterface,
     DeviceAuthorizationRecordRepositoryInterface,
     RecordedGrantsInterface
 {
-    public function __construct(EntityManagers $managers)
-    {
+    public function __construct(
+        EntityManagers $managers,
+        private BoundedDelete $sweep,
+        private WhatATokenStillNeeds $stillNeeded,
+    ) {
         parent::__construct($managers, DeviceAuthorizationRecord::class);
+    }
+
+    /**
+     * A record row outlives the ten minutes a user has to read a code off one screen and type it on
+     * another: this flow writes no authorization code, so the record is the grant its tokens descend from,
+     * and a resource server asks this row whether that grant still stands (architecture §4.6,
+     * AccessTokenInspector). It waits what a token still needs, exactly as a code does.
+     *
+     * Counted from the expiry, the column the mapping indexes.
+     */
+    public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
+    {
+        $expiry = $this->sweep->column(DeviceAuthorizationRecord::class, 'expiresAt');
+
+        return $this->sweep->from(
+            DeviceAuthorizationRecord::class,
+            $tenant,
+            sprintf('%s <= :dead', $expiry),
+            $expiry,
+            [
+                'dead' => $this->stillNeeded->deadBefore($now),
+            ],
+            [
+                'dead' => Types::DATETIME_IMMUTABLE,
+            ],
+            $limit,
+        );
     }
 
     public function findByDeviceCodeHash(string $deviceCodeHash): ?DeviceAuthorizationRecord

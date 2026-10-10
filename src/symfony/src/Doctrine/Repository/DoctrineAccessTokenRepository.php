@@ -7,9 +7,13 @@ namespace Beffroi\Bundle\Doctrine\Repository;
 use function array_filter;
 use function array_merge;
 use function array_values;
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping\ClassMetadata as OrmClassMetadata;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\DeadRecordsInterface;
 use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Domain\Token\StoredAccessToken;
@@ -21,6 +25,7 @@ use Beffroi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
 use Beffroi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use function is_subclass_of;
 use function sort;
+use function sprintf;
 use function usort;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -40,7 +45,8 @@ final class DoctrineAccessTokenRepository implements
     CanRevokeAccessTokenInterface,
     CanRevokeAccessTokensByConsentInterface,
     CanRevokeAccessTokensByGrantInterface,
-    CanRevokeAccessTokensBySessionInterface
+    CanRevokeAccessTokensBySessionInterface,
+    DeadRecordsInterface
 {
     /**
      * @var list<class-string<StoredAccessToken>>|null
@@ -49,7 +55,41 @@ final class DoctrineAccessTokenRepository implements
 
     public function __construct(
         private readonly EntityManagers $managers,
+        private readonly BoundedDelete $sweep,
     ) {
+    }
+
+    /**
+     * A revocation removes the row and an expiry does not, so this is what architecture §5.3 means by "une
+     * ligne expirée attend la purge". An expired opaque token is refused by its own date wherever it is
+     * presented, so the row answers nothing after it and is kept for nothing: no grant, no session and no
+     * introspection reads it, each of them being asked of the token's own columns before anything else.
+     *
+     * Every kind is swept, the kinds being read from the mapping as they are everywhere else here, and each
+     * one is a bounded statement of its own: a kind with a backlog is a table of its own, so it cannot keep
+     * the next kind from being swept, and what this run leaves the next one takes.
+     */
+    public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
+    {
+        $forgotten = 0;
+        foreach ($this->kinds() as $kind) {
+            $expiry = $this->sweep->column($kind, 'expiresAt');
+            $forgotten += $this->sweep->from(
+                $kind,
+                $tenant,
+                sprintf('%s <= :now', $expiry),
+                $expiry,
+                [
+                    'now' => $now,
+                ],
+                [
+                    'now' => Types::DATETIME_IMMUTABLE,
+                ],
+                $limit,
+            );
+        }
+
+        return $forgotten;
     }
 
     public function save(StoredAccessToken $token): void

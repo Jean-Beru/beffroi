@@ -9,10 +9,16 @@ use function array_values;
 use function is_array;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\DeadRecordsInterface;
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
 use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
 use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
+use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,11 +28,79 @@ use Symfony\Component\Uid\Uuid;
  *
  * @extends DoctrineRepository<RefreshToken>
  */
-final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository implements RefreshTokenRepositoryInterface, RefreshTokensOfAConsentInterface
+final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository implements
+    DeadRecordsInterface,
+    RefreshTokenRepositoryInterface,
+    RefreshTokensOfAConsentInterface
 {
-    public function __construct(EntityManagers $managers)
-    {
+    public function __construct(
+        EntityManagers $managers,
+        private BoundedDelete $sweep,
+    ) {
         parent::__construct($managers, RefreshToken::class);
+    }
+
+    /**
+     * A rotated or revoked token stays so that a reuse is told from a token nobody ever issued (RFC 9700
+     * §4.13.2), and what ends that is not its own sliding expiry but the absolute lifetime of its family,
+     * which no rotation extends (architecture §4.6): a reuse of the first token of a lineage matters for as
+     * long as the last one could be refreshed. So the lineage is read and never a duration, the date being
+     * a column of the family.
+     *
+     * **The two tables are one store and two bounded statements**, and what orders them is the NOT EXISTS
+     * and not the order they are made in: a family is a row every token of the lineage names, under a
+     * foreign key that cascades nothing, so a family dropped while one of its tokens is still there would
+     * be a statement that fails. A family whose tokens a bounded statement did not all reach is therefore
+     * left where it is, whatever that statement reached, and the next run takes it.
+     */
+    public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
+    {
+        $familyOfToken = $this->sweep->joinColumn(RefreshToken::class, 'family');
+        $familyKey = $this->sweep->column(RefreshTokenFamily::class, 'id');
+        $familyExpiry = $this->sweep->column(RefreshTokenFamily::class, 'expiresAt');
+        $families = $this->sweep->table(RefreshTokenFamily::class);
+
+        $forgotten = $this->sweep->from(
+            RefreshToken::class,
+            $tenant,
+            sprintf(
+                '%s IN (SELECT %s FROM %s WHERE %s <= :now)',
+                $familyOfToken,
+                $familyKey,
+                $families,
+                $familyExpiry,
+            ),
+            $this->sweep->column(RefreshToken::class, 'issuedAt'),
+            [
+                'now' => $now,
+            ],
+            [
+                'now' => Types::DATETIME_IMMUTABLE,
+            ],
+            $limit,
+        );
+
+        return $forgotten
+        + $this->sweep->from(
+            RefreshTokenFamily::class,
+            $tenant,
+            sprintf(
+                '%s <= :now AND NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s.%s)',
+                $familyExpiry,
+                $this->sweep->table(RefreshToken::class),
+                $familyOfToken,
+                $families,
+                $familyKey,
+            ),
+            $familyExpiry,
+            [
+                'now' => $now,
+            ],
+            [
+                'now' => Types::DATETIME_IMMUTABLE,
+            ],
+            $limit,
+        );
     }
 
     public function findByTokenHash(string $tokenHash): ?RefreshToken

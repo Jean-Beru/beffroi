@@ -8,8 +8,12 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\DeadRecordsInterface;
+use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
@@ -19,11 +23,54 @@ use Symfony\Component\Uid\Uuid;
  *
  * @extends DoctrineRepository<AuthenticationSession>
  */
-final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRepository implements AuthenticationSessionRepositoryInterface
+final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRepository implements
+    AuthenticationSessionRepositoryInterface,
+    DeadRecordsInterface
 {
-    public function __construct(EntityManagers $managers)
-    {
+    public function __construct(
+        EntityManagers $managers,
+        private BoundedDelete $sweep,
+        private WhatATokenStillNeeds $stillNeeded,
+    ) {
         parent::__construct($managers, AuthenticationSession::class);
+    }
+
+    /**
+     * A session outlives itself (issue #177). It is not kept because somebody may sign in on it again, a
+     * session that ended or expired being over for good, but because an access token somebody signed in for
+     * names it, and a resource server asks this row whether the session it descends from was ended
+     * (AccessTokenInspector): dropping it turns a token this provider would have answered for into a token
+     * it refuses. So it waits what a token still needs, counted from the instant it stopped being able to
+     * grant anything.
+     *
+     * **The expiry and not the end.** A session that was ended early stopped granting then, but its expiry
+     * is the later of the two and the only one an index reads, and nothing but a longer wait follows from
+     * taking it.
+     *
+     * **What cascades off it is worth nothing by then.** The authorization codes, the refresh tokens and the
+     * access tokens of a login name this row under a foreign key that cascades, so dropping it drops them.
+     * A code of the last minute of a session has its own instant up to a code lifetime after this one, and
+     * the cascade takes it that much early; by then the lineage it granted is over, its own absolute expiry
+     * being counted from an issuance inside the session, and no access token of its grant can be presented
+     * either. So the cascade only ever reaches rows nothing could have read again.
+     */
+    public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
+    {
+        $expiry = $this->sweep->column(AuthenticationSession::class, 'expiresAt');
+
+        return $this->sweep->from(
+            AuthenticationSession::class,
+            $tenant,
+            sprintf('%s <= :dead', $expiry),
+            $expiry,
+            [
+                'dead' => $this->stillNeeded->deadBefore($now),
+            ],
+            [
+                'dead' => Types::DATETIME_IMMUTABLE,
+            ],
+            $limit,
+        );
     }
 
     public function find(Uuid $id): ?AuthenticationSession

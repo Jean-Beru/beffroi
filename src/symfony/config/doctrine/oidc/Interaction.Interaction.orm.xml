@@ -5,6 +5,10 @@
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- An authorization request parked while the user logs in and consents (architecture §4.3). The client is a registration the module reads from its repository, not a row: the table keeps its identifier and ClientResolver puts the object back at load. -->
     <entity name="Beffroi\Oidc\Domain\Interaction\Interaction" table="beffroi_interaction">
+        <indexes>
+            <!-- What the sweep of the dead rows reads (issue #177): an interaction that can no longer be resumed is worth nothing, completed or abandoned. -->
+            <index name="beffroi_interaction_expiry" columns="expires_at"/>
+        </indexes>
         <id name="id" type="string" column="id" length="43">
             <options>
                 <option name="fixed">true</option>

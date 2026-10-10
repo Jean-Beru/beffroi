@@ -5,6 +5,10 @@
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- The lineage of refresh tokens descending from one record read once (architecture §4.6), a row of its own that every token of the lineage names. It is a table and not an embeddable because two of its fields are what the provider searches by, the family of a token and the record that granted it, and a search is what a column answers. The hash of that record is unique: a record read once grants one lineage, and a second row under it would be a code spent twice. -->
     <entity name="Beffroi\Oidc\Domain\Token\RefreshTokenFamily" table="beffroi_refresh_token_family">
+        <indexes>
+            <!-- What the sweep of the dead rows reads (issue #177): a lineage that cannot be refreshed again is what ends the retention of every token of it, so the date is asked of this table and never subtracted row by row. -->
+            <index name="beffroi_refresh_token_family_expiry" columns="expires_at"/>
+        </indexes>
         <unique-constraints>
             <unique-constraint name="beffroi_refresh_token_family_granting_record" columns="granting_record_hash"/>
         </unique-constraints>

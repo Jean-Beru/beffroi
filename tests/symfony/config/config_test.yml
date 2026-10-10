@@ -772,6 +772,12 @@ services:
     test.beffroi.refresh_tokens:
         alias: Beffroi\Oidc\Port\RefreshTokenRepositoryInterface
         public: true
+    # the store of the refresh tokens by its class and not by a port: eight stores answer what they may
+    # drop (issue #177), so DeadRecordsInterface is nobody's alias, and what a run with room for one row
+    # leaves is a property of this one
+    test.beffroi.dead_refresh_tokens:
+        alias: Beffroi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository
+        public: true
     test.beffroi.access_tokens_store:
         alias: Beffroi\Oidc\Port\AccessTokenRepositoryInterface
         public: true

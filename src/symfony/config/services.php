@@ -20,6 +20,7 @@ use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
+use Beffroi\Bundle\Doctrine\Repository\BoundedDelete;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAuthorizationCodeRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
@@ -176,6 +177,7 @@ use Beffroi\Core\Application\Journal\ActRecording;
 use Beffroi\Core\Application\Session\ProvenancePlace;
 use Beffroi\Core\Application\Session\SessionProvenanceEnrichment;
 use Beffroi\Core\Application\Journal\JournalRetention;
+use Beffroi\Core\Application\Record\DeadRecordRemoval;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineClaimHistory;
 use Beffroi\Core\Application\Archive\Chapter\ChangesChapter;
@@ -250,6 +252,7 @@ use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
 use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
+use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CodeAttemptLimiterInterface;
 use Beffroi\Core\Port\ContentEncryptionAlgorithmsInterface;
@@ -890,26 +893,41 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(PushSubscriptionRepositoryInterface::class, DoctrinePushSubscriptionRepository::class);
     $services->set(DoctrineCredentialRepository::class);
     $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
-    $services->set(DoctrineAuthenticationSessionRepository::class);
+    // the bounded delete the stores of a dead row make (issue #177), and what the two rows a token still
+    // needs are kept for, both numbers handed over by TokensSection from the nodes the issuers read
+    $services->set(BoundedDelete::class);
+    $services->set(WhatATokenStillNeeds::class);
+    // and the step itself, which asks each tagged store what it may drop and knows no table: a kind of row
+    // the provider starts keeping is a store tagged above and nothing edited here
+    $services->set(DeadRecordRemoval::class)->args([tagged_iterator('beffroi.dead_records')]);
+
+    // and the stores it asks: the ones that hold a row the provider keeps past the moment it stops working,
+    // each answering for its own rows and for nobody else's (issue #177). The session is asked last, and
+    // nothing of the result follows from that order: the rows of a login name it under a foreign key that
+    // cascades, and its own instant is reached after theirs, so they are gone before it either way. Asked
+    // last, they are gone because the store that holds them said so, and counted where they were dropped.
+    $services->set(DoctrineAuthenticationSessionRepository::class)->tag('beffroi.dead_records', [
+        'priority' => -100,
+    ]);
     $services->alias(AuthenticationSessionRepositoryInterface::class, DoctrineAuthenticationSessionRepository::class);
-    $services->set(DoctrineInteractionRepository::class);
+    $services->set(DoctrineInteractionRepository::class)->tag('beffroi.dead_records');
     $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
     // the three stores that carry a grant, each one tagged so that the reader of what a token descends
     // from asks them all and knows no flow by name (architecture §4.6)
-    $services->set(DoctrineAuthorizationCodeRepository::class)->tag('beffroi.oidc.grant_record');
+    $services->set(DoctrineAuthorizationCodeRepository::class)->tag('beffroi.oidc.grant_record')->tag('beffroi.dead_records');
     $services->alias(AuthorizationCodeRepositoryInterface::class, DoctrineAuthorizationCodeRepository::class);
     // the grants of a session name the clients to tell it ended (Back-Channel Logout 1.0 §2.6)
     $services->alias(LoggedInClientsInterface::class, DoctrineAuthorizationCodeRepository::class);
-    $services->set(DoctrinePushedAuthorizationRecordRepository::class);
+    $services->set(DoctrinePushedAuthorizationRecordRepository::class)->tag('beffroi.dead_records');
     $services->alias(PushedAuthorizationRecordRepositoryInterface::class, DoctrinePushedAuthorizationRecordRepository::class);
-    $services->set(DoctrineDeviceAuthorizationRecordRepository::class)->tag('beffroi.oidc.grant_record');
+    $services->set(DoctrineDeviceAuthorizationRecordRepository::class)->tag('beffroi.oidc.grant_record')->tag('beffroi.dead_records');
     $services->alias(DeviceAuthorizationRecordRepositoryInterface::class, DoctrineDeviceAuthorizationRecordRepository::class);
-    $services->set(DoctrineBackchannelAuthenticationRecordRepository::class)->tag('beffroi.oidc.grant_record');
+    $services->set(DoctrineBackchannelAuthenticationRecordRepository::class)->tag('beffroi.oidc.grant_record')->tag('beffroi.dead_records');
     $services->alias(BackchannelAuthenticationRecordRepositoryInterface::class, DoctrineBackchannelAuthenticationRecordRepository::class);
-    $services->set(DoctrineRefreshTokenRepository::class);
+    $services->set(DoctrineRefreshTokenRepository::class)->tag('beffroi.dead_records');
     $services->alias(RefreshTokenRepositoryInterface::class, DoctrineRefreshTokenRepository::class);
     $services->alias(RefreshTokensOfAConsentInterface::class, DoctrineRefreshTokenRepository::class);
-    $services->set(DoctrineAccessTokenRepository::class);
+    $services->set(DoctrineAccessTokenRepository::class)->tag('beffroi.dead_records');
     $services->alias(AccessTokenRepositoryInterface::class, DoctrineAccessTokenRepository::class);
     $services->alias(CanRevokeAccessTokensByConsentInterface::class, DoctrineAccessTokenRepository::class);
     $services->set(DoctrineConsentRepository::class);
