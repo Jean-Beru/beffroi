@@ -428,24 +428,97 @@
     }
 
     /*
-     * The control under a table that is read in pages: which rows of the whole list are shown, and the way
-     * to the page before and after. It belongs to the table above it, so it is read against it and not a
-     * panel of its own; a page a reader cannot go to is the same words without the shape of a button.
+     * The control under a table that is read in pages belongs to that table: it is the foot of its card,
+     * which is why the table above it loses its bottom corners and its bottom border and the control
+     * closes the box. Which rows of the whole list are shown on the left, the pages on the right.
      */
+    main[data-page="account"] table:has(+ nav[data-pager]) {
+        @apply rounded-b-none border-b-0;
+    }
+
     main[data-page="account"] nav[data-pager] {
-        @apply -mt-3 flex flex-wrap items-center justify-between gap-3;
+        @apply -mt-6 flex flex-wrap items-center justify-between gap-3 rounded-b-box border border-t-0 border-base-300 bg-base-100 px-4 py-3;
     }
 
     main[data-page="account"] nav[data-pager] p[data-pager-rows] {
         @apply text-sm text-base-content/60;
     }
 
-    main[data-page="account"] nav[data-pager] a[data-pager] {
-        @apply btn btn-sm;
+    main[data-page="account"] nav[data-pager] ul[data-pager-pages] {
+        @apply mt-0 flex-nowrap items-center gap-1;
     }
 
-    main[data-page="account"] nav[data-pager] span[data-pager] {
-        @apply text-sm text-base-content/30;
+    /* Every way through the pages is a button of the same size; the page being read is the pressed one,
+       and a page there is nowhere to go to is the same button spent. */
+    main[data-page="account"] nav[data-pager] :is(a, span)[data-pager] {
+        @apply btn btn-ghost btn-sm font-normal;
+    }
+
+    main[data-page="account"] nav[data-pager] span[data-pager="current"] {
+        @apply btn-active font-medium;
+    }
+
+    main[data-page="account"] nav[data-pager] span[data-pager]:not([data-pager="current"]) {
+        @apply btn-disabled;
+    }
+
+    /*
+     * The four ways to an end of the table are a chevron, and they keep their words for whoever does not
+     * see one: the word is in the document and the shape is drawn here, from a path and not from an icon
+     * font, these pages loading none.
+     */
+    main[data-page="account"] nav[data-pager] :is(a, span):is([data-pager="first"], [data-pager="previous"], [data-pager="next"], [data-pager="last"]) {
+        @apply btn-square;
+    }
+
+    main[data-page="account"] nav[data-pager] span[data-pager-label] {
+        @apply sr-only;
+    }
+
+    main[data-page="account"] nav[data-pager] [data-pager="first"]::before,
+    main[data-page="account"] nav[data-pager] [data-pager="previous"]::before,
+    main[data-page="account"] nav[data-pager] [data-pager="next"]::before,
+    main[data-page="account"] nav[data-pager] [data-pager="last"]::before {
+        @apply size-4 bg-current;
+
+        content: "";
+        mask-position: center;
+        mask-repeat: no-repeat;
+        mask-size: contain;
+    }
+
+    main[data-page="account"] nav[data-pager] [data-pager="first"]::before {
+        mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>');
+    }
+
+    main[data-page="account"] nav[data-pager] [data-pager="previous"]::before {
+        mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>');
+    }
+
+    main[data-page="account"] nav[data-pager] [data-pager="next"]::before {
+        mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>');
+    }
+
+    main[data-page="account"] nav[data-pager] [data-pager="last"]::before {
+        mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/></svg>');
+    }
+
+    /* The page somebody types: one field, no button, and the browser sends it. */
+    main[data-page="account"] nav[data-pager] form[data-pager="go-to"] {
+        @apply m-0 mt-0 flex flex-row items-center gap-2;
+    }
+
+    main[data-page="account"] nav[data-pager] form[data-pager="go-to"] label {
+        @apply p-0 text-xs text-base-content/60;
+    }
+
+    main[data-page="account"] nav[data-pager] form[data-pager="go-to"] input {
+        @apply input input-xs w-20 text-center;
+    }
+
+    /* Inside a panel the table draws no border of its own, so the control under it closes nothing. */
+    main[data-page="account"] section[data-panel] nav[data-pager] {
+        @apply mt-0 border-0 bg-transparent px-0 py-0;
     }
 
     /* A scope is the width of a column of its own here, not the sentence the consent page opens with. */

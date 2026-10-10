@@ -1179,15 +1179,27 @@
       </trans-unit>
       <trans-unit id="pager.rows" resname="pager.rows">
         <source>pager.rows</source>
-        <target>{first}-{last} sur {total}</target>
+        <target>De {first} à {last} sur {total}</target>
       </trans-unit>
       <trans-unit id="pager.previous" resname="pager.previous">
         <source>pager.previous</source>
-        <target>Précédent</target>
+        <target>Page précédente</target>
       </trans-unit>
       <trans-unit id="pager.next" resname="pager.next">
         <source>pager.next</source>
-        <target>Suivant</target>
+        <target>Page suivante</target>
+      </trans-unit>
+      <trans-unit id="pager.first" resname="pager.first">
+        <source>pager.first</source>
+        <target>Première page</target>
+      </trans-unit>
+      <trans-unit id="pager.last" resname="pager.last">
+        <source>pager.last</source>
+        <target>Dernière page</target>
+      </trans-unit>
+      <trans-unit id="pager.go_to" resname="pager.go_to">
+        <source>pager.go_to</source>
+        <target>Aller à</target>
       </trans-unit>
     </body>
   </file>

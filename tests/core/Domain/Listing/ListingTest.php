@@ -8,6 +8,7 @@ use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
 use InvalidArgumentException;
 use function iterator_to_array;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -101,6 +102,37 @@ final class ListingTest extends TestCase
         // Then
         static::assertSame(0, $listing->firstRow());
         static::assertSame(0, $listing->lastRow());
+    }
+
+    /**
+     * What the control under a table offers: the first two pages, the one being read with its neighbours,
+     * the last two, and null where it skips some.
+     *
+     * @param list<int|null> $offered
+     */
+    #[Test]
+    #[DataProvider('providePagesOffered')]
+    public function theControlOffersTheEndsOfTheListAndWhereTheReaderIs(int $number, int $total, array $offered): void
+    {
+        // Given
+        $listing = new Listing(['a'], new Pagination($number, 10), $total);
+
+        // When / Then
+        static::assertSame($offered, $listing->numbers());
+    }
+
+    /**
+     * @return iterable<string, array{int, int, list<int|null>}>
+     */
+    public static function providePagesOffered(): iterable
+    {
+        yield 'one page' => [1, 4, [1]];
+        yield 'six pages, all of them' => [1, 60, [1, 2, 3, 4, 5, 6]];
+        yield 'seven pages, read at the first' => [1, 70, [1, 2, null, 6, 7]];
+        yield 'seven pages, read at the fourth' => [4, 70, [1, 2, 3, 4, 5, 6, 7]];
+        yield 'twelve pages, read at the first' => [1, 120, [1, 2, null, 11, 12]];
+        yield 'twelve pages, read at the sixth' => [6, 120, [1, 2, null, 5, 6, 7, null, 11, 12]];
+        yield 'twelve pages, read at the last' => [12, 120, [1, 2, null, 11, 12]];
     }
 
     #[Test]
