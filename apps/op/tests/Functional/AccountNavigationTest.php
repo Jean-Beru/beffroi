@@ -39,6 +39,7 @@ final class AccountNavigationTest extends BrowserTestCase
             '/account/approvals',
             '/account/profile',
             '/account/archive',
+            '/account/password',
             '/account/passkeys',
             '/account/two-factor',
             '/account/notifications',
