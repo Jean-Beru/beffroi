@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
@@ -20,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
  * §5.2): it is reached by nobody again and its row stays. Somebody else's browser is not found.
  */
 #[AsController]
-final readonly class PushSubscriptionRevocationController
+final readonly class PushSubscriptionRevocationController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_notifications_revoke';
 

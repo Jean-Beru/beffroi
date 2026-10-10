@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -21,9 +22,12 @@ use Symfony\Component\Uid\Uuid;
  * A passkey of the signed-in user revoked from the page of the account (architecture §5.2): it never
  * authenticates again and stays listed with its date. Someone else's passkey is not found. What becomes
  * of the sessions it opened is the caller's policy (§3.4): this one leaves them.
+ *
+ * **A session alone does not post it** (AsksForARecentProofInterface): of the pages of the account this
+ * is the one that can leave somebody with no way in at all, so the proof is asked again before it.
  */
 #[AsController]
-final readonly class PasskeyRevocationController
+final readonly class PasskeyRevocationController implements AsksForARecentProofInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_passkeys_revoke';
 
@@ -36,6 +40,14 @@ final readonly class PasskeyRevocationController
         private CredentialRevocation $revocation,
         private InteractionPages $pages,
     ) {
+    }
+
+    /**
+     * The page of the passkeys, which holds the button this answers.
+     */
+    public function comesBackTo(): string
+    {
+        return AccountPasskeysController::ROUTE;
     }
 
     #[Route(

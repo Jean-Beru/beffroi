@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -26,9 +27,12 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * A browser with nothing drawn is sent back to the page of the second factor saying so, which is what a
  * person reloading this page past the ten minutes of a provisioning gets.
+ *
+ * **A session alone does not open it** (AsksForARecentProofInterface): what this page draws becomes a way
+ * in the moment the first code holds.
  */
 #[AsController]
-final readonly class AccountTwoFactorEnrolmentController
+final readonly class AccountTwoFactorEnrolmentController implements AsksForARecentProofInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_two_factor_enrolment';
 
@@ -40,6 +44,11 @@ final readonly class AccountTwoFactorEnrolmentController
         private TwoFactorPage $page,
         private InteractionPages $pages,
     ) {
+    }
+
+    public function comesBackTo(): string
+    {
+        return self::ROUTE;
     }
 
     #[Route('/account/two-factor/enrol', name: self::ROUTE, methods: ['GET'])]

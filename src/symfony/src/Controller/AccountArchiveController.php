@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\ArchivePage;
 use Beffroi\Bundle\Http\WhatWasRefused;
@@ -20,7 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * crossed (issues #481 and #483).
  */
 #[AsController]
-final readonly class AccountArchiveController
+final readonly class AccountArchiveController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_archive';
 

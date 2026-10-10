@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -27,9 +28,12 @@ use Symfony\Component\Uid\Uuid;
  * It answers with a redirection whether the name was written or refused (issue #481): a browser reloading
  * the page it comes back to does not say the same thing again, and what was refused crosses the
  * redirection in the session (WhatWasRefused).
+ *
+ * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): a name is read by the person and by
+ * nothing that signs anybody in, so renaming a passkey neither adds a way in nor takes one away.
  */
 #[AsController]
-final readonly class PasskeyRenameController
+final readonly class PasskeyRenameController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_passkeys_rename';
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\TotpProvisioningStore;
@@ -25,9 +26,12 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * It answers with a redirection whether the step went through or was refused (issue #481), so that a
  * browser reloading does not post it again; what was refused crosses it in the session (WhatWasRefused).
+ *
+ * **A session alone does not post it** (AsksForARecentProofInterface): the credential exists from here,
+ * and adding one is adding a way in.
  */
 #[AsController]
-final readonly class TotpEnrolmentController
+final readonly class TotpEnrolmentController implements AsksForARecentProofInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_two_factor_enrol';
 
@@ -48,6 +52,14 @@ final readonly class TotpEnrolmentController
         private TwoFactorPage $page,
         private InteractionPages $pages,
     ) {
+    }
+
+    /**
+     * The page of the enrolment, which holds the field the code is typed into.
+     */
+    public function comesBackTo(): string
+    {
+        return AccountTwoFactorEnrolmentController::ROUTE;
     }
 
     #[Route('/account/two-factor', name: self::ROUTE, methods: ['POST'])]

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\ArchivePage;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -41,7 +42,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * being built and one whose file has expired all get a 404 and read which of the three it is on the page.
  */
 #[AsController]
-final readonly class AccountArchiveWrappedFileController
+final readonly class AccountArchiveWrappedFileController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_archive_wrapped_file';
 

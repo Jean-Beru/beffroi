@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\WhatWasRefused;
@@ -27,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * redirection in the session (WhatWasRefused).
  */
 #[AsController]
-final readonly class PushSubscriptionNameController
+final readonly class PushSubscriptionNameController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_notifications_name';
 

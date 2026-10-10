@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\LoginTarget;
@@ -41,7 +42,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * request and not a condition (OIDC Core §5.5.1.1) and the "acr" of the tokens saying what was proven.
  */
 #[AsController]
-final readonly class PendingApprovalsController
+final readonly class PendingApprovalsController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_approvals';
 

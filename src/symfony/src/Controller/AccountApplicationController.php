@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use function array_find;
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Oidc\Domain\Consent\Consent;
@@ -24,7 +25,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * somebody else's.
  */
 #[AsController]
-final readonly class AccountApplicationController
+final readonly class AccountApplicationController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_application';
 

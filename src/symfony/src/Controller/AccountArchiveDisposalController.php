@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\ArchivePage;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -26,7 +27,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * away under them reads why on the page they come back to.
  */
 #[AsController]
-final readonly class AccountArchiveDisposalController
+final readonly class AccountArchiveDisposalController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_archive_drop';
 
