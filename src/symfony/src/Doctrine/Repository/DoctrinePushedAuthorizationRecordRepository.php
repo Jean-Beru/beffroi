@@ -9,6 +9,8 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\DeadRecordsInterface;
 use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Beffroi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface;
 use function is_string;
@@ -20,11 +22,44 @@ use function sprintf;
  *
  * @extends DoctrineRepository<PushedAuthorizationRecord>
  */
-final readonly class DoctrinePushedAuthorizationRecordRepository extends DoctrineRepository implements PushedAuthorizationRecordRepositoryInterface
+final readonly class DoctrinePushedAuthorizationRecordRepository extends DoctrineRepository implements
+    DeadRecordsInterface,
+    PushedAuthorizationRecordRepositoryInterface
 {
-    public function __construct(EntityManagers $managers)
-    {
+    public function __construct(
+        EntityManagers $managers,
+        private BoundedDelete $sweep,
+    ) {
         parent::__construct($managers, PushedAuthorizationRecord::class);
+    }
+
+    /**
+     * A record stays until it expires, so that a second presentation of the reference is told from one
+     * nobody ever issued (RFC 9126 §4); past that it grants nothing whether the store holds it or not, and
+     * nothing else ever reads it. The interaction a push started names it by its hash and not by a key, so
+     * no row waits on this one.
+     *
+     * This is the table the question was asked of (issue #177): it is the first the provider writes to with
+     * no user involved at all, a client authenticating, posting, and leaving behind a row that is worth
+     * nothing sixty seconds later.
+     */
+    public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
+    {
+        $expiry = $this->sweep->column(PushedAuthorizationRecord::class, 'expiresAt');
+
+        return $this->sweep->from(
+            PushedAuthorizationRecord::class,
+            $tenant,
+            sprintf('%s <= :now', $expiry),
+            $expiry,
+            [
+                'now' => $now,
+            ],
+            [
+                'now' => Types::DATETIME_IMMUTABLE,
+            ],
+            $limit,
+        );
     }
 
     public function findByRequestUriHash(string $requestUriHash): ?PushedAuthorizationRecord

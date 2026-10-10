@@ -5,6 +5,10 @@
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!-- Who is authenticated, since when, how and from where (architecture §3.2, §3.5): the proofs as one document, the provenance of the first and of the last request as one sealed column each. -->
     <entity name="Beffroi\Core\Domain\Session\AuthenticationSession" table="beffroi_authentication_session">
+        <indexes>
+            <!-- What the sweep of the dead rows reads (issue #177): a session waits what a token still needs past the instant it stopped granting, which is its expiry whether it was ended before it or not. -->
+            <index name="beffroi_authentication_session_expiry" columns="expires_at"/>
+        </indexes>
         <id name="id" type="uuid" column="id"/>
         <many-to-one field="tenant" target-entity="Beffroi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>

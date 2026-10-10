@@ -11,6 +11,9 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\DeadRecordsInterface;
 use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Consent\Consent;
@@ -32,12 +35,44 @@ use Symfony\Component\Uid\Uuid;
 final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements
     AuthorizationCodeRepositoryInterface,
     CanRevokeGrantsByConsentInterface,
+    DeadRecordsInterface,
     LoggedInClientsInterface,
     RecordedGrantsInterface
 {
-    public function __construct(EntityManagers $managers)
-    {
+    public function __construct(
+        EntityManagers $managers,
+        private BoundedDelete $sweep,
+        private WhatATokenStillNeeds $stillNeeded,
+    ) {
         parent::__construct($managers, AuthorizationCode::class);
+    }
+
+    /**
+     * A code row outlives the sixty seconds of the value it was drawn for, and by a long way: the record is
+     * the grant, so a resource server that the token told nothing asks this row whether that grant still
+     * stands (architecture §4.4, AccessTokenInspector). It therefore waits what a token still needs, and
+     * dropping it earlier would turn a token this provider would have answered for into a token it refuses.
+     *
+     * Counted from the expiry and not from the issuance, the expiry being the column the mapping indexes
+     * and the two differing by the sixty seconds the row is not kept for.
+     */
+    public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
+    {
+        $expiry = $this->sweep->column(AuthorizationCode::class, 'expiresAt');
+
+        return $this->sweep->from(
+            AuthorizationCode::class,
+            $tenant,
+            sprintf('%s <= :dead', $expiry),
+            $expiry,
+            [
+                'dead' => $this->stillNeeded->deadBefore($now),
+            ],
+            [
+                'dead' => Types::DATETIME_IMMUTABLE,
+            ],
+            $limit,
+        );
     }
 
     public function findByCodeHash(string $codeHash): ?AuthorizationCode

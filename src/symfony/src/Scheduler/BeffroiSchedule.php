@@ -8,6 +8,7 @@ use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
 use Beffroi\Bundle\Message\ForgetTheActsPastTheirRetention;
 use Beffroi\Bundle\Message\ForgetTheChangesPastTheirRetention;
 use Beffroi\Bundle\Message\ForgetTheExpiredArchives;
+use Beffroi\Bundle\Message\ForgetTheRecordsThatAreDead;
 use Beffroi\Bundle\Message\RefreshTheAddressDatabases;
 use Beffroi\Bundle\Message\RemoveUnusedClients;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
@@ -69,6 +70,16 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
      */
     public const string ADDRESS_DATABASES_EVERY = '1 week';
 
+    /**
+     * What dropping the rows that can no longer do anything is worth waiting for (issue #177). An hour and
+     * not a minute, although the shortest-lived of them is worth nothing sixty seconds after it was
+     * written: none of it is readable where it sits, every column of a person in these tables being sealed
+     * (decision 0011), so what the wait costs is rows and not exposure, and the rows are small. Every
+     * statement it makes is bounded and the next run takes what it left, so an hour is short enough that a
+     * backlog is worked through at the rate a client can post.
+     */
+    public const string DEAD_RECORDS_EVERY = '1 hour';
+
     public function getSchedule(): Schedule
     {
         return new Schedule()
@@ -89,6 +100,10 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
             ->add(RecurringMessage::every(
                 self::ADDRESS_DATABASES_EVERY,
                 new RefreshTheAddressDatabases(),
+            ))
+            ->add(RecurringMessage::every(
+                self::DEAD_RECORDS_EVERY,
+                new ForgetTheRecordsThatAreDead(),
             ));
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Beffroi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler;
@@ -165,5 +166,15 @@ final readonly class TokensSection extends ConfigurationSection
             self::seconds($tokens, 'backchannel_authentication_max_requested_expiry'),
         );
         $services->get(BackchannelAuthenticationHandler::class)->arg('$interval', self::integer($tokens, 'backchannel_authentication_interval'));
+        // What a row an access token still needs is kept for (issue #177) is read from these same two
+        // nodes and from nowhere else: the grant a token descends from and the login that grant was given
+        // on are dropped once no access token of that grant can be presented, which is the absolute
+        // lifetime of a family plus the lifetime of the last token it can mint. Two places that must
+        // agree are one place, so the retention is not a node of its own that a deployment could set
+        // shorter than the tokens it issues.
+        $services->get(WhatATokenStillNeeds::class)->arg('$refreshTokenFamilyLifetime', self::seconds(
+            $tokens,
+            'refresh_token_absolute_ttl',
+        ))->arg('$accessTokenLifetime', self::seconds($tokens, 'access_token_ttl'));
     }
 }
