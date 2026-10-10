@@ -17,7 +17,12 @@ use function time;
  */
 final readonly class ChosenTheme
 {
-    public const string COOKIE = 'beffroi_theme';
+    /**
+     * The "__Host-" prefix of the name reverses who checks the three attributes the cookie below sets: a
+     * browser refuses it outright unless it is Secure, unless its path is "/" and unless it names no
+     * Domain, so a subdomain of the issuer cannot set a choice in its place either.
+     */
+    public const string COOKIE = '__Host-beffroi_theme';
 
     /**
      * A year: a visitor who said once is not asked again, and a browser that never comes back drops it.
@@ -36,7 +41,8 @@ final readonly class ChosenTheme
 
     /**
      * No script reads it (HttpOnly), it does not leave the requests of this browser (SameSite=Lax), and
-     * the issuer is served over TLS, so it is never sent in clear (Secure).
+     * the issuer is served over TLS, so it is never sent in clear (Secure). Those three, the path and the
+     * absence of a Domain are what the name requires of it.
      */
     public function cookie(Theme $theme): Cookie
     {

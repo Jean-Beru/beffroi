@@ -5628,6 +5628,1231 @@
                 },
                 "additionalProperties": false
             },
+            "nelmio_cors": {
+                "$ref": "#/$defs/types/object_null",
+                "properties": {
+                    "defaults": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "allow_credentials": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            },
+                            "allow_origin": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            },
+                            "allow_headers": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            },
+                            "allow_methods": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            },
+                            "allow_private_network": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            },
+                            "expose_headers": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            },
+                            "max_age": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": 0
+                            },
+                            "hosts": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            },
+                            "origin_regex": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            },
+                            "forced_allow_origin_value": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": null
+                            },
+                            "skip_same_as_origin": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": true
+                            }
+                        },
+                        "additionalProperties": false,
+                        "default": {
+                            "allow_credentials": false,
+                            "allow_origin": [],
+                            "allow_headers": [],
+                            "allow_methods": [],
+                            "allow_private_network": false,
+                            "expose_headers": [],
+                            "max_age": 0,
+                            "hosts": [],
+                            "origin_regex": false,
+                            "forced_allow_origin_value": null,
+                            "skip_same_as_origin": true
+                        }
+                    },
+                    "paths": {
+                        "$ref": "#/$defs/types/object_null",
+                        "additionalProperties": {
+                            "$ref": "#/$defs/types/object_null",
+                            "properties": {
+                                "allow_credentials": {
+                                    "$ref": "#/$defs/types/boolean"
+                                },
+                                "allow_origin": {
+                                    "$ref": "#/$defs/types/array_null",
+                                    "items": {
+                                        "$ref": "#/$defs/types/scalar"
+                                    }
+                                },
+                                "allow_headers": {
+                                    "$ref": "#/$defs/types/array_null",
+                                    "items": {
+                                        "$ref": "#/$defs/types/scalar"
+                                    }
+                                },
+                                "allow_methods": {
+                                    "$ref": "#/$defs/types/array_null",
+                                    "items": {
+                                        "$ref": "#/$defs/types/scalar"
+                                    }
+                                },
+                                "allow_private_network": {
+                                    "$ref": "#/$defs/types/boolean"
+                                },
+                                "expose_headers": {
+                                    "$ref": "#/$defs/types/array_null",
+                                    "items": {
+                                        "$ref": "#/$defs/types/scalar"
+                                    }
+                                },
+                                "max_age": {
+                                    "$ref": "#/$defs/types/scalar",
+                                    "default": 0
+                                },
+                                "hosts": {
+                                    "$ref": "#/$defs/types/array_null",
+                                    "items": {
+                                        "$ref": "#/$defs/types/scalar"
+                                    }
+                                },
+                                "origin_regex": {
+                                    "$ref": "#/$defs/types/boolean"
+                                },
+                                "forced_allow_origin_value": {
+                                    "$ref": "#/$defs/types/scalar",
+                                    "default": null
+                                },
+                                "skip_same_as_origin": {
+                                    "$ref": "#/$defs/types/boolean"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "nelmio_security": {
+                "$ref": "#/$defs/types/object_null",
+                "properties": {
+                    "signed_cookie": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "names": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                },
+                                "default": [
+                                    "*"
+                                ]
+                            },
+                            "secret": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": "%kernel.secret%"
+                            },
+                            "hash_algo": {
+                                "$ref": "#/$defs/types/scalar"
+                            },
+                            "legacy_hash_algo": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": null,
+                                "description": "Fallback algorithm to allow for frictionless hash algorithm upgrades. Use with caution and as a temporary measure as it allows for downgrade attacks."
+                            },
+                            "separator": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": "."
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "clickjacking": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "hosts": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            },
+                            "paths": {
+                                "$ref": "#/$defs/types/object_null",
+                                "additionalProperties": {
+                                    "$ref": "#/$defs/types/object_null",
+                                    "properties": {
+                                        "header": {
+                                            "$ref": "#/$defs/types/scalar",
+                                            "default": "DENY"
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                },
+                                "default": {
+                                    "^/.*": {
+                                        "header": "DENY"
+                                    }
+                                }
+                            },
+                            "content_types": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "external_redirects": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "abort": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            },
+                            "override": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": null
+                            },
+                            "forward_as": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": null
+                            },
+                            "log": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            },
+                            "allow_list": {
+                                "$ref": "#/$defs/types/array_null",
+                                "items": {
+                                    "$ref": "#/$defs/types/scalar"
+                                }
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "flexible_ssl": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/types/object_null",
+                                "properties": {
+                                    "enabled": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    },
+                                    "cookie_name": {
+                                        "$ref": "#/$defs/types/scalar",
+                                        "default": "auth"
+                                    },
+                                    "unsecured_logout": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": [
+                                    "boolean"
+                                ]
+                            }
+                        ],
+                        "default": {
+                            "enabled": false,
+                            "cookie_name": "auth",
+                            "unsecured_logout": false
+                        }
+                    },
+                    "forced_ssl": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/types/object_null",
+                                "properties": {
+                                    "enabled": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    },
+                                    "hsts_max_age": {
+                                        "$ref": "#/$defs/types/scalar",
+                                        "default": null
+                                    },
+                                    "hsts_subdomains": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    },
+                                    "hsts_preload": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    },
+                                    "allow_list": {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    "hosts": {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    "redirect_status_code": {
+                                        "$ref": "#/$defs/types/scalar",
+                                        "default": 302
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": [
+                                    "boolean"
+                                ]
+                            }
+                        ],
+                        "default": {
+                            "enabled": false,
+                            "hsts_max_age": null,
+                            "hsts_subdomains": false,
+                            "hsts_preload": false,
+                            "allow_list": [],
+                            "hosts": [],
+                            "redirect_status_code": 302
+                        }
+                    },
+                    "content_type": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "nosniff": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "xss_protection": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "enabled": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            },
+                            "mode_block": {
+                                "$ref": "#/$defs/types/boolean",
+                                "default": false
+                            },
+                            "report_uri": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": null
+                            }
+                        },
+                        "additionalProperties": false,
+                        "deprecated": true,
+                        "description": "Deprecated since nelmio/security-bundle 3.4.0: The \"xss_protection\" option is deprecated, use Content Security Policy without allowing \"unsafe-inline\" scripts instead."
+                    },
+                    "csp": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/types/object_null",
+                                "properties": {
+                                    "enabled": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": true
+                                    },
+                                    "request_matcher": {
+                                        "$ref": "#/$defs/types/scalar",
+                                        "default": null
+                                    },
+                                    "hosts": {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    "content_types": {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    "report_endpoint": {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "properties": {
+                                            "log_channel": {
+                                                "$ref": "#/$defs/types/scalar",
+                                                "default": null
+                                            },
+                                            "log_formatter": {
+                                                "$ref": "#/$defs/types/scalar",
+                                                "default": "nelmio_security.csp_report.log_formatter"
+                                            },
+                                            "log_level": {
+                                                "anyOf": [
+                                                    {
+                                                        "enum": [
+                                                            "alert",
+                                                            "critical",
+                                                            "debug",
+                                                            "emergency",
+                                                            "error",
+                                                            "info",
+                                                            "notice",
+                                                            "warning"
+                                                        ]
+                                                    },
+                                                    {
+                                                        "$ref": "#/$defs/types/param"
+                                                    }
+                                                ],
+                                                "default": "notice"
+                                            },
+                                            "filters": {
+                                                "$ref": "#/$defs/types/object_null",
+                                                "properties": {
+                                                    "domains": {
+                                                        "$ref": "#/$defs/types/boolean",
+                                                        "default": true
+                                                    },
+                                                    "schemes": {
+                                                        "$ref": "#/$defs/types/boolean",
+                                                        "default": true
+                                                    },
+                                                    "browser_bugs": {
+                                                        "$ref": "#/$defs/types/boolean",
+                                                        "default": true
+                                                    },
+                                                    "injected_scripts": {
+                                                        "$ref": "#/$defs/types/boolean",
+                                                        "default": true
+                                                    }
+                                                },
+                                                "additionalProperties": false,
+                                                "default": {
+                                                    "domains": true,
+                                                    "schemes": true,
+                                                    "browser_bugs": true,
+                                                    "injected_scripts": true
+                                                }
+                                            },
+                                            "dismiss": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/array_null",
+                                                    "items": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "default-src",
+                                                                    "base-uri",
+                                                                    "block-all-mixed-content",
+                                                                    "child-src",
+                                                                    "connect-src",
+                                                                    "font-src",
+                                                                    "form-action",
+                                                                    "frame-ancestors",
+                                                                    "frame-src",
+                                                                    "img-src",
+                                                                    "manifest-src",
+                                                                    "media-src",
+                                                                    "object-src",
+                                                                    "plugin-types",
+                                                                    "script-src",
+                                                                    "style-src",
+                                                                    "upgrade-insecure-requests",
+                                                                    "report-uri",
+                                                                    "worker-src",
+                                                                    "prefetch-src",
+                                                                    "report-to",
+                                                                    "*"
+                                                                ]
+                                                            },
+                                                            {
+                                                                "$ref": "#/$defs/types/param"
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "additionalProperties": false,
+                                        "default": {
+                                            "log_channel": null,
+                                            "log_formatter": "nelmio_security.csp_report.log_formatter",
+                                            "log_level": "notice",
+                                            "filters": {
+                                                "domains": true,
+                                                "schemes": true,
+                                                "browser_bugs": true,
+                                                "injected_scripts": true
+                                            },
+                                            "dismiss": []
+                                        }
+                                    },
+                                    "compat_headers": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": true
+                                    },
+                                    "report_logger_service": {
+                                        "$ref": "#/$defs/types/scalar",
+                                        "default": "logger"
+                                    },
+                                    "hash": {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "properties": {
+                                            "algorithm": {
+                                                "anyOf": [
+                                                    {
+                                                        "enum": [
+                                                            "sha256",
+                                                            "sha384",
+                                                            "sha512"
+                                                        ]
+                                                    },
+                                                    {
+                                                        "$ref": "#/$defs/types/param"
+                                                    }
+                                                ],
+                                                "default": "sha256",
+                                                "description": "The algorithm to use for hashes"
+                                            }
+                                        },
+                                        "additionalProperties": false,
+                                        "default": {
+                                            "algorithm": "sha256"
+                                        }
+                                    },
+                                    "report": {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "properties": {
+                                            "level1_fallback": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": true,
+                                                "description": "Provides CSP Level 1 fallback when using hash or nonce (CSP level 2) by adding 'unsafe-inline' source. See https://www.w3.org/TR/CSP2/#directive-script-src and https://www.w3.org/TR/CSP2/#directive-style-src"
+                                            },
+                                            "browser_adaptive": {
+                                                "anyOf": [
+                                                    {
+                                                        "$ref": "#/$defs/types/object_null",
+                                                        "properties": {
+                                                            "enabled": {
+                                                                "$ref": "#/$defs/types/boolean",
+                                                                "default": false
+                                                            },
+                                                            "parser": {
+                                                                "$ref": "#/$defs/types/scalar",
+                                                                "default": "nelmio_security.ua_parser.ua_php"
+                                                            }
+                                                        },
+                                                        "additionalProperties": false
+                                                    },
+                                                    {
+                                                        "type": [
+                                                            "boolean"
+                                                        ]
+                                                    }
+                                                ],
+                                                "default": {
+                                                    "enabled": false,
+                                                    "parser": "nelmio_security.ua_parser.ua_php"
+                                                },
+                                                "description": "Do not send directives that browser do not support"
+                                            },
+                                            "default-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "base-uri": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "block-all-mixed-content": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": false
+                                            },
+                                            "child-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "connect-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "font-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "form-action": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "frame-ancestors": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "frame-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "img-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "manifest-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "media-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "object-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "plugin-types": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "script-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "style-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "upgrade-insecure-requests": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": false
+                                            },
+                                            "report-uri": {
+                                                "anyOf": [
+                                                    {
+                                                        "$ref": "#/$defs/types/array_null",
+                                                        "items": {
+                                                            "$ref": "#/$defs/types/scalar"
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": [
+                                                            "string"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "worker-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "prefetch-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "report-to": {
+                                                "$ref": "#/$defs/types/scalar"
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    "enforce": {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "properties": {
+                                            "level1_fallback": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": true,
+                                                "description": "Provides CSP Level 1 fallback when using hash or nonce (CSP level 2) by adding 'unsafe-inline' source. See https://www.w3.org/TR/CSP2/#directive-script-src and https://www.w3.org/TR/CSP2/#directive-style-src"
+                                            },
+                                            "browser_adaptive": {
+                                                "anyOf": [
+                                                    {
+                                                        "$ref": "#/$defs/types/object_null",
+                                                        "properties": {
+                                                            "enabled": {
+                                                                "$ref": "#/$defs/types/boolean",
+                                                                "default": false
+                                                            },
+                                                            "parser": {
+                                                                "$ref": "#/$defs/types/scalar",
+                                                                "default": "nelmio_security.ua_parser.ua_php"
+                                                            }
+                                                        },
+                                                        "additionalProperties": false
+                                                    },
+                                                    {
+                                                        "type": [
+                                                            "boolean"
+                                                        ]
+                                                    }
+                                                ],
+                                                "default": {
+                                                    "enabled": false,
+                                                    "parser": "nelmio_security.ua_parser.ua_php"
+                                                },
+                                                "description": "Do not send directives that browser do not support"
+                                            },
+                                            "default-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "base-uri": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "block-all-mixed-content": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": false
+                                            },
+                                            "child-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "connect-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "font-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "form-action": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "frame-ancestors": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "frame-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "img-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "manifest-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "media-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "object-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "plugin-types": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "script-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "style-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "upgrade-insecure-requests": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": false
+                                            },
+                                            "report-uri": {
+                                                "anyOf": [
+                                                    {
+                                                        "$ref": "#/$defs/types/array_null",
+                                                        "items": {
+                                                            "$ref": "#/$defs/types/scalar"
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": [
+                                                            "string"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "worker-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "prefetch-src": {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            "report-to": {
+                                                "$ref": "#/$defs/types/scalar"
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": [
+                                    "boolean"
+                                ]
+                            }
+                        ],
+                        "default": {
+                            "enabled": true,
+                            "request_matcher": null,
+                            "hosts": [],
+                            "content_types": [],
+                            "report_endpoint": {
+                                "log_channel": null,
+                                "log_formatter": "nelmio_security.csp_report.log_formatter",
+                                "log_level": "notice",
+                                "filters": {
+                                    "domains": true,
+                                    "schemes": true,
+                                    "browser_bugs": true,
+                                    "injected_scripts": true
+                                },
+                                "dismiss": []
+                            },
+                            "compat_headers": true,
+                            "report_logger_service": "logger",
+                            "hash": {
+                                "algorithm": "sha256"
+                            }
+                        }
+                    },
+                    "referrer_policy": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/types/object_null",
+                                "properties": {
+                                    "enabled": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    },
+                                    "policies": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/types/array_null",
+                                                "items": {
+                                                    "$ref": "#/$defs/types/scalar"
+                                                }
+                                            },
+                                            {
+                                                "type": [
+                                                    "string"
+                                                ]
+                                            }
+                                        ],
+                                        "default": [
+                                            "no-referrer",
+                                            "no-referrer-when-downgrade"
+                                        ]
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": [
+                                    "boolean"
+                                ]
+                            }
+                        ],
+                        "default": {
+                            "enabled": false,
+                            "policies": [
+                                "no-referrer",
+                                "no-referrer-when-downgrade"
+                            ]
+                        }
+                    },
+                    "permissions_policy": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/types/object_null",
+                                "properties": {
+                                    "enabled": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    },
+                                    "policies": {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "properties": {
+                                            "accelerometer": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "ambient_light_sensor": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "attribution_reporting": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "autoplay": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "bluetooth": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "browsing_topics": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "camera": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "captured_surface_control": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "compute_pressure": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "cross_origin_isolated": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "deferred_fetch": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "deferred_fetch_minimal": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "display_capture": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "encrypted_media": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "fullscreen": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "gamepad": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "geolocation": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "gyroscope": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "hid": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "identity_credentials_get": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "idle_detection": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "interest_cohort": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "language_detector": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "local_fonts": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "magnetometer": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "microphone": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "midi": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "otp_credentials": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "payment": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "picture_in_picture": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "publickey_credentials_create": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "publickey_credentials_get": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "screen_wake_lock": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "serial": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "speaker_selection": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "storage_access": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "summarizer": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "translator": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "usb": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "web_share": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "window_management": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            },
+                                            "xr_spatial_tracking": {
+                                                "$ref": "#/$defs/types/variable",
+                                                "default": null
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": [
+                                    "boolean"
+                                ]
+                            }
+                        ],
+                        "default": {
+                            "enabled": false
+                        }
+                    },
+                    "cross_origin_isolation": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/types/object_null",
+                                "properties": {
+                                    "enabled": {
+                                        "$ref": "#/$defs/types/boolean",
+                                        "default": false
+                                    },
+                                    "paths": {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "additionalProperties": {
+                                            "$ref": "#/$defs/types/object_null",
+                                            "properties": {
+                                                "coep": {
+                                                    "anyOf": [
+                                                        {
+                                                            "enum": [
+                                                                "unsafe-none",
+                                                                "require-corp",
+                                                                "credentialless"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "$ref": "#/$defs/types/param"
+                                                        }
+                                                    ],
+                                                    "description": "Cross-Origin-Embedder-Policy (COEP) header value"
+                                                },
+                                                "coop": {
+                                                    "anyOf": [
+                                                        {
+                                                            "enum": [
+                                                                "unsafe-none",
+                                                                "same-origin-allow-popups",
+                                                                "same-origin",
+                                                                "noopener-allow-popups"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "$ref": "#/$defs/types/param"
+                                                        }
+                                                    ],
+                                                    "description": "Cross-Origin-Opener-Policy (COOP) header value"
+                                                },
+                                                "corp": {
+                                                    "anyOf": [
+                                                        {
+                                                            "enum": [
+                                                                "same-site",
+                                                                "same-origin",
+                                                                "cross-origin"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "$ref": "#/$defs/types/param"
+                                                        }
+                                                    ],
+                                                    "description": "Cross-Origin-Resource-Policy (CORP) header value"
+                                                },
+                                                "report_only": {
+                                                    "$ref": "#/$defs/types/boolean",
+                                                    "default": false,
+                                                    "description": "Use Report-Only headers instead of enforcing (applies to COEP and COOP only)"
+                                                },
+                                                "report_to": {
+                                                    "$ref": "#/$defs/types/scalar",
+                                                    "default": null,
+                                                    "description": "Reporting endpoint name for violations (requires Reporting API configuration, applies to COEP and COOP only)"
+                                                }
+                                            },
+                                            "additionalProperties": false
+                                        },
+                                        "minProperties": 1
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": [
+                                    "boolean"
+                                ]
+                            }
+                        ],
+                        "default": {
+                            "enabled": false,
+                            "paths": []
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
             "property_access": {
                 "anyOf": [
                     {
@@ -9491,6 +10716,12 @@
         "monolog": {
             "$ref": "#/$defs/nodes/monolog"
         },
+        "nelmio_cors": {
+            "$ref": "#/$defs/nodes/nelmio_cors"
+        },
+        "nelmio_security": {
+            "$ref": "#/$defs/nodes/nelmio_security"
+        },
         "property_access": {
             "$ref": "#/$defs/nodes/property_access"
         },
@@ -9568,6 +10799,12 @@
                 },
                 "monolog": {
                     "$ref": "#/$defs/nodes/monolog"
+                },
+                "nelmio_cors": {
+                    "$ref": "#/$defs/nodes/nelmio_cors"
+                },
+                "nelmio_security": {
+                    "$ref": "#/$defs/nodes/nelmio_security"
                 },
                 "property_access": {
                     "$ref": "#/$defs/nodes/property_access"
@@ -9649,6 +10886,12 @@
                 },
                 "monolog": {
                     "$ref": "#/$defs/nodes/monolog"
+                },
+                "nelmio_cors": {
+                    "$ref": "#/$defs/nodes/nelmio_cors"
+                },
+                "nelmio_security": {
+                    "$ref": "#/$defs/nodes/nelmio_security"
                 },
                 "property_access": {
                     "$ref": "#/$defs/nodes/property_access"
@@ -9732,6 +10975,12 @@
                 },
                 "monolog": {
                     "$ref": "#/$defs/nodes/monolog"
+                },
+                "nelmio_cors": {
+                    "$ref": "#/$defs/nodes/nelmio_cors"
+                },
+                "nelmio_security": {
+                    "$ref": "#/$defs/nodes/nelmio_security"
                 },
                 "property_access": {
                     "$ref": "#/$defs/nodes/property_access"
