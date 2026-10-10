@@ -375,25 +375,70 @@
         @apply bg-transparent;
     }
 
-    /* The pages of the account on its home: one panel each, what it holds under its name. */
+    /*
+     * The pages of the account on its home: one card each, which says the page it opens, what that page is
+     * for, and what the account holds there. The three are read in that order whatever the card is about,
+     * so that ten of them are read down a column and not deciphered one by one.
+     */
     main[data-page="account"] ul[data-sections] {
         @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-3;
     }
 
+    /* A card is clicked anywhere on, which the link below draws over it: the box is the way to the page,
+       and the name of that way is the title and not everything the card says. */
     main[data-page="account"] li[data-section] {
-        @apply flex flex-col gap-1 rounded-box border border-base-300 bg-base-100 p-5 transition-colors;
+        @apply relative flex flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-5 transition-colors;
     }
 
     main[data-page="account"] li[data-section]:hover {
-        @apply border-base-content/20;
+        @apply border-base-content/20 bg-base-200/40;
+    }
+
+    main[data-page="account"] li[data-section] div[data-section-head] {
+        @apply flex items-center gap-3;
+    }
+
+    /* The icon of the page, the one the column of pages reads it by: a square the eye finds the card by,
+       and a drawing a reader who listens to the page is never read. */
+    main[data-page="account"] li[data-section] span[data-section-icon] {
+        @apply flex size-9 shrink-0 items-center justify-center rounded-box bg-base-200 text-base-content/70 transition-colors;
+    }
+
+    main[data-page="account"] li[data-section]:hover span[data-section-icon] {
+        @apply bg-base-300 text-base-content;
     }
 
     main[data-page="account"] li[data-section] a {
         @apply link link-hover text-lg font-semibold;
     }
 
-    main[data-page="account"] li[data-section] span[data-state] {
+    main[data-page="account"] li[data-section] a::after {
+        @apply absolute inset-0;
+
+        content: "";
+    }
+
+    /* What the page is for, in one line under its name: it says why somebody would open it, never what
+       they would find on it, which is the next line and the page itself. */
+    main[data-page="account"] li[data-section] p[data-section-about] {
         @apply text-sm text-base-content/60;
+    }
+
+    /*
+     * What the account holds there: a chip at the foot of the card, in the same place on every one of
+     * them, so that ten cards are read down a column and the words of a list are not read one by one.
+     *
+     * One chip and one shape, whatever the state says. A section counts what the account holds there or
+     * says what was done and when, and both are its own words: a shape of its own for "nothing held"
+     * would be a shape this page could only keep its word about on the sections that count, and the page
+     * would be saying something of a password or of an archive that the section never said. A state is
+     * written for a line of a list, so the chip opens it with a capital whichever of them it is.
+     *
+     * The surface is the one of the theme and never a colour of DaisyUI: its neutral is nearly black in
+     * the dark theme as in the light one, which is a chip nobody could read on a dark page.
+     */
+    main[data-page="account"] li[data-section] span[data-state] {
+        @apply badge badge-sm mt-auto border-base-300 bg-base-200 text-base-content/70 first-letter:uppercase;
     }
 
 

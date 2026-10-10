@@ -2,7 +2,7 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="fr" datatype="plaintext" original="beffroi">
     <header>
-      <note>Ce que ce déploiement ajoute aux chaînes du bundle : un message par type de détail d'autorisation qu'il câble (RFC 9396 §2), nommé d'après ce type, parce que le type est une classe du déploiement et que la phrase lue avant d'y consentir va avec lui. Format de message ICU ; les paramètres sont ceux que le type a mis dans le rendu de son détail.</note>
+      <note>Ce que ce déploiement ajoute aux chaînes du bundle, et rien que le bundle dise déjà. Un message par type de détail d'autorisation qu'il câble (RFC 9396 §2), nommé d'après ce type, parce que le type est une classe du déploiement et que la phrase lue avant d'y consentir va avec lui ; et les mots de ce que ce déploiement dessine autour des pages du bundle, le thème, les contrôles de la barre, les intertitres sous lesquels les pages du compte sont rangées et la ligne par laquelle chacune se lit. Format de message ICU ; les paramètres d'un détail sont ceux que son type a mis dans le rendu de celui-ci.</note>
     </header>
     <body>
       <trans-unit id="a1f0c3e8d2" resname="authorization_details.invoice_payment">
@@ -52,6 +52,46 @@
       <trans-unit id="e4f6a8b2c1" resname="navigation.where_you_are">
         <source>navigation.where_you_are</source>
         <target>Où vous êtes</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.approvals" resname="navigation.description.approvals">
+        <source>navigation.description.approvals</source>
+        <target>Demandé en votre nom, et en attente de votre réponse.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.profile" resname="navigation.description.profile">
+        <source>navigation.description.profile</source>
+        <target>Ce que ce fournisseur tient de vous, et ce que vous pouvez corriger.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.archive" resname="navigation.description.archive">
+        <source>navigation.description.archive</source>
+        <target>Demandez une copie de tout cela, et téléchargez-la ici.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.password" resname="navigation.description.password">
+        <source>navigation.description.password</source>
+        <target>Celui que vous tapez pour vous connecter, changé ici.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.passkeys" resname="navigation.description.passkeys">
+        <source>navigation.description.passkeys</source>
+        <target>Se connecter avec votre appareil plutôt qu'avec un mot de passe.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.two_factor" resname="navigation.description.two_factor">
+        <source>navigation.description.two_factor</source>
+        <target>Une seconde preuve après votre mot de passe, depuis une application d'authentification.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.notifications" resname="navigation.description.notifications">
+        <source>navigation.description.notifications</source>
+        <target>Les navigateurs prévenus quand quelque chose vous attend.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.sessions" resname="navigation.description.sessions">
+        <source>navigation.description.sessions</source>
+        <target>Les navigateurs et les applications qui tiennent une session en votre nom.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.consents" resname="navigation.description.consents">
+        <source>navigation.description.consents</source>
+        <target>Ce que chaque application obtient de vous, et comment le reprendre.</target>
+      </trans-unit>
+      <trans-unit id="navigation.description.sign_ins" resname="navigation.description.sign_ins">
+        <source>navigation.description.sign_ins</source>
+        <target>Qui s'est connecté en votre nom, et qui a essayé sans réussir.</target>
       </trans-unit>
     </body>
   </file>

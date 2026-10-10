@@ -32,7 +32,9 @@ use function is_int;
 final readonly class AccountNavigation
 {
     /**
-     * The headings in the order they are read, the pages each one holds and the icon each page is read by.
+     * The headings in the order they are read, the pages each one holds, and what this application says of
+     * a page beside its name: the icon it is read by, in the column as on the home, and the one line that
+     * says what the page is for, which the home reads under its title.
      *
      * A page is read under one heading or under none: what is waiting for an answer is above every heading,
      * because it is the one page that asks something of whoever opened the account rather than telling them
@@ -42,35 +44,37 @@ final readonly class AccountNavigation
      * An icon is the name of a file of templates/layout/icon/, where one file draws one icon: a name no file
      * answers draws nothing, which is a link with its words and not a page nobody reaches.
      *
-     * @var list<array{title: string|null, pages: array<string, string>}>
+     * @var list<array{title: string|null, pages: array<string, array{icon: string, description: string}>}>
      */
     private const array HEADINGS = [
         [
             'title' => null,
-            'pages' => [PendingApprovalsController::ROUTE => 'inbox'],
+            'pages' => [
+                PendingApprovalsController::ROUTE => ['icon' => 'inbox', 'description' => 'navigation.description.approvals'],
+            ],
         ],
         [
             'title' => 'navigation.group.record',
             'pages' => [
-                AccountProfileController::ROUTE => 'card',
-                AccountArchiveController::ROUTE => 'archive',
+                AccountProfileController::ROUTE => ['icon' => 'card', 'description' => 'navigation.description.profile'],
+                AccountArchiveController::ROUTE => ['icon' => 'archive', 'description' => 'navigation.description.archive'],
             ],
         ],
         [
             'title' => 'navigation.group.sign_in',
             'pages' => [
-                AccountPasswordController::ROUTE => 'lock',
-                AccountPasskeysController::ROUTE => 'key',
-                AccountTwoFactorController::ROUTE => 'shield',
-                AccountNotificationsController::ROUTE => 'bell',
+                AccountPasswordController::ROUTE => ['icon' => 'lock', 'description' => 'navigation.description.password'],
+                AccountPasskeysController::ROUTE => ['icon' => 'key', 'description' => 'navigation.description.passkeys'],
+                AccountTwoFactorController::ROUTE => ['icon' => 'shield', 'description' => 'navigation.description.two_factor'],
+                AccountNotificationsController::ROUTE => ['icon' => 'bell', 'description' => 'navigation.description.notifications'],
             ],
         ],
         [
             'title' => 'navigation.group.activity',
             'pages' => [
-                AccountSessionsController::ROUTE => 'monitor',
-                AccountConsentsController::ROUTE => 'apps',
-                AccountSignInsController::ROUTE => 'history',
+                AccountSessionsController::ROUTE => ['icon' => 'monitor', 'description' => 'navigation.description.sessions'],
+                AccountConsentsController::ROUTE => ['icon' => 'apps', 'description' => 'navigation.description.consents'],
+                AccountSignInsController::ROUTE => ['icon' => 'history', 'description' => 'navigation.description.sign_ins'],
             ],
         ],
     ];
@@ -105,9 +109,9 @@ final readonly class AccountNavigation
         $groups = [];
         foreach (self::HEADINGS as $heading) {
             $held = [];
-            foreach ($heading['pages'] as $route => $icon) {
+            foreach ($heading['pages'] as $route => $page) {
                 if (isset($wired[$route])) {
-                    $held[] = [...$wired[$route], 'icon' => $icon, 'count' => $this->countOf($route, $user)];
+                    $held[] = [...$wired[$route], 'icon' => $page['icon'], 'count' => $this->countOf($route, $user)];
                     unset($wired[$route]);
                 }
             }
@@ -130,6 +134,26 @@ final readonly class AccountNavigation
         }
 
         return $groups;
+    }
+
+    /**
+     * What a card of the home of the account carries besides the title of the page it opens and what the
+     * account holds there: the icon and the line of the arrangement above, by route, because the home
+     * reads what the account holds from the sections themselves and asks this of nothing else. A page this
+     * arrangement does not name is in the map at no key, and its card is its name and its state.
+     *
+     * @return array<string, array{icon: string, description: string}>
+     */
+    public function cards(): array
+    {
+        $cards = [];
+        foreach (self::HEADINGS as $heading) {
+            foreach ($heading['pages'] as $route => $page) {
+                $cards[$route] = $page;
+            }
+        }
+
+        return $cards;
     }
 
     /**
