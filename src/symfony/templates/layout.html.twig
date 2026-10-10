@@ -16,6 +16,9 @@
     {% block body %}
         <main>
             <h1>{% block heading %}{{ block('title') }}{% endblock %}</h1>
+            {# The one action the page offers, beside its title rather than at the end of what the page
+               says: a page that offers none fills this with nothing. #}
+            {% block action %}{% endblock %}
             {% block content %}{% endblock %}
         </main>
     {% endblock %}

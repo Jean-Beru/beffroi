@@ -8,6 +8,18 @@
 
 {% block title %}{{ 'archive.title'|trans }}{% endblock %}
 
+{# Asking for the file is what this page offers, so it is read beside the title and not under everything
+   the page says. Asking again replaces what is there, so the one state with no button is the one being
+   built: there is nothing a second click would do but queue the same work twice. #}
+{% block action %}
+    {% if state != 'being_built' %}
+        <form method="post" action="{{ path('beffroi_interaction_account_archive_ask') }}" data-archive-ask>
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_archive_ask') }}">
+            <button type="submit">{{ (state == 'never' ? 'archive.ask' : 'archive.ask_again')|trans }}</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p>{{ 'archive.signed_in_as'|trans({username: user.username}) }}</p>
@@ -26,6 +38,9 @@
 
     <h2>{{ 'archive.your_request'|trans }}</h2>
     <p data-archive="{{ state }}">{{ ('archive.' ~ state)|trans }}</p>
+    {# How long the file this person asks for is kept, read where its state is and not inside the button
+       that asks for one. #}
+    <p data-archive-kept-for="{{ kept_for_days }}">{{ 'archive.kept_for'|trans({days: kept_for_days}) }}</p>
     {% if state == 'being_built' %}
         <p><time datetime="{{ archive.askedAt|date('c') }}">{{ 'archive.asked_at'|trans({moment: archive.askedAt|beffroi_moment(user)}) }}</time></p>
     {% elseif state == 'ready' %}
@@ -43,16 +58,6 @@
             <label for="archive-passphrase">{{ 'archive.passphrase'|trans }}</label>
             <input type="password" id="archive-passphrase" name="password" minlength="{{ passphrase_minimum }}" autocomplete="new-password" required>
             <button type="submit">{{ 'archive.download_wrapped'|trans }}</button>
-        </form>
-    {% endif %}
-
-    {# Asking again replaces what is there, so the one state with no button is the one being built: there
-       is nothing a second click would do but queue the same work twice. #}
-    {% if state != 'being_built' %}
-        <form method="post" action="{{ path('beffroi_interaction_account_archive_ask') }}" data-archive-ask>
-            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_archive_ask') }}">
-            <p>{{ 'archive.kept_for'|trans({days: kept_for_days}) }}</p>
-            <button type="submit">{{ (state == 'never' ? 'archive.ask' : 'archive.ask_again')|trans }}</button>
         </form>
     {% endif %}
 {% endblock %}
