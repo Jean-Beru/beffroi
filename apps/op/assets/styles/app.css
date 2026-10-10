@@ -841,6 +841,51 @@
         @apply btn-outline btn-error btn-sm;
     }
 
+    /*
+     * The enrolment of an authenticator app: the two steps it is, each a panel of its own, numbered by the
+     * list they are. The app is given the secret, by the picture it scans or by the key somebody types into
+     * it, and then the code it shows confirms the enrolment, so a reader of the page knows which of the two
+     * they are at. The number is drawn beside the step and written nowhere in the page: an ordered list is
+     * what these are.
+     */
+    main[data-page="account"] ol[data-two-factor="enrol-steps"] {
+        @apply flex flex-col gap-4;
+
+        counter-reset: step;
+    }
+
+    main[data-page="account"] ol[data-two-factor="enrol-steps"] > li[data-step] {
+        @apply relative m-0 flex flex-col items-start gap-3 rounded-box border border-base-300 bg-base-100 p-6 ps-16;
+
+        counter-increment: step;
+    }
+
+    main[data-page="account"] ol[data-two-factor="enrol-steps"] > li[data-step]::before {
+        @apply absolute start-6 top-6 flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-content;
+
+        content: counter(step);
+    }
+
+    /* Inside a step the heading is the panel's own, and the line a part of a page draws has nothing left
+       to cross. */
+    main[data-page="account"] ol[data-two-factor="enrol-steps"] h2 {
+        @apply mt-0 gap-0 text-base;
+    }
+
+    main[data-page="account"] ol[data-two-factor="enrol-steps"] h2::after {
+        @apply hidden;
+    }
+
+    /* What the step asks of whoever is reading it; what the browser answered is not one of these lines. */
+    main[data-page="account"] ol[data-two-factor="enrol-steps"] > li > p:not([data-copy-line], [data-copy-refused]) {
+        @apply max-w-prose text-sm text-base-content/60;
+    }
+
+    /* The panel spaces what it holds by its own gap, so the form of a step carries no margin of its own. */
+    main[data-page="account"] ol[data-two-factor="enrol-steps"] form:not([hidden]) {
+        @apply mt-0 gap-2;
+    }
+
     /* The QR code of an enrolment is black on white whatever the theme reads: an app has to scan it. */
     main[data-page="account"] figure[data-two-factor="qr-code"] {
         @apply w-fit rounded-box border border-base-300 bg-white p-4;
@@ -850,8 +895,44 @@
         @apply block h-auto max-w-full;
     }
 
+    /*
+     * The key an app is given by hand, where no camera reads the picture: the value, the one click that
+     * takes it and what the browser answered are read on the line the key is on, and not at the end of the
+     * page. The key is forty characters of base32 in groups of four, so it is read as a key and not as a
+     * word, and a click on it selects the whole of it for whoever copies it themselves.
+     */
+    main[data-page="account"] p[data-copy-line] {
+        @apply flex flex-wrap items-center gap-3;
+    }
+
     main[data-page="account"] code[data-two-factor="key"] {
-        @apply kbd kbd-sm;
+        @apply kbd select-all font-mono text-base tracking-widest;
+    }
+
+    /* The key is clickable once the script of the bundle has found a browser that can write a clipboard
+       (copy.js), and says so from then on and never before: a value that does nothing when it is clicked
+       is a value that says nothing about being clicked. */
+    main[data-page="account"] code[data-two-factor="key"][data-copy-click] {
+        @apply cursor-pointer transition-colors;
+    }
+
+    main[data-page="account"] code[data-two-factor="key"][data-copy-click]:hover {
+        @apply border-primary text-primary;
+    }
+
+    main[data-page="account"] p[data-copy-line] button[data-copy] {
+        @apply btn btn-outline btn-sm;
+    }
+
+    main[data-page="account"] p[data-copy-line] span[data-copied] {
+        @apply badge badge-success badge-soft;
+    }
+
+    /* The code the app shows is six figures read off one screen and typed into another: the field is as
+       wide as what goes in it and not as the panel, and spaced out so that one figure is not read as the
+       next. */
+    main[data-page="account"] form[data-two-factor="enrol"] input[name="code"] {
+        @apply w-44 text-center font-mono text-lg tracking-[0.25em];
     }
 
     /*
