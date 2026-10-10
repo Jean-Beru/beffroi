@@ -46,8 +46,8 @@ final class AccountConsentsTest extends BrowserTestCase
 
         // Then
         self::assertInteractionHeaders($this->browser->getResponse());
-        static::assertCount(1, $crawler->filter('p[data-consents="none"]'));
-        static::assertCount(0, $crawler->filter('table'));
+        static::assertCount(1, $crawler->filter('table[data-consents="0"] tr[data-empty]'));
+        static::assertCount(0, $crawler->filter('table tbody tr[data-consent]'));
     }
 
     #[Test]
@@ -82,7 +82,7 @@ final class AccountConsentsTest extends BrowserTestCase
 
         // Then
         static::assertSame('/account/consents', $this->browser->getResponse()->headers->get('Location'));
-        static::assertCount(1, $this->browser->followRedirect()->filter('p[data-consents="none"]'));
+        static::assertCount(1, $this->browser->followRedirect()->filter('table[data-consents="0"] tr[data-empty]'));
     }
 
     /**

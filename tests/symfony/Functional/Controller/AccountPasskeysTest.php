@@ -50,8 +50,8 @@ final class AccountPasskeysTest extends PasskeyTestCase
 
         // Then
         self::assertInteractionHeaders($this->browser->getResponse());
-        static::assertCount(1, $crawler->filter('p[data-passkeys="none"]'));
-        static::assertCount(0, $crawler->filter('table'));
+        static::assertCount(1, $crawler->filter('table[data-passkeys="0"] tr[data-empty]'));
+        static::assertCount(0, $crawler->filter('table tbody tr[data-passkey]'));
         static::assertSame('/passkey.js', $crawler->filter('script')->attr('src'));
         $form = $crawler->filter('form[data-passkey="enrol"]');
         static::assertSame('/account/passkeys', $form->attr('action'));

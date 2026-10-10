@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Core\Domain\Session\AuthenticationSession;
-use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -20,8 +20,9 @@ use Symfony\Component\HttpFoundation\Response;
 final readonly class SessionsPage
 {
     public function __construct(
-        private AuthenticationSessionRepositoryInterface $sessions,
+        private CanPageActiveSessionsInterface $sessions,
         private ClockInterface $clock,
+        private AskedPage $asked,
         private InteractionPages $pages,
     ) {
     }
@@ -30,7 +31,7 @@ final readonly class SessionsPage
     {
         return $this->pages->render('account/sessions.html.twig', [
             'user' => $current->user,
-            'sessions' => $this->sessions->findActiveByUser($current->user, $this->clock->now()),
+            'sessions' => $this->sessions->pageOfActiveSessions($current->user, $this->clock->now(), $this->asked->asked()),
             'current' => $current->id->toString(),
         ]);
     }

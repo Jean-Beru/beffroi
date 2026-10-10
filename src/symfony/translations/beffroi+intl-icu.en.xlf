@@ -1173,6 +1173,22 @@
         <source>profile.changed_when</source>
         <target>When</target>
       </trans-unit>
+      <trans-unit id="pager.pages" resname="pager.pages">
+        <source>pager.pages</source>
+        <target>The pages of this table</target>
+      </trans-unit>
+      <trans-unit id="pager.rows" resname="pager.rows">
+        <source>pager.rows</source>
+        <target>{first}-{last} of {total}</target>
+      </trans-unit>
+      <trans-unit id="pager.previous" resname="pager.previous">
+        <source>pager.previous</source>
+        <target>Previous</target>
+      </trans-unit>
+      <trans-unit id="pager.next" resname="pager.next">
+        <source>pager.next</source>
+        <target>Next</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

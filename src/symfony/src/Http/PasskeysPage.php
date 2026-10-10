@@ -6,7 +6,7 @@ namespace Beffroi\Bundle\Http;
 
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\CanPageCredentialsInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -16,7 +16,8 @@ use Symfony\Component\HttpFoundation\Response;
 final readonly class PasskeysPage
 {
     public function __construct(
-        private CredentialRepositoryInterface $credentials,
+        private CanPageCredentialsInterface $credentials,
+        private AskedPage $asked,
         private InteractionPages $pages,
     ) {
     }
@@ -30,7 +31,7 @@ final readonly class PasskeysPage
             'account/passkeys.html.twig',
             [
                 'user' => $user,
-                'passkeys' => $this->credentials->findByUser($user, PasskeyCredential::class),
+                'passkeys' => $this->credentials->pageOfCredentials($user, PasskeyCredential::class, $this->asked->asked()),
                 'error' => $error,
             ],
             $status,

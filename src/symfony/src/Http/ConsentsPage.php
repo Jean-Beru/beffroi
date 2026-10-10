@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\CanPageActiveConsentsInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -16,7 +16,8 @@ use Symfony\Component\HttpFoundation\Response;
 final readonly class ConsentsPage
 {
     public function __construct(
-        private ActiveConsentsInterface $consents,
+        private CanPageActiveConsentsInterface $consents,
+        private AskedPage $asked,
         private InteractionPages $pages,
     ) {
     }
@@ -25,7 +26,7 @@ final readonly class ConsentsPage
     {
         return $this->pages->render('account/consents.html.twig', [
             'user' => $user,
-            'consents' => $this->consents->activeOf($user),
+            'consents' => $this->consents->pageOfActiveConsents($user, $this->asked->asked()),
         ]);
     }
 }

@@ -225,7 +225,7 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         $page = $this->profilePage();
 
         // Then
-        static::assertCount(1, $page->filter('p[data-changes="none"]'));
+        static::assertCount(1, $page->filter('table[data-changes="0"] tr[data-empty]'));
     }
 
     /**

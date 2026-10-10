@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Doctrine\Repository;
 
 use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\PageOfRows;
 use Beffroi\Core\Domain\Identity\ClaimChange;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Listing\Listing;
+use Beffroi\Core\Domain\Listing\Pagination;
+use Beffroi\Core\Port\CanPageChangesOfAPersonInterface;
 use Beffroi\Core\Port\ChangesOfAPersonInterface;
 use Beffroi\Core\Port\ClaimHistoryInterface;
 use function count;
@@ -21,7 +25,10 @@ use Symfony\Component\Uid\Uuid;
  *
  * @extends DoctrineRepository<ClaimChange>
  */
-final readonly class DoctrineClaimHistory extends DoctrineRepository implements ChangesOfAPersonInterface, ClaimHistoryInterface
+final readonly class DoctrineClaimHistory extends DoctrineRepository implements
+    CanPageChangesOfAPersonInterface,
+    ChangesOfAPersonInterface,
+    ClaimHistoryInterface
 {
     /**
      * How many rows one run of the retention forgets. The bound the journal has, for the same reason: a
@@ -30,8 +37,10 @@ final readonly class DoctrineClaimHistory extends DoctrineRepository implements 
      */
     public const int FORGOTTEN_AT_ONCE = 1000;
 
-    public function __construct(EntityManagers $managers)
-    {
+    public function __construct(
+        EntityManagers $managers,
+        private PageOfRows $rows,
+    ) {
         parent::__construct($managers, ClaimChange::class);
     }
 
@@ -62,6 +71,19 @@ final readonly class DoctrineClaimHistory extends DoctrineRepository implements 
         $manager->flush();
 
         return count($past);
+    }
+
+    /**
+     * @return Listing<ClaimChange>
+     */
+    public function pageOfChanges(User $user, Pagination $pagination): Listing
+    {
+        return $this->rows->of(
+            ClaimChange::class,
+            $this->queryBuilder('c')->where('c.user = :user')->setParameter('user', $user->id, UuidType::NAME),
+            'c.id',
+            $pagination,
+        );
     }
 
     public function lastOf(User $user, int $howMany): array

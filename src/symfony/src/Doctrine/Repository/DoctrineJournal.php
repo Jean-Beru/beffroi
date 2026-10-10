@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Doctrine\Repository;
 
 use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\PageOfRows;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Listing\Listing;
+use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\JournalInterface;
 use function count;
@@ -23,7 +27,7 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
  *
  * @extends DoctrineRepository<JournalEntry>
  */
-final readonly class DoctrineJournal extends DoctrineRepository implements JournalInterface, ActsOfAPersonInterface
+final readonly class DoctrineJournal extends DoctrineRepository implements JournalInterface, ActsOfAPersonInterface, CanPageActsOfAPersonInterface
 {
     /**
      * How many rows one run of the retention forgets. A bound and not a tuning: a tick that deleted
@@ -32,8 +36,10 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
      */
     public const int FORGOTTEN_AT_ONCE = 1000;
 
-    public function __construct(EntityManagers $managers)
-    {
+    public function __construct(
+        EntityManagers $managers,
+        private PageOfRows $rows,
+    ) {
         parent::__construct($managers, JournalEntry::class);
     }
 
@@ -84,6 +90,31 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
         $manager->flush();
 
         return count($past);
+    }
+
+    /**
+     * @param list<string> $acts
+     *
+     * @return Listing<JournalEntry>
+     */
+    public function pageOfActs(User $user, array $acts, Pagination $pagination): Listing
+    {
+        if ($acts === []) {
+            return Listing::of([], $pagination);
+        }
+
+        return $this->rows->of(
+            JournalEntry::class,
+            $this->queryBuilder('a')
+                ->where('a.tenant = :tenant')
+                ->andWhere('a.subject = :subject')
+                ->andWhere('a.act IN (:acts)')
+                ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
+                ->setParameter('subject', $user->subject->value)
+                ->setParameter('acts', $acts),
+            'a.id',
+            $pagination,
+        );
     }
 
     public function lastOf(User $user, array $acts, int $howMany): array

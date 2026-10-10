@@ -1,0 +1,31 @@
+{# The control under a table of the account that is longer than one page (architecture §5.2): which rows of
+   the whole list the reader is looking at, and the way to the page before it and the page after it.
+
+   It is rendered only where there is more than one page, a control that can do nothing being a control
+   nobody should have to read. The page it names is the "page" of the query string, which is the one word
+   every table of this plane is paged by (AskedPage), and a link it writes keeps whatever else the request
+   carried: the page of one application is read at an address that names that application.
+
+   A page before the first or after the last is not a link but the same words unlinked, so that what a
+   reader may do and what they may not are read in one place and in one shape.
+
+   The bundle ships the shape and the words, never a class: "data-pager" is what a stylesheet reads.
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
+{% trans_default_domain 'beffroi' %}
+{% if listing.pages > 1 %}
+    {% set route = app.request.attributes.get('_route') %}
+    {% set parameters = (app.request.attributes.get('_route_params') ?? {})|merge(app.request.query.all) %}
+    <nav data-pager="{{ listing.pagination.number }}" data-pages="{{ listing.pages }}" aria-label="{{ 'pager.pages'|trans }}">
+        <p data-pager-rows>{{ 'pager.rows'|trans({first: listing.firstRow, last: listing.lastRow, total: listing.total}) }}</p>
+        {% if listing.hasPrevious %}
+            <a href="{{ path(route, parameters|merge({page: listing.previous})) }}" data-pager="previous" rel="prev">{{ 'pager.previous'|trans }}</a>
+        {% else %}
+            <span data-pager="previous" aria-disabled="true">{{ 'pager.previous'|trans }}</span>
+        {% endif %}
+        {% if listing.hasNext %}
+            <a href="{{ path(route, parameters|merge({page: listing.next})) }}" data-pager="next" rel="next">{{ 'pager.next'|trans }}</a>
+        {% else %}
+            <span data-pager="next" aria-disabled="true">{{ 'pager.next'|trans }}</span>
+        {% endif %}
+    </nav>
+{% endif %}

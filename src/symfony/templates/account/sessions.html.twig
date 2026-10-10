@@ -52,4 +52,5 @@
             {% endfor %}
         </tbody>
     </table>
+    {{ include('@Beffroi/account/pager.html.twig', {listing: sessions}) }}
 {% endblock %}
