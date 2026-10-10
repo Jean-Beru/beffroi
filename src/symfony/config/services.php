@@ -201,6 +201,7 @@ use Beffroi\Core\Port\ClaimHistoryInterface;
 use Beffroi\Core\Port\JournalInterface;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
+use Beffroi\Bundle\Twig\DeviceExtension;
 use Beffroi\Bundle\Twig\PlaceExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
@@ -755,6 +756,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(MomentExtension::class);
     // where a provenance came from, on the two pages that show one (issue #473)
     $services->set(PlaceExtension::class);
+    $services->set(DeviceExtension::class);
     // what the pages read of the organisation the visitor came for (issue #449)
     $services->set(TenantExtension::class);
     $services->set(InteractionLocale::class)->args([

@@ -782,6 +782,13 @@
         @apply block text-xs opacity-60;
     }
 
+    /* Where a request came from: the place, the address beside it, the browser under both. A place
+       nothing could put on a map says so, dimmer than one that was found, rather than leaving the line
+       looking unfilled. */
+    main[data-page="account"] td span[data-place="unknown"] {
+        @apply opacity-60;
+    }
+
     /* The row of the browser reading the page, wherever a page of this plane lists browsers: the session
        it holds and the subscription it is pushed to are the same fact to whoever reads it. */
     main[data-page="account"] td :is(span[data-session-current], span[data-subscription-current]) {

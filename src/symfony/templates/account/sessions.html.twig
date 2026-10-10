@@ -43,16 +43,7 @@
                     </td>
                     <td><time datetime="{{ session.establishedAt|date('c') }}">{{ session.establishedAt|beffroi_moment(user) }}</time></td>
                     <td><time datetime="{{ session.lastSeenAt|date('c') }}">{{ session.lastSeenAt|beffroi_moment(user) }}</time></td>
-                    <td>
-                        {% set place = session.lastSeenFrom.location|beffroi_place %}
-                        {% if place is not null %}
-                            <span data-place>{{ place }}</span>
-                        {% endif %}
-                        {{ session.lastSeenFrom.ipAddress ?? 'sessions.unknown_address'|trans }}
-                        {% if session.lastSeenFrom.userAgent is not null %}
-                            <span data-user-agent>{{ session.lastSeenFrom.userAgent }}</span>
-                        {% endif %}
-                    </td>
+                    <td>{{ include('@Beffroi/account/provenance.html.twig', {provenance: session.lastSeenFrom}) }}</td>
                     <td>
                         {% if is_current %}<span data-session-current>{{ 'sessions.this_browser'|trans }}</span>{% endif %}
                         <form method="post" action="{{ path('beffroi_interaction_account_sessions_revoke', {id: session.id}) }}">

@@ -849,10 +849,6 @@
         <source>sessions.from</source>
         <target>Depuis</target>
       </trans-unit>
-      <trans-unit id="e1b4d9a2c8" resname="sessions.unknown_address">
-        <source>sessions.unknown_address</source>
-        <target>adresse non enregistrée</target>
-      </trans-unit>
       <trans-unit id="f3c8a1e7b2" resname="sessions.this_browser">
         <source>sessions.this_browser</source>
         <target>ce navigateur</target>
@@ -940,10 +936,6 @@
       <trans-unit id="sign_ins.failed" resname="sign_ins.failed">
         <source>sign_ins.failed</source>
         <target>Refusée</target>
-      </trans-unit>
-      <trans-unit id="sign_ins.unknown_address" resname="sign_ins.unknown_address">
-        <source>sign_ins.unknown_address</source>
-        <target>adresse non enregistrée</target>
       </trans-unit>
       <trans-unit id="account.sign_ins.state" resname="account.sign_ins.state">
         <source>account.sign_ins.state</source>
@@ -1316,6 +1308,18 @@
       <trans-unit id="two_factor.backup_codes.renewed" resname="two_factor.backup_codes.renewed">
         <source>two_factor.backup_codes.renewed</source>
         <target>Voici vos nouveaux codes de secours. Ceux que vous aviez viennent de cesser de fonctionner.</target>
+      </trans-unit>
+      <trans-unit id="provenance.device" resname="provenance.device">
+        <source>provenance.device</source>
+        <target>{browser} sur {platform}</target>
+      </trans-unit>
+      <trans-unit id="provenance.unknown_place" resname="provenance.unknown_place">
+        <source>provenance.unknown_place</source>
+        <target>Lieu inconnu</target>
+      </trans-unit>
+      <trans-unit id="provenance.unknown_address" resname="provenance.unknown_address">
+        <source>provenance.unknown_address</source>
+        <target>adresse inconnue</target>
       </trans-unit>
     </body>
   </file>

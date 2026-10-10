@@ -27,16 +27,7 @@
                 <tr data-act="{{ act.act }}" data-outcome="{{ ok ? 'succeeded' : 'failed' }}">
                     <td><span data-outcome="{{ ok ? 'succeeded' : 'failed' }}">{{ (ok ? 'sign_ins.succeeded' : 'sign_ins.failed')|trans }}</span></td>
                     <td><time datetime="{{ act.occurredAt|date('c') }}">{{ act.occurredAt|beffroi_moment(user) }}</time></td>
-                    <td>
-                        {% set place = act.context.location|beffroi_place %}
-                        {% if place is not null %}
-                            <span data-place>{{ place }}</span>
-                        {% endif %}
-                        {{ act.context.ipAddress ?? 'sign_ins.unknown_address'|trans }}
-                        {% if act.context.userAgent is not null %}
-                            <span data-user-agent>{{ act.context.userAgent }}</span>
-                        {% endif %}
-                    </td>
+                    <td>{{ include('@Beffroi/account/provenance.html.twig', {provenance: act.context}) }}</td>
                 </tr>
             {% else %}
                 {# A table that holds nothing keeps its head and says so in one row of its own, which is

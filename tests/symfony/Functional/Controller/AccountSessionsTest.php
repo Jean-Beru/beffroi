@@ -196,6 +196,28 @@ final class AccountSessionsTest extends BrowserTestCase
     }
 
     /**
+     * Architecture §3.5: what a person reads of where a session came from is the browser and the system,
+     * not the sixteen tokens their browser sent, which stay in the document for whoever wants them. A
+     * place nothing could put on a map is unknown and never absent.
+     */
+    #[Test]
+    public function theLineSaysTheBrowserAndNotTheWholeUserAgent(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $page = $this->sessionsPage();
+
+        // Then
+        $agent = $page->filter('tr[data-session] span[data-user-agent]');
+        static::assertSame('Firefox on Linux', $agent->text());
+        static::assertStringContainsString('X11; Linux x86_64', self::string($agent->attr('title')));
+        static::assertSame('Place unknown', $page->filter('tr[data-session] span[data-place="unknown"]')->text());
+    }
+
+    /**
      * Architecture §5.2: every table of this plane is read over the stretch of time that was asked for,
      * and a table that holds nothing of those days keeps its head and says so.
      */
