@@ -6,12 +6,14 @@ namespace Beffroi\Core\Tests\Application\Identity;
 
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
+use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Bridge\Password\NativePasswordHasher;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordRefusal;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
@@ -19,6 +21,8 @@ use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\PasswordRefusedException;
+use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -28,6 +32,15 @@ use Symfony\Component\Uid\UuidV4;
 
 final class UserProvisionerTest extends TestCase
 {
+    /**
+     * A password past every rule of the value object, and one a list counts: what this suite poses.
+     */
+    private const string A_PASSWORD = 'correct horse battery staple';
+
+    private const string ANOTHER_PASSWORD = 'nine lives of a quiet cat';
+
+    private const string BREACHED = 'monkey business as usual';
+
     private Tenant $tenant;
 
     private InMemoryUserRepository $users;
@@ -47,7 +60,8 @@ final class UserProvisionerTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new NativePasswordHasher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->provisioner = new UserProvisioner($this->users, $this->credentials, $this->hasher, new SymfonyUuidGenerator(), $this->clock);
+        $breaches = BreachedPasswordsOfARecord::holding([self::BREACHED]);
+        $this->provisioner = $this->provisionerAsking($breaches);
     }
 
     #[Test]
@@ -238,13 +252,13 @@ final class UserProvisionerTest extends TestCase
         $user = $this->provisioner->create($this->tenant, 'alice');
 
         // When
-        $credential = $this->provisioner->setPassword($user, new PlainPassword('correct horse battery staple'));
+        $credential = $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
 
         // Then
         static::assertSame($credential, $this->credentials->findByUser($user, PasswordCredential::class)[0]);
         static::assertSame($user, $credential->user);
         static::assertSame(Argon2id::NAME, $credential->hash->algorithm->name());
-        static::assertTrue($this->hasher->verify($credential->hash, 'correct horse battery staple'));
+        static::assertTrue($this->hasher->verify($credential->hash, self::A_PASSWORD));
         static::assertEquals($this->clock->now(), $credential->createdAt);
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);
     }
@@ -254,17 +268,17 @@ final class UserProvisionerTest extends TestCase
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $first = $this->provisioner->setPassword($user, new PlainPassword('correct horse battery staple'));
+        $first = $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
         $this->clock->modify('+1 day');
 
         // When
-        $second = $this->provisioner->setPassword($user, new PlainPassword('another password'));
+        $second = $this->provisioner->setPassword($user, new PlainPassword(self::ANOTHER_PASSWORD));
 
         // Then
         static::assertSame($first, $second);
         static::assertCount(1, $this->credentials->findByUser($user));
-        static::assertTrue($this->hasher->verify($second->hash, 'another password'));
-        static::assertFalse($this->hasher->verify($second->hash, 'correct horse battery staple'));
+        static::assertTrue($this->hasher->verify($second->hash, self::ANOTHER_PASSWORD));
+        static::assertFalse($this->hasher->verify($second->hash, self::A_PASSWORD));
         static::assertEquals($this->clock->now(), $second->hashChangedAt);
         static::assertEquals($this->clock->now()->modify('-1 day'), $second->createdAt);
     }
@@ -278,18 +292,125 @@ final class UserProvisionerTest extends TestCase
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $this->provisioner->setPassword($user, new PlainPassword('éééééééé'));
+        $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
 
         // When
         try {
             $this->provisioner->setPassword($user, new PlainPassword('seven77'));
-        } catch (InvalidArgumentException) {
+        } catch (PasswordRefusedException) {
         }
 
         // Then
         static::assertTrue($this->hasher->verify(
             $this->credentials->findByUser($user, PasswordCredential::class)[0]->hash ?? static::fail('The credential is gone.'),
-            'éééééééé',
+            self::A_PASSWORD,
         ));
+    }
+
+    /**
+     * The rule NIST SP 800-63B §5.1.1.2 puts first, on the path an operator writes a password for
+     * somebody: the console gets it by construction and not by remembering it.
+     */
+    #[Test]
+    public function aPasswordAListCountsIsRefused(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // When
+        try {
+            $this->provisioner->setPassword($user, new PlainPassword(self::BREACHED));
+            static::fail('A password a list counts is refused.');
+        } catch (PasswordRefusedException $exception) {
+            // Then
+            static::assertSame(PasswordRefusal::Breached, $exception->refusal);
+        }
+    }
+
+    #[Test]
+    public function aPasswordAListCountsWritesNothing(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // When
+        try {
+            $this->provisioner->setPassword($user, new PlainPassword(self::BREACHED));
+        } catch (PasswordRefusedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->credentials->findByUser($user, PasswordCredential::class));
+    }
+
+    /**
+     * Decision 0006: an unknown is not a clean answer. A list that could not be asked refuses the
+     * password rather than writing one nobody checked.
+     */
+    #[Test]
+    public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
+    {
+        // Given
+        $provisioner = $this->provisionerAsking(new BreachedPasswordsOfARecord(unreachable: true));
+        $user = $provisioner->create($this->tenant, 'alice');
+
+        // When
+        try {
+            $provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
+            static::fail('A password nobody could be asked about is refused.');
+        } catch (PasswordRefusedException $exception) {
+            // Then
+            static::assertSame(PasswordRefusal::NotChecked, $exception->refusal);
+        }
+    }
+
+    /**
+     * The answer is written on the credential, so that the first login does not ask again what was just
+     * asked.
+     */
+    #[Test]
+    public function aPasswordAListWasAskedAboutIsMarkedAsLookedUp(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // When
+        $credential = $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
+
+        // Then
+        static::assertEquals($this->clock->now(), $credential->breachCheckedAt);
+        static::assertNull($credential->breachFoundAt);
+        static::assertFalse($credential->dueForABreachLookup($this->clock->now()));
+    }
+
+    /**
+     * A deployment that names no list writes the password and marks nothing: the credential stays due, so
+     * the day a list is named it is asked about.
+     */
+    #[Test]
+    public function aDeploymentThatNamesNoListWritesThePasswordAndMarksNothing(): void
+    {
+        // Given
+        $provisioner = $this->provisionerAsking(new BreachedPasswordsOfARecord(looksUp: false));
+        $user = $provisioner->create($this->tenant, 'alice');
+
+        // When
+        $credential = $provisioner->setPassword($user, new PlainPassword(self::BREACHED));
+
+        // Then
+        static::assertNull($credential->breachCheckedAt);
+        static::assertTrue($credential->dueForABreachLookup($this->clock->now()));
+    }
+
+    private function provisionerAsking(BreachedPasswordsOfARecord $breaches): UserProvisioner
+    {
+        return new UserProvisioner(
+            $this->users,
+            $this->credentials,
+            $this->hasher,
+            new BreachedPasswordRefusal($breaches),
+            new SymfonyUuidGenerator(),
+            $this->clock,
+        );
     }
 }

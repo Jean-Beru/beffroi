@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Credential;
 
+use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Domain\Credential\PasswordChangeRefusal;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordRefusal;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Event\PasswordChanged;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\PasswordChangeRefusedException;
+use Beffroi\Core\Exception\PasswordRefusedException;
+use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -30,6 +34,8 @@ final class PasswordChangeTest extends TestCase
 
     private const string POSED = 'a horse walks into a bar';
 
+    private const string BREACHED = 'monkey business as usual';
+
     private User $alice;
 
     private InMemoryCredentialRepository $credentials;
@@ -40,6 +46,8 @@ final class PasswordChangeTest extends TestCase
 
     private MockClock $clock;
 
+    private BreachedPasswordsOfARecord $breaches;
+
     private PasswordChange $change;
 
     protected function setUp(): void
@@ -49,7 +57,8 @@ final class PasswordChangeTest extends TestCase
         $this->hasher = new FakePasswordHasher();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T13:00:00+00:00');
-        $this->change = new PasswordChange($this->credentials, $this->hasher, $this->clock, $this->events);
+        $this->breaches = BreachedPasswordsOfARecord::holding([self::BREACHED]);
+        $this->change = $this->changeAsking($this->breaches);
     }
 
     #[Test]
@@ -153,6 +162,131 @@ final class PasswordChangeTest extends TestCase
             // Then
             static::assertSame(PasswordChangeRefusal::NoPasswordHeld, $exception->refusal);
         }
+    }
+
+    /**
+     * The rule NIST SP 800-63B §5.1.1.2 puts first, on the page a person replaces their own password: it
+     * refuses the two the console refuses, and says which.
+     */
+    #[Test]
+    public function aPasswordAListCountsIsRefused(): void
+    {
+        // Given
+        $this->passwordInUse();
+
+        // When
+        try {
+            $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::BREACHED), Fixtures::context());
+            static::fail('A password a list counts is refused.');
+        } catch (PasswordRefusedException $exception) {
+            // Then
+            static::assertSame(PasswordRefusal::Breached, $exception->refusal);
+        }
+    }
+
+    #[Test]
+    public function aPasswordAListCountsLeavesTheOneHeldAndSaysNothing(): void
+    {
+        // Given
+        $credential = $this->passwordInUse();
+
+        // When
+        try {
+            $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::BREACHED), Fixtures::context());
+        } catch (PasswordRefusedException) {
+        }
+
+        // Then
+        static::assertTrue($this->hasher->verify($credential->hash, self::IN_USE));
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Decision 0006: a list that could not be asked refuses the password rather than writing one nobody
+     * checked.
+     */
+    #[Test]
+    public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
+    {
+        // Given
+        $change = $this->changeAsking(new BreachedPasswordsOfARecord(unreachable: true));
+        $this->passwordInUse();
+
+        // When
+        try {
+            $change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+            static::fail('A password nobody could be asked about is refused.');
+        } catch (PasswordRefusedException $exception) {
+            // Then
+            static::assertSame(PasswordRefusal::NotChecked, $exception->refusal);
+        }
+    }
+
+    /**
+     * A password the page refuses on its own is refused without a prefix of anything leaving: the list is
+     * asked last.
+     */
+    #[Test]
+    public function aPasswordInUseThatWasNotTypedAsksNoList(): void
+    {
+        // Given
+        $this->passwordInUse();
+
+        // When
+        try {
+            $this->change->change($this->alice, 'not the password', new PlainPassword(self::POSED), Fixtures::context());
+        } catch (PasswordChangeRefusedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->breaches->asked);
+    }
+
+    /**
+     * The answer is written on the credential, so that the first login does not ask again what was just
+     * asked.
+     */
+    #[Test]
+    public function thePasswordPosedIsMarkedAsLookedUp(): void
+    {
+        // Given
+        $credential = $this->passwordInUse();
+
+        // When
+        $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+
+        // Then
+        static::assertEquals($this->clock->now(), $credential->breachCheckedAt);
+        static::assertNull($credential->breachFoundAt);
+    }
+
+    /**
+     * What a list said of the password that is gone is forgotten with it: a credential found in a breach
+     * and then replaced is not a credential found in a breach.
+     */
+    #[Test]
+    public function thePasswordPosedCarriesNoneOfWhatWasSaidOfTheOneBefore(): void
+    {
+        // Given
+        $credential = $this->passwordInUse();
+        $credential->foundInABreach(Fixtures::now());
+
+        // When
+        $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+
+        // Then
+        static::assertFalse($credential->isBreached());
+    }
+
+    private function changeAsking(BreachedPasswordsOfARecord $breaches): PasswordChange
+    {
+        return new PasswordChange(
+            $this->credentials,
+            $this->hasher,
+            new BreachedPasswordRefusal($breaches),
+            $this->clock,
+            $this->events,
+        );
     }
 
     private function passwordInUse(): PasswordCredential

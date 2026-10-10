@@ -1301,9 +1301,57 @@
         <source>password.error.no_password_held</source>
         <target>You hold no password: there is nothing to replace.</target>
       </trans-unit>
-      <trans-unit id="password.error.not_a_password" resname="password.error.not_a_password">
-        <source>password.error.not_a_password</source>
+      <trans-unit id="password.again" resname="password.again">
+        <source>password.again</source>
+        <target>The same one again</target>
+      </trans-unit>
+      <trans-unit id="password.breached" resname="password.breached">
+        <source>password.breached</source>
+        <target>This password has been found in a list of compromised passwords ({date}): somebody else holds it. Replace it now.</target>
+      </trans-unit>
+      <trans-unit id="password.strength.nothing" resname="password.strength.nothing">
+        <source>password.strength.nothing</source>
+        <target>guessed at once</target>
+      </trans-unit>
+      <trans-unit id="password.strength.weak" resname="password.strength.weak">
+        <source>password.strength.weak</source>
+        <target>weak</target>
+      </trans-unit>
+      <trans-unit id="password.strength.medium" resname="password.strength.medium">
+        <source>password.strength.medium</source>
+        <target>good enough</target>
+      </trans-unit>
+      <trans-unit id="password.strength.strong" resname="password.strength.strong">
+        <source>password.strength.strong</source>
+        <target>strong</target>
+      </trans-unit>
+      <trans-unit id="password.strength.very_strong" resname="password.strength.very_strong">
+        <source>password.strength.very_strong</source>
+        <target>very strong</target>
+      </trans-unit>
+      <trans-unit id="password.error.too_short" resname="password.error.too_short">
+        <source>password.error.too_short</source>
         <target>A password is at least {minimum} characters long.</target>
+      </trans-unit>
+      <trans-unit id="password.error.too_long" resname="password.error.too_long">
+        <source>password.error.too_long</source>
+        <target>That is longer than a password can be.</target>
+      </trans-unit>
+      <trans-unit id="password.error.too_weak" resname="password.error.too_weak">
+        <source>password.error.too_weak</source>
+        <target>That password is too easy to guess. Make it longer, or use several words; nothing has to be a capital, a digit or a symbol.</target>
+      </trans-unit>
+      <trans-unit id="password.error.breached" resname="password.error.breached">
+        <source>password.error.breached</source>
+        <target>That password has been found in a list of compromised passwords: somebody else already holds it. Pose another one.</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_checked" resname="password.error.not_checked">
+        <source>password.error.not_checked</source>
+        <target>The list of compromised passwords could not be reached, so nothing was written. Try again.</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_confirmed" resname="password.error.not_confirmed">
+        <source>password.error.not_confirmed</source>
+        <target>The two passwords you typed are not the same.</target>
       </trans-unit>
       <trans-unit id="account.password.state" resname="account.password.state">
         <source>account.password.state</source>
@@ -1312,6 +1360,10 @@
       <trans-unit id="account.password.none" resname="account.password.none">
         <source>account.password.none</source>
         <target>none held</target>
+      </trans-unit>
+      <trans-unit id="account.password.breached" resname="account.password.breached">
+        <source>account.password.breached</source>
+        <target>found in a breach</target>
       </trans-unit>
       <trans-unit id="two_factor.backup_codes.renew" resname="two_factor.backup_codes.renew">
         <source>two_factor.backup_codes.renew</source>

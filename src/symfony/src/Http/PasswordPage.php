@@ -11,12 +11,18 @@ use Beffroi\Core\Domain\Identity\User;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The page where a person replaces their own password (architecture §5.2): when it was last written, the
- * form that replaces it, and what the form was refused.
+ * The page where a person replaces their own password (architecture §5.2): when it was last written,
+ * whether a list of compromised passwords has since found it, the form that replaces it, and what the form
+ * was refused.
  *
  * **It says when the password was last written**, which is what a page like this has to show: nothing
  * visible changes when a password does, so the date is the answer a person reads after they changed it,
  * and the one thing they can check against what they remember.
+ *
+ * **It says when their password has been found in a breach**, which is the one thing a person has to be
+ * told rather than asked. The lane that found it wrote the date on the credential (issue #552) and this is
+ * where it is read: a login inside an authorization request is not interrupted for it, and nothing of a
+ * conformance run sees anything new.
  *
  * **A person who holds no password reads that they hold none.** Somebody who signs in by passkey alone
  * has nothing to replace here, and this page does not offer to set a first one: posing a password is an
@@ -24,6 +30,21 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class PasswordPage
 {
+    /**
+     * What the meter in the browser writes for each of the five rungs, lowest first, each a key of the
+     * translations: the words are the page's and the estimate is the script's, so a language added is a
+     * language the meter speaks.
+     *
+     * @var list<string>
+     */
+    public const array RUNG_KEYS = [
+        'password.strength.nothing',
+        'password.strength.weak',
+        'password.strength.medium',
+        'password.strength.strong',
+        'password.strength.very_strong',
+    ];
+
     public function __construct(
         private ActiveCredentials $credentials,
         private InteractionPages $pages,
@@ -41,6 +62,8 @@ final readonly class PasswordPage
             'password' => $this->of($user),
             'refusal' => $refusal,
             'minimum' => PlainPassword::MINIMUM_LENGTH,
+            'floor' => PlainPassword::MINIMUM_STRENGTH,
+            'rungs' => self::RUNG_KEYS,
         ]);
     }
 

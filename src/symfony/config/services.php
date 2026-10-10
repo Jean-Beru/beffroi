@@ -86,6 +86,7 @@ use Beffroi\Bundle\Http\Decision\LoginRequiredRenderer;
 use Beffroi\Bundle\Http\FapiInteractionId;
 use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\DeviceApprovalPage;
+use Beffroi\Bundle\Http\RecentLogin;
 use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Beffroi\Bundle\Http\AuthorizationResponder;
@@ -142,6 +143,7 @@ use Beffroi\Bundle\Plane\Plane;
 use Beffroi\Bundle\Plane\PlaneRequestListener;
 use Beffroi\Bundle\Routing\RouterEndpointLocator;
 use Beffroi\Bundle\Scheduler\BeffroiSchedule;
+use Beffroi\Bundle\Security\BreachedPasswordListener;
 use Beffroi\Bundle\Security\CorePasswordHasher;
 use Beffroi\Bundle\Security\DecoyHashListener;
 use Beffroi\Bundle\Security\IdentityUserProvider;
@@ -152,6 +154,7 @@ use Beffroi\Bundle\Security\PasskeyLogin;
 use Beffroi\Bundle\Security\PasskeyLoginAuthenticator;
 use Beffroi\Bundle\Security\PassportProofs;
 use Beffroi\Bundle\Security\PasswordAttemptListener;
+use Beffroi\Bundle\Security\PwnedPasswords;
 use Beffroi\Bundle\Security\DatedPasswordCredential;
 use Beffroi\Bundle\Security\PasswordLogin;
 use Beffroi\Bundle\Security\RateLimitedAttempts;
@@ -214,6 +217,8 @@ use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\BreachedPasswordLookup;
+use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
@@ -274,6 +279,7 @@ use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CodeAttemptLimiterInterface;
 use Beffroi\Core\Port\ContentEncryptionAlgorithmsInterface;
+use Beffroi\Core\Port\BreachedPasswordsInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\DecryptionKeyProviderInterface;
 use Beffroi\Core\Port\GeoLocatorInterface;
@@ -567,6 +573,7 @@ use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Application\Push\PushSubscriptionNaming;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
 use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
+use Beffroi\Bundle\Configuration\PasswordsSection;
 use Beffroi\Bundle\Configuration\WebPushSection;
 use Beffroi\Bundle\Push\WebPushSender;
 use Beffroi\Bundle\Http\NotificationsPage;
@@ -619,6 +626,9 @@ return static function (ContainerConfigurator $container): void {
     // where a page of the provider that is not an authorization request sends a browser to sign in, and
     // where the login of the firewall sends it back (RFC 8628 §3.3)
     $services->set(LoginTarget::class);
+    // what the page that replaces a password asks of a session before the form: a proof given a short
+    // while ago, and the login of the firewall when there is none (issue #552)
+    $services->set(RecentLogin::class);
     $services->set(DeviceApprovalPage::class);
     $services->set(PendingApprovalsPage::class);
     // Reaching a user through the push service of a browser they signed in with (RFC 8030, §5.6): the
@@ -899,6 +909,19 @@ return static function (ContainerConfigurator $container): void {
     // the decoy hash of the core paid where the firewall refuses a password before any hash (architecture §5.4)
     $services->set(RefusalCost::class);
     $services->set(DecoyHashListener::class);
+    // The list of compromised passwords NIST SP 800-63B §5.1.1.2 asks a password to be compared against
+    // (issue #552): the range endpoint of Pwned Passwords, where five characters of a SHA-1 leave and the
+    // comparison is local. There is no option to turn it on and no second adapter to alias: a deployment
+    // that names no endpoint asks nobody and says so where it is configured (PasswordsSection), as one
+    // that names no GeoIP licence key says an address and no place; the core keeps a null one for whoever
+    // wires the core by hand. The listener is the one place a login orders a lookup, and it orders it on
+    // the lane: a login keeps no third party on it.
+    $services->set(PwnedPasswords::class)->args([
+        '$endpoint' => '',
+        '$timeout' => PasswordsSection::DEFAULT_TIMEOUT,
+    ]);
+    $services->alias(BreachedPasswordsInterface::class, PwnedPasswords::class);
+    $services->set(BreachedPasswordListener::class);
     // a KMS that does not answer or refuses is a 503 wherever it stands on the path of a request (architecture §3.3)
     $services->set(KmsUnavailableListener::class);
 
@@ -1154,6 +1177,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
     $services->set(PasswordChange::class);
+    // the rule §5.1.1.2 puts first, run by every path that writes a password, and the lookup of a password
+    // already posed, run by the lane (issue #552)
+    $services->set(BreachedPasswordRefusal::class);
+    $services->set(BreachedPasswordLookup::class);
     $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
     $services->set(SessionOpener::class);
