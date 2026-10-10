@@ -562,6 +562,36 @@
         @apply btn-sm;
     }
 
+    /*
+     * A passkey is named in the line where it is read (issue #446), the same editing in place as a claim
+     * of the profile: the name is the value, the label is for whoever does not see the column it is under,
+     * and the button that saves it waits for the line to be touched.
+     */
+    main[data-page="account"] form[data-passkey="rename"] {
+        @apply m-0 mt-0 flex flex-row items-center gap-2;
+    }
+
+    main[data-page="account"] form[data-passkey="rename"] label {
+        @apply sr-only;
+    }
+
+    main[data-page="account"] form[data-passkey="rename"] input {
+        @apply input input-sm input-ghost w-44 border-transparent bg-transparent px-2 font-medium;
+    }
+
+    main[data-page="account"] form[data-passkey="rename"] input:focus {
+        @apply border-base-300 bg-base-100;
+    }
+
+    main[data-page="account"] form[data-passkey="rename"] button[data-save] {
+        @apply btn btn-primary btn-xs invisible;
+    }
+
+    main[data-page="account"] tbody tr:hover form[data-passkey="rename"] button[data-save],
+    main[data-page="account"] form[data-passkey="rename"]:focus-within button[data-save] {
+        @apply visible;
+    }
+
     /* Taking something back is not the action a page offers first. */
     main[data-page="account"] form button[name="revoke"],
     main[data-page="account"] form[data-two-factor="revoke"] button[type="submit"] {
