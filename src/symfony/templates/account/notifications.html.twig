@@ -16,7 +16,6 @@
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'notifications.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'notifications.what_is_sent'|trans }}</p>
     {% if error is not null %}
         <p data-error="{{ error }}">{{ ('notifications.error.' ~ error)|trans }}</p>

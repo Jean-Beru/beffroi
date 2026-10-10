@@ -11,7 +11,6 @@
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'sign_ins.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'sign_ins.explanation'|trans }}</p>
     <table data-sign-ins="{{ acts|length }}">
         <thead>

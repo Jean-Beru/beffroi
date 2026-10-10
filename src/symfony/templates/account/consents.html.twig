@@ -8,7 +8,6 @@
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'consents.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'consents.explanation'|trans }}</p>
     <table data-consents="{{ consents|length }}">
         <thead>

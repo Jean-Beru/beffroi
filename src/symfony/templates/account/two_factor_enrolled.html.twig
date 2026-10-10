@@ -8,7 +8,6 @@
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'two_factor.signed_in_as'|trans({username: user.username}) }}</p>
     <p data-two-factor="enrolled">{{ 'two_factor.enrolled.done'|trans }}</p>
     <p>{{ 'two_factor.enrolled.codes'|trans }}</p>
     <ul data-two-factor="backup-codes">
