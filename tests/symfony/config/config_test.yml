@@ -702,6 +702,9 @@ services:
     test.beffroi.schedule:
         alias: Beffroi\Bundle\Scheduler\BeffroiSchedule
         public: true
+    test.beffroi.notifications_lane:
+        alias: Beffroi\Bundle\Doctor\NotificationsLanePatience
+        public: true
     test.beffroi.tenant_synchronizer:
         alias: Beffroi\Bundle\Doctrine\TenantSynchronizer
         public: true
