@@ -11,9 +11,12 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
+use Beffroi\Core\Domain\Listing\Period;
 use Beffroi\Core\Port\CanPageChangesOfAPersonInterface;
 use Beffroi\Core\Port\ChangesOfAPersonInterface;
 use Beffroi\Core\Port\ClaimHistoryInterface;
+use DateTimeZone;
+use Doctrine\DBAL\Types\Types;
 use function count;
 use DateTimeImmutable;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -76,14 +79,19 @@ final readonly class DoctrineClaimHistory extends DoctrineRepository implements
     /**
      * @return Listing<ClaimChange>
      */
-    public function pageOfChanges(User $user, Pagination $pagination): Listing
+    public function pageOfChanges(User $user, Pagination $pagination, ?Period $period = null): Listing
     {
-        return $this->rows->of(
-            ClaimChange::class,
-            $this->queryBuilder('c')->where('c.user = :user')->setParameter('user', $user->id, UuidType::NAME),
-            'c.id',
-            $pagination,
-        );
+        $changes = $this->queryBuilder('c')->where('c.user = :user')->setParameter('user', $user->id, UuidType::NAME);
+        // the two ends are days on the clock of the person who typed them (AskedPeriod), where the column
+        // holds what the clock of this provider wrote: what is compared is one clock and not two
+        if ($period?->from !== null) {
+            $changes->andWhere('c.changedAt >= :from')->setParameter('from', $period->from->setTimezone(new DateTimeZone('UTC')), Types::DATETIME_IMMUTABLE);
+        }
+        if ($period?->to !== null) {
+            $changes->andWhere('c.changedAt <= :to')->setParameter('to', $period->to->setTimezone(new DateTimeZone('UTC')), Types::DATETIME_IMMUTABLE);
+        }
+
+        return $this->rows->of(ClaimChange::class, $changes, 'c.id', $pagination);
     }
 
     public function lastOf(User $user, int $howMany): array

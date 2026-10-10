@@ -7,7 +7,6 @@ namespace Beffroi\Bundle\Http;
 use Beffroi\Bundle\Http\Account\RecordedInformation;
 use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Port\CanPageChangesOfAPersonInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -36,8 +35,6 @@ final readonly class ProfilePage
 
     public function __construct(
         private WiredClaims $claims,
-        private CanPageChangesOfAPersonInterface $changes,
-        private AskedPage $asked,
         private InteractionPages $pages,
     ) {
     }
@@ -66,8 +63,6 @@ final readonly class ProfilePage
                 'identity' => RecordedInformation::identityOf($user),
                 'claims' => RecordedInformation::claimsOf($user),
                 'changeable' => $changeable,
-                // what they changed of their own record, one page of it (issue #482)
-                'changes' => $this->changes->pageOfChanges($user, $this->asked->asked()),
                 'refusal' => $refusal,
             ],
             $status,

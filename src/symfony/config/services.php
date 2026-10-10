@@ -58,8 +58,6 @@ use Beffroi\Oidc\Application\Archive\ConsentsChapter;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
-use Beffroi\Bundle\Command\DoctorCommand;
-use Beffroi\Bundle\Doctor\NotificationsLanePatience;
 use Beffroi\Bundle\Dpop\CachedDpopNonce;
 use Beffroi\Bundle\Dpop\CachedDpopProofReplayGuard;
 use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
@@ -67,6 +65,7 @@ use Beffroi\Bundle\EndSession\LogoutChannels;
 use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\AskedPage;
+use Beffroi\Bundle\Http\AskedPeriod;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\AccountHomePage;
 use Beffroi\Bundle\Http\Account\AccountSections;
@@ -102,6 +101,7 @@ use Beffroi\Bundle\Http\ClientNotificationSender;
 use Beffroi\Bundle\Http\PendingApprovalsPage;
 use Beffroi\Bundle\Http\LogoutTokenSender;
 use Beffroi\Bundle\Http\PasskeyOptionsStore;
+use Beffroi\Bundle\Http\ClaimChangesPage;
 use Beffroi\Bundle\Http\ProfilePage;
 use Beffroi\Bundle\Http\PasskeysPage;
 use Beffroi\Bundle\Http\ConsentsPage;
@@ -599,6 +599,7 @@ return static function (ContainerConfigurator $container): void {
     // and the one number every table of this plane is paged by, and the one place a count and a slice are
     // written (architecture §5.2)
     $services->set(AskedPage::class);
+    $services->set(AskedPeriod::class);
     $services->set(PageOfRows::class);
     // what every page of the account asks first: the session of this browser, and the form token when it posts
     // what carries a refusal across the redirection every form of these pages answers with (issue #481)
@@ -773,6 +774,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AuthorizationRequestReaderInterface::class, AuthorizationRequestReader::class);
     $services->set(PasskeyOptionsStore::class);
     $services->set(ProfilePage::class);
+    $services->set(ClaimChangesPage::class);
     $services->set(PasskeysPage::class);
     $services->set(ConsentsPage::class);
     // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
@@ -795,23 +797,6 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle: the console (architecture §5.5)
     $services->load('Beffroi\\Bundle\\Command\\', '../src/Command/');
-    // What "beffroi:doctor" looks at: one point is one class tagged here, so a point added is a class
-    // added and never a branch of the command (issue #196)
-    $services->get(DoctorCommand::class)->args([
-        '$checks' => tagged_iterator('beffroi.doctor_check'),
-    ]);
-    // Whether the transport the notifications are routed to is tried again on the schedule the retirement
-    // of a signing key assumes: the two locators of the component say what the container routes a logout
-    // token to and what tries each transport again, and the policy is the object the window reads (§4.9)
-    $services
-        ->set(NotificationsLanePatience::class)
-        ->args([
-            service('messenger.senders_locator'),
-            service('messenger.retry_strategy_locator'),
-            service(NotificationRetryPolicy::class),
-            service(LogoutTokenDeliveryInterface::class),
-        ])
-        ->tag('beffroi.doctor_check');
 
     // The bundle: the endpoints of the FIDO2 server API for the FIDO Conformance Tools (architecture §7); their
     // routes are a file of their own (config/routes/fido-conformance.php) an application imports in development

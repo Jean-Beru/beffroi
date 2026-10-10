@@ -194,29 +194,11 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
     }
 
     /**
-     * Issue #482: the page shows what this person changed of their own record, with what the claim said
-     * and what they made it say, which is the question they ask first when they read that they changed
-     * something.
+     * Issue #482: what this person changed of their own record is a page of its own, and the page that
+     * changes it offers the way there rather than holding the table.
      */
     #[Test]
-    public function thePageShowsWhatThePersonChangedOfTheirRecord(): void
-    {
-        // Given
-        $this->signIn(self::user('alice'));
-        $this->describe('nickname', 'Ada');
-
-        // When
-        $page = $this->describe('nickname', 'Augusta');
-
-        // Then
-        static::assertSame(['nickname', 'nickname'], $page->filter('tr[data-change]')->extract(['data-change']));
-        $last = $page->filter('tr[data-change]')->first()->filter('td');
-        static::assertSame('Ada', $last->eq(1)->text());
-        static::assertSame('Augusta', $last->eq(2)->text());
-    }
-
-    #[Test]
-    public function aPersonWhoChangedNothingIsToldSo(): void
+    public function thePageOffersTheWayToWhatThePersonChanged(): void
     {
         // Given
         $this->signIn(self::user('alice'));
@@ -225,7 +207,8 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
         $page = $this->profilePage();
 
         // Then
-        static::assertCount(1, $page->filter('table[data-changes="0"] tr[data-empty]'));
+        static::assertSame('/account/profile/changes', $page->filter('a[data-profile="changes"]')->attr('href'));
+        static::assertCount(0, $page->filter('table[data-changes]'));
     }
 
     /**

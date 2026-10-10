@@ -66,6 +66,11 @@
             </li>
         </ul>
         <form method="get" action="{{ path(route, own) }}" data-pager="go-to">
+            {# whatever else the request carried travels with the page: a table that was narrowed stays
+               narrowed when a reader types a page of it #}
+            {% for name, value in app.request.query.all %}
+                {% if name != 'page' %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}
+            {% endfor %}
             <label for="pager-go-to">{{ 'pager.go_to'|trans }}</label>
             <input type="number" id="pager-go-to" name="page" min="1" max="{{ listing.pages }}" value="{{ listing.pagination.number }}">
         </form>
