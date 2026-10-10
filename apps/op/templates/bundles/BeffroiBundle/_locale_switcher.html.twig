@@ -1,0 +1,37 @@
+{# The language of the pages (issue #448, architecture §5.7), as this application draws the control the
+   bundle ships: the language in use under its name, the languages this deployment serves in a list under
+   it, each a button of the one form the bundle posts. The codes of the bundle are kept ("data-locale"),
+   and so is what it sends: the token, the page to come back to and the interaction in progress travel
+   with the choice.
+
+   No script: a details element opens on a click and on a keyboard, and submitting reloads the page.
+
+   It is for whoever is not known yet (issue #485): somebody who is signed in reads these pages in the
+   language their record names, so the bundle offers nothing here and this renders nothing. #}
+{% set locales = beffroi_locale_choice() %}
+{% if locales|length > 1 %}
+    {% set interaction = app.request.query.get('interaction') %}
+    <details class="dropdown dropdown-end" data-control="locale">
+        <summary class="btn btn-ghost btn-sm" aria-label="{{ 'locale.choose'|trans([], 'beffroi') }}">
+            {%- include 'layout/icon/globe.html.twig' -%}
+            <span>{{ ('language.' ~ app.request.locale)|trans([], 'beffroi') }}</span>
+            {%- include 'layout/icon/chevron.html.twig' with {size: 'size-3.5'} -%}
+        </summary>
+        <form method="post" action="{{ path('beffroi_interaction_locale') }}" data-locale="choice" class="dropdown-content">
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_locale') }}">
+            <input type="hidden" name="target" value="{{ app.request.requestUri }}">
+            {% if interaction %}<input type="hidden" name="interaction" value="{{ interaction }}">{% endif %}
+            <ul class="menu">
+                {% for locale in locales %}
+                    <li>
+                        <button type="submit" name="locale" value="{{ locale }}" data-locale="{{ locale }}"
+                                class="{{ locale == app.request.locale ? 'menu-active' : '' }}"
+                                {%- if locale == app.request.locale %} aria-current="true"{% endif %}>
+                            {{- ('language.' ~ locale)|trans([], 'beffroi') -}}
+                        </button>
+                    </li>
+                {% endfor %}
+            </ul>
+        </form>
+    </details>
+{% endif %}

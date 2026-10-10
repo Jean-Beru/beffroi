@@ -1,0 +1,37 @@
+{# The document every page of the interaction plane is served in (architecture §5.2, §6): its language,
+   which is the language of the interaction (§5.7), the theme it was asked for, the colours the tenant
+   declared, the one stylesheet built from assets/styles/app.css, and the body a skeleton fills.
+
+   Two skeletons extend this one, layout/interaction.html.twig and layout/account.html.twig, because the
+   pages are of two kinds, and the layout the bundle hands them (templates/bundles/BeffroiBundle/) picks the
+   one a route belongs to. What the two have in common is here and in no other file.
+
+   The theme is on the document and not in a script (issue #447): light and dark are what the stylesheet
+   declares, and a document that names neither leaves the answer to the browser.
+
+   The colours the tenant declared (issue beffroi-php/beffroi#449) are written on the document as the two
+   custom properties DaisyUI draws a primary surface from: the accent of the buttons and the links, and the
+   colour of what is written on them. They are on the document and not in the stylesheet because the
+   stylesheet is built once for the deployment and these come from a row. The value is three or six
+   hexadecimal digits, which is all the model lets a tenant say, so there is nothing else it could put in
+   this attribute; a tenant that declared no colour leaves the attribute off and the themes answer. #}
+{% set chosen_theme = theme() %}
+{% set tenant = beffroi_tenant() %}
+{% set colored = tenant is not null and tenant.primaryColor is not null %}
+<!DOCTYPE html>
+<html
+    lang="{{ app.request.locale|replace({'_': '-'}) }}"
+    {%- if chosen_theme.attribute() is not null %} data-theme="{{ chosen_theme.attribute() }}"{% endif %}
+    {%- if colored %} style="--color-primary: {{ tenant.primaryColor }}; --color-primary-content: {{ tenant.primaryContentColor }}"{% endif %}
+>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-dvh {% block surface %}bg-base-200{% endblock %}">
+{% block body %}{% endblock %}
+</body>
+</html>

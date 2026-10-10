@@ -25,6 +25,30 @@
         <source>theme.system</source>
         <target>Comme le navigateur demande</target>
       </trans-unit>
+      <trans-unit id="f4a6b8c1e3" resname="navigation.pages">
+        <source>navigation.pages</source>
+        <target>Les pages de votre compte</target>
+      </trans-unit>
+      <trans-unit id="a8b2c4d6f1" resname="navigation.show_pages">
+        <source>navigation.show_pages</source>
+        <target>Afficher les pages de votre compte</target>
+      </trans-unit>
+      <trans-unit id="b1c3d5e7a9" resname="navigation.group.record">
+        <source>navigation.group.record</source>
+        <target>Votre dossier</target>
+      </trans-unit>
+      <trans-unit id="c2d4e6f8b1" resname="navigation.group.sign_in">
+        <source>navigation.group.sign_in</source>
+        <target>Comment vous vous connectez</target>
+      </trans-unit>
+      <trans-unit id="d3e5f7a9c2" resname="navigation.group.activity">
+        <source>navigation.group.activity</source>
+        <target>Ce qui s'est passé</target>
+      </trans-unit>
+      <trans-unit id="e4f6a8b2c1" resname="navigation.where_you_are">
+        <source>navigation.where_you_are</source>
+        <target>Où vous êtes</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

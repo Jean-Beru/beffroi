@@ -7,12 +7,12 @@ namespace App\Controller;
 use App\Form\ClaimForms;
 use Beffroi\Bundle\Controller\AccountProfileController as BundleProfilePage;
 use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\AskedPage;
 use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Http\ProfilePage;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\Account\RecordedInformation;
 use Beffroi\Bundle\Identity\WiredClaims;
-use Beffroi\Core\Port\ChangesOfAPersonInterface;
+use Beffroi\Core\Port\CanPageChangesOfAPersonInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,10 +38,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * It renders no script. The value a person reads is the field they type into, which is a stylesheet and
  * not a behaviour (assets/styles/app.css).
  *
- * It also gives what they have changed of their record to read (issue beffroi-php/beffroi#482), as many as
- * the page of the bundle shows, because the question a person asks first when they read that they changed
- * something is what it said before. How many that is belongs to the page of the bundle and is not a number
- * chosen again here.
+ * It also gives what they have changed of their record to read (issue beffroi-php/beffroi#482), one page of
+ * it, because the question a person asks first when they read that they changed something is what it said
+ * before. Which page that is, and how many rows it holds, is what every table of this plane is paged by
+ * (AskedPage) and is not a number chosen again here.
  */
 #[AsController]
 final readonly class AccountProfileController
@@ -56,9 +56,10 @@ final readonly class AccountProfileController
         private AccountAccess $account,
         private WiredClaims $claims,
         private ClaimForms $claimForms,
-        private ChangesOfAPersonInterface $changes,
+        private CanPageChangesOfAPersonInterface $changes,
         private WhatWasRefused $refusals,
         private TranslatorInterface $translator,
+        private AskedPage $asked,
         private InteractionPages $pages,
     ) {
     }
@@ -93,8 +94,8 @@ final readonly class AccountProfileController
             // one view per claim the tenant opens, in the order the claims are wired, each built once
             // what was refused of it is on its field
             'forms' => $forms,
-            // what they changed of their own record, the last few (beffroi-php/beffroi#482)
-            'changes' => $this->changes->lastOf($user, ProfilePage::CHANGES_SHOWN),
+            // what they changed of their own record, one page of it (beffroi-php/beffroi#482)
+            'changes' => $this->changes->pageOfChanges($user, $this->asked->asked()),
         ]);
     }
 }
