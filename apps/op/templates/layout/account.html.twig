@@ -74,18 +74,18 @@
                 </a>
                 <div class="ms-auto flex items-center gap-2">
                     {% include 'layout/_controls.html.twig' %}
-                    {# Who the browser is signed in as, and what they can do about it: the one place either
-                       is said, every page of this plane being a page of that person. A page served to a
-                       browser that holds no session says so in its own words and has nobody to name. #}
+                    {# Who the browser is signed in as is the button, and what they can do about it is what
+                       opens under it: the name is read once, where the way out is, every page of this
+                       plane being a page of that person. A page served to a browser that holds no session
+                       says so in its own words and has nobody to name. #}
                     {% if user is defined %}
-                        <details class="dropdown dropdown-end" data-control="user">
-                            <summary class="btn btn-ghost btn-sm">
-                                {% include 'layout/icon/user.html.twig' %}
+                        {% embed 'layout/_control.html.twig' with {control: 'user', label: 'account.title'|trans([], 'beffroi')} %}
+                            {% block trigger %}
+                                {%- include 'layout/icon/user.html.twig' -%}
                                 <span class="max-sm:hidden">{{ user.username }}</span>
-                                {% include 'layout/icon/chevron.html.twig' with {size: 'size-3.5'} %}
-                            </summary>
-                            <div class="dropdown-content" data-control="user-menu">
-                                <p>{{ 'account.signed_in_as'|trans({username: user.username}, 'beffroi') }}</p>
+                                {%- include 'layout/icon/chevron.html.twig' with {size: 'size-3.5'} -%}
+                            {% endblock %}
+                            {% block panel %}
                                 <ul class="menu">
                                     <li>
                                         <a href="{{ path('beffroi_interaction_account_profile') }}">
@@ -100,8 +100,8 @@
                                         </a>
                                     </li>
                                 </ul>
-                            </div>
-                        </details>
+                            {% endblock %}
+                        {% endembed %}
                     {% endif %}
                 </div>
             </header>

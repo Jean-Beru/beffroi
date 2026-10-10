@@ -115,8 +115,30 @@ final class AccountNavigationTest extends BrowserTestCase
         $page = $this->accountPage('/account');
 
         // Then
-        static::assertCount(1, $page->filter('#layout-topbar details[data-control="user"] a[href="/logout"]'));
+        static::assertCount(1, $page->filter('#layout-topbar div[data-control="user"] a[href="/logout"]'));
         static::assertCount(0, $page->filter('main a[href="/logout"]'));
+    }
+
+    /**
+     * The controls of the bar share one group of radio buttons and one veil (templates/layout/_control.html
+     * .twig), which is what makes one of them open at a time and a click anywhere else close it: the page
+     * runs no script, so the shape is the behaviour and a page that lost it would look the same.
+     */
+    #[Test]
+    public function theControlsOfTheBarShareOneGroupAndOneVeil(): void
+    {
+        // Given
+        $this->signIn(self::user());
+
+        // When
+        $page = $this->accountPage('/account');
+
+        // Then
+        $panels = $page->filter('#layout-topbar div[data-control] > div[data-control="panel"]')->count();
+        static::assertSame($panels + 1, $page->filter('#layout-topbar input[name="layout-control"]')->count());
+        static::assertCount(1, $page->filter('#layout-topbar input[name="layout-control"][checked]'));
+        static::assertCount(1, $page->filter('#layout-topbar input#layout-control-none[checked]'));
+        static::assertCount(1, $page->filter('#layout-topbar label[for="layout-control-none"][data-control="veil"]'));
     }
 
     /**

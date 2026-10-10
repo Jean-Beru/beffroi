@@ -14,6 +14,11 @@
  * which the skeleton marks with data-page="account": panels someone reads, where a heading, a table, a list
  * of what the account holds and the way back each have a shape of their own. A page is flat and bordered
  * rather than raised, a border being what tells a panel from the page it sits on at any width.
+ *
+ * Every rule here is written into the utilities layer, where DaisyUI writes its own classes: a layer
+ * declared before that one loses to it whatever the selector says, so a rule of this file sitting in an
+ * earlier layer would be a rule that dresses "btn" or "menu" everywhere except where those classes decide
+ * something themselves.
  */
 
 @import "tailwindcss";
@@ -24,7 +29,7 @@
     themes: light --default, dark --prefersdark;
 }
 
-@layer components {
+@layer utilities {
     /*
      * The skeleton of a page of the account: the column of its pages, the bar above it, and the page.
      */
@@ -147,33 +152,58 @@
 
     /*
      * A control that opens under itself: the language, the theme and who is signed in (issues #448, #447).
-     * Three controls of one shape, which is a details element and a list, because the pages of this
-     * application run no script and a browser opens and closes that one on its own.
+     * Three controls of one shape (templates/layout/_control.html.twig), and no script, because no page of
+     * this application carries one: a radio button holds the state, its label is the button, and the three
+     * share one group, so one of them is open at a time. The veil lies over the page while one is open, so
+     * a click anywhere else closes it, and over the buttons too: a second click on the one that is open is
+     * a click on the veil.
      */
-    /* The triangle a browser draws on a summary of its own: the control is a button and says so with its
-       icon, so the marker goes, and the one Safari draws goes with its own rule. */
-    details[data-control] > summary {
-        @apply list-none gap-1.5;
+    div[data-control]:has(> input[name="layout-control"]) {
+        @apply relative;
     }
 
-    details[data-control] > summary::-webkit-details-marker {
-        @apply hidden;
+    input[name="layout-control"] {
+        @apply sr-only;
     }
 
-    details[data-control] .dropdown-content {
-        @apply z-20 mt-2 w-60 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg;
+    label[data-control="trigger"] {
+        @apply gap-1.5;
     }
 
-    details[data-control] .dropdown-content > p {
-        @apply truncate px-3 py-2 text-xs text-base-content/60;
+    /* The control that is open reads as pressed, and the keyboard says where it is: what a browser focuses
+       is the radio button, and what somebody sees is its label. */
+    input[name="layout-control"]:checked ~ label[data-control="trigger"] {
+        @apply bg-base-200;
     }
 
-    details[data-control] .menu {
+    input[name="layout-control"]:focus-visible ~ label[data-control="trigger"] {
+        @apply ring-2 ring-primary ring-offset-2 ring-offset-base-100;
+    }
+
+    /* Under the button and aligned on its end, as wide as what it holds and never narrower than a line of
+       it: a list of two languages and a list of three themes are the same control. */
+    div[data-control] > div[data-control="panel"] {
+        @apply absolute end-0 top-full z-30 mt-2 hidden w-max min-w-52 max-w-72 rounded-box border border-base-300 bg-base-100 p-1 shadow-lg;
+    }
+
+    input[name="layout-control"]:checked ~ div[data-control="panel"] {
+        @apply block;
+    }
+
+    div[data-control="panel"] .menu {
         @apply w-full gap-0.5 p-0;
     }
 
-    details[data-control] .menu :is(a, button) {
+    div[data-control="panel"] .menu :is(a, button) {
         @apply flex w-full items-center justify-start gap-2.5 text-sm;
+    }
+
+    label[data-control="veil"] {
+        @apply hidden;
+    }
+
+    body:has(div[data-control] > input[name="layout-control"]:checked) label[data-control="veil"] {
+        @apply fixed inset-0 z-20 block;
     }
 
     /* The logo of the tenant (issue beffroi-php/beffroi#449): served by a host the tenant named, so how
