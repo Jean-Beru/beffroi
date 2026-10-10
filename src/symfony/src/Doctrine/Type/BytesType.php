@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\Type;
 
-use function base64_decode;
-use function base64_encode;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
 use function is_string;
-use function rtrim;
-use function strtr;
 
 /**
  * Raw bytes (a credential ID, a COSE key) in a text column as base64url without padding (RFC 4648 §5):
  * readable in a row, indexable, and never a stream, which is what the binary types of DBAL hand back.
+ *
+ * The alphabet is the core's (Base64Url), which is also what the document a person downloads writes those
+ * same bytes in: what a column holds and what an archive says of it are one encoding.
  */
 final class BytesType extends Type
 {
@@ -24,7 +24,7 @@ final class BytesType extends Type
 
     public static function encode(string $bytes): string
     {
-        return rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+        return Base64Url::encode($bytes);
     }
 
     /**
@@ -32,9 +32,7 @@ final class BytesType extends Type
      */
     public static function decode(string $encoded): ?string
     {
-        $decoded = base64_decode(strtr($encoded, '-_', '+/'), true);
-
-        return $decoded === false ? null : $decoded;
+        return Base64Url::decode($encoded);
     }
 
     public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
