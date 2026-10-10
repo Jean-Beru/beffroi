@@ -547,7 +547,11 @@
       </trans-unit>
       <trans-unit id="f614d3c6a6" resname="error.login_required">
         <source>error.login_required</source>
-        <target>Sign in first, from an application, then come back to this page.</target>
+        <target>Sign in, then open this page again.</target>
+      </trans-unit>
+      <trans-unit id="7f6da9700e" resname="error.sign_in">
+        <source>error.sign_in</source>
+        <target>Sign in</target>
       </trans-unit>
       <trans-unit id="884d5c03f9" resname="form_post.title">
         <source>form_post.title</source>
