@@ -6,13 +6,19 @@ namespace App\Tests\Functional;
 
 use function implode;
 use function sprintf;
+use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
 use Nelmio\SecurityBundle\Test\SecurityHeadersAssertionsTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
  * What this provider tells a browser to do with its answers (config/packages/nelmio_security.yaml,
@@ -192,6 +198,37 @@ final class SecurityHeadersTest extends BrowserTestCase
                 new RedirectUri('https://client.example.com/callback'),
                 ['code' => 'a-code', 'iss' => 'https://op.localhost'],
             )->contentSecurityPolicy(),
+        );
+    }
+
+    /**
+     * CSP Level 3 §6.1, §6.3.2: a page of the interaction plane that may send the browser to a client
+     * names the origin of that client among the form targets of the policy this deployment writes
+     * (Beffroi\Bundle\Http\FormTarget), a browser checking the directive over the whole redirect chain of
+     * a submission and the last hop of that chain being the answer carried to the client.
+     *
+     * What is read here is the order of the two, which is what the page depends on: the policy of this
+     * deployment is written on the answer, and the page that may answer a client completes the directive
+     * it wrote. The pages themselves are walked by the suite of the bundle, on a kernel of their own.
+     */
+    #[Test]
+    public function itNamesTheClientAPageMayAnswerAmongTheFormTargetsOfThePolicyItWrites(): void
+    {
+        // Given
+        $request = Request::create('https://op.localhost/login?interaction=the-one-this-browser-began', server: ['HTTPS' => 'on']);
+        new FormTarget()->mayEndAt($request, new RedirectUri('https://client.example.com/callback'));
+        $response = new Response('a page of the interaction plane');
+
+        // When
+        self::service('event_dispatcher', EventDispatcherInterface::class)->dispatch(
+            new ResponseEvent($this->browser->getKernel(), $request, HttpKernelInterface::MAIN_REQUEST, $response),
+            KernelEvents::RESPONSE,
+        );
+
+        // Then
+        static::assertStringContainsString(
+            "form-action 'self' https://client.example.com;",
+            (string) $response->headers->get('Content-Security-Policy'),
         );
     }
 
