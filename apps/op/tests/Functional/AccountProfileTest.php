@@ -38,8 +38,9 @@ final class AccountProfileTest extends BrowserTestCase
 
     /**
      * Issue beffroi-php/beffroi#452: what a person may change is what the tenant opens, and this tenant
-     * opens fourteen claims (config/packages/beffroi.yaml). They are offered in the order the claims are
-     * wired and not in the order the tenant named them, which is what the page says of itself.
+     * opens fourteen claims (config/packages/beffroi.yaml). The page is one list of what the record holds,
+     * so they are offered in the order the record is read in and not in the order the tenant named them:
+     * a line is where the reader expects the claim, whether they may change it or only read it.
      */
     #[Test]
     public function thePageOffersAFormPerClaimTheTenantOpens(): void
@@ -52,6 +53,7 @@ final class AccountProfileTest extends BrowserTestCase
 
         // Then
         static::assertSame([
+            'phone_number',
             'name',
             'given_name',
             'family_name',
@@ -65,7 +67,6 @@ final class AccountProfileTest extends BrowserTestCase
             'profile_url',
             'picture_url',
             'website_url',
-            'phone_number',
         ], $page->filter('form[data-editable]')->extract(['data-editable']));
     }
 

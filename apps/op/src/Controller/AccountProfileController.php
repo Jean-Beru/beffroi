@@ -11,6 +11,7 @@ use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\Account\RecordedInformation;
 use Beffroi\Bundle\Identity\WiredClaims;
+use function count;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -84,7 +85,10 @@ final readonly class AccountProfileController
         return $this->pages->render('account/profile.html.twig', [
             'user' => $user,
             'identity' => RecordedInformation::identityOf($user),
-            'claims' => RecordedInformation::claimsOf($user),
+            // every claim this provider can hold, so that the line somebody reads is the line they
+            // correct; how many of them are held is what the page says of the record itself
+            'claims' => RecordedInformation::everyClaimOf($user),
+            'held' => count(RecordedInformation::claimsOf($user)),
             // one view per claim the tenant opens, in the order the claims are wired, each built once
             // what was refused of it is on its field
             'forms' => $forms,

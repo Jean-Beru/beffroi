@@ -3,11 +3,11 @@
    for, and the controllers of this application answer its two routes: the bundle serves the same thing as
    bare HTML with a form token, and this is what it looks like written with symfony/form.
 
-   Three panels, because the page answers three questions and somebody who came to correct one thing
-   should not read the other two to find it: the account this provider keeps, what the person has told us
-   of themselves, and what of it they may change. Reading and changing are two panels and not one list,
-   the first being what every client of this provider is told and the second what this person is allowed
-   to say; what they have changed is a page of its own.
+   Two panels, because the page answers two questions: the account this provider keeps, which nobody
+   changes here, and what it holds of the person. One line per claim in that second one, read where it is
+   held and written where the tenant opens it: the same claim is not read in one list and offered in
+   another, so somebody corrects what they are reading. What they have changed of it is a page of its own
+   (beffroi-php/beffroi#482), and the way there is what this page offers.
 
    Edited in place, and with no script: the value a person reads is the field they type into, and the
    button that saves it appears when the line is touched. That is a stylesheet (assets/styles/app.css) and
@@ -17,15 +17,12 @@
 
 {% block title %}{{ 'profile.title'|trans }}{% endblock %}
 
-{# What this person has changed of their own record is a page of its own (beffroi-php/beffroi#482), read
-   in pages and over the stretch of time asked for, and the way to it is what this page offers. #}
 {% block action %}
     <a href="{{ path('beffroi_interaction_account_profile_changes') }}" data-profile="changes">{{ 'changes.title'|trans }}</a>
 {% endblock %}
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    {# who is signed in is in the bar above the page, which is where it is true of every page of the plane #}
     <p>{{ 'profile.explanation'|trans }}</p>
 
     <section data-panel="account">
@@ -39,30 +36,21 @@
 
     <section data-panel="claims">
         <h2>{{ 'profile.about_you'|trans }}</h2>
-        {% if claims is empty %}
-            <p data-claims="none">{{ 'profile.none'|trans }}</p>
-        {% else %}
-            <dl data-information="claims" data-claims="{{ claims|length }}">
-                {% for detail in claims %}
-                    {{ include('@Beffroi/account/detail.html.twig', {detail: detail}) }}
-                {% endfor %}
-            </dl>
-        {% endif %}
-    </section>
-
-    <section data-panel="changeable">
-        <h2>{{ 'profile.what_you_may_change'|trans }}</h2>
+        {% if held == 0 %}<p data-claims="none">{{ 'profile.none'|trans }}</p>{% endif %}
         {% if forms is empty %}
             <p data-changeable="none">{{ 'profile.change_nothing'|trans }}</p>
         {% else %}
             <p>{{ 'profile.change_explanation'|trans }}</p>
-            <ul data-changeable="{{ forms|length }}">
-                {% for claim, form in forms %}
+        {% endif %}
+        <ul data-information="claims" data-claims="{{ held }}">
+            {% for detail in claims %}
+                {% set form = forms[detail.key] ?? null %}
+                {% if form is not null %}
                     {# the field this form was built for, carried by the view (App\Form\ClaimType): what the
                        suggestions of a set of several hundred are drawn from, and what says there are any #}
                     {% set field = form.vars.field %}
-                    <li data-claim="{{ claim }}">
-                        {{ form_start(form, {attr: {'data-editable': claim}}) }}
+                    <li data-claim="{{ detail.key }}">
+                        {{ form_start(form, {attr: {'data-editable': detail.key}}) }}
                             {{ form_label(form.value) }}
                             {{ form_widget(form.value) }}
                             {# A set of several hundred is typed into with the whole set suggested
@@ -70,7 +58,7 @@
                                these pages run no script, so the page renders it beside the field and the
                                field names it. #}
                             {% if field.isPicked %}
-                                <datalist id="claim-{{ claim }}-values" data-values="{{ field.choices|length }}">
+                                <datalist id="claim-{{ detail.key }}-values" data-values="{{ field.choices|length }}">
                                     {% for value, label in field.choices %}
                                         <option value="{{ value }}">{{ label }}</option>
                                     {% endfor %}
@@ -81,9 +69,10 @@
                             {{ form_help(form.value) }}
                         {{ form_end(form) }}
                     </li>
-                {% endfor %}
-            </ul>
-        {% endif %}
+                {% elseif detail.value is not null or detail.moment is not null %}
+                    {{ include('@Beffroi/account/claim.html.twig', {detail: detail}) }}
+                {% endif %}
+            {% endfor %}
+        </ul>
     </section>
-
 {% endblock %}

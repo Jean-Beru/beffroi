@@ -391,7 +391,7 @@
     }
 
     /* The border and the surface of a panel are drawn once, by the panel, and not again by what it holds. */
-    main[data-page="account"] section[data-panel] :is(dl, table, ul[data-changeable]) {
+    main[data-page="account"] section[data-panel] :is(dl, table, ul[data-information="claims"]) {
         @apply border-0 bg-transparent p-0;
     }
 
@@ -575,12 +575,42 @@
      * whoever moves by keyboard; what the stylesheet does is keep it out of the way until the line has
      * the focus or the pointer.
      */
-    main[data-page="account"] ul[data-changeable] {
+    main[data-page="account"] ul[data-information="claims"] {
         @apply mt-0 flex flex-col gap-0 rounded-box border border-base-300 bg-base-100 p-2;
     }
 
     main[data-page="account"] li[data-claim] {
         @apply w-full;
+    }
+
+    /* A claim nobody may change here is a line of the same list and reads like the others: the label where
+       the labels are, the value where the fields are, and no box around either. */
+    main[data-page="account"] li[data-claim]:has(> span[data-label]) {
+        @apply grid grid-cols-[12rem_1fr_auto] items-center gap-3 rounded-box px-3 py-2;
+    }
+
+    main[data-page="account"] li[data-claim] span[data-label] {
+        @apply text-sm text-base-content/60;
+    }
+
+    main[data-page="account"] li[data-claim] span[data-detail] {
+        @apply px-2 font-medium;
+    }
+
+    main[data-page="account"] li[data-claim] span[data-nothing] {
+        @apply font-normal text-base-content/40;
+    }
+
+    main[data-page="account"] li[data-claim] span[data-verified] {
+        @apply badge badge-sm ml-2 align-middle font-normal;
+    }
+
+    main[data-page="account"] li[data-claim] span[data-verified="yes"] {
+        @apply badge-success badge-soft;
+    }
+
+    main[data-page="account"] li[data-claim] span[data-verified="no"] {
+        @apply badge-warning badge-soft;
     }
 
     main[data-page="account"] form[data-editable] {
@@ -658,11 +688,6 @@
         @apply border-t border-base-200 pt-2;
     }
 
-    /* What a client receives rather than what a person wrote: read character by character. */
-    main[data-page="account"] dd[data-detail="subject"] {
-        @apply font-mono text-xs;
-    }
-
     /* Whether a contact detail has been verified is a state of it, not more of its value. */
     main[data-page="account"] dd span[data-verified] {
         @apply badge badge-sm ml-2 align-middle font-normal;
@@ -712,6 +737,12 @@
     /* What a client wrote for the person it is waiting on (CIBA Core §7.1), beside the scopes it asked. */
     main[data-page="account"] span[data-binding-message] {
         @apply badge badge-sm badge-soft ml-2 font-normal;
+    }
+
+    /* The file of everything this provider holds, once it is ready: what the page of the archive is for,
+       and the only link of these pages that is read as the thing to do. */
+    main[data-page="account"] a[data-archive-file] {
+        @apply btn btn-primary btn-sm w-fit;
     }
 
     /* The QR code of an enrolment is black on white whatever the theme reads: an app has to scan it. */
