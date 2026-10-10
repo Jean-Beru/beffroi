@@ -330,6 +330,10 @@
 
     /* The action of a page is the one thing it offers, and it is read the same way on every page of the
        plane, whether the page posts it or it opens a page of its own. */
+    main[data-page="account"] div[data-heading-row] div[data-action] {
+        @apply flex flex-row items-center gap-3;
+    }
+
     main[data-page="account"] div[data-heading-row] :is(a, button) {
         @apply btn btn-primary btn-sm;
     }
@@ -850,12 +854,34 @@
         @apply kbd kbd-sm;
     }
 
-    main[data-page="account"] ul[data-two-factor="backup-codes"] {
-        @apply grid grid-cols-2 gap-2 sm:grid-cols-3;
+    /*
+     * The backup codes of a second factor, shown once: ten things somebody has to take away with them, so
+     * they are one block and not ten, numbered, so that whoever writes them down knows which one they are
+     * at. The block is as wide as the codes and not as the page, because it is read as one thing, and it
+     * is two columns wherever there is room for two. What the page says of them is above and under it,
+     * never between two of them.
+     */
+    main[data-page="account"] ol[data-two-factor="backup-codes"] {
+        @apply w-fit list-inside list-decimal columns-1 gap-10 rounded-box border border-base-300 bg-base-100 px-6 py-5 sm:columns-2;
     }
 
-    main[data-page="account"] ul[data-two-factor="backup-codes"] code {
-        @apply kbd w-full justify-center;
+    main[data-page="account"] ol[data-two-factor="backup-codes"] li {
+        @apply m-0 break-inside-avoid py-1 marker:text-sm marker:text-base-content/40;
+    }
+
+    main[data-page="account"] ol[data-two-factor="backup-codes"] code {
+        @apply ms-2 bg-transparent p-0 font-mono text-base tracking-widest;
+    }
+
+    /* What the browser did with the codes when somebody asked for them in one click: the word that says
+       it is done sits where the click happened, and the refusal, which has something to tell somebody,
+       is a line of the page. Neither is a box a browser draws over it. */
+    main[data-page="account"] div[data-heading-row] span[data-copied] {
+        @apply badge badge-success badge-soft;
+    }
+
+    main[data-page="account"] p[data-copy-refused] {
+        @apply alert alert-warning alert-soft text-base;
     }
 
     /* A button on a page is the width of its words; a form of an interaction fills the box it is in. */

@@ -1321,6 +1321,18 @@
         <source>provenance.unknown_address</source>
         <target>address unknown</target>
       </trans-unit>
+      <trans-unit id="two_factor.backup_codes.copy" resname="two_factor.backup_codes.copy">
+        <source>two_factor.backup_codes.copy</source>
+        <target>Copy them all</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.copied" resname="two_factor.backup_codes.copied">
+        <source>two_factor.backup_codes.copied</source>
+        <target>Copied</target>
+      </trans-unit>
+      <trans-unit id="two_factor.backup_codes.not_copied" resname="two_factor.backup_codes.not_copied">
+        <source>two_factor.backup_codes.not_copied</source>
+        <target>This browser did not let the page write to your clipboard. Select the codes and copy them yourself.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

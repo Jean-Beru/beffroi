@@ -130,7 +130,10 @@
                         </nav>
                         <div data-heading-row>
                             <h1>{% block heading %}{{ block('title') }}{% endblock %}</h1>
-                            {% block action %}{% endblock %}
+                            {# What the page offers is one thing at the end of the line, whether the page
+                               writes one element there or three: the block is wrapped here so that a page
+                               that answers with a button and a word does not spread them apart. #}
+                            <div data-action>{% block action %}{% endblock %}</div>
                         </div>
                     </header>
                     {% block content %}{% endblock %}
