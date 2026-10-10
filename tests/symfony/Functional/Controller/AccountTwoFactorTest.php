@@ -153,7 +153,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         static::assertCount(1, $crawler->filter('p[data-two-factor="enrolled"]'));
-        $codes = $crawler->filter('ul[data-two-factor="backup-codes"] li');
+        $codes = $crawler->filter('ol[data-two-factor="backup-codes"] li');
         static::assertCount(TotpCredential::BACKUP_CODES, $codes);
         static::assertMatchesRegularExpression('/^[A-Z2-7]{5}-[A-Z2-7]{5}$/', $codes->first()->text());
         $totps = self::totpsOf($alice);
@@ -175,7 +175,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $crawler = $this->twoFactorPage();
 
         // Then
-        static::assertCount(0, $crawler->filter('ul[data-two-factor="backup-codes"]'));
+        static::assertCount(0, $crawler->filter('ol[data-two-factor="backup-codes"]'));
         static::assertCount(0, $crawler->filter('p[data-two-factor="none"]'));
         static::assertSame((string) TotpCredential::BACKUP_CODES, $crawler->filter('p[data-backup-codes-left]')->attr('data-backup-codes-left'));
         static::assertCount(1, $crawler->filter('form[data-two-factor="revoke"]'));
@@ -378,7 +378,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $alice = self::userWithPassword('alice', self::PASSWORD);
         $this->signIn($alice);
         $secret = self::secretOf($this->begin());
-        $backupCode = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()))->filter('ul[data-two-factor="backup-codes"] li')->eq(4)->text();
+        $backupCode = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()))->filter('ol[data-two-factor="backup-codes"] li')->eq(4)->text();
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
@@ -432,9 +432,9 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $crawler = $this->renewBackupCodes();
 
         // Then
-        static::assertCount(TotpCredential::BACKUP_CODES, $crawler->filter('ul[data-two-factor="backup-codes"] code'));
+        static::assertCount(TotpCredential::BACKUP_CODES, $crawler->filter('ol[data-two-factor="backup-codes"] code'));
         static::assertCount(1, $crawler->filter('p[data-two-factor="backup-codes-renewed"]'));
-        static::assertCount(0, $this->twoFactorPage()->filter('ul[data-two-factor="backup-codes"]'));
+        static::assertCount(0, $this->twoFactorPage()->filter('ol[data-two-factor="backup-codes"]'));
     }
 
     /**
@@ -489,6 +489,43 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
+     * Clipboard API §3: ten codes shown once are ten codes nobody should have to copy by hand, so the
+     * page offers to take them all, and the button waits for a browser that can write a clipboard.
+     */
+    #[Test]
+    public function theCodesAreOfferedToTheClipboardOfABrowserThatCanTakeThem(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $secret = self::secretOf($this->begin());
+
+        // When
+        $page = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
+
+        // Then
+        $button = $page->filter('button[data-copy="backup-codes"]');
+        static::assertSame('backup-codes', $button->attr('data-copy'));
+        static::assertSame('', $button->attr('hidden'));
+        static::assertCount(1, $page->filter('ol#backup-codes[data-two-factor="backup-codes"]'));
+    }
+
+    /**
+     * The script is served by the bundle itself, under the path of its pages, so an application that
+     * allows its own origin and nothing else has nothing to change.
+     */
+    #[Test]
+    public function theScriptThatCopiesIsServedByTheBundle(): void
+    {
+        // When
+        $this->browser->request('GET', '/copy.js');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertSame('text/javascript; charset=utf-8', $response->headers->get('Content-Type'));
+    }
+
+    /**
      * The codes are the answer to the form that asked for them, which is why this one does not redirect.
      */
     private function renewBackupCodes(): Crawler
@@ -501,7 +538,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
      */
     private static function codesOf(Crawler $page): array
     {
-        return $page->filter('ul[data-two-factor="backup-codes"] code')->each(
+        return $page->filter('ol[data-two-factor="backup-codes"] code')->each(
             static fn (Crawler $code): string => $code->text(),
         );
     }

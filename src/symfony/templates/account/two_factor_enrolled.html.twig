@@ -6,13 +6,18 @@
 
 {% block title %}{{ 'two_factor.enrolled.title'|trans }}{% endblock %}
 
+{% block head %}
+    <script src="{{ path('beffroi_interaction_copy_script') }}" defer></script>
+{% endblock %}
+
+{% block action %}
+    <button type="button" data-copy="backup-codes" hidden>{{ 'two_factor.backup_codes.copy'|trans }}</button>
+    <span data-copied hidden>{{ 'two_factor.backup_codes.copied'|trans }}</span>
+{% endblock %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p data-two-factor="enrolled">{{ 'two_factor.enrolled.done'|trans }}</p>
     <p>{{ 'two_factor.enrolled.codes'|trans }}</p>
-    <ul data-two-factor="backup-codes">
-        {% for code in backup_codes %}
-            <li><code>{{ code }}</code></li>
-        {% endfor %}
-    </ul>
+    {{ include('@Beffroi/account/_backup_codes.html.twig', {backup_codes: backup_codes}) }}
 {% endblock %}
