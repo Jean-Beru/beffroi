@@ -10,7 +10,6 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\ArchiveChapterInterface;
 use Beffroi\Core\Port\ArchiveContainerInterface;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
-use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -18,10 +17,15 @@ use Symfony\Component\HttpFoundation\Response;
  * The page where a person asks for everything this provider holds about them, and downloads it once it is
  * ready (RGPD articles 15 and 20, issue #453).
  *
- * **It always says which of the four states it is in**, because the one answer a page like this may not
- * give is nothing: a person who clicked and sees the same page cannot tell a request that is being worked
- * on from a request that was lost. An archive still being built says so, one that has expired says it has
- * expired, and a person who never asked reads what asking would give them.
+ * **It always says which state the request is in** (ArchiveState), because the one answer a page like
+ * this may not give is nothing: a person who clicked and sees the same page cannot tell a request that is
+ * being worked on from a request that was lost. An archive still being built says so, one whose build did
+ * not come back says that, one that has expired says it has expired, and a person who never asked reads
+ * what asking would give them.
+ *
+ * **A request is something the person can take back**, in whatever state it is in: the one state a page
+ * may not leave somebody in is a state with no way out, and a build that threw would otherwise hold a
+ * person for the week the row is kept.
  *
  * **What the file holds is read from what is wired.** The chapters are what the archive is assembled from
  * (ArchiveChapterInterface), so a kind of fact this provider comes to hold about a person is named on this
@@ -34,26 +38,8 @@ use Symfony\Component\HttpFoundation\Response;
 final readonly class ArchivePage
 {
     /**
-     * This person never asked for one.
-     */
-    public const string NEVER = 'never';
-
-    /**
-     * They asked and the document is not written yet.
-     */
-    public const string BEING_BUILT = 'being_built';
-
-    public const string READY = 'ready';
-
-    /**
-     * It was kept for as long as an archive is kept and is gone, or is about to be: a row past its date is
-     * nothing to this page, whether or not the timed step has come round yet.
-     */
-    public const string EXPIRED = 'expired';
-
-    /**
-     * They asked for the file to be dropped and there was none to drop: it had expired, or the page they
-     * clicked on was a page a second click came from.
+     * They asked for the request to be dropped and there was none to drop: it had expired, or the page
+     * they clicked on was a page a second click came from.
      */
     public const string NOTHING_TO_DROP = 'nothing_to_drop';
 
@@ -92,7 +78,7 @@ final readonly class ArchivePage
         return $this->pages->render('account/archive.html.twig', [
             'user' => $user,
             'archive' => $archive,
-            'state' => self::stateOf($archive, $now),
+            'state' => ArchiveState::of($archive, $now),
             'chapters' => $chapters,
             'kept_for_days' => PersonalArchive::KEPT_FOR_DAYS,
             'refusal' => $refusal,
@@ -101,17 +87,5 @@ final readonly class ArchivePage
             'passphrase_minimum' => ArchivePassword::MINIMUM_LENGTH,
             'container' => $this->container->extension(),
         ]);
-    }
-
-    private static function stateOf(?PersonalArchive $archive, DateTimeImmutable $now): string
-    {
-        if ($archive === null) {
-            return self::NEVER;
-        }
-        if ($archive->hasExpired($now)) {
-            return self::EXPIRED;
-        }
-
-        return $archive->isReady() ? self::READY : self::BEING_BUILT;
     }
 }

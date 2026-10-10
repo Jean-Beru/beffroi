@@ -12,8 +12,12 @@ use Beffroi\Core\Domain\Event\PersonDroppedTheirArchive;
 use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use function file_put_contents;
@@ -141,6 +145,82 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(0, $page->filter('form[data-archive-ask]'));
     }
 
+    /**
+     * A request a person can take back while it is being built: one they changed their mind about, and
+     * one whose build never came back, are one row and one thing to say about it.
+     */
+    #[Test]
+    public function anArchiveStillBeingBuiltOffersToDeleteTheRequest(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::asked($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->archivePage();
+
+        // Then
+        static::assertCount(1, $page->filter('form[data-archive-cancel]'));
+    }
+
+    /**
+     * Nothing comes back to say a build threw, so a row past the delay a build is given is a row this
+     * provider says it is not building: the page says that rather than a week of "being built", and the
+     * button that asks for a file is back.
+     */
+    #[Test]
+    public function anArchiveWhoseBuildDidNotComeBackSaysSoAndOffersANewOne(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::stalled($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->archivePage();
+
+        // Then
+        static::assertSame(['stalled'], $page->filter('p[data-archive]')->extract(['data-archive']));
+        static::assertCount(1, $page->filter('form[data-archive-ask]'));
+    }
+
+    #[Test]
+    public function askingAgainOnceTheBuildDidNotComeBackBuildsTheFile(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::stalled($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->ask();
+
+        // Then
+        static::assertSame(['ready'], $page->filter('p[data-archive]')->extract(['data-archive']));
+    }
+
+    /**
+     * The row a build never filled holds nothing and nothing will fill it, so asking again takes it away
+     * rather than leaving a person with two.
+     */
+    #[Test]
+    public function askingAgainOnceTheBuildDidNotComeBackLeavesOneArchive(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $stalled = self::stalled($alice);
+        $this->signIn($alice);
+
+        // When
+        $this->ask();
+
+        // Then
+        $latest = self::archives()->latestOf(self::reread($alice));
+        static::assertNotNull($latest);
+        static::assertFalse($latest->id->equals($stalled->id));
+    }
+
     #[Test]
     public function anArchiveThatHasExpiredSaysSoAndOffersANewOne(): void
     {
@@ -201,6 +281,28 @@ final class AccountArchiveTest extends BrowserTestCase
      * The file name travels in a header that proxies and browsers write down, so it names the archive and
      * never the person.
      */
+    /**
+     * A credential ID is what the authenticator issued (WebAuthn Level 3 §6.3.2), octets and not text, and
+     * a document is JSON: the file names it in the alphabet the column holding it uses, and a person who
+     * signs in by passkey is not a person whose archive cannot be built.
+     */
+    #[Test]
+    public function theFileNamesAPasskeyByTheIdentifierItsColumnHolds(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $credentialId = "\x4a\xfb\xff\x00\x80";
+        self::enrol($alice, $credentialId);
+        $this->signIn($alice);
+        $this->ask();
+
+        // When
+        $credentials = self::chapter($this->file(), 'credentials');
+
+        // Then
+        static::assertContains(Base64Url::encode($credentialId), array_column($credentials, 'external_id'));
+    }
+
     #[Test]
     public function theFileIsServedAsJsonNamedAfterTheArchive(): void
     {
@@ -556,6 +658,40 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $page->filter('p[data-error="nothing_to_drop"]'));
     }
 
+    /**
+     * The one state a page may not leave somebody in is a state with no way out: a build that threw would
+     * otherwise hold a person for the week the row is kept.
+     */
+    #[Test]
+    public function aRequestStillBeingBuiltIsDroppedWhenThePersonAsksForIt(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::asked($alice);
+        $this->signIn($alice);
+
+        // When
+        $this->cancel();
+
+        // Then
+        static::assertNull(self::archives()->latestOf(self::reread($alice)));
+    }
+
+    #[Test]
+    public function thePageOfAPersonWhoDroppedTheirRequestSaysTheyHaveNone(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::asked($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->cancel();
+
+        // Then
+        static::assertCount(1, $page->filter('p[data-archive="never"]'));
+    }
+
     #[Test]
     public function droppingWithoutTheFormTokenIsRefused(): void
     {
@@ -633,6 +769,20 @@ final class AccountArchiveTest extends BrowserTestCase
         return self::string($this->archivePage()->filter('form[data-archive-drop] input[name="_token"]')->attr('value'));
     }
 
+    /**
+     * The same route, reached from the form a request that is not built yet renders: what the person takes
+     * back there is the request and not a file they hold.
+     */
+    private function cancel(): Crawler
+    {
+        $token = self::string($this->archivePage()->filter('form[data-archive-cancel] input[name="_token"]')->attr('value'));
+        $this->browser->request('POST', '/account/archive/drop', [
+            '_token' => $token,
+        ]);
+
+        return $this->afterTheForm();
+    }
+
     private function archivePage(): Crawler
     {
         $page = $this->browser->request('GET', '/account/archive');
@@ -658,6 +808,48 @@ final class AccountArchiveTest extends BrowserTestCase
         self::reload();
 
         return $archive;
+    }
+
+    /**
+     * A row asked for past the delay a build is given and never filled, which is what a build that threw
+     * leaves behind. Its date is in the past rather than the clock being moved, for the reason the row
+     * below gives.
+     */
+    private static function stalled(User $user): PersonalArchive
+    {
+        $archive = PersonalArchive::asked(
+            Uuid::v7(),
+            self::reread($user),
+            self::currentSecond()->modify(sprintf('-%d minutes', PersonalArchive::BUILT_WITHIN_MINUTES + 1)),
+        );
+        self::archives()->save($archive);
+        self::reload();
+
+        return $archive;
+    }
+
+    /**
+     * A passkey written straight into the store, the credential ID being what this reads the document for:
+     * what a browser enrols is played where enrolment is the subject (AccountPasskeysTest).
+     */
+    private static function enrol(User $user, string $credentialId): void
+    {
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->save(new PasskeyCredential(
+                Uuid::v7(),
+                self::reread($user),
+                'YubiKey 5',
+                $credentialId,
+                'cose-public-key',
+                0,
+                ['usb'],
+                false,
+                false,
+                Uuid::v4(),
+                new PasskeyUserHandle(str_repeat("\x11", 64)),
+                self::currentSecond(),
+            ));
+        self::reload();
     }
 
     /**

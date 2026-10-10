@@ -1029,6 +1029,10 @@
         <source>archive.being_built</source>
         <target>Your file is being built. Come back to this page in a few minutes.</target>
       </trans-unit>
+      <trans-unit id="archive.stalled" resname="archive.stalled">
+        <source>archive.stalled</source>
+        <target>Your file was not built. Nothing is working on it any more: ask for a new one, or delete the request.</target>
+      </trans-unit>
       <trans-unit id="archive.ready" resname="archive.ready">
         <source>archive.ready</source>
         <target>Your file is ready.</target>
@@ -1088,6 +1092,10 @@
       <trans-unit id="account.archive.being_built" resname="account.archive.being_built">
         <source>account.archive.being_built</source>
         <target>being built</target>
+      </trans-unit>
+      <trans-unit id="account.archive.stalled" resname="account.archive.stalled">
+        <source>account.archive.stalled</source>
+        <target>the last request was not built</target>
       </trans-unit>
       <trans-unit id="account.archive.ready" resname="account.archive.ready">
         <source>account.archive.ready</source>
@@ -1205,6 +1213,10 @@
         <source>notifications.error.invalid_label</source>
         <target>That is not a name a browser can hold. Type between 1 and 255 characters.</target>
       </trans-unit>
+      <trans-unit id="archive.cancel" resname="archive.cancel">
+        <source>archive.cancel</source>
+        <target>Delete this request</target>
+      </trans-unit>
       <trans-unit id="archive.drop" resname="archive.drop">
         <source>archive.drop</source>
         <target>Delete this file</target>
@@ -1215,7 +1227,7 @@
       </trans-unit>
       <trans-unit id="archive.nothing_to_drop" resname="archive.nothing_to_drop">
         <source>archive.nothing_to_drop</source>
-        <target>There was no file to delete. It may have gone away already.</target>
+        <target>There was nothing to delete. It may have gone away already.</target>
       </trans-unit>
       <trans-unit id="sessions.end_others" resname="sessions.end_others">
         <source>sessions.end_others</source>

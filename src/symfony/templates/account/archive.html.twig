@@ -1,9 +1,9 @@
 {# Everything this provider holds about the signed-in person, in one file they ask for (RGPD articles 15
    and 20, issue #453), in the language of the browser: what the file holds, where their last request has
-   got to, and the button that asks for one. The four states are one page and never an empty one: a person
-   who clicked learns whether their file is being built, waiting for them, or gone. A file that is ready
-   leaves in one of two forms and goes away on the word of the person it is of, before the date it would
-   have gone away on by itself.
+   got to, and the button that asks for one. The five states are one page and never an empty one: a person
+   who clicked learns whether their file is being built, waiting for them, gone, or being built by nobody.
+   A file that is ready leaves in one of two forms, and a request goes away on the word of the person it
+   is of in whatever state it is in, before the date it would have gone away on by itself.
    Overridable by an application under templates/bundles/BeffroiBundle/. #}
 {% extends '@Beffroi/layout.html.twig' %}
 {% trans_default_domain 'beffroi' %}
@@ -12,7 +12,8 @@
 
 {# Asking for the file is what this page offers, so it is read beside the title and not under everything
    the page says. Asking again replaces what is there, so the one state with no button is the one being
-   built: there is nothing a second click would do but queue the same work twice. #}
+   built: there is nothing a second click would do but queue the same work twice. A build that did not
+   come back is not that state, and the button is back: what it replaces is a row nobody is filling. #}
 {% block action %}
     {% if state != 'being_built' %}
         <form method="post" action="{{ path('beffroi_interaction_account_archive_ask') }}" data-archive-ask>
@@ -42,8 +43,16 @@
     {# How long the file this person asks for is kept, read where its state is and not inside the button
        that asks for one. #}
     <p data-archive-kept-for="{{ kept_for_days }}">{{ 'archive.kept_for'|trans({days: kept_for_days}) }}</p>
-    {% if state == 'being_built' %}
+    {% if state == 'being_built' or state == 'stalled' %}
         <p><time datetime="{{ archive.askedAt|date('c') }}">{{ 'archive.asked_at'|trans({moment: archive.askedAt|beffroi_moment(user)}) }}</time></p>
+
+        {# A request a person can take back, whichever of the two states it is in: one they changed their
+           mind about, and one whose build never came back, are one row and one thing to say about it. The
+           state with no file says so in the label, there being nothing to delete yet. #}
+        <form method="post" action="{{ path('beffroi_interaction_account_archive_drop') }}" data-archive-cancel>
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_archive_drop') }}">
+            <button type="submit">{{ 'archive.cancel'|trans }}</button>
+        </form>
     {% elseif state == 'ready' %}
         <p><time datetime="{{ archive.builtAt|date('c') }}">{{ 'archive.built_at'|trans({moment: archive.builtAt|beffroi_moment(user)}) }}</time></p>
         <p><time datetime="{{ archive.expiresAt|date('c') }}">{{ 'archive.expires_at'|trans({moment: archive.expiresAt|beffroi_moment(user)}) }}</time></p>
