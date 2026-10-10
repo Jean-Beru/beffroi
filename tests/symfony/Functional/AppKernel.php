@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional;
 
 use function dirname;
+use function sprintf;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\HttpKernel\Kernel;
@@ -17,9 +18,19 @@ final class AppKernel extends Kernel
 {
     use MicroKernelTrait;
 
+    /**
+     * The configuration of the suite, and the one file an environment of its own adds to it: a rule that
+     * holds on what a container does and not on what a YAML file says is judged by building the two
+     * containers, so a test boots this kernel in a second environment and gets config_test.yml followed by
+     * the file named after that environment (config_<environment>.yml, issue #196). Each environment
+     * compiles its own container, into the cache directory named after it.
+     */
     public function registerContainerConfiguration(LoaderInterface $loader): void
     {
         $loader->load($this->getProjectDir() . '/config/config_test.yml');
+        if ($this->environment !== 'test') {
+            $loader->load(sprintf('%s/config/config_%s.yml', $this->getProjectDir(), $this->environment));
+        }
     }
 
     public function getProjectDir(): string

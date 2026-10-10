@@ -1,0 +1,28 @@
+# A deployment that routes what the provider carries to a third party to a lane of its own (issue #196):
+# the lines of YAML that re-open what #155 closed. The bundle prepends the routing of the markers and the
+# four lanes that carry them, the one of the notifications driven by the policy it publishes; an
+# application that names that marker again sends it somewhere else, and somewhere else is tried again on
+# whatever patience it was given. The provider goes on working, and the retirement window of a signing key
+# announces a budget nobody follows.
+#
+# This is the shape that reaches it. The four numbers written on the lane of the bundle do not: the
+# prepended "retry_strategy.service" survives the merge of a configuration that names no service, and
+# the component prefers a service to its own numbers, so those numbers are read by nothing. A lane of its
+# own, or another service named on the lane of the bundle, is what displaces the policy.
+#
+# More patient than the policy of the bundle on purpose, which is the direction that hurts: ten retries a
+# minute apart is six hundred seconds of waiting where the window covers two hundred, so a logout token
+# delivered on a late retry names a key the JWK Set no longer publishes. Scattered by nothing (jitter: 0),
+# so the number the doctor reads is the number this file wrote.
+messenger:
+    transports:
+        own_notifications:
+            dsn: 'in-memory://'
+            retry_strategy:
+                max_retries: 10
+                delay: 60000
+                multiplier: 1
+                max_delay: 60000
+                jitter: 0
+    routing:
+        'Beffroi\Bundle\Message\Notification': own_notifications
