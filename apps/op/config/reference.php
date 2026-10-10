@@ -145,7 +145,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     https_port?: scalar|Param|null, // Default: 443
  *     strict_requirements?: scalar|Param|null, // set to true to throw an exception when a parameter does not match the requirements set to false to disable exceptions when a parameter does not match the requirements (and return null instead) set to null to disable parameter checks against requirements 'true' is the preferred configuration in development mode, while 'false' or 'null' might be preferred in production // Default: true
  *     utf8?: bool|Param, // Default: true
- *     ...<string, mixed>
  * }
  * @psalm-type CacheConfig = array{
  *     prefix_seed?: scalar|Param|null, // Used to namespace cache keys when using several apps with the same shared backend. // Default: "_%kernel.project_dir%.%kernel.container_class%"
@@ -512,7 +511,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     enabled?: bool|Param, // Default: true
  *     default_client?: scalar|Param|null, // Name of the default client (must match an entry of "clients"); inferred when only one client is registered. // Default: null
  *     clients?: Param|string|array<string, Param|string|array{ // Default: []
- *         dsn?: scalar|Param|null,
+ *         dsn?: string|Param,
  *         members?: array<string, scalar|Param|null>,
  *         retired?: list<scalar|Param|null>,
  *     }>,
@@ -522,6 +521,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         key_id?: scalar|Param|null, // Master key wrapping the data keys this store creates (backend-specific: alias, ARN, key URL, ...).
  *         table?: scalar|Param|null, // Name of the table holding the wrapped data keys. // Default: "key_management_data_keys"
  *         max_age?: mixed, // Seconds after which the current data key of a scope is retired in favour of a fresh one; the default of 30 days keeps what one key seals under the collision bound of the random 96-bit IV each payload carries. 0 retires the key on every call, null never retires it. // Default: 2592000
+ *     },
+ *     doctrine_dbal?: array{
+ *         types?: array<string, array{ // Default: []
+ *             type?: string|Param, // Doctrine type converting the value before it is encrypted.
+ *             key?: string|Param, // Master key encrypting the values, or the scope of their data key when "store" is configured.
+ *         }>,
  *     },
  * }
  * @psalm-type FrameworkConfig = array{
@@ -1100,7 +1105,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         access_denied_url?: scalar|Param|null,
  *         access_denied_handler?: scalar|Param|null,
  *         entry_point?: scalar|Param|null, // An enabled authenticator name or a service id that implements "Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface".
- *         re_authentication_entry_point?: scalar|Param|null, // Service id implementing "Symfony\Component\Security\Http\EntryPoint\ReAuthenticationEntryPointInterface", asking an already authenticated user to prove possession of their credentials again when IS_AUTHENTICATED_RECENTLY or IS_AUTHENTICATED_VERY_RECENTLY is denied. Defaults to the firewall entry point when that one implements it.
+ *         re_authentication_entry_point?: scalar|Param|null, // An enabled authenticator name or a service id implementing "Symfony\Component\Security\Http\EntryPoint\ReAuthenticationEntryPointInterface", asking an already authenticated user to prove possession of their credentials again when IS_AUTHENTICATED_RECENTLY or IS_AUTHENTICATED_VERY_RECENTLY is denied. Defaults to the firewall entry point when that one implements it.
  *         provider?: scalar|Param|null,
  *         stateless?: bool|Param, // Default: false
  *         lazy?: bool|Param, // Default: false
@@ -1340,7 +1345,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             token_handler?: Param|string|array{
  *                 id?: scalar|Param|null,
  *                 oidc_user_info?: Param|string|array{
- *                     base_uri?: scalar|Param|null, // Base URI of the userinfo endpoint on the OIDC server, or the OIDC server URI to use the discovery (require "discovery" to be configured).
+ *                     base_uri?: scalar|Param|null, // Base URI of the userinfo endpoint on the OIDC server, or the OIDC server URI to use the discovery (require "discovery" to be configured). The latter must end with a slash when it has a path, as the discovery path is resolved against it as a relative URL.
  *                     discovery?: array{ // Enable the OIDC discovery.
  *                         cache?: array{
  *                             id?: scalar|Param|null, // Cache service id to use to cache the OIDC discovery configuration.
