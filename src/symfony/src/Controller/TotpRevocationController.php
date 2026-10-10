@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -20,9 +21,12 @@ use Symfony\Component\Routing\Attribute\Route;
  * the TOTP is revoked, its row stays, and the password alone signs the user in again. Without an active
  * one there is nothing to remove. What becomes of the sessions it completed is the caller's policy
  * (§3.4): this one leaves them.
+ *
+ * **A session alone does not post it** (AsksForARecentProofInterface): taking the second factor away is
+ * taking a factor away.
  */
 #[AsController]
-final readonly class TotpRevocationController
+final readonly class TotpRevocationController implements AsksForARecentProofInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_two_factor_revoke';
 
@@ -35,6 +39,14 @@ final readonly class TotpRevocationController
         private CredentialRevocation $revocation,
         private InteractionPages $pages,
     ) {
+    }
+
+    /**
+     * The page of the second factor, which holds the button this answers.
+     */
+    public function comesBackTo(): string
+    {
+        return AccountTwoFactorController::ROUTE;
     }
 
     #[Route('/account/two-factor/revoke', name: self::ROUTE, methods: ['POST'])]

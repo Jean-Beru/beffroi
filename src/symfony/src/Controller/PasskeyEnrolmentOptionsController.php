@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\PasskeyOptionsStore;
@@ -19,9 +20,13 @@ use Symfony\Component\Routing\Attribute\Route;
  * The options a browser creates a passkey with for the signed-in user (WebAuthn Level 3 §5.4,
  * architecture §5.2): drawn by the enrolment of the core, kept in the session of this browser for the
  * attestation that comes back.
+ *
+ * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): the ceremony it opens is worth
+ * nothing until the attestation is posted, and that post is where the proof is asked
+ * (PasskeyEnrolmentController); what a script reads as JSON could not be sent to a login anyway.
  */
 #[AsController]
-final readonly class PasskeyEnrolmentOptionsController
+final readonly class PasskeyEnrolmentOptionsController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_passkeys_options';
 

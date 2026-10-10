@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -24,9 +25,12 @@ use Symfony\Component\Routing\Attribute\Route;
  * written to a session. It is the same answer the last step of an enrolment gives, for the same reason.
  *
  * A person who holds no second factor has none to renew and is not found.
+ *
+ * **A session alone does not post it** (AsksForARecentProofInterface): it invalidates the codes somebody
+ * wrote down, which is as many ways in taken away.
  */
 #[AsController]
-final readonly class BackupCodesRenewalController
+final readonly class BackupCodesRenewalController implements AsksForARecentProofInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_two_factor_backup_codes';
 
@@ -39,6 +43,14 @@ final readonly class BackupCodesRenewalController
         private RequestContextFactory $contexts,
         private InteractionPages $pages,
     ) {
+    }
+
+    /**
+     * The page of the second factor, which holds the button this answers.
+     */
+    public function comesBackTo(): string
+    {
+        return AccountTwoFactorController::ROUTE;
     }
 
     #[Route('/account/two-factor/backup-codes', name: self::ROUTE, methods: ['POST'])]

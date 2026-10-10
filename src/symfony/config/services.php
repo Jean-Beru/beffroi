@@ -72,6 +72,7 @@ use Beffroi\Bundle\Http\AskedPeriod;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\AccountHomePage;
 use Beffroi\Bundle\Http\Account\AccountSections;
+use Beffroi\Bundle\Http\Account\RecentProofListener;
 use Beffroi\Bundle\Http\Account\PasskeysSection;
 use Beffroi\Bundle\Http\Account\ProfileSection;
 use Beffroi\Bundle\Http\Account\ApprovalsSection;
@@ -626,9 +627,12 @@ return static function (ContainerConfigurator $container): void {
     // where a page of the provider that is not an authorization request sends a browser to sign in, and
     // where the login of the firewall sends it back (RFC 8628 §3.3)
     $services->set(LoginTarget::class);
-    // what the page that replaces a password asks of a session before the form: a proof given a short
-    // while ago, and the login of the firewall when there is none (issue #552)
+    // what a page of the account that adds or takes away a way in asks of a session before the form: a
+    // proof given a short while ago, and the login of the firewall when there is none (issue #552); which
+    // pages ask is said by the pages themselves and read where the kernel is about to call one, so the rule
+    // reaches the GET and the POST of a page by construction (issue #580)
     $services->set(RecentLogin::class);
+    $services->set(RecentProofListener::class);
     $services->set(DeviceApprovalPage::class);
     $services->set(PendingApprovalsPage::class);
     // Reaching a user through the push service of a browser they signed in with (RFC 8030, §5.6): the

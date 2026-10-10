@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\ProfilePage;
@@ -18,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * first; there is no interaction to send it to, the page belongs to no client.
  */
 #[AsController]
-final readonly class AccountProfileController
+final readonly class AccountProfileController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_profile';
 

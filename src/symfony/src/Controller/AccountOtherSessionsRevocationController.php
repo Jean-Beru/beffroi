@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -20,9 +21,13 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * There is no identifier in the request: what is kept is the session the reader presents, so no list of
  * what to end travels and nothing of somebody else is reachable from here.
+ *
+ * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): ending the sessions somebody fears
+ * is not taking a credential away, and a proof asked first would be a password typed on the browser they
+ * are worried about.
  */
 #[AsController]
-final readonly class AccountOtherSessionsRevocationController
+final readonly class AccountOtherSessionsRevocationController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_sessions_revoke_others';
 

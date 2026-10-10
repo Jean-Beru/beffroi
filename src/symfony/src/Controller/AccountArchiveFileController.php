@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -26,7 +27,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * file has expired all get a 404 here, and read which of the three it is on the page of the archive.
  */
 #[AsController]
-final readonly class AccountArchiveFileController
+final readonly class AccountArchiveFileController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_archive_file';
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\WhatWasRefused;
@@ -27,9 +28,13 @@ use function trim;
  * It answers with a redirection whether the ceremony was completed or refused (issue #481): a browser
  * reloading the page it comes back to does not present the same thing again, and what was refused crosses
  * the redirection in the session (WhatWasRefused).
+ *
+ * **A session alone does not post it** (AsksForARecentProofInterface): adding a credential is adding a
+ * way in, so a browser whose newest proof is older than the window is sent to the login of the firewall
+ * and the ceremony is begun again from the page.
  */
 #[AsController]
-final readonly class PasskeyEnrolmentController
+final readonly class PasskeyEnrolmentController implements AsksForARecentProofInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_passkeys_enrol';
 
@@ -53,6 +58,14 @@ final readonly class PasskeyEnrolmentController
         private WhatWasRefused $refusals,
         private InteractionPages $pages,
     ) {
+    }
+
+    /**
+     * The page of the passkeys, which holds the ceremony this completes.
+     */
+    public function comesBackTo(): string
+    {
+        return AccountPasskeysController::ROUTE;
     }
 
     #[Route('/account/passkeys', name: self::ROUTE, methods: ['POST'])]

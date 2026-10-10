@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\NotificationsPage;
@@ -18,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * a session of the core is told to sign in first; the page belongs to no client.
  */
 #[AsController]
-final readonly class AccountNotificationsController
+final readonly class AccountNotificationsController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_notifications';
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -27,9 +28,14 @@ use Symfony\Component\Uid\Uuid;
  *
  * Ending the session of the browser reading the page is not the same act as ending another: that browser
  * is signed out here, the way the end session endpoint signs one out, and it is told so.
+ *
+ * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): ending a session is what a person
+ * does because they fear that session, and asking them to prove themselves first would be asking them to
+ * type a password on the browser they are worried about. It is the one gesture of these pages that only
+ * ever locks an attacker out.
  */
 #[AsController]
-final readonly class AccountSessionRevocationController
+final readonly class AccountSessionRevocationController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_sessions_revoke';
 

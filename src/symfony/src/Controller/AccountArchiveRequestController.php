@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -24,7 +25,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * not ask for a second archive.
  */
 #[AsController]
-final readonly class AccountArchiveRequestController
+final readonly class AccountArchiveRequestController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_archive_ask';
 

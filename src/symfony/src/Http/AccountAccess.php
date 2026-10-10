@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Plane\Plane;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +19,13 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class AccountAccess
 {
+    /**
+     * How a page of the account is known: its route says so, the way the name of a route says its plane
+     * (Plane). What walks the pages of the account reads this and holds no list of them, so a page added to
+     * the account is walked by being routed.
+     */
+    public const string ROUTE_PREFIX = Plane::INTERACTION_ROUTE_PREFIX . 'account';
+
     public function __construct(
         private TenantProvider $tenants,
         private BrowserSession $browser,

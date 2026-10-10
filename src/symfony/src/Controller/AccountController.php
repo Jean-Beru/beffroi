@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\AccountHomePage;
 use Beffroi\Bundle\Http\LoginTarget;
@@ -23,7 +24,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * held a session a moment ago.
  */
 #[AsController]
-final readonly class AccountController
+final readonly class AccountController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account';
 

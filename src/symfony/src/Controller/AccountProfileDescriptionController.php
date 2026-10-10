@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\ProfilePage;
@@ -32,7 +33,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * reloading the page does not say the same thing of that person again.
  */
 #[AsController]
-final readonly class AccountProfileDescriptionController
+final readonly class AccountProfileDescriptionController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_profile_describe';
 

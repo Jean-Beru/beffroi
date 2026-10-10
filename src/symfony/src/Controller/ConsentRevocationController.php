@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use function array_find;
+use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -27,7 +28,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * one already taken back is not either.
  */
 #[AsController]
-final readonly class ConsentRevocationController
+final readonly class ConsentRevocationController implements ReachedOnTheSessionAloneInterface
 {
     public const string ROUTE = 'beffroi_interaction_account_consents_revoke';
 

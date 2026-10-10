@@ -39,9 +39,18 @@ abstract class PasskeyTestCase extends BrowserTestCase
     /**
      * A passkey enrolled through the page of the account, from a session the browser holds; the browser
      * keeps that session.
+     *
+     * The page asks for a proof given a short while ago (issue #580), so a fixture that wants a session
+     * established earlier is played on the clock of that moment and comes back: what it asked for is one
+     * session that signed in then and holds a passkey, and not a session enrolling one on a proof it no
+     * longer has.
      */
     protected function enrol(User $user, SoftwareAuthenticator $device, string $name = 'YubiKey 5', ?DateTimeImmutable $signedInAt = null): PasskeyCredential
     {
+        $playedAt = self::currentSecond();
+        if ($signedInAt !== null) {
+            self::mockTime($signedInAt);
+        }
         $this->signIn($user, $signedInAt);
         $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
         static::assertIsString($token);
@@ -52,6 +61,9 @@ abstract class PasskeyTestCase extends BrowserTestCase
         ]);
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
+        if ($signedInAt !== null) {
+            self::mockTime($playedAt);
+        }
 
         return self::passkeyOf($user, $device);
     }
