@@ -9,7 +9,10 @@ use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Core\Domain\Listing\Listing;
+use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\CanPageActiveConsentsInterface;
 use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use function array_values;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -19,7 +22,10 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
  *
  * @extends DoctrineRepository<Consent>
  */
-final readonly class DoctrineConsentRepository extends DoctrineRepository implements ConsentRepositoryInterface, ActiveConsentsInterface
+final readonly class DoctrineConsentRepository extends DoctrineRepository implements
+    ConsentRepositoryInterface,
+    ActiveConsentsInterface,
+    CanPageActiveConsentsInterface
 {
     public function __construct(EntityManagers $managers)
     {
@@ -42,6 +48,18 @@ final readonly class DoctrineConsentRepository extends DoctrineRepository implem
             ->getOneOrNullResult();
 
         return $consent !== null && ClientResolver::isResolved($consent) ? $consent : null;
+    }
+
+    /**
+     * Which rows are in force is decided after the query, one per client and none of a client this provider
+     * no longer knows, so a page of this list is a page of that answer: a count and a slice in the database
+     * would count rows the list above does not hold.
+     *
+     * @return Listing<Consent>
+     */
+    public function pageOfActiveConsents(User $user, Pagination $pagination): Listing
+    {
+        return Listing::of($this->activeOf($user), $pagination);
     }
 
     /**

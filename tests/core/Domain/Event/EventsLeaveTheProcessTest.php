@@ -17,6 +17,7 @@ use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRenamed;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
@@ -104,6 +105,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a person who took their archive' => [new PersonTookTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a credential enrolled' => [new CredentialEnrolled($passkey, $now, $context)];
         yield 'a credential revoked' => [new CredentialRevoked($passkey, $now, $context)];
+        yield 'a credential renamed' => [new CredentialRenamed($passkey, 'The key it was', $now, $context)];
         yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context, false)];
         yield 'a password rehashed' => [new PasswordRehashed($password, $now, $context)];
         yield 'a TOTP used' => [new TotpUsed($totp, $now, $context, false)];

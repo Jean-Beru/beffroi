@@ -245,10 +245,6 @@
         <source>profile.title</source>
         <target>Vos informations</target>
       </trans-unit>
-      <trans-unit id="bf077998cc" resname="profile.signed_in_as">
-        <source>profile.signed_in_as</source>
-        <target>Session ouverte pour {username}.</target>
-      </trans-unit>
       <trans-unit id="be9758262f" resname="profile.explanation">
         <source>profile.explanation</source>
         <target>Voici tout ce que ce fournisseur détient à votre sujet. Une application obtient ce que vous l'autorisez à obtenir et rien d'autre ; vos passkeys, votre application d'authentification et les applications que vous avez autorisées ont chacune leur page.</target>
@@ -276,10 +272,6 @@
       <trans-unit id="9cdc497348" resname="profile.username">
         <source>profile.username</source>
         <target>Nom d'utilisateur</target>
-      </trans-unit>
-      <trans-unit id="7dfe6bd8ef" resname="profile.subject">
-        <source>profile.subject</source>
-        <target>Identifiant transmis aux applications</target>
       </trans-unit>
       <trans-unit id="a49dd70115" resname="profile.created_at">
         <source>profile.created_at</source>
@@ -357,10 +349,6 @@
         <source>passkeys.title</source>
         <target>Vos passkeys</target>
       </trans-unit>
-      <trans-unit id="de5f138c01" resname="passkeys.signed_in_as">
-        <source>passkeys.signed_in_as</source>
-        <target>Connecté en tant que {username}.</target>
-      </trans-unit>
       <trans-unit id="81402f59a0" resname="passkeys.none">
         <source>passkeys.none</source>
         <target>Vous n’avez pas encore de passkey.</target>
@@ -396,10 +384,6 @@
       <trans-unit id="2ce8b47f35" resname="passkeys.revoke">
         <source>passkeys.revoke</source>
         <target>Révoquer</target>
-      </trans-unit>
-      <trans-unit id="2879167539" resname="passkeys.new_name">
-        <source>passkeys.new_name</source>
-        <target>Nom de la nouvelle passkey</target>
       </trans-unit>
       <trans-unit id="08af99ba89" resname="passkeys.enrol">
         <source>passkeys.enrol</source>
@@ -457,10 +441,6 @@
         <source>consents.title</source>
         <target>Les applications que vous avez autorisées</target>
       </trans-unit>
-      <trans-unit id="f0810fc3a0" resname="consents.signed_in_as">
-        <source>consents.signed_in_as</source>
-        <target>Session ouverte pour {username}.</target>
-      </trans-unit>
       <trans-unit id="b40383a420" resname="consents.none">
         <source>consents.none</source>
         <target>Vous n’avez autorisé aucune application.</target>
@@ -488,10 +468,6 @@
       <trans-unit id="68e780445d" resname="two_factor.title">
         <source>two_factor.title</source>
         <target>Authentification à deux facteurs</target>
-      </trans-unit>
-      <trans-unit id="2b37682e1b" resname="two_factor.signed_in_as">
-        <source>two_factor.signed_in_as</source>
-        <target>Connecté en tant que {username}.</target>
       </trans-unit>
       <trans-unit id="120102f7ce" resname="two_factor.none">
         <source>two_factor.none</source>
@@ -697,10 +673,6 @@
         <source>approvals.provider</source>
         <target>C'est {provider} qui demande.</target>
       </trans-unit>
-      <trans-unit id="aff636cc62" resname="approvals.signed_in_as">
-        <source>approvals.signed_in_as</source>
-        <target>Vous êtes connecté en tant que {username}.</target>
-      </trans-unit>
       <trans-unit id="3cbe156f9c" resname="approvals.nothing">
         <source>approvals.nothing</source>
         <target>Rien ne vous attend. Si une application vous a dit le contraire, ce n'était pas nous.</target>
@@ -760,10 +732,6 @@
       <trans-unit id="93dc1e5079" resname="notifications.title">
         <source>notifications.title</source>
         <target>Notifications</target>
-      </trans-unit>
-      <trans-unit id="d0d4c1e8a2" resname="notifications.signed_in_as">
-        <source>notifications.signed_in_as</source>
-        <target>Vous êtes connecté en tant que {username}.</target>
       </trans-unit>
       <trans-unit id="07e99afba9" resname="notifications.what_is_sent">
         <source>notifications.what_is_sent</source>
@@ -861,10 +829,6 @@
         <source>sessions.title</source>
         <target>Où vous êtes connecté</target>
       </trans-unit>
-      <trans-unit id="e4b8c6d1a7" resname="sessions.signed_in_as">
-        <source>sessions.signed_in_as</source>
-        <target>Connecté en tant que {username}.</target>
-      </trans-unit>
       <trans-unit id="f7c2e9a4b1" resname="sessions.explanation">
         <source>sessions.explanation</source>
         <target>Chaque ligne est un navigateur ou une application qui tient une session ouverte en votre nom. En fermer une déconnecte partout où cette session est allée.</target>
@@ -949,10 +913,6 @@
         <source>sign_ins.title</source>
         <target>Connexions récentes</target>
       </trans-unit>
-      <trans-unit id="sign_ins.signed_in_as" resname="sign_ins.signed_in_as">
-        <source>sign_ins.signed_in_as</source>
-        <target>Connecté en tant que {username}.</target>
-      </trans-unit>
       <trans-unit id="sign_ins.explanation" resname="sign_ins.explanation">
         <source>sign_ins.explanation</source>
         <target>Les fois où quelqu'un s'est connecté en votre nom, et celles où quelqu'un a essayé sans y parvenir. Une ligne que vous ne reconnaissez pas vaut un nouveau mot de passe.</target>
@@ -1024,10 +984,6 @@
       <trans-unit id="archive.title" resname="archive.title">
         <source>archive.title</source>
         <target>Vos données</target>
-      </trans-unit>
-      <trans-unit id="archive.signed_in_as" resname="archive.signed_in_as">
-        <source>archive.signed_in_as</source>
-        <target>Connecté en tant que {username}.</target>
       </trans-unit>
       <trans-unit id="archive.explanation" resname="archive.explanation">
         <source>archive.explanation</source>
@@ -1172,6 +1128,74 @@
       <trans-unit id="profile.changed_when" resname="profile.changed_when">
         <source>profile.changed_when</source>
         <target>Quand</target>
+      </trans-unit>
+      <trans-unit id="pager.pages" resname="pager.pages">
+        <source>pager.pages</source>
+        <target>Les pages de ce tableau</target>
+      </trans-unit>
+      <trans-unit id="pager.rows" resname="pager.rows">
+        <source>pager.rows</source>
+        <target>De {first} à {last} sur {total}</target>
+      </trans-unit>
+      <trans-unit id="pager.previous" resname="pager.previous">
+        <source>pager.previous</source>
+        <target>Page précédente</target>
+      </trans-unit>
+      <trans-unit id="pager.next" resname="pager.next">
+        <source>pager.next</source>
+        <target>Page suivante</target>
+      </trans-unit>
+      <trans-unit id="pager.first" resname="pager.first">
+        <source>pager.first</source>
+        <target>Première page</target>
+      </trans-unit>
+      <trans-unit id="pager.last" resname="pager.last">
+        <source>pager.last</source>
+        <target>Dernière page</target>
+      </trans-unit>
+      <trans-unit id="pager.go_to" resname="pager.go_to">
+        <source>pager.go_to</source>
+        <target>Aller à</target>
+      </trans-unit>
+      <trans-unit id="changes.title" resname="changes.title">
+        <source>changes.title</source>
+        <target>Ce que vous avez changé</target>
+      </trans-unit>
+      <trans-unit id="changes.explanation" resname="changes.explanation">
+        <source>changes.explanation</source>
+        <target>Chaque changement que vous avez fait de votre propre dossier, le plus récent d'abord. Ce qu'une application de ce fournisseur lit est le dossier tel qu'il est maintenant.</target>
+      </trans-unit>
+      <trans-unit id="changes.none_in_period" resname="changes.none_in_period">
+        <source>changes.none_in_period</source>
+        <target>Vous n'avez rien changé sur ces jours.</target>
+      </trans-unit>
+      <trans-unit id="filter.period" resname="filter.period">
+        <source>filter.period</source>
+        <target>Les jours sur lesquels ce tableau est lu</target>
+      </trans-unit>
+      <trans-unit id="filter.from" resname="filter.from">
+        <source>filter.from</source>
+        <target>Du</target>
+      </trans-unit>
+      <trans-unit id="filter.to" resname="filter.to">
+        <source>filter.to</source>
+        <target>Au</target>
+      </trans-unit>
+      <trans-unit id="filter.apply" resname="filter.apply">
+        <source>filter.apply</source>
+        <target>Lire ces jours</target>
+      </trans-unit>
+      <trans-unit id="filter.clear" resname="filter.clear">
+        <source>filter.clear</source>
+        <target>Tout lire</target>
+      </trans-unit>
+      <trans-unit id="passkeys.new_default" resname="passkeys.new_default">
+        <source>passkeys.new_default</source>
+        <target>Nouvelle clé</target>
+      </trans-unit>
+      <trans-unit id="passkeys.rename" resname="passkeys.rename">
+        <source>passkeys.rename</source>
+        <target>Renommer</target>
       </trans-unit>
     </body>
   </file>

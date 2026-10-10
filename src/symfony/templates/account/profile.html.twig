@@ -1,15 +1,21 @@
 {# What this provider holds about the signed-in user (architecture §5.2), in the language of the browser:
-   the account itself, which keeping a record for someone keeps, then what that person told us, each thing
-   with its label and its value. A record that says nothing of the person says so. Overridable by an
-   application under templates/bundles/BeffroiBundle/. #}
+   the account itself, which keeping a record for someone keeps, then one line per claim, read where it is
+   held and written where the tenant opens it. A record that says nothing of the person says so. What that
+   person has changed of it is a page of its own, which this one offers.
+   Overridable by an application under templates/bundles/BeffroiBundle/. #}
 {% extends '@Beffroi/layout.html.twig' %}
 {% trans_default_domain 'beffroi' %}
 
 {% block title %}{{ 'profile.title'|trans }}{% endblock %}
 
+{# What this person has changed of their own record is a page of its own (issue #482), the one thing of
+   this record that grows without end, and the way to it is what this page offers. #}
+{% block action %}
+    <a href="{{ path('beffroi_interaction_account_profile_changes') }}" data-profile="changes">{{ 'changes.title'|trans }}</a>
+{% endblock %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'profile.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'profile.explanation'|trans }}</p>
     <h2>{{ 'profile.account'|trans }}</h2>
     <dl data-information="account">
@@ -17,101 +23,72 @@
             {{ include('@Beffroi/account/detail.html.twig', {detail: detail}) }}
         {% endfor %}
     </dl>
+    {# One line per claim, read where it is held and written where the tenant opens it (issues #452, #476,
+       #479): the same claim is not read in one list and offered in another, so that somebody corrects what
+       they are reading. A claim this provider holds nothing of and that nobody may fill here is not a line
+       at all, a detail nobody gave and nobody may give being nothing to show. #}
     <h2>{{ 'profile.about_you'|trans }}</h2>
-    {% if claims is empty %}
-        <p data-claims="none">{{ 'profile.none'|trans }}</p>
-    {% else %}
-        <dl data-information="claims" data-claims="{{ claims|length }}">
-            {% for detail in claims %}
-                {{ include('@Beffroi/account/detail.html.twig', {detail: detail}) }}
-            {% endfor %}
-        </dl>
-    {% endif %}
-
-    {# What the tenant lets this person change of themselves (issue #452): one field per claim it opens, in
-       the order the claims are wired. A tenant that opens none says so, and the list above says what is
-       held either way, so what cannot be changed here is read and not offered. #}
-    <h2>{{ 'profile.what_you_may_change'|trans }}</h2>
     {% if refusal is not null %}<p data-error="{{ refusal }}">{{ ('profile.' ~ refusal)|trans }}</p>{% endif %}
+    {% if held == 0 %}<p data-claims="none">{{ 'profile.none'|trans }}</p>{% endif %}
     {% if changeable is empty %}
         <p data-changeable="none">{{ 'profile.change_nothing'|trans }}</p>
     {% else %}
         <p>{{ 'profile.change_explanation'|trans }}</p>
-        {% for claim, offered in changeable %}
-            {% set field = offered.field %}
-            <form method="post" action="{{ path('beffroi_interaction_account_profile_describe') }}" data-changeable="{{ claim }}">
-                <input type="hidden" name="_token" value="{{ csrf_token('beffroi_profile_describe') }}">
-                <input type="hidden" name="claim" value="{{ claim }}">
-                <label for="claim-{{ claim }}">{{ ('profile.' ~ claim)|trans }}</label>
-                {# What kind of field this is, the claim says (issues #476 and #479): a closed set short
-                   enough to read is chosen from a list, one of several hundred is typed into with the whole
-                   set suggested, and anything else is typed into an input of the kind the claim named, with
-                   what the browser may check before anything is sent. #}
-                {% if field.choices is not empty and not field.isPicked %}
-                    <select id="claim-{{ claim }}" name="value" data-field="choice">
-                        <option value=""{% if offered.held is null %} selected{% endif %}>{{ 'profile.nothing'|trans }}</option>
-                        {% for value, label in field.choices %}
-                            <option value="{{ value }}"{% if value == offered.held %} selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                {% elseif field.choices is not empty %}
-                    <input
-                        type="text"
-                        id="claim-{{ claim }}"
-                        name="value"
-                        value="{{ offered.held }}"
-                        data-field="picker"
-                        autocomplete="off"
-                        list="claim-{{ claim }}-values"
-                    >
-                    <datalist id="claim-{{ claim }}-values" data-values="{{ field.choices|length }}">
-                        {% for value, label in field.choices %}
-                            <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </datalist>
-                {% else %}
-                    <input
-                        type="{{ field.kind }}"
-                        id="claim-{{ claim }}"
-                        name="value"
-                        value="{{ offered.held }}"
-                        data-field="{{ field.kind }}"
-                        autocomplete="off"
-                        {%- if field.pattern is not null %} pattern="{{ field.pattern }}"{% endif %}
-                        {%- if field.example is not null %} placeholder="{{ field.example|trans }}"{% endif %}
-                    >
-                {% endif %}
-                <button type="submit">{{ 'profile.save'|trans }}</button>
-            </form>
+    {% endif %}
+    <ul data-information="claims" data-claims="{{ held }}">
+        {% for detail in claims %}
+            {% set offered = changeable[detail.key] ?? null %}
+            {% if offered is not null %}
+                {% set field = offered.field %}
+                <li data-claim="{{ detail.key }}">
+                    <form method="post" action="{{ path('beffroi_interaction_account_profile_describe') }}" data-changeable="{{ detail.key }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('beffroi_profile_describe') }}">
+                        <input type="hidden" name="claim" value="{{ detail.key }}">
+                        <label for="claim-{{ detail.key }}">{{ ('profile.' ~ detail.key)|trans }}</label>
+                        {# What kind of field this is, the claim says (issues #476 and #479): a closed set
+                           short enough to read is chosen from a list, one of several hundred is typed into
+                           with the whole set suggested, and anything else is typed into an input of the
+                           kind the claim named, with what the browser may check before anything is sent. #}
+                        {% if field.choices is not empty and not field.isPicked %}
+                            <select id="claim-{{ detail.key }}" name="value" data-field="choice">
+                                <option value=""{% if offered.held is null %} selected{% endif %}>{{ 'profile.nothing'|trans }}</option>
+                                {% for value, label in field.choices %}
+                                    <option value="{{ value }}"{% if value == offered.held %} selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        {% elseif field.choices is not empty %}
+                            <input
+                                type="text"
+                                id="claim-{{ detail.key }}"
+                                name="value"
+                                value="{{ offered.held }}"
+                                data-field="picker"
+                                autocomplete="off"
+                                list="claim-{{ detail.key }}-values"
+                            >
+                            <datalist id="claim-{{ detail.key }}-values" data-values="{{ field.choices|length }}">
+                                {% for value, label in field.choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </datalist>
+                        {% else %}
+                            <input
+                                type="{{ field.kind }}"
+                                id="claim-{{ detail.key }}"
+                                name="value"
+                                value="{{ offered.held }}"
+                                data-field="{{ field.kind }}"
+                                autocomplete="off"
+                                {%- if field.pattern is not null %} pattern="{{ field.pattern }}"{% endif %}
+                                {%- if field.example is not null %} placeholder="{{ field.example|trans }}"{% endif %}
+                            >
+                        {% endif %}
+                        <button type="submit">{{ 'profile.save'|trans }}</button>
+                    </form>
+                </li>
+            {% elseif detail.value is not null or detail.moment is not null %}
+                {{ include('@Beffroi/account/claim.html.twig', {detail: detail}) }}
+            {% endif %}
         {% endfor %}
-    {% endif %}
-
-    {# What this person has changed of their own record (issue #482): the question they ask first when they
-       read that they changed something is what it said before. The last few; the whole of it is in the
-       archive they ask for. A claim that said nothing on either side says so rather than showing a hole. #}
-    <h2>{{ 'profile.what_you_changed'|trans }}</h2>
-    {% if changes is empty %}
-        <p data-changes="none">{{ 'profile.changed_nothing'|trans }}</p>
-    {% else %}
-        <table data-changes="{{ changes|length }}">
-            <thead>
-                <tr>
-                    <th>{{ 'profile.changed_what'|trans }}</th>
-                    <th>{{ 'profile.changed_from'|trans }}</th>
-                    <th>{{ 'profile.changed_to'|trans }}</th>
-                    <th>{{ 'profile.changed_when'|trans }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for change in changes %}
-                    <tr data-change="{{ change.claim }}">
-                        <td>{{ ('profile.' ~ change.claim)|trans }}</td>
-                        <td>{{ change.was ?? 'profile.nothing'|trans }}</td>
-                        <td>{{ change.became ?? 'profile.nothing'|trans }}</td>
-                        <td><time datetime="{{ change.changedAt|date('c') }}">{{ change.changedAt|beffroi_moment(user) }}</time></td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
+    </ul>
 {% endblock %}

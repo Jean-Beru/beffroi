@@ -29,6 +29,15 @@ final readonly class RecordedDetail
     }
 
     /**
+     * A detail this provider holds nothing of: a line of the page where the person may fill it in, and no
+     * line at all where they may not.
+     */
+    public static function nothing(string $key): self
+    {
+        return new self($key, null, null, null);
+    }
+
+    /**
      * A contact detail, which this provider has either verified or not; nothing else carries that state.
      */
     public static function verifiable(string $key, string $value, bool $verified): self

@@ -1,0 +1,23 @@
+{# The home of the account as this application serves it: the pages of the account and what the account
+   holds in each of them, and nothing else.
+
+   Who the browser is signed in as and the way out are in the bar above every page of this plane
+   (templates/layout/account.html.twig), where they are true of every one of them and not of this page
+   alone; when the session was opened is read where every session of this person is read, the page of the
+   sessions saying which one is this browser's. The pages are the sections that are wired, in their order;
+   this template names none of them. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
+
+{% block title %}{{ 'account.title'|trans }}{% endblock %}
+
+{% block content %}
+    <ul data-sections="{{ sections|length }}">
+        {% for section in sections %}
+            <li data-section="{{ section.route }}">
+                <a href="{{ path(section.route) }}">{{ section.title|trans }}</a>
+                <span data-state="{{ section.state.key }}">{{ section.state.key|trans(section.state.parameters) }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

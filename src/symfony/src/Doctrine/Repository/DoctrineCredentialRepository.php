@@ -14,6 +14,9 @@ use Beffroi\Core\Domain\Credential\ExternallyIdentifiedCredentialInterface;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Listing\Listing;
+use Beffroi\Core\Domain\Listing\Pagination;
+use Beffroi\Core\Port\CanPageCredentialsInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function is_a;
 use function is_subclass_of;
@@ -28,7 +31,7 @@ use function usort;
  * them and listed together, oldest first. A kind presented by an identifier of its own maps it as
  * "externalId", the property ExternallyIdentifiedCredentialInterface asks for; nothing here names a kind.
  */
-final class DoctrineCredentialRepository implements CredentialRepositoryInterface
+final class DoctrineCredentialRepository implements CanPageCredentialsInterface, CredentialRepositoryInterface
 {
     /**
      * @var list<class-string<Credential>>|null
@@ -38,6 +41,19 @@ final class DoctrineCredentialRepository implements CredentialRepositoryInterfac
     public function __construct(
         private readonly EntityManagers $managers,
     ) {
+    }
+
+    /**
+     * One store per kind answers here and the order is made of their answers, so the page is taken of what
+     * they gave and not of a table: a person holds a handful of credentials of a kind, never a journal.
+     *
+     * @param class-string<Credential> $kind
+     *
+     * @return Listing<Credential>
+     */
+    public function pageOfCredentials(User $user, string $kind, Pagination $pagination): Listing
+    {
+        return Listing::of($this->findByUser($user, $kind), $pagination);
     }
 
     /**

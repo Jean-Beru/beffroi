@@ -9,7 +9,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
 use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
-use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
+use Beffroi\Core\Port\CanPageActiveSubscriptionsInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -25,9 +25,10 @@ use Symfony\Component\HttpFoundation\Response;
 final readonly class NotificationsPage
 {
     public function __construct(
-        private PushSubscriptionRepositoryInterface $subscriptions,
+        private CanPageActiveSubscriptionsInterface $subscriptions,
         private ApplicationServerAlgorithmsInterface $algorithms,
         private ApplicationServerKeyProviderInterface $keys,
+        private AskedPage $asked,
         private InteractionPages $pages,
     ) {
     }
@@ -41,7 +42,7 @@ final readonly class NotificationsPage
             'account/notifications.html.twig',
             [
                 'user' => $user,
-                'subscriptions' => $this->subscriptions->findActiveByUser($user),
+                'subscriptions' => $this->subscriptions->pageOfActiveSubscriptions($user, $this->asked->asked()),
                 'application_server_key' => $this->applicationServerKey($user)?->publicKey,
                 'error' => $error,
             ],

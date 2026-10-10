@@ -11,7 +11,10 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Listing\Listing;
+use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Beffroi\Core\Port\DeadRecordsInterface;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -25,6 +28,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRepository implements
     AuthenticationSessionRepositoryInterface,
+    CanPageActiveSessionsInterface,
     DeadRecordsInterface
 {
     public function __construct(
@@ -78,6 +82,17 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
         return $this->repository()->findOneBy([
             'id' => $id,
         ]);
+    }
+
+    /**
+     * The sessions of this person are a handful: they end and they expire, where a journal grows without
+     * end, so the page is taken of what the query above answers and not of the table.
+     *
+     * @return Listing<AuthenticationSession>
+     */
+    public function pageOfActiveSessions(User $user, DateTimeImmutable $now, Pagination $pagination): Listing
+    {
+        return Listing::of($this->findActiveByUser($user, $now), $pagination);
     }
 
     public function findActiveByUser(User $user, DateTimeImmutable $now): array

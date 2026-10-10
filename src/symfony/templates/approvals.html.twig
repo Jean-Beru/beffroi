@@ -17,7 +17,6 @@
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
     <p data-provider="{{ tenant.name }}">{{ 'approvals.provider'|trans({provider: tenant.name}) }}</p>
-    <p>{{ 'approvals.signed_in_as'|trans({username: user.username}) }}</p>
     {% if refusal is not null %}
         <p data-error="{{ refusal }}">{{ ('approvals.refused.' ~ refusal)|trans }}</p>
     {% endif %}

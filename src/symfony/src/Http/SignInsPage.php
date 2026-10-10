@@ -7,7 +7,7 @@ namespace Beffroi\Bundle\Http;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -23,13 +23,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class SignInsPage
 {
-    /**
-     * As many as a person reads at a glance; the archive of everything is issue #453.
-     */
-    public const int HOW_MANY = 20;
-
     public function __construct(
-        private ActsOfAPersonInterface $acts,
+        private CanPageActsOfAPersonInterface $acts,
+        private AskedPage $asked,
         private InteractionPages $pages,
     ) {
     }
@@ -38,7 +34,7 @@ final readonly class SignInsPage
     {
         return $this->pages->render('account/sign_ins.html.twig', [
             'user' => $user,
-            'acts' => $this->acts->lastOf($user, [UserAuthenticated::NAME, AuthenticationFailed::NAME], self::HOW_MANY),
+            'acts' => $this->acts->pageOfActs($user, [UserAuthenticated::NAME, AuthenticationFailed::NAME], $this->asked->asked()),
             'succeeded' => UserAuthenticated::NAME,
         ]);
     }

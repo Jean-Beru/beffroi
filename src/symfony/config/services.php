@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Beffroi\Bundle\Command\DoctorCommand;
+use Beffroi\Bundle\Doctor\NotificationsLanePatience;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
 use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
 use Beffroi\Core\Port\RandomnessInterface;
@@ -19,6 +21,7 @@ use Beffroi\Bundle\Client\RequestObjectFetcher;
 use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
 use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Bundle\Doctrine\PageOfRows;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
 use Beffroi\Bundle\Doctrine\Repository\BoundedDelete;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
@@ -57,14 +60,14 @@ use Beffroi\Oidc\Application\Archive\ConsentsChapter;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineUserRepository;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
-use Beffroi\Bundle\Command\DoctorCommand;
-use Beffroi\Bundle\Doctor\NotificationsLanePatience;
 use Beffroi\Bundle\Dpop\CachedDpopNonce;
 use Beffroi\Bundle\Dpop\CachedDpopProofReplayGuard;
 use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Beffroi\Bundle\EndSession\LogoutChannels;
 use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Beffroi\Bundle\Http\AccountAccess;
+use Beffroi\Bundle\Http\AskedPage;
+use Beffroi\Bundle\Http\AskedPeriod;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\AccountHomePage;
 use Beffroi\Bundle\Http\Account\AccountSections;
@@ -100,6 +103,7 @@ use Beffroi\Bundle\Http\ClientNotificationSender;
 use Beffroi\Bundle\Http\PendingApprovalsPage;
 use Beffroi\Bundle\Http\LogoutTokenSender;
 use Beffroi\Bundle\Http\PasskeyOptionsStore;
+use Beffroi\Bundle\Http\ClaimChangesPage;
 use Beffroi\Bundle\Http\ProfilePage;
 use Beffroi\Bundle\Http\PasskeysPage;
 use Beffroi\Bundle\Http\ConsentsPage;
@@ -181,6 +185,11 @@ use Beffroi\Core\Application\Session\SessionProvenanceEnrichment;
 use Beffroi\Core\Application\Journal\JournalRetention;
 use Beffroi\Core\Application\Record\DeadRecordRemoval;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\CanPageActiveSessionsInterface;
+use Beffroi\Core\Port\CanPageActiveSubscriptionsInterface;
+use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
+use Beffroi\Core\Port\CanPageChangesOfAPersonInterface;
+use Beffroi\Core\Port\CanPageCredentialsInterface;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineClaimHistory;
 use Beffroi\Core\Application\Archive\Chapter\ChangesChapter;
 use Beffroi\Core\Application\Identity\ClaimHistoryRetention;
@@ -201,6 +210,7 @@ use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\UserProvisioner;
@@ -437,6 +447,7 @@ use Beffroi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Beffroi\Oidc\Port\AccessTokenIssuerInterface;
 use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
 use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\CanPageActiveConsentsInterface;
 use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Beffroi\Oidc\Port\RecordedGrantsInterface;
@@ -587,6 +598,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(FapiInteractionId::class);
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
+    // which page of a table a request asks for, and the page of the rows a selection finds: the one word
+    // and the one number every table of this plane is paged by, and the one place a count and a slice are
+    // written (architecture §5.2)
+    $services->set(AskedPage::class);
+    $services->set(AskedPeriod::class);
+    $services->set(PageOfRows::class);
     // what every page of the account asks first: the session of this browser, and the form token when it posts
     // what carries a refusal across the redirection every form of these pages answers with (issue #481)
     $services->set(WhatWasRefused::class);
@@ -653,6 +670,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DoctrineJournal::class);
     $services->alias(JournalInterface::class, DoctrineJournal::class);
     $services->alias(ActsOfAPersonInterface::class, DoctrineJournal::class);
+    $services->alias(CanPageActsOfAPersonInterface::class, DoctrineJournal::class);
     $services->set(ActRecording::class);
     $services->set(JournalRetention::class);
     // Everything this provider holds about one person, in one file they ask for (RGPD articles 15 and 20,
@@ -718,6 +736,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DoctrineClaimHistory::class);
     $services->alias(ClaimHistoryInterface::class, DoctrineClaimHistory::class);
     $services->alias(ChangesOfAPersonInterface::class, DoctrineClaimHistory::class);
+    $services->alias(CanPageChangesOfAPersonInterface::class, DoctrineClaimHistory::class);
     $services->set(ClaimHistoryRetention::class);
     // the language a person chose, written on their account (issue #471)
     $services->set(LanguageRecording::class);
@@ -758,6 +777,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AuthorizationRequestReaderInterface::class, AuthorizationRequestReader::class);
     $services->set(PasskeyOptionsStore::class);
     $services->set(ProfilePage::class);
+    $services->set(ClaimChangesPage::class);
     $services->set(PasskeysPage::class);
     $services->set(ConsentsPage::class);
     // the second factor: the login held between the password and the code, the provisioning of an enrolment sealed under the KMS of the tenant, the QR code drawn by the bundle
@@ -910,8 +930,10 @@ return static function (ContainerConfigurator $container): void {
     // the browsers of a user this provider may push to (decision 0002, §5.6)
     $services->set(DoctrinePushSubscriptionRepository::class);
     $services->alias(PushSubscriptionRepositoryInterface::class, DoctrinePushSubscriptionRepository::class);
+    $services->alias(CanPageActiveSubscriptionsInterface::class, DoctrinePushSubscriptionRepository::class);
     $services->set(DoctrineCredentialRepository::class);
     $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
+    $services->alias(CanPageCredentialsInterface::class, DoctrineCredentialRepository::class);
     // the bounded delete the stores of a dead row make (issue #177), and what the two rows a token still
     // needs are kept for, both numbers handed over by TokensSection from the nodes the issuers read
     $services->set(BoundedDelete::class);
@@ -929,6 +951,7 @@ return static function (ContainerConfigurator $container): void {
         'priority' => -100,
     ]);
     $services->alias(AuthenticationSessionRepositoryInterface::class, DoctrineAuthenticationSessionRepository::class);
+    $services->alias(CanPageActiveSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->set(DoctrineInteractionRepository::class)->tag('beffroi.dead_records');
     $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
     // the three stores that carry a grant, each one tagged so that the reader of what a token descends
@@ -953,6 +976,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ConsentRepositoryInterface::class, DoctrineConsentRepository::class);
     // what the page of the account lists, read past the profiler: it is no interaction
     $services->alias(ActiveConsentsInterface::class, DoctrineConsentRepository::class);
+    $services->alias(CanPageActiveConsentsInterface::class, DoctrineConsentRepository::class);
 
     // The core: keys
     $services->set(EnvelopeKeySealer::class);
@@ -1115,6 +1139,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpEnrolment::class);
     $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
+    $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
     $services->set(SessionOpener::class);
     $services->set(SessionTerminator::class);

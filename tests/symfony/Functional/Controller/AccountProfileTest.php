@@ -47,10 +47,16 @@ final class AccountProfileTest extends BrowserTestCase
         // Then
         self::assertInteractionHeaders($this->browser->getResponse());
         static::assertSame('alice', $crawler->filter('dl[data-information="account"] dd[data-detail="username"]')->text());
-        static::assertSame('alice-subject', $crawler->filter('dd[data-detail="subject"]')->text());
         static::assertNotSame('', $crawler->filter('dd[data-detail="created_at"] time')->attr('datetime'));
+        // the identifier a client receives is on no page of the account: a client of a sector that asks
+        // for a pairwise one receives another identifier altogether (OIDC Core §8.1)
+        static::assertCount(0, $crawler->filter('[data-detail="subject"]'));
     }
 
+    /**
+     * A record that holds nothing of the person says so, and the list then holds the claims this tenant
+     * lets them fill in and nothing else: a claim nobody holds and nobody may give is no line at all.
+     */
     #[Test]
     public function thePageSaysSoWhenTheRecordHoldsNothingOfThePerson(): void
     {
@@ -62,7 +68,10 @@ final class AccountProfileTest extends BrowserTestCase
 
         // Then
         static::assertCount(1, $crawler->filter('p[data-claims="none"]'));
-        static::assertCount(0, $crawler->filter('dl[data-information="claims"]'));
+        static::assertSame(
+            ['nickname', 'birthdate', 'locale', 'zoneinfo'],
+            $crawler->filter('ul[data-information="claims"] li[data-claim]')->extract(['data-claim']),
+        );
     }
 
     #[Test]
@@ -75,13 +84,13 @@ final class AccountProfileTest extends BrowserTestCase
         $crawler = $this->profilePage();
 
         // Then
-        $claims = $crawler->filter('dl[data-information="claims"] dd');
+        // one line per claim the record holds or the tenant opens, in the order a client asks for them
         static::assertSame(
-            ['email', 'phone_number', 'name', 'given_name', 'family_name', 'locale', 'address'],
-            $claims->extract(['data-detail']),
+            ['email', 'phone_number', 'name', 'given_name', 'family_name', 'nickname', 'birthdate', 'locale', 'zoneinfo', 'address'],
+            $crawler->filter('ul[data-information="claims"] li[data-claim]')->extract(['data-claim']),
         );
-        static::assertSame('Alice Example', $crawler->filter('dd[data-detail="name"]')->text());
-        static::assertSame('12 Baker Street, NW1, London', $crawler->filter('dd[data-detail="address"]')->text());
+        static::assertSame('Alice Example', $crawler->filter('li[data-claim="name"] span[data-detail]')->text());
+        static::assertSame('12 Baker Street, NW1, London', $crawler->filter('li[data-claim="address"] span[data-detail]')->text());
     }
 
     /**
@@ -102,7 +111,7 @@ final class AccountProfileTest extends BrowserTestCase
         $crawler = $this->profilePage();
 
         // Then
-        static::assertSame($expected, $crawler->filter('dd[data-detail="email"] span[data-verified]')->attr('data-verified'));
+        static::assertSame($expected, $crawler->filter('li[data-claim="email"] span[data-verified]')->attr('data-verified'));
     }
 
     /**

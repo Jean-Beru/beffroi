@@ -9,7 +9,6 @@
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'sessions.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'sessions.explanation'|trans }}</p>
     <table data-sessions="{{ sessions|length }}">
         <thead>
@@ -52,4 +51,5 @@
             {% endfor %}
         </tbody>
     </table>
+    {{ include('@Beffroi/account/pager.html.twig', {listing: sessions}) }}
 {% endblock %}

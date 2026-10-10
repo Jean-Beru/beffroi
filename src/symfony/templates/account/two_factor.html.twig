@@ -8,18 +8,22 @@
 
 {% block title %}{{ 'two_factor.title'|trans }}{% endblock %}
 
+{% block action %}
+    {% if totp is null %}
+        <form method="post" action="{{ path('beffroi_interaction_account_two_factor_begin') }}" data-two-factor="begin">
+            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_two_factor_begin') }}">
+            <button type="submit">{{ 'two_factor.set_up'|trans }}</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'two_factor.signed_in_as'|trans({username: user.username}) }}</p>
     {% if error is not null %}
         <p data-error="{{ error }}">{{ ('two_factor.error.' ~ error)|trans }}</p>
     {% endif %}
     {% if totp is null %}
         <p data-two-factor="none">{{ 'two_factor.none'|trans }}</p>
-        <form method="post" action="{{ path('beffroi_interaction_account_two_factor_begin') }}" data-two-factor="begin">
-            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_two_factor_begin') }}">
-            <button type="submit">{{ 'two_factor.set_up'|trans }}</button>
-        </form>
     {% else %}
         <p data-two-factor="{{ totp.id }}" data-backup-codes-left="{{ backup_codes_left }}">{{ 'two_factor.active'|trans({date: totp.createdAt|beffroi_moment(user)}) }}</p>
         <dl>

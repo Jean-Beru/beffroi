@@ -16,40 +16,40 @@
 
 {% block content %}
     {{ include('@Beffroi/account/back.html.twig') }}
-    <p>{{ 'notifications.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'notifications.what_is_sent'|trans }}</p>
     {% if error is not null %}
         <p data-error="{{ error }}">{{ ('notifications.error.' ~ error)|trans }}</p>
     {% endif %}
-    {% if subscriptions is empty %}
-        <p data-subscriptions="none">{{ 'notifications.none'|trans }}</p>
-    {% else %}
-        <table data-subscriptions="{{ subscriptions|length }}">
-            <thead>
-                <tr>
-                    <th>{{ 'notifications.label'|trans }}</th>
-                    <th>{{ 'notifications.created_at'|trans }}</th>
-                    <th>{{ 'notifications.last_pushed_at'|trans }}</th>
-                    <th></th>
+    <table data-subscriptions="{{ subscriptions|length }}">
+        <thead>
+            <tr>
+                <th>{{ 'notifications.label'|trans }}</th>
+                <th>{{ 'notifications.created_at'|trans }}</th>
+                <th>{{ 'notifications.last_pushed_at'|trans }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subscription in subscriptions %}
+                <tr data-subscription="{{ subscription.id }}">
+                    <td>{{ subscription.label ?? 'notifications.unnamed'|trans }}</td>
+                    <td><time datetime="{{ subscription.createdAt|date('c') }}">{{ subscription.createdAt|beffroi_moment(user) }}</time></td>
+                    <td>{% if subscription.lastPushedAt is not null %}<time datetime="{{ subscription.lastPushedAt|date('c') }}">{{ subscription.lastPushedAt|beffroi_moment(user) }}</time>{% else %}{{ 'notifications.never_pushed'|trans }}{% endif %}</td>
+                    <td>
+                        <form method="post" action="{{ path('beffroi_interaction_account_notifications_revoke', {id: subscription.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('beffroi_push_revoke') }}">
+                            <button type="submit" name="revoke" value="{{ subscription.id }}">{{ 'notifications.revoke'|trans }}</button>
+                        </form>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                {% for subscription in subscriptions %}
-                    <tr data-subscription="{{ subscription.id }}">
-                        <td>{{ subscription.label ?? 'notifications.unnamed'|trans }}</td>
-                        <td><time datetime="{{ subscription.createdAt|date('c') }}">{{ subscription.createdAt|beffroi_moment(user) }}</time></td>
-                        <td>{% if subscription.lastPushedAt is not null %}<time datetime="{{ subscription.lastPushedAt|date('c') }}">{{ subscription.lastPushedAt|beffroi_moment(user) }}</time>{% else %}{{ 'notifications.never_pushed'|trans }}{% endif %}</td>
-                        <td>
-                            <form method="post" action="{{ path('beffroi_interaction_account_notifications_revoke', {id: subscription.id}) }}">
-                                <input type="hidden" name="_token" value="{{ csrf_token('beffroi_push_revoke') }}">
-                                <button type="submit" name="revoke" value="{{ subscription.id }}">{{ 'notifications.revoke'|trans }}</button>
-                            </form>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
+            {% else %}
+                {# A table that holds nothing keeps its head and says so in one row of its own, which is
+                   how every table of this plane says it. #}
+                <tr data-empty><td colspan="4">{{ 'notifications.none'|trans }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {{ include('@Beffroi/account/pager.html.twig', {listing: subscriptions}) }}
     <form method="post" action="{{ path('beffroi_interaction_account_notifications_subscribe') }}" data-push="subscribe" data-application-server-key="{{ application_server_key ?? '' }}" data-worker-url="{{ path('beffroi_interaction_push_worker') }}" hidden>
         <input type="hidden" name="_token" value="{{ csrf_token('beffroi_push_subscribe') }}">
         <input type="hidden" name="endpoint" value="">

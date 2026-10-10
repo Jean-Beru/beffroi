@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Bundle\Http\Account\RecordedInformation;
+use function count;
 use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Port\ChangesOfAPersonInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -34,15 +34,8 @@ final readonly class ProfilePage
      */
     public const string REFUSED = 'claim_refused';
 
-    /**
-     * How many changes of their own record a person reads here (issue #482). As many as reads at a glance;
-     * the whole of it is in the archive they ask for (issue #453).
-     */
-    public const int CHANGES_SHOWN = 10;
-
     public function __construct(
         private WiredClaims $claims,
-        private ChangesOfAPersonInterface $changes,
         private InteractionPages $pages,
     ) {
     }
@@ -69,10 +62,11 @@ final readonly class ProfilePage
             [
                 'user' => $user,
                 'identity' => RecordedInformation::identityOf($user),
-                'claims' => RecordedInformation::claimsOf($user),
+                // every claim this provider can hold, so that the line somebody reads is the line they
+                // correct; how many of them are held is what the page says of the record itself
+                'claims' => RecordedInformation::everyClaimOf($user),
+                'held' => count(RecordedInformation::claimsOf($user)),
                 'changeable' => $changeable,
-                // what they changed of their own record, the last few (issue #482)
-                'changes' => $this->changes->lastOf($user, self::CHANGES_SHOWN),
                 'refusal' => $refusal,
             ],
             $status,

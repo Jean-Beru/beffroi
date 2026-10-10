@@ -6,7 +6,9 @@
  * into the hidden "_passkey" field and submits the form, so that the response is a redirection the
  * browser follows, as with the password form. A login form also asks the browser to offer the passkeys
  * it holds in the username field (conditional mediation, §5.1.3.1) when it can; a click on the button
- * cancels that and asks outright. Nothing is loaded from anywhere else.
+ * cancels that and asks outright. What a refusal is said in is the element marked data-passkey-error of
+ * that form, or the one of the page when the form carries none, a form of an action being a button and
+ * its hidden fields and not the place a sentence is read. Nothing is loaded from anywhere else.
  */
 (() => {
     'use strict';
@@ -37,7 +39,7 @@
         if (error && error.name === 'AbortError') {
             return;
         }
-        const message = form.querySelector('[data-passkey-error]');
+        const message = form.querySelector('[data-passkey-error]') ?? document.querySelector('[data-passkey-error]');
         if (message) {
             message.hidden = false;
         }
