@@ -8,6 +8,7 @@ use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\LoginTarget;
@@ -43,6 +44,7 @@ final readonly class LoginCodeController
         private AuthenticationUtils $authentication,
         private InteractionLocale $locale,
         private LoginTarget $loginTargets,
+        private FormTarget $formTargets,
     ) {
     }
 
@@ -56,6 +58,9 @@ final readonly class LoginCodeController
         }
         if ($interaction !== null) {
             $this->locale->resume($request, $interaction);
+            // the code this page asks for ends the login, and the login ends where the client asked to be
+            // answered, which its policy names (FormTarget)
+            $this->formTargets->mayEndAt($request, $interaction->request->redirectUri);
         }
         $login = $this->pendingLogins->pending($request->getSession(), $this->contexts->fromRequest($request)->receivedAt);
         if ($login === null) {

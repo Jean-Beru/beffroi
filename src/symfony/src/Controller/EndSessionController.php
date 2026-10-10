@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Controller;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -56,6 +57,7 @@ final readonly class EndSessionController
         private FormToken $formTokens,
         private InteractionLocale $locale,
         private FrontChannelLogoutRenderer $frontChannel,
+        private FormTarget $formTargets,
     ) {
     }
 
@@ -91,6 +93,13 @@ final readonly class EndSessionController
         }
 
         if ($decision instanceof LogoutConfirmationRequired) {
+            $postLogoutRedirectUri = $decision->request->postLogoutRedirectUri;
+            if ($postLogoutRedirectUri !== null) {
+                // a confirmed logout ends where the client asked to be sent back, which this page names for
+                // the browser to follow the redirection that goes there (FormTarget)
+                $this->formTargets->mayEndAt($request, $postLogoutRedirectUri);
+            }
+
             return $this->pages->render('logout.html.twig', [
                 'client' => $decision->request->client,
                 'user' => $decision->session->user,
