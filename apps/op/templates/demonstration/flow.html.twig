@@ -13,6 +13,11 @@
 {% endblock %}
 
 {% block content %}
+    {# How many actors the drawing has, which the columns of the lane and the place of the marker are
+       computed from (demonstration/layout.html.twig). It is a property of this one drawing, so it is on
+       this one element, and it is in a block carrying the nonce of the response rather than in a style
+       attribute, which "style-src 'self'" refuses whatever is in it. #}
+    <style nonce="{{ csp_nonce('style') }}">#flow { --actors: {{ drawing.actors|length }}; }</style>
     <section
         id="flow"
         data-flow="{{ drawing.flow }}"
@@ -20,7 +25,6 @@
         data-advance="{{ path('app_demonstration_advance', {flow: drawing.flow}) }}"
         data-actors="{{ drawing.actors|json_encode }}"
         data-trace="{{ drawing.hops|json_encode }}"
-        style="--actors: {{ drawing.actors|length }}"
     >
         <div class="actors">
             {% for actor in drawing.actors %}

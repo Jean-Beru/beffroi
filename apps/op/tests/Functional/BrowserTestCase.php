@@ -46,7 +46,11 @@ abstract class BrowserTestCase extends WebTestCase
 
     protected function setUp(): void
     {
-        $this->browser = static::createClient();
+        // Over TLS, as a deployment is served and as every request below reads it: the session cookie is
+        // "__Host-" prefixed and the provider answers HSTS, neither of which a browser accepts on a plain
+        // HTTP request, and "nelmio_security.forced_ssl" sends such a request back to HTTPS before a
+        // controller ever sees it (config/packages/framework.yaml, config/packages/nelmio_security.yaml).
+        $this->browser = static::createClient([], ['HTTPS' => 'on']);
         // One kernel for the whole test, where a KernelBrowser reboots one per request by default: a
         // service then keeps what it holds from one request to the next, which is what the provider does
         // in production (the same reason as the suite of the bundle, issue beffroi-php/beffroi#510).
