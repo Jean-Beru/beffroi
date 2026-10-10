@@ -835,9 +835,11 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
             sprintf('the OP asks for a login (got %d %s)', $status, $location),
         );
         [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+        demo_expect($status === 200, sprintf('the login page opens (got %d)', $status));
+        $form = demo_form_with($page, '_username', 'the login page carries the form of the password');
         demo_expect(
-            $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1,
-            'the login page carries the form',
+            preg_match('/name="_csrf_token" value="([^"]+)"/', $form, $csrf) === 1 && preg_match('/action="([^"]+)"/', $form, $action) === 1,
+            'which says where it posts and carries its token',
         );
         [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
             '_username' => DEV_USERNAME,
@@ -1587,9 +1589,11 @@ function demo_ladder_login(array &$cookies, string $issuer, string $password, st
         $location,
     ));
     [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200, sprintf('the login page opens (got %d)', $status));
+    $form = demo_form_with($page, '_username', 'the login page carries the form of the password');
     demo_expect(
-        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1,
-        'the login page carries the form',
+        preg_match('/name="_csrf_token" value="([^"]+)"/', $form, $csrf) === 1 && preg_match('/action="([^"]+)"/', $form, $action) === 1,
+        'which says where it posts and carries its token',
     );
     [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
         '_username' => DEV_USERNAME,
@@ -2825,9 +2829,11 @@ function demo_login(array &$cookies, string $issuer, string $password, string $c
         sprintf('the OP asks for a login (got %d %s)', $status, $location),
     );
     [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200, sprintf('the login page opens (got %d)', $status));
+    $form = demo_form_with($page, '_username', 'the login page carries the form of the password');
     demo_expect(
-        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $action) === 1,
-        'the login page carries the form',
+        preg_match('/name="_csrf_token" value="([^"]+)"/', $form, $csrf) === 1 && preg_match('/action="([^"]+)"/', $form, $action) === 1,
+        'which says where it posts and carries its token',
     );
 
     // the form, then the login page resumes the interaction. The firewall sends the browser back to the
@@ -2892,12 +2898,13 @@ function demo_resume(array &$cookies, string $ca, string $issuer, string $url, ?
         return [$status, $location, $page, $headers];
     }
     [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200, sprintf('the consent page opens (got %d)', $status));
+    $form = demo_form_with($page, 'answer', 'the consent page carries the form of the answer');
     demo_expect(
-        $status === 200
-        && preg_match('/name="_token" value="([^"]+)"/', $page, $token) === 1
-        && preg_match('/name="interaction" value="([^"]+)"/', $page, $interaction) === 1
-        && preg_match('/action="([^"]+)"/', $page, $action) === 1,
-        sprintf('the consent page carries the form (got %d)', $status),
+        preg_match('/name="_token" value="([^"]+)"/', $form, $token) === 1
+        && preg_match('/name="interaction" value="([^"]+)"/', $form, $interaction) === 1
+        && preg_match('/action="([^"]+)"/', $form, $action) === 1,
+        'which names the interaction it answers, says where it posts and carries its token',
     );
     if ($onConsent !== null) {
         $onConsent($page);
@@ -2931,6 +2938,24 @@ function demo_sign_in(array &$cookies, string $issuer, string $password, string 
         'page' => $page,
         'tokens' => $tokens,
     ];
+}
+
+/**
+ * The form of a page that carries a field, from its opening tag to its closing one, which is the form a
+ * browser would submit when somebody answers with that field.
+ *
+ * A page of an interaction carries the question it asks and the controls the layout of the deployment puts
+ * on it, the language and the theme being two, each a form of its own with a token of its own
+ * (apps/op/templates). A walk that posted to the first form of the page would send the answer of the
+ * question to whichever control the layout happens to render first, and be refused for a token that was
+ * never its own. So the form is named by the field that belongs to the question.
+ */
+function demo_form_with(string $page, string $field, string $what): string
+{
+    $pattern = sprintf('/<form\b(?:(?!<\/form>).)*?name="%s"(?:(?!<\/form>).)*<\/form>/s', preg_quote($field, '/'));
+    demo_expect(preg_match($pattern, $page, $form) === 1, $what);
+
+    return $form[0];
 }
 
 /**
@@ -3255,9 +3280,11 @@ function demo_device_confirm(string $issuer, string $password, string $ca, strin
         sprintf('the page of the code asks for a login first (got %d %s)', $status, $location),
     );
     [$status, , $login] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200, sprintf('the login page opens (got %d)', $status));
+    $form = demo_form_with($login, '_username', 'the login page carries the form of the password');
     demo_expect(
-        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $login, $csrf) === 1 && preg_match('/action="([^"]+)"/', $login, $action) === 1,
-        'the login page carries the form',
+        preg_match('/name="_csrf_token" value="([^"]+)"/', $form, $csrf) === 1 && preg_match('/action="([^"]+)"/', $form, $action) === 1,
+        'which says where it posts and carries its token',
     );
     [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
         '_username' => DEV_USERNAME,
@@ -4843,9 +4870,11 @@ function demo_browser_sign_in(array &$cookies, string $issuer, string $password,
         sprintf('%s asks for a login first (got %d %s)', $page, $status, $location),
     );
     [$status, , $login] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect($status === 200, sprintf('the login page opens (got %d)', $status));
+    $form = demo_form_with($login, '_username', 'the login page carries the form of the password');
     demo_expect(
-        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $login, $csrf) === 1 && preg_match('/action="([^"]+)"/', $login, $action) === 1,
-        'the login page carries the form',
+        preg_match('/name="_csrf_token" value="([^"]+)"/', $form, $csrf) === 1 && preg_match('/action="([^"]+)"/', $form, $action) === 1,
+        'which says where it posts and carries its token',
     );
     [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
         '_username' => $username,
