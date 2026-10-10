@@ -130,9 +130,7 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
      */
     public function remove(ClientRecord $record): void
     {
-        $manager = $this->manager();
-        $manager->remove($record);
-        $manager->flush();
+        $this->discard($record);
     }
 
     /**
