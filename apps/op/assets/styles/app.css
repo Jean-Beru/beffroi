@@ -338,6 +338,12 @@
         @apply m-0 mt-0 flex-row items-center;
     }
 
+    /* The one action of the plane that takes something away rather than offering something new reads as
+       the buttons that take a session or a browser out, and not as the thing to do on the page. */
+    main[data-page="account"] div[data-heading-row] form[data-sessions="revoke-others"] button {
+        @apply btn-outline btn-error;
+    }
+
     /* Who is signed in, and since when on the home: the subtitle of the heading, not a paragraph of the page. */
     main[data-page="account"] > p:first-of-type,
     main[data-page="account"] > p:has(> time) {
