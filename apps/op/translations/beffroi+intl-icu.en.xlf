@@ -89,9 +89,9 @@
         <source>navigation.description.consents</source>
         <target>What each application obtains of you, and how to take it back.</target>
       </trans-unit>
-      <trans-unit id="navigation.description.sign_ins" resname="navigation.description.sign_ins">
-        <source>navigation.description.sign_ins</source>
-        <target>Who signed in as you, and who tried and did not.</target>
+      <trans-unit id="navigation.description.acts" resname="navigation.description.acts">
+        <source>navigation.description.acts</source>
+        <target>Everything that happened to your account, and how somebody got in.</target>
       </trans-unit>
     </body>
   </file>

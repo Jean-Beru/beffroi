@@ -16,6 +16,7 @@ use Beffroi\Core\Domain\Credential\BackupCode;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\BackupCodeUsed;
 use Beffroi\Core\Domain\Event\TotpUsed;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\RequestContext;
@@ -158,7 +159,7 @@ final class TotpAuthenticationTest extends TestCase
         static::assertSame($this->totp, $used->credential);
         static::assertSame($context, $used->context);
         static::assertEquals($this->clock->now(), $used->occurredAt);
-        static::assertFalse($used->backupCode);
+        static::assertSame([], $this->events->of(BackupCodeUsed::class));
     }
 
     /**
@@ -256,9 +257,10 @@ final class TotpAuthenticationTest extends TestCase
         static::assertEquals($this->clock->now(), $this->totp->backupCodes[3]->usedAt);
         static::assertCount(9, array_filter($this->totp->backupCodes, static fn (BackupCode $code): bool => ! $code->isSpent()));
         static::assertEquals($this->clock->now(), $this->totp->lastUsedAt);
-        $used = $this->events->of(TotpUsed::class)[0];
-        static::assertTrue($used->backupCode);
+        $used = $this->events->of(BackupCodeUsed::class)[0];
+        static::assertSame($this->totp, $used->credential);
         static::assertSame($context, $used->context);
+        static::assertSame([], $this->events->of(TotpUsed::class), 'A code the authenticator computed and a backup code are not the same act.');
     }
 
     #[Test]

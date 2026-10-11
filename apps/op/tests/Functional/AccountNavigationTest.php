@@ -45,7 +45,7 @@ final class AccountNavigationTest extends BrowserTestCase
             '/account/notifications',
             '/account/sessions',
             '/account/consents',
-            '/account/sign-ins',
+            '/account/acts',
         ], $page->filter('#layout-sidebar-pages a')->extract(['href']));
     }
 

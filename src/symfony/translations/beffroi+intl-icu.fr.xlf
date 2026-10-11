@@ -909,41 +909,97 @@
         <source>application.take_it_back_means</source>
         <target>Elle vous le demandera à nouveau la prochaine fois qu’elle en aura besoin, et ce qu’elle détient cesse de se renouveler.</target>
       </trans-unit>
-      <trans-unit id="sign_ins.title" resname="sign_ins.title">
-        <source>sign_ins.title</source>
-        <target>Connexions récentes</target>
+      <trans-unit id="acts.title" resname="acts.title">
+        <source>acts.title</source>
+        <target>Ce qui s'est passé sur votre compte</target>
       </trans-unit>
-      <trans-unit id="sign_ins.explanation" resname="sign_ins.explanation">
-        <source>sign_ins.explanation</source>
-        <target>Les fois où quelqu'un s'est connecté en votre nom, et celles où quelqu'un a essayé sans y parvenir. Une ligne que vous ne reconnaissez pas vaut un nouveau mot de passe.</target>
+      <trans-unit id="acts.explanation" resname="acts.explanation">
+        <source>acts.explanation</source>
+        <target>Chaque acte que ce fournisseur a écrit en votre nom : les fois où quelqu'un s'est connecté en votre nom et avec quoi il l'a prouvé, celles où quelqu'un a essayé sans y parvenir, et ce qui a changé sur votre compte. Une ligne que vous ne reconnaissez pas vaut un nouveau mot de passe.</target>
       </trans-unit>
-      <trans-unit id="sign_ins.none" resname="sign_ins.none">
-        <source>sign_ins.none</source>
-        <target>Rien n'a encore été enregistré.</target>
+      <trans-unit id="acts.what" resname="acts.what">
+        <source>acts.what</source>
+        <target>Ce qui s'est passé</target>
       </trans-unit>
-      <trans-unit id="sign_ins.outcome" resname="sign_ins.outcome">
-        <source>sign_ins.outcome</source>
-        <target>Résultat</target>
-      </trans-unit>
-      <trans-unit id="sign_ins.when" resname="sign_ins.when">
-        <source>sign_ins.when</source>
+      <trans-unit id="acts.when" resname="acts.when">
+        <source>acts.when</source>
         <target>Quand</target>
       </trans-unit>
-      <trans-unit id="sign_ins.from" resname="sign_ins.from">
-        <source>sign_ins.from</source>
+      <trans-unit id="acts.from" resname="acts.from">
+        <source>acts.from</source>
         <target>D'où</target>
       </trans-unit>
-      <trans-unit id="sign_ins.succeeded" resname="sign_ins.succeeded">
-        <source>sign_ins.succeeded</source>
+      <trans-unit id="acts.none" resname="acts.none">
+        <source>acts.none</source>
+        <target>Rien n'a encore été enregistré.</target>
+      </trans-unit>
+      <trans-unit id="account.acts.state" resname="account.acts.state">
+        <source>account.acts.state</source>
+        <target>{count, plural, =0 {aucune tentative refusée} one {# tentative refusée} other {# tentatives refusées}}</target>
+      </trans-unit>
+      <trans-unit id="act.user.authenticated" resname="act.user.authenticated">
+        <source>act.user.authenticated</source>
         <target>Connexion</target>
       </trans-unit>
-      <trans-unit id="sign_ins.failed" resname="sign_ins.failed">
-        <source>sign_ins.failed</source>
-        <target>Refusée</target>
+      <trans-unit id="act.authentication.failed" resname="act.authentication.failed">
+        <source>act.authentication.failed</source>
+        <target>Connexion refusée</target>
       </trans-unit>
-      <trans-unit id="account.sign_ins.state" resname="account.sign_ins.state">
-        <source>account.sign_ins.state</source>
-        <target>{count, plural, =0 {aucune tentative refusée} one {# tentative refusée} other {# tentatives refusées}}</target>
+      <trans-unit id="act.password.used" resname="act.password.used">
+        <source>act.password.used</source>
+        <target>Mot de passe accepté</target>
+      </trans-unit>
+      <trans-unit id="act.passkey.used" resname="act.passkey.used">
+        <source>act.passkey.used</source>
+        <target>Passkey utilisée</target>
+      </trans-unit>
+      <trans-unit id="act.totp.used" resname="act.totp.used">
+        <source>act.totp.used</source>
+        <target>Code de votre application accepté</target>
+      </trans-unit>
+      <trans-unit id="act.backup_code.used" resname="act.backup_code.used">
+        <source>act.backup_code.used</source>
+        <target>Code de secours utilisé</target>
+      </trans-unit>
+      <trans-unit id="act.session.ended" resname="act.session.ended">
+        <source>act.session.ended</source>
+        <target>Session terminée</target>
+      </trans-unit>
+      <trans-unit id="act.credential.enrolled" resname="act.credential.enrolled">
+        <source>act.credential.enrolled</source>
+        <target>Un moyen de connexion a été ajouté</target>
+      </trans-unit>
+      <trans-unit id="act.credential.revoked" resname="act.credential.revoked">
+        <source>act.credential.revoked</source>
+        <target>Un moyen de connexion a été supprimé</target>
+      </trans-unit>
+      <trans-unit id="act.credential.renamed" resname="act.credential.renamed">
+        <source>act.credential.renamed</source>
+        <target>Un moyen de connexion a été renommé</target>
+      </trans-unit>
+      <trans-unit id="act.password.changed" resname="act.password.changed">
+        <source>act.password.changed</source>
+        <target>Mot de passe changé</target>
+      </trans-unit>
+      <trans-unit id="act.backup_codes.renewed" resname="act.backup_codes.renewed">
+        <source>act.backup_codes.renewed</source>
+        <target>Codes de secours renouvelés</target>
+      </trans-unit>
+      <trans-unit id="act.person.described_themselves" resname="act.person.described_themselves">
+        <source>act.person.described_themselves</source>
+        <target>Vos informations ont changé</target>
+      </trans-unit>
+      <trans-unit id="act.archive.asked" resname="act.archive.asked">
+        <source>act.archive.asked</source>
+        <target>Dossier de vos données demandé</target>
+      </trans-unit>
+      <trans-unit id="act.archive.taken" resname="act.archive.taken">
+        <source>act.archive.taken</source>
+        <target>Dossier de vos données téléchargé</target>
+      </trans-unit>
+      <trans-unit id="act.archive.dropped" resname="act.archive.dropped">
+        <source>act.archive.dropped</source>
+        <target>Dossier de vos données supprimé</target>
       </trans-unit>
       <trans-unit id="profile.what_you_may_change" resname="profile.what_you_may_change">
         <source>profile.what_you_may_change</source>
@@ -1253,8 +1309,8 @@
         <source>consents.none_in_period</source>
         <target>Vous n'avez autorisé aucune application sur ces jours.</target>
       </trans-unit>
-      <trans-unit id="sign_ins.none_in_period" resname="sign_ins.none_in_period">
-        <source>sign_ins.none_in_period</source>
+      <trans-unit id="acts.none_in_period" resname="acts.none_in_period">
+        <source>acts.none_in_period</source>
         <target>Rien n'a été enregistré sur ces jours.</target>
       </trans-unit>
       <trans-unit id="notifications.none_in_period" resname="notifications.none_in_period">
