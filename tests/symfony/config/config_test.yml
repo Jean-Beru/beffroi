@@ -372,6 +372,21 @@ beffroi:
             token_exchange:
                 subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
                 may_act_for_a_user: false
+        # RFC 8693 §2.1 (issue #593): the gateway that exchanges the token of a person, and the only one of
+        # the test kernel whose exchanged tokens are opaque, so that one can be given back at the
+        # revocation endpoint (RFC 7009 §2.1) and the act of that revocation read in the journal of that
+        # person. It is registered to act for a user, which the gateway above is not.
+        person-gateway-app:
+            client_name: 'Gateway acting for a person'
+            secret: 'person-gateway-secret-of-at-least-32-chara'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:token-exchange']
+            scope: 'openid profile invoices.read'
+            access_token_format: opaque
+            resources: ['https://cal.example.com/']
+            token_exchange:
+                subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
+                may_act_for_a_user: true
         service-opaque-app:
             client_name: 'Service acting for itself, with opaque tokens'
             secret: 'service-opaque-secret-of-at-least-32-chars'

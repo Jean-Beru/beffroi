@@ -27,21 +27,40 @@ use Symfony\Component\Uid\Uuid;
 final class StoredSubjectAccessTokenTest extends TestCase
 {
     /**
-     * Issue #588: the "sub" this row keeps is the one whoever named it named, a name of another client
-     * under a pairwise kind (OIDC Core §8.1), so the row names no person of its own and the act of its
-     * revocation names none either.
+     * Issue #593: the "sub" this row keeps is the one whoever named it named, a name of another client
+     * under a pairwise kind (OIDC Core §8.1), so the person is kept beside it, as the exchange resolved it
+     * where it read the presented token. The acts of this token are then written in their journal.
      */
     #[Test]
-    public function itNamesNoPersonOfItsOwn(): void
+    public function itNamesThePersonItIsInTheNameOf(): void
     {
         // Given
         $session = Fixtures::session();
         $record = Tokens::storedSubjectAccessToken(
             'the-value',
             Clients::gateway($session->tenant, new FakePasswordHasher()->hash(Clients::SECRET)),
-            new Subject('alice-subject'),
+            new Subject('the-sub-of-the-first-client'),
             Fixtures::now(),
             session: $session,
+        );
+
+        // When / Then
+        static::assertTrue($session->user->subject->equals($record->person() ?? static::fail('The record names nobody.')));
+    }
+
+    /**
+     * RFC 6749 §4.4: a token a client holds for itself was never about a person, and neither is what an
+     * exchange of it issues. The act of its revocation names nobody, which is the honest answer.
+     */
+    #[Test]
+    public function itNamesNobodyWhenNothingReadTheSubjectBackAsAPerson(): void
+    {
+        // Given
+        $record = Tokens::storedSubjectAccessToken(
+            'the-value',
+            Clients::gateway(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET)),
+            new Subject('service-app'),
+            Fixtures::now(),
         );
 
         // When / Then
@@ -127,6 +146,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
             Uuid::v7(),
             $client,
             new Subject('alice-subject'),
+            null,
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
             Uuid::v7(),

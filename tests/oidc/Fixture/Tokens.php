@@ -223,12 +223,16 @@ final class Tokens
         array $scopes = ['invoices.read'],
         ?AuthenticationSession $session = null,
         ?Actor $actor = null,
+        ?Subject $person = null,
     ): StoredSubjectAccessToken {
         return new StoredSubjectAccessToken(
             DrawnSecret::digestOf($value),
             $grantId ?? Uuid::v7(),
             $client,
             $subject,
+            // what the exchange resolved of the presented token: the person who signed in for it, and
+            // nobody when nobody did (issue #593)
+            $person ?? $session?->user->subject,
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $resources ?? ResourceIndicators::of([Clients::CALENDAR]),
             $session?->id,
