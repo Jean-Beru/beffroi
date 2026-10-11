@@ -6,6 +6,7 @@ namespace Beffroi\Core\Tests\Domain\Session;
 
 use Beffroi\Core\Domain\Session\Device;
 use Beffroi\Core\Domain\Session\DeviceType;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -98,5 +99,97 @@ final class DeviceTest extends TestCase
         yield 'none sent' => [null];
         yield 'empty' => [''];
         yield 'a name nothing recognises' => ['a browser of its own'];
+    }
+
+    /**
+     * The document a column holds a device as, which is also what the provenance of a request nests.
+     *
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itWritesTheDocumentAColumnHoldsItAs(Device $device, array $document): void
+    {
+        // When / Then
+        static::assertSame($document, $device->toDocument());
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itComesBackOutOfItsDocument(Device $device, array $document): void
+    {
+        // When / Then
+        static::assertEquals($device, Device::fromDocument($document));
+    }
+
+    /**
+     * @return iterable<string, array{Device, array<string, mixed>}>
+     */
+    public static function provideDocuments(): iterable
+    {
+        yield 'a device' => [
+            new Device(DeviceType::Desktop, 'Firefox', '140.0', 'Linux'),
+            [
+                'type' => 'desktop',
+                'browser' => 'Firefox',
+                'browser_version' => '140.0',
+                'platform' => 'Linux',
+                'platform_version' => null,
+            ],
+        ];
+        yield 'a device nothing was recognised of' => [
+            new Device(),
+            [
+                'type' => 'unknown',
+                'browser' => null,
+                'browser_version' => null,
+                'platform' => null,
+                'platform_version' => null,
+            ],
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsThatAreNotADevice')]
+    public function aDocumentThatIsNotADeviceIsRefused(array $document, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        Device::fromDocument($document);
+    }
+
+    /**
+     * @return iterable<string, array{array<array-key, mixed>, string}>
+     */
+    public static function provideDocumentsThatAreNotADevice(): iterable
+    {
+        yield 'no type' => [
+            [
+                'browser' => 'Firefox',
+            ],
+            'A device names its type.',
+        ];
+        yield 'a type this provider has no kind for' => [
+            [
+                'type' => 'toaster',
+            ],
+            'A device names its type.',
+        ];
+        yield 'a numeric browser' => [
+            [
+                'type' => 'desktop',
+                'browser' => 140,
+            ],
+            'The member "browser" must be a string or absent.',
+        ];
     }
 }

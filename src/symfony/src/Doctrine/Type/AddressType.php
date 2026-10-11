@@ -7,8 +7,8 @@ namespace Beffroi\Bundle\Doctrine\Type;
 use Beffroi\Core\Domain\Identity\Address;
 
 /**
- * The OIDC Core §5.1.1 address as one JSON document: an embeddable whose every column is null would
- * hydrate as an object, not as null.
+ * The OIDC Core §5.1.1 address in one JSON column: an embeddable whose every column is null would
+ * hydrate as an object, not as null. What the document holds is the address's own (`Address::toDocument()`).
  *
  * @extends JsonObjectType<Address>
  */
@@ -18,26 +18,12 @@ final class AddressType extends JsonObjectType
 
     protected function encode(object $value): array
     {
-        return [
-            'formatted' => $value->formatted,
-            'street_address' => $value->streetAddress,
-            'locality' => $value->locality,
-            'region' => $value->region,
-            'postal_code' => $value->postalCode,
-            'country' => $value->country,
-        ];
+        return $value->toDocument();
     }
 
     protected function decode(array $data): object
     {
-        return new Address(
-            $this->nullableString($data, 'formatted'),
-            $this->nullableString($data, 'street_address'),
-            $this->nullableString($data, 'locality'),
-            $this->nullableString($data, 'region'),
-            $this->nullableString($data, 'postal_code'),
-            $this->nullableString($data, 'country'),
-        );
+        return Address::fromDocument($data);
     }
 
     protected function expects(): string

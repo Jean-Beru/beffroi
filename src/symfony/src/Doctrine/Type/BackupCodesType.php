@@ -5,31 +5,34 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Doctrine\Type;
 
 use function array_is_list;
-use function array_map;
-use DateTimeImmutable;
+use Beffroi\Core\Application\Credential\StoredBackupCodes;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
-use Beffroi\Core\Domain\Credential\BackupCode;
-use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
-use Beffroi\Core\Domain\Credential\PasswordHash;
-use Beffroi\Core\Exception\InvalidArgumentException;
-use Beffroi\Core\Exception\UnsupportedAlgorithmException;
-use Beffroi\Core\Port\PasswordAlgorithmsInterface;
-use LogicException;
 use function is_array;
-use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
 use JsonException;
+use LogicException;
 
 /**
- * The backup codes of a TOTP as a JSON list, in their order: each one the hash of the code, typed by its
- * algorithm like a password hash with the parameters of an import, and the Unix timestamp it was spent at.
+ * The backup codes of a TOTP in one JSON column, as the core writes a stored set of them
+ * (`StoredBackupCodes`): a list, in their order, each entry a typed hash and the moment the code was spent
+ * at.
+ *
+ * A column holds a list of value objects and not one, so this is a type of its own and not a
+ * `JsonObjectType`; the Doctrine half is all it keeps.
+ *
+ * The handoff through a static is part of that half: Doctrine builds a type from a class name, so nothing
+ * can be injected here; what reads the document takes the wiring as an argument, and this hands it the one
+ * the bundle gave it when it booted.
  */
 final class BackupCodesType extends Type implements NeedsPasswordAlgorithmsInterface
 {
@@ -52,24 +55,19 @@ final class BackupCodesType extends Type implements NeedsPasswordAlgorithmsInter
         if ($value === null) {
             return null;
         }
-        if (! is_array($value)) {
+        if (! is_array($value) || ! array_is_list($value)) {
             throw InvalidType::new($value, self::NAME, ['null', 'list<' . BackupCode::class . '>']);
         }
-        $entries = [];
+        $codes = [];
         foreach ($value as $code) {
             if (! $code instanceof BackupCode) {
                 throw InvalidType::new($value, self::NAME, ['null', 'list<' . BackupCode::class . '>']);
             }
-            $entries[] = [
-                'algorithm' => $code->hash->algorithm->name(),
-                'encoded' => $code->hash->encoded,
-                'parameters' => $code->hash->parameters,
-                'used_at' => $code->usedAt?->getTimestamp(),
-            ];
+            $codes[] = $code;
         }
 
         try {
-            return json_encode($entries, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+            return json_encode(self::codes()->document($codes), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         } catch (JsonException $exception) {
             throw ValueNotConvertible::new($value, self::NAME, $exception->getMessage(), $exception);
         }
@@ -96,47 +94,17 @@ final class BackupCodesType extends Type implements NeedsPasswordAlgorithmsInter
             throw ValueNotConvertible::new($value, self::NAME, 'A JSON list was expected.');
         }
 
-        return array_map(fn (mixed $entry): BackupCode => $this->entry($value, $entry), $decoded);
-    }
-
-    /**
-     * The class the wiring holds for that name; a name nothing accounts for is a row this deployment
-     * cannot read.
-     */
-    private function algorithm(string $document, string $name): PasswordAlgorithmInterface
-    {
-        $algorithms =
-            self::$algorithms ?? throw new LogicException('The password algorithms have not been handed to the DBAL type; the bundle does it when it boots.');
-
         try {
-            return $algorithms->named($name);
-        } catch (UnsupportedAlgorithmException $exception) {
-            throw ValueNotConvertible::new($document, self::NAME, $exception->getMessage(), $exception);
-        }
-    }
-
-    private function entry(string $document, mixed $entry): BackupCode
-    {
-        $named = is_array($entry) && is_string($entry['algorithm'] ?? null) ? $entry['algorithm'] : null;
-        $algorithm = $named === null ? null : $this->algorithm($document, $named);
-        $encoded = is_array($entry) ? $entry['encoded'] ?? null : null;
-        $parameters = is_array($entry) ? $entry['parameters'] ?? [] : null;
-        $usedAt = is_array($entry) ? $entry['used_at'] ?? null : null;
-        if ($algorithm === null || ! is_string($encoded) || ! is_array($parameters) || $usedAt !== null && ! is_int($usedAt)) {
-            throw ValueNotConvertible::new($document, self::NAME, 'A backup code is a typed hash and the Unix timestamp it was spent at.');
-        }
-        $typed = [];
-        foreach ($parameters as $name => $parameter) {
-            if (! is_string($name) || ! is_int($parameter) && ! is_string($parameter)) {
-                throw ValueNotConvertible::new($document, self::NAME, 'The parameters of a hash are strings or integers by name.');
-            }
-            $typed[$name] = $parameter;
-        }
-
-        try {
-            return new BackupCode(new PasswordHash($algorithm, $encoded, $typed), $usedAt === null ? null : new DateTimeImmutable('@' . $usedAt));
+            return self::codes()->of($decoded);
         } catch (InvalidArgumentException $exception) {
-            throw ValueNotConvertible::new($document, self::NAME, $exception->getMessage(), $exception);
+            throw ValueNotConvertible::new($value, self::NAME, $exception->getMessage(), $exception);
         }
+    }
+
+    private static function codes(): StoredBackupCodes
+    {
+        return new StoredBackupCodes(
+            self::$algorithms ?? throw new LogicException('The password algorithms have not been handed to the DBAL type; the bundle does it when it boots.'),
+        );
     }
 }

@@ -151,4 +151,39 @@ final class ResourceIndicatorsTest extends TestCase
         // When
         ResourceIndicators::of([self::CALENDAR, 'cal.example.com']);
     }
+
+    /**
+     * RFC 8707 §2: the value a column holds the set as, space delimited, a resource indicator carrying no
+     * space.
+     */
+    #[Test]
+    public function itWritesTheValueAColumnHoldsItAs(): void
+    {
+        // When / Then
+        static::assertSame(
+            self::CALENDAR . ' ' . self::CONTACTS,
+            ResourceIndicators::of([self::CALENDAR, self::CONTACTS])->toDocument(),
+        );
+    }
+
+    #[Test]
+    public function itComesBackOutOfItsValue(): void
+    {
+        // Given
+        $resources = ResourceIndicators::of([self::CALENDAR, self::CONTACTS]);
+
+        // When / Then
+        static::assertEquals($resources, ResourceIndicators::fromDocument($resources->toDocument()));
+    }
+
+    #[Test]
+    public function aValueHoldingSomethingThatIsNotAResourceIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('is not an absolute URI');
+
+        // When
+        ResourceIndicators::fromDocument(self::CALENDAR . ' cal.example.com');
+    }
 }

@@ -81,7 +81,13 @@ use function str_repeat;
 
 /**
  * Architecture §5.3: every value object a column holds as one value goes to the database and comes back
- * equal; what the database holds that is not such a value is a conversion error, never a guess.
+ * equal, byte for byte what the column holds today, and what the database holds that is not such a value
+ * is a conversion error, never a guess.
+ *
+ * **It judges the Doctrine half.** What the document of a value looks like, and which document is refused
+ * member by member, is tested with the object that writes it, in the suite of the package that owns it,
+ * with nothing booted (issue #603); here, one refusal per type says that what that object refuses reaches
+ * a caller of Doctrine as a `ConversionException`.
  */
 final class TypesTest extends TestCase
 {
@@ -347,8 +353,6 @@ final class TypesTest extends TestCase
         yield 'a malformed email address' => [EmailAddressType::class, 'alice'];
         yield 'a redirect URI in plain HTTP' => [RedirectUriType::class, 'http://demo.example/login/check'];
         yield 'a code challenge without a method' => [CodeChallengeType::class, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
-        yield 'a code challenge with the plain method' => [CodeChallengeType::class, 'plain:E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'];
-        yield 'a code challenge too short' => [CodeChallengeType::class, 'S256:short'];
         yield 'a scope with a quote' => [ScopesType::class, 'open"id'];
         yield 'a resource that is not an absolute URI' => [ResourceIndicatorsType::class, 'cal.example.com'];
         yield 'a resource with a fragment' => [ResourceIndicatorsType::class, 'https://cal.example.com/#today'];
@@ -356,9 +360,6 @@ final class TypesTest extends TestCase
         yield 'scopes that are not a string' => [ScopesType::class, ['openid']];
         yield 'proofs that are not JSON' => [AuthenticationProofsType::class, '{'];
         yield 'proofs that are a JSON list' => [AuthenticationProofsType::class, '[1]'];
-        yield 'proofs with a string timestamp' => [AuthenticationProofsType::class, '{"pwd":"1789000000"}'];
-        yield 'proofs with no entry' => [AuthenticationProofsType::class, '{}'];
-        yield 'proofs with a malformed method' => [AuthenticationProofsType::class, '{"p w d":1789000000}'];
         yield 'an actor with no subject' => [ActorType::class, '{"client_id":"gateway"}'];
         yield 'an actor that is a JSON list' => [ActorType::class, '["gateway"]'];
         yield 'an actor whose nested one is not an object' => [ActorType::class, '{"sub":"backend","act":"gateway"}'];
@@ -371,43 +372,20 @@ final class TypesTest extends TestCase
         ];
         yield 'authorization details the type refuses' => [AuthorizationDetailsType::class, '[{"type":"account_information"}]'];
         yield 'a location with a bad country code' => [GeoLocationType::class, '{"country_code":"France"}'];
-        yield 'a location with a string ASN' => [GeoLocationType::class, '{"asn":"3215"}'];
-        yield 'a location with a string latitude' => [GeoLocationType::class, '{"latitude":"48.8","longitude":2.3}'];
-        yield 'a location with a numeric city' => [GeoLocationType::class, '{"city":75}'];
         yield 'a device without a type' => [DeviceType::class, '{"browser":"Firefox"}'];
-        yield 'a device with an unknown type' => [DeviceType::class, '{"type":"toaster"}'];
         yield 'an address with a numeric postal code' => [AddressType::class, '{"postal_code":75002}'];
         yield 'a claims request that is a list' => [ClaimsRequestType::class, '[1]'];
-        yield 'a claims request with a string essential' => [ClaimsRequestType::class, '{"userinfo":{"email":{"essential":"true"}}}'];
         yield 'a claims request that is not a string' => [ClaimsRequestType::class, 12];
-        yield 'a user handle of 63 bytes' => [PasskeyUserHandleType::class, str_repeat('a', 84)];
         yield 'a user handle that is not base64url' => [PasskeyUserHandleType::class, str_repeat('*', 86)];
-        yield 'a policy without classes' => [AuthenticationContextPolicyType::class, '{"classes":[]}'];
         yield 'a policy that is a list' => [AuthenticationContextPolicyType::class, '[1]'];
         yield 'a policy with a predicate the provider does not define' => [
             AuthenticationContextPolicyType::class,
             '{"classes":[{"name":"1","predicate":"attested"}]}',
         ];
-        yield 'a policy with a numeric name' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":1,"predicate":"single_factor"}]}'];
         yield 'a floor the provider does not define' => [AuthenticationPredicateType::class, 'attested'];
-        yield 'a policy naming level 0' => [
-            AuthenticationContextPolicyType::class,
-            '{"classes":[{"name":"1","predicate":"single_factor"},{"name":"0","predicate":"single_factor"}]}',
-        ];
         yield 'backup codes that are not JSON' => [BackupCodesType::class, '['];
         yield 'backup codes that are not a list' => [BackupCodesType::class, '12'];
-        yield 'a backup code that is a string' => [BackupCodesType::class, '["K7Q2M-X9PL4"]'];
         yield 'a backup code without an algorithm' => [BackupCodesType::class, '[{"encoded":"x","parameters":[],"used_at":null}]'];
-        yield 'a backup code with an unknown algorithm' => [BackupCodesType::class, '[{"algorithm":"md5","encoded":"x","parameters":[],"used_at":null}]'];
-        yield 'a backup code with an empty hash' => [BackupCodesType::class, '[{"algorithm":"argon2id","encoded":"","parameters":[],"used_at":null}]'];
-        yield 'a backup code with a string timestamp' => [
-            BackupCodesType::class,
-            '[{"algorithm":"argon2id","encoded":"x","parameters":[],"used_at":"2026-09-20"}]',
-        ];
-        yield 'a backup code with a nested parameter' => [
-            BackupCodesType::class,
-            '[{"algorithm":"argon2id","encoded":"x","parameters":{"salt":[1]},"used_at":null}]',
-        ];
         yield 'backup codes that are not a string' => [BackupCodesType::class, 12];
     }
 

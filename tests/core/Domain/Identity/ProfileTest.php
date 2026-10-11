@@ -91,4 +91,87 @@ final class ProfileTest extends TestCase
         yield 'trailing characters' => ['1990-05-21T00:00'];
         yield 'leading characters' => ['born 1990'];
     }
+
+    /**
+     * The document names no claim and no field: it is the properties of the object, under their own names,
+     * so a claim added to the object is a claim the column carries without a line anywhere else.
+     *
+     * @param array<string, string> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itWritesTheDocumentAColumnHoldsItAs(Profile $profile, array $document): void
+    {
+        // When / Then
+        static::assertSame($document, $profile->toDocument());
+    }
+
+    /**
+     * @param array<string, string> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itComesBackOutOfItsDocument(Profile $profile, array $document): void
+    {
+        // When / Then
+        static::assertEquals($profile, Profile::fromDocument($document));
+    }
+
+    /**
+     * @return iterable<string, array{Profile, array<string, string>}>
+     */
+    public static function provideDocuments(): iterable
+    {
+        yield 'a profile' => [
+            new Profile(givenName: 'Alice', familyName: 'Durand', birthdate: '1990-05-21', locale: 'fr-FR'),
+            [
+                'givenName' => 'Alice',
+                'familyName' => 'Durand',
+                'birthdate' => '1990-05-21',
+                'locale' => 'fr-FR',
+            ],
+        ];
+        yield 'a profile that says nothing' => [Profile::empty(), []];
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsThatAreNotAProfile')]
+    public function aDocumentThatIsNotAProfileIsRefused(array $document, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains($message);
+
+        // When
+        Profile::fromDocument($document);
+    }
+
+    /**
+     * @return iterable<string, array{array<array-key, mixed>, string}>
+     */
+    public static function provideDocumentsThatAreNotAProfile(): iterable
+    {
+        yield 'a claim that is not a string' => [
+            [
+                'nickname' => 12,
+            ],
+            'A profile is a document of claims named by the fields that hold them, each a string.',
+        ];
+        yield 'a claim that is a list' => [['Alice'], 'A profile is a document of claims named by the fields that hold them, each a string.'];
+        yield 'a name no field holds' => [
+            [
+                'email' => 'alice@example.com',
+            ],
+            'Unknown named parameter $email',
+        ];
+        yield 'a birthdate the object refuses' => [
+            [
+                'birthdate' => '21/05/1990',
+            ],
+            'The birthdate "21/05/1990" must be "YYYY-MM-DD" or "YYYY"',
+        ];
+    }
 }

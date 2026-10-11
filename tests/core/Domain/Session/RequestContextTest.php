@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Domain\Session;
 
 use Beffroi\Core\Domain\Session\Device;
+use DateTimeImmutable;
 use Beffroi\Core\Domain\Session\DeviceType;
 use Beffroi\Core\Domain\Session\GeoLocation;
 use Beffroi\Core\Domain\Session\RequestContext;
@@ -151,5 +152,162 @@ final class RequestContextTest extends TestCase
 
         // Then
         static::assertFalse($stripped->isEnriched());
+    }
+
+    /**
+     * The document one column holds a provenance as: the moment to the second, the address, the user
+     * agent, and the two enrichments nested in it rather than held beside it.
+     *
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itWritesTheDocumentOneColumnHoldsItAs(RequestContext $context, array $document): void
+    {
+        // When / Then
+        static::assertSame($document, $context->toDocument());
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itComesBackOutOfItsDocument(RequestContext $context, array $document): void
+    {
+        // When / Then
+        static::assertEquals($context, RequestContext::fromDocument($document));
+    }
+
+    /**
+     * @return iterable<string, array{RequestContext, array<string, mixed>}>
+     */
+    public static function provideDocuments(): iterable
+    {
+        yield 'a provenance nothing has enriched' => [
+            new RequestContext(new DateTimeImmutable('2026-09-20 14:35:07'), '203.0.113.7', 'curl/8.18.0'),
+            [
+                'received_at' => '2026-09-20 14:35:07',
+                'ip_address' => '203.0.113.7',
+                'user_agent' => 'curl/8.18.0',
+                'location' => null,
+                'device' => null,
+            ],
+        ];
+        yield 'a provenance the enrichment answered' => [
+            new RequestContext(
+                new DateTimeImmutable('2026-09-20 14:35:07'),
+                '203.0.113.7',
+                'Mozilla/5.0 Firefox/140.0',
+                new GeoLocation('FR', null, 'Paris'),
+                new Device(DeviceType::Desktop, 'Firefox'),
+            ),
+            [
+                'received_at' => '2026-09-20 14:35:07',
+                'ip_address' => '203.0.113.7',
+                'user_agent' => 'Mozilla/5.0 Firefox/140.0',
+                'location' => [
+                    'country_code' => 'FR',
+                    'region' => null,
+                    'city' => 'Paris',
+                    'asn' => null,
+                    'as_organization' => null,
+                    'latitude' => null,
+                    'longitude' => null,
+                ],
+                'device' => [
+                    'type' => 'desktop',
+                    'browser' => 'Firefox',
+                    'browser_version' => null,
+                    'platform' => null,
+                    'platform_version' => null,
+                ],
+            ],
+        ];
+        yield 'a provenance that knows nothing of where it came from' => [
+            RequestContext::unknown(new DateTimeImmutable('2026-09-20 14:35:07')),
+            [
+                'received_at' => '2026-09-20 14:35:07',
+                'ip_address' => null,
+                'user_agent' => null,
+                'location' => null,
+                'device' => null,
+            ],
+        ];
+    }
+
+    /**
+     * The moment is written to the second, which is the precision the column it replaced held.
+     */
+    #[Test]
+    public function theMomentIsWrittenToTheSecond(): void
+    {
+        // Given
+        $context = RequestContext::unknown(new DateTimeImmutable('2026-09-20 14:35:07.123456'));
+
+        // When / Then
+        static::assertSame('2026-09-20 14:35:07', $context->toDocument()['received_at']);
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsThatAreNotAProvenance')]
+    public function aDocumentThatIsNotAProvenanceIsRefused(array $document, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        RequestContext::fromDocument($document);
+    }
+
+    /**
+     * @return iterable<string, array{array<array-key, mixed>, string}>
+     */
+    public static function provideDocumentsThatAreNotAProvenance(): iterable
+    {
+        yield 'no moment' => [
+            [
+                'ip_address' => '203.0.113.7',
+            ],
+            'A request context says when the request was received.',
+        ];
+        yield 'a moment that is not one' => [
+            [
+                'received_at' => 'yesterday afternoon',
+            ],
+            '"yesterday afternoon" is not when a request was received.',
+        ];
+        yield 'a numeric address' => [
+            [
+                'received_at' => '2026-09-20 14:35:07',
+                'ip_address' => 203,
+            ],
+            'The member "ip_address" must be a string or absent.',
+        ];
+        yield 'an address that is not one' => [
+            [
+                'received_at' => '2026-09-20 14:35:07',
+                'ip_address' => 'somewhere',
+            ],
+            '"somewhere" is not an IP address.',
+        ];
+        yield 'a place that is not an object' => [
+            [
+                'received_at' => '2026-09-20 14:35:07',
+                'location' => 'Paris',
+            ],
+            'The member "location" must be a JSON object, got string.',
+        ];
+        yield 'a device that is not an object' => [
+            [
+                'received_at' => '2026-09-20 14:35:07',
+                'device' => 'desktop',
+            ],
+            'The member "device" must be a JSON object, got string.',
+        ];
     }
 }

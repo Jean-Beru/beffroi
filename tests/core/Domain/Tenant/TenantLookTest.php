@@ -148,4 +148,93 @@ final class TenantLookTest extends TestCase
         // When / Then
         static::assertTrue(new TenantLook(null, '#1b4b8f', '#ffffff')->equals(new TenantLook(null, '#1b4b8f', '#ffffff')));
     }
+
+    /**
+     * The document a column holds a look as: what the tenant declared, and nothing where it declared
+     * nothing, so that a look that says nothing is an empty document and not three nulls.
+     *
+     * @param array<string, string> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itWritesTheDocumentAColumnHoldsItAs(TenantLook $look, array $document): void
+    {
+        // When / Then
+        static::assertSame($document, $look->toDocument());
+    }
+
+    /**
+     * @param array<string, string> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itComesBackOutOfItsDocument(TenantLook $look, array $document): void
+    {
+        // When / Then
+        static::assertEquals($look, TenantLook::fromDocument($document));
+    }
+
+    /**
+     * @return iterable<string, array{TenantLook, array<string, string>}>
+     */
+    public static function provideDocuments(): iterable
+    {
+        yield 'a look' => [
+            new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff'),
+            [
+                'logo_uri' => 'https://acme.example/logo.svg',
+                'primary_color' => '#1b4b8f',
+                'primary_content_color' => '#ffffff',
+            ],
+        ];
+        yield 'a logo and no colour' => [
+            new TenantLook(new LogoUri('https://acme.example/logo.svg')),
+            [
+                'logo_uri' => 'https://acme.example/logo.svg',
+            ],
+        ];
+        yield 'a tenant that declared none' => [TenantLook::none(), []];
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsThatAreNotALook')]
+    public function aDocumentThatIsNotALookIsRefused(array $document, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        TenantLook::fromDocument($document);
+    }
+
+    /**
+     * @return iterable<string, array{array<array-key, mixed>, string}>
+     */
+    public static function provideDocumentsThatAreNotALook(): iterable
+    {
+        yield 'a numeric colour' => [
+            [
+                'primary_color' => 27,
+                'primary_content_color' => '#ffffff',
+            ],
+            'The member "primary_color" must be a string or absent.',
+        ];
+        yield 'a colour the object refuses' => [
+            [
+                'primary_color' => 'rebeccapurple',
+                'primary_content_color' => '#ffffff',
+            ],
+            'The primary colour "rebeccapurple" of a tenant must be three or six hexadecimal digits behind a hash, as "#1b4b8f".',
+        ];
+        yield 'one colour alone' => [
+            [
+                'primary_color' => '#1b4b8f',
+            ],
+            'A tenant declares the colour of its pages and the colour of what is written on it together, or neither of them.',
+        ];
+    }
 }

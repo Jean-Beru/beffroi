@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Doctrine\Type;
 
 use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
-use Beffroi\Core\Exception\InvalidArgumentException;
 
 /**
- * The user handle of a passkey (WebAuthn Level 3 §5.4.3), 64 bytes as base64url.
+ * The user handle of a passkey (WebAuthn Level 3 §5.4.3), 64 bytes in a text column as the handle writes
+ * itself, base64url in the alphabet of the core (`PasskeyUserHandle::toDocument()`).
  *
  * @extends StringObjectType<PasskeyUserHandle>
  */
@@ -18,12 +18,12 @@ final class PasskeyUserHandleType extends StringObjectType
 
     protected function encode(object $value): string
     {
-        return BytesType::encode($value->value);
+        return $value->toDocument();
     }
 
     protected function decode(string $value): object
     {
-        return new PasskeyUserHandle(BytesType::decode($value) ?? throw new InvalidArgumentException('A user handle is base64url.'));
+        return PasskeyUserHandle::fromDocument($value);
     }
 
     protected function expects(): string
