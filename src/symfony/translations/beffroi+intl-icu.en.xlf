@@ -1309,6 +1309,10 @@
         <source>password.breached</source>
         <target>This password has been found in a list of compromised passwords ({date}): somebody else holds it. Replace it now.</target>
       </trans-unit>
+      <trans-unit id="password.demanded" resname="password.demanded">
+        <source>password.demanded</source>
+        <target>You are here instead of the page you were going to. Replace your password and you will carry on there; leave this page and you will be asked again at your next sign-in.</target>
+      </trans-unit>
       <trans-unit id="password.strength.nothing" resname="password.strength.nothing">
         <source>password.strength.nothing</source>
         <target>guessed at once</target>

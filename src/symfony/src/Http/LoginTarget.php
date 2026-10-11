@@ -29,6 +29,9 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
  * It is forgotten by the page that was waiting for it, and not by the login that answered: a password
  * verified for a user who holds a second factor is not a login yet (SecondFactorGate), and a page that let
  * go of what it was waiting for at the first step would have nowhere to send the browser after the second.
+ * A page that forgets it names itself (forgetIfItIsWaitingFor()) when it is reached by a browser a login
+ * was sent to rather than by the login it asked for, a login that is demanded a password being sent to the
+ * page of the password and not to the page that was waiting (Account\BreachedPasswordDemand).
  */
 final readonly class LoginTarget
 {
@@ -94,6 +97,21 @@ final readonly class LoginTarget
     public function forget(SessionInterface $httpSession): void
     {
         $httpSession->remove(self::SESSION_KEY);
+    }
+
+    /**
+     * Forgets the page that was waiting when it is the page named, and leaves the page of somebody else
+     * waiting: a login sent somewhere else on its way back (Account\BreachedPasswordDemand) lands on a page
+     * that is not the one that asked for it, and that one has not been served yet.
+     *
+     * @param string $route the page calling, a route of this provider
+     */
+    public function forgetIfItIsWaitingFor(SessionInterface $httpSession, string $route): void
+    {
+        $remembered = self::remembered($httpSession);
+        if ($remembered !== null && $remembered['route'] === $route) {
+            $this->forget($httpSession);
+        }
     }
 
     /**

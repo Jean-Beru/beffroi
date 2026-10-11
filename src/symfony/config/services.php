@@ -72,6 +72,7 @@ use Beffroi\Bundle\Http\AskedPeriod;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Http\AccountHomePage;
 use Beffroi\Bundle\Http\Account\AccountSections;
+use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
 use Beffroi\Bundle\Http\Account\RecentProofListener;
 use Beffroi\Bundle\Http\Account\PasskeysSection;
 use Beffroi\Bundle\Http\Account\ProfileSection;
@@ -639,6 +640,7 @@ return static function (ContainerConfigurator $container): void {
     // reaches the GET and the POST of a page by construction (issue #580)
     $services->set(RecentLogin::class);
     $services->set(RecentProofListener::class);
+    $services->set(BreachedPasswordDemand::class);
     $services->set(DeviceApprovalPage::class);
     $services->set(PendingApprovalsPage::class);
     // Reaching a user through the push service of a browser they signed in with (RFC 8030, §5.6): the

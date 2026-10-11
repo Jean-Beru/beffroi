@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Security;
 
+use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Bundle\Security\InteractionLoginHandler;
+use Beffroi\Bundle\Security\SecurityUser;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,6 +23,7 @@ use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\Router;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 use Symfony\Component\Security\Http\SecurityRequestAttributes;
 use Twig\Environment;
@@ -26,7 +31,8 @@ use Twig\Loader\ArrayLoader;
 
 /**
  * Architecture §5.4: after the form login, the browser goes back to the login page of its interaction,
- * whether the login succeeded or failed.
+ * whether the login succeeded or failed. A login that serves no authorization request is the one a person
+ * whose password was found in a breach is asked to replace it on (issue #579).
  */
 final class InteractionLoginHandlerTest extends TestCase
 {
@@ -39,10 +45,11 @@ final class InteractionLoginHandlerTest extends TestCase
         $routes = new RouteCollection();
         $routes->add('beffroi_interaction_login', new Route('/login'));
         $routes->add('beffroi_interaction_device', new Route('/device'));
+        $routes->add('beffroi_interaction_account_password', new Route('/account/password'));
         $router = new Router(new ClosureLoader(), static fn (): RouteCollection => $routes, [], new RequestContext());
         $pages = new InteractionPages(new Environment(new ArrayLoader()), $router);
         $this->loginTargets = new LoginTarget($pages);
-        $this->handler = new InteractionLoginHandler($pages, $this->loginTargets);
+        $this->handler = new InteractionLoginHandler($pages, $this->loginTargets, new BreachedPasswordDemand($this->loginTargets, $pages));
     }
 
     #[Test]
@@ -165,6 +172,44 @@ final class InteractionLoginHandlerTest extends TestCase
     }
 
     /**
+     * Issue #579: the one step there is between a login and what it was for. The page it was going to stays
+     * remembered, so replacing the password carries the browser on to it.
+     */
+    #[Test]
+    public function aPasswordThatWasFoundInABreachSendsTheBrowserToThePageOfThePassword(): void
+    {
+        // Given
+        $request = Request::create('/login', 'POST');
+        $request->setSession(new Session(new MockArraySessionStorage()));
+        $this->loginTargets->sendToLogin($request->getSession(), 'beffroi_interaction_device');
+
+        // When
+        $response = $this->handler->onAuthenticationSuccess($request, self::aLoginByWhoeverHoldsAPasswordFoundInABreach());
+
+        // Then
+        static::assertSame('/account/password', $response->headers->get('Location'));
+        static::assertTrue($this->loginTargets->isPending($request->getSession()));
+    }
+
+    /**
+     * Issue #579: a login serving an authorization request is interrupted by nothing, a page between it and
+     * the redirection being what a certification run would see.
+     */
+    #[Test]
+    public function aPasswordThatWasFoundInABreachInterruptsNoAuthorizationRequest(): void
+    {
+        // Given
+        $request = Request::create('/login?interaction=abc', 'POST');
+        $request->setSession(new Session(new MockArraySessionStorage()));
+
+        // When
+        $response = $this->handler->onAuthenticationSuccess($request, self::aLoginByWhoeverHoldsAPasswordFoundInABreach());
+
+        // Then
+        static::assertSame('/login?interaction=abc', $response->headers->get('Location'));
+    }
+
+    /**
      * A refused login goes back to the login page and never to the page that asked for it: that page would
      * send the browser here again, and the message would be read by nobody.
      */
@@ -199,5 +244,17 @@ final class InteractionLoginHandlerTest extends TestCase
         static::assertSame('/login?interaction=abc', $response->headers->get('Location'));
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
         static::assertSame($exception, $request->getSession()->get(SecurityRequestAttributes::AUTHENTICATION_ERROR));
+    }
+
+    /**
+     * The token of a login of somebody whose password a list of compromised passwords has found, the mark
+     * being what the lane wrote on the credential before this login (issue #552).
+     */
+    private static function aLoginByWhoeverHoldsAPasswordFoundInABreach(): UsernamePasswordToken
+    {
+        $password = Fixtures::password();
+        $password->foundInABreach(new DateTimeImmutable('2026-10-11T12:00:00+00:00'));
+
+        return new UsernamePasswordToken(new SecurityUser($password->user, $password), 'main');
     }
 }

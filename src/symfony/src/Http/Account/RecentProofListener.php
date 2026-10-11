@@ -26,7 +26,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * The page the login would come back to is forgotten the moment the proof holds, because it is the page
  * that was waiting for the login that forgets it and not the login that answered (LoginTarget), and the
- * page itself never learns that a browser was sent anywhere.
+ * page itself never learns that a browser was sent anywhere. It forgets the page it would have asked for
+ * and no other: a login a password was demanded of lands on the page of that password with the page it was
+ * going to still waiting (BreachedPasswordDemand), and a page served here is not that page.
  *
  * Every page of this plane is one action in one class with its route on `__invoke()`, so the controller the
  * kernel resolved is the page itself and nothing has to be read of a name. A listener of the controller
@@ -56,7 +58,7 @@ final readonly class RecentProofListener
         }
         $login = $this->recent->orSendToLogin($request, $session, $page->comesBackTo());
         if ($login === null) {
-            $this->loginTargets->forget($request->getSession());
+            $this->loginTargets->forgetIfItIsWaitingFor($request->getSession(), $page->comesBackTo());
 
             return;
         }

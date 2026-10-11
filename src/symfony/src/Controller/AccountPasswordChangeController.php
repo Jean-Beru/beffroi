@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
+use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
 use Beffroi\Bundle\Http\AccountAccess;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -40,6 +41,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * It answers with a redirection whether the password was written or refused (issue #481), so a browser
  * reloading the page it comes back to does not post a password again; what was refused crosses the
  * redirection in the session and the page says which rule pronounced it.
+ *
+ * **A password written carries the browser on to the page that was waiting for the login that was sent
+ * here** (BreachedPasswordDemand, issue #579), and to the page of the password when none was: the demand
+ * is answered by the password itself, so nothing of it is read back here and nothing of it outlives the
+ * credential it was made about.
  */
 #[AsController]
 final readonly class AccountPasswordChangeController implements AsksForARecentProofInterface
@@ -65,6 +71,7 @@ final readonly class AccountPasswordChangeController implements AsksForARecentPr
         private OtherSessionsTermination $others,
         private RequestContextFactory $contexts,
         private WhatWasRefused $refusals,
+        private BreachedPasswordDemand $demands,
         private InteractionPages $pages,
     ) {
     }
@@ -105,7 +112,7 @@ final readonly class AccountPasswordChangeController implements AsksForARecentPr
         }
         $this->others->endEveryOther($session, $context);
 
-        return $this->pages->afterTheForm(AccountPasswordController::ROUTE);
+        return $this->demands->answered($request->getSession()) ?? $this->pages->afterTheForm(AccountPasswordController::ROUTE);
     }
 
     private function refused(Request $request, string $code): Response
