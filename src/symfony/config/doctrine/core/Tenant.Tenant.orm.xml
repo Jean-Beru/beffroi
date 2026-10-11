@@ -19,7 +19,7 @@
             </options>
         </field>
         <!-- The floor of every login of this tenant (issue #327). A row written before the column existed names the single factor, which is every login this provider serves: a tenant that never hardened behaves as it always did. -->
-        <field name="loginFloor" type="string" column="login_floor" length="32" enum-type="Beffroi\Core\Domain\Session\AuthenticationPredicate">
+        <field name="loginFloor" type="beffroi_authentication_predicate" column="login_floor" length="32">
             <options>
                 <option name="default">single_factor</option>
             </options>

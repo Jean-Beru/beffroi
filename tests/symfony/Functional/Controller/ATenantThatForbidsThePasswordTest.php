@@ -9,7 +9,7 @@ use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\CredentialForgotten;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\PhishingResistant;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -39,7 +39,7 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
     {
         // Given
         self::userWithPassword(self::USERNAME, self::PASSWORD);
-        self::harden(AuthenticationPredicate::PhishingResistant);
+        self::harden(new PhishingResistant());
         self::reload();
 
         // When
@@ -83,7 +83,7 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
     {
         // Given
         $this->signIn(self::userWithPassword(self::USERNAME, self::PASSWORD));
-        self::harden(AuthenticationPredicate::PhishingResistant);
+        self::harden(new PhishingResistant());
         self::reload();
 
         // When
@@ -105,7 +105,7 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
     {
         // Given
         self::userWithPassword(self::USERNAME, self::PASSWORD);
-        self::harden(AuthenticationPredicate::PhishingResistant);
+        self::harden(new PhishingResistant());
         self::reload();
         $interaction = $this->authorize();
         $token = $this->loginPage($interaction)->filter('form[data-passkey="login"] input[name="_csrf_token"]')->attr('value');
@@ -138,7 +138,7 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         self::forgetEvents();
 
         // When
-        $forgotten = self::harden(AuthenticationPredicate::PhishingResistant);
+        $forgotten = self::harden(new PhishingResistant());
 
         // Then
         static::assertSame(1, $forgotten);
@@ -157,7 +157,7 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         $device = self::device();
         $this->enrol(self::userWithPassword(self::USERNAME, self::PASSWORD), $device);
         $this->forgetTheBrowser();
-        self::harden(AuthenticationPredicate::PhishingResistant);
+        self::harden(new PhishingResistant());
         self::reload();
         self::forgetEvents();
 

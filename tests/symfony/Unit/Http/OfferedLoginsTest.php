@@ -9,7 +9,7 @@ use Beffroi\Bundle\Security\OfferedLoginInterface;
 use Beffroi\Bundle\Security\PasskeyLogin;
 use Beffroi\Bundle\Security\PasswordLogin;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\PhishingResistantHardware;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use LogicException;
@@ -49,7 +49,7 @@ final class OfferedLoginsTest extends TestCase
     public function aTenantThatAsksForHardwareIsOfferedThePasskeyToo(): void
     {
         // Given
-        $tenant = Fixtures::tenant('acme', 'https://id.acme.example', AuthenticationPredicate::PhishingResistantHardware);
+        $tenant = Fixtures::tenant('acme', 'https://id.acme.example', new PhishingResistantHardware());
 
         // When / Then
         static::assertSame(['passkey'], self::offering()->kinds($tenant));

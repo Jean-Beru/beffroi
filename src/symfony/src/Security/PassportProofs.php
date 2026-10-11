@@ -78,7 +78,7 @@ final readonly class PassportProofs implements ProvableMethodsInterface
             throw new LogicException(sprintf(
                 'No login of the firewall of the interaction pages proves what the tenant "%s" requires of every login, "%s".',
                 $tenant->slug,
-                $tenant->loginFloor->value,
+                $tenant->loginFloor->name(),
             ));
         }
 

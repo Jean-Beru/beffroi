@@ -1523,7 +1523,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             primary_content_color?: scalar|Param|null, // The colour of what is written on "primary_color", the two being declared together or not at all. // Default: null
  *         },
  *         self_served_claims?: list<scalar|Param|null>,
- *         authentication_classes?: array<string, "single_factor"|"two_factors"|"phishing_resistant"|"phishing_resistant_hardware"|Param>,
+ *         authentication_classes?: array<string, scalar|Param|null>,
  *     },
  *     keys?: array{ // Where the keys of the tenants live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).
  *         kms?: scalar|Param|null, // Name of the KMS client that seals the private keys, an entry of "key_management.clients" of the framework configuration (a DSN there, or the members of a composite client); the KMS keeps, it never signs.

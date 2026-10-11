@@ -6,9 +6,8 @@ namespace Beffroi\Bundle\Command;
 
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Core\Application\Tenant\TenantHardening;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
-use function array_map;
-use function implode;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -38,30 +37,32 @@ final readonly class TenantLoginFloorCommand
         private ConfiguredTenant $tenant,
         private TenantHardening $hardening,
         private RequestContextFactory $contexts,
+        private AuthenticationPredicatesInterface $predicates,
     ) {
     }
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument(description: 'The predicate every login must satisfy: single_factor, two_factors, phishing_resistant or phishing_resistant_hardware.')]
+        #[Argument(
+            description: 'The predicate every login must satisfy, by the name that predicate gives itself. The predicates are the ones this provider is wired with; a name none of them carries is refused with the ones that are.',
+        )]
         string $floor,
     ): int {
         $tenant = $this->tenant->orTold($io);
         if ($tenant === null) {
             return Command::FAILURE;
         }
-        $named = AuthenticationPredicate::tryFrom($floor);
-        if ($named === null) {
-            $io->error(sprintf(
-                'This provider defines no predicate "%s"; a tenant names one of %s.',
-                $floor,
-                implode(', ', array_map(static fn (AuthenticationPredicate $predicate): string => $predicate->value, AuthenticationPredicate::cases())),
-            ));
+        // The registry words the refusal, with what this provider does carry: the name of a predicate is
+        // resolved here exactly as it is in the configuration of a tenant and in a stored policy.
+        try {
+            $named = $this->predicates->named($floor);
+        } catch (InvalidArgumentException $exception) {
+            $io->error($exception->getMessage());
 
             return Command::INVALID;
         }
-        if ($named === $tenant->loginFloor) {
-            $io->success(sprintf('Every login of the tenant "%s" already proves "%s" at the least.', $tenant->slug, $named->value));
+        if ($named->name() === $tenant->loginFloor->name()) {
+            $io->success(sprintf('Every login of the tenant "%s" already proves "%s" at the least.', $tenant->slug, $named->name()));
 
             return Command::SUCCESS;
         }
@@ -70,15 +71,15 @@ final readonly class TenantLoginFloorCommand
                 'Tenant' => $tenant->slug,
             ],
             [
-                'Floor now' => $tenant->loginFloor->value,
+                'Floor now' => $tenant->loginFloor->name(),
             ],
             [
-                'Floor asked' => $named->value,
+                'Floor asked' => $named->name(),
             ],
         );
         if (! $io->confirm(sprintf(
             'Every credential of this tenant that proves nothing "%s" reads is forgotten, secret and row, and has to be posed again. Continue?',
-            $named->value,
+            $named->name(),
         ), false)) {
             $io->warning('Nothing was changed.');
 
@@ -89,7 +90,7 @@ final readonly class TenantLoginFloorCommand
         $io->success(sprintf(
             'Every login of the tenant "%s" proves "%s" at the least; %d credential%s forgotten.',
             $tenant->slug,
-            $named->value,
+            $named->name(),
             $forgotten,
             $forgotten === 1 ? ' was' : 's were',
         ));

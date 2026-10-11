@@ -18,6 +18,7 @@ use Beffroi\Bundle\Doctrine\Type\PasswordAlgorithmType;
 use Beffroi\Bundle\Doctrine\Type\ActorType;
 use Beffroi\Bundle\Doctrine\Type\AddressType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationPredicateType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Beffroi\Bundle\Doctrine\Type\BackupCodesType;
 use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
@@ -40,6 +41,7 @@ use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Core\Tests\Fixture\Predicates;
 use Beffroi\Oidc\Tests\Fixture\ChallengeMethods;
 use Beffroi\Core\Domain\Credential\BackupCode;
 use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
@@ -52,7 +54,9 @@ use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Session\AuthenticationContextClass;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\PhishingResistant;
+use Beffroi\Core\Domain\Session\SingleFactor;
+use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\Device;
 use Beffroi\Core\Domain\Session\DeviceType as DeviceKind;
@@ -82,8 +86,8 @@ use function str_repeat;
 final class TypesTest extends TestCase
 {
     /**
-     * The types that read a password algorithm back are told what the deployment is wired with, as the
-     * bundle tells them when it boots; without a kernel here, the test is the deployment.
+     * The types that read a wiring back are told what the deployment is wired with, as the bundle tells
+     * them when it boots; without a kernel here, the test is the deployment.
      */
     public static function setUpBeforeClass(): void
     {
@@ -99,6 +103,8 @@ final class TypesTest extends TestCase
         BackupCodesType::resolveWith($algorithms);
         AuthorizationDetailsType::resolveWith(AuthorizationDetailTypes::served());
         CodeChallengeType::resolveWith(ChallengeMethods::s256());
+        AuthenticationContextPolicyType::resolveWith(Predicates::wired());
+        AuthenticationPredicateType::resolveWith(Predicates::wired());
     }
 
     /**
@@ -175,11 +181,13 @@ final class TypesTest extends TestCase
         yield 'authentication context policy' => [
             AuthenticationContextPolicyType::class,
             new AuthenticationContextPolicy([
-                new AuthenticationContextClass('urn:okta:loa:2fa:any', AuthenticationPredicate::TwoFactors),
+                new AuthenticationContextClass('urn:okta:loa:2fa:any', new TwoFactors()),
                 AuthenticationContextClass::singleFactor(),
             ]),
             '{"classes":[{"name":"urn:okta:loa:2fa:any","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}',
         ];
+        yield 'the floor of the logins of a tenant' => [AuthenticationPredicateType::class, new PhishingResistant(), 'phishing_resistant'];
+        yield 'the floor of a tenant that hardened nothing' => [AuthenticationPredicateType::class, new SingleFactor(), 'single_factor'];
         yield 'what a person may change of themselves' => [
             SelfServedClaimsType::class,
             new SelfServedClaims(['nickname', 'zoneinfo']),
@@ -303,6 +311,7 @@ final class TypesTest extends TestCase
                 '1' => 'single_factor',
             ],
         ];
+        yield 'a name for a predicate' => [AuthenticationPredicateType::class, 'single_factor'];
         yield 'a string for backup codes' => [BackupCodesType::class, 'K7Q2M-X9PL4'];
         yield 'a list of strings for backup codes' => [BackupCodesType::class, ['K7Q2M-X9PL4']];
         yield 'a string for authorization details' => [AuthorizationDetailsType::class, '[]'];
@@ -380,6 +389,7 @@ final class TypesTest extends TestCase
             '{"classes":[{"name":"1","predicate":"attested"}]}',
         ];
         yield 'a policy with a numeric name' => [AuthenticationContextPolicyType::class, '{"classes":[{"name":1,"predicate":"single_factor"}]}'];
+        yield 'a floor the provider does not define' => [AuthenticationPredicateType::class, 'attested'];
         yield 'a policy naming level 0' => [
             AuthenticationContextPolicyType::class,
             '{"classes":[{"name":"1","predicate":"single_factor"},{"name":"0","predicate":"single_factor"}]}',
@@ -491,10 +501,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresThirtyTypes(): void
+    public function theBundleDeclaresThirtyOneTypes(): void
     {
         // When / Then
-        static::assertCount(30, BeffroiBundle::DBAL_TYPES);
+        static::assertCount(31, BeffroiBundle::DBAL_TYPES);
     }
 
     /**

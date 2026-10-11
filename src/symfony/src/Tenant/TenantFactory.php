@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tenant;
 
-use Beffroi\Bundle\Configuration\TenantSection;
 use Beffroi\Core\Domain\Session\AuthenticationContextClass;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -15,6 +13,7 @@ use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use function implode;
 use function is_string;
 use function sprintf;
@@ -24,7 +23,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * The tenant of the "beffroi.tenant" configuration (architecture §5.1); its identifier derives from its
  * slug, so renaming the slug is creating another tenant. Its "acr" policy is the configured classes in
- * their order (decision 0010); what the policy refuses refuses the start.
+ * their order (decision 0010), each named on one of the predicates the provider is wired with; what the
+ * policy refuses, and a predicate nothing wired carries, refuse the start.
  */
 final readonly class TenantFactory
 {
@@ -34,7 +34,7 @@ final readonly class TenantFactory
     private const string NAMESPACE = '55ade059-fda4-45f4-96ca-43dc8ef74d3e';
 
     /**
-     * @param array<array-key, string> $authenticationClasses class name to predicate, in order
+     * @param array<array-key, mixed> $authenticationClasses class name to the name of a predicate, in order; the default policy of the core when none is named
      * @param array<array-key, mixed> $selfServedClaims the names of "beffroi.tenant.self_served_claims"
      * @param WiredClaims|null $claims the claims this provider holds, against which those names are read
      * @param array<array-key, mixed> $look the "beffroi.tenant.look" section, every value of it absent or
@@ -45,7 +45,8 @@ final readonly class TenantFactory
         private string $slug,
         private ?string $name,
         private ClockInterface $clock,
-        private array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
+        private AuthenticationPredicatesInterface $predicates,
+        private array $authenticationClasses = [],
         private array $look = [],
         private array $selfServedClaims = [],
         private ?WiredClaims $claims = null,
@@ -111,11 +112,23 @@ final readonly class TenantFactory
         );
     }
 
+    /**
+     * The classes the configuration names, each on the predicate the wiring holds for the name it names
+     * (decision 0010); the default policy of the core when it names none, which is what a tenant that
+     * configures nothing has always spoken. A name no wired predicate carries is refused by the registry,
+     * with the ones that are, as a claim no wired claim answers is above.
+     */
     public function authenticationContextPolicy(): AuthenticationContextPolicy
     {
+        if ($this->authenticationClasses === []) {
+            return AuthenticationContextPolicy::default();
+        }
         $classes = [];
         foreach ($this->authenticationClasses as $name => $predicate) {
-            $classes[] = new AuthenticationContextClass((string) $name, AuthenticationPredicate::from($predicate));
+            if (! is_string($predicate)) {
+                throw new InvalidArgumentException('An authentication context class names its predicate by a string.');
+            }
+            $classes[] = new AuthenticationContextClass((string) $name, $this->predicates->named($predicate));
         }
 
         return new AuthenticationContextPolicy($classes);
