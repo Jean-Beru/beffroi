@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Http;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Journal\JournalQuestion;
 use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -37,7 +38,11 @@ final readonly class SignInsPage
 
         return $this->pages->render('account/sign_ins.html.twig', [
             'user' => $user,
-            'acts' => $this->acts->pageOfActs($user, [UserAuthenticated::NAME, AuthenticationFailed::NAME], $this->asked->asked(), $period),
+            'acts' => $this->acts->pageOfActs(
+                $user,
+                new JournalQuestion([UserAuthenticated::NAME, AuthenticationFailed::NAME], period: $period),
+                $this->asked->asked(),
+            ),
             'period' => $period,
             'succeeded' => UserAuthenticated::NAME,
         ]);
