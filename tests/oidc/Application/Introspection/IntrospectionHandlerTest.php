@@ -52,6 +52,11 @@ use Jose\Component\Signature\JWSVerifier;
 use Jose\Component\Signature\Serializer\CompactSerializer;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Event\IntrospectionAnswered;
+use Beffroi\Oidc\Domain\Introspection\IntrospectionResponse;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\ClientAuthorization;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 use PHPUnit\Framework\TestCase;
@@ -73,6 +78,8 @@ final class IntrospectionHandlerTest extends TestCase
 
     private Client $other;
 
+    private Client $service;
+
     private MockClock $clock;
 
     private RequestContext $context;
@@ -89,6 +96,8 @@ final class IntrospectionHandlerTest extends TestCase
 
     private IntrospectionHandler $handler;
 
+    private RecordingEventDispatcher $events;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -99,8 +108,9 @@ final class IntrospectionHandlerTest extends TestCase
         $hasher = new FakePasswordHasher();
         $this->client = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), accessTokenShape: Shapes::opaque());
         $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'other');
+        $this->service = Clients::service($this->tenant, $hasher->hash(Clients::SECRET), accessTokenShape: Shapes::opaque());
         $clients = new InMemoryClientRepository();
-        foreach ([$this->client, $this->other, Clients::public($this->tenant)] as $client) {
+        foreach ([$this->client, $this->other, $this->service, Clients::public($this->tenant)] as $client) {
             $clients->save($client);
         }
         $this->jwts = new Jwts($this->tenant);
@@ -112,6 +122,7 @@ final class IntrospectionHandlerTest extends TestCase
         $sessions->save($this->session);
         $users = new InMemoryUserRepository();
         $users->save($user);
+        $this->events = new RecordingEventDispatcher();
         $this->handler = new IntrospectionHandler(
             new ClientAuthenticator(
                 $clients,
@@ -135,6 +146,7 @@ final class IntrospectionHandlerTest extends TestCase
             ),
             $this->jwts->signer,
             Algorithms::all(),
+            $this->events,
         );
     }
 
@@ -181,6 +193,69 @@ final class IntrospectionHandlerTest extends TestCase
             $response->members,
         );
         static::assertNull($response->jwt);
+    }
+
+    /**
+     * Issue #589: a resource server told who a token names is one of the two reads where a personal datum
+     * leaves this provider, so it is an act, naming the client that asked and the person by the subject
+     * their account carries.
+     */
+    #[Test]
+    public function describingATokenOfAPersonIsAnAct(): void
+    {
+        // Given
+        $token = $this->opaqueToken($this->code($this->client, ['openid']));
+
+        // When
+        $this->describe($token, self::basic('oidc-demo'));
+
+        // Then
+        $acts = $this->events->of(IntrospectionAnswered::class);
+        static::assertCount(1, $acts);
+        static::assertSame('oidc-demo', $acts[0]->clientId);
+        static::assertTrue($acts[0]->subject()->equals($this->session->user->subject));
+    }
+
+    /**
+     * RFC 7662 §2.2: an inactive answer carries no other member, so it says a read of nobody; writing an
+     * act of it would also let whoever asks after tokens they do not hold reach the journal of somebody
+     * (issue #589).
+     */
+    #[Test]
+    public function anInactiveAnswerIsNoAct(): void
+    {
+        // When
+        $this->describe('unknown', self::basic('oidc-demo'));
+
+        // Then
+        static::assertSame([], $this->events->of(IntrospectionAnswered::class));
+    }
+
+    /**
+     * RFC 6749 §4.4: a token a client holds for itself names that client and no person, so describing it
+     * hands no personal datum to anybody and is no act of this register (issue #589).
+     */
+    #[Test]
+    public function describingATokenAClientHoldsForItselfIsNoAct(): void
+    {
+        // Given
+        $token = $this->opaqueIssuer()->issue(
+            new ClientAuthorization(
+                Grants::clientCredentials(),
+                Uuid::v7(),
+                $this->service,
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+            ),
+            $this->clock->now(),
+        )->value;
+
+        // When
+        $response = $this->describe($token, self::basic('batch'));
+
+        // Then
+        static::assertTrue($response->isActive());
+        static::assertSame([], $this->events->of(IntrospectionAnswered::class));
     }
 
     /**
@@ -533,6 +608,22 @@ final class IntrospectionHandlerTest extends TestCase
 
         // Then
         static::assertSame($record->grantId->toRfc4122(), $response->members['grant_id']);
+    }
+
+    /**
+     * One request of a caller describing one token, the shape the three tests of the act above share.
+     */
+    private function describe(string $token, string $authorization): IntrospectionResponse
+    {
+        return $this->handler->handle(
+            $this->tenant,
+            $authorization,
+            [
+                'token' => $token,
+            ],
+            $this->context,
+            false,
+        );
     }
 
     private function tokenOfTheRecord(Uuid $grantId, Scopes $scopes): string

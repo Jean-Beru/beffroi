@@ -18,6 +18,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Token\AccessTokenInspector;
@@ -39,6 +40,7 @@ use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
 use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Client\ResponseFormat;
+use Beffroi\Oidc\Domain\Event\UserInfoAnswered;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Token\CertificateConfirmation;
@@ -98,6 +100,8 @@ final class UserInfoHandlerTest extends TestCase
 
     private UserInfoHandler $handler;
 
+    private RecordingEventDispatcher $events;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -121,9 +125,52 @@ final class UserInfoHandlerTest extends TestCase
         $this->deviceRecords = new InMemoryDeviceAuthorizationRecordRepository();
         $this->backchannelRecords = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->storedTokens = new InMemoryAccessTokenRepository();
+        $this->events = new RecordingEventDispatcher();
         $users = new InMemoryUserRepository();
         $users->save($this->user);
         $this->handler = $this->handler($users);
+    }
+
+    /**
+     * Issue #589: the claims of a person served to a client is one of the two reads where a personal datum
+     * leaves this provider, so it is an act, naming the client that asked and the person by the subject
+     * their account carries.
+     */
+    #[Test]
+    public function servingTheClaimsOfAPersonIsAnAct(): void
+    {
+        // Given
+        $token = $this->accessToken(['openid', 'email']);
+
+        // When
+        $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+
+        // Then
+        $acts = $this->events->of(UserInfoAnswered::class);
+        static::assertCount(1, $acts);
+        static::assertSame('spa', $acts[0]->clientId);
+        static::assertTrue($acts[0]->subject()->equals($this->user->subject));
+    }
+
+    /**
+     * Nothing of anybody left, so there is nothing to say a read of: a refusal is not an act of this
+     * register (issue #589).
+     */
+    #[Test]
+    public function aRefusedRequestIsNoAct(): void
+    {
+        // Given
+        $refreshed = $this->refreshed(['openid', 'email'], new Scopes([new Scope('email')]));
+        $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
+        } catch (InsufficientScopeException) {
+        }
+
+        // Then
+        static::assertSame([], $this->events->of(UserInfoAnswered::class));
     }
 
     /**
@@ -839,6 +886,7 @@ final class UserInfoHandlerTest extends TestCase
             Subjects::publicKind(),
             new StandardClaimsProvider(),
             new PresentedAccessTokenParser(Bindings::wired()),
+            $this->events,
         );
     }
 

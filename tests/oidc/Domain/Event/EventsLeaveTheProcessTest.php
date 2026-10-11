@@ -23,6 +23,7 @@ use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use Beffroi\Oidc\Domain\Event\ConsentGranted;
 use Beffroi\Oidc\Domain\Event\ConsentRevoked;
+use Beffroi\Oidc\Domain\Event\IntrospectionAnswered;
 use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use Beffroi\Oidc\Domain\Event\BackchannelRequestAnswered;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
@@ -33,6 +34,7 @@ use Beffroi\Oidc\Domain\Event\RegisteredClientDeleted;
 use Beffroi\Oidc\Domain\Event\RefreshTokenRotated;
 use Beffroi\Oidc\Domain\Event\TokenRevoked;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
+use Beffroi\Oidc\Domain\Event\UserInfoAnswered;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
@@ -151,6 +153,8 @@ final class EventsLeaveTheProcessTest extends TestCase
             RevokedTokenHashes::of([$accessToken]),
             $context,
         )];
+        yield 'an introspection answered' => [new IntrospectionAnswered($now, $client->tenant, $clientId, $subject, $context)];
+        yield 'a userinfo answered' => [new UserInfoAnswered($now, $client->tenant, $clientId, $subject, $context)];
         yield 'a registered client deleted' => [new RegisteredClientDeleted($now, $client->tenant, $clientId, $context)];
         yield 'a logout token given up on' => [new LogoutTokenGivenUp(
             $now,
