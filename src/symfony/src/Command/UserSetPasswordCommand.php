@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Command;
 
 use function hash_equals;
 use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Domain\Credential\PasswordLength;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Beffroi\Core\Exception\PasswordRefusedException;
@@ -74,7 +75,10 @@ final readonly class UserSetPasswordCommand
         }
 
         try {
-            $this->provisioner->setPassword($user, new PlainPassword($password));
+            $this->provisioner->setPassword(
+                $user,
+                new PlainPassword($password, PasswordLength::under($user->tenant->loginFloor)),
+            );
         } catch (PasswordRefusedException|CredentialEnrolmentFailedException $exception) {
             // what a password has to be, what a list of compromised passwords said of this one, and the
             // tenant that holds no password at all (issue #327)

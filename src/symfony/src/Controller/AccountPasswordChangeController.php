@@ -12,6 +12,7 @@ use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Credential\PasswordChange;
+use Beffroi\Core\Domain\Credential\PasswordLength;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Exception\PasswordChangeRefusedException;
 use Beffroi\Core\Exception\PasswordRefusedException;
@@ -101,7 +102,7 @@ final readonly class AccountPasswordChangeController implements AsksForARecentPr
             $this->change->change(
                 $session->user,
                 $request->request->getString(self::IN_USE_PARAMETER),
-                new PlainPassword($posed),
+                new PlainPassword($posed, PasswordLength::under($session->user->tenant->loginFloor)),
                 $context,
             );
         } catch (PasswordRefusedException $exception) {

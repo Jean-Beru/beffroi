@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Http;
 
 use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
 use Beffroi\Core\Application\Credential\ActivePassword;
+use Beffroi\Core\Domain\Credential\PasswordLength;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Identity\User;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +30,11 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
  * for it (Account\BreachedPasswordDemand, issue #579): the sentence then says what is asked and that
  * replacing the password carries the browser on to the page it was going to. A person who leaves without
  * replacing it is asked again by the next login that serves no authorization request.
+ *
+ * **The length it asks for is the one the floor of its tenant asks** (PasswordLength, NIST SP 800-63B
+ * §3.1.1.2): fifteen characters where the password signs its person in alone, eight where a second factor
+ * is read beside it. The form declares that number and the core refuses below it, and they are one number
+ * rather than two that must agree.
  *
  * **A person who holds no password reads that they hold none.** Somebody who signs in by passkey alone
  * has nothing to replace here, and this page does not offer to set a first one: posing a password is an
@@ -71,7 +77,7 @@ final readonly class PasswordPage
             'password' => $password,
             'demanded' => $this->demands->isMade($httpSession, $password),
             'refusal' => $refusal,
-            'minimum' => PlainPassword::MINIMUM_LENGTH,
+            'minimum' => PasswordLength::under($user->tenant->loginFloor)->minimum,
             'floor' => PlainPassword::MINIMUM_STRENGTH,
             'rungs' => self::RUNG_KEYS,
         ]);

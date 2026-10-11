@@ -12,7 +12,6 @@ use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Domain\Credential\PasswordChangeRefusal;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordRefusal;
-use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Event\PasswordChanged;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\PasswordChangeRefusedException;
@@ -70,7 +69,7 @@ final class PasswordChangeTest extends TestCase
         $credential = $this->passwordInUse();
 
         // When
-        $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+        $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
 
         // Then
         static::assertTrue($this->hasher->verify($credential->hash, self::POSED));
@@ -88,7 +87,7 @@ final class PasswordChangeTest extends TestCase
         $credential = $this->passwordInUse();
 
         // When
-        $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+        $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
 
         // Then
         $announced = $this->events->of(PasswordChanged::class);
@@ -110,7 +109,7 @@ final class PasswordChangeTest extends TestCase
         $this->expectExceptionMessageIs('What was typed is not the password in use.');
 
         // When
-        $this->change->change($this->alice, 'not the password', new PlainPassword(self::POSED), Fixtures::context());
+        $this->change->change($this->alice, 'not the password', Fixtures::plainPassword(self::POSED), Fixtures::context());
     }
 
     #[Test]
@@ -121,7 +120,7 @@ final class PasswordChangeTest extends TestCase
 
         // When
         try {
-            $this->change->change($this->alice, 'not the password', new PlainPassword(self::POSED), Fixtures::context());
+            $this->change->change($this->alice, 'not the password', Fixtures::plainPassword(self::POSED), Fixtures::context());
         } catch (PasswordChangeRefusedException) {
         }
 
@@ -142,7 +141,7 @@ final class PasswordChangeTest extends TestCase
 
         // When
         try {
-            $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::IN_USE), Fixtures::context());
+            $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::IN_USE), Fixtures::context());
             static::fail('The same password should have been refused.');
         } catch (PasswordChangeRefusedException $exception) {
             // Then
@@ -158,7 +157,7 @@ final class PasswordChangeTest extends TestCase
     {
         // When
         try {
-            $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+            $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
             static::fail('A person holding no password should have been refused.');
         } catch (PasswordChangeRefusedException $exception) {
             // Then
@@ -167,7 +166,7 @@ final class PasswordChangeTest extends TestCase
     }
 
     /**
-     * The rule NIST SP 800-63B §5.1.1.2 puts first, on the page a person replaces their own password: it
+     * The rule NIST SP 800-63B §3.1.1.2 puts first, on the page a person replaces their own password: it
      * refuses the two the console refuses, and says which.
      */
     #[Test]
@@ -178,7 +177,7 @@ final class PasswordChangeTest extends TestCase
 
         // When
         try {
-            $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::BREACHED), Fixtures::context());
+            $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::BREACHED), Fixtures::context());
             static::fail('A password a list counts is refused.');
         } catch (PasswordRefusedException $exception) {
             // Then
@@ -194,7 +193,7 @@ final class PasswordChangeTest extends TestCase
 
         // When
         try {
-            $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::BREACHED), Fixtures::context());
+            $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::BREACHED), Fixtures::context());
         } catch (PasswordRefusedException) {
         }
 
@@ -216,7 +215,7 @@ final class PasswordChangeTest extends TestCase
 
         // When
         try {
-            $change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+            $change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
             static::fail('A password nobody could be asked about is refused.');
         } catch (PasswordRefusedException $exception) {
             // Then
@@ -236,7 +235,7 @@ final class PasswordChangeTest extends TestCase
 
         // When
         try {
-            $this->change->change($this->alice, 'not the password', new PlainPassword(self::POSED), Fixtures::context());
+            $this->change->change($this->alice, 'not the password', Fixtures::plainPassword(self::POSED), Fixtures::context());
         } catch (PasswordChangeRefusedException) {
         }
 
@@ -255,7 +254,7 @@ final class PasswordChangeTest extends TestCase
         $credential = $this->passwordInUse();
 
         // When
-        $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+        $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
 
         // Then
         static::assertEquals($this->clock->now(), $credential->breachCheckedAt);
@@ -274,7 +273,7 @@ final class PasswordChangeTest extends TestCase
         $credential->foundInABreach(Fixtures::now());
 
         // When
-        $this->change->change($this->alice, self::IN_USE, new PlainPassword(self::POSED), Fixtures::context());
+        $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
 
         // Then
         static::assertFalse($credential->isBreached());
@@ -296,7 +295,12 @@ final class PasswordChangeTest extends TestCase
         $this->expectExceptionMessageIs('The tenant signs its users in without a password; there is nothing to replace.');
 
         // When
-        $this->change->change($carol, 'correct horse battery staple', new PlainPassword('another horse battery staple'), Fixtures::context());
+        $this->change->change(
+            $carol,
+            'correct horse battery staple',
+            Fixtures::plainPassword('another horse battery staple', $carol->tenant->loginFloor),
+            Fixtures::context(),
+        );
     }
 
     private function changeAsking(BreachedPasswordsOfARecord $breaches): PasswordChange

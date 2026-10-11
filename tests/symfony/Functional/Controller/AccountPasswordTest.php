@@ -10,7 +10,10 @@ use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Event\PasswordChanged;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationPredicateInterface;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SingleFactor;
+use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\PasswordHasherInterface;
@@ -155,8 +158,8 @@ final class AccountPasswordTest extends BrowserTestCase
      */
     public static function providePasswordsThatAreNoPassword(): iterable
     {
-        yield 'shorter than eight characters' => ['short', 'too_short'];
-        yield 'a word and a digit' => ['password1', 'too_weak'];
+        yield 'shorter than the fifteen characters the floor asks' => ['short', 'too_short'];
+        yield 'a word written twice' => ['passwordpassword', 'too_weak'];
     }
 
     /**
@@ -179,7 +182,7 @@ final class AccountPasswordTest extends BrowserTestCase
     }
 
     /**
-     * The rule NIST SP 800-63B §5.1.1.2 puts first, on this page: the page refuses the two the console
+     * The rule NIST SP 800-63B §3.1.1.2 puts first, on this page: the page refuses the two the console
      * refuses.
      */
     #[Test]
@@ -356,6 +359,38 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertSame((string) PlainPassword::MINIMUM_STRENGTH, $field->attr('data-strength-floor'));
         static::assertCount(5, (array) json_decode(self::string($field->attr('data-strength-labels')), true));
         static::assertCount(1, $page->filter('p#password-strength[data-strength-meter]'));
+    }
+
+    /**
+     * Issue #625, NIST SP 800-63B §3.1.1.2: the length the form declares is the one the floor of the
+     * tenant asks of a password serving the logins it admits (PasswordLength), fifteen characters where
+     * the password is the whole of a login and eight where a second factor is read beside it. What the
+     * browser enforces and what the core refuses below are one number.
+     */
+    #[Test]
+    #[DataProvider('provideFloorsAndTheLengthTheyAsk')]
+    public function theFormDeclaresTheLengthTheFloorOfTheTenantAsks(AuthenticationPredicateInterface $floor, string $minimum): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::IN_USE);
+        self::harden($floor);
+        self::reload();
+        $this->signIn($alice);
+
+        // When
+        $page = $this->passwordPage();
+
+        // Then
+        static::assertSame($minimum, $page->filter('input#password-new')->attr('minlength'));
+    }
+
+    /**
+     * @return iterable<string, array{AuthenticationPredicateInterface, string}>
+     */
+    public static function provideFloorsAndTheLengthTheyAsk(): iterable
+    {
+        yield 'a password that signs somebody in alone' => [new SingleFactor(), '15'];
+        yield 'a password a second factor is read beside' => [new TwoFactors(), '8'];
     }
 
     /**

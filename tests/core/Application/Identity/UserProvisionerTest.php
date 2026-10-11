@@ -18,7 +18,6 @@ use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordRefusal;
-use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
@@ -256,7 +255,7 @@ final class UserProvisionerTest extends TestCase
         $user = $this->provisioner->create($this->tenant, 'alice');
 
         // When
-        $credential = $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
+        $credential = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
 
         // Then
         static::assertSame($credential, $this->credentials->findByUser($user, PasswordCredential::class)[0]);
@@ -272,11 +271,11 @@ final class UserProvisionerTest extends TestCase
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $first = $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
+        $first = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
         $this->clock->modify('+1 day');
 
         // When
-        $second = $this->provisioner->setPassword($user, new PlainPassword(self::ANOTHER_PASSWORD));
+        $second = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::ANOTHER_PASSWORD));
 
         // Then
         static::assertSame($first, $second);
@@ -296,11 +295,11 @@ final class UserProvisionerTest extends TestCase
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
+        $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
 
         // When
         try {
-            $this->provisioner->setPassword($user, new PlainPassword('seven77'));
+            $this->provisioner->setPassword($user, Fixtures::plainPassword('seven77'));
         } catch (PasswordRefusedException) {
         }
 
@@ -312,7 +311,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * The rule NIST SP 800-63B §5.1.1.2 puts first, on the path an operator writes a password for
+     * The rule NIST SP 800-63B §3.1.1.2 puts first, on the path an operator writes a password for
      * somebody: the console gets it by construction and not by remembering it.
      */
     #[Test]
@@ -323,7 +322,7 @@ final class UserProvisionerTest extends TestCase
 
         // When
         try {
-            $this->provisioner->setPassword($user, new PlainPassword(self::BREACHED));
+            $this->provisioner->setPassword($user, Fixtures::plainPassword(self::BREACHED));
             static::fail('A password a list counts is refused.');
         } catch (PasswordRefusedException $exception) {
             // Then
@@ -339,7 +338,7 @@ final class UserProvisionerTest extends TestCase
 
         // When
         try {
-            $this->provisioner->setPassword($user, new PlainPassword(self::BREACHED));
+            $this->provisioner->setPassword($user, Fixtures::plainPassword(self::BREACHED));
         } catch (PasswordRefusedException) {
         }
 
@@ -360,7 +359,7 @@ final class UserProvisionerTest extends TestCase
 
         // When
         try {
-            $provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
+            $provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
             static::fail('A password nobody could be asked about is refused.');
         } catch (PasswordRefusedException $exception) {
             // Then
@@ -379,7 +378,7 @@ final class UserProvisionerTest extends TestCase
         $user = $this->provisioner->create($this->tenant, 'alice');
 
         // When
-        $credential = $this->provisioner->setPassword($user, new PlainPassword(self::A_PASSWORD));
+        $credential = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
 
         // Then
         static::assertEquals($this->clock->now(), $credential->breachCheckedAt);
@@ -399,7 +398,7 @@ final class UserProvisionerTest extends TestCase
         $user = $provisioner->create($this->tenant, 'alice');
 
         // When
-        $credential = $provisioner->setPassword($user, new PlainPassword(self::BREACHED));
+        $credential = $provisioner->setPassword($user, Fixtures::plainPassword(self::BREACHED));
 
         // Then
         static::assertNull($credential->breachCheckedAt);
@@ -421,7 +420,7 @@ final class UserProvisionerTest extends TestCase
         $this->expectExceptionMessageIs('A password proves no login of the tenant "acme", whose logins prove "phishing_resistant" at the least: it is not enrolled here. What it would prove is pwd.');
 
         // When
-        $this->provisioner->setPassword($carol, new PlainPassword('correct horse battery staple'));
+        $this->provisioner->setPassword($carol, Fixtures::plainPassword('correct horse battery staple', $carol->tenant->loginFloor));
     }
 
     private function provisionerAsking(BreachedPasswordsOfARecord $breaches): UserProvisioner

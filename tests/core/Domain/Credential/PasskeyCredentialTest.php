@@ -140,7 +140,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.2.3, NIST SP 800-63B §5.1.9: a verified user unlocked the key with a second factor.
+     * WebAuthn Level 3 §6.2.3, NIST SP 800-63B §3.1.7.1: a verified user unlocked the key with a second factor.
      */
     #[Test]
     public function aVerifiedUserAddsTheMultipleFactorsMethod(): void

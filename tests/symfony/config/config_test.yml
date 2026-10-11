@@ -552,7 +552,7 @@ services:
     Beffroi\Oidc\Port\ClientJwksFetcherInterface:
         alias: Beffroi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri
 
-    # NIST SP 800-63B §5.1.1.2 (issue #552): the list of compromised passwords a password posed here is
+    # NIST SP 800-63B §3.1.1.2 (issue #552): the list of compromised passwords a password posed here is
     # compared against. Nothing of this kernel reaches a host, so the bridge that would is replaced rather
     # than pointed somewhere: it has its own unit test, and what a functional test needs is the rule that
     # reads the answer rather than the reading.

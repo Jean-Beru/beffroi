@@ -775,7 +775,7 @@ final class ProvisioningTest extends ConsoleTestCase
                 'username' => 'alice',
                 '--password-stdin' => true,
             ],
-            ['first password'],
+            ['the first password posed'],
         );
         $first = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->findByUser($user, PasswordCredential::class)[0]->id ?? static::fail('No credential was created.');
@@ -787,7 +787,7 @@ final class ProvisioningTest extends ConsoleTestCase
             [
                 'username' => 'alice',
             ],
-            ['second password', 'second password'],
+            ['the second password posed', 'the second password posed'],
         );
 
         // Then
@@ -795,12 +795,16 @@ final class ProvisioningTest extends ConsoleTestCase
         $credential = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
         static::assertTrue($first->equals($credential->id));
-        static::assertTrue(self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'second password'));
-        static::assertFalse(self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'first password'));
+        static::assertTrue(
+            self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'the second password posed'),
+        );
+        static::assertFalse(
+            self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'the first password posed'),
+        );
     }
 
     /**
-     * The rule NIST SP 800-63B §5.1.1.2 puts first, on the path an operator writes a password for
+     * The rule NIST SP 800-63B §3.1.1.2 puts first, on the path an operator writes a password for
      * somebody: the console gets it by construction and prints it in one flat line.
      */
     #[Test]
@@ -928,8 +932,8 @@ final class ProvisioningTest extends ConsoleTestCase
             '--password-stdin' => true,
         ];
         yield 'not confirmed' => [$alice, [self::PASSWORD, self::PASSWORD . 'r'], true, Command::INVALID, 'The two passwords differ.'];
-        yield 'too short' => [$alice, ['short', 'short'], true, Command::INVALID, 'at least 8 characters'];
-        yield 'too weak' => [$alice, ['password1', 'password1'], true, Command::INVALID, 'short of length and of alphabet'];
+        yield 'too short' => [$alice, ['short', 'short'], true, Command::INVALID, 'at least 15 characters'];
+        yield 'too weak' => [$alice, ['passwordpassword', 'passwordpassword'], true, Command::INVALID, 'short of length and of alphabet'];
         yield 'empty on the terminal' => [$alice, ['', ''], true, Command::INVALID, 'The password is empty.'];
         yield 'empty on the standard input' => [$stdin, [''], true, Command::INVALID, 'The password is empty.'];
         yield 'too long' => [$stdin, [str_repeat('a', 4097)], true, Command::INVALID, 'at most 4096 bytes'];
