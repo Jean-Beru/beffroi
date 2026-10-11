@@ -27,6 +27,28 @@ use Symfony\Component\Uid\Uuid;
 final class StoredSubjectAccessTokenTest extends TestCase
 {
     /**
+     * Issue #588: the "sub" this row keeps is the one whoever named it named, a name of another client
+     * under a pairwise kind (OIDC Core §8.1), so the row names no person of its own and the act of its
+     * revocation names none either.
+     */
+    #[Test]
+    public function itNamesNoPersonOfItsOwn(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $record = Tokens::storedSubjectAccessToken(
+            'the-value',
+            Clients::gateway($session->tenant, new FakePasswordHasher()->hash(Clients::SECRET)),
+            new Subject('alice-subject'),
+            Fixtures::now(),
+            session: $session,
+        );
+
+        // When / Then
+        static::assertNull($record->person());
+    }
+
+    /**
      * RFC 9068 §2.2.1: the sign-in the presented token named, read back as the pair the issuers write.
      */
     #[Test]

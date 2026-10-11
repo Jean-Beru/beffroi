@@ -141,6 +141,45 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
+     * Issue #588: the "sub" of the new token is the one the presented token named, and the acts it leads
+     * to are written in the journal of the person the presented token was read back as. A name one client
+     * holds is a key of nothing, so the two are carried apart.
+     */
+    #[Test]
+    public function theAuthorizationNamesThePersonThePresentedTokenWasReadBackAs(): void
+    {
+        // Given
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->userToken(),
+        ]);
+
+        // When
+        $issued = $grant->grant($this->authenticated(), $this->request(), $this->context);
+
+        // Then
+        static::assertTrue($issued->authorization->person()?->equals($this->session->user->subject));
+    }
+
+    /**
+     * RFC 6749 §4.4: a token a client holds for itself is about nobody, so what it is exchanged for is in
+     * nobody's name either.
+     */
+    #[Test]
+    public function theAuthorizationOfAnExchangedClientTokenNamesNobody(): void
+    {
+        // Given
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->gatewayToken(),
+        ]);
+
+        // When
+        $issued = $grant->grant($this->authenticated(), $this->request(), $this->context);
+
+        // Then
+        static::assertNull($issued->authorization->person());
+    }
+
+    /**
      * RFC 8693 §2.2.1: the response names the type of the token it issued, which no other grant of this
      * provider has to say.
      */

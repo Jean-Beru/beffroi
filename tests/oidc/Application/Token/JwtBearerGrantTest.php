@@ -131,6 +131,21 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
+     * Issue #588: the assertion was validated for a user of this tenant, so what the client gets is
+     * written in the journal of that person and not under the "sub" this client is answered, which under
+     * a pairwise kind is a name nothing else holds (OIDC Core §8.1).
+     */
+    #[Test]
+    public function theAuthorizationNamesThePersonTheAssertionWasValidatedFor(): void
+    {
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame('alice-subject', $issued->authorization->person()?->value);
+    }
+
+    /**
      * OIDC Core §2: the user was authenticated elsewhere and this provider says nothing of how, so there is no
      * "sid", no "acr", no "amr" and no ID token.
      */

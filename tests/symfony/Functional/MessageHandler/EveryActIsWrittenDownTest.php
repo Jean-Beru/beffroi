@@ -75,7 +75,7 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
             self::tenant(),
             Uuid::v7(),
             'oidc-demo',
-            $user->id,
+            $user->subject,
             new Scopes([new Scope('openid')]),
             null,
             null,

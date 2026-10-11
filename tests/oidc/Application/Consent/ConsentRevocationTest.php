@@ -223,7 +223,7 @@ final class ConsentRevocationTest extends TestCase
         static::assertTrue($event->tenant->equals($this->tenant));
         static::assertTrue($event->consentId->equals($consent->id));
         static::assertSame($this->client->registration->clientId, $event->clientId);
-        static::assertTrue($event->userId->equals($this->user->id));
+        static::assertTrue($event->subject->equals($this->user->subject));
         static::assertSame(
             [$code->grantId->toRfc4122()],
             array_map(static fn (Uuid $grantId): string => $grantId->toRfc4122(), $event->revokedGrants),

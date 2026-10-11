@@ -41,6 +41,7 @@ final readonly class QueueLogoutTokenHandler implements LogoutChannelInterface
             $event->logoutUri->value,
             $event->token,
             $event->sessionId,
+            $event->subject,
             $event->context,
         ));
     }

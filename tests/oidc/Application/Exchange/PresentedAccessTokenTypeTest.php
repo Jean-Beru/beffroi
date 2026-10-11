@@ -118,6 +118,43 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
+     * Issue #588: the "sub" of the token is the name its first client holds (OIDC Core §8.1), so what the
+     * exchange carries beside it is the person the inspection read it back as, and the acts of the token
+     * it gets are written in the journal of that person.
+     */
+    #[Test]
+    public function itReadsThePersonTheInspectionFoundBesideTheSubjectTheTokenNames(): void
+    {
+        // Given
+        $token = $this->tokenOf($this->code());
+
+        // When
+        $presented = $this->type->read($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame('alice-subject', $presented->person?->value);
+    }
+
+    /**
+     * RFC 6749 §4.4: there is nobody behind a token a client holds for itself, so there is nobody for the
+     * exchange to write an act in the name of.
+     */
+    #[Test]
+    public function itReadsNoPersonFromATokenOfAClientActingForItself(): void
+    {
+        // Given
+        $holder = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $this->clients->save($holder);
+        $token = $this->clientTokenOf($holder);
+
+        // When
+        $presented = $this->type->read($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertNull($presented->person);
+    }
+
+    /**
      * RFC 8693 §4.4: who may act for the subject of a token of this client, as its registration says it. One
      * place decides, and the claim the self-contained shape carries is written from it.
      */
