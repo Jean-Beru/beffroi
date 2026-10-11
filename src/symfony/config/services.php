@@ -94,12 +94,13 @@ use Beffroi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Http\ChosenLocale;
+use Beffroi\Bundle\Http\BrowserPreferences;
 use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\SessionsPage;
 use Beffroi\Bundle\Http\SignInsPage;
 use Beffroi\Bundle\Locale\KnownLocales;
+use Beffroi\Bundle\Locale\LocalePreference;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Bundle\Locale\UserLocale;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -692,8 +693,11 @@ return static function (ContainerConfigurator $container): void {
         '$defaultLocale' => '%kernel.default_locale%',
     ]);
     $services->set(UserLocale::class);
-    // what a visitor asked for, on one cookie, read back against the list above (issue #448)
-    $services->set(ChosenLocale::class);
+    // what a browser asked the pages to look and read like, on one cookie with a slot per preference
+    // (issue #573): the language is one of them, read back against the list above (issue #448), and a
+    // preference an application adds is a slot tagged beside it and no second cookie
+    $services->set(LocalePreference::class)->tag('beffroi.browser_preference');
+    $services->set(BrowserPreferences::class)->args([tagged_iterator('beffroi.browser_preference')]);
     $services->set(LocaleExtension::class);
     // every act of the provider, written down, read and forgotten again (issue #454)
     $services->set(DoctrineJournal::class);

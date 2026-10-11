@@ -35,7 +35,7 @@ final readonly class ChooseThemeController
     public function __invoke(Request $request): Response
     {
         $response = new RedirectResponse(self::backTo($request));
-        $response->headers->setCookie($this->chosen->cookie(Theme::ofChoice($request->request->getString('theme'))));
+        $response->headers->setCookie($this->chosen->cookie($request, Theme::ofChoice($request->request->getString('theme'))));
 
         return $response;
     }

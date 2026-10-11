@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use function array_values;
+use Beffroi\Bundle\Locale\LocalePreference;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Bundle\Locale\UserLocale;
 use Beffroi\Bundle\Plane\Plane;
@@ -20,7 +21,7 @@ use Symfony\Component\Translation\LocaleSwitcher;
 
 /**
  * The language of the pages of the interaction plane (architecture §5.7): what the record of whoever is
- * signed in says, then what the visitor asked for (ChosenLocale), then "ui_locales" (OIDC Core §3.1.2.1),
+ * signed in says, then what the visitor asked for (BrowserPreferences), then "ui_locales" (OIDC Core §3.1.2.1),
  * then "Accept-Language", then the default locale, each read against the locales this deployment serves;
  * a tag nothing matches is skipped. Chosen once on "/authorize", recorded on the interaction, never in
  * the URL.
@@ -46,7 +47,7 @@ final readonly class InteractionLocale
     public function __construct(
         private LocaleSwitcher $switcher,
         private ServedLocales $served,
-        private ChosenLocale $chosen,
+        private BrowserPreferences $preferences,
         private BrowserSession $browser,
         private AmbientTenantInterface $tenants,
         private UserLocale $persons,
@@ -72,7 +73,7 @@ final readonly class InteractionLocale
         }
 
         return (
-            $this->chosen->current($request)
+            $this->preferences->read($request, LocalePreference::SLOT)
             ?? $this->served->match($uiLocales)
             ?? $this->served->match(array_values($request->getLanguages()))
             ?? $this->served->default
