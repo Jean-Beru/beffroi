@@ -1497,6 +1497,38 @@
         <source>two_factor.enrol.key_not_copied</source>
         <target>This browser did not let the page write to your clipboard. Select the key and copy it yourself.</target>
       </trans-unit>
+      <trans-unit id="enrolment_ticket.title" resname="enrolment_ticket.title">
+        <source>enrolment_ticket.title</source>
+        <target>Set up your passkey</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.prompt" resname="enrolment_ticket.prompt">
+        <source>enrolment_ticket.prompt</source>
+        <target>This link sets up the way you sign in as {username}. It works once.</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.enrol" resname="enrolment_ticket.enrol">
+        <source>enrolment_ticket.enrol</source>
+        <target>Set up my passkey</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.unsupported" resname="enrolment_ticket.unsupported">
+        <source>enrolment_ticket.unsupported</source>
+        <target>This page needs a browser that can hold a passkey. Open the link on a device that has one.</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.error.no_ceremony" resname="enrolment_ticket.error.no_ceremony">
+        <source>enrolment_ticket.error.no_ceremony</source>
+        <target>No passkey was being created. Try again.</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.error.refused" resname="enrolment_ticket.error.refused">
+        <source>enrolment_ticket.error.refused</source>
+        <target>The passkey could not be set up. Try again.</target>
+      </trans-unit>
+      <trans-unit id="error.enrolment_ticket_refused" resname="error.enrolment_ticket_refused">
+        <source>error.enrolment_ticket_refused</source>
+        <target>This link opens nothing. It was used already, or it ran out of time; ask for another one.</target>
+      </trans-unit>
+      <trans-unit id="act.enrolment_ticket.issued" resname="act.enrolment_ticket.issued">
+        <source>act.enrolment_ticket.issued</source>
+        <target>A link to set up a way of signing in was issued for this account</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

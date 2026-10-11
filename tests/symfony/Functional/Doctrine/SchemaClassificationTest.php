@@ -35,9 +35,9 @@ final class SchemaClassificationTest extends DatabaseTestCase
      * mapping of the bundle; the last is the table of the data key store, which the listener of the ORM
      * bridge puts in the schema the ORM assembles (decisions 0011 and 0018).
      */
-    private const int TABLES = 29;
+    private const int TABLES = 30;
 
-    private const int COLUMNS = 322;
+    private const int COLUMNS = 329;
 
     #[Test]
     public function everyColumnOfEveryTableIsClassified(): void

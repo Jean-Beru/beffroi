@@ -78,6 +78,17 @@ final readonly class SchemaColumns
     public static function all(): array
     {
         return [
+            // What lets one person reach one enrolment once, without a session (issue #613): the row
+            // holds a hash of the value the URL carries and nothing anybody could present.
+            'beffroi_enrolment_ticket' => [
+                'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
+                'user_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'secret' => new NoPersonalDatum(self::HASHED),
+                'created_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'expires_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'spent_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+            ],
             'beffroi_tenant' => [
                 'slug' => new NoPersonalDatum(self::THE_TENANT),
                 'issuer' => new NoPersonalDatum(self::THE_TENANT),
