@@ -7,7 +7,8 @@ namespace Beffroi\Bundle\Tests\Functional\Command;
 use Beffroi\Bundle\Command\TenantLoginFloorCommand;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Event\CredentialForgotten;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\PhishingResistant;
+use Beffroi\Core\Domain\Session\SingleFactor;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
@@ -38,7 +39,7 @@ final class TenantLoginFloorTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringContainsString('1 credential was forgotten', self::flattened($tester));
-        static::assertSame(AuthenticationPredicate::PhishingResistant, self::tenant()->loginFloor);
+        static::assertSame(PhishingResistant::NAME, self::tenant()->loginFloor->name());
         static::assertSame([], self::credentials()->findByUser($alice, PasswordCredential::class));
         static::assertCount(1, self::events(CredentialForgotten::class));
     }
@@ -104,7 +105,7 @@ final class TenantLoginFloorTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
-        static::assertSame(AuthenticationPredicate::SingleFactor, self::tenant()->loginFloor);
+        static::assertSame(SingleFactor::NAME, self::tenant()->loginFloor->name());
         static::assertCount(1, self::credentials()->findByUser($alice, PasswordCredential::class));
     }
 
@@ -119,10 +120,10 @@ final class TenantLoginFloorTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
         static::assertStringContainsString(
-            'This provider defines no predicate "no_password_at_all"; a tenant names one of single_factor, two_factors, phishing_resistant, phishing_resistant_hardware.',
+            'This provider defines no authentication predicate "no_password_at_all"; it defines phishing_resistant_hardware, phishing_resistant, two_factors, single_factor.',
             self::flattened($tester),
         );
-        static::assertSame(AuthenticationPredicate::SingleFactor, self::tenant()->loginFloor);
+        static::assertSame(SingleFactor::NAME, self::tenant()->loginFloor->name());
     }
 
     /**

@@ -30,6 +30,11 @@ use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineInitialAccessTokenRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
+use Beffroi\Core\Port\EnrolmentTicketRepositoryInterface;
+use Beffroi\Core\Application\Enrolment\EnrolmentTicketRedemption;
+use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
+use Beffroi\Bundle\Http\PresentedEnrolmentTicket;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineEnrolmentTicketRepository;
 use Beffroi\Core\Port\TenantRepositoryInterface;
 use Beffroi\Core\Port\CanForgetCredentialsInterface;
 use Beffroi\Core\Application\Tenant\TenantHardening;
@@ -232,6 +237,7 @@ use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordLookup;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\PasswordChange;
@@ -239,7 +245,12 @@ use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\UserProvisioner;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyRetirement;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeySuccession;
+use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Application\Key\NamedKey;
+use Beffroi\Core\Application\Key\RetirementWindow;
 use Beffroi\Core\Application\Passkey\PasskeyAuthentication;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Application\Totp\ActiveTotp;
@@ -286,6 +297,11 @@ use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Bridge\Password\NativePasswordHasher;
 use Beffroi\Core\Bridge\Password\PasswordHasherRegistry;
 use Beffroi\Core\Bridge\Password\WiredPasswordAlgorithms;
+use Beffroi\Core\Bridge\Session\WiredAuthenticationPredicates;
+use Beffroi\Core\Domain\Session\PhishingResistant;
+use Beffroi\Core\Domain\Session\PhishingResistantHardware;
+use Beffroi\Core\Domain\Session\SingleFactor;
+use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
 use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
@@ -314,6 +330,7 @@ use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
 use Beffroi\Core\Port\PasskeyRegistrarInterface;
 use Beffroi\Core\Port\PasswordAttemptLimiterInterface;
+use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Core\Port\UuidGeneratorInterface;
@@ -1010,6 +1027,10 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
     $services->alias(CanPageCredentialsInterface::class, DoctrineCredentialRepository::class);
     $services->alias(CanForgetCredentialsInterface::class, DoctrineCredentialRepository::class);
+    // what lets one person reach one enrolment without a session (issue #613); a ticket spent or out of
+    // time can no longer do anything and is swept with the other dead rows (issue #177)
+    $services->set(DoctrineEnrolmentTicketRepository::class)->tag('beffroi.dead_records');
+    $services->alias(EnrolmentTicketRepositoryInterface::class, DoctrineEnrolmentTicketRepository::class);
     // what a tenant decided of itself, written by the acts that change the row (issue #327); what the
     // configuration says of it is TenantSynchronizer's
     $services->set(DoctrineTenantRepository::class);
@@ -1130,9 +1151,15 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);
     $services->set(JwtLibraryMessageBodyOpener::class);
     $services->alias(MessageBodyOpenerInterface::class, JwtLibraryMessageBodyOpener::class);
-    // What a key may be generated for, the two lists read as one: the key commands and the key files
-    // resolve an algorithm name against this, whatever the key is published for
-    $services->set(JoseKeyAlgorithms::class);
+    // What a key may be generated for, the registry of each use read as one: the key commands and the key
+    // files resolve an algorithm name against this, whatever the key is published for. The order is the
+    // one it lists and the one its refusals are read in, the signatures first
+    $services->set(JoseKeyAlgorithms::class)->args([[
+        service(JoseSignatureAlgorithms::class),
+        service(JoseKeyEncryptionAlgorithms::class),
+        service(JoseApplicationServerAlgorithms::class),
+        service(JoseMessageSealingAlgorithms::class),
+    ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
     $services->set(JwtLibraryKeyPairGenerator::class);
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
@@ -1142,11 +1169,35 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JwsVerifierInterface::class, JwtLibraryJwsVerifier::class);
     $services->set(JwtLibraryJweDecrypter::class);
     $services->alias(JweDecrypterInterface::class, JwtLibraryJweDecrypter::class);
-    // the modules tag the kinds of artifact bound to a key, each naming the use it holds back; the
-    // rotation dates a retirement from the longest of those of the use of the key retiring (architecture §3.3)
-    $services->set(TenantKeyRotator::class)->args([
+    // The four steps of the life of a key, one class each (architecture §3.3): what stages, what takes
+    // over, what stages a successor nobody asked for, what retires.
+    //
+    // The modules tag the kinds of artifact bound to a key, each naming the use it holds back, and the
+    // window a retiring key holds the JWK Set open for is read from them in one place: the take-over dates
+    // a retirement with it and the succession compares the age of a key with it.
+    $services->set(RetirementWindow::class)->args([
         '$artifacts' => tagged_iterator('beffroi.key_bound_artifact'),
     ]);
+    $services->set(NamedKey::class);
+    $services->set(KeyStaging::class);
+    $services->set(KeyRetirement::class);
+    $services->set(KeyTakeOver::class);
+    $services->set(KeySuccession::class);
+
+    // The core: what a class of an "acr" policy requires of the proofs of a session (decision 0010), one
+    // class per predicate, in the order they are wired. What a tenant may name in its vocabulary, what a
+    // stored policy is read back as and what the floor of its logins is read back as all read this one
+    // list, so a predicate this provider gains is a class and a line here, never a case added to an
+    // enumeration. Strongest first, which is the order the default policy of the core answers in.
+    $services->set(PhishingResistantHardware::class)->tag('beffroi.authentication_predicate');
+    $services->set(PhishingResistant::class)->tag('beffroi.authentication_predicate');
+    $services->set(TwoFactors::class)->tag('beffroi.authentication_predicate');
+    $services->set(SingleFactor::class)->tag('beffroi.authentication_predicate');
+    $services->set(WiredAuthenticationPredicates::class)->args([tagged_iterator('beffroi.authentication_predicate')]);
+    $services->alias(AuthenticationPredicatesInterface::class, WiredAuthenticationPredicates::class);
+    // Public on purpose: the DBAL types that read a stored policy and a stored floor back cannot be
+    // injected into, and the bundle hands them the wiring when it boots (BeffroiBundle::boot()).
+    $services->alias('beffroi.authentication_predicates', AuthenticationPredicatesInterface::class)->public();
 
     // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
     // The algorithms a hash may have been made with, in the order they are wired: the first one is what a
@@ -1221,6 +1272,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginCompletion::class);
     $services->set(SecondFactorRequirement::class);
     $services->set(PasskeyEnrolment::class);
+    // the ticket an administrator issues so that a person with nothing to sign in with poses a first
+    // passkey (issue #613), and what a URL of it opens
+    $services->set(EnrolmentTicketIssue::class);
+    $services->set(EnrolmentTicketRedemption::class);
+    $services->set(PresentedEnrolmentTicket::class);
     $services->set(PasskeyAuthentication::class);
     $services->set(BackupCodesRenewal::class);
     $services->set(TotpEnrolment::class);
@@ -1236,6 +1292,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BreachedPasswordLookup::class);
     $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
+    // the one password of a person, the counterpart of ActiveTotp (issue #608)
+    $services->set(ActivePassword::class);
     $services->set(SessionOpener::class);
     $services->set(OtherSessionsTermination::class);
     $services->set(SessionTerminator::class);

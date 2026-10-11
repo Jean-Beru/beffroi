@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
-use Beffroi\Core\Application\Credential\ActiveCredentials;
-use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Identity\User;
 use Symfony\Component\HttpFoundation\Response;
@@ -53,7 +52,7 @@ final readonly class PasswordPage
     ];
 
     public function __construct(
-        private ActiveCredentials $credentials,
+        private ActivePassword $activePassword,
         private BreachedPasswordDemand $demands,
         private InteractionPages $pages,
     ) {
@@ -65,7 +64,7 @@ final readonly class PasswordPage
      */
     public function render(SessionInterface $httpSession, User $user, ?string $refusal = null): Response
     {
-        $password = $this->of($user);
+        $password = $this->activePassword->of($user);
 
         return $this->pages->render('account/password.html.twig', [
             'user' => $user,
@@ -76,13 +75,5 @@ final readonly class PasswordPage
             'floor' => PlainPassword::MINIMUM_STRENGTH,
             'rungs' => self::RUNG_KEYS,
         ]);
-    }
-
-    /**
-     * The password this person holds, null for somebody who signs in by another means.
-     */
-    public function of(User $user): ?PasswordCredential
-    {
-        return $this->credentials->of($user, PasswordCredential::class)[0] ?? null;
     }
 }

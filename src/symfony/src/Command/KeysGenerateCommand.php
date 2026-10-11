@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Command;
 
 use Beffroi\Bundle\Http\RequestContextFactory;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Exception\UnsupportedAlgorithmException;
 use Beffroi\Core\Port\KeyAlgorithmsInterface;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
@@ -34,7 +34,7 @@ final readonly class KeysGenerateCommand
     public function __construct(
         private ConfiguredTenant $tenant,
         private TenantKeyRepositoryInterface $keys,
-        private TenantKeyRotator $rotator,
+        private KeyTakeOver $takeOver,
         private RequestContextFactory $contexts,
         private SignatureAlgorithmsInterface $signatureAlgorithms,
         private KeyAlgorithmsInterface $algorithms,
@@ -66,7 +66,7 @@ final readonly class KeysGenerateCommand
         }
 
         $previous = $this->keys->findActive($tenant, $generatedFor);
-        $key = $this->rotator->rotate($tenant, $generatedFor, $this->contexts->fromConsole(self::NAME));
+        $key = $this->takeOver->rotate($tenant, $generatedFor, $this->contexts->fromConsole(self::NAME));
 
         $io->definitionList(
             [

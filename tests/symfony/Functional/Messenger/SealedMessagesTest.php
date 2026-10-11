@@ -11,7 +11,8 @@ use Beffroi\Bundle\Messenger\SealedBodySerializer;
 use Beffroi\Bundle\Messenger\TenantStamp;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Domain\Credential\PasswordDigest;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
 use Beffroi\Core\Domain\Event\TenantKeyStaged;
@@ -51,7 +52,7 @@ final class SealedMessagesTest extends DatabaseTestCase
         $this->directory = $cacheDir . '/keys';
         new Filesystem()->remove($this->directory);
         $this->serializer = self::service('test.beffroi.messenger_serializer', SerializerInterface::class);
-        self::service('test.beffroi.key_rotator', TenantKeyRotator::class)
+        self::service('test.beffroi.key_take_over', KeyTakeOver::class)
             ->rotate(
                 self::tenant(),
                 self::service('test.beffroi.message_sealing_algorithms', MessageSealingAlgorithmsInterface::class)->defaultAlgorithm(),
@@ -89,7 +90,7 @@ final class SealedMessagesTest extends DatabaseTestCase
     {
         // Given
         new Filesystem()->remove($this->directory);
-        $staged = self::service('test.beffroi.key_rotator', TenantKeyRotator::class)
+        $staged = self::service('test.beffroi.key_staging', KeyStaging::class)
             ->stage(
                 self::tenant(),
                 self::service('test.beffroi.message_sealing_algorithms', MessageSealingAlgorithmsInterface::class)->defaultAlgorithm(),

@@ -7,16 +7,12 @@ namespace Beffroi\Oidc\Tests\Application\Key;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use DateInterval;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
-use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
-use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Application\Key\RetirementWindow;
+use Beffroi\Core\Domain\Key\KeyUse;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
-use Beffroi\Core\Tests\Fixture\Keys;
-use Beffroi\Core\Tests\Fixture\PrecomputedKeyPairGenerator;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Application\Authorization\AuthorizationRequestParser;
 use Beffroi\Oidc\Application\Authorization\RequestObjectValidator;
@@ -147,46 +143,34 @@ final class KeyBoundArtifactsTest extends TestCase
     {
         // Given
         $this->clients->save(Clients::public($this->tenant));
-        $clock = new MockClock(Fixtures::now());
-        $rotator = new TenantKeyRotator(
-            new InMemoryTenantKeyRepository(),
-            new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]),
-            Keys::sealer(),
-            [
-                new IdTokenJwsKind(
-                    new JwtIdTokenIssuer(
-                        $this->jwts->documents,
-                        Subjects::publicKind(),
-                        new StandardClaimsProvider(),
-                        Algorithms::all(),
-                        new DateInterval('PT2M'),
-                    ),
+        $window = new RetirementWindow([
+            new IdTokenJwsKind(
+                new JwtIdTokenIssuer(
+                    $this->jwts->documents,
+                    Subjects::publicKind(),
+                    new StandardClaimsProvider(),
+                    Algorithms::all(),
+                    new DateInterval('PT2M'),
                 ),
-                new AccessTokenJwsKind(
-                    new JwtAccessTokenIssuer(
-                        $this->jwts->signer,
-                        Subjects::publicKind(),
-                        Algorithms::all(),
-                        new SymfonyUuidGenerator(),
-                        new DateInterval('PT2M'),
-                    ),
-                    new RegisteredClients([$this->clients]),
+            ),
+            new AccessTokenJwsKind(
+                new JwtAccessTokenIssuer(
+                    $this->jwts->signer,
+                    Subjects::publicKind(),
+                    Algorithms::all(),
+                    new SymfonyUuidGenerator(),
+                    new DateInterval('PT2M'),
                 ),
-                new ResponseDocumentJwsKind($this->documents(new DateInterval('PT5M')), ServedModes::signedToo()),
-            ],
-            new DateInterval('PT6M'),
-            new DateInterval('P90D'),
-            $clock,
-            new RecordingEventDispatcher(),
+                new RegisteredClients([$this->clients]),
+            ),
+            new ResponseDocumentJwsKind($this->documents(new DateInterval('PT5M')), ServedModes::signedToo()),
+        ]);
+
+        // When / Then
+        static::assertEquals(
+            Fixtures::now()->add(new DateInterval('PT5M')),
+            $window->dueAt($this->tenant, KeyUse::Signature, Fixtures::now()),
         );
-        $context = RequestContext::unknown($clock->now());
-        $first = $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
-
-        // When
-        $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
-
-        // Then
-        static::assertEquals($clock->now()->add(new DateInterval('PT5M')), $first->retirementDueAt);
     }
 
     /**
@@ -227,46 +211,34 @@ final class KeyBoundArtifactsTest extends TestCase
     {
         // Given
         $this->clients->save(Clients::public($this->tenant));
-        $clock = new MockClock(Fixtures::now());
-        $rotator = new TenantKeyRotator(
-            new InMemoryTenantKeyRepository(),
-            new PrecomputedKeyPairGenerator([Keys::pair(), Keys::otherPair()]),
-            Keys::sealer(),
-            [
-                new IdTokenJwsKind(
-                    new JwtIdTokenIssuer(
-                        $this->jwts->documents,
-                        Subjects::publicKind(),
-                        new StandardClaimsProvider(),
-                        Algorithms::all(),
-                        new DateInterval('PT1M'),
-                    ),
+        $window = new RetirementWindow([
+            new IdTokenJwsKind(
+                new JwtIdTokenIssuer(
+                    $this->jwts->documents,
+                    Subjects::publicKind(),
+                    new StandardClaimsProvider(),
+                    Algorithms::all(),
+                    new DateInterval('PT1M'),
                 ),
-                new AccessTokenJwsKind(
-                    new JwtAccessTokenIssuer(
-                        $this->jwts->signer,
-                        Subjects::publicKind(),
-                        Algorithms::all(),
-                        new SymfonyUuidGenerator(),
-                        new DateInterval('PT1M'),
-                    ),
-                    new RegisteredClients([$this->clients]),
+            ),
+            new AccessTokenJwsKind(
+                new JwtAccessTokenIssuer(
+                    $this->jwts->signer,
+                    Subjects::publicKind(),
+                    Algorithms::all(),
+                    new SymfonyUuidGenerator(),
+                    new DateInterval('PT1M'),
                 ),
-                new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::backChannelOnly()),
-            ],
-            new DateInterval('PT6M'),
-            new DateInterval('P90D'),
-            $clock,
-            new RecordingEventDispatcher(),
+                new RegisteredClients([$this->clients]),
+            ),
+            new LogoutTokenJwsKind(new FakeLogoutTokenDelivery(new DateInterval('PT4M')), ServedChannels::backChannelOnly()),
+        ]);
+
+        // When / Then
+        static::assertEquals(
+            Fixtures::now()->add(new DateInterval('PT4M')),
+            $window->dueAt($this->tenant, KeyUse::Signature, Fixtures::now()),
         );
-        $context = RequestContext::unknown($clock->now());
-        $first = $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
-
-        // When
-        $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
-
-        // Then
-        static::assertEquals($clock->now()->add(new DateInterval('PT4M')), $first->retirementDueAt);
     }
 
     /**
@@ -327,51 +299,39 @@ final class KeyBoundArtifactsTest extends TestCase
     {
         // Given
         $this->clients->save(Clients::public($this->tenant));
-        $clock = new MockClock(Fixtures::now());
-        $repository = new InMemoryTenantKeyRepository();
-        $rotator = new TenantKeyRotator(
-            $repository,
-            new JwtLibraryKeyPairGenerator(Algorithms::everyUse()),
-            Keys::sealer(),
-            [
-                new IdTokenJwsKind(
-                    new JwtIdTokenIssuer(
-                        $this->jwts->documents,
-                        Subjects::publicKind(),
-                        new StandardClaimsProvider(),
-                        Algorithms::all(),
-                        new DateInterval('PT2M'),
-                    ),
+        $window = new RetirementWindow([
+            new IdTokenJwsKind(
+                new JwtIdTokenIssuer(
+                    $this->jwts->documents,
+                    Subjects::publicKind(),
+                    new StandardClaimsProvider(),
+                    Algorithms::all(),
+                    new DateInterval('PT2M'),
                 ),
-                new AccessTokenJwsKind(
-                    new JwtAccessTokenIssuer(
-                        $this->jwts->signer,
-                        Subjects::publicKind(),
-                        Algorithms::all(),
-                        new SymfonyUuidGenerator(),
-                        new DateInterval('PT2M'),
-                    ),
-                    new RegisteredClients([$this->clients]),
+            ),
+            new AccessTokenJwsKind(
+                new JwtAccessTokenIssuer(
+                    $this->jwts->signer,
+                    Subjects::publicKind(),
+                    Algorithms::all(),
+                    new SymfonyUuidGenerator(),
+                    new DateInterval('PT2M'),
                 ),
-                new RequestObjectJweKind(new RequestObjectValidator(new DateInterval('PT10M'), new DateInterval('PT30S'))),
-                new PushedRequestJweKind($this->pushedRequests(new DateInterval('PT90S'))),
-            ],
-            new DateInterval('PT6M'),
-            new DateInterval('P90D'),
-            $clock,
-            new RecordingEventDispatcher(),
+                new RegisteredClients([$this->clients]),
+            ),
+            new RequestObjectJweKind(new RequestObjectValidator(new DateInterval('PT10M'), new DateInterval('PT30S'))),
+            new PushedRequestJweKind($this->pushedRequests(new DateInterval('PT90S'))),
+        ]);
+
+        // When / Then
+        static::assertEquals(
+            Fixtures::now()->add(new DateInterval('PT2M')),
+            $window->dueAt($this->tenant, KeyUse::Signature, Fixtures::now()),
         );
-        $context = RequestContext::unknown($clock->now());
-        $signing = $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
-        $encryption = $rotator->rotate($this->tenant, Algorithms::ecdhEsA256Kw(), $context);
-
-        // When
-        $rotator->rotate($this->tenant, Algorithms::rs256(), $context);
-        $rotator->rotate($this->tenant, Algorithms::ecdhEsA256Kw(), $context);
-
-        // Then
-        static::assertEquals($clock->now()->add(new DateInterval('PT2M')), $signing->retirementDueAt);
-        static::assertEquals($clock->now()->add(new DateInterval('PT10M')), $encryption->retirementDueAt);
+        static::assertEquals(
+            Fixtures::now()->add(new DateInterval('PT10M')),
+            $window->dueAt($this->tenant, KeyUse::Encryption, Fixtures::now()),
+        );
     }
 
     private function pushedRequests(DateInterval $lifetime): PushedAuthorizationHandler

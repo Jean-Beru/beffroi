@@ -7,7 +7,7 @@ namespace Beffroi\Bundle\Command;
 use function count;
 use DateTimeInterface;
 use Beffroi\Bundle\Http\RequestContextFactory;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
@@ -34,7 +34,7 @@ final readonly class KeysRetireCommand
 
     public function __construct(
         private ConfiguredTenant $tenant,
-        private TenantKeyRotator $rotator,
+        private KeyRetirement $retirement,
         private RequestContextFactory $contexts,
     ) {
     }
@@ -63,7 +63,7 @@ final readonly class KeysRetireCommand
         $context = $this->contexts->fromConsole(self::NAME);
 
         if ($kid === null) {
-            $retired = $this->rotator->retireDue($tenant, $context);
+            $retired = $this->retirement->retireDue($tenant, $context);
             if ($retired === []) {
                 $io->note(sprintf('No key of "%s" is past its retirement date.', $tenant->slug));
 
@@ -80,7 +80,10 @@ final readonly class KeysRetireCommand
         }
 
         try {
-            $key = $this->rotator->retire($tenant, $kid, $context, $force);
+            // two named acts and not a flag: the trail says which decision was taken (RetirementReason)
+            $key = $force
+                ? $this->retirement->retireBeforeItsDate($tenant, $kid, $context)
+                : $this->retirement->retire($tenant, $kid, $context);
         } catch (RetirementNotDueException $exception) {
             $io->error([$exception->getMessage(), 'Wait for the date, or pass --force if nothing bound to it can arrive any more.']);
 

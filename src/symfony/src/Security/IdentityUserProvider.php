@@ -6,7 +6,7 @@ namespace Beffroi\Bundle\Security;
 
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\RequestContextFactory;
-use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
@@ -37,6 +37,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
         private TenantProvider $tenants,
         private UserRepositoryInterface $users,
         private CredentialRepositoryInterface $credentials,
+        private ActivePassword $activePassword,
         private ClockInterface $clock,
         private EventDispatcherInterface $events,
         private RequestStack $requests,
@@ -58,7 +59,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
             throw $exception;
         }
 
-        return new SecurityUser($user, $this->credentials->findByUser($user, PasswordCredential::class)[0] ?? null);
+        return new SecurityUser($user, $this->activePassword->of($user));
     }
 
     /**
@@ -77,7 +78,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
             throw $exception;
         }
 
-        return new SecurityUser($found, $this->credentials->findByUser($found, PasswordCredential::class)[0] ?? null);
+        return new SecurityUser($found, $this->activePassword->of($found));
     }
 
     public function supportsClass(string $class): bool

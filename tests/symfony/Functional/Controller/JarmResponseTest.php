@@ -209,7 +209,7 @@ final class JarmResponseTest extends BrowserTestCase
      */
     private static function signedResponseKey(): TenantKey
     {
-        return self::rotator()->rotate(self::tenant(), Algorithms::es256(), self::context());
+        return self::takeOver()->rotate(self::tenant(), Algorithms::es256(), self::context());
     }
 
     /**

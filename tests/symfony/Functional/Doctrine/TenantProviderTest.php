@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Beffroi\Bundle\Configuration\TenantSection;
 use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Tests\Fixture\Predicates;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use PHPUnit\Framework\Attributes\Test;
@@ -229,7 +229,7 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertSame(['urn:okta:loa:2fa:any', 'urn:okta:loa:1fa:any'], $synchronized->authenticationContextPolicy->names());
         $stored = $provider->provide()->authenticationContextPolicy;
         static::assertSame(['urn:okta:loa:2fa:any', 'urn:okta:loa:1fa:any'], $stored->names());
-        static::assertSame(AuthenticationPredicate::TwoFactors, $stored->classes[0]->predicate);
+        static::assertSame(TwoFactors::NAME, $stored->classes[0]->predicate->name());
     }
 
     /**
@@ -327,10 +327,10 @@ final class TenantProviderTest extends DatabaseTestCase
         string $issuer,
         string $slug,
         ?string $name,
-        array $authenticationClasses = TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
+        array $authenticationClasses = [],
         array $look = [],
         array $selfServedClaims = self::SELF_SERVED_CLAIMS,
     ): TenantFactory {
-        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), $authenticationClasses, $look, $selfServedClaims);
+        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), Predicates::wired(), $authenticationClasses, $look, $selfServedClaims);
     }
 }

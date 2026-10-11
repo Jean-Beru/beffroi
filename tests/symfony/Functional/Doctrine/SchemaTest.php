@@ -28,6 +28,7 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_totp_credential',
         'beffroi_linked_identity',
         'beffroi_push_subscription',
+        'beffroi_enrolment_ticket',
         'beffroi_group',
         'beffroi_group_membership',
         'beffroi_authentication_session',
@@ -82,7 +83,7 @@ final class SchemaTest extends DatabaseTestCase
      * Architecture §5.3: the tables of the bundle, every one prefixed "beffroi_", and no other.
      */
     #[Test]
-    public function theBundleDeclaresItsTwentyNinePrefixedTables(): void
+    public function theBundleDeclaresItsThirtyPrefixedTables(): void
     {
         // When
         $tables = array_keys(self::tablesOfTheBundle());

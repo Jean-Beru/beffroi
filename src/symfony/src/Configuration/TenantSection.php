@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Tenant\TenantFactory;
-use Beffroi\Core\Domain\Session\AuthenticationContextClass;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
-use function array_column;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -17,16 +14,6 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  */
 final readonly class TenantSection extends ConfigurationSection
 {
-    /**
-     * The default policy of decision 0010, restated for the same reason; a test checks it equals the core's.
-     */
-    public const array DEFAULT_AUTHENTICATION_CLASSES = [
-        AuthenticationContextClass::PHISHING_RESISTANT_HARDWARE => AuthenticationPredicate::PhishingResistantHardware->value,
-        AuthenticationContextClass::PHISHING_RESISTANT => AuthenticationPredicate::PhishingResistant->value,
-        AuthenticationContextClass::TWO_FACTORS => AuthenticationPredicate::TwoFactors->value,
-        AuthenticationContextClass::SINGLE_FACTOR => AuthenticationPredicate::SingleFactor->value,
-    ];
-
     public function name(): string
     {
         return 'tenant';
@@ -78,13 +65,13 @@ final readonly class TenantSection extends ConfigurationSection
             ->defaultValue([])
             ->end()
             ->arrayNode('authentication_classes')
-            ->info('The "acr" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider; the default policy ("phrh", "phr", "2", "1") when absent.')
+            ->info('The "acr" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider, by the name that predicate gives itself. The default policy ("phrh", "phr", "2", "1") when nothing is named. The predicates are the ones the deployment is wired with and this tree keeps no list of them beside the wiring: a name none of them carries refuses the start, naming the ones that are wired.')
             ->useAttributeAsKey('name')
             ->normalizeKeys(false)
-            ->defaultValue(self::DEFAULT_AUTHENTICATION_CLASSES)
-            ->enumPrototype()
-            ->values(array_column(AuthenticationPredicate::cases(), 'value'))
+            ->scalarPrototype()
+            ->cannotBeEmpty()
             ->end()
+            ->defaultValue([])
             ->end()
             ->end()
             ->end();

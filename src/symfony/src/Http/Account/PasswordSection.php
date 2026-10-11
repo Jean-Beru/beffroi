@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http\Account;
 
 use Beffroi\Bundle\Controller\AccountPasswordController;
-use Beffroi\Bundle\Http\PasswordPage;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Domain\Identity\User;
 use Psr\Clock\ClockInterface;
 
@@ -20,7 +20,7 @@ use Psr\Clock\ClockInterface;
 final readonly class PasswordSection implements AccountSectionInterface
 {
     public function __construct(
-        private PasswordPage $page,
+        private ActivePassword $activePassword,
         private ClockInterface $clock,
     ) {
     }
@@ -37,7 +37,7 @@ final readonly class PasswordSection implements AccountSectionInterface
 
     public function state(User $user): AccountSectionState
     {
-        $password = $this->page->of($user);
+        $password = $this->activePassword->of($user);
 
         if ($password === null) {
             return new AccountSectionState('account.password.none');

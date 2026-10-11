@@ -179,11 +179,11 @@ final class Algorithms
      */
     public static function everyUse(): JoseKeyAlgorithms
     {
-        return self::$everyUse ??= new JoseKeyAlgorithms(
+        return self::$everyUse ??= new JoseKeyAlgorithms([
             self::all(),
             self::keyEncryption(),
             self::applicationServer(),
             self::messageSealing(),
-        );
+        ]);
     }
 }

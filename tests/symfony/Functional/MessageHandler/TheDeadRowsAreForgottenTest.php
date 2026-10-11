@@ -7,6 +7,11 @@ namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Beffroi\Bundle\Message\ForgetTheRecordsThatAreDead;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use Symfony\Component\Uid\Uuid;
+use Beffroi\Core\Port\EnrolmentTicketRepositoryInterface;
+use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
@@ -122,6 +127,11 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
             self::AT_ITS_EXPIRY,
             'beffroi_subject_access_token',
         ];
+        yield 'an enrolment ticket, worth nothing once it is out of time' => [
+            'enrolmentTicket',
+            self::AT_ITS_EXPIRY,
+            'beffroi_enrolment_ticket',
+        ];
         yield 'an authorization code, which is the grant its tokens descend from' => [
             'code',
             self::STILL_NEEDED,
@@ -149,6 +159,33 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
      * its own sliding expiry is not what ends that. Thirty days past that expiry, the family it belongs to
      * can still be refreshed, and the row is there.
      */
+    /**
+     * A ticket spent opens nothing, whatever its own time says, so it goes with the dead rows rather than
+     * waiting for an expiry it will outlive (issue #613): what it opened is in the journal of its person
+     * and in the credential it posed.
+     */
+    #[Test]
+    public function anEnrolmentTicketSpentIsDroppedBeforeItsTime(): void
+    {
+        // Given
+        $tickets = self::service('test.beffroi.enrolment_ticket_store', EnrolmentTicketRepositoryInterface::class);
+        $ticket = new EnrolmentTicket(
+            Uuid::v7(),
+            self::user(),
+            new PasswordHash(new Argon2id(), '$argon2id$the-value-of-a-link'),
+            self::present(),
+            self::present()->modify('+72 hours'),
+        );
+        $ticket->spend(self::present());
+        $tickets->save($ticket);
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertSame(0, self::rowsIn('beffroi_enrolment_ticket'));
+    }
+
     #[Test]
     public function aRotatedRefreshTokenOutlivesItsOwnExpiry(): void
     {
@@ -263,6 +300,14 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
     {
         $client = self::client();
         match ($kind) {
+            'enrolmentTicket' => self::service('test.beffroi.enrolment_ticket_store', EnrolmentTicketRepositoryInterface::class)
+                ->save(new EnrolmentTicket(
+                    Uuid::v7(),
+                    self::user(),
+                    new PasswordHash(new Argon2id(), '$argon2id$the-value-of-a-link'),
+                    $stoppedGranting->modify(self::TEN_MINUTES),
+                    $stoppedGranting,
+                )),
             'interaction' => self::service('test.beffroi.interactions', InteractionRepositoryInterface::class)
                 ->save(new Interaction(
                     Secrets::draw(),

@@ -16,7 +16,7 @@ use DateInterval;
  *   access token or an ID token, ten minutes by default (`beffroi.tokens`), so the window a retiring key
  *   holds the JWK Set open for is minutes: a key could work for a week without two of them ever being
  *   published at once. What the floor forbids is only an age shorter than that window, which the rotation
- *   refuses rather than letting the JWK Set grow at every rotation (`TenantKeyRotator`).
+ *   refuses rather than letting the JWK Set grow at every rotation (`KeySuccession`).
  * - **The ceiling is the cryptoperiod.** NIST SP 800-57 Part 1 Rev. 5 §5.3.6 puts the originator usage
  *   period of a private signature key at one to three years, so ninety days is well inside it.
  *
