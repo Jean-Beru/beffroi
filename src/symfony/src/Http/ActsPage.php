@@ -21,8 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * **Each act says what it is**, by the name the event gave itself, read from the catalogue; the page holds
  * no outcome of its own, a refusal being an act like the rest. Which acts are what happened to an account
- * is the journal's to say and not a list this page keeps (ActsOfAnAccount), because the command that reads
- * the same journal over a period asks the same question of it.
+ * is named beside the acts themselves (ActsOfAnAccount) and is no list of this page: a walk of the events
+ * holds that list to them, which a list written here could not be held to.
  */
 final readonly class ActsPage
 {
