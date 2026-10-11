@@ -6,6 +6,7 @@ namespace Beffroi\Core\Tests\Application\Totp;
 
 use function array_map;
 use function array_unique;
+use Beffroi\Core\Application\Totp\BackupCodeSet;
 use Beffroi\Core\Application\Totp\BackupCodesRenewal;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
@@ -46,8 +47,7 @@ final class BackupCodesRenewalTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->renewal = new BackupCodesRenewal(
             $this->credentials,
-            new PlatformRandomness(),
-            $this->hasher,
+            new BackupCodeSet(new PlatformRandomness(), $this->hasher),
             new MockClock('2026-09-15T13:00:00+00:00'),
             $this->events,
         );

@@ -9,6 +9,7 @@ use function array_unique;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Application\Totp\BackupCodeSet;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
@@ -59,11 +60,11 @@ final class TotpEnrolmentTest extends TestCase
             new EnrolmentRefusal(),
             new SymfonyUuidGenerator(),
             new PlatformRandomness(),
+            new BackupCodeSet(new PlatformRandomness(), $this->hasher),
             new ActiveTotp(new ActiveCredentials($this->credentials)),
             Totps::algorithm(),
             new TotpCodeMatcher(Totps::algorithm()),
             Totps::sealer(),
-            $this->hasher,
             $this->clock,
             $this->events,
         );
