@@ -8,6 +8,7 @@ use function array_filter;
 use function count;
 use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\TotpProvisioning;
 use Beffroi\Core\Domain\Identity\User;
 use function implode;
@@ -20,6 +21,10 @@ use Symfony\Component\HttpFoundation\Response;
  * holds (an authenticator app or none), the enrolment in progress (the QR code, the key for a manual
  * entry, the first code), and the backup codes of an enrolment just completed, shown once. Rendered by
  * the controllers that show it and by the ones that come back to it with what went wrong.
+ *
+ * It offers setting one up only where the floor of the tenant admits a one-time code (issue #327), as the
+ * login page offers the forms its tenant admits: a tenant that signs its users in by passkey refuses the
+ * enrolment (TotpEnrolment), and a page that offered it anyway would be a button that always fails.
  */
 final readonly class TwoFactorPage
 {
@@ -43,6 +48,7 @@ final readonly class TwoFactorPage
                 'user' => $user,
                 'totp' => $totp,
                 'backup_codes_left' => $totp === null ? 0 : count(array_filter($totp->backupCodes, static fn (BackupCode $code): bool => ! $code->isSpent())),
+                'admitted' => $user->tenant->loginFloor->admits([TotpCredential::method()]),
                 'error' => $error,
             ],
             $status,

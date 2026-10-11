@@ -84,7 +84,14 @@ final class TheOrderOfAPasswordLoginTest extends TestCase
                 $clock,
                 $this->events,
             ),
-            new SessionOpener(new InMemoryAuthenticationSessionRepository(), new SymfonyUuidGenerator(), $clock, $this->events, new DateInterval('PT8H')),
+            new SessionOpener(
+                new InMemoryAuthenticationSessionRepository(),
+                new SymfonyUuidGenerator(),
+                $clock,
+                $this->events,
+                new AuthenticationRefusal($clock, $this->events),
+                new DateInterval('PT8H'),
+            ),
             new SecondFactorRequirement(new ActiveCredentials($credentials)),
             $clock,
         );

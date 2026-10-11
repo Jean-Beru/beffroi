@@ -743,6 +743,9 @@ services:
     test.beffroi.credentials:
         alias: Beffroi\Core\Port\CredentialRepositoryInterface
         public: true
+    test.beffroi.tenant_hardening:
+        alias: Beffroi\Core\Application\Tenant\TenantHardening
+        public: true
     test.beffroi.linked_identities:
         alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
         public: true

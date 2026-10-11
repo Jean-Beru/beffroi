@@ -32,6 +32,57 @@ final class AuthenticationPredicateTest extends TestCase
     }
 
     /**
+     * Issue #327: a tenant names a predicate as the floor of its logins, and what may be enrolled there is
+     * read off it, kind by kind, from what one authentication with that kind would prove. A floor admits a
+     * credential when it reads one of those methods: under the two factors a password is half of what meets
+     * it, where under a phishing-resistant floor it is never part of anything that does.
+     *
+     * @param list<AuthenticationMethod> $methods
+     * @param list<AuthenticationPredicate> $admitting
+     */
+    #[Test]
+    #[DataProvider('provideCredentialsAndTheFloorsThatAdmitThem')]
+    public function aFloorAdmitsACredentialWhoseProofsItReads(array $methods, array $admitting): void
+    {
+        // When / Then
+        foreach (AuthenticationPredicate::cases() as $predicate) {
+            static::assertSame(in_array($predicate, $admitting, true), $predicate->admits($methods), $predicate->value);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{list<AuthenticationMethod>, list<AuthenticationPredicate>}>
+     */
+    public static function provideCredentialsAndTheFloorsThatAdmitThem(): iterable
+    {
+        yield 'a credential that could prove nothing, a revoked one' => [[], []];
+        yield 'a password' => [
+            [AuthenticationMethod::password()],
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+        ];
+        yield 'a one-time code, a TOTP or a backup code' => [
+            [new AuthenticationMethod('otp')],
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+        ];
+        yield 'a synced passkey' => [
+            [new AuthenticationMethod('swk'), new AuthenticationMethod('user')],
+            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors, AuthenticationPredicate::PhishingResistant],
+        ];
+        yield 'a passkey bound to its authenticator' => [
+            [new AuthenticationMethod('hwk'), new AuthenticationMethod('user')],
+            AuthenticationPredicate::cases(),
+        ];
+        yield 'a credential that proves a presence and no factor' => [
+            [new AuthenticationMethod('user')],
+            [AuthenticationPredicate::SingleFactor],
+        ];
+        yield 'a method of an upstream provider that proves no factor of its own' => [
+            [new AuthenticationMethod('wia')],
+            [AuthenticationPredicate::SingleFactor],
+        ];
+    }
+
+    /**
      * @return iterable<string, array{list<AuthenticationMethod>, list<AuthenticationPredicate>}>
      */
     public static function provideMethodsAndThePredicatesTheySatisfy(): iterable

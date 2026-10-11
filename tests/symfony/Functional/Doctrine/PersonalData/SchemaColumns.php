@@ -83,6 +83,8 @@ final readonly class SchemaColumns
                 'issuer' => new NoPersonalDatum(self::THE_TENANT),
                 'name' => new NoPersonalDatum(self::THE_TENANT),
                 'authentication_context_policy' => new NoPersonalDatum('the authentication classes the tenant announces, which name predicates and no person'),
+                'login_floor' =>
+                    new NoPersonalDatum('the predicate every login of this tenant satisfies at the least (issue #327): one of the four names this provider defines, and nothing of anybody who signs in'),
                 'look' => new NoPersonalDatum('the logo and the two colours a tenant gives its pages (issue #449), beside the name it is already named by: what every page hands to every visitor before anybody has signed in'),
                 'self_served_claims' =>
                     new NoPersonalDatum('the names of the claims the people of this tenant may change of themselves (issue #452): names of claims, never a value and never a person'),

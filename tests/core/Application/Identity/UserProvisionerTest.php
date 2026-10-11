@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Identity;
 
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
@@ -12,6 +13,7 @@ use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Bridge\Password\NativePasswordHasher;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordRefusal;
 use Beffroi\Core\Domain\Credential\PlainPassword;
@@ -402,6 +404,24 @@ final class UserProvisionerTest extends TestCase
         static::assertTrue($credential->dueForABreachLookup($this->clock->now()));
     }
 
+    /**
+     * Issue #327: a tenant that signs its users in by passkey holds no password of anybody, so none is
+     * posed, and the list of compromised passwords is not asked about one this provider will not hold.
+     */
+    #[Test]
+    public function aTenantThatAdmitsNoPasswordPosesNone(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::hardenedTenant());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A password proves no login of the tenant "acme", whose logins prove "phishing_resistant" at the least: it is not enrolled here. What it would prove is pwd.');
+
+        // When
+        $this->provisioner->setPassword($carol, new PlainPassword('correct horse battery staple'));
+    }
+
     private function provisionerAsking(BreachedPasswordsOfARecord $breaches): UserProvisioner
     {
         return new UserProvisioner(
@@ -409,6 +429,7 @@ final class UserProvisionerTest extends TestCase
             $this->credentials,
             $this->hasher,
             new BreachedPasswordRefusal($breaches),
+            new EnrolmentRefusal(),
             new SymfonyUuidGenerator(),
             $this->clock,
         );

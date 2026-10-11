@@ -96,7 +96,14 @@ final class LoginCompletionTest extends TestCase
                 $this->clock,
                 $this->events,
             ),
-            new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
+            new SessionOpener(
+                $this->sessions,
+                new SymfonyUuidGenerator(),
+                $this->clock,
+                $this->events,
+                new AuthenticationRefusal($this->clock, $this->events),
+                new DateInterval('PT8H'),
+            ),
         );
     }
 

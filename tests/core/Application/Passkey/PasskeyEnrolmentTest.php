@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Passkey;
 
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -49,6 +51,7 @@ final class PasskeyEnrolmentTest extends TestCase
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
         $this->enrolment = new PasskeyEnrolment(
             $this->credentials,
+            new EnrolmentRefusal(),
             new SymfonyUuidGenerator(),
             new PlatformRandomness(),
             $this->registrar,
@@ -206,5 +209,41 @@ final class PasskeyEnrolmentTest extends TestCase
 
         // When
         $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
+    }
+
+    /**
+     * Issue #327: a tenant whose floor asks for a key held in hardware refuses a synced passkey, which
+     * proves "swk", and keeps the one bound to its authenticator, which proves "hwk". The question is asked
+     * of what the ceremony answered, the kind alone not saying which of the two a passkey is.
+     */
+    #[Test]
+    public function aSyncedPasskeyIsRefusedByATenantThatAsksForHardware(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', AuthenticationPredicate::PhishingResistantHardware));
+        $options = $this->enrolment->begin($carol);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, 'synced', backupEligible: true, backedUp: true));
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A passkey proves no login of the tenant "acme", whose logins prove "phishing_resistant_hardware" at the least: it is not enrolled here. What it would prove is swk, user.');
+
+        // When
+        $this->enrolment->complete($carol, 'The phone', $options, '{"id":"synced"}', Fixtures::context());
+    }
+
+    #[Test]
+    public function aPasskeyBoundToItsAuthenticatorIsEnrolledByATenantThatAsksForHardware(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', AuthenticationPredicate::PhishingResistantHardware));
+        $options = $this->enrolment->begin($carol);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, 'bound'));
+
+        // When
+        $passkey = $this->enrolment->complete($carol, 'YubiKey 5', $options, '{"id":"bound"}', Fixtures::context());
+
+        // Then
+        static::assertSame([$passkey], $this->credentials->findByUser($carol));
     }
 }

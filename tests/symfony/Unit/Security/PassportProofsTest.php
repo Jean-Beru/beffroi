@@ -113,10 +113,42 @@ final class PassportProofsTest extends TestCase
     public function whatIsAnnouncedIsEveryMethodOfTheTaggedLoginsEachOnce(): void
     {
         // When
-        $methods = $this->proofs->provableMethods();
+        $methods = $this->proofs->provableMethods(Fixtures::tenant());
 
         // Then
         static::assertSame(['pwd', 'hwk', 'swk', 'user', 'mfa', 'otp'], self::values($methods));
+    }
+
+    /**
+     * Issue #327: a tenant that signs its users in by passkey announces no password and no code, the floor
+     * of its logins reading neither, and announces everything a passkey proves.
+     */
+    #[Test]
+    public function aTenantAnnouncesNothingItsFloorForbids(): void
+    {
+        // When
+        $methods = $this->proofs->provableMethods(Fixtures::hardenedTenant());
+
+        // Then
+        static::assertSame(['hwk', 'swk', 'user', 'mfa'], self::values($methods));
+    }
+
+    /**
+     * Issue #327: the floor is asked of a login and not of a method, so a passkey that proves "user" and
+     * "mfa" beside its key is admitted whole or not at all.
+     */
+    #[Test]
+    public function aFloorNoWiredLoginProvesLeavesTheProviderWithNothingToAnnounce(): void
+    {
+        // Given
+        $proofs = self::proofsOf([new PasswordLogin(), new TotpLogin()]);
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('No login of the firewall of the interaction pages proves what the tenant "acme" requires of every login, "phishing_resistant".');
+
+        // When
+        $proofs->provableMethods(Fixtures::hardenedTenant());
     }
 
     /**
@@ -130,7 +162,7 @@ final class PassportProofsTest extends TestCase
         $proofs = self::proofsOf([new PasswordLogin()]);
 
         // When
-        $methods = $proofs->provableMethods();
+        $methods = $proofs->provableMethods(Fixtures::tenant());
 
         // Then
         static::assertSame(['pwd'], self::values($methods));
@@ -147,7 +179,7 @@ final class PassportProofsTest extends TestCase
         $this->expectExceptionMessageIs('The firewall of the interaction pages offers at least one login.');
 
         // When
-        $proofs->provableMethods();
+        $proofs->provableMethods(Fixtures::tenant());
     }
 
     /**

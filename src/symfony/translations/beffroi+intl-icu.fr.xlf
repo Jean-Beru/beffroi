@@ -201,6 +201,10 @@
         <source>login.passkey_failed</source>
         <target>La passkey n’a pas pu être utilisée. Réessayez, ou connectez-vous avec votre mot de passe.</target>
       </trans-unit>
+      <trans-unit id="login.passkey_only" resname="login.passkey_only">
+        <source>login.passkey_only</source>
+        <target>Ce fournisseur vous connecte avec votre passkey.</target>
+      </trans-unit>
       <trans-unit id="a71d2a8f04" resname="account.title">
         <source>account.title</source>
         <target>Votre compte</target>
@@ -468,6 +472,10 @@
       <trans-unit id="68e780445d" resname="two_factor.title">
         <source>two_factor.title</source>
         <target>Authentification à deux facteurs</target>
+      </trans-unit>
+      <trans-unit id="two_factor.not_admitted" resname="two_factor.not_admitted">
+        <source>two_factor.not_admitted</source>
+        <target>Ce fournisseur vous connecte avec votre passkey : votre compte n'a pas besoin d'application d'authentification.</target>
       </trans-unit>
       <trans-unit id="120102f7ce" resname="two_factor.none">
         <source>two_factor.none</source>
@@ -972,6 +980,10 @@
       <trans-unit id="act.credential.revoked" resname="act.credential.revoked">
         <source>act.credential.revoked</source>
         <target>Un moyen de connexion a été supprimé</target>
+      </trans-unit>
+      <trans-unit id="act.credential.forgotten" resname="act.credential.forgotten">
+        <source>act.credential.forgotten</source>
+        <target>Un moyen de connexion a été supprimé, ce fournisseur ne l'autorisant plus</target>
       </trans-unit>
       <trans-unit id="act.credential.renamed" resname="act.credential.renamed">
         <source>act.credential.renamed</source>

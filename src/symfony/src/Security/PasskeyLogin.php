@@ -21,8 +21,13 @@ use Throwable;
  * (PasskeyCredential::methods(), WebAuthn Level 3 §6.1), read from the badge the authenticator put on
  * the passport after the ceremony.
  */
-final readonly class PasskeyLogin implements AnnouncesItsRefusalInterface, DatesItsCredentialInterface
+final readonly class PasskeyLogin implements AnnouncesItsRefusalInterface, DatesItsCredentialInterface, OfferedLoginInterface
 {
+    public function kind(): string
+    {
+        return 'passkey';
+    }
+
     public function __construct(
         private CredentialRepositoryInterface $credentials,
         private EventDispatcherInterface $events,

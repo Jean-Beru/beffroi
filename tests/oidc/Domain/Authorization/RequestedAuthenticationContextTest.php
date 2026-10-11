@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Domain\Authorization;
 
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -135,6 +138,43 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
+     * Issue #327: a step-up names the kinds of credential that would reach the class, and never one the
+     * floor of the tenant forbids. A password beside a key would satisfy two factors, which is why the
+     * question is asked here: the page would otherwise offer a form no login of this tenant accepts.
+     *
+     * A tenant that named no floor is the control: the same session, the same request and the same
+     * credential, and the password is offered.
+     */
+    #[Test]
+    public function aStepUpOffersNoKindTheFloorOfTheTenantForbids(): void
+    {
+        // Given
+        $hardened = Fixtures::hardenedTenant();
+        $user = Fixtures::user($hardened);
+        $session = Fixtures::session($user, null, AuthenticationProofs::of(new AuthenticationMethod('swk'), Fixtures::now()));
+        $context = $this->contextOf($hardened);
+
+        // When / Then
+        static::assertNull($context->stepUpFor($session, [Fixtures::password($user)]));
+    }
+
+    #[Test]
+    public function aTenantThatNamedNoFloorOffersThePasswordForThatStepUp(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $user = Fixtures::user($tenant);
+        $session = Fixtures::session($user, null, AuthenticationProofs::of(new AuthenticationMethod('swk'), Fixtures::now()));
+        $context = $this->contextOf($tenant);
+
+        // When
+        $stepUp = $context->stepUpFor($session, [Fixtures::password($user)]);
+
+        // Then
+        static::assertSame(['password'], $stepUp?->kinds());
+    }
+
+    /**
      * Decision 0010: a session that already satisfies a requested class has nothing to step up to.
      */
     #[Test]
@@ -177,6 +217,21 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
+     * A request of a client of that tenant that asks for the two factors, judged against what the logins of
+     * the bundle prove for it: what the floor of the tenant leaves of them (issue #327).
+     */
+    private function contextOf(Tenant $tenant): RequestedAuthenticationContext
+    {
+        return RequestedAuthenticationContext::of(
+            Requests::authorization(
+                Clients::public($tenant),
+                claims: ClaimsRequest::fromJson('{"id_token": {"acr": {"essential": true, "values": ["2"]}}}'),
+            ),
+            Logins::passwordAndPasskey()->provableMethods($tenant),
+        );
+    }
+
+    /**
      * @param list<string> $acrValues
      */
     private function context(array $acrValues = [], ?string $claims = null, ?Logins $logins = null): RequestedAuthenticationContext
@@ -187,6 +242,6 @@ final class RequestedAuthenticationContextTest extends TestCase
             claims: $claims === null ? null : ClaimsRequest::fromJson($claims),
         );
 
-        return RequestedAuthenticationContext::of($request, ($logins ?? Logins::passwordAndPasskey())->provableMethods());
+        return RequestedAuthenticationContext::of($request, ($logins ?? Logins::passwordAndPasskey())->provableMethods($this->client->tenant));
     }
 }

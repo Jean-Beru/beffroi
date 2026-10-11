@@ -12,6 +12,7 @@ use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use Beffroi\Core\Domain\Credential\BackupCode;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -55,6 +56,7 @@ final class TotpEnrolmentTest extends TestCase
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
         $this->enrolment = new TotpEnrolment(
             $this->credentials,
+            new EnrolmentRefusal(),
             new SymfonyUuidGenerator(),
             new PlatformRandomness(),
             new ActiveTotp(new ActiveCredentials($this->credentials)),
@@ -283,5 +285,23 @@ final class TotpEnrolmentTest extends TestCase
         // Then
         static::assertStringStartsWith('otpauth://totp/' . rawurlencode('Acme:bob.o') . '?', $provisioning->uri);
         static::assertCount(0, $this->credentials->findByUser($bob));
+    }
+
+    /**
+     * Issue #327: a tenant that signs its users in by passkey admits no one-time code, and nothing of the
+     * enrolment is drawn: a secret to scan that would prove no login here is not shown to anybody.
+     */
+    #[Test]
+    public function aTenantThatAdmitsNoCodeShowsNoSecretToScan(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::hardenedTenant());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A one-time code proves no login of the tenant "acme", whose logins prove "phishing_resistant" at the least: it is not enrolled here. What it would prove is otp.');
+
+        // When
+        $this->enrolment->begin($carol);
     }
 }
