@@ -1623,6 +1623,7 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
             sprintf('%s: its page names the client the provider registered', $slug),
         );
         $replayed = demo_forge_replay($cookies, $ca, $issuer, $slug, $registered[1]);
+        demo_forge_read($cookies, $ca, $slug, $registered[1]);
 
         if ($preset['signs_out'] ?? false) {
             demo_forge_sign_out($cookies, $ca, $issuer, $slug);
@@ -1701,6 +1702,8 @@ function demo_forge_by_hand(string $issuer, string $password, string $ca): array
         str_contains($read, 'reaches this one with configuration alone'),
         sprintf('%s: and that an "oidc_login" firewall reaches this composition as it is', $handle),
     );
+    demo_expect(preg_match('/data-client-id="([^"]+)"/', $page, $registered) === 1, sprintf('%s: its page names the client the provider registered', $handle));
+    demo_forge_read($cookies, $ca, $handle, $registered[1]);
 
     return [
         $handle,
@@ -1772,28 +1775,50 @@ function demo_forge_sign_out(array &$cookies, string $ca, string $issuer, string
 }
 
 /**
- * RFC 7592 §2.3: the built client deletes itself at the provider, and the page of the forge stops offering
- * it. What the provider answered is the demonstration's to read; what this walk reads is the page, which
- * is where a visitor would see it.
+ * RFC 7592 §2.1: the built client reads itself at the URI it was handed, with the credential it was
+ * handed, which is the one way a dynamic client reads its own registration. It is asked for from its page,
+ * so it is asked for while that client is signed in.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_forge_read(array &$cookies, string $ca, string $handle, string $clientId): void
+{
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', sprintf('%s/c/%s/profile?read=1', DEMO_URL, $handle));
+    demo_expect(
+        $status === 200 && preg_match('/data-read="([^"]+)"/', $page, $read) === 1 && $read[1] === $clientId,
+        sprintf('%s: it reads its own registration at the URI it was handed (RFC 7592 §2.1, got "%s")', $handle, $read[1] ?? ''),
+    );
+}
+
+/**
+ * RFC 7592 §2.3: the client deletes itself at the provider, which answers 204 and no body, and the page
+ * says what came back rather than claiming the deletion. The route is not behind the firewall of the
+ * forge: a client that has signed out deletes itself all the same.
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_forge_delete(array &$cookies, string $ca, string $handle): string
 {
     [$status, $location] = demo_request($cookies, $ca, 'POST', DEMO_URL . '/forge/' . $handle . '/delete');
-    demo_expect($status === 302 && $location === DEMO_URL . '/', sprintf(
+    demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/?'), sprintf(
         '%s: it deletes itself at the provider (RFC 7592 §2.3, got %d %s)',
         $handle,
         $status,
         $location,
     ));
-    [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/');
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
     demo_expect(
-        $status === 200 && ! str_contains($page, '/c/' . $handle . '/profile'),
-        sprintf('%s: and the page of the forge no longer offers it', $handle),
+        $status === 200
+        && preg_match('/data-deleted="' . preg_quote($handle, '/') . '" data-answered="([^"]+)"/', $page, $answered) === 1
+        && $answered[1] === '204',
+        sprintf('%s: and the page says what the provider answered (got "%s")', $handle, $answered[1] ?? ''),
+    );
+    demo_expect(
+        ! str_contains($page, '/c/' . $handle . '/profile'),
+        sprintf('%s: the page of the forge no longer offers it', $handle),
     );
 
-    return 'deleted, and the page stops offering it';
+    return 'deleted, the provider answering 204';
 }
 
 /**
