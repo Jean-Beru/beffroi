@@ -9,7 +9,7 @@ use function fileperms;
 use function filesize;
 use function getenv;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use function is_string;
@@ -52,10 +52,10 @@ final class KeyFileCustodyTest extends DatabaseTestCase
     public function aSealedKeyIsWrappedByTheKeyFileOfTheTenant(): void
     {
         // Given
-        $rotator = self::service('test.beffroi.key_rotator', TenantKeyRotator::class);
+        $takeOver = self::service('test.beffroi.key_take_over', KeyTakeOver::class);
 
         // When
-        $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        $rotated = $takeOver->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
         $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)

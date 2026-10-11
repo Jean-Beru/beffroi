@@ -245,7 +245,12 @@ use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\UserProvisioner;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyRetirement;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeySuccession;
+use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Application\Key\NamedKey;
+use Beffroi\Core\Application\Key\RetirementWindow;
 use Beffroi\Core\Application\Passkey\PasskeyAuthentication;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Application\Totp\ActiveTotp;
@@ -1159,11 +1164,20 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JwsVerifierInterface::class, JwtLibraryJwsVerifier::class);
     $services->set(JwtLibraryJweDecrypter::class);
     $services->alias(JweDecrypterInterface::class, JwtLibraryJweDecrypter::class);
-    // the modules tag the kinds of artifact bound to a key, each naming the use it holds back; the
-    // rotation dates a retirement from the longest of those of the use of the key retiring (architecture §3.3)
-    $services->set(TenantKeyRotator::class)->args([
+    // The four steps of the life of a key, one class each (architecture §3.3): what stages, what takes
+    // over, what stages a successor nobody asked for, what retires.
+    //
+    // The modules tag the kinds of artifact bound to a key, each naming the use it holds back, and the
+    // window a retiring key holds the JWK Set open for is read from them in one place: the take-over dates
+    // a retirement with it and the succession compares the age of a key with it.
+    $services->set(RetirementWindow::class)->args([
         '$artifacts' => tagged_iterator('beffroi.key_bound_artifact'),
     ]);
+    $services->set(NamedKey::class);
+    $services->set(KeyStaging::class);
+    $services->set(KeyRetirement::class);
+    $services->set(KeyTakeOver::class);
+    $services->set(KeySuccession::class);
 
     // The core: what a class of an "acr" policy requires of the proofs of a session (decision 0010), one
     // class per predicate, in the order they are wired. What a tenant may name in its vocabulary, what a

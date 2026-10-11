@@ -9,7 +9,7 @@ use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Tenant\TenantFactory;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
@@ -101,7 +101,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(TenantKeyRotator::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition(KeyStaging::class)->getArgument('$stagingDelay');
         static::assertInstanceOf(Definition::class, $delay);
         $factory = $delay->getFactory();
         static::assertIsArray($factory);
@@ -111,7 +111,7 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     #[Test]
-    public function aConfiguredStagingDelayReachesTheRotator(): void
+    public function aConfiguredStagingDelayReachesTheStaging(): void
     {
         // When
         $container = self::load([
@@ -124,7 +124,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(TenantKeyRotator::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition(KeyStaging::class)->getArgument('$stagingDelay');
         static::assertInstanceOf(Definition::class, $delay);
         static::assertSame([30, 120], $delay->getArguments());
     }

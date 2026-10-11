@@ -630,8 +630,15 @@ services:
     test.beffroi.password_hasher_factory:
         alias: security.password_hasher_factory
         public: true
-    test.beffroi.key_rotator:
-        alias: Beffroi\Core\Application\Key\TenantKeyRotator
+    # The four steps of the life of a key (coeur.md §3.3), each the counterpart of the others.
+    test.beffroi.key_staging:
+        alias: Beffroi\Core\Application\Key\KeyStaging
+        public: true
+    test.beffroi.key_take_over:
+        alias: Beffroi\Core\Application\Key\KeyTakeOver
+        public: true
+    test.beffroi.key_retirement:
+        alias: Beffroi\Core\Application\Key\KeyRetirement
         public: true
     test.beffroi.keys:
         alias: Beffroi\Core\Port\TenantKeyRepositoryInterface

@@ -10,7 +10,11 @@ use DateInterval;
 use function explode;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyRetirement;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Application\Key\NamedKey;
+use Beffroi\Core\Application\Key\RetirementWindow;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Port\JwsSignerInterface;
@@ -51,7 +55,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         new Filesystem()->remove($this->directory);
         $this->provider = self::service('test.beffroi.key_provider', SigningKeyProviderInterface::class);
         $this->published = self::service('test.beffroi.public_keys', PublicKeySetProviderInterface::class);
-        self::service('test.beffroi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        self::service('test.beffroi.key_take_over', KeyTakeOver::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     protected function tearDown(): void
@@ -141,23 +145,33 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     }
 
     /**
-     * A rotation as a console command does it: a repository of its own on the same files, a rotator of
-     * its own, nothing shared with the provider under test but the directory.
+     * A rotation as a console command does it: a repository of its own on the same files, the steps of the
+     * life of a key of its own, nothing shared with the provider under test but the directory.
      */
     private function rotateFromAnotherProcess(): TenantKey
     {
-        $rotator = new TenantKeyRotator(
-            new FileTenantKeyRepository($this->directory, Algorithms::all()),
+        $keys = new FileTenantKeyRepository($this->directory, Algorithms::all());
+        $named = new NamedKey($keys);
+        $clock = new NativeClock();
+        $events = new RecordingEventDispatcher();
+        $staging = new KeyStaging(
+            $keys,
             self::service('test.beffroi.key_pair_generator', KeyPairGeneratorInterface::class),
             self::service('test.beffroi.key_sealer', KeySealerInterface::class),
-            [],
             new DateInterval('PT6M'),
-            new DateInterval('P90D'),
-            new NativeClock(),
-            new RecordingEventDispatcher(),
+            $clock,
+            $events,
         );
 
-        return $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        return new KeyTakeOver(
+            $keys,
+            $named,
+            $staging,
+            new RetirementWindow([]),
+            new KeyRetirement($keys, $named, $clock, $events),
+            $clock,
+            $events,
+        )->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**
