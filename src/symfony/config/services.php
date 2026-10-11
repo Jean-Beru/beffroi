@@ -149,21 +149,17 @@ use Beffroi\Bundle\Routing\RouterEndpointLocator;
 use Beffroi\Bundle\Scheduler\BeffroiSchedule;
 use Beffroi\Bundle\Security\BreachedPasswordListener;
 use Beffroi\Bundle\Security\CorePasswordHasher;
-use Beffroi\Bundle\Security\DecoyHashListener;
 use Beffroi\Bundle\Security\IdentityUserProvider;
 use Beffroi\Bundle\Security\InteractionLoginHandler;
 use Beffroi\Bundle\Security\LoginFailureListener;
 use Beffroi\Bundle\Security\LoginSuccessListener;
 use Beffroi\Bundle\Security\PasskeyLogin;
 use Beffroi\Bundle\Security\PasskeyLoginAuthenticator;
+use Beffroi\Bundle\Security\PasswordLoginAuthenticator;
 use Beffroi\Bundle\Security\PassportProofs;
-use Beffroi\Bundle\Security\AcceptedPasswordListener;
-use Beffroi\Bundle\Security\PasswordAttemptListener;
 use Beffroi\Bundle\Security\PwnedPasswords;
-use Beffroi\Bundle\Security\DatedPasswordCredential;
 use Beffroi\Bundle\Security\PasswordLogin;
 use Beffroi\Bundle\Security\RateLimitedAttempts;
-use Beffroi\Bundle\Security\RefusalCost;
 use Beffroi\Bundle\Security\SecondFactorGate;
 use Beffroi\Bundle\Security\TotpLogin;
 use Beffroi\Bundle\Security\TotpLoginAuthenticator;
@@ -223,6 +219,8 @@ use Beffroi\Core\Application\Authentication\DecoyHash;
 use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
 use Beffroi\Core\Application\Authentication\LoginCompletion;
 use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
+use Beffroi\Core\Application\Authentication\PasswordVerification;
+use Beffroi\Core\Application\Authentication\PendingLoginVerification;
 use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
@@ -915,19 +913,23 @@ return static function (ContainerConfigurator $container): void {
     $services->set(CorePasswordHasher::class);
     $services->set(UserChecker::class);
     $services->set(InteractionLoginHandler::class);
-    $services->set(LoginSuccessListener::class)->args(['$logins' => tagged_iterator('beffroi.login')]);
+    $services->set(LoginSuccessListener::class)->args(['$logins' => tagged_iterator('beffroi.login.dated')]);
     $services->set(LoginFailureListener::class)->args(['$logins' => tagged_iterator('beffroi.login.refusal')]);
+    // the three logins of the firewall, each an authenticator of its own, each handing what it reads to a
+    // use case of the core, where the order of a login is written once (issue #130)
+    $services->set(PasswordLoginAuthenticator::class);
     $services->set(PasskeyLoginAuthenticator::class);
-    // a password of a user who holds a second factor is held until the code, verified by the second authenticator of the firewall
+    // a password of a user who holds a second factor is held until the code, verified by the third authenticator of the firewall
     $services->set(SecondFactorGate::class);
     $services->set(TotpLoginAuthenticator::class);
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010):
     // one class per login, and what is tagged is what the provider announces
     // "beffroi.login" is every login; "beffroi.login.refusal" is those whose refusals the listener
-    // announces, the second step announcing its own through the core
-    $services->set(DatedPasswordCredential::class);
-    $services->set(PasswordLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal');
-    $services->set(PasskeyLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal');
+    // announces, the form login and the second step announcing their own through the core;
+    // "beffroi.login.dated" is those that date the credential they proved, which the core does for the
+    // two it verifies itself (issue #130)
+    $services->set(PasswordLogin::class)->tag('beffroi.login');
+    $services->set(PasskeyLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal')->tag('beffroi.login.dated');
     $services->set(TotpLogin::class)->tag('beffroi.login');
     $services->set(PassportProofs::class)->args([tagged_iterator('beffroi.login')]);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
@@ -936,13 +938,6 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CodeAttemptLimiterInterface::class, 'beffroi.security.code_attempts');
     $services->set('beffroi.security.password_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
     $services->alias(PasswordAttemptLimiterInterface::class, 'beffroi.security.password_attempts');
-    $services->set(PasswordAttemptListener::class);
-    // the act of a password the firewall accepted, the hash being verified there and not by the use case
-    // of the core (issue #571)
-    $services->set(AcceptedPasswordListener::class);
-    // the decoy hash of the core paid where the firewall refuses a password before any hash (architecture §5.4)
-    $services->set(RefusalCost::class);
-    $services->set(DecoyHashListener::class);
     // The list of compromised passwords NIST SP 800-63B §5.1.1.2 asks a password to be compared against
     // (issue #552): the range endpoint of Pwned Passwords, where five characters of a SHA-1 leave and the
     // comparison is local. There is no option to turn it on and no second adapter to alias: a deployment
@@ -1201,7 +1196,9 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(RandomnessInterface::class, PlatformRandomness::class);
 
     // The core: use cases
+    $services->set(PasswordVerification::class);
     $services->set(PasswordAuthenticator::class);
+    $services->set(PendingLoginVerification::class);
     $services->set(LoginCompletion::class);
     $services->set(SecondFactorRequirement::class);
     $services->set(PasskeyEnrolment::class);
