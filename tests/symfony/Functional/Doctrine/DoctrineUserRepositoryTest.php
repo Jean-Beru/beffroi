@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Tests\Fixture\Predicates;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
@@ -148,7 +149,10 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     {
         // Given
         self::user();
-        $other = new TenantSynchronizer(new TenantFactory('https://other.test', 'other', null, new MockClock(self::now())), self::managers())->synchronize();
+        $other = new TenantSynchronizer(
+            new TenantFactory('https://other.test', 'other', null, new MockClock(self::now()), Predicates::wired()),
+            self::managers(),
+        )->synchronize();
         $stranger = User::create(Uuid::v7(), $other, new Subject('alice-subject'), 'alice', self::now());
         self::users()->save($stranger);
         self::reload();

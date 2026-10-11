@@ -5,12 +5,21 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Domain\Session;
 
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\AuthenticationPredicateInterface;
+use Beffroi\Core\Domain\Session\PhishingResistant;
+use Beffroi\Core\Domain\Session\PhishingResistantHardware;
+use Beffroi\Core\Domain\Session\SingleFactor;
+use Beffroi\Core\Domain\Session\TwoFactors;
+use Beffroi\Core\Tests\Fixture\Predicates;
 use function in_array;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * The predicates of decision 0010, each a class the provider is wired with (issue #607): what every one
+ * of them answers of the same proofs, read off the wiring and never off an enumeration of kinds.
+ */
 final class AuthenticationPredicateTest extends TestCase
 {
     /**
@@ -19,108 +28,145 @@ final class AuthenticationPredicateTest extends TestCase
      * method. When a method was proven is no business of a predicate, so none of these cases dates one.
      *
      * @param list<AuthenticationMethod> $methods
-     * @param list<AuthenticationPredicate> $satisfied
+     * @param list<string> $satisfied the predicates that hold, by the name each gives itself
      */
     #[Test]
     #[DataProvider('provideMethodsAndThePredicatesTheySatisfy')]
     public function aPredicateHoldsOnTheMethodsItDescribes(array $methods, array $satisfied): void
     {
         // When / Then
-        foreach (AuthenticationPredicate::cases() as $predicate) {
-            static::assertSame(in_array($predicate, $satisfied, true), $predicate->isSatisfiedBy($methods), $predicate->value);
+        foreach (Predicates::all() as $predicate) {
+            static::assertSame(in_array($predicate->name(), $satisfied, true), $predicate->isSatisfiedBy($methods), $predicate->name());
         }
     }
 
     /**
-     * Issue #327: a tenant names a predicate as the floor of its logins, and what may be enrolled there is
-     * read off it, kind by kind, from what one authentication with that kind would prove. A floor admits a
-     * credential when it reads one of those methods: under the two factors a password is half of what meets
-     * it, where under a phishing-resistant floor it is never part of anything that does.
+     * Decision 0025: a tenant names a predicate as the floor of its logins, and what may be enrolled there
+     * is read off it, kind by kind, from what one authentication with that kind would prove. A floor admits
+     * a credential when it reads one of those methods: under the two factors a password is half of what
+     * meets it, where under a phishing-resistant floor it is never part of anything that does.
      *
      * @param list<AuthenticationMethod> $methods
-     * @param list<AuthenticationPredicate> $admitting
+     * @param list<string> $admitting the floors that admit the credential, by the name each gives itself
      */
     #[Test]
     #[DataProvider('provideCredentialsAndTheFloorsThatAdmitThem')]
     public function aFloorAdmitsACredentialWhoseProofsItReads(array $methods, array $admitting): void
     {
         // When / Then
-        foreach (AuthenticationPredicate::cases() as $predicate) {
-            static::assertSame(in_array($predicate, $admitting, true), $predicate->admits($methods), $predicate->value);
+        foreach (Predicates::all() as $predicate) {
+            static::assertSame(in_array($predicate->name(), $admitting, true), $predicate->admits($methods), $predicate->name());
         }
     }
 
     /**
-     * @return iterable<string, array{list<AuthenticationMethod>, list<AuthenticationPredicate>}>
+     * Architecture §4.6: every session has an "acr", so a policy is built on a predicate that holds as
+     * soon as anything at all was proven, and the provider knows which of its predicates are one without
+     * reading their names (AuthenticationContextPolicy). Of the four wired, the single factor is the one.
+     */
+    #[Test]
+    public function theSingleFactorIsTheOnePredicateThatHoldsOnEveryLogin(): void
+    {
+        // When / Then
+        foreach (Predicates::all() as $predicate) {
+            static::assertSame($predicate->name() === SingleFactor::NAME, $predicate->holdsOnEveryLogin(), $predicate->name());
+        }
+    }
+
+    /**
+     * A predicate is resolved by the name it gives itself, here and in the configuration of a tenant, in a
+     * stored policy and in a stored floor (WiredAuthenticationPredicates).
+     */
+    #[Test]
+    #[DataProvider('providePredicatesAndTheirNames')]
+    public function aPredicateNamesItself(AuthenticationPredicateInterface $predicate, string $name): void
+    {
+        // When / Then
+        static::assertSame($name, $predicate->name());
+    }
+
+    /**
+     * @return iterable<string, array{AuthenticationPredicateInterface, string}>
+     */
+    public static function providePredicatesAndTheirNames(): iterable
+    {
+        yield 'the single factor' => [new SingleFactor(), 'single_factor'];
+        yield 'two factors' => [new TwoFactors(), 'two_factors'];
+        yield 'phishing resistant' => [new PhishingResistant(), 'phishing_resistant'];
+        yield 'phishing resistant, hardware' => [new PhishingResistantHardware(), 'phishing_resistant_hardware'];
+    }
+
+    /**
+     * @return iterable<string, array{list<AuthenticationMethod>, list<string>}>
      */
     public static function provideCredentialsAndTheFloorsThatAdmitThem(): iterable
     {
         yield 'a credential that could prove nothing, a revoked one' => [[], []];
         yield 'a password' => [
             [AuthenticationMethod::password()],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+            [TwoFactors::NAME, SingleFactor::NAME],
         ];
         yield 'a one-time code, a TOTP or a backup code' => [
             [new AuthenticationMethod('otp')],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+            [TwoFactors::NAME, SingleFactor::NAME],
         ];
         yield 'a synced passkey' => [
             [new AuthenticationMethod('swk'), new AuthenticationMethod('user')],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors, AuthenticationPredicate::PhishingResistant],
+            [PhishingResistant::NAME, TwoFactors::NAME, SingleFactor::NAME],
         ];
         yield 'a passkey bound to its authenticator' => [
             [new AuthenticationMethod('hwk'), new AuthenticationMethod('user')],
-            AuthenticationPredicate::cases(),
+            [PhishingResistantHardware::NAME, PhishingResistant::NAME, TwoFactors::NAME, SingleFactor::NAME],
         ];
         yield 'a credential that proves a presence and no factor' => [
             [new AuthenticationMethod('user')],
-            [AuthenticationPredicate::SingleFactor],
+            [SingleFactor::NAME],
         ];
         yield 'a method of an upstream provider that proves no factor of its own' => [
             [new AuthenticationMethod('wia')],
-            [AuthenticationPredicate::SingleFactor],
+            [SingleFactor::NAME],
         ];
     }
 
     /**
-     * @return iterable<string, array{list<AuthenticationMethod>, list<AuthenticationPredicate>}>
+     * @return iterable<string, array{list<AuthenticationMethod>, list<string>}>
      */
     public static function provideMethodsAndThePredicatesTheySatisfy(): iterable
     {
         yield 'nothing proven' => [[], []];
         yield 'a password' => [
             [AuthenticationMethod::password()],
-            [AuthenticationPredicate::SingleFactor],
+            [SingleFactor::NAME],
         ];
-        yield 'a one-time password alone' => [[new AuthenticationMethod('otp')], [AuthenticationPredicate::SingleFactor]];
-        yield 'a presence check alone' => [[new AuthenticationMethod('user')], [AuthenticationPredicate::SingleFactor]];
+        yield 'a one-time password alone' => [[new AuthenticationMethod('otp')], [SingleFactor::NAME]];
+        yield 'a presence check alone' => [[new AuthenticationMethod('user')], [SingleFactor::NAME]];
         yield 'a password and a PIN, one kind' => [
             [AuthenticationMethod::password(), new AuthenticationMethod('pin')],
-            [AuthenticationPredicate::SingleFactor],
+            [SingleFactor::NAME],
         ];
         yield 'a password and a one-time password' => [
             [AuthenticationMethod::password(), new AuthenticationMethod('otp')],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+            [TwoFactors::NAME, SingleFactor::NAME],
         ];
         yield 'a password and a fingerprint' => [
             [AuthenticationMethod::password(), new AuthenticationMethod('fpt')],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+            [TwoFactors::NAME, SingleFactor::NAME],
         ];
         yield 'mfa asserted upstream' => [
             [new AuthenticationMethod('mfa')],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::TwoFactors],
+            [TwoFactors::NAME, SingleFactor::NAME],
         ];
         yield 'a software key alone' => [
             [new AuthenticationMethod('swk')],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::PhishingResistant],
+            [PhishingResistant::NAME, SingleFactor::NAME],
         ];
         yield 'a hardware key alone' => [
             [new AuthenticationMethod('hwk')],
-            [AuthenticationPredicate::SingleFactor, AuthenticationPredicate::PhishingResistant, AuthenticationPredicate::PhishingResistantHardware],
+            [PhishingResistantHardware::NAME, PhishingResistant::NAME, SingleFactor::NAME],
         ];
         yield 'a password and a hardware key' => [
             [AuthenticationMethod::password(), new AuthenticationMethod('hwk')],
-            AuthenticationPredicate::cases(),
+            [PhishingResistantHardware::NAME, PhishingResistant::NAME, TwoFactors::NAME, SingleFactor::NAME],
         ];
     }
 }

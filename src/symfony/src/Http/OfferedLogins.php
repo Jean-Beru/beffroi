@@ -52,7 +52,7 @@ final readonly class OfferedLogins
             throw new LogicException(sprintf(
                 'The tenant "%s" requires "%s" of every login and this provider wires no login that proves it; it wires %s.',
                 $tenant->slug,
-                $tenant->loginFloor->value,
+                $tenant->loginFloor->name(),
                 $closed === [] ? 'none at all' : implode(', ', array_keys($closed)),
             ));
         }

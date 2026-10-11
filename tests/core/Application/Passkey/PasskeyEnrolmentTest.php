@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Passkey;
 
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\PhishingResistantHardware;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
@@ -220,7 +220,7 @@ final class PasskeyEnrolmentTest extends TestCase
     public function aSyncedPasskeyIsRefusedByATenantThatAsksForHardware(): void
     {
         // Given
-        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', AuthenticationPredicate::PhishingResistantHardware));
+        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', new PhishingResistantHardware()));
         $options = $this->enrolment->begin($carol);
         $this->registrar->returns(FakePasskeyRegistrar::record($options, 'synced', backupEligible: true, backedUp: true));
 
@@ -236,7 +236,7 @@ final class PasskeyEnrolmentTest extends TestCase
     public function aPasskeyBoundToItsAuthenticatorIsEnrolledByATenantThatAsksForHardware(): void
     {
         // Given
-        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', AuthenticationPredicate::PhishingResistantHardware));
+        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', new PhishingResistantHardware()));
         $options = $this->enrolment->begin($carol);
         $this->registrar->returns(FakePasskeyRegistrar::record($options, 'bound'));
 

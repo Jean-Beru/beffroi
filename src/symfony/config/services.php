@@ -291,6 +291,11 @@ use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Bridge\Password\NativePasswordHasher;
 use Beffroi\Core\Bridge\Password\PasswordHasherRegistry;
 use Beffroi\Core\Bridge\Password\WiredPasswordAlgorithms;
+use Beffroi\Core\Bridge\Session\WiredAuthenticationPredicates;
+use Beffroi\Core\Domain\Session\PhishingResistant;
+use Beffroi\Core\Domain\Session\PhishingResistantHardware;
+use Beffroi\Core\Domain\Session\SingleFactor;
+use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
 use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
@@ -319,6 +324,7 @@ use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
 use Beffroi\Core\Port\PasskeyRegistrarInterface;
 use Beffroi\Core\Port\PasswordAttemptLimiterInterface;
+use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Core\Port\UuidGeneratorInterface;
@@ -1152,6 +1158,21 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TenantKeyRotator::class)->args([
         '$artifacts' => tagged_iterator('beffroi.key_bound_artifact'),
     ]);
+
+    // The core: what a class of an "acr" policy requires of the proofs of a session (decision 0010), one
+    // class per predicate, in the order they are wired. What a tenant may name in its vocabulary, what a
+    // stored policy is read back as and what the floor of its logins is read back as all read this one
+    // list, so a predicate this provider gains is a class and a line here, never a case added to an
+    // enumeration. Strongest first, which is the order the default policy of the core answers in.
+    $services->set(PhishingResistantHardware::class)->tag('beffroi.authentication_predicate');
+    $services->set(PhishingResistant::class)->tag('beffroi.authentication_predicate');
+    $services->set(TwoFactors::class)->tag('beffroi.authentication_predicate');
+    $services->set(SingleFactor::class)->tag('beffroi.authentication_predicate');
+    $services->set(WiredAuthenticationPredicates::class)->args([tagged_iterator('beffroi.authentication_predicate')]);
+    $services->alias(AuthenticationPredicatesInterface::class, WiredAuthenticationPredicates::class);
+    // Public on purpose: the DBAL types that read a stored policy and a stored floor back cannot be
+    // injected into, and the bundle hands them the wiring when it boots (BeffroiBundle::boot()).
+    $services->alias('beffroi.authentication_predicates', AuthenticationPredicatesInterface::class)->public();
 
     // The core: passwords; the hashers of one algorithm (AlgorithmPasswordHasherInterface) are tagged by hand, the registry is the port the use cases see
     // The algorithms a hash may have been made with, in the order they are wired: the first one is what a

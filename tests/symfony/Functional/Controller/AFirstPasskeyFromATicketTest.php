@@ -10,7 +10,7 @@ use Beffroi\Core\Domain\Enrolment\IssuedEnrolmentTicket;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\PhishingResistant;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
@@ -33,7 +33,7 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         parent::setUp();
         // the case the ticket exists for: a person created after the tenant hardened, with no password
         $this->alice = self::user('alice');
-        self::harden(AuthenticationPredicate::PhishingResistant);
+        self::harden(new PhishingResistant());
         self::reload();
     }
 

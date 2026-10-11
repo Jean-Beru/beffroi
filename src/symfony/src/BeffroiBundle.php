@@ -10,6 +10,7 @@ use Beffroi\Bundle\Doctrine\Type\ActorType;
 use Beffroi\Bundle\Messenger\MessengerContract;
 use Beffroi\Bundle\Doctrine\Type\AddressType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationPredicateType;
 use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
 use Beffroi\Bundle\Doctrine\Type\TenantLookType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
@@ -20,6 +21,7 @@ use Beffroi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
 use Beffroi\Bundle\Doctrine\Type\PasswordAlgorithmType;
 use Beffroi\Bundle\Doctrine\Type\PasswordHashType;
 use Beffroi\Bundle\Doctrine\Type\ProfileType;
+use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
 use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
@@ -49,6 +51,7 @@ use Beffroi\Bundle\Configuration\WebPushSection;
 use Beffroi\Bundle\Doctrine\Type\ConfirmationType;
 use Beffroi\Bundle\Doctrine\Type\AuthorizationDetailsType;
 use Beffroi\Bundle\Doctrine\Type\NeedsAuthorizationDetailTypesInterface;
+use Beffroi\Bundle\Doctrine\Type\NeedsAuthenticationPredicatesInterface;
 use Beffroi\Bundle\Doctrine\Type\NeedsCodeChallengeMethodsInterface;
 use Beffroi\Bundle\Doctrine\Type\NeedsConfirmationReaderInterface;
 use Beffroi\Oidc\Port\AuthorizationDetailsReaderInterface;
@@ -126,6 +129,7 @@ final class BeffroiBundle extends AbstractBundle
         ProfileType::NAME => ProfileType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
+        AuthenticationPredicateType::NAME => AuthenticationPredicateType::class,
         TenantLookType::NAME => TenantLookType::class,
         SelfServedClaimsType::NAME => SelfServedClaimsType::class,
         BackupCodesType::NAME => BackupCodesType::class,
@@ -135,7 +139,7 @@ final class BeffroiBundle extends AbstractBundle
      * The types that read a wiring back are told what the deployment is wired with, as soon as the
      * container can answer: which algorithm a stored password hash names, which kind of confirmation a
      * stored "cnf" names, what an "authorization_details" a user agreed to asks for, which method a stored
-     * PKCE challenge was made with. It goes to the class and not to an instance: Doctrine builds its types itself,
+     * PKCE challenge was made with, which predicate a stored "acr" policy and a stored login floor name. It goes to the class and not to an instance: Doctrine builds its types itself,
      * when a connection is first made, so no instance of one exists while the bundles boot. A deployment
      * has one wiring, and a kernel booted after another hands over the same one.
      */
@@ -149,6 +153,7 @@ final class BeffroiBundle extends AbstractBundle
         $confirmations = $container->has('beffroi.confirmations') ? $container->get('beffroi.confirmations') : null;
         $authorizationDetails = $container->has('beffroi.authorization_detail_types') ? $container->get('beffroi.authorization_detail_types') : null;
         $codeChallengeMethods = $container->has('beffroi.code_challenge_methods') ? $container->get('beffroi.code_challenge_methods') : null;
+        $predicates = $container->has('beffroi.authentication_predicates') ? $container->get('beffroi.authentication_predicates') : null;
         foreach (self::DBAL_TYPES as $class) {
             if ($algorithms instanceof PasswordAlgorithmsInterface && is_a($class, NeedsPasswordAlgorithmsInterface::class, true)) {
                 $class::resolveWith($algorithms);
@@ -161,6 +166,9 @@ final class BeffroiBundle extends AbstractBundle
             }
             if ($codeChallengeMethods instanceof CodeChallengeMethodsInterface && is_a($class, NeedsCodeChallengeMethodsInterface::class, true)) {
                 $class::resolveWith($codeChallengeMethods);
+            }
+            if ($predicates instanceof AuthenticationPredicatesInterface && is_a($class, NeedsAuthenticationPredicatesInterface::class, true)) {
+                $class::resolveWith($predicates);
             }
         }
         $this->registerEncryptedTypes();

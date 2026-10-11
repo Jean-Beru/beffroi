@@ -19,7 +19,8 @@ use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\AuthenticationPredicateInterface;
+use Beffroi\Core\Domain\Session\PhishingResistant;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
@@ -55,7 +56,7 @@ final class Fixtures
     public static function tenant(
         string $slug = 'acme',
         string $issuer = 'https://id.acme.example',
-        ?AuthenticationPredicate $loginFloor = null,
+        ?AuthenticationPredicateInterface $loginFloor = null,
     ): Tenant {
         return new Tenant(Uuid::v7(), $slug, new Issuer($issuer), 'Acme', self::now(), loginFloor: $loginFloor);
     }
@@ -65,7 +66,7 @@ final class Fixtures
      */
     public static function hardenedTenant(string $slug = 'acme'): Tenant
     {
-        return self::tenant($slug, loginFloor: AuthenticationPredicate::PhishingResistant);
+        return self::tenant($slug, loginFloor: new PhishingResistant());
     }
 
     public static function context(

@@ -14,7 +14,9 @@ use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Event\CredentialForgotten;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\PhishingResistant;
+use Beffroi\Core\Domain\Session\PhishingResistantHardware;
+use Beffroi\Core\Domain\Session\SingleFactor;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
@@ -61,10 +63,10 @@ final class TenantHardeningTest extends TestCase
     public function theTenantKeepsTheFloorItWasGiven(): void
     {
         // When
-        $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistant, $this->context);
+        $this->hardening->adopt($this->tenant, new PhishingResistant(), $this->context);
 
         // Then
-        static::assertSame(AuthenticationPredicate::PhishingResistant, $this->tenant->loginFloor);
+        static::assertSame(PhishingResistant::NAME, $this->tenant->loginFloor->name());
         static::assertSame([$this->tenant->id->toRfc4122() => $this->tenant], $this->tenants->tenants);
     }
 
@@ -84,7 +86,7 @@ final class TenantHardeningTest extends TestCase
         }
 
         // When
-        $forgotten = $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistant, $this->context);
+        $forgotten = $this->hardening->adopt($this->tenant, new PhishingResistant(), $this->context);
 
         // Then
         static::assertSame(2, $forgotten);
@@ -110,7 +112,7 @@ final class TenantHardeningTest extends TestCase
         }
 
         // When
-        $forgotten = $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistantHardware, $this->context);
+        $forgotten = $this->hardening->adopt($this->tenant, new PhishingResistantHardware(), $this->context);
 
         // Then
         static::assertSame(1, $forgotten);
@@ -130,7 +132,7 @@ final class TenantHardeningTest extends TestCase
         $this->credentials->save($totp);
 
         // When
-        $forgotten = $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistant, $this->context);
+        $forgotten = $this->hardening->adopt($this->tenant, new PhishingResistant(), $this->context);
 
         // Then
         static::assertSame(0, $forgotten);
@@ -150,7 +152,7 @@ final class TenantHardeningTest extends TestCase
         $this->credentials->save(Fixtures::password($this->alice));
 
         // When
-        $forgotten = $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistant, $this->context);
+        $forgotten = $this->hardening->adopt($this->tenant, new PhishingResistant(), $this->context);
 
         // Then
         static::assertSame(1, $forgotten);
@@ -165,10 +167,10 @@ final class TenantHardeningTest extends TestCase
     {
         // Given
         $this->credentials->save(Fixtures::password($this->alice));
-        $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistant, $this->context);
+        $this->hardening->adopt($this->tenant, new PhishingResistant(), $this->context);
 
         // When
-        $forgotten = $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistant, $this->context);
+        $forgotten = $this->hardening->adopt($this->tenant, new PhishingResistant(), $this->context);
 
         // Then
         static::assertSame(0, $forgotten);
@@ -184,13 +186,13 @@ final class TenantHardeningTest extends TestCase
     {
         // Given
         $this->credentials->save(Fixtures::password($this->alice));
-        $this->hardening->adopt($this->tenant, AuthenticationPredicate::PhishingResistant, $this->context);
+        $this->hardening->adopt($this->tenant, new PhishingResistant(), $this->context);
 
         // When
-        $this->hardening->adopt($this->tenant, AuthenticationPredicate::SingleFactor, $this->context);
+        $this->hardening->adopt($this->tenant, new SingleFactor(), $this->context);
 
         // Then
-        static::assertSame(AuthenticationPredicate::SingleFactor, $this->tenant->loginFloor);
+        static::assertSame(SingleFactor::NAME, $this->tenant->loginFloor->name());
         static::assertSame([], $this->credentials->findByUser($this->alice));
     }
 }

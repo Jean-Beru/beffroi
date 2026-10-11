@@ -6,12 +6,12 @@ namespace Beffroi\Bundle\Tests\Unit;
 
 use DateTimeImmutable;
 use Beffroi\Bundle\Configuration\ClientRegistrationSection;
-use Beffroi\Bundle\Configuration\TenantSection;
 use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
 use function sprintf;
 use Beffroi\Bundle\Configuration\TokensSection;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Tests\Fixture\Predicates;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
 use Beffroi\Bundle\Key\KeyAge;
 use Beffroi\Oidc\Application\Discovery\JwksHandler;
@@ -71,7 +71,9 @@ final class BeffroiBundleConfigurationTest extends TestCase
                 ],
                 // nothing is a person's to change until the tenant says which claims are (issue #452)
                 'self_served_claims' => [],
-                'authentication_classes' => TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
+                // the tree keeps no list of the predicates of the provider: a tenant that names no class
+                // is handed the default policy of the core (TenantFactory, issue #607)
+                'authentication_classes' => [],
             ],
             $config['tenant'],
         );
@@ -127,20 +129,14 @@ final class BeffroiBundleConfigurationTest extends TestCase
     }
 
     /**
-     * Decision 0010: the default policy the tree carries is the one of the core, so that a tenant that
-     * configures nothing and a row written before the option existed speak the same vocabulary.
+     * Decision 0010: the tree keeps no policy of its own (issue #607), so a tenant that configures nothing
+     * and a row written before the column existed speak the one default vocabulary, the core's.
      */
     #[Test]
-    public function theDefaultAuthenticationClassesAreThoseOfTheCore(): void
+    public function aTenantThatNamesNoClassSpeaksTheDefaultPolicyOfTheCore(): void
     {
         // Given
-        $factory = new TenantFactory(
-            'https://op.test',
-            'default',
-            null,
-            new MockClock('2026-09-20T12:00:00+00:00'),
-            TenantSection::DEFAULT_AUTHENTICATION_CLASSES,
-        );
+        $factory = new TenantFactory('https://op.test', 'default', null, new MockClock('2026-09-20T12:00:00+00:00'), Predicates::wired());
 
         // When / Then
         static::assertTrue(AuthenticationContextPolicy::default()->equals($factory->authenticationContextPolicy()));
@@ -261,12 +257,14 @@ final class BeffroiBundleConfigurationTest extends TestCase
             ],
             'issuer',
         ];
-        yield 'a predicate the provider does not define' => [
+        // the tree holds the shape and the wiring holds the predicates (issue #607): a name no wired
+        // predicate carries refuses the start in TenantFactory, where the registry can be read
+        yield 'a class named on no predicate at all' => [
             [
                 'tenant' => self::MINIMAL['tenant']
                     + [
                         'authentication_classes' => [
-                            'gold' => 'attested_authenticator',
+                            'gold' => '',
                         ],
                     ],
                 'keys' => self::MINIMAL['keys'],

@@ -786,27 +786,9 @@
                             "authentication_classes": {
                                 "$ref": "#/$defs/types/object_null",
                                 "additionalProperties": {
-                                    "anyOf": [
-                                        {
-                                            "enum": [
-                                                "single_factor",
-                                                "two_factors",
-                                                "phishing_resistant",
-                                                "phishing_resistant_hardware"
-                                            ]
-                                        },
-                                        {
-                                            "$ref": "#/$defs/types/param"
-                                        }
-                                    ]
+                                    "$ref": "#/$defs/types/scalar"
                                 },
-                                "default": {
-                                    "phrh": "phishing_resistant_hardware",
-                                    "phr": "phishing_resistant",
-                                    "2": "two_factors",
-                                    "1": "single_factor"
-                                },
-                                "description": "The \"acr\" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider; the default policy (\"phrh\", \"phr\", \"2\", \"1\") when absent."
+                                "description": "The \"acr\" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider, by the name that predicate gives itself. The default policy (\"phrh\", \"phr\", \"2\", \"1\") when nothing is named. The predicates are the ones the deployment is wired with and this tree keeps no list of them beside the wiring: a name none of them carries refuses the start, naming the ones that are wired."
                             }
                         },
                         "additionalProperties": false,

@@ -15,7 +15,7 @@ use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Application\Tenant\TenantHardening;
-use Beffroi\Core\Domain\Session\AuthenticationPredicate;
+use Beffroi\Core\Domain\Session\AuthenticationPredicateInterface;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
@@ -159,7 +159,7 @@ abstract class DatabaseTestCase extends WebTestCase
      *
      * @return int how many credentials the floor forbade
      */
-    protected static function harden(AuthenticationPredicate $floor): int
+    protected static function harden(AuthenticationPredicateInterface $floor): int
     {
         return self::service('test.beffroi.tenant_hardening', TenantHardening::class)->adopt(self::tenant(), $floor, self::context());
     }
