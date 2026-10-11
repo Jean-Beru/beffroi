@@ -22,6 +22,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * signs somebody in, so a browser whose newest proof is older than the window is sent to the login of the
  * firewall and comes back here with a fresh one. The page says so and asks nothing: the proof is read
  * before the page is called, for the form that posts to it as much as for the page itself.
+ *
+ * **It is where a login that was asked for a password lands** (BreachedPasswordDemand, issue #579), which
+ * the page reads of the session of that browser to say why it is here.
  */
 #[AsController]
 final readonly class AccountPasswordController implements AsksForARecentProofInterface
@@ -49,6 +52,6 @@ final readonly class AccountPasswordController implements AsksForARecentProofInt
         }
 
         // what the form was refused, if it was, shown this once (issue #481)
-        return $this->page->render($session->user, $this->refusals->take($request)?->code);
+        return $this->page->render($request->getSession(), $session->user, $this->refusals->take($request)?->code);
     }
 }

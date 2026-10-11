@@ -1309,6 +1309,10 @@
         <source>password.breached</source>
         <target>Ce mot de passe figure dans une liste de mots de passe compromis ({date}) : quelqu'un d'autre le détient. Remplacez-le maintenant.</target>
       </trans-unit>
+      <trans-unit id="password.demanded" resname="password.demanded">
+        <source>password.demanded</source>
+        <target>Vous êtes ici au lieu de la page où vous alliez. Remplacez votre mot de passe et cette page s'ouvrira ; quittez celle-ci et la question vous sera reposée à votre prochaine connexion.</target>
+      </trans-unit>
       <trans-unit id="password.strength.nothing" resname="password.strength.nothing">
         <source>password.strength.nothing</source>
         <target>deviné tout de suite</target>

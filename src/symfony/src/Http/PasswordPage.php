@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Http;
 
+use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Identity\User;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
  * The page where a person replaces their own password (architecture §5.2): when it was last written,
@@ -23,6 +25,11 @@ use Symfony\Component\HttpFoundation\Response;
  * told rather than asked. The lane that found it wrote the date on the credential (issue #552) and this is
  * where it is read: a login inside an authorization request is not interrupted for it, and nothing of a
  * conformance run sees anything new.
+ *
+ * **It says so differently to a browser a login sent here**, which is the one login that is interrupted
+ * for it (Account\BreachedPasswordDemand, issue #579): the sentence then says what is asked and that
+ * replacing the password carries the browser on to the page it was going to. A person who leaves without
+ * replacing it is asked again by the next login that serves no authorization request.
  *
  * **A person who holds no password reads that they hold none.** Somebody who signs in by passkey alone
  * has nothing to replace here, and this page does not offer to set a first one: posing a password is an
@@ -47,6 +54,7 @@ final readonly class PasswordPage
 
     public function __construct(
         private ActiveCredentials $credentials,
+        private BreachedPasswordDemand $demands,
         private InteractionPages $pages,
     ) {
     }
@@ -55,11 +63,14 @@ final readonly class PasswordPage
      * @param string|null $refusal a code the template translates, read once out of the session the
      *                             redirection crossed (issue #481)
      */
-    public function render(User $user, ?string $refusal = null): Response
+    public function render(SessionInterface $httpSession, User $user, ?string $refusal = null): Response
     {
+        $password = $this->of($user);
+
         return $this->pages->render('account/password.html.twig', [
             'user' => $user,
-            'password' => $this->of($user),
+            'password' => $password,
+            'demanded' => $this->demands->isMade($httpSession, $password),
             'refusal' => $refusal,
             'minimum' => PlainPassword::MINIMUM_LENGTH,
             'floor' => PlainPassword::MINIMUM_STRENGTH,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Security;
 
 use Beffroi\Bundle\Controller\LoginController;
+use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\LoginTarget;
@@ -12,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface;
 use Symfony\Component\Security\Http\SecurityRequestAttributes;
@@ -22,18 +24,25 @@ use Symfony\Component\Security\Http\SecurityRequestAttributes;
  * a login and is not one (LoginTarget), the page a user approves what an appliance asked on being the one
  * (RFC 8628 §3.3). No target path is read from the body or a referer; a remembered one was written by this
  * provider into the session of that browser.
+ *
+ * A login that serves no authorization request is where a person whose password a list of compromised
+ * passwords has found is asked to replace it (Http\Account\BreachedPasswordDemand, issue #579): the
+ * browser goes to the page of their password in place of the page it was going to, which stays remembered
+ * until they replace it. A login serving an authorization request is interrupted by nothing, which is what
+ * a certification run plays.
  */
 final readonly class InteractionLoginHandler implements AuthenticationSuccessHandlerInterface, AuthenticationFailureHandlerInterface
 {
     public function __construct(
         private InteractionPages $pages,
         private LoginTarget $loginTargets,
+        private BreachedPasswordDemand $demands,
     ) {
     }
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token): Response
     {
-        return $this->remembered($request) ?? $this->pages->redirectToPage(LoginController::ROUTE, $request);
+        return $this->remembered($request, $token->getUser()) ?? $this->pages->redirectToPage(LoginController::ROUTE, $request);
     }
 
     /**
@@ -51,14 +60,18 @@ final readonly class InteractionLoginHandler implements AuthenticationSuccessHan
     /**
      * The page that asked for this login, when the request names no interaction: an interaction named in the
      * query of the form action is what this login was for, and a page remembered from before is what a login
-     * that names none was for.
+     * that names none was for. The page of the password comes first when a password of this person was
+     * found in a breach: what is asked of a login is read of the credentials the provider loaded for it,
+     * whichever of them signed this person in, a password somebody else holds signing them in all the same.
      */
-    private function remembered(Request $request): ?Response
+    private function remembered(Request $request, ?UserInterface $user): ?Response
     {
         if (! $request->hasSession() || $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER) !== '') {
             return null;
         }
+        $httpSession = $request->getSession();
+        $password = $user instanceof SecurityUser ? $user->passwordCredential() : null;
 
-        return $this->loginTargets->resume($request->getSession());
+        return $this->demands->insteadOfResuming($httpSession, $password) ?? $this->loginTargets->resume($httpSession);
     }
 }
