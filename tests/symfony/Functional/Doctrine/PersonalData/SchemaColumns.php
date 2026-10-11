@@ -337,6 +337,7 @@ final readonly class SchemaColumns
                 'expires_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
                 'token_hash' => new NoPersonalDatum(self::HASHED),
                 'sub' => new NoPersonalDatum(self::THE_SUBJECT),
+                'person' => new NoPersonalDatum(self::THE_SUBJECT),
                 'session_id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
                 'authentication' => new NoPersonalDatum(self::WHAT_THE_SESSION_PROVED),
                 'act' => new NoPersonalDatum('the actor a delegated token names, which is a client and never a person (RFC 8693 §4.1)'),
