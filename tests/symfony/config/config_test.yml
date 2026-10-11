@@ -63,19 +63,15 @@ security:
             lazy: true
             provider: beffroi
             user_checker: Beffroi\Bundle\Security\UserChecker
-            form_login:
-                login_path: beffroi_interaction_login
-                check_path: beffroi_interaction_login
-                username_parameter: _username
-                password_parameter: _password
-                enable_csrf: true
-                csrf_token_id: authenticate
-                success_handler: Beffroi\Bundle\Security\InteractionLoginHandler
-                failure_handler: Beffroi\Bundle\Security\InteractionLoginHandler
-            # The passkey login and the second step of a password login on the same firewall: the
-            # assertion posted by the login page, the code posted by the code page, one
-            # LoginSuccessListener for the three (architecture §5.4).
+            # The three logins of the bundle, each an authenticator of its own: the form of the login
+            # page, the assertion that page posts, and the code posted by the code page, with one
+            # LoginSuccessListener for the three (architecture §5.4). Each hands what it reads to a use
+            # case of the core, where the order of a login is written once and nothing of it is written
+            # a second time here (issue #130), which is why the form login of Symfony is not wired: it
+            # would verify a hash the core has verified. The entry point is the login page.
+            entry_point: Beffroi\Bundle\Security\PasswordLoginAuthenticator
             custom_authenticators:
+                - Beffroi\Bundle\Security\PasswordLoginAuthenticator
                 - Beffroi\Bundle\Security\PasskeyLoginAuthenticator
                 - Beffroi\Bundle\Security\TotpLoginAuthenticator
 

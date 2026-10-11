@@ -566,10 +566,12 @@ final class LoginCodeTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.4: a pending login expires; past it, the password is typed again.
+     * Architecture §5.4: a pending login expires; past it, the password is typed again. The refusal is the
+     * one the core pronounces on its own path, announced here too (issue #130): a tenant reading its audit
+     * trail sees the login that was too late, whichever path served it.
      */
     #[Test]
-    public function anExpiredPendingLoginAsksForThePasswordAgain(): void
+    public function anExpiredPendingLoginIsRefusedAndAsksForThePasswordAgain(): void
     {
         // Given
         $alice = $this->userWithTotp('alice', self::PASSWORD);
@@ -582,7 +584,10 @@ final class LoginCodeTest extends PasskeyTestCase
         // Then
         static::assertSame('/login/code?interaction=' . $interaction, $this->browser->getResponse()->headers->get('Location'));
         static::assertFalse($this->isBoundToASession());
-        static::assertSame([], self::events(AuthenticationFailed::class), 'Nothing was tried on an account.');
+        $refused = self::events(AuthenticationFailed::class);
+        static::assertCount(1, $refused);
+        static::assertSame(AuthenticationFailureReason::ExpiredLogin, $refused[0]->reason);
+        static::assertSame('alice', $refused[0]->identifier);
         $this->browser->request('GET', '/login/code', [
             'interaction' => $interaction,
         ]);

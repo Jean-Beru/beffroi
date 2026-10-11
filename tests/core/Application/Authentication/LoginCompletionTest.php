@@ -10,6 +10,7 @@ use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
 use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
 use Beffroi\Core\Application\Authentication\LoginCompletion;
+use Beffroi\Core\Application\Authentication\PendingLoginVerification;
 use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Application\Totp\TotpAuthentication;
@@ -83,7 +84,7 @@ final class LoginCompletionTest extends TestCase
         // the password was typed a minute ago
         $this->login = PendingLogin::provenAt($this->alice->id, [AuthenticationMethod::password()], $this->clock->now()->modify('-1 minute'));
         $this->completion = new LoginCompletion(
-            $users,
+            new PendingLoginVerification($users, new AuthenticationRefusal($this->clock, $this->events), $this->clock),
             new TotpAuthentication(
                 $credentials,
                 new ActiveTotp(new ActiveCredentials($credentials)),
@@ -96,8 +97,6 @@ final class LoginCompletionTest extends TestCase
                 $this->events,
             ),
             new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
-            new AuthenticationRefusal($this->clock, $this->events),
-            $this->clock,
         );
     }
 

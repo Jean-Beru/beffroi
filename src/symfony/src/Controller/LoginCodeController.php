@@ -62,8 +62,10 @@ final readonly class LoginCodeController
             // answered, which its policy names (FormTarget)
             $this->formTargets->mayEndAt($request, $interaction->request->redirectUri);
         }
-        $login = $this->pendingLogins->pending($request->getSession(), $this->contexts->fromRequest($request)->receivedAt);
-        if ($login === null) {
+        // a browser holding no login, or one that has run out of time, has a password to type again; what
+        // a code typed late is refused as is the second step's, and the core announces it (issue #130)
+        $login = $this->pendingLogins->held($request->getSession());
+        if ($login === null || $login->isExpired($this->contexts->fromRequest($request)->receivedAt)) {
             return $this->pages->redirectToPage(LoginController::ROUTE, $request);
         }
 

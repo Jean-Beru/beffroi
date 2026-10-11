@@ -79,7 +79,8 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
 
     /**
      * A login does not ask again what was asked last month, and asks again past the delay: the lists are
-     * published in batches.
+     * published in batches. The clock is held still for it, a second of margin being less than a login
+     * takes to verify a hash of the cost RFC 9106 §4 asks for.
      */
     #[Test]
     #[TestWith(['+1 second', false], 'a second short of the delay')]
@@ -87,6 +88,7 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
     public function aLoginAsksOnlyWhenTheCredentialIsDue(string $modification, bool $asked): void
     {
         // Given
+        self::mockTime(self::currentSecond());
         $alice = self::userWithPassword('alice', self::PASSWORD);
         $credential = self::passwordOf($alice);
         // the moment of the last lookup, read back from now: a second short of the delay, or a day past it

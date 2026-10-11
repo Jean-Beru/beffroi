@@ -12,6 +12,7 @@ use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
 use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
 use Beffroi\Core\Application\Authentication\DecoyHash;
 use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
+use Beffroi\Core\Application\Authentication\PasswordVerification;
 use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
@@ -92,16 +93,19 @@ final class PasswordAuthenticatorTest extends TestCase
         ?FakeAttemptLimiter $attempts = null,
     ): PasswordAuthenticator {
         return new PasswordAuthenticator(
-            $this->users,
-            $this->credentials,
-            $hasher,
-            new DecoyHash($hasher, new SymfonyUuidGenerator()),
+            new PasswordVerification(
+                $this->users,
+                $this->credentials,
+                $hasher,
+                new DecoyHash($hasher, new SymfonyUuidGenerator()),
+                $attempts ?? $this->attempts,
+                new AuthenticationRefusal($this->clock, $this->events),
+                $this->clock,
+                $this->events,
+            ),
             new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
-            $attempts ?? $this->attempts,
             new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
-            new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
-            $this->events,
         );
     }
 

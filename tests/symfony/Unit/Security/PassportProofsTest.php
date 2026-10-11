@@ -8,13 +8,13 @@ use function array_map;
 use Beffroi\Bundle\Security\PasskeyCredentials;
 use Beffroi\Bundle\Security\PasskeyLogin;
 use Beffroi\Bundle\Security\PassportProofs;
-use Beffroi\Bundle\Security\DatedPasswordCredential;
 use Beffroi\Bundle\Security\PasswordLogin;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Bundle\Security\ProvingLoginInterface;
 use Beffroi\Bundle\Security\TotpCredentials;
 use Beffroi\Bundle\Security\TotpLogin;
+use Beffroi\Bundle\Security\VerifiedPassword;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\VerifiedPasskeyAssertion;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
@@ -25,7 +25,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CredentialsInterface;
-use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 
@@ -40,9 +39,9 @@ final class PassportProofsTest extends TestCase
     protected function setUp(): void
     {
         $this->proofs = self::proofsOf([
-            self::passwordLogin(),
+            new PasswordLogin(),
             new PasskeyLogin(new InMemoryCredentialRepository(), new RecordingEventDispatcher()),
-            new TotpLogin(self::passwords()),
+            new TotpLogin(),
         ]);
     }
 
@@ -50,7 +49,7 @@ final class PassportProofsTest extends TestCase
     public function aPasswordProvesAPassword(): void
     {
         // Given
-        $passport = self::passport(new PasswordCredentials('secret'));
+        $passport = self::passport(new VerifiedPassword('secret'));
 
         // When
         $methods = $this->proofs->methods($passport);
@@ -128,7 +127,7 @@ final class PassportProofsTest extends TestCase
     public function aFirewallThatOffersOneLoginAnnouncesThatOneOnly(): void
     {
         // Given
-        $proofs = self::proofsOf([self::passwordLogin()]);
+        $proofs = self::proofsOf([new PasswordLogin()]);
 
         // When
         $methods = $proofs->provableMethods();
@@ -149,16 +148,6 @@ final class PassportProofsTest extends TestCase
 
         // When
         $proofs->provableMethods();
-    }
-
-    private static function passwords(): DatedPasswordCredential
-    {
-        return new DatedPasswordCredential(new InMemoryCredentialRepository());
-    }
-
-    private static function passwordLogin(): PasswordLogin
-    {
-        return new PasswordLogin(self::passwords());
     }
 
     /**

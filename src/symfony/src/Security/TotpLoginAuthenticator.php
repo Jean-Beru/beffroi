@@ -10,8 +10,8 @@ use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\PendingLoginStore;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Authentication\PendingLoginVerification;
 use Beffroi\Core\Application\Totp\TotpAuthentication;
-use Beffroi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -27,9 +27,13 @@ use Symfony\Component\Security\Http\SecurityRequestAttributes;
 /**
  * The second step of a login on the firewall of the interaction pages (architecture §5.4): the code the
  * code page posts, with the same CSRF token as the login page, for the login the SecondFactorGate held
- * in this browser. The code is verified by TotpAuthentication of the core, which counts the attempt,
+ * in this browser. What that held login must still be is the core's to say, and it says it for both paths
+ * (PendingLoginVerification, issue #130): a login past its lifetime and one naming nobody of this tenant
+ * are refused and announced here as they are in LoginCompletion, where the firewall used to refuse them
+ * silently. The code itself is verified by TotpAuthentication of the core, which counts the attempt,
  * accepts a code once or spends a backup code, and announces the outcome itself: the failure listener
- * of the bundle has nothing to add on this route. The passport carries what both steps proved
+ * of the bundle has nothing to add on this route. A browser holding no login at all names nobody, so
+ * there is nothing to write in anybody's journal and nothing is announced. The passport carries what both steps proved
  * (TotpCredentials) for the one LoginSuccessListener; a success sends the browser back to the login
  * page of its interaction, which resumes it; a failure, back to the code page with the message of what
  * was typed and never of why it was refused (CodeRefusedException, which carries a CodeRefusal and no
@@ -48,7 +52,7 @@ final readonly class TotpLoginAuthenticator implements AuthenticatorInterface, I
     public function __construct(
         private TenantProvider $tenants,
         private PendingLoginStore $pendingLogins,
-        private UserRepositoryInterface $users,
+        private PendingLoginVerification $verification,
         private TotpAuthentication $authentication,
         private RequestContextFactory $contexts,
         private InteractionLoginHandler $handler,
@@ -69,16 +73,9 @@ final readonly class TotpLoginAuthenticator implements AuthenticatorInterface, I
             throw new AuthenticationException('The login carries no code.');
         }
         $context = $this->contexts->fromRequest($request);
-        $login = $this->pendingLogins->pending(
-            $request->getSession(),
-            $context->receivedAt,
-        ) ?? throw new AuthenticationException('No login is pending for this browser.');
-        $tenant = $this->tenants->provide();
-        $user = $this->users->find($login->userId);
-        if ($user === null || ! $user->tenant->equals($tenant)) {
-            throw new AuthenticationException('The pending login names no user of this tenant.');
-        }
+        $login = $this->pendingLogins->held($request->getSession()) ?? throw new AuthenticationException('No login is pending for this browser.');
         try {
+            $user = $this->verification->verify($this->tenants->provide(), $login, $context);
             $method = $this->authentication->authenticate($user, $code, $context);
         } catch (AuthenticationFailedException $exception) {
             throw new CodeRefusedException(CodeRefusal::of($code, $exception->reason), $exception);

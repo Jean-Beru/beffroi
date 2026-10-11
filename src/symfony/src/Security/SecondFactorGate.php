@@ -12,7 +12,6 @@ use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\PendingLogin;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
 /**
@@ -39,7 +38,7 @@ final readonly class SecondFactorGate
      */
     public function holds(LoginSuccessEvent $event, SecurityUser $user, array $methods, DateTimeImmutable $now): bool
     {
-        if (! $event->getPassport()->hasBadge(PasswordCredentials::class) || ! $this->requirement->requiredFor($user->user())) {
+        if (! $event->getPassport()->hasBadge(VerifiedPassword::class) || ! $this->requirement->requiredFor($user->user())) {
             return false;
         }
         $request = $event->getRequest();
