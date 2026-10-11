@@ -18,6 +18,12 @@
                 <option name="default">{"classes":[{"name":"phrh","predicate":"phishing_resistant_hardware"},{"name":"phr","predicate":"phishing_resistant"},{"name":"2","predicate":"two_factors"},{"name":"1","predicate":"single_factor"}]}</option>
             </options>
         </field>
+        <!-- The floor of every login of this tenant (issue #327). A row written before the column existed names the single factor, which is every login this provider serves: a tenant that never hardened behaves as it always did. -->
+        <field name="loginFloor" type="string" column="login_floor" length="32" enum-type="Beffroi\Core\Domain\Session\AuthenticationPredicate">
+            <options>
+                <option name="default">single_factor</option>
+            </options>
+        </field>
         <field name="look" type="beffroi_tenant_look" column="look">
             <options>
                 <option name="default">{}</option>

@@ -16,8 +16,13 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
  * before the passport was built, which is where the credential was dated and where every outcome was
  * announced (PasswordVerification, issue #130), so this login dates nothing and announces nothing.
  */
-final readonly class PasswordLogin implements ProvingLoginInterface
+final readonly class PasswordLogin implements OfferedLoginInterface
 {
+    public function kind(): string
+    {
+        return 'password';
+    }
+
     public function proofs(Passport $passport): ?array
     {
         return $passport->hasBadge(VerifiedPassword::class) ? [AuthenticationMethod::password()] : null;

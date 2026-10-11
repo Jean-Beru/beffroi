@@ -30,6 +30,12 @@ use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineInitialAccessTokenRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
+use Beffroi\Core\Port\TenantRepositoryInterface;
+use Beffroi\Core\Port\CanForgetCredentialsInterface;
+use Beffroi\Core\Application\Tenant\TenantHardening;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Bundle\Http\OfferedLogins;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineTenantRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineInteractionRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePairwiseSubjectRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePushedAuthorizationRecordRepository;
@@ -928,10 +934,13 @@ return static function (ContainerConfigurator $container): void {
     // announces, the form login and the second step announcing their own through the core;
     // "beffroi.login.dated" is those that date the credential they proved, which the core does for the
     // two it verifies itself (issue #130)
-    $services->set(PasswordLogin::class)->tag('beffroi.login');
-    $services->set(PasskeyLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal')->tag('beffroi.login.dated');
+    // "beffroi.login.offered" is those a browser starts a login with, which the login page shows by kind
+    // and the floor of the tenant filters (issue #327): the code of a second step starts none
+    $services->set(PasswordLogin::class)->tag('beffroi.login')->tag('beffroi.login.offered');
+    $services->set(PasskeyLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal')->tag('beffroi.login.dated')->tag('beffroi.login.offered');
     $services->set(TotpLogin::class)->tag('beffroi.login');
     $services->set(PassportProofs::class)->args([tagged_iterator('beffroi.login')]);
+    $services->set(OfferedLogins::class)->args([tagged_iterator('beffroi.login.offered')]);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
     // the attempts at a code and at a password, counted per user by the two limiters the bundle declares in the framework (architecture §3.4)
     $services->set('beffroi.security.code_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::CODE_LIMITER)]);
@@ -999,6 +1008,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DoctrineCredentialRepository::class);
     $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
     $services->alias(CanPageCredentialsInterface::class, DoctrineCredentialRepository::class);
+    $services->alias(CanForgetCredentialsInterface::class, DoctrineCredentialRepository::class);
+    // what a tenant decided of itself, written by the acts that change the row (issue #327); what the
+    // configuration says of it is TenantSynchronizer's
+    $services->set(DoctrineTenantRepository::class);
+    $services->alias(TenantRepositoryInterface::class, DoctrineTenantRepository::class);
     // the bounded delete the stores of a dead row make (issue #177), and what the two rows a token still
     // needs are kept for, both numbers handed over by TokensSection from the nodes the issuers read
     $services->set(BoundedDelete::class);
@@ -1207,6 +1221,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpEnrolment::class);
     $services->set(TotpAuthentication::class);
     $services->set(CredentialRevocation::class);
+    // what the floor of a tenant admits to be enrolled at all, and the act that raises it (issue #327)
+    $services->set(EnrolmentRefusal::class);
+    $services->set(TenantHardening::class);
     $services->set(PasswordChange::class);
     // the rule §5.1.1.2 puts first, run by every path that writes a password, and the lookup of a password
     // already posed, run by the lane (issue #552)

@@ -19,6 +19,7 @@ use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\AuthenticationPredicate;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
@@ -51,9 +52,20 @@ final class Fixtures
         return new DateTimeImmutable('2026-09-15T10:00:00+00:00');
     }
 
-    public static function tenant(string $slug = 'acme', string $issuer = 'https://id.acme.example'): Tenant
+    public static function tenant(
+        string $slug = 'acme',
+        string $issuer = 'https://id.acme.example',
+        ?AuthenticationPredicate $loginFloor = null,
+    ): Tenant {
+        return new Tenant(Uuid::v7(), $slug, new Issuer($issuer), 'Acme', self::now(), loginFloor: $loginFloor);
+    }
+
+    /**
+     * A tenant that signs its users in by passkey and forbids the password (issue #327).
+     */
+    public static function hardenedTenant(string $slug = 'acme'): Tenant
     {
-        return new Tenant(Uuid::v7(), $slug, new Issuer($issuer), 'Acme', self::now());
+        return self::tenant($slug, loginFloor: AuthenticationPredicate::PhishingResistant);
     }
 
     public static function context(

@@ -21,6 +21,7 @@ use Beffroi\Core\Domain\Event\BackupCodesRenewed;
 use Beffroi\Core\Domain\Event\PasswordChanged;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\CredentialRenamed;
+use Beffroi\Core\Domain\Event\CredentialForgotten;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
@@ -111,6 +112,9 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a person who dropped their archive' => [new PersonDroppedTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a credential enrolled' => [new CredentialEnrolled($passkey, $now, $context)];
         yield 'a credential revoked' => [new CredentialRevoked($passkey, $now, $context)];
+        // the row of this one is gone by the time the queue is read, which is why the act carries what it
+        // says of it (issue #327)
+        yield 'a credential forgotten' => [new CredentialForgotten($password, $now, $context)];
         yield 'a credential renamed' => [new CredentialRenamed($passkey, 'The key it was', $now, $context)];
         yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context, false)];
         yield 'a password used' => [new PasswordUsed($password, $now, $context)];

@@ -201,6 +201,10 @@
         <source>login.passkey_failed</source>
         <target>The passkey could not be used. Try again, or sign in with your password.</target>
       </trans-unit>
+      <trans-unit id="login.passkey_only" resname="login.passkey_only">
+        <source>login.passkey_only</source>
+        <target>This provider signs you in with your passkey.</target>
+      </trans-unit>
       <trans-unit id="a71d2a8f04" resname="account.title">
         <source>account.title</source>
         <target>Your account</target>
@@ -468,6 +472,10 @@
       <trans-unit id="68e780445d" resname="two_factor.title">
         <source>two_factor.title</source>
         <target>Two-factor authentication</target>
+      </trans-unit>
+      <trans-unit id="two_factor.not_admitted" resname="two_factor.not_admitted">
+        <source>two_factor.not_admitted</source>
+        <target>This provider signs you in with your passkey, so your account needs no authenticator app.</target>
       </trans-unit>
       <trans-unit id="120102f7ce" resname="two_factor.none">
         <source>two_factor.none</source>
@@ -972,6 +980,10 @@
       <trans-unit id="act.credential.revoked" resname="act.credential.revoked">
         <source>act.credential.revoked</source>
         <target>A way of signing in was removed</target>
+      </trans-unit>
+      <trans-unit id="act.credential.forgotten" resname="act.credential.forgotten">
+        <source>act.credential.forgotten</source>
+        <target>A way of signing in was deleted, this provider no longer allowing it</target>
       </trans-unit>
       <trans-unit id="act.credential.renamed" resname="act.credential.renamed">
         <source>act.credential.renamed</source>

@@ -17,12 +17,14 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
+use Beffroi\Core\Port\CanForgetCredentialsInterface;
 use Beffroi\Core\Port\CanPageCredentialsInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function is_a;
 use function is_subclass_of;
 use function sort;
 use function sprintf;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use function usort;
 
@@ -32,7 +34,7 @@ use function usort;
  * them and listed together, oldest first. A kind presented by an identifier of its own maps it as
  * "externalId", the property ExternallyIdentifiedCredentialInterface asks for; nothing here names a kind.
  */
-final class DoctrineCredentialRepository implements CanPageCredentialsInterface, CredentialRepositoryInterface
+final class DoctrineCredentialRepository implements CanForgetCredentialsInterface, CanPageCredentialsInterface, CredentialRepositoryInterface
 {
     /**
      * @var list<class-string<Credential>>|null
@@ -130,6 +132,39 @@ final class DoctrineCredentialRepository implements CanPageCredentialsInterface,
     {
         $manager = $this->managers->forClass($credential::class);
         $manager->persist($credential);
+        $manager->flush();
+    }
+
+    /**
+     * One table of a kind at a time, each one streamed rather than loaded: the walk of a hardening reads
+     * every credential of a tenant, which on a large deployment is every row of every one of those tables
+     * (issue #327).
+     *
+     * @return iterable<Credential>
+     */
+    public function credentialsOf(Tenant $tenant): iterable
+    {
+        foreach ($this->kinds() as $class) {
+            $rows = $this->managers
+                ->forClass($class)
+                ->createQuery(sprintf('SELECT c FROM %s c WHERE c.tenant = :tenant ORDER BY c.createdAt ASC, c.id ASC', $class))
+                ->setParameter('tenant', $tenant->id, UuidType::NAME)
+                ->toIterable();
+            /** @var Credential $credential */
+            foreach ($rows as $credential) {
+                yield $credential;
+            }
+        }
+    }
+
+    public function forget(Credential $credential): void
+    {
+        $manager = $this->managers->forClass($credential::class);
+        $managed = $manager->find($credential::class, $credential->id);
+        if ($managed === null) {
+            return;
+        }
+        $manager->remove($managed);
         $manager->flush();
     }
 

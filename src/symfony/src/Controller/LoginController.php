@@ -11,6 +11,7 @@ use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\OfferedLogins;
 use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\StepUpOffer;
@@ -21,6 +22,7 @@ use Beffroi\Oidc\Domain\Interaction\LoginRequired;
 use Beffroi\Oidc\Domain\Interaction\LoginRequirement;
 use Beffroi\Oidc\Exception\InteractionCompletedException;
 use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -58,6 +60,7 @@ final readonly class LoginController
         private LoginTarget $loginTargets,
         private LoginHints $hints,
         private FormTarget $formTargets,
+        private OfferedLogins $offered,
     ) {
     }
 
@@ -74,7 +77,7 @@ final readonly class LoginController
             }
             $stepUp = $this->loginTargets->pendingStepUp($request->getSession());
 
-            return $this->form(null, $stepUp === null ? null : LoginRequirement::StrongerFactorRequired, $stepUp);
+            return $this->form($tenant, null, $stepUp === null ? null : LoginRequirement::StrongerFactorRequired, $stepUp);
         }
         $this->locale->resume($request, $interaction);
         try {
@@ -96,7 +99,7 @@ final readonly class LoginController
         $this->formTargets->mayEndAt($request, $interaction->request->redirectUri);
         $stepUp = $decision->stepUp;
 
-        return $this->form($interaction, $decision->requirement, $stepUp === null ? null : StepUpOffer::of($stepUp));
+        return $this->form($tenant, $interaction, $decision->requirement, $stepUp === null ? null : StepUpOffer::of($stepUp));
     }
 
     /**
@@ -108,8 +111,12 @@ final readonly class LoginController
      * user it names and the field carries that user's name; a hint that names nobody leaves the field
      * empty rather than asking somebody to delete a "sub" they never wrote. What the browser last tried
      * comes first, a login just refused being what the person was correcting.
+     *
+     * What it offers is what the firewall wires and the floor of the tenant admits (OfferedLogins, issue
+     * #327): a tenant that signs its users in by passkey is shown no password field and no username to
+     * type it against.
      */
-    private function form(?Interaction $interaction, ?LoginRequirement $requirement, ?StepUpOffer $stepUp): Response
+    private function form(Tenant $tenant, ?Interaction $interaction, ?LoginRequirement $requirement, ?StepUpOffer $stepUp): Response
     {
         $lastUsername = $this->authentication->getLastUsername();
         $hinted = $interaction === null ? null : $this->hints->userNamedBy($interaction->request);
@@ -121,6 +128,7 @@ final readonly class LoginController
             'step_up' => $stepUp,
             'username' => $lastUsername === '' ? $hinted?->username : $lastUsername,
             'failed' => $this->authentication->getLastAuthenticationError() !== null,
+            'offered' => $this->offered->kinds($tenant),
         ]);
     }
 }

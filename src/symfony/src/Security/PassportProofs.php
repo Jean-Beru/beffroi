@@ -6,6 +6,8 @@ namespace Beffroi\Bundle\Security;
 
 use function array_any;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use function sprintf;
 use Beffroi\Oidc\Port\ProvableMethodsInterface;
 use LogicException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
@@ -47,22 +49,37 @@ final readonly class PassportProofs implements ProvableMethodsInterface
     }
 
     /**
-     * Every method the wired logins prove, each once, in the order they are tagged.
+     * Every method the wired logins prove for this tenant, each once, in the order they are tagged: a login
+     * whose proofs the floor of the tenant never reads is a login closed there (issue #327), so it is asked
+     * login by login and not method by method, a passkey that proves "user" besides its key not being half
+     * admitted.
      *
      * @return non-empty-list<AuthenticationMethod>
      */
-    public function provableMethods(): array
+    public function provableMethods(Tenant $tenant): array
     {
         $methods = [];
+        $wired = 0;
         foreach ($this->logins as $login) {
+            ++$wired;
+            if (! $tenant->loginFloor->admits($login->everyProvableMethod())) {
+                continue;
+            }
             foreach ($login->everyProvableMethod() as $method) {
                 if (! array_any($methods, static fn (AuthenticationMethod $known): bool => $known->equals($method))) {
                     $methods[] = $method;
                 }
             }
         }
-        if ($methods === []) {
+        if ($methods === [] && $wired === 0) {
             throw new LogicException('The firewall of the interaction pages offers at least one login.');
+        }
+        if ($methods === []) {
+            throw new LogicException(sprintf(
+                'No login of the firewall of the interaction pages proves what the tenant "%s" requires of every login, "%s".',
+                $tenant->slug,
+                $tenant->loginFloor->value,
+            ));
         }
 
         return $methods;

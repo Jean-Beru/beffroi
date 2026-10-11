@@ -103,7 +103,14 @@ final class PasswordAuthenticatorTest extends TestCase
                 $this->clock,
                 $this->events,
             ),
-            new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H')),
+            new SessionOpener(
+                $this->sessions,
+                new SymfonyUuidGenerator(),
+                $this->clock,
+                $this->events,
+                new AuthenticationRefusal($this->clock, $this->events),
+                new DateInterval('PT8H'),
+            ),
             new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
             $this->clock,
         );
@@ -331,6 +338,30 @@ final class PasswordAuthenticatorTest extends TestCase
         } catch (AuthenticationFailedException $exception) {
             // Then
             static::assertSame(AuthenticationFailureReason::DisabledUser, $exception->reason);
+        }
+    }
+
+    /**
+     * Issue #327: a password proves no login of a tenant that signs its users in by passkey, and the
+     * refusal is the first step of the order. It is pronounced before anybody is named, so it says nothing
+     * of any account and counts no attempt against one; it pays no hash either, where every other early
+     * refusal pays one (DecoyHash), the answer being the same for every request whoever asked.
+     */
+    #[Test]
+    public function aTenantThatAdmitsNoPasswordRefusesBeforeNamingAnybody(): void
+    {
+        // Given
+        $hardened = Fixtures::hardenedTenant();
+
+        // When
+        try {
+            $this->authenticator->authenticate($hardened, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::BelowTheFloor, $exception->reason);
+            static::assertSame([], $this->attempts->attempts);
+            static::assertSame([], $this->events->of(PasswordUsed::class));
         }
     }
 

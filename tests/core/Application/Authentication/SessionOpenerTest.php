@@ -6,8 +6,13 @@ namespace Beffroi\Core\Tests\Application\Authentication;
 
 use DateInterval;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
 use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use function array_map;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
@@ -44,7 +49,14 @@ final class SessionOpenerTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T09:00:00+00:00');
         $this->context = Fixtures::context($this->clock->now()->modify('-1 second'), '198.51.100.7');
-        $this->opener = new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events, new DateInterval('PT8H'));
+        $this->opener = new SessionOpener(
+            $this->sessions,
+            new SymfonyUuidGenerator(),
+            $this->clock,
+            $this->events,
+            new AuthenticationRefusal($this->clock, $this->events),
+            new DateInterval('PT8H'),
+        );
     }
 
     #[Test]
@@ -96,11 +108,63 @@ final class SessionOpenerTest extends TestCase
         static::assertEquals($this->clock->now()->modify('+8 hours'), $session->expiresAt);
     }
 
+    /**
+     * Issue #327: the floor of the tenant holds here, because every login of this provider ends here. A
+     * password proves nothing of a tenant that signs its users in by passkey, so the session is not opened,
+     * and the refusal is announced like any other (AuthenticationRefusal).
+     */
+    #[Test]
+    public function aLoginUnderTheFloorOfItsTenantOpensNoSession(): void
+    {
+        // Given
+        $hardened = Fixtures::hardenedTenant();
+
+        // When
+        try {
+            $this->opener->open($hardened, Fixtures::user($hardened), [AuthenticationMethod::password()], $this->context);
+            static::fail('The session should not have been opened.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::BelowTheFloor, $exception->reason);
+            static::assertSame([], $this->events->of(UserAuthenticated::class));
+            static::assertCount(1, $this->events->of(AuthenticationFailed::class));
+        }
+    }
+
+    /**
+     * Issue #327: what the floor reads opens its session as it always did, a synced passkey proving the
+     * possession of a key.
+     */
+    #[Test]
+    public function aLoginThatMeetsTheFloorOpensItsSession(): void
+    {
+        // Given
+        $hardened = Fixtures::hardenedTenant();
+
+        // When
+        $session = $this->opener->open(
+            $hardened,
+            Fixtures::user($hardened),
+            [new AuthenticationMethod('swk'), new AuthenticationMethod('user')],
+            $this->context,
+        );
+
+        // Then
+        static::assertSame(['swk', 'user'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $session->proofs->methods()));
+        static::assertCount(1, $this->events->of(UserAuthenticated::class));
+    }
+
     #[Test]
     public function theDefaultLifetimeIsTwelveHours(): void
     {
         // Given
-        $opener = new SessionOpener($this->sessions, new SymfonyUuidGenerator(), $this->clock, $this->events);
+        $opener = new SessionOpener(
+            $this->sessions,
+            new SymfonyUuidGenerator(),
+            $this->clock,
+            $this->events,
+            new AuthenticationRefusal($this->clock, $this->events),
+        );
 
         // When
         $session = $opener->open($this->tenant, $this->alice, [AuthenticationMethod::password()], $this->context);

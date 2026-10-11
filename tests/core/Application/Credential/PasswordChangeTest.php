@@ -278,6 +278,25 @@ final class PasswordChangeTest extends TestCase
         static::assertFalse($credential->isBreached());
     }
 
+    /**
+     * Issue #327: a tenant that hardened holds none of its users' passwords any more, so a change answers
+     * the one a store left behind rather than replacing it.
+     */
+    #[Test]
+    public function aTenantThatAdmitsNoPasswordReplacesNone(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::hardenedTenant());
+        $this->credentials->save(Fixtures::password($carol));
+
+        // Then
+        $this->expectException(PasswordChangeRefusedException::class);
+        $this->expectExceptionMessageIs('The tenant signs its users in without a password; there is nothing to replace.');
+
+        // When
+        $this->change->change($carol, 'correct horse battery staple', new PlainPassword('another horse battery staple'), Fixtures::context());
+    }
+
     private function changeAsking(BreachedPasswordsOfARecord $breaches): PasswordChange
     {
         return new PasswordChange(

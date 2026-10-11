@@ -8,11 +8,12 @@
 
 {% block title %}{{ 'two_factor.title'|trans }}{% endblock %}
 
-{# Setting one up is what this page offers to somebody who holds none; to somebody who holds one, it is
-   another set of backup codes, which is what they come here for once the list they wrote down is spent
-   or lost. Neither is a ceremony: the authenticator and what it proves are untouched. #}
+{# Setting one up is what this page offers to somebody who holds none, where the tenant admits a one-time
+   code at all ("admitted", issue #327); to somebody who holds one, it is another set of backup codes,
+   which is what they come here for once the list they wrote down is spent or lost. Neither is a ceremony:
+   the authenticator and what it proves are untouched. #}
 {% block action %}
-    {% if totp is null %}
+    {% if totp is null and admitted %}
         <form method="post" action="{{ path('beffroi_interaction_account_two_factor_begin') }}" data-two-factor="begin">
             <input type="hidden" name="_token" value="{{ csrf_token('beffroi_two_factor_begin') }}">
             <button type="submit">{{ 'two_factor.set_up'|trans }}</button>
@@ -31,7 +32,7 @@
         <p data-error="{{ error }}">{{ ('two_factor.error.' ~ error)|trans }}</p>
     {% endif %}
     {% if totp is null %}
-        <p data-two-factor="none">{{ 'two_factor.none'|trans }}</p>
+        <p data-two-factor="none">{{ admitted ? 'two_factor.none'|trans : 'two_factor.not_admitted'|trans }}</p>
     {% else %}
         <p data-two-factor="{{ totp.id }}" data-backup-codes-left="{{ backup_codes_left }}">{{ 'two_factor.active'|trans({date: totp.createdAt|beffroi_moment(user)}) }}</p>
         <dl>
