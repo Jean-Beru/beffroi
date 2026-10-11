@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\Repository;
 
-use Beffroi\Core\Domain\Listing\Period;
 use Beffroi\Bundle\Doctrine\SelectionWithinAPeriod;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\PageOfRows;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Journal\JournalEntry;
+use Beffroi\Core\Domain\Journal\JournalQuestion;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
@@ -95,26 +95,28 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
     }
 
     /**
-     * @param list<string> $acts
+     * Each of the three things the question may name narrows the selection, and each one it does not name
+     * narrows nothing: every act, every application, the whole of the journal (JournalQuestion).
      *
      * @return Listing<JournalEntry>
      */
-    public function pageOfActs(User $user, array $acts, Pagination $pagination, ?Period $period = null): Listing
+    public function pageOfActs(User $user, JournalQuestion $question, Pagination $pagination): Listing
     {
-        if ($acts === []) {
-            return Listing::of([], $pagination);
-        }
         $theirs = $this->queryBuilder('a')
             ->where('a.tenant = :tenant')
             ->andWhere('a.subject = :subject')
-            ->andWhere('a.act IN (:acts)')
             ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
-            ->setParameter('subject', $user->subject->value)
-            ->setParameter('acts', $acts);
+            ->setParameter('subject', $user->subject->value);
+        if ($question->acts !== []) {
+            $theirs->andWhere('a.act IN (:acts)')->setParameter('acts', $question->acts);
+        }
+        if ($question->client !== null) {
+            $theirs->andWhere('a.client = :client')->setParameter('client', $question->client);
+        }
 
         return $this->rows->of(
             JournalEntry::class,
-            SelectionWithinAPeriod::narrow($theirs, 'a.occurredAt', $period),
+            SelectionWithinAPeriod::narrow($theirs, 'a.occurredAt', $question->period),
             'a.id',
             $pagination,
         );
