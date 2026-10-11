@@ -8,8 +8,8 @@ use function array_keys;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Core\Domain\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\PushSubscription;
@@ -62,7 +62,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
     /**
      * The fixture writes every column the classification of the schema declares sealed on these two tables,
      * and no other: a column sealed without a value written here would be asserted against nothing, and the
-     * walk of the schema is what says which those are (SchemaColumns, decision 0011).
+     * model is what says which those are (ClassifiedFieldsInterface, decision 0011).
      */
     #[Test]
     #[DataProvider('provideTables')]
@@ -70,7 +70,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()[$table] as $column => $line) {
+        foreach (ClassifiedModel::of(self::entityManager())->linesOf($table) as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }

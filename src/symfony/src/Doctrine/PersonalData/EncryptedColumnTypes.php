@@ -25,12 +25,13 @@ use function substr;
  *
  * They are declared here and nowhere else, and every mapping of the spike names one of them, so that a
  * column which seals and a column which does not are told apart by the type the mapping gives it and by
- * nothing kept beside it (`SchemaColumns` of the functional suite reads this class). They cannot be
- * declared through `doctrine.dbal.types` the way the other 26 types of the bundle are: that option names a
- * class DoctrineBundle instantiates with no argument, and an encrypted type takes an encrypter, which is a
- * service. What the bridge asks for instead is an `EncryptedTypes` service whose `register()` runs while
- * the bundles boot (`BeffroiBundle::boot()`), early enough for the front controller, the console with its
- * schema tool and its migrations, and the test kernel, all at once.
+ * nothing kept beside it: the model says which of its fields is a personal datum and the walk of the
+ * schema reads this class to hold the two together. They cannot be declared through `doctrine.dbal.types`
+ * the way the other 26 types of the bundle are: that option names a class DoctrineBundle instantiates with
+ * no argument, and an encrypted type takes an encrypter, which is a service. What the bridge asks for
+ * instead is an `EncryptedTypes` service whose `register()` runs while the bundles boot
+ * (`BeffroiBundle::boot()`), early enough for the front controller, the console with its schema tool and
+ * its migrations, and the test kernel, all at once.
  *
  * **Three things a mapping stops being able to say once its column seals**, written here because here is
  * where a reader of that mapping is sent.
@@ -140,13 +141,30 @@ final readonly class EncryptedColumnTypes
 
     /**
      * The names of every encrypted type of the bundle, which is what tells a column that seals from one
-     * that does not when the schema is read (`SchemaColumns`).
+     * that does not when the schema is read.
      *
      * @return list<string>
      */
     public static function names(): array
     {
         return array_keys(self::declarations());
+    }
+
+    /**
+     * The family each of those names seals under, by the name a mapping gives the type: what a reader of
+     * the schema needs to tell a column sealed under the scope of its own table from one sealed under
+     * another's, which is what the walk of the classification refuses (`Sealed` of the core).
+     *
+     * @return array<string, string>
+     */
+    public static function familyByType(): array
+    {
+        $families = [];
+        foreach (self::declarations() as $name => $declaration) {
+            $families[$name] = $declaration['key'];
+        }
+
+        return $families;
     }
 
     /**

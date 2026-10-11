@@ -118,7 +118,7 @@ function dump_search(
     $canary = dump_canary();
     if (dump_findings($dump, [$canary]) === []) {
         io()->error(sprintf(
-            'The search did not find "%s", which beffroi_tenant.issuer holds in the clear and which the classification of the schema declares readable (SchemaColumns). A search that misses what is there would miss what leaks, so this run says nothing about the dump.',
+            'The search did not find "%s", which beffroi_tenant.issuer holds in the clear and which the model declares readable (Tenant::classifiedFields()). A search that misses what is there would miss what leaks, so this run says nothing about the dump.',
             $canary,
         ));
 
@@ -134,7 +134,7 @@ function dump_search(
     if ($findings !== []) {
         io()->table(['Value', 'Written', 'Where', 'Offset'], $findings);
         io()->error(sprintf(
-            '%d value(s) the provision or a walk wrote appear in the clear in a dump of the database, in the column named above. Two readings, and the classification of the schema decides between them (SchemaColumns, tests/symfony/Functional/Doctrine/PersonalData): a column it declares sealed is a leak, the mapping of its table being where the sealing type is declared and "castor console doctrine:migrations:list" saying whether the migration that seals it has run here; a column it declares readable holds those bytes legitimately, and what is wrong is then the value searched for, which collides with one of them.',
+            '%d value(s) the provision or a walk wrote appear in the clear in a dump of the database, in the column named above. Two readings, and the classification the model declares decides between them (ClassifiedFieldsInterface, on the class of the field the column holds): a column it declares sealed is a leak, the mapping of its table being where the sealing type is declared and "castor console doctrine:migrations:list" saying whether the migration that seals it has run here; a column it declares readable holds those bytes legitimately, and what is wrong is then the value searched for, which collides with one of them.',
             count($findings),
         ));
 
@@ -337,7 +337,7 @@ function dump_backend(): string
 /**
  * A value the dump has to hold, which is what makes a green run mean the search was looking.
  *
- * The issuer of the tenant, which `SchemaColumns` declares readable because it names an organisation and
+ * The issuer of the tenant, which `Tenant` declares readable because it names an organisation and
  * no person. It is read from the database rather than from a configuration file, so that it is the value
  * this stack actually wrote.
  */

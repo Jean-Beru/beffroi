@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
 
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
@@ -123,8 +123,8 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
     {
         // When / Then
         static::assertSame(
-            ['id', 'tenant_id', 'act', 'occurred_at', 'context', 'subject', 'client'],
-            array_keys(SchemaColumns::all()['beffroi_journal'] ?? []),
+            ['act', 'client', 'context', 'id', 'occurred_at', 'subject', 'tenant_id'],
+            array_keys(ClassifiedModel::of(self::entityManager())->linesOf('beffroi_journal')),
         );
     }
 

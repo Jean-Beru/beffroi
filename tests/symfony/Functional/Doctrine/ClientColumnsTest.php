@@ -8,8 +8,8 @@ use Doctrine\DBAL\Connection;
 use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Core\Domain\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordHash;
@@ -63,14 +63,14 @@ final class ClientColumnsTest extends DatabaseTestCase
     /**
      * The fixture writes every column the classification declares sealed on this table, and no other: a
      * column sealed without a value written here would be asserted against nothing, and the walk of the
-     * schema is what says which those are (SchemaColumns, decision 0011).
+     * model is what says which those are (ClassifiedFieldsInterface, decision 0011).
      */
     #[Test]
     public function theFixtureWritesEveryColumnTheClassificationDeclaresSealed(): void
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()['beffroi_client'] as $column => $line) {
+        foreach (ClassifiedModel::of(self::entityManager())->linesOf('beffroi_client') as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }

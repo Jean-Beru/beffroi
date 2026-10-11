@@ -7,8 +7,8 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 use function array_keys;
 use Doctrine\DBAL\Connection;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Core\Domain\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
@@ -58,7 +58,7 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
     /**
      * The fixture writes every column the classification of the schema declares sealed on these two
      * tables, and no other: a column sealed without a value written here would be asserted against
-     * nothing, and the walk of the schema is what says which those are (SchemaColumns, decision 0011).
+     * nothing, and the model is what says which those are (ClassifiedFieldsInterface, decision 0011).
      */
     #[Test]
     #[DataProvider('provideTables')]
@@ -66,7 +66,7 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()[$table] as $column => $line) {
+        foreach (ClassifiedModel::of(self::entityManager())->linesOf($table) as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }

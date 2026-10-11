@@ -13,8 +13,8 @@ use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
+use Beffroi\Core\Domain\PersonalData\Sealed;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -50,14 +50,14 @@ final class UserColumnsTest extends DatabaseTestCase
     /**
      * The fixture writes every column the classification of the schema declares sealed, and no other: a
      * column sealed without a value written here would be asserted against nothing, and the walk of the
-     * schema is what says which those are (SchemaColumns, decision 0011).
+     * model is what says which those are (ClassifiedFieldsInterface, decision 0011).
      */
     #[Test]
     public function theFixtureWritesEveryColumnTheClassificationDeclaresSealed(): void
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()['beffroi_user'] as $column => $line) {
+        foreach (ClassifiedModel::of(self::entityManager())->linesOf('beffroi_user') as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }
