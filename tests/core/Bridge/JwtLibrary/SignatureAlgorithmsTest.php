@@ -232,6 +232,32 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
+     * The same reading of a deployment nobody encrypts to, that reaches nobody by push and that seals
+     * nothing: a registry wired with nothing says so rather than listing nothing.
+     */
+    #[Test]
+    public function aNameNoRegistryCarriesIsRefusedWithWhatEachOfThemHoldsNothingOf(): void
+    {
+        // Given
+        $algorithms = new JoseKeyAlgorithms([
+            Algorithms::all(),
+            Algorithms::noKeyEncryption(),
+            Algorithms::noApplicationServer(),
+            Algorithms::noMessageSealing(),
+        ]);
+
+        // Then
+        $this->expectException(UnsupportedAlgorithmException::class);
+        $this->expectExceptionMessageIs('This provider does not sign with "HS256"; it signs with RS256, PS256, ES256, EdDSA. '
+        . 'This provider is encrypted to with nothing; "HS256" is not read. '
+        . 'This provider hands out no key named "HS256"; it hands out none. '
+        . 'This provider seals no message body to a key named "HS256"; it seals to none.');
+
+        // When
+        $algorithms->named('HS256');
+    }
+
+    /**
      * The first refusal is the trail: what the registry a name would most likely have belonged to said
      * about it is what a reader of the exception follows.
      */
@@ -263,12 +289,12 @@ final class SignatureAlgorithmsTest extends TestCase
         $algorithms = new JoseSignatureAlgorithms([$unwired]);
         $repository = new InMemoryTenantKeyRepository();
         $pair = new JwtLibraryKeyPairGenerator(
-            new JoseKeyAlgorithms(
+            new JoseKeyAlgorithms([
                 $algorithms,
                 Algorithms::noKeyEncryption(),
                 Algorithms::noApplicationServer(),
                 Algorithms::noMessageSealing(),
-            ),
+            ]),
         )->generate($unwired);
         $key = new TenantKey(
             $pair->kid,

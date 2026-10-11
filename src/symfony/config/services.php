@@ -1141,9 +1141,15 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);
     $services->set(JwtLibraryMessageBodyOpener::class);
     $services->alias(MessageBodyOpenerInterface::class, JwtLibraryMessageBodyOpener::class);
-    // What a key may be generated for, the two lists read as one: the key commands and the key files
-    // resolve an algorithm name against this, whatever the key is published for
-    $services->set(JoseKeyAlgorithms::class);
+    // What a key may be generated for, the registry of each use read as one: the key commands and the key
+    // files resolve an algorithm name against this, whatever the key is published for. The order is the
+    // one it lists and the one its refusals are read in, the signatures first
+    $services->set(JoseKeyAlgorithms::class)->args([[
+        service(JoseSignatureAlgorithms::class),
+        service(JoseKeyEncryptionAlgorithms::class),
+        service(JoseApplicationServerAlgorithms::class),
+        service(JoseMessageSealingAlgorithms::class),
+    ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
     $services->set(JwtLibraryKeyPairGenerator::class);
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
