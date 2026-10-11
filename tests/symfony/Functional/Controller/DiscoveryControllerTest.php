@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
+use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Oidc\Port\EndpointLocatorInterface;
 use Beffroi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer;
 use Beffroi\Oidc\Tests\Fixture\InventedClaimsProvider;
@@ -131,6 +132,31 @@ final class DiscoveryControllerTest extends BrowserTestCase
         $claims = self::json($this->browser->getResponse())['claims_supported'];
         static::assertIsArray($claims);
         static::assertContains(InventedClaimsProvider::CLAIM, $claims);
+    }
+
+    /**
+     * OIDC Core §5.1, issue #626: a claim of the core names itself by the name the specification defines,
+     * which is the name this document announces and the name a tenant opens
+     * (`beffroi.tenant.self_served_claims`). The thirteen claims of the profile are described twice, by a
+     * class each in the core and by the map of the provider in the module, so the walk is here: a claim
+     * whose spelling drifts from the one announced is red before an operator reads a name their own
+     * metadata does not carry.
+     */
+    #[Test]
+    public function everyClaimAPersonMaySayOfThemselvesIsAnnouncedUnderThatName(): void
+    {
+        // Given
+        $wired = self::service('test.beffroi.claims', WiredClaims::class)->names();
+
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $claims = self::json($this->browser->getResponse())['claims_supported'];
+        static::assertIsArray($claims);
+        foreach ($wired as $name) {
+            static::assertContains($name, $claims);
+        }
     }
 
     /**

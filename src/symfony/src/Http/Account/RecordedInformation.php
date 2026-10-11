@@ -14,7 +14,9 @@ use function implode;
  * What this provider holds about a person, read once for the two places that read it (architecture §5.2):
  * the page where they consult it, and the home of the account, which says how much of it there is. The
  * fields are enumerated here and nowhere else, so that a claim the core learns to hold appears on the page
- * and in the count by one line added.
+ * and in the count by one line added. **A key here is the name the claim gives itself** (OIDC Core §5.1,
+ * `ClaimInterface::name()`), because what the tenant opens is offered in the line of the claim it is about:
+ * a key of this list that no claim answers is a line nobody could ever change.
  *
  * Two readings, because the two halves answer different questions. Keeping an account for someone keeps a
  * name to sign in with and two dates, whatever the person told us; what they told us is the rest.
@@ -80,9 +82,9 @@ final readonly class RecordedInformation
             'gender' => $profile->gender,
             'locale' => $profile->locale,
             'zoneinfo' => $profile->zoneinfo,
-            'profile_url' => $profile->profileUrl,
-            'picture_url' => $profile->pictureUrl,
-            'website_url' => $profile->websiteUrl,
+            'profile' => $profile->profileUrl,
+            'picture' => $profile->pictureUrl,
+            'website' => $profile->websiteUrl,
             'address' => self::address($user->address),
         ];
         foreach ($claims as $key => $value) {

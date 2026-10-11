@@ -64,9 +64,9 @@ final class AccountProfileTest extends BrowserTestCase
             'gender',
             'locale',
             'zoneinfo',
-            'profile_url',
-            'picture_url',
-            'website_url',
+            'profile',
+            'picture',
+            'website',
         ], $page->filter('form[data-editable]')->extract(['data-editable']));
     }
 
