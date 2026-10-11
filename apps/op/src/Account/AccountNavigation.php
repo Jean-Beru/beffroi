@@ -13,7 +13,7 @@ use Beffroi\Bundle\Controller\AccountPasskeysController;
 use Beffroi\Bundle\Controller\AccountPasswordController;
 use Beffroi\Bundle\Controller\AccountProfileController;
 use Beffroi\Bundle\Controller\AccountSessionsController;
-use Beffroi\Bundle\Controller\AccountSignInsController;
+use Beffroi\Bundle\Controller\AccountActsController;
 use Beffroi\Bundle\Controller\AccountTwoFactorController;
 use Beffroi\Bundle\Controller\PendingApprovalsController;
 use Beffroi\Bundle\Http\Account\AccountSections;
@@ -74,7 +74,7 @@ final readonly class AccountNavigation
             'pages' => [
                 AccountSessionsController::ROUTE => ['icon' => 'monitor', 'description' => 'navigation.description.sessions'],
                 AccountConsentsController::ROUTE => ['icon' => 'apps', 'description' => 'navigation.description.consents'],
-                AccountSignInsController::ROUTE => ['icon' => 'history', 'description' => 'navigation.description.sign_ins'],
+                AccountActsController::ROUTE => ['icon' => 'history', 'description' => 'navigation.description.acts'],
             ],
         ],
     ];

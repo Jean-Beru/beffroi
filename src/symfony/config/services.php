@@ -99,7 +99,7 @@ use Beffroi\Bundle\Http\BrowserPreferences;
 use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\SessionsPage;
-use Beffroi\Bundle\Http\SignInsPage;
+use Beffroi\Bundle\Http\ActsPage;
 use Beffroi\Bundle\Locale\KnownLocales;
 use Beffroi\Bundle\Locale\LocalePreference;
 use Beffroi\Bundle\Locale\ServedLocales;
@@ -157,6 +157,7 @@ use Beffroi\Bundle\Security\LoginSuccessListener;
 use Beffroi\Bundle\Security\PasskeyLogin;
 use Beffroi\Bundle\Security\PasskeyLoginAuthenticator;
 use Beffroi\Bundle\Security\PassportProofs;
+use Beffroi\Bundle\Security\AcceptedPasswordListener;
 use Beffroi\Bundle\Security\PasswordAttemptListener;
 use Beffroi\Bundle\Security\PwnedPasswords;
 use Beffroi\Bundle\Security\DatedPasswordCredential;
@@ -591,7 +592,7 @@ use Beffroi\Bundle\Http\BundleScript;
 use Beffroi\Bundle\Http\Account\NotificationsSection;
 use Beffroi\Bundle\Http\Account\SessionsSection;
 use Beffroi\Bundle\Http\Account\PasswordSection;
-use Beffroi\Bundle\Http\Account\SignInsSection;
+use Beffroi\Bundle\Http\Account\ActsSection;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePushSubscriptionRepository;
 use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
 
@@ -685,8 +686,8 @@ return static function (ContainerConfigurator $container): void {
     // where they are signed in, because a refusal somebody else caused is read once and a session is read
     // again, and before the browsers the provider can reach
     $services->set(PasswordSection::class)->tag('beffroi.account_section');
-    $services->set(SignInsSection::class)->tag('beffroi.account_section');
-    $services->set(SignInsPage::class);
+    $services->set(ActsSection::class)->tag('beffroi.account_section');
+    $services->set(ActsPage::class);
     $services->set(NotificationsSection::class)->tag('beffroi.account_section');
     // everything this provider holds about this person, in one file they ask for (issue #453): last of
     // the sections, because it is the one thing none of the pages above replaces
@@ -936,6 +937,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set('beffroi.security.password_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
     $services->alias(PasswordAttemptLimiterInterface::class, 'beffroi.security.password_attempts');
     $services->set(PasswordAttemptListener::class);
+    // the act of a password the firewall accepted, the hash being verified there and not by the use case
+    // of the core (issue #571)
+    $services->set(AcceptedPasswordListener::class);
     // the decoy hash of the core paid where the firewall refuses a password before any hash (architecture §5.4)
     $services->set(RefusalCost::class);
     $services->set(DecoyHashListener::class);

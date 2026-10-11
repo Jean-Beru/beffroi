@@ -14,6 +14,8 @@ use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\TotpSecret;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\BackupCodeUsed;
+use Beffroi\Core\Domain\Event\PasswordUsed;
 use Beffroi\Core\Domain\Event\TotpUsed;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
@@ -251,8 +253,8 @@ final class LoginCodeTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §3.4, §3.5: the core is told of the code and of the session, once each; the password
-     * and the TOTP are dated.
+     * Architecture §3.4, §3.5: the core is told of the password, of the code and of the session, once
+     * each; the password and the TOTP are dated.
      */
     #[Test]
     public function aGoodCodeIsAnnouncedAndDatesBothCredentials(): void
@@ -266,9 +268,9 @@ final class LoginCodeTest extends PasskeyTestCase
         $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()));
 
         // Then
-        $used = self::events(TotpUsed::class);
-        static::assertCount(1, $used);
-        static::assertFalse($used[0]->backupCode);
+        static::assertCount(1, self::events(TotpUsed::class));
+        static::assertCount(0, self::events(BackupCodeUsed::class));
+        static::assertCount(1, self::events(PasswordUsed::class));
         static::assertCount(1, self::events(UserAuthenticated::class));
         static::assertNotNull(self::credentialOf($alice, PasswordCredential::class)->lastUsedAt);
         static::assertNotNull(self::credentialOf($alice, TotpCredential::class)->lastUsedAt);
@@ -326,9 +328,8 @@ final class LoginCodeTest extends PasskeyTestCase
 
         // Then
         static::assertSame(['pwd', 'otp', 'mfa'], $this->boundSession()->methodReferences());
-        $used = self::events(TotpUsed::class);
-        static::assertCount(1, $used);
-        static::assertTrue($used[0]->backupCode);
+        static::assertCount(1, self::events(BackupCodeUsed::class));
+        static::assertCount(0, self::events(TotpUsed::class));
     }
 
     /**

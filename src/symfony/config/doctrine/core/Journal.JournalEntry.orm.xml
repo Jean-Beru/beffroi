@@ -3,10 +3,10 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- One act of the provider, written down (issue #454). The identifier is a UUIDv7, which sorts chronologically, so the last acts of a person are a lookup on the index below and never a sort. The provenance is sealed under the data key of the tenant, being what the request carried of a person (decisions 0011 and 0018); the subject beside it is in the clear, naming a person without saying anything about them. -->
+    <!-- One act of the provider, written down (issue #454). The identifier is a UUIDv7, which sorts chronologically, so the acts of a person are read in the order they happened by their primary key and never by a date. The provenance is sealed under the data key of the tenant, being what the request carried of a person (decisions 0011 and 0018); the subject beside it is in the clear, naming a person without saying anything about them. -->
     <entity name="Beffroi\Core\Domain\Journal\JournalEntry" table="beffroi_journal">
         <indexes>
-            <!-- What the page of a person reads: their acts of a few names, the newest first. -->
+            <!-- What the page of a person reads: the acts of their account, named one by one, the newest first (ActsOfAnAccount). -->
             <index name="beffroi_journal_person" columns="tenant_id,subject,act,id"/>
             <!-- What the retention reads, which walks by date and not by identifier: a row written late for an act that happened early is forgotten on the date of the act. -->
             <index name="beffroi_journal_kept_until" columns="tenant_id,occurred_at"/>

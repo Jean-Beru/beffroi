@@ -25,6 +25,7 @@ use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
+use Beffroi\Core\Domain\Event\PasswordUsed;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -158,8 +159,29 @@ final class PasswordAuthenticatorTest extends TestCase
         $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
 
         // Then
-        static::assertCount(1, $this->events->events);
+        static::assertCount(1, $this->events->of(UserAuthenticated::class));
         static::assertSame($session, $this->events->of(UserAuthenticated::class)[0]->session);
+    }
+
+    /**
+     * Issue #571: every proof is an act of its own, so the journal of a person says how somebody got in
+     * and not only that they did. It is announced before the session, which is what the password led to.
+     */
+    #[Test]
+    public function aRightPasswordAnnouncesThePasswordItAccepted(): void
+    {
+        // Given
+        $context = Fixtures::context($this->clock->now());
+
+        // When
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', $context);
+
+        // Then
+        static::assertCount(2, $this->events->events);
+        $used = $this->events->of(PasswordUsed::class)[0];
+        static::assertSame($this->credentials->findByUser($this->alice, PasswordCredential::class)[0], $used->credential);
+        static::assertSame($context, $used->context);
+        static::assertEquals($this->clock->now(), $used->occurredAt);
     }
 
     #[Test]
@@ -591,10 +613,11 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Nothing happened to the user yet: the second step announces its outcome, accepted or refused.
+     * The password was accepted and says so (issue #571); what has not happened yet is the outcome of the
+     * login, which the second step announces, accepted or refused.
      */
     #[Test]
-    public function aHeldLoginAnnouncesNothing(): void
+    public function aHeldLoginAnnouncesThePasswordAndNoOutcome(): void
     {
         // Given
         $this->credentials->save(Totps::credential($this->alice, new FakePasswordHasher()));
@@ -603,7 +626,8 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
 
         // Then
-        static::assertSame([], $this->events->events);
+        static::assertCount(1, $this->events->events);
+        static::assertCount(1, $this->events->of(PasswordUsed::class));
     }
 
     /**
