@@ -11,6 +11,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
 use function str_repeat;
 
 final class AuthenticationContextClassTest extends TestCase
@@ -68,21 +69,21 @@ final class AuthenticationContextClassTest extends TestCase
 
     #[Test]
     #[DataProvider('provideWellFormedValues')]
-    public function anAbsoluteUriOrARegisteredNameIsWellFormed(string $value): void
+    public function anAbsoluteUriOrARegisteredNameIsWellFormed(string $value, AuthenticationPredicate $predicate): void
     {
         // When / Then
-        static::assertSame($value, (string) new AuthenticationContextClass($value, AuthenticationPredicate::SingleFactor));
+        static::assertSame($value, (string) new AuthenticationContextClass($value, $predicate));
     }
 
     /**
-     * @return iterable<string, array{string}>
+     * @return iterable<string, array{string, AuthenticationPredicate}>
      */
     public static function provideWellFormedValues(): iterable
     {
-        yield 'level' => ['0'];
-        yield 'registered name' => ['phrh'];
-        yield 'URI' => ['urn:mace:incommon:iap:silver'];
-        yield 'URL' => ['https://eidas.europa.eu/LoA/substantial'];
+        yield 'level' => ['0', AuthenticationPredicate::SingleFactor];
+        yield 'registered name' => ['phrh', AuthenticationPredicate::PhishingResistantHardware];
+        yield 'URI' => ['urn:mace:incommon:iap:silver', AuthenticationPredicate::SingleFactor];
+        yield 'URL' => ['https://eidas.europa.eu/LoA/substantial', AuthenticationPredicate::SingleFactor];
     }
 
     #[Test]
@@ -115,6 +116,49 @@ final class AuthenticationContextClassTest extends TestCase
         yield 'not ASCII' => ['niveau·1'];
         yield 'too long' => [str_repeat('a', 256)];
         yield 'with a trailing newline' => ["1\n"];
+    }
+
+    /**
+     * OIDC Core §2 forbids a registered name in another sense than its own, and the class is where that is
+     * refused: a pairing the policy would never accept is not built either.
+     */
+    #[Test]
+    #[DataProvider('provideRegisteredNamesOutOfTheirMeaning')]
+    public function aRegisteredNameIsRefusedOnAPredicateThatIsNotItsMeaning(string $value, AuthenticationPredicate $predicate): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            '"%s" is a registered name (OpenID Connect EAP ACR Values 1.0) and keeps its meaning: it cannot be named on the "%s" predicate.',
+            $value,
+            $predicate->value,
+        ));
+
+        // When
+        new AuthenticationContextClass($value, $predicate);
+    }
+
+    /**
+     * @return iterable<string, array{string, AuthenticationPredicate}>
+     */
+    public static function provideRegisteredNamesOutOfTheirMeaning(): iterable
+    {
+        yield 'phr on the single factor' => ['phr', AuthenticationPredicate::SingleFactor];
+        yield 'phr on two factors' => ['phr', AuthenticationPredicate::TwoFactors];
+        yield 'phrh on the phishing-resistant predicate that admits software' => ['phrh', AuthenticationPredicate::PhishingResistant];
+    }
+
+    /**
+     * "phr" keeps its meaning on either phishing-resistant predicate: a hardware key is phishing resistant.
+     */
+    #[Test]
+    public function phrMayBeNamedOnTheHardwarePredicate(): void
+    {
+        // When
+        $class = new AuthenticationContextClass('phr', AuthenticationPredicate::PhishingResistantHardware);
+
+        // Then
+        static::assertSame(AuthenticationPredicate::PhishingResistantHardware, $class->predicate);
     }
 
     /**

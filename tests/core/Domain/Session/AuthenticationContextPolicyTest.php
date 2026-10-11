@@ -220,18 +220,6 @@ final class AuthenticationContextPolicyTest extends TestCase
             [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('0', AuthenticationPredicate::SingleFactor)],
             '"0" is not a class a policy may name',
         ];
-        yield 'phr on the single factor' => [
-            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phr', AuthenticationPredicate::SingleFactor)],
-            '"phr" is a registered name',
-        ];
-        yield 'phr on two factors' => [
-            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phr', AuthenticationPredicate::TwoFactors)],
-            '"phr" is a registered name',
-        ];
-        yield 'phrh on the phishing-resistant predicate that admits software' => [
-            [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('phrh', AuthenticationPredicate::PhishingResistant)],
-            '"phrh" is a registered name',
-        ];
         yield 'a name twice' => [
             [AuthenticationContextClass::singleFactor(), new AuthenticationContextClass('1', AuthenticationPredicate::TwoFactors)],
             'names "1" once',
@@ -240,21 +228,5 @@ final class AuthenticationContextPolicyTest extends TestCase
             [AuthenticationContextClass::twoFactors(), AuthenticationContextClass::phishingResistant()],
             'names a class on the single factor',
         ];
-    }
-
-    /**
-     * "phr" keeps its meaning on either phishing-resistant predicate: a hardware key is phishing resistant.
-     */
-    #[Test]
-    public function phrMayBeNamedOnTheHardwarePredicate(): void
-    {
-        // When
-        $policy = new AuthenticationContextPolicy([
-            new AuthenticationContextClass('phr', AuthenticationPredicate::PhishingResistantHardware),
-            AuthenticationContextClass::singleFactor(),
-        ]);
-
-        // Then
-        static::assertSame(['phr', '1'], $policy->names());
     }
 }
