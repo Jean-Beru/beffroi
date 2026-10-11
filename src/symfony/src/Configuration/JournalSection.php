@@ -46,11 +46,11 @@ final readonly class JournalSection extends ConfigurationSection
 
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
-        $days = self::integer($this->own($config), 'retention');
-        $services->get(JournalRetention::class)->arg('$days', $days);
+        $own = $this->own($config);
+        $services->get(JournalRetention::class)->arg('$window', self::days($own, 'retention'));
         // what a client was given of a person is forgotten with the act that gave it (issue #590): one
-        // duration for the two tables, because an act whose row is gone, or a row whose act is gone, is
+        // window for the two tables, because an act whose row is gone, or a row whose act is gone, is
         // half an answer
-        $services->get(DisclosureRetention::class)->arg('$days', $days);
+        $services->get(DisclosureRetention::class)->arg('$window', self::days($own, 'retention'));
     }
 }

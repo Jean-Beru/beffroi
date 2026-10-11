@@ -176,7 +176,7 @@ final readonly class UserJournalCommand
                     'to' => ArchivedFacts::moment($period?->to),
                 ],
                 'kept' => [
-                    'days' => $this->retention->days,
+                    'days' => $this->retention->window->days,
                     'since' => ArchivedFacts::moment($this->retention->keptSince()),
                 ],
                 'acts' => array_map(ArchivedFacts::act(...), $acts),
@@ -197,10 +197,10 @@ final readonly class UserJournalCommand
         $covered = $period?->from !== null && $period->from >= $since;
 
         return $covered
-            ? sprintf('This deployment keeps an act %d day(s); the whole of that period is inside it.', $this->retention->days)
+            ? sprintf('This deployment keeps an act %d day(s); the whole of that period is inside it.', $this->retention->window->days)
             : sprintf(
                 'This deployment keeps an act %d day(s): nothing that happened before %s is held, whatever this reading asked for.',
-                $this->retention->days,
+                $this->retention->window->days,
                 $since->format('Y-m-d H:i:s'),
             );
     }
