@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Credential;
 
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
@@ -301,6 +303,7 @@ final class PasswordChangeTest extends TestCase
     {
         return new PasswordChange(
             $this->credentials,
+            new ActivePassword(new ActiveCredentials($this->credentials)),
             $this->hasher,
             new BreachedPasswordRefusal($breaches),
             $this->clock,

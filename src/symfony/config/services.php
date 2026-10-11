@@ -237,6 +237,7 @@ use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordLookup;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\PasswordChange;
@@ -1245,6 +1246,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BreachedPasswordLookup::class);
     $services->set(CredentialRenaming::class);
     $services->set(ActiveCredentials::class);
+    // the one password of a person, the counterpart of ActiveTotp (issue #608)
+    $services->set(ActivePassword::class);
     $services->set(SessionOpener::class);
     $services->set(OtherSessionsTermination::class);
     $services->set(SessionTerminator::class);
