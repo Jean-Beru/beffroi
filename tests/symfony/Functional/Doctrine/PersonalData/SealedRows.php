@@ -23,6 +23,15 @@ use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\ClaimHistoryInterface;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetail;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\Disclosure\Disclosure;
+use Beffroi\Oidc\Domain\Event\TokensIssued;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Port\DisclosuresInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
@@ -44,8 +53,6 @@ use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Domain\PushedAuthorization\PushedAuthorizationRecord;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
-use Beffroi\Oidc\Domain\Scope\Scope;
-use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
 use Beffroi\Oidc\Port\ClientStoreInterface;
@@ -143,6 +150,14 @@ final readonly class SealedRows
             'was' => 'Ada-of-the-notes',
             'became' => 'the-enchantress-of-numbers',
             'context' => self::USER_AGENT,
+        ],
+        // what a client was given of a person at one act (issue #590): the scopes it may now obtain, what
+        // it had asked for by name and what it was given beyond them, which a dump of one row per act must
+        // not give away either
+        'beffroi_disclosure' => [
+            'scopes' => 'engine.notes.read',
+            'claims' => 'the_nickname_of_ada',
+            'authorization_details' => 'urn:example:the-analytical-engine',
         ],
         'beffroi_backchannel_authentication_request' => [
             'binding_message' => 'Payment of 42 euros to the Analytical Engine Company',
@@ -245,6 +260,33 @@ final readonly class SealedRows
         $this->act($user);
         $this->archive($user);
         $this->change($user);
+        $this->disclosure($user, $client);
+    }
+
+    /**
+     * What one client was given of a person at one act (issue #590), sealed in a scope of its own: one row
+     * per act is what an application obtained of somebody day by day, which a dump must not read.
+     */
+    public function disclosure(User $user, Client $client): Disclosure
+    {
+        $values = self::VALUES['beffroi_disclosure'];
+        $disclosure = new Disclosure(
+            Uuid::v7(),
+            $user->tenant,
+            $user->subject,
+            $client->registration->clientId,
+            TokensIssued::NAME,
+            $this->now,
+            new Scopes([new Scope($values['scopes'])]),
+            new ClaimsRequest([
+                $values['claims'] => new ClaimRequest(),
+            ]),
+            new AuthorizationDetails([new AuthorizationDetail($values['authorization_details'])]),
+            'jwt',
+        );
+        $this->service('test.beffroi.disclosures', DisclosuresInterface::class)->record($disclosure);
+
+        return $disclosure;
     }
 
     /**

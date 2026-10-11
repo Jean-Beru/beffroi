@@ -100,6 +100,23 @@ final readonly class SchemaColumns
                 'subject' => new NoPersonalDatum(self::THE_SUBJECT),
                 'client' => new NoPersonalDatum('the client the act concerned, by the identifier it was registered under'),
             ],
+            // What a client was given of a person, at one act (issue #590). The three columns that say what
+            // left are sealed, where a consent holds the same values in the clear: a consent is a
+            // permission, one row per client, and this is one row per act, so a dump of this table is what
+            // an application obtained of somebody day by day. That the obtaining happened is in the journal
+            // above, in the clear, as the act of it.
+            'beffroi_disclosure' => [
+                'id' => new NoPersonalDatum(self::DRAWN_AT_RANDOM),
+                'tenant_id' => new NoPersonalDatum(self::THE_TENANT),
+                'subject' => new NoPersonalDatum(self::THE_SUBJECT),
+                'client_id' => new NoPersonalDatum(self::A_CLIENT),
+                'act' => new NoPersonalDatum('the name of the act it left with, which an event gives itself and which names no person'),
+                'handed_over_at' => new NoPersonalDatum(self::NAMES_NO_PERSON),
+                'scopes' => new Sealed('disclosure'),
+                'claims' => new Sealed('disclosure'),
+                'authorization_details' => new Sealed('disclosure'),
+                'token_shape' => new NoPersonalDatum('the shape the access token was written in, which names no person'),
+            ],
             // Everything this provider holds about one person, in one file they asked for (issue #453). The
             // one column of this schema where everything the other families seal stands in clear at once,
             // which is why it is sealed like the rest and carries no exemption: a dump that read this one

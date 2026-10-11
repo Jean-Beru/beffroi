@@ -1021,6 +1021,10 @@
         <source>archive.chapter.changes</source>
         <target>What you have changed of your record, and what it said before</target>
       </trans-unit>
+      <trans-unit id="archive.chapter.disclosures" resname="archive.chapter.disclosures">
+        <source>archive.chapter.disclosures</source>
+        <target>What each application was given of you, and when</target>
+      </trans-unit>
       <trans-unit id="archive.your_request" resname="archive.your_request">
         <source>archive.your_request</source>
         <target>Your request</target>

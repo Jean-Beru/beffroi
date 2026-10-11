@@ -83,6 +83,7 @@ final readonly class EncryptedColumnTypes
         'journal' => ['beffroi_request_context'],
         'personal_archive' => ['text'],
         'claim_change' => ['string', 'beffroi_request_context'],
+        'disclosure' => ['beffroi_scopes', 'beffroi_claims_request', 'beffroi_authorization_details'],
     ];
 
     /**

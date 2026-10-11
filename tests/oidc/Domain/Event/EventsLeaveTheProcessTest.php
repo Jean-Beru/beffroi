@@ -239,6 +239,9 @@ final class EventsLeaveTheProcessTest extends TestCase
             true,
             $authorization->confirmation,
             $next->tokenHash,
+            $authorization->claimsRequest,
+            AuthorizationDetailTypes::details(),
+            'jwt',
             $context,
         )];
     }
