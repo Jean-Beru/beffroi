@@ -7,7 +7,8 @@ namespace Beffroi\Bundle\Tests\Unit\Http;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
 use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Http\ChosenLocale;
+use Beffroi\Bundle\Http\BrowserPreferences;
+use Beffroi\Bundle\Locale\LocalePreference;
 use Beffroi\Bundle\Locale\UserLocale;
 use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
@@ -42,7 +43,7 @@ use Beffroi\Oidc\Tests\Fixture\Shapes;
  * Architecture §5.7: the locale of an interaction is what the visitor asked for (issue #448), then
  * "ui_locales" (OIDC Core §3.1.2.1), then "Accept-Language", then the default, each read against the
  * locales this deployment serves; never the URL. How a tag is read against that list is ServedLocales and
- * is tested there, and what the cookie of a choice holds is ChosenLocaleTest.
+ * is tested there, and what the cookie of the preferences holds is BrowserPreferencesTest.
  */
 final class InteractionLocaleTest extends TestCase
 {
@@ -96,7 +97,7 @@ final class InteractionLocaleTest extends TestCase
         $locale = self::locale(new LocaleSwitcher('en', []), $served);
         $request = Request::create('/authorize');
         $request->headers->set('Accept-Language', 'en');
-        $request->cookies->set(ChosenLocale::COOKIE, 'fr');
+        $request->cookies->set(BrowserPreferences::COOKIE, 'locale=fr');
 
         // When / Then
         static::assertSame('fr', $locale->choose($request, ['en']));
@@ -109,7 +110,7 @@ final class InteractionLocaleTest extends TestCase
         $served = new ServedLocales(['en', 'fr'], 'en');
         $locale = self::locale(new LocaleSwitcher('en', []), $served);
         $request = Request::create('/authorize');
-        $request->cookies->set(ChosenLocale::COOKIE, 'de');
+        $request->cookies->set(BrowserPreferences::COOKIE, 'locale=de');
 
         // When / Then
         static::assertSame('fr', $locale->choose($request, ['fr']));
@@ -257,7 +258,7 @@ final class InteractionLocaleTest extends TestCase
         return new InteractionLocale(
             $switcher,
             $served,
-            new ChosenLocale($served),
+            new BrowserPreferences([new LocalePreference($served)]),
             new BrowserSession(new InMemoryAuthenticationSessionRepository(), new InMemoryInteractionRepository(), new MockClock()),
             new AmbientTenant(null),
             new UserLocale($served),

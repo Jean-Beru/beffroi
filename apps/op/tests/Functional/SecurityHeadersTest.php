@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use Beffroi\Bundle\Http\BrowserPreferences;
 use function implode;
 use function sprintf;
 use Beffroi\Bundle\Http\FormTarget;
@@ -343,18 +344,18 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * The choice of a theme, the one cookie this application writes itself (App\Theme\ChosenTheme): the
-     * same prefix and the same three attributes under it, a preference being read from a browser like
-     * anything else.
+     * The preferences of the browser, which this application writes a slot of and names no cookie of its
+     * own for (issue #573, App\Theme\ThemePreference): the same prefix and the same three attributes under
+     * it, a preference being read from a browser like anything else.
      */
     #[Test]
-    public function itKeepsTheChoiceOfAThemeOnAHostPrefixedCookieToo(): void
+    public function itKeepsThePreferencesOfABrowserOnAHostPrefixedCookieToo(): void
     {
         // When
         $this->browser->request('POST', '/theme', ['theme' => 'dark']);
 
         // Then
-        $cookie = $this->cookieNamed('__Host-beffroi_theme');
+        $cookie = $this->cookieNamed(BrowserPreferences::COOKIE);
         static::assertTrue($cookie->isSecure());
         static::assertTrue($cookie->isHttpOnly());
         static::assertSame(Cookie::SAMESITE_LAX, $cookie->getSameSite());

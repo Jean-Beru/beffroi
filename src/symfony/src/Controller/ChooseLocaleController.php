@@ -7,10 +7,11 @@ namespace Beffroi\Bundle\Controller;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Http\ChosenLocale;
+use Beffroi\Bundle\Http\BrowserPreferences;
 use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\RequestParameters;
 use Beffroi\Bundle\Message\RememberTheChosenLanguage;
+use Beffroi\Bundle\Locale\LocalePreference;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function is_string;
@@ -51,7 +52,7 @@ final readonly class ChooseLocaleController
         private MessageBusInterface $commandBus,
         private TenantProvider $tenants,
         private ServedLocales $served,
-        private ChosenLocale $chosen,
+        private BrowserPreferences $preferences,
         private BrowserSession $browser,
         private InteractionRepositoryInterface $interactions,
         private FormToken $formTokens,
@@ -74,7 +75,7 @@ final readonly class ChooseLocaleController
         if ($locale === null) {
             return $response;
         }
-        $response->headers->setCookie($this->chosen->cookie($locale));
+        $response->headers->setCookie($this->preferences->cookie($request, LocalePreference::SLOT, $locale));
         // and on the account of whoever is signed in, which is the claim this provider writes to them in
         // when no request of theirs is there to read a language from (UserLocale, issue #471); on the lane,
         // nothing of this request waiting for it

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Beffroi\Bundle\Http\ChosenLocale;
+use Beffroi\Bundle\Http\BrowserPreferences;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function array_filter;
+use function array_map;
 use function array_values;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -53,7 +54,7 @@ final class LocaleChoiceTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/login?interaction=' . $interaction->id, $response->headers->get('Location'));
-        static::assertSame('fr', self::chosenIn($response));
+        static::assertSame('locale=fr', self::preferencesIn($response));
     }
 
     #[Test]
@@ -92,7 +93,7 @@ final class LocaleChoiceTest extends BrowserTestCase
         ]);
 
         // Then
-        static::assertNull(self::chosenIn($this->browser->getResponse()));
+        static::assertNull(self::preferencesIn($this->browser->getResponse()));
         static::assertNull(self::reread($interaction)->locale);
     }
 
@@ -140,7 +141,7 @@ final class LocaleChoiceTest extends BrowserTestCase
 
         // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
-        static::assertNull(self::chosenIn($this->browser->getResponse()));
+        static::assertNull(self::preferencesIn($this->browser->getResponse()));
         static::assertNull(self::reread($interaction)->locale);
     }
 
@@ -251,7 +252,7 @@ final class LocaleChoiceTest extends BrowserTestCase
         ]);
 
         // Then
-        static::assertSame('fr', self::chosenIn($this->browser->getResponse()));
+        static::assertSame('locale=fr', self::preferencesIn($this->browser->getResponse()));
         static::assertNull(self::rereadUser($alice)->profile->locale);
     }
 
@@ -261,6 +262,30 @@ final class LocaleChoiceTest extends BrowserTestCase
         static::assertInstanceOf(User::class, $reread);
 
         return $reread;
+    }
+
+    /**
+     * Issue #573: the page establishes the session of the browser, the choice writes the preferences of the
+     * browser, and neither sets a third cookie. The count is what holds the rule, a preference added beside
+     * the language being a slot of the second and never a cookie of its own.
+     */
+    #[Test]
+    public function aPageOfAnInteractionSetsTheSessionOfTheBrowserAndThePreferencesOfTheBrowserAndNothingElse(): void
+    {
+        // When
+        $token = $this->token();
+        $ofThePage = self::cookiesSetBy($this->browser->getResponse());
+        $this->browser->request('POST', '/locale', [
+            '_token' => $token,
+            'locale' => 'fr',
+            'target' => '/login',
+        ]);
+
+        // Then
+        // the name the mock file storage of the test kernel gives the session; a deployment names it
+        // "__Host-beffroi_session" (apps/op/config/packages/framework.yaml)
+        static::assertSame(['MOCKSESSID'], $ofThePage);
+        static::assertSame([BrowserPreferences::COOKIE], self::cookiesSetBy($this->browser->getResponse()));
     }
 
     private function loginPage(): Crawler
@@ -285,11 +310,26 @@ final class LocaleChoiceTest extends BrowserTestCase
         return $reread;
     }
 
-    private static function chosenIn(Response $response): ?string
+    /**
+     * The names of the cookies a response sets, in the order it sets them.
+     *
+     * @return list<string>
+     */
+    private static function cookiesSetBy(Response $response): array
+    {
+        return array_values(array_map(static fn (Cookie $cookie): string => $cookie->getName(), $response->headers->getCookies()));
+    }
+
+    /**
+     * The whole value of the cookie of the preferences and not the slot of the language alone: what a
+     * response of this page carries is one cookie with a slot per preference, so a slot that appeared
+     * beside the language reads here.
+     */
+    private static function preferencesIn(Response $response): ?string
     {
         $cookies = array_values(array_filter(
             $response->headers->getCookies(),
-            static fn (Cookie $cookie): bool => $cookie->getName() === ChosenLocale::COOKIE,
+            static fn (Cookie $cookie): bool => $cookie->getName() === BrowserPreferences::COOKIE,
         ));
 
         return $cookies === [] ? null : $cookies[0]->getValue();
