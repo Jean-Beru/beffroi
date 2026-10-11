@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Fixture;
 
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use function sodium_crypto_aead_xchacha20poly1305_ietf_keygen;
@@ -94,5 +95,14 @@ final class Keys
     public static function sealer(): EnvelopeKeySealer
     {
         return self::$sealer ??= new EnvelopeKeySealer(self::envelopes(), self::KMS_KEY_ID);
+    }
+
+    /**
+     * The memory a key provider is given, a new one at each call where everything else here is drawn
+     * once: two providers sharing one would answer each other's openings.
+     */
+    public static function opened(): OpenedKeys
+    {
+        return new OpenedKeys(self::sealer());
     }
 }

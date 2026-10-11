@@ -11,8 +11,8 @@ use function explode;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Domain\Key\TenantKey;
-use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Port\JwsSignerInterface;
 use Beffroi\Core\Port\KeyPairGeneratorInterface;
 use Beffroi\Core\Port\KeySealerInterface;
@@ -21,7 +21,6 @@ use Beffroi\Core\Port\SigningKeyProviderInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
-use ReflectionProperty;
 use function strtr;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Filesystem\Filesystem;
@@ -42,6 +41,8 @@ final class SealedKeyProviderTest extends DatabaseTestCase
 
     private PublicKeySetProviderInterface $published;
 
+    private OpenedKeys $opened;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -51,6 +52,7 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         new Filesystem()->remove($this->directory);
         $this->provider = self::service('test.beffroi.key_provider', SigningKeyProviderInterface::class);
         $this->published = self::service('test.beffroi.public_keys', PublicKeySetProviderInterface::class);
+        $this->opened = self::service('test.beffroi.opened_keys', OpenedKeys::class);
         self::service('test.beffroi.key_rotator', TenantKeyRotator::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
@@ -123,21 +125,14 @@ final class SealedKeyProviderTest extends DatabaseTestCase
     public function theWorkerForgetsThePreviousKeyOnceTheRotationIsSeen(): void
     {
         // Given
-        $this->provider->activeKey(self::tenant(), Algorithms::rs256());
-        $rotated = $this->rotateFromAnotherProcess();
+        $previous = $this->provider->activeKey(self::tenant(), Algorithms::rs256());
+        $this->rotateFromAnotherProcess();
 
         // When
         $this->provider->activeKey(self::tenant(), Algorithms::rs256());
 
         // Then
-        $opened = new ReflectionProperty($this->provider, 'opened')->getValue($this->provider);
-        static::assertIsArray($opened);
-        $kids = [];
-        foreach ($opened as $key) {
-            static::assertInstanceOf(UnsealedKey::class, $key);
-            $kids[] = $key->key->kid;
-        }
-        static::assertSame([$rotated->kid], $kids);
+        static::assertNotSame($previous, $this->opened->open(self::tenant(), $previous->key));
     }
 
     /**

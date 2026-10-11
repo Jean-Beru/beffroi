@@ -9,9 +9,9 @@ use function explode;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
-use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidJwsException;
 use Beffroi\Core\Exception\KeyNotFoundException;
@@ -29,7 +29,6 @@ use Jose\Component\Signature\Serializer\CompactSerializer;
 use function json_decode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use ReflectionProperty;
 use function strtr;
 
 final class JwtLibraryTest extends TestCase
@@ -37,6 +36,8 @@ final class JwtLibraryTest extends TestCase
     private Tenant $tenant;
 
     private InMemoryTenantKeyRepository $repository;
+
+    private OpenedKeys $opened;
 
     private SealedKeyProvider $provider;
 
@@ -57,7 +58,8 @@ final class JwtLibraryTest extends TestCase
         );
         $this->active->activate(Fixtures::now());
         $this->repository->save($this->active);
-        $this->provider = new SealedKeyProvider($this->repository, Keys::sealer());
+        $this->opened = Keys::opened();
+        $this->provider = new SealedKeyProvider($this->repository, $this->opened);
     }
 
     /**
@@ -173,7 +175,7 @@ final class JwtLibraryTest extends TestCase
     public function signingWithoutAnActiveKeyFails(): void
     {
         // Given
-        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::sealer()), Algorithms::all());
+        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::opened()), Algorithms::all());
 
         // Then
         $this->expectException(KeyNotFoundException::class);
@@ -232,7 +234,7 @@ final class JwtLibraryTest extends TestCase
                 Fixtures::now(),
             ),
         );
-        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider($repository, Keys::sealer()), Algorithms::all());
+        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider($repository, Keys::opened()), Algorithms::all());
 
         // Then
         $this->expectException(KeyNotFoundException::class);
@@ -391,7 +393,7 @@ final class JwtLibraryTest extends TestCase
     public function theProviderForgetsAKeyOnceItIsNoLongerActive(): void
     {
         // Given
-        $this->provider->activeKey($this->tenant, Algorithms::rs256());
+        $previous = $this->provider->activeKey($this->tenant, Algorithms::rs256());
         $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $next = new TenantKey(
             Keys::otherPair()->kid,
@@ -410,14 +412,7 @@ final class JwtLibraryTest extends TestCase
 
         // Then
         static::assertSame($next, $opened->key);
-        $kept = new ReflectionProperty($this->provider, 'opened')->getValue($this->provider);
-        static::assertIsArray($kept);
-        $kids = [];
-        foreach ($kept as $key) {
-            static::assertInstanceOf(UnsealedKey::class, $key);
-            $kids[] = $key->key->kid;
-        }
-        static::assertSame([Keys::otherPair()->kid], $kids);
+        static::assertNotSame($previous, $this->opened->open($this->tenant, $this->active));
     }
 
     #[Test]

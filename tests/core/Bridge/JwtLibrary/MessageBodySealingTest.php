@@ -60,7 +60,7 @@ final class MessageBodySealingTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->keys = new InMemoryTenantKeyRepository();
-        $this->provider = new SealedKeyProvider($this->keys, Keys::sealer());
+        $this->provider = new SealedKeyProvider($this->keys, Keys::opened());
         $this->sealer = new JwtLibraryMessageBodySealer($this->provider, Algorithms::messageSealing());
         $this->opener = new JwtLibraryMessageBodyOpener($this->provider, Algorithms::messageSealing());
         $this->activeKey(Algorithms::messageSeal(), Keys::messagePair());

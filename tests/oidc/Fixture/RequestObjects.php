@@ -151,7 +151,7 @@ final class RequestObjects
      */
     private static function decrypter(): JweDecrypterInterface
     {
-        return new JwtLibraryJweDecrypter(new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::sealer()), Algorithms::encryption());
+        return new JwtLibraryJweDecrypter(new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::opened()), Algorithms::encryption());
     }
 
     private static function segment(string $value): string

@@ -23,6 +23,7 @@ use Beffroi\Bundle\Tests\Fixture\WriteBeforeAnswering;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodyOpener;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodySealer;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -87,7 +88,7 @@ final class SealedBodySerializerTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->keys = new InMemoryTenantKeyRepository();
         $this->keys->save($this->messageKey($this->tenant));
-        $this->serializer = $this->serializerOf($this->tenant, new SealedKeyProvider($this->keys, Keys::sealer()));
+        $this->serializer = $this->serializerOf($this->tenant, new SealedKeyProvider($this->keys, Keys::opened()));
     }
 
     /**
@@ -251,7 +252,7 @@ final class SealedBodySerializerTest extends TestCase
         // Given
         $other = Fixtures::tenant('other', 'https://id.other.example');
         $this->keys->save($this->messageKey($other));
-        $elsewhere = $this->serializerOf($other, new SealedKeyProvider($this->keys, Keys::sealer()))->encode(new Envelope(
+        $elsewhere = $this->serializerOf($other, new SealedKeyProvider($this->keys, Keys::opened()))->encode(new Envelope(
             new SomethingHappened('something of another tenant'),
         ));
         $elsewhere['headers'][SealedBodySerializer::STAMP_HEADER_PREFIX . TenantStamp::class] = base64_encode(serialize([
@@ -338,7 +339,7 @@ final class SealedBodySerializerTest extends TestCase
         // Given
         $message = new SomethingHappened('a page was rendered');
         $encoded = $this->serializer->encode(new Envelope($message));
-        $refused = $this->serializerOf($this->tenant, new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::sealer()));
+        $refused = $this->serializerOf($this->tenant, new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::opened()));
         $failure = $refused->decode($encoded);
         $redeliveredAt = new DateTimeImmutable('2026-10-09T12:00:00+00:00');
 
@@ -375,7 +376,7 @@ final class SealedBodySerializerTest extends TestCase
         $opener->method('open')->willThrowException(new KmsUnavailableException('the vault did not answer'));
         $worker = new SealedBodySerializer(
             new AmbientTenant($this->tenant),
-            new JwtLibraryMessageBodySealer(new SealedKeyProvider($this->keys, Keys::sealer()), Algorithms::messageSealing()),
+            new JwtLibraryMessageBodySealer(new SealedKeyProvider($this->keys, Keys::opened()), Algorithms::messageSealing()),
             $opener,
         );
 
@@ -397,7 +398,7 @@ final class SealedBodySerializerTest extends TestCase
         // Given
         $kms = self::createMock(KeySealerInterface::class);
         $kms->expects(static::never())->method('unseal');
-        $serializer = $this->serializerOf($this->tenant, new SealedKeyProvider($this->keys, $kms));
+        $serializer = $this->serializerOf($this->tenant, new SealedKeyProvider($this->keys, new OpenedKeys($kms)));
 
         // When
         $encoded = $serializer->encode(new Envelope(new SomethingHappened('a page was rendered')));
