@@ -107,6 +107,19 @@ final class SoftwareAuthenticator
     }
 
     /**
+     * The same credential whose authenticator now says the key is bound to it: the BE flag §6.1.3 sets at
+     * the creation of a credential and forbids to change, claimed the other way round by a later assertion.
+     */
+    public function withoutBackupEligibility(): self
+    {
+        $clone = clone $this;
+        $clone->backupEligible = false;
+        $clone->backedUp = false;
+
+        return $clone;
+    }
+
+    /**
      * A later assertion with a count that did not grow: a cloned authenticator or a replay (§6.1.1).
      */
     public function withSignCount(int $signCount): self

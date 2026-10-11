@@ -144,7 +144,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $passkey = self::passkey($user);
+        $passkey = self::passkey($user, synced: true);
         self::credentials()->save($passkey);
         $passkey->recordUse(Fixtures::authenticatorData(backupEligible: true, backedUp: true, signCount: 12), self::now()->modify('+1 hour'));
         self::credentials()->save($passkey);
@@ -329,9 +329,10 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * A device-bound passkey, with a handle of its own.
+     * A device-bound passkey, with a handle of its own, or a synced one, which is eligible for backup and
+     * not backed up yet (WebAuthn Level 3 §6.1.3).
      */
-    private static function passkey(User $user, ?string $credentialId = null, ?DateTimeImmutable $createdAt = null): PasskeyCredential
+    private static function passkey(User $user, ?string $credentialId = null, ?DateTimeImmutable $createdAt = null, bool $synced = false): PasskeyCredential
     {
         return new PasskeyCredential(
             Uuid::v7(),
@@ -341,7 +342,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
             'cose-public-key',
             0,
             ['usb'],
-            false,
+            $synced,
             false,
             Uuid::v4(),
             Fixtures::userHandle(),

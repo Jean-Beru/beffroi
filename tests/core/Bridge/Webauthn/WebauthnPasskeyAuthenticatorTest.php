@@ -198,6 +198,32 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         static::assertSame($passkey, $assertion->credential);
     }
 
+    /**
+     * WebAuthn Level 3 §6.1.3 against webauthn-lib 5.3, which reassigns the flag and announces the change
+     * instead of refusing it (web-auth/webauthn-framework#969): the comparison with the enrolment is the
+     * core's, after the signature, as the sign count is.
+     */
+    #[Test]
+    public function anAssertionWhoseBackupEligibilityChangedIsVerifiedForTheCoreToRefuse(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator('https://id.acme.example', backupEligible: true, backedUp: true);
+        $passkey = $this->enrol($device);
+        $options = $this->authenticator->requestOptions($this->tenant, []);
+
+        // When
+        $assertion = $this->authenticator->verifyAssertion(
+            $this->tenant,
+            $options,
+            $device->withoutBackupEligibility()->get($this->ceremonies->optionsToJson($options)),
+        );
+
+        // Then
+        static::assertSame($passkey, $assertion->credential);
+        static::assertFalse($assertion->authenticatorData->isBackupEligible());
+        static::assertTrue($passkey->backupEligibilityChanged($assertion->authenticatorData));
+    }
+
     #[Test]
     public function anAssertionOfAPasskeyOfAnotherTenantIsRefused(): void
     {

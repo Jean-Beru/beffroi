@@ -26,8 +26,9 @@ use Symfony\Component\Security\Http\Authenticator\Token\PostAuthenticationToken;
  * the assertion the browser signed, posted by the login page as a form with the same CSRF token, verified
  * by the ceremony of the core against the options this browser was given, the passport carrying what was
  * proven (PasskeyCredentials) for the one LoginSuccessListener that sees both logins. A passkey of another
- * tenant or a revoked one is refused after the signature, so that a refusal costs the same; a disabled
- * user is refused by the UserChecker after, as with a password.
+ * tenant, a revoked one and an assertion whose backup eligibility is not the one of the enrolment are
+ * refused after the signature, so that a refusal costs the same; a disabled user is refused by the
+ * UserChecker after, as with a password.
  */
 final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface, InteractiveAuthenticatorInterface
 {
@@ -68,6 +69,9 @@ final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface
         $method = $credential->methods($verified->authenticatorData)[0];
         if (! $credential->tenant->equals($tenant)) {
             throw new PasskeyLoginException(AuthenticationFailureReason::InvalidCredential, $method);
+        }
+        if ($credential->backupEligibilityChanged($verified->authenticatorData)) {
+            throw new PasskeyLoginException(AuthenticationFailureReason::InvalidCredential, $method, $credential->user);
         }
         if ($credential->isRevoked()) {
             throw new PasskeyLoginException(AuthenticationFailureReason::RevokedCredential, $method, $credential->user);

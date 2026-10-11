@@ -222,7 +222,7 @@ final class PasskeyAuthenticationTest extends TestCase
     {
         // Given
         $this->passkey->revoke(Fixtures::now());
-        $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData(backupEligible: true));
+        $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData());
 
         // When
         try {
@@ -232,9 +232,37 @@ final class PasskeyAuthenticationTest extends TestCase
             // Then
             static::assertSame(AuthenticationFailureReason::RevokedCredential, $exception->reason);
             $failed = $this->events->of(AuthenticationFailed::class)[0];
-            static::assertSame('swk', $failed->method?->value);
+            static::assertSame('hwk', $failed->method?->value);
             static::assertSame($this->alice, $failed->user);
             static::assertNull($this->passkey->lastUsedAt);
+        }
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.3: the BE flag of a credential never changes, so an assertion that claims
+     * another one is refused after the signature was checked, with the key the passkey was enrolled as in
+     * the trail and not the one the assertion claimed.
+     */
+    #[Test]
+    public function anAssertionThatChangedItsBackupEligibilityIsRefused(): void
+    {
+        // Given
+        $synced = Fixtures::passkey($this->alice, 'The phone', 'alice-phone', backupEligible: true, backedUp: true);
+        $this->credentials->save($synced);
+        $this->ceremony->verifies($synced, Fixtures::authenticatorData(signCount: 4));
+
+        // When
+        try {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+            $failed = $this->events->of(AuthenticationFailed::class)[0];
+            static::assertSame('swk', $failed->method?->value);
+            static::assertSame($this->alice, $failed->user);
+            static::assertNull($synced->lastUsedAt);
+            static::assertSame(0, $synced->signCount);
         }
     }
 
