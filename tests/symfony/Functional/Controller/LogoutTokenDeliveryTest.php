@@ -12,6 +12,7 @@ use Beffroi\Bundle\Message\SendLogoutToken;
 use Beffroi\Bundle\MessageHandler\SendLogoutTokenHandler;
 use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -267,7 +268,15 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
 
     private static function message(): SendLogoutToken
     {
-        return new SendLogoutToken(self::tenant(), 'oidc-demo', self::URI, self::TOKEN, Uuid::fromString(self::SESSION), self::context());
+        return new SendLogoutToken(
+            self::tenant(),
+            'oidc-demo',
+            self::URI,
+            self::TOKEN,
+            Uuid::fromString(self::SESSION),
+            new Subject('alice-subject'),
+            self::context(),
+        );
     }
 
     private static function handler(): SendLogoutTokenHandler

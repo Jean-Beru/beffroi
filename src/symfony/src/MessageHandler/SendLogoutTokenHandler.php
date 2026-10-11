@@ -40,7 +40,15 @@ final readonly class SendLogoutTokenHandler
             throw new RecoverableMessageHandlingException($delivery->detail);
         }
         $this->events->dispatch(
-            new LogoutTokenGivenUp($this->clock->now(), $message->tenant, $message->context, $message->clientId, $message->sessionId, $delivery->detail),
+            new LogoutTokenGivenUp(
+                $this->clock->now(),
+                $message->tenant,
+                $message->context,
+                $message->clientId,
+                $message->subject,
+                $message->sessionId,
+                $delivery->detail,
+            ),
         );
     }
 }

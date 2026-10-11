@@ -70,18 +70,7 @@ final class TokenIssuerTest extends TestCase
     public function anAuthorizationWithNobodyBehindItIsAnsweredWithAnAccessTokenAlone(): void
     {
         // Given
-        $service = Clients::service(
-            $this->session->tenant,
-            new FakePasswordHasher()->hash(Clients::SECRET),
-            allowedScopes: new Scopes([Scope::openid()]),
-        );
-        $authorization = new ClientAuthorization(
-            Grants::clientCredentials(),
-            Uuid::v7(),
-            $service,
-            new Scopes([Scope::openid()]),
-            ResourceIndicators::of([Clients::CALENDAR]),
-        );
+        $authorization = $this->clientAuthorization();
 
         // When
         $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
@@ -90,6 +79,41 @@ final class TokenIssuerTest extends TestCase
         static::assertNull($issued->idToken);
         static::assertSame([], $this->idTokens->issued);
         static::assertSame([$authorization], $this->accessTokens->issued);
+    }
+
+    /**
+     * Issue #588: the act names the person the tokens were issued in the name of, by the subject their
+     * account carries and not the "sub" the client is answered, so that the journal of that person holds
+     * it.
+     */
+    #[Test]
+    public function theIssuanceNamesThePersonTheTokensWereIssuedFor(): void
+    {
+        // Given
+        $authorization = $this->authorizationFromCode();
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+
+        // Then
+        static::assertTrue($this->events->of(TokensIssued::class)[0]->subject()?->equals($this->session->user->subject));
+    }
+
+    /**
+     * RFC 6749 §4.4: a client that obtained tokens for itself did it in nobody's name, so the act names
+     * nobody rather than the client twice.
+     */
+    #[Test]
+    public function theIssuanceToAClientActingForItselfNamesNobody(): void
+    {
+        // Given
+        $authorization = $this->clientAuthorization();
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+
+        // Then
+        static::assertNull($this->events->of(TokensIssued::class)[0]->subject());
     }
 
     /**
@@ -300,6 +324,25 @@ final class TokenIssuerTest extends TestCase
 
         // Then
         static::assertEquals(Fixtures::now()->modify('+1 hour'), $issued->token->expiresAt);
+    }
+
+    /**
+     * An authorization of a client acting for itself, which is the one shape of authorization with
+     * nobody behind it (RFC 6749 §4.4).
+     */
+    private function clientAuthorization(): ClientAuthorization
+    {
+        return new ClientAuthorization(
+            Grants::clientCredentials(),
+            Uuid::v7(),
+            Clients::service(
+                $this->session->tenant,
+                new FakePasswordHasher()->hash(Clients::SECRET),
+                allowedScopes: new Scopes([Scope::openid()]),
+            ),
+            new Scopes([Scope::openid()]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
     }
 
     private function authorizationFromCode(): UserAuthorization

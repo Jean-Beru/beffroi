@@ -265,6 +265,9 @@ final class Tokens
             $session === null ? null : new TokenSignIn($session->id, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass())),
             $actor,
             $mayAct,
+            // what the type that read the token found behind it (issue #588): the user of the session it
+            // descends from, there being nobody behind a token a client holds for itself
+            $session?->user->subject,
         );
     }
 

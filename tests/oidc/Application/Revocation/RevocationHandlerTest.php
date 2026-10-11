@@ -121,6 +121,7 @@ final class RevocationHandlerTest extends TestCase
         static::assertSame(TokenRevoked::ACCESS_TOKEN, $events[0]->tokenType);
         static::assertSame($record->tokenHash, $events[0]->tokenHash);
         static::assertSame($this->client->registration->clientId, $events[0]->revokedBy);
+        static::assertTrue($events[0]->subject()?->equals($this->session->user->subject));
         static::assertSame([], $events[0]->revokedAccessTokenHashes);
         static::assertEquals($this->clock->now(), $events[0]->occurredAt);
         static::assertSame($this->context, $events[0]->context);

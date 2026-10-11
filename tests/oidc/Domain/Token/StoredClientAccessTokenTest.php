@@ -36,6 +36,25 @@ final class StoredClientAccessTokenTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.4, issue #588: there is nobody behind it, so the acts it leads to name nobody rather
+     * than the client twice.
+     */
+    #[Test]
+    public function itNamesNoPerson(): void
+    {
+        // Given
+        $token = StoredClientAccessToken::fromAuthorization(
+            DrawnSecret::digestOf('the-token'),
+            $this->authorization(Uuid::v7()),
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+
+        // When / Then
+        static::assertNull($token->person());
+    }
+
+    /**
      * Architecture §4.6: the row keeps what the introspection of the token answers with, and nothing of a
      * sign-in, there having been none (RFC 6749 §4.4).
      */

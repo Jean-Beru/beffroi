@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Message;
 
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Symfony\Component\Uid\Uuid;
@@ -14,6 +15,10 @@ use Symfony\Component\Uid\Uuid;
  * the ones that answered are not told twice. What it carries is what the send and the giving up need,
  * the token included, because minting it again would ask the KMS for another signature. A Notification
  * and not a Command: it waits on a third party, and waits longer, on a transport of its own.
+ *
+ * It carries the person whose session ended, because what the giving up writes is an act of the journal of
+ * that person (issue #588) and the message is the last thing that still knows who they are: the session is
+ * closed, and nothing downstream of here reads one.
  */
 final readonly class SendLogoutToken implements Notification
 {
@@ -23,6 +28,7 @@ final readonly class SendLogoutToken implements Notification
         public string $logoutUri,
         public string $logoutToken,
         public Uuid $sessionId,
+        public Subject $subject,
         public RequestContext $context,
     ) {
     }

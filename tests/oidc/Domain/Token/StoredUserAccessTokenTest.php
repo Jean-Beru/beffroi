@@ -39,6 +39,20 @@ final class StoredUserAccessTokenTest extends TestCase
     }
 
     /**
+     * Issue #588: the row names the person it was issued for, by the subject their account carries, which
+     * is what the act of its revocation is written under.
+     */
+    #[Test]
+    public function itNamesThePersonItWasIssuedFor(): void
+    {
+        // Given
+        $token = Tokens::storedAccessToken('the-token', $this->client, $this->session, Fixtures::now());
+
+        // When / Then
+        static::assertTrue($token->person()->equals($this->session->user->subject));
+    }
+
+    /**
      * Architecture §4.6: everything a resource or the introspection endpoint answers with, kept instead
      * of written as claims, with the authentication of the original authorization.
      */

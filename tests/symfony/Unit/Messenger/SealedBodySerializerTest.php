@@ -107,6 +107,7 @@ final class SealedBodySerializerTest extends TestCase
             'https://demo.localhost/backchannel-logout',
             'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.signature',
             Uuid::v7(),
+            Fixtures::user()->subject,
             Fixtures::context(),
         )];
         yield 'a query' => [new AskWhatIsKnown('the sessions of alice')];

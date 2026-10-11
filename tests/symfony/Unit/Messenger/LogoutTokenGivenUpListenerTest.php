@@ -88,6 +88,7 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
             'https://demo.test/backchannel-logout',
             'a.logout.token',
             Uuid::fromString(self::SESSION),
+            Fixtures::user()->subject,
             Fixtures::context(),
         );
     }
