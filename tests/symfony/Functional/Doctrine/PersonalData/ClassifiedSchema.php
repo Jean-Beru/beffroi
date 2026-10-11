@@ -6,85 +6,68 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
 
 use function array_key_exists;
 use function array_keys;
-use function count;
+use Beffroi\Core\Domain\PersonalData\StoredField;
 use function sort;
 use function sprintf;
 
 /**
- * The declaration of SchemaColumns held against the schema Doctrine builds, column by column.
+ * The classification the model declares held against the schema Doctrine builds, column by column.
  *
- * Nothing is inferred from a name: a column the declaration does not name is a finding, whichever list
- * would have been right for it, and a column the declaration names that the schema does not declare is
- * a finding too, so a line cannot outlive the column it was written for.
+ * The declaration is the model's own and this reads it (`ClassifiedModel`): a column the model does not
+ * classify is a finding, whichever line would have been right for it, and a line the schema gives no
+ * column is a finding too, so neither side outlives the other. What each line has to say about the column
+ * it was written for is the line's own answer (`FieldClassificationInterface`), the family of a sealed
+ * column being its own table.
  */
 final readonly class ClassifiedSchema
 {
-    /**
-     * @param array<string, array<string, ColumnClassificationInterface>> $columns table, then column
-     */
     public function __construct(
-        private array $columns,
+        private ClassifiedModel $model,
     ) {
     }
 
     /**
-     * @param array<string, array<string, string|null>> $schema table, then column, then the name of the encrypted
-     *                                                          type its mapping gives it, or null when that type
-     *                                                          does not seal
+     * @param array<string, array<string, string|null>> $schema table, then column, then the family what
+     *                                                          stores that column seals under, or null when
+     *                                                          it does not seal
      *
-     * @return list<string> what the schema and the declaration disagree on, in alphabetical order, empty when they agree
+     * @return list<string> what the schema and the model disagree on, in alphabetical order, empty when they agree
      */
     public function findings(array $schema): array
     {
         $findings = [];
+        $classified = $this->model->columns();
         foreach ($schema as $table => $columns) {
-            foreach ($columns as $column => $sealingType) {
-                $line = $this->columns[$table][$column] ?? null;
+            foreach ($columns as $column => $sealedUnder) {
+                $name = sprintf('%s.%s', $table, $column);
+                $line = $classified[$table][$column] ?? null;
                 if ($line === null) {
                     $findings[] = sprintf(
-                        '%s.%s is in the schema and in no list: declare it readable with the reason a dump of it gives nothing away, sealed, or owed to the issue that seals it.',
-                        $table,
-                        $column,
+                        '%s is in the schema and the model does not classify it: declare %s readable with the reason a dump of it gives nothing away, sealed under its family, a blind index, or owed to the issue that seals it.',
+                        $name,
+                        $this->model->fieldBehind($table, $column) ?? 'the field the class that holds it answers for',
                     );
 
                     continue;
                 }
-                $finding = $line->finding($table, $column, $sealingType);
+                $finding = $line->finding(new StoredField($name, BundleSchema::familyOf($table), $sealedUnder));
                 if ($finding !== null) {
                     $findings[] = $finding;
                 }
             }
         }
-        foreach ($this->columns as $table => $columns) {
+        foreach ($classified as $table => $columns) {
             foreach (array_keys($columns) as $column) {
                 if (! array_key_exists($column, $schema[$table] ?? [])) {
                     $findings[] = sprintf('%s.%s is classified and the schema does not declare it: delete its line.', $table, $column);
                 }
             }
         }
+        foreach ($this->model->linesWithNoColumn() as $line) {
+            $findings[] = sprintf('%s is classified and no column of the schema carries it: delete its line.', $line);
+        }
         sort($findings);
 
         return $findings;
-    }
-
-    /**
-     * @return list<string> the tables the declaration covers
-     */
-    public function tables(): array
-    {
-        return array_keys($this->columns);
-    }
-
-    /**
-     * How many columns the declaration names, all tables together.
-     */
-    public function columnCount(): int
-    {
-        $total = 0;
-        foreach ($this->columns as $columns) {
-            $total += count($columns);
-        }
-
-        return $total;
     }
 }

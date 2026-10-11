@@ -10,8 +10,8 @@ use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
+use Beffroi\Core\Domain\PersonalData\Sealed;
 use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
 use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
@@ -416,7 +416,7 @@ final class DataKeysTest extends ConsoleTestCase
     private static function sealedColumns(): array
     {
         $columns = [];
-        foreach (SchemaColumns::all()['beffroi_user'] as $column => $line) {
+        foreach (ClassifiedModel::of(self::entityManager())->linesOf('beffroi_user') as $column => $line) {
             if ($line instanceof Sealed) {
                 $columns[] = $column;
             }

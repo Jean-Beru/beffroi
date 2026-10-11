@@ -10,8 +10,8 @@ use function array_values;
 use function bin2hex;
 use Doctrine\DBAL\Connection;
 use function file_put_contents;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
+use Beffroi\Core\Domain\PersonalData\Sealed;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SearchedDump;
 use function implode;
@@ -56,15 +56,15 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
 
     /**
      * What makes the criterion mean something: a value added to a sealed column later is searched for
-     * without anyone remembering to add it, because the walk of the schema is what says which columns are
-     * sealed and this holds the fixture to that list.
+     * without anyone remembering to add it, because the model is what says which columns are
+     * sealed and this holds the fixture to what it declares.
      */
     #[Test]
     public function theFixtureWritesAValueIntoEveryColumnTheClassificationSeals(): void
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all() as $table => $columns) {
+        foreach (ClassifiedModel::of(self::entityManager())->columns() as $table => $columns) {
             foreach ($columns as $column => $line) {
                 if ($line instanceof Sealed) {
                     $sealed[] = sprintf('%s.%s', $table, $column);

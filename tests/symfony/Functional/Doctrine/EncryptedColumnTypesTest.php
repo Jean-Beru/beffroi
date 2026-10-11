@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
+use function array_diff;
+use function array_keys;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
 use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -183,14 +184,19 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     }
 
     /**
-     * What the walk of the schema calls a sealing type is what the bundle declares, read from it and not
-     * kept beside it, so that a type registered and a type the walk knows about cannot be two lists.
+     * What the walk of the schema reads a column's family from is derived from the one declaration of the
+     * types, and covers every one of them: a family read from a second list would be a second thing to be
+     * wrong, and a type missing from it would be a sealed column the walk takes for a readable one.
      */
     #[Test]
-    public function theWalkOfTheSchemaReadsTheNamesTheBundleDeclares(): void
+    public function everySealingTypeSaysWhichFamilyItSealsUnder(): void
     {
-        // When / Then
-        static::assertSame(EncryptedColumnTypes::names(), SchemaColumns::sealingTypes());
+        // When
+        $families = EncryptedColumnTypes::familyByType();
+
+        // Then
+        static::assertSame(EncryptedColumnTypes::names(), array_keys($families));
+        static::assertSame([], array_diff($families, EncryptedColumnTypes::families()));
     }
 
     private static function connection(): Connection

@@ -12,8 +12,8 @@ use Doctrine\DBAL\Schema\Index\IndexedColumn;
 use Doctrine\DBAL\Schema\Index\IndexType;
 use Doctrine\ORM\Tools\SchemaTool;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SchemaColumns;
+use Beffroi\Core\Domain\PersonalData\Sealed;
+use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
@@ -72,7 +72,7 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
     {
         // Given
         $sealed = [];
-        foreach (SchemaColumns::all()['beffroi_linked_identity'] as $column => $line) {
+        foreach (ClassifiedModel::of(self::entityManager())->linesOf('beffroi_linked_identity') as $column => $line) {
             if ($line instanceof Sealed) {
                 $sealed[] = $column;
             }
