@@ -192,6 +192,12 @@ use Beffroi\Core\Application\Journal\ActRecording;
 use Beffroi\Core\Application\Session\ProvenancePlace;
 use Beffroi\Core\Application\Session\SessionProvenanceEnrichment;
 use Beffroi\Core\Application\Journal\JournalRetention;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineDisclosures;
+use Beffroi\Oidc\Application\Archive\DisclosuresChapter;
+use Beffroi\Oidc\Application\Disclosure\DisclosureRecording;
+use Beffroi\Oidc\Application\Disclosure\DisclosureRetention;
+use Beffroi\Oidc\Port\DisclosuresInterface;
+use Beffroi\Oidc\Port\DisclosuresOfAPersonInterface;
 use Beffroi\Core\Application\Record\DeadRecordRemoval;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
 use Beffroi\Core\Port\CanPageActiveSessionsInterface;
@@ -708,6 +714,14 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CanPageActsOfAPersonInterface::class, DoctrineJournal::class);
     $services->set(ActRecording::class);
     $services->set(JournalRetention::class);
+    // What a client was given of a person, beside the act that gave it (issue #590): the register the
+    // journal cannot hold, read by the chapter below and forgotten by the step that forgets the acts, the
+    // duration being one duration for the two tables.
+    $services->set(DoctrineDisclosures::class);
+    $services->alias(DisclosuresInterface::class, DoctrineDisclosures::class);
+    $services->alias(DisclosuresOfAPersonInterface::class, DoctrineDisclosures::class);
+    $services->set(DisclosureRecording::class);
+    $services->set(DisclosureRetention::class);
     // Everything this provider holds about one person, in one file they ask for (RGPD articles 15 and 20,
     // issue #453). The chapters are what the document is assembled from and what the page names: one per
     // kind of fact, tagged, in the order the file holds them, so a table this provider comes to hold about
@@ -726,6 +740,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SessionsChapter::class)->tag('beffroi.archive_chapter');
     $services->set(JournalChapter::class)->tag('beffroi.archive_chapter');
     $services->set(ChangesChapter::class)->tag('beffroi.archive_chapter');
+    $services->set(DisclosuresChapter::class)->tag('beffroi.archive_chapter');
     $services->set(ArchiveAssembly::class)->args([
         '$chapters' => tagged_iterator('beffroi.archive_chapter'),
     ]);

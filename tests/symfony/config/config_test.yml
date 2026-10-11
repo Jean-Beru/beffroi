@@ -759,6 +759,12 @@ services:
     test.beffroi.changes:
         alias: Beffroi\Core\Port\ChangesOfAPersonInterface
         public: true
+    test.beffroi.disclosures:
+        alias: Beffroi\Oidc\Port\DisclosuresInterface
+        public: true
+    test.beffroi.disclosures_of_a_person:
+        alias: Beffroi\Oidc\Port\DisclosuresOfAPersonInterface
+        public: true
     test.beffroi.groups_of_a_person:
         alias: Beffroi\Core\Port\GroupsOfAPersonInterface
         public: true

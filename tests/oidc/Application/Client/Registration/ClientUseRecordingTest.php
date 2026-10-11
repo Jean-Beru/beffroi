@@ -154,6 +154,9 @@ final class ClientUseRecordingTest extends TestCase
             true,
             null,
             null,
+            null,
+            null,
+            'jwt',
             Fixtures::context($at),
         );
     }
