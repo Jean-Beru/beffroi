@@ -244,7 +244,7 @@ final class WebPushApprovalChannelTest extends TestCase
             $this->subscriptions,
             new PushSubscriptionRevocation($this->subscriptions, $this->clock),
             new WebPushSender(
-                new SealedKeyProvider($this->keys, Keys::sealer()),
+                new SealedKeyProvider($this->keys, Keys::opened()),
                 $http,
                 $this->clock,
                 'mailto:operator@acme.example',

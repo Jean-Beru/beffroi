@@ -54,7 +54,7 @@ final class PushSubscriptionEnrolmentTest extends TestCase
         $this->subscriptions = new InMemoryPushSubscriptionRepository();
         $this->enrolment = new PushSubscriptionEnrolment(
             $this->subscriptions,
-            new SealedKeyProvider($this->keys, Keys::sealer()),
+            new SealedKeyProvider($this->keys, Keys::opened()),
             new SymfonyUuidGenerator(),
             $this->clock,
         );

@@ -73,7 +73,7 @@ final class JwksHandlerTest extends TestCase
         );
         $globex->activate(Fixtures::now());
         $repository->save($globex);
-        $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
+        $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::opened()));
     }
 
     /**
@@ -174,7 +174,7 @@ final class JwksHandlerTest extends TestCase
         $tenant = Fixtures::tenant();
         $repository = new InMemoryTenantKeyRepository();
         $repository->save(self::retiredKey($tenant));
-        $handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
+        $handler = new JwksHandler(new SealedKeyProvider($repository, Keys::opened()));
 
         // When
         $response = $handler->handle($tenant);

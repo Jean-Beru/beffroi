@@ -67,7 +67,7 @@ final readonly class Jwts
         $this->algorithms = Algorithms::all();
         $this->repository = new InMemoryTenantKeyRepository();
         $this->key = $this->activate(Algorithms::rs256(), Keys::pair());
-        $this->keys = new SealedKeyProvider($this->repository, Keys::sealer());
+        $this->keys = new SealedKeyProvider($this->repository, Keys::opened());
         $this->signer = new JwtLibraryJwsSigner($this->keys, $this->algorithms);
         $this->documents = $this->documentsFor();
     }

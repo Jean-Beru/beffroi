@@ -307,7 +307,7 @@ final class SignatureAlgorithmsTest extends TestCase
         );
         $key->activate(Fixtures::now());
         $repository->save($key);
-        $keys = new SealedKeyProvider($repository, Keys::sealer());
+        $keys = new SealedKeyProvider($repository, Keys::opened());
 
         // When
         $jws = new JwtLibraryJwsSigner($keys, $algorithms)->sign($this->tenant, $unwired, '{"sub":"alice"}');
@@ -366,7 +366,7 @@ final class SignatureAlgorithmsTest extends TestCase
         $key->activate(Fixtures::now());
         $repository->save($key);
 
-        return new SealedKeyProvider($repository, Keys::sealer());
+        return new SealedKeyProvider($repository, Keys::opened());
     }
 
     /**

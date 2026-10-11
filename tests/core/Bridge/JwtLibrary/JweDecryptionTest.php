@@ -8,6 +8,7 @@ use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJweDecrypter;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
@@ -49,6 +50,8 @@ final class JweDecryptionTest extends TestCase
 
     private InMemoryTenantKeyRepository $repository;
 
+    private OpenedKeys $opened;
+
     private SealedKeyProvider $provider;
 
     private TenantKey $encryption;
@@ -61,7 +64,8 @@ final class JweDecryptionTest extends TestCase
         $this->repository = new InMemoryTenantKeyRepository();
         $this->signing = $this->activate(Algorithms::rs256(), Keys::pair());
         $this->encryption = $this->activate(Algorithms::ecdhEsA256Kw(), Keys::encryptionPair());
-        $this->provider = new SealedKeyProvider($this->repository, Keys::sealer());
+        $this->opened = Keys::opened();
+        $this->provider = new SealedKeyProvider($this->repository, $this->opened);
     }
 
     /**
@@ -99,6 +103,30 @@ final class JweDecryptionTest extends TestCase
 
         // When
         $this->decrypter()->decrypt($this->tenant, $jwe);
+    }
+
+    /**
+     * And what the process had open of that key goes with the refusal: a key out of the JWK Set opens
+     * nothing any more, so its private half has no reason to stay.
+     */
+    #[Test]
+    public function theMaterialOfAKeyThatHasRetiredLeavesTheProcess(): void
+    {
+        // Given
+        $jwe = self::encryptedTo($this->encryption, '{"iss":"acme-console"}');
+        $opened = $this->provider->decryptionKey($this->tenant, $this->encryption->kid);
+        $this->encryption->startRetiring(Fixtures::now(), Fixtures::now());
+        $this->encryption->retire(Fixtures::now());
+        $this->repository->save($this->encryption);
+
+        // When
+        try {
+            $this->decrypter()->decrypt($this->tenant, $jwe);
+        } catch (InvalidJweException) {
+        }
+
+        // Then
+        static::assertNotSame($opened, $this->opened->open($this->tenant, $this->encryption));
     }
 
     /**
@@ -234,7 +262,7 @@ final class JweDecryptionTest extends TestCase
         $decrypter = new JwtLibraryJweDecrypter(
             new SealedKeyProvider(
                 $this->repository,
-                new EnvelopeKeySealer(new EnvelopesThatThrow(new KeyManagementFailure('the KMS did not answer')), Keys::KMS_KEY_ID),
+                new OpenedKeys(new EnvelopeKeySealer(new EnvelopesThatThrow(new KeyManagementFailure('the KMS did not answer')), Keys::KMS_KEY_ID)),
             ),
             Algorithms::encryption(),
         );

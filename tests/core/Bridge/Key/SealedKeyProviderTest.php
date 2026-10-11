@@ -36,7 +36,7 @@ final class SealedKeyProviderTest extends TestCase
         $keys = new InMemoryTenantKeyRepository();
         $keys->save(self::activeKey($acme, Keys::pair()));
         $keys->save(self::activeKey($globex, Keys::pair()));
-        $provider = new SealedKeyProvider($keys, Keys::sealer());
+        $provider = new SealedKeyProvider($keys, Keys::opened());
         $provider->activeKey($acme, Algorithms::rs256());
 
         // When

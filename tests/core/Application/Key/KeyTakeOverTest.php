@@ -94,7 +94,7 @@ final class KeyTakeOverTest extends TestCase
         static::assertSame($activated, $this->repository->findActive($this->tenant, Algorithms::rs256()));
         static::assertSame(
             Keys::otherPair()->privateJwk,
-            new SealedKeyProvider($this->repository, Keys::sealer())->activeKey($this->tenant, Algorithms::rs256())->privateJwk,
+            new SealedKeyProvider($this->repository, Keys::opened())->activeKey($this->tenant, Algorithms::rs256())->privateJwk,
         );
     }
 
@@ -306,7 +306,7 @@ final class KeyTakeOverTest extends TestCase
         // Given
         $this->firstRotation();
         $this->takeOver->rotate($this->tenant, Algorithms::rs256(), $this->context);
-        $provider = new SealedKeyProvider($this->repository, Keys::sealer());
+        $provider = new SealedKeyProvider($this->repository, Keys::opened());
 
         // When
         $active = $provider->activeKey($this->tenant, Algorithms::rs256());

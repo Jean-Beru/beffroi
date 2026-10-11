@@ -279,6 +279,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodyOpener;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodySealer;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
@@ -1085,6 +1086,10 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(SecretSealerInterface::class, EnvelopeSecretSealer::class);
     $services->set(FileTenantKeyRepository::class);
     $services->alias(TenantKeyRepositoryInterface::class, FileTenantKeyRepository::class);
+    // What a process holds open of the private halves, which the provider tells what is no longer an
+    // answer: one object for the life of the process, so a worker asks the KMS once per key (decision
+    // 0018, architecture §3.3)
+    $services->set(OpenedKeys::class);
     $services->set(SealedKeyProvider::class);
     $services->alias(SigningKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(DecryptionKeyProviderInterface::class, SealedKeyProvider::class);

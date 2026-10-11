@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Bridge\Key;
 use function array_map;
 use DateTimeImmutable;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
@@ -30,13 +31,16 @@ final class MessageKeyTest extends TestCase
 
     private InMemoryTenantKeyRepository $keys;
 
+    private OpenedKeys $opened;
+
     private SealedKeyProvider $provider;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
         $this->keys = new InMemoryTenantKeyRepository();
-        $this->provider = new SealedKeyProvider($this->keys, Keys::sealer());
+        $this->opened = Keys::opened();
+        $this->provider = new SealedKeyProvider($this->keys, $this->opened);
     }
 
     /**
@@ -163,6 +167,30 @@ final class MessageKeyTest extends TestCase
 
         // When
         $this->provider->messageKey($this->tenant, $key->kid);
+    }
+
+    /**
+     * And what the process had open of that key goes with the refusal: a private half that opens nothing
+     * any more has no reason to stay, so asking for it again is asking the KMS again.
+     */
+    #[Test]
+    public function theMaterialOfAKeyThatHasRetiredLeavesTheProcess(): void
+    {
+        // Given
+        $key = $this->activeKey(Algorithms::messageSeal(), Keys::messagePair());
+        $opened = $this->provider->messageKey($this->tenant, $key->kid);
+        $key->startRetiring(Fixtures::now(), Fixtures::now());
+        $key->retire(Fixtures::now());
+        $this->keys->save($key);
+
+        // When
+        try {
+            $this->provider->messageKey($this->tenant, $key->kid);
+        } catch (KeyNotFoundException) {
+        }
+
+        // Then
+        static::assertNotSame($opened, $this->opened->open($this->tenant, $key));
     }
 
     /**

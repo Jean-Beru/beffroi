@@ -685,6 +685,11 @@ services:
     test.beffroi.key_provider:
         alias: Beffroi\Core\Port\SigningKeyProviderInterface
         public: true
+    # what the provider holds open: reachable so that a test can see the material of a key that stopped
+    # being the answer opened anew, which is what it means for it to have left the memory of the worker
+    test.beffroi.opened_keys:
+        alias: Beffroi\Core\Bridge\Key\OpenedKeys
+        public: true
     # what every transport encodes with, read through the alias of the component and not through the
     # service of the bundle: what is asserted is the wiring and not the class (decision 0020)
     test.beffroi.messenger_serializer:
