@@ -7,6 +7,8 @@ namespace Beffroi\Core\Tests\Application\Identity;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
@@ -427,6 +429,7 @@ final class UserProvisionerTest extends TestCase
         return new UserProvisioner(
             $this->users,
             $this->credentials,
+            new ActivePassword(new ActiveCredentials($this->credentials)),
             $this->hasher,
             new BreachedPasswordRefusal($breaches),
             new EnrolmentRefusal(),

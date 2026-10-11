@@ -10,6 +10,7 @@ use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
 use Beffroi\Core\Application\Authentication\DecoyHash;
 use Beffroi\Core\Application\Authentication\PasswordVerification;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
 use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
 use Beffroi\Core\Application\Authentication\SessionOpener;
@@ -77,6 +78,7 @@ final class TheOrderOfAPasswordLoginTest extends TestCase
             new PasswordVerification(
                 $users,
                 $credentials,
+                new ActivePassword(new ActiveCredentials($credentials)),
                 $this->hasher,
                 new DecoyHash($this->hasher, new SymfonyUuidGenerator()),
                 new FakeAttemptLimiter(5),

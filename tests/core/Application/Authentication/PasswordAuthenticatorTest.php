@@ -8,6 +8,7 @@ use function array_map;
 use DateInterval;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
 use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
 use Beffroi\Core\Application\Authentication\DecoyHash;
@@ -96,6 +97,7 @@ final class PasswordAuthenticatorTest extends TestCase
             new PasswordVerification(
                 $this->users,
                 $this->credentials,
+                new ActivePassword(new ActiveCredentials($this->credentials)),
                 $hasher,
                 new DecoyHash($hasher, new SymfonyUuidGenerator()),
                 $attempts ?? $this->attempts,
