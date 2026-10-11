@@ -14,7 +14,9 @@ use function hash;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyRetirement;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
 use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
@@ -210,7 +212,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function signingKey(): TenantKey
     {
-        return self::rotator()->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        return self::takeOver()->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**
@@ -219,7 +221,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function encryptionKey(): TenantKey
     {
-        return self::rotator()->rotate(self::tenant(), Algorithms::ecdhEsA256Kw(), self::context());
+        return self::takeOver()->rotate(self::tenant(), Algorithms::ecdhEsA256Kw(), self::context());
     }
 
     /**
@@ -227,7 +229,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function stagedKey(): TenantKey
     {
-        return self::rotator()->stage(self::tenant(), Algorithms::rs256(), self::context());
+        return self::staging()->stage(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**
@@ -235,12 +237,17 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function retireKey(TenantKey $key): void
     {
-        self::rotator()->retire(self::tenant(), $key->kid, self::context(), force: true);
+        self::service('test.beffroi.key_retirement', KeyRetirement::class)->retireBeforeItsDate(self::tenant(), $key->kid, self::context());
     }
 
-    protected static function rotator(): TenantKeyRotator
+    protected static function takeOver(): KeyTakeOver
     {
-        return self::service('test.beffroi.key_rotator', TenantKeyRotator::class);
+        return self::service('test.beffroi.key_take_over', KeyTakeOver::class);
+    }
+
+    protected static function staging(): KeyStaging
+    {
+        return self::service('test.beffroi.key_staging', KeyStaging::class);
     }
 
     /**
@@ -249,7 +256,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function applicationServerKey(): TenantKey
     {
-        return self::rotator()->rotate(self::tenant(), Algorithms::vapid(), self::context());
+        return self::takeOver()->rotate(self::tenant(), Algorithms::vapid(), self::context());
     }
 
     /**

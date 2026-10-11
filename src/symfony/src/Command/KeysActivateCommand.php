@@ -6,7 +6,7 @@ namespace Beffroi\Bundle\Command;
 
 use DateTimeInterface;
 use Beffroi\Bundle\Http\RequestContextFactory;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Exception\LogicException;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
@@ -32,7 +32,7 @@ final readonly class KeysActivateCommand
         private ConfiguredTenant $tenant,
         private RetiringKey $retiring,
         private TenantKeyRepositoryInterface $keys,
-        private TenantKeyRotator $rotator,
+        private KeyTakeOver $takeOver,
         private RequestContextFactory $contexts,
     ) {
     }
@@ -51,7 +51,7 @@ final readonly class KeysActivateCommand
         $previous = $staged === null ? null : $this->keys->findActive($tenant, $staged->algorithm);
 
         try {
-            $key = $this->rotator->activate($tenant, $kid, $this->contexts->fromConsole(self::NAME));
+            $key = $this->takeOver->activate($tenant, $kid, $this->contexts->fromConsole(self::NAME));
         } catch (KeyNotFoundException|LogicException $exception) {
             $io->error($exception->getMessage());
 

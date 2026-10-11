@@ -6,7 +6,8 @@ namespace Beffroi\Bundle\Command;
 
 use DateTimeInterface;
 use Beffroi\Bundle\Http\RequestContextFactory;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\UnsupportedAlgorithmException;
@@ -36,7 +37,8 @@ final readonly class KeysRotateCommand
         private ConfiguredTenant $tenant,
         private RetiringKey $retiring,
         private TenantKeyRepositoryInterface $keys,
-        private TenantKeyRotator $rotator,
+        private KeyStaging $staging,
+        private KeyTakeOver $takeOver,
         private RequestContextFactory $contexts,
         private SignatureAlgorithmsInterface $signatureAlgorithms,
         private KeyAlgorithmsInterface $algorithms,
@@ -71,23 +73,23 @@ final readonly class KeysRotateCommand
         $context = $this->contexts->fromConsole(self::NAME);
         if ($previous === null) {
             $key = $compromised
-                ? $this->rotator->rotateAfterCompromise($tenant, $rotatedFor, $context)
-                : $this->rotator->rotate($tenant, $rotatedFor, $context);
+                ? $this->takeOver->rotateAfterCompromise($tenant, $rotatedFor, $context)
+                : $this->takeOver->rotate($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
             $io->note(sprintf('The tenant had no active %s key: nothing to wait for, the key is active at once.', $rotatedFor->name()));
         } elseif ($compromised) {
-            $key = $this->rotator->rotateAfterCompromise($tenant, $rotatedFor, $context);
+            $key = $this->takeOver->rotateAfterCompromise($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
             $io->warning(sprintf(
                 'The key "%s" was active and is retired at once: it leaves the JWK Set and nothing bound to it is honoured from now on.',
                 $previous->kid,
             ));
         } elseif ($now) {
-            $key = $this->rotator->rotate($tenant, $rotatedFor, $context);
+            $key = $this->takeOver->rotate($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
             $this->retiring->told($io, $tenant, $previous);
         } else {
-            $key = $this->rotator->stage($tenant, $rotatedFor, $context);
+            $key = $this->staging->stage($tenant, $rotatedFor, $context);
             self::describe($io, $tenant, $key);
             $io->note(sprintf(
                 'The key "%s" is the active one until then; the scheduled step activates the new key at %s, "beffroi:keys:activate %s" does it earlier.',

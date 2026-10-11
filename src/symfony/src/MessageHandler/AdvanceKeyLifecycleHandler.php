@@ -9,7 +9,9 @@ use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
 use Beffroi\Bundle\Scheduler\BeffroiSchedule;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyRetirement;
+use Beffroi\Core\Application\Key\KeySuccession;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -27,7 +29,9 @@ final readonly class AdvanceKeyLifecycleHandler
 {
     public function __construct(
         private TenantProvider $tenants,
-        private TenantKeyRotator $rotator,
+        private KeySuccession $succession,
+        private KeyTakeOver $takeOver,
+        private KeyRetirement $retirement,
         private RequestContextFactory $contexts,
     ) {
     }
@@ -41,8 +45,8 @@ final readonly class AdvanceKeyLifecycleHandler
             return;
         }
         $context = $this->contexts->fromSchedule(BeffroiSchedule::NAME);
-        $this->rotator->stageSuccessorsDue($tenant, $context);
-        $this->rotator->activateDue($tenant, $context);
-        $this->rotator->retireDue($tenant, $context);
+        $this->succession->stageSuccessorsDue($tenant, $context);
+        $this->takeOver->activateDue($tenant, $context);
+        $this->retirement->retireDue($tenant, $context);
     }
 }

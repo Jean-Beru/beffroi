@@ -23,7 +23,8 @@ use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\KeyAge;
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Profiler\KmsClient;
-use Beffroi\Core\Application\Key\TenantKeyRotator;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeySuccession;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 use Symfony\Component\KeyManagement\Bridge\DoctrineOrm\SchemaListener\DataKeyStoreSchemaListener;
@@ -244,13 +245,13 @@ final readonly class KeysSection extends ConfigurationSection
         }
         $services->get(JwksHandler::class)->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
         // derived at runtime, once the environment placeholders are numbers
-        $services->get(TenantKeyRotator::class)->arg('$stagingDelay', inline_service(DateInterval::class)
+        $services->get(KeyStaging::class)->arg('$stagingDelay', inline_service(DateInterval::class)
             ->factory(StagingDelay::interval(...))
             ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]));
         // one definition each: an inline service is a definition and not a value, so the same object given
         // to two arguments is one of them left empty
         $seconds = self::integer($keys, 'age');
-        $services->get(TenantKeyRotator::class)->arg('$age', inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([$seconds]));
+        $services->get(KeySuccession::class)->arg('$age', inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([$seconds]));
         $services->get(KeysListCommand::class)->arg('$age', inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([$seconds]));
     }
 }
