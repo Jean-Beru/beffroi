@@ -30,6 +30,44 @@ final class ClaimsRequestTest extends TestCase
     }';
 
     /**
+     * Issue #590: the names it asks for, by the place they were asked of, which is what a person reads of a
+     * request made about them. The names and never what each one asks of its claim, which is for whoever
+     * serves it.
+     */
+    #[Test]
+    public function itSaysTheNamesItAsksForOnEachSide(): void
+    {
+        // When
+        $names = ClaimsRequest::fromJson(self::SPECIFICATION_EXAMPLE)->names();
+
+        // Then
+        static::assertSame(
+            [
+                'userinfo' => ['given_name', 'nickname', 'email', 'email_verified', 'picture', 'http://example.info/claims/groups'],
+                'id_token' => ['auth_time', 'acr'],
+            ],
+            $names,
+        );
+    }
+
+    /**
+     * A request that asks for nothing on one side says so with an empty list, which is what a document
+     * written from it holds.
+     */
+    #[Test]
+    public function aSideThatAsksForNothingNamesNothing(): void
+    {
+        // When / Then
+        static::assertSame(
+            [
+                'userinfo' => [],
+                'id_token' => [],
+            ],
+            new ClaimsRequest()->names(),
+        );
+    }
+
+    /**
      * OIDC Core §5.5, the example of the specification: the "userinfo" member, in order, with a claim
      * that is null and essential claims.
      */
