@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use Beffroi\Core\Domain\Listing\RetentionWindow;
 use DateInterval;
 use function is_array;
 use function is_bool;
@@ -116,5 +117,21 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
         }
 
         return inline_service(DateInterval::class)->args(['PT' . $value . 'S']);
+    }
+
+    /**
+     * A RetentionWindow built by the container from a number of days: what a store keeps and the moment
+     * before which it keeps nothing are one object, so no use case counts days from a number.
+     *
+     * @param array<array-key, mixed> $section
+     */
+    protected static function days(array $section, string $key): object
+    {
+        $value = $section[$key] ?? null;
+        if (! is_int($value) && ! is_string($value)) {
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of days.', $key));
+        }
+
+        return inline_service(RetentionWindow::class)->args([$value]);
     }
 }

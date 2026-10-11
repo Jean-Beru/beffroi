@@ -46,6 +46,6 @@ final readonly class HistorySection extends ConfigurationSection
 
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
-        $services->get(ClaimHistoryRetention::class)->arg('$days', self::integer($this->own($config), 'retention'));
+        $services->get(ClaimHistoryRetention::class)->arg('$window', self::days($this->own($config), 'retention'));
     }
 }
