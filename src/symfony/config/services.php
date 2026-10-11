@@ -30,6 +30,11 @@ use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineInitialAccessTokenRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineConsentRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineCredentialRepository;
+use Beffroi\Core\Port\EnrolmentTicketRepositoryInterface;
+use Beffroi\Core\Application\Enrolment\EnrolmentTicketRedemption;
+use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
+use Beffroi\Bundle\Http\PresentedEnrolmentTicket;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineEnrolmentTicketRepository;
 use Beffroi\Core\Port\TenantRepositoryInterface;
 use Beffroi\Core\Port\CanForgetCredentialsInterface;
 use Beffroi\Core\Application\Tenant\TenantHardening;
@@ -1009,6 +1014,10 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CredentialRepositoryInterface::class, DoctrineCredentialRepository::class);
     $services->alias(CanPageCredentialsInterface::class, DoctrineCredentialRepository::class);
     $services->alias(CanForgetCredentialsInterface::class, DoctrineCredentialRepository::class);
+    // what lets one person reach one enrolment without a session (issue #613); a ticket spent or out of
+    // time can no longer do anything and is swept with the other dead rows (issue #177)
+    $services->set(DoctrineEnrolmentTicketRepository::class)->tag('beffroi.dead_records');
+    $services->alias(EnrolmentTicketRepositoryInterface::class, DoctrineEnrolmentTicketRepository::class);
     // what a tenant decided of itself, written by the acts that change the row (issue #327); what the
     // configuration says of it is TenantSynchronizer's
     $services->set(DoctrineTenantRepository::class);
@@ -1216,6 +1225,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginCompletion::class);
     $services->set(SecondFactorRequirement::class);
     $services->set(PasskeyEnrolment::class);
+    // the ticket an administrator issues so that a person with nothing to sign in with poses a first
+    // passkey (issue #613), and what a URL of it opens
+    $services->set(EnrolmentTicketIssue::class);
+    $services->set(EnrolmentTicketRedemption::class);
+    $services->set(PresentedEnrolmentTicket::class);
     $services->set(PasskeyAuthentication::class);
     $services->set(BackupCodesRenewal::class);
     $services->set(TotpEnrolment::class);

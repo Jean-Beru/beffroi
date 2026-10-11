@@ -746,6 +746,12 @@ services:
     test.beffroi.tenant_hardening:
         alias: Beffroi\Core\Application\Tenant\TenantHardening
         public: true
+    test.beffroi.enrolment_tickets:
+        alias: Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue
+        public: true
+    test.beffroi.enrolment_ticket_store:
+        alias: Beffroi\Core\Port\EnrolmentTicketRepositoryInterface
+        public: true
     test.beffroi.linked_identities:
         alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
         public: true
