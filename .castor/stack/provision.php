@@ -203,37 +203,20 @@ const DEV_MESSAGE_KEY_ALGORITHM = 'MESSAGE-SEAL';
 const DEV_KEY_ALGORITHMS = ['ES256', 'ECDH-ES+A256KW', 'VAPID'];
 
 /**
- * Where the key material of the rungs of the ladder of demonstration clients lives (issue #201), beside
- * the one of the conformance clients and under the same rule: what a development stack generates is not
- * committed, the provider is given the public half through apps/op/.env.local, and "castor demo" hands
- * the private half to the demonstration.
+ * Where the key material of the lab that is nobody's client lives, beside the one of the conformance
+ * clients and under the same rule: what a development stack generates is not committed, the provider is
+ * given the public half through apps/op/.env.local, and the lab reads the private one from here. The
+ * trusted issuer of the assertion grant and the attestation authority keep their keys there.
+ *
+ * No client of the demonstration has a key here any more: a client of the forge draws what it needs when
+ * it is built and publishes the public half in its own registration (issue #582), so there is nothing to
+ * provision for it and nothing of it to hand over.
  */
 const DEV_DEMO_DIRECTORY = 'var/demo';
 
 /**
- * The two rungs of the ladder that prove a key instead of sharing a secret. The first one signs what it
- * sends, which is all "private_key_jwt" asks of it; the second one is the FAPI 2 rung, which also
- * receives what the provider encrypted to it, so its set carries a second key. One kind of key per rung,
- * published together, the "use" of each saying which is which (RFC 7517 §4.2).
- *
- * The signing key is a P-256 one, ES256 being what the FAPI profile asks for; the encryption key is an
- * RSA one, RSA-OAEP-256 being the algorithm of the two the provider is wired with that the demonstration
- * can read without a package its lock file cannot install (issue #201).
- */
-const DEV_DEMO_CLIENTS = [
-    'demo-key' => [
-        'env' => 'DEMO_KEY_JWKS',
-        'encryption' => false,
-    ],
-    'demo-fapi' => [
-        'env' => 'DEMO_FAPI_JWKS',
-        'encryption' => true,
-    ],
-];
-
-/**
  * The issuer of the development stack whose signature the tenant trusts (RFC 7523 §3, issue #299), which
- * "castor demo --assertion" signs with. Its key lives beside the ones of the ladder and under the same rule:
+ * "castor demo --assertion" signs with. Its key lives in var/demo/ under the same rule as the others:
  * what a development stack generates is not committed, the provider is given the public half through
  * apps/op/.env.local, and the lab reads the private one from var/demo/.
  *
@@ -274,7 +257,6 @@ const DEV_CLIENT_SECRETS = [
     'OIDC_DEMO_SECRET',
     'OIDC_DEMO_OPAQUE_SECRET',
     'OIDC_DEMO_SECOND_SECRET',
-    'DEMO_FORM_POST_SECRET',
     'DEMO_SERVICE_SECRET',
     'DEMO_GATEWAY_SECRET',
     'DEMO_CIBA_POLL_SECRET',
@@ -406,7 +388,7 @@ function provision(
         ], DEV_CLIENT_SECRETS),
     );
     io()->note(sprintf(
-        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the %d clients of the FAPI 2 and FAPI-CIBA plans are in %s, whole, and their public half in the same file; the keys of the ladder, of the trusted issuer %s and of the attestation authority %s are in %s, the same way.',
+        'These values live in %s; oidc-demo takes OIDC_DEMO_SECRET, "castor conformance" the others. The keys of the %d clients of the FAPI 2 and FAPI-CIBA plans are in %s, whole, and their public half in the same file; the keys of the trusted issuer %s and of the attestation authority %s are in %s, the same way.',
         DEV_ENV_LOCAL,
         count(DEV_FAPI_CLIENTS),
         DEV_CONFORMANCE_DIRECTORY,
@@ -568,7 +550,6 @@ function provision_env_local(?string $kms): array
     // by hand is put back to what the suite will actually sign with.
     $published = [
         ...provision_fapi_clients($path),
-        ...provision_demo_clients($path),
         ...provision_demo_issuer($path),
         ...provision_demo_attestation_authority($path),
     ];
@@ -920,48 +901,6 @@ function provision_fapi_clients(string $path): array
         $set = json_encode(
             [
                 'keys' => [$public],
-            ],
-            \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES,
-        );
-        if (provision_env_local_set($path, $definition['env'], base64_encode($set))) {
-            $published[] = $clientId;
-        }
-    }
-    if ($published !== []) {
-        io()->text(sprintf('Published the public JWK Set of %s into %s.', implode(', ', $published), DEV_ENV_LOCAL));
-    }
-
-    return $published;
-}
-
-/**
- * The key material of the rungs of the ladder that prove a key (issue #201), in var/demo/ and published
- * to the provider as the public half of each set (apps/op/config/packages/beffroi.yaml reads the variables
- * of DEV_DEMO_CLIENTS). Idempotent like its counterpart above: a set that is there is kept, so that a
- * rung the provider knows by its key survives a second "castor provision".
- *
- * @param string $path apps/op/.env.local
- *
- * @return list<string> the rungs whose variable this run wrote or put back
- */
-function provision_demo_clients(string $path): array
-{
-    $directory = getcwd() . '/' . DEV_DEMO_DIRECTORY;
-    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
-        io()->error(sprintf('Cannot create %s.', $directory));
-        exit(1);
-    }
-    $published = [];
-    foreach (DEV_DEMO_CLIENTS as $clientId => $definition) {
-        $keys = provision_demo_keys($directory, $clientId, $definition['encryption']);
-        $public = array_map(static function (array $key): array {
-            unset($key['d']);
-
-            return $key;
-        }, $keys);
-        $set = json_encode(
-            [
-                'keys' => $public,
             ],
             \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES,
         );

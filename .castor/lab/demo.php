@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
  * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
- * --logout-others, --resource-server, --api, --dpop, --ladder, --device, --service, --ciba, --assertion,
+ * --logout-others, --resource-server, --api, --dpop, --forge, --device, --service, --ciba, --assertion,
  * --rar, --native, --push). The last five need no oidc-demo: their clients are the CLIs of tests/demo/ and the walk
  * itself, because what they play has no browser of the demonstration in it, or asks for something oidc_login
  * does not send.
@@ -45,36 +45,19 @@ const DEMO_SECOND_URL = 'http://demo.localhost:8003';
 const DEMO_SECOND_CLIENT_ID = 'oidc-demo-second';
 
 /**
- * The rungs of the ladder of demonstration clients that need something of the OP beyond an issuer and a
- * client identifier (issue #201): the secret of the rung that authenticates with one, and the keys of
- * the two that prove one, which "castor provision" generated into var/demo/ and published to the
- * provider as their public half. What the demonstration needs is the private half, handed to it in its
- * own .env.local, base64 of the JWK so that a dotenv line stays a dotenv line.
+ * The secrets of the clients this tenant declares in its configuration that the demonstration holds
+ * besides its own: the one with opaque access tokens, and the one of the rich authorization request. Its
+ * API describes a token any of them handed out (RFC 7662 §2.2), which is what it needs their secrets
+ * for, and "castor provision" generated them.
  *
- * The key of a rung is read from the set by what it says it is for (RFC 7517 §4.2): "sig" is what the
- * client signs its assertions and its request objects with, "enc" the one the provider encrypts to.
+ * A client the forge builds is none of these: it registers itself, and the keys it signs with or receives
+ * an encrypted document with are drawn when it is built and published to the provider in its
+ * registration, so nothing of it is provisioned and nothing of it is written here.
  */
-const DEMO_LADDER_SECRETS = [
-    'OIDC_DEMO_SECRET' => 'DEMO_BASIC_SECRET',
+const DEMO_FORGE_SECRETS = [
     'OIDC_DEMO_OPAQUE_SECRET' => 'DEMO_OPAQUE_SECRET',
-    'DEMO_FORM_POST_SECRET' => 'DEMO_FORM_POST_SECRET',
     'DEMO_RAR_SECRET' => 'DEMO_RAR_SECRET',
 ];
-
-const DEMO_LADDER_KEYS = [
-    'demo-key' => [
-        'sig' => 'DEMO_KEY_JWK',
-    ],
-    'demo-fapi' => [
-        'sig' => 'DEMO_FAPI_JWK',
-        'enc' => 'DEMO_FAPI_ENCRYPTION_JWK',
-    ],
-];
-
-/**
- * Where "castor provision" left the key material of those rungs, private half included.
- */
-const DEMO_LADDER_DIRECTORY = 'var/demo';
 
 #[AsTask(
     description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --api plays the API Platform API of the demonstration, whose firewall asks the OP about the token at every request and keeps the answer a few seconds; --flows opens the pages where every flow this provider serves is drawn and plays two of them hop by hop; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
@@ -113,9 +96,9 @@ function demo(
     )]
     bool $dpop = false,
     #[AsOption(
-        description: 'The ladder of demonstration clients (issue #201): the five rungs played one after the other, from a client that puts the whole authorization request in the URL of the browser to one that pushes it signed, reads a signed response, holds a bound token and opens an encrypted ID token',
+        description: 'The forge of clients (issue #582): every preset of the page composed, registered at the provider with an initial access token the console issued (RFC 7591), signed in with, read hop by hop and deleted again (RFC 7592), from a client that puts the whole authorization request in the URL of the browser to one that pushes it signed, reads a signed response, holds a bound token and opens an encrypted ID token; and one composition the walk writes itself, which no preset holds',
     )]
-    bool $ladder = false,
+    bool $forge = false,
     #[AsOption(
         description: 'The first interoperability criterion of spike 6 (issue #228): a PHP CLI with no browser and no secret obtains a token by the device grant (tests/demo/device-cli.php), the code it shows is confirmed in a browser meanwhile, and every step is asserted',
     )]
@@ -199,9 +182,17 @@ function demo(
         'OIDC_PROVIDER_URI' => $env['BEFFROI_ISSUER'],
         'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
         'OIDC_CLIENT_SECRET' => $env['OIDC_DEMO_SECRET'],
-        // the rungs keep secrets of their own, which the walks above never swap (demo_ladder_values)
-        ...demo_ladder_values($env),
+        // the declared clients beside this one keep secrets of their own, which the walks above never
+        // swap (demo_forge_values)
+        ...demo_forge_values($env),
     ];
+    // RFC 7591 §1.2: the credential the registration endpoint asks for in the mode the forge plays, issued
+    // here and not in the walk below, because the server has to be started with it: the Symfony CLI hands
+    // the names of this file to the PHP it runs, and a name written after it started is a name that server
+    // does not have (demo_context).
+    if ($forge) {
+        $fixture['FORGE_INITIAL_ACCESS_TOKEN'] = demo_initial_access_token(DEMO_FORGE_TOKEN_NAME, count(DEMO_FORGE_PRESETS) + 1);
+    }
     // .env.local only: the .env of the demo, which its repository holds, is not touched
     demo_write_env_local($dir . '/.env.local', $fixture);
     // The OP serves a certificate of Caddy's internal CA, which the PHP of the host does not know unless
@@ -273,8 +264,8 @@ function demo(
         }
         demo_dpop_check($dir, $env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $env['OIDC_DEMO_OPAQUE_SECRET'], $ca);
     }
-    if ($ladder) {
-        demo_ladder_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
+    if ($forge) {
+        demo_forge_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
     }
     if ($device) {
         demo_device_check($env['BEFFROI_ISSUER'], $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
@@ -383,10 +374,9 @@ function demo(
  * every value in the environment of this process, from where every child inherits it as a real
  * environment variable. A real environment variable wins over a dotenv file, and a server started as a
  * daemon keeps the environment it was started with for as long as it lives. Two names are the same on
- * both sides, DEMO_FORM_POST_SECRET and DEMO_RAR_SECRET, so a server older than the "castor provision"
- * that regenerated them authenticated two rungs of the ladder with the secrets of the provisioning
- * before it, and the provider answered "401 invalid_client" to a client that had asked for nothing wrong
- * (issue #491). What that file says is what the server serves, and it is read again at every request:
+ * both sides, DEMO_RAR_SECRET being one, so a server older than the "castor provision" that regenerated
+ * it authenticated that client with the secret of the provisioning before it, and the provider answered
+ * "401 invalid_client" to a client that had asked for nothing wrong (issue #491). What that file says is what the server serves, and it is read again at every request:
  * the walks already count on that, demo_form_post_check writing a response mode and playing it without
  * starting anything again.
  */
@@ -494,34 +484,21 @@ function demo_server_stale_values(string $status, array $fixture): ?array
 }
 
 /**
- * What the rungs of the ladder need of the OP, read where "castor provision" left it: the secret of the
- * rung that shares one, and the private keys of the two that prove one, base64 of the JWK. A rung whose
- * material is not there yet is left out rather than written empty, so that a demonstration configured
- * before the provisioning says which rung is missing instead of failing to boot.
+ * What the declared clients of this tenant need of the OP beside the one the demonstration signs in as,
+ * read where "castor provision" left it: the secret of each. A secret that is not there yet is left out
+ * rather than written empty, so that a demonstration configured before the provisioning says which client
+ * is missing instead of failing to boot.
  *
  * @param array<string, string> $env apps/op/.env of the monorepo, .env.local merged over it
  *
  * @return array<string, string>
  */
-function demo_ladder_values(array $env): array
+function demo_forge_values(array $env): array
 {
     $values = [];
-    foreach (DEMO_LADDER_SECRETS as $name => $variable) {
+    foreach (DEMO_FORGE_SECRETS as $name => $variable) {
         if (($env[$name] ?? '') !== '') {
             $values[$variable] = $env[$name];
-        }
-    }
-    foreach (DEMO_LADDER_KEYS as $clientId => $variables) {
-        $file = sprintf('%s/%s/%s.jwks.json', getcwd(), DEMO_LADDER_DIRECTORY, $clientId);
-        if (! is_file($file)) {
-            continue;
-        }
-        $set = json_decode((string) file_get_contents($file), true);
-        foreach (is_array($set) && is_array($set['keys'] ?? null) ? $set['keys'] : [] as $key) {
-            $use = is_array($key) ? (string) ($key['use'] ?? '') : '';
-            if (isset($variables[$use])) {
-                $values[$variables[$use]] = base64_encode(json_encode($key, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES));
-            }
         }
     }
 
@@ -1398,80 +1375,155 @@ function demo_revoke(string $issuer, string $ca, string $clientId, string $secre
 }
 
 /**
- * The rungs of the ladder, as the demonstration serves them under /c/<rung>/ (issue #201), and what tells
- * one from the next: the client it registered as, and the way the authorization response comes back.
+ * The presets of the forge, as its page offers them (`App\Forge\Presets` of the demonstration), and what
+ * each one has to show for this walk to be satisfied: what the browser carried to the authorization
+ * endpoint, the shape the answer came back in, the fragments the page of the built client must hold, and
+ * the items of the Symfony status document that composition hits.
+ *
+ * The five rungs of the ladder this page replaced are the first five, which is why they are written in
+ * that order: what a reader saw there is still reachable in one click. The three below them are
+ * compositions the ladder had no rung for.
+ *
+ * A preset the provider refuses for a reason that is written down carries its issue in "known", and the
+ * walk then asserts the refusal rather than a success it will not get, as the "known" list of the
+ * conformance plans does.
  */
-const DEMO_LADDER_RUNGS = [
+const DEMO_FORGE_PRESETS = [
     'basic' => [
-        'client' => DEMO_CLIENT_ID,
-        'response' => 'query',
-        'adds' => 'client_secret_basic, everything in the query, an at+jwt verified offline',
-    ],
-    'opaque' => [
-        'client' => DEMO_OPAQUE_CLIENT_ID,
-        'response' => 'query',
-        'adds' => 'an opaque access token, which says nothing to whoever reads it',
+        'carries' => 'parameters',
+        'mode' => 'query',
+        'returns' => 'query',
+        'holds' => ['client_secret_basic', 'a self-contained access token'],
+        'gaps' => [],
     ],
     'form-post' => [
-        'client' => 'demo-form-post',
-        'response' => 'form_post',
-        'adds' => 'client_secret_post, and the response posted back instead of travelling in the URL',
+        'carries' => 'parameters',
+        'mode' => 'form_post',
+        'returns' => 'form',
+        'holds' => ['client_secret_post'],
+        'gaps' => [],
     ],
     'key' => [
-        'client' => 'demo-key',
-        'response' => 'query',
-        'adds' => 'private_key_jwt: the client proves a key and holds no secret at all',
+        'carries' => 'parameters',
+        'mode' => 'query',
+        'returns' => 'query',
+        'holds' => ['private_key_jwt', 'Front-Channel Logout'],
+        'gaps' => ['RP-07'],
+        // the one preset whose sign-out is played too: the forge holds its own RP-Initiated Logout, this
+        // firewall being none of "oidc_login"'s (ForgeLogoutListener of the demonstration)
+        'signs_out' => true,
     ],
     'rar' => [
-        // the literal, as the three rungs below it: the constant of this client is declared with the walk
-        // that plays it alone, further down this file
-        'client' => 'demo-rar',
-        'response' => 'query',
-        'adds' => 'authorization_details: the client asks what it may do, to what and how much, and not for a kind of thing',
+        'carries' => 'parameters',
+        'mode' => 'query',
+        'returns' => 'query',
+        'holds' => ['authorization_details', 'invoice_payment'],
+        'gaps' => [],
     ],
     'fapi' => [
-        'client' => 'demo-fapi',
-        'response' => 'jwt',
-        'adds' => 'the request pushed and signed, the response signed, the token bound, the documents encrypted',
+        'carries' => 'request_uri',
+        'mode' => null,
+        'returns' => 'signed',
+        'holds' => ['private_key_jwt', 'a JWE RSA-OAEP-256', 'application/jwt', 'jkt'],
+        'gaps' => ['RP-04', 'RP-05', 'RP-06', 'RP-07'],
+    ],
+    'fapi-mtls' => [
+        'carries' => 'request_uri',
+        'mode' => null,
+        'returns' => 'signed',
+        'holds' => ['self_signed_tls_client_auth', 'x5t#S256'],
+        'gaps' => ['RP-04', 'RP-07'],
+    ],
+    'pairwise' => [
+        'carries' => 'parameters',
+        'mode' => 'query',
+        'returns' => 'query',
+        'holds' => ['a JWE RSA-OAEP-256', 'pairwise'],
+        'gaps' => ['RP-05'],
+    ],
+    'public' => [
+        'carries' => 'parameters',
+        'mode' => 'query',
+        'returns' => 'query',
+        'holds' => ['a public client'],
+        'gaps' => [],
     ],
 ];
 
 /**
- * The ladder of demonstration clients (issue #201), played rung by rung, one request at a time.
- *
- * Every rung signs the same user in and serves the same page; what changes is what the client registered
- * and what travelled, which is what this walk looks at: the authorization request of the last rung
- * carries nothing but a client and a URI, its response is one signed parameter, its ID token is a JWE,
- * and its access token names the key it is bound to, where the first rung has all of it in the open.
+ * What the tenant calls the initial access token of this run, and the block of apps/op/.env.local the run
+ * owns while it plays (demo_registration_mode).
  */
-function demo_ladder_check(string $issuer, string $password, string $ca): void
-{
-    io()->section('The ladder of demonstration clients');
-    $verified = [];
+const DEMO_FORGE_TOKEN_NAME = 'castor demo --forge';
 
-    foreach (DEMO_LADDER_RUNGS as $slug => $rung) {
+const DEMO_FORGE_ENV_MARKER = 'castor demo --forge';
+
+/**
+ * The mode this walk asks the tenant for, by the name the class that is that mode gives itself: a
+ * credential the tenant issues, names, limits and revokes (RFC 7591 §1.2), which is the mode decision 0009
+ * calls controlled by initial token and the one a real ecosystem of clients uses.
+ */
+const DEMO_FORGE_MODE = 'initial_access_token';
+
+/**
+ * The forge of clients (issue #582), played preset by preset, one request at a time.
+ *
+ * Every preset is composed on the page of the forge, registered at the provider by that page (RFC 7591
+ * §3), signs the same user in and is deleted again (RFC 7592 §2.3). What changes from one to the next is
+ * what the client registered and what travelled, which is what this walk looks at: the authorization
+ * request of the FAPI presets carries nothing but a client and a URI, their answer is one signed
+ * parameter, their ID token is a JWE and their access token names what it is bound to, where the first
+ * preset has all of it in the open.
+ *
+ * Nothing of the provider is written for this: the tenant is asked for the mode decision 0009 calls
+ * controlled by initial token for the length of the run, it is given back at the end, and the clients the
+ * presets register are the clients any caller registering the same metadata would get.
+ */
+function demo_forge_check(string $issuer, string $password, string $ca): void
+{
+    io()->section('The forge of clients');
+
+    // The tenant is asked for the mode decision 0009 calls controlled by initial token for the length of
+    // this run, and given it back at the end; the credential it asks for is the one the demonstration was
+    // started with, worth one registration per preset and one for the composition built by hand below.
+    demo_registration_mode($issuer, $ca, DEMO_FORGE_ENV_MARKER, DEMO_FORGE_MODE);
+
+    $verified = [];
+    foreach (DEMO_FORGE_PRESETS as $slug => $preset) {
         $cookies = [];
         $profile = DEMO_URL . '/c/' . $slug . '/profile';
 
-        // the rung starts its flow, and what it puts in the URL of the browser is the first thing that
-        // tells it from the others
+        // the page offers that preset, and what it submits is the form of the forge and nothing else
+        [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/');
+        demo_expect(
+            $status === 200 && str_contains($page, 'name="preset" value="' . $slug . '"'),
+            sprintf('%s: the page of the forge offers this preset (got %d)', $slug, $status),
+        );
+
+        // one request builds it: the client is registered at the provider and did not exist before it
+        [$status, $location] = demo_request($cookies, $ca, 'POST', DEMO_URL . '/forge/build', [
+            'preset' => $slug,
+        ]);
+        demo_expect($status === 302 && $location === $profile, sprintf(
+            '%s: it is registered and the browser is sent to its page (RFC 7591 §3.2.1, got %d %s)',
+            $slug,
+            $status,
+            $location,
+        ));
+
+        // and the page of a client that is not signed in starts its flow, which is the demonstration
         [$status, $location] = demo_request($cookies, $ca, 'GET', $profile);
         demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf(
-            '%s: the page of the rung sends the browser to the authorization endpoint (got %d %s)',
+            '%s: its page sends the browser to the authorization endpoint (got %d %s)',
             $slug,
             $status,
             $location,
         ));
         parse_str((string) parse_url($location, \PHP_URL_QUERY), $authorization);
-        demo_expect(($authorization['client_id'] ?? null) === $rung['client'], sprintf(
-            '%s: the request is made as %s (got "%s")',
-            $slug,
-            $rung['client'],
-            $authorization['client_id'] ?? '',
-        ));
-        if ($rung['response'] === 'jwt') {
+
+        if ($preset['carries'] === 'request_uri') {
             demo_expect(
-                isset($authorization['request_uri']) && array_keys($authorization) === ['client_id', 'request_uri'],
+                array_keys($authorization) === ['client_id', 'request_uri'],
                 sprintf(
                     '%s: the browser carries the client and a request URI, and nothing else (RFC 9126 §4, got %s)',
                     $slug,
@@ -1481,55 +1533,52 @@ function demo_ladder_check(string $issuer, string $password, string $ca): void
             $carried = 'client_id and request_uri';
         } else {
             demo_expect(
-                ($authorization['response_type'] ?? null) === 'code' && ($authorization['code_challenge_method'] ?? null) === 'S256',
-                sprintf('%s: the request is response_type=code with PKCE S256', $slug),
+                ($authorization['response_type'] ?? null) === 'code'
+                && ($authorization['code_challenge_method'] ?? null) === 'S256'
+                && ($authorization['response_mode'] ?? null) === $preset['mode'],
+                sprintf('%s: response_type=code, PKCE S256 and response_mode=%s in the query', $slug, (string) $preset['mode']),
             );
             $carried = sprintf('%d parameters in the query', count($authorization));
         }
-        // the mode is asked for in the URL only where the client asks for one: the last rung asks for
-        // it in the request object it pushed, which the browser never carried
-        $mode = $rung['response'] === 'form_post' ? 'form_post' : null;
-        demo_expect(
-            ($authorization['response_mode'] ?? null) === $mode,
-            sprintf('%s: the response mode asked for in the URL is the one of this rung', $slug),
-        );
 
-        // the login of the OP, the same for every rung: what a rung changes is never how a user proves
-        // who they are
-        $location = demo_ladder_login($cookies, $issuer, $password, $ca, $location);
+        // the login of the provider, the same for every preset: what a composition changes is never how a
+        // user proves who they are
+        $location = demo_interaction_login($cookies, $issuer, $password, $ca, $location);
 
-        // and here the response comes back, each rung its own way
-        if ($rung['response'] === 'form_post') {
-            [$status, , $page, $headers] = demo_resume($cookies, $ca, $issuer, $location);
+        [$status, $location, $page] = demo_resume($cookies, $ca, $issuer, $location);
+        if ($preset['returns'] === 'form') {
             demo_expect($status === 200 && preg_match('/form[^>]+method="post"[^>]+action="([^"]+)"/i', $page, $form) === 1, sprintf(
-                '%s: the OP answers with a page that posts the response back (got %d)',
+                '%s: the provider answers with a page that posts the answer back (got %d)',
                 $slug,
                 $status,
             ));
             $action = html_entity_decode($form[1]);
-            demo_expect($action === DEMO_URL . '/c/' . $slug . '/callback', sprintf('%s: the form posts to the callback of the rung (got %s)', $slug, $action));
-            $response = demo_form_fields($page);
-            $returned = sprintf('a form of %d fields, no-store', count($response));
-            [$status, $location] = demo_request($cookies, $ca, 'POST', $action, $response);
+            demo_expect($action === DEMO_URL . '/c/' . $slug . '/callback', sprintf(
+                '%s: the form posts to the callback of this client (got %s)',
+                $slug,
+                $action,
+            ));
+            $answer = demo_form_fields($page);
+            $returned = sprintf('a form of %d fields', count($answer));
+            [$status, $location] = demo_request($cookies, $ca, 'POST', $action, $answer);
         } else {
-            [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
             demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/c/' . $slug . '/callback'), sprintf(
-                '%s: the OP sends the browser to the callback of the rung (got %d %s)',
+                '%s: the provider sends the browser to the callback of this client (got %d %s)',
                 $slug,
                 $status,
                 $location,
             ));
             parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
-            if ($rung['response'] === 'jwt') {
+            if ($preset['returns'] === 'signed') {
                 demo_expect(array_keys($callback) === ['response'], sprintf(
-                    '%s: the response is one signed parameter and nothing else (JARM §4.1, got %s)',
+                    '%s: the answer is one signed parameter and nothing else (JARM §4.1, got %s)',
                     $slug,
                     implode(', ', array_keys($callback)),
                 ));
-                $returned = sprintf('one "response" of %d characters, a JWS the client verifies', strlen((string) $callback['response']));
+                $returned = sprintf('one "response" of %d characters', strlen((string) $callback['response']));
             } else {
                 demo_expect(isset($callback['code'], $callback['state']) && ($callback['iss'] ?? null) === $issuer, sprintf(
-                    '%s: the callback carries code, state and iss (RFC 9207)',
+                    '%s: the callback carries code, state and iss (RFC 9207 §2)',
                     $slug,
                 ));
                 $returned = 'code, state and iss in the query';
@@ -1537,68 +1586,270 @@ function demo_ladder_check(string $issuer, string $password, string $ca): void
             [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
         }
 
-        if (isset($rung['known'])) {
-            $verified[] = [$slug, $carried, $returned, demo_ladder_known($cookies, $ca, $slug, $status, $location, $rung['known']), 'nothing to replay'];
+        if (isset($preset['known'])) {
+            $verified[] = [$slug, $carried, $returned, demo_forge_known($cookies, $ca, $slug, $status, $location, $preset['known']), 'nothing to delete'];
 
             continue;
         }
 
-        demo_expect($status === 302 && $location === $profile, sprintf('%s: the rung signs the user in (got %d %s)', $slug, $status, $location));
+        demo_expect($status === 302 && $location === $profile, sprintf('%s: the built client signs the user in (got %d %s)', $slug, $status, $location));
         [$status, , $page] = demo_request($cookies, $ca, 'GET', $profile);
-        demo_expect($status === 200, sprintf('%s: the page of the rung opens (got %d)', $slug, $status));
+        demo_expect($status === 200, sprintf('%s: its page opens (got %d)', $slug, $status));
+        $read = html_entity_decode($page);
+
+        foreach ($preset['holds'] as $fragment) {
+            demo_expect(str_contains($read, $fragment), sprintf('%s: its page says "%s"', $slug, $fragment));
+        }
+
+        // What `oidc_login` could not have served, which is the one thing the forge shows that the ladder
+        // could not: the page names the item of the status document, or says that configuration alone
+        // reaches this composition.
+        foreach ($preset['gaps'] as $gap) {
+            demo_expect(str_contains($read, $gap), sprintf('%s: its page names %s of the status document', $slug, $gap));
+        }
+        if ($preset['gaps'] === []) {
+            demo_expect(
+                str_contains($read, 'reaches this one with configuration alone'),
+                sprintf('%s: its page says a Symfony application reaches this composition with configuration alone', $slug),
+            );
+        }
+        $hops = demo_forge_hops($page);
+        demo_expect($hops !== [], sprintf('%s: its page shows what travelled, hop by hop', $slug));
+
+        // the identifier the provider assigned, which the page carries for this walk to read, and the
+        // trace the provider recorded while that very client signed in (issue #462)
+        demo_expect(
+            preg_match('/data-client-id="([^"]+)"/', $page, $registered) === 1,
+            sprintf('%s: its page names the client the provider registered', $slug),
+        );
+        $replayed = demo_forge_replay($cookies, $ca, $issuer, $slug, $registered[1]);
+        demo_forge_read($cookies, $ca, $slug, $registered[1]);
+
+        if ($preset['signs_out'] ?? false) {
+            demo_forge_sign_out($cookies, $ca, $issuer, $slug);
+        }
 
         $verified[] = [
             $slug,
             $carried,
             $returned,
-            demo_ladder_tokens($slug, demo_ladder_jwts($page), $page),
-            demo_ladder_replay($cookies, $ca, $issuer, $slug, (string) $rung['client']),
+            sprintf('%d hops: %s', count($hops), implode(', ', $hops)),
+            sprintf('%s, then %s', $replayed, demo_forge_delete($cookies, $ca, $slug)),
         ];
     }
 
-    io()->table(['Rung', 'To the provider', 'Back from it', 'What the rung holds', 'Replayed'], $verified);
-    foreach (DEMO_LADDER_RUNGS as $slug => $rung) {
-        if (isset($rung['known'])) {
-            io()->note(sprintf('The rung "%s" is refused on purpose and the run says so: %s', $slug, $rung['known']));
+    // A composition nobody wrote down: the form is what is submitted, so a client of a shape no preset
+    // holds is built the same way, which is what the page is for.
+    $verified[] = demo_forge_by_hand($issuer, $password, $ca);
+
+    demo_registration_mode($issuer, $ca, DEMO_FORGE_ENV_MARKER, null);
+
+    io()->table(['Composition', 'To the provider', 'Back from it', 'What its page shows', 'Afterwards'], $verified);
+    foreach (DEMO_FORGE_PRESETS as $slug => $preset) {
+        if (isset($preset['known'])) {
+            io()->note(sprintf('The preset "%s" is refused on purpose and the run says so: %s', $slug, $preset['known']));
         }
     }
-    io()->success('The rungs of the ladder signed the same user in, from a client that puts everything in the URL of a browser to one that puts nothing there.');
+    io()->success('Every composition of the forge registered itself, signed the same user in and deleted itself, from a client that puts the whole request in the URL of a browser to one that puts nothing there.');
 }
 
 /**
- * A rung the provider refuses for a reason that is written down: the demonstration lands on the page
- * that says why, and the walk reads that reason rather than asserting a success it will not get. The
- * refusal is what this rung shows until the issue it names is decided.
+ * A composition the walk writes itself, posted field by field as the form of the page posts it: a client
+ * that authenticates with a secret it signs rather than sends (RFC 7523 §2.2), asks for one scope and
+ * reads an answer posted back. No preset holds it, which is the point: what the page submits is a form.
+ *
+ * @return array{string, string, string, string, string}
+ */
+function demo_forge_by_hand(string $issuer, string $password, string $ca): array
+{
+    $cookies = [];
+    [$status, $location] = demo_request($cookies, $ca, 'POST', DEMO_URL . '/forge/build', [
+        'client_name' => 'Composed by the walk',
+        'token_endpoint_auth_method' => 'client_secret_jwt',
+        'scope' => ['profile'],
+        'response_mode' => 'form_post',
+        'id_token_signed_response_alg' => 'ES256',
+    ]);
+    demo_expect($status === 302 && preg_match('#^' . preg_quote(DEMO_URL, '#') . '/c/(own-[0-9a-f]+)/profile$#', $location, $built) === 1, sprintf(
+        'a composition no preset holds is built under a handle of its own (got %d %s)',
+        $status,
+        $location,
+    ));
+    $handle = $built[1];
+
+    [, $location] = demo_request($cookies, $ca, 'GET', $location);
+    $location = demo_interaction_login($cookies, $issuer, $password, $ca, $location);
+    [$status, , $page] = demo_resume($cookies, $ca, $issuer, $location);
+    demo_expect($status === 200 && preg_match('/form[^>]+method="post"[^>]+action="([^"]+)"/i', $page, $form) === 1, sprintf(
+        '%s: the answer is posted back, as the form asked for (got %d)',
+        $handle,
+        $status,
+    ));
+    [$status, $location] = demo_request($cookies, $ca, 'POST', html_entity_decode($form[1]), demo_form_fields($page));
+    demo_expect($status === 302 && $location === DEMO_URL . '/c/' . $handle . '/profile', sprintf(
+        '%s: it signs the user in (got %d %s)',
+        $handle,
+        $status,
+        $location,
+    ));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    $read = html_entity_decode($page);
+    demo_expect(
+        $status === 200 && str_contains($read, 'client_secret_jwt') && str_contains($read, 'the scopes openid, profile'),
+        sprintf('%s: its page says what was composed and nothing else (got %d)', $handle, $status),
+    );
+    demo_expect(
+        str_contains($read, 'reaches this one with configuration alone'),
+        sprintf('%s: and that an "oidc_login" firewall reaches this composition as it is', $handle),
+    );
+    demo_expect(preg_match('/data-client-id="([^"]+)"/', $page, $registered) === 1, sprintf('%s: its page names the client the provider registered', $handle));
+    demo_forge_read($cookies, $ca, $handle, $registered[1]);
+
+    return [
+        $handle,
+        '6 parameters in the query',
+        sprintf('a form of %d fields', count(demo_form_fields($page)) ?: 3),
+        sprintf('%d hops: %s', count(demo_forge_hops($page)), implode(', ', demo_forge_hops($page))),
+        demo_forge_delete($cookies, $ca, $handle),
+    ];
+}
+
+/**
+ * RP-Initiated Logout §2 and Front-Channel Logout 1.0 §3 for a client of the forge: signing out of the
+ * demonstration ends the session at the provider too, which no listener of "oidc_login" does here, this
+ * firewall being none of its own (ForgeLogoutListener), and the provider then answers the page that loads
+ * the front-channel URI of every client of that session in a frame.
+ *
+ * The frame is followed, in the browser that signed in and with its cookies, which is the whole of what
+ * the front channel is: the request arrives in the browser of the user and the application writes that
+ * route itself (`RP-07` of the status document, whose back channel has merged upstream and whose front
+ * channel has not).
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
-function demo_ladder_known(array &$cookies, string $ca, string $slug, int $status, string $location, string $issue): string
+function demo_forge_sign_out(array &$cookies, string $ca, string $issuer, string $slug): void
+{
+    [$status, $location] = demo_request($cookies, $ca, 'POST', DEMO_URL . '/c/logout');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/logout?'), sprintf(
+        '%s: signing out sends the browser to the provider to end its session (got %d %s)',
+        $slug,
+        $status,
+        $location,
+    ));
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $logout);
+    demo_expect(
+        is_string($logout['id_token_hint'] ?? null) && ($logout['post_logout_redirect_uri'] ?? null) === DEMO_URL . '/',
+        sprintf('%s: the logout request carries id_token_hint and post_logout_redirect_uri (RP-Initiated Logout §2)', $slug),
+    );
+
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    $frame = sprintf('%s/c/%s/frontchannel-logout', DEMO_URL, $slug);
+    demo_expect(
+        $status === 200 && preg_match('/<iframe[^>]+src="(' . preg_quote($frame, '/') . '[^"]*)"/', $page, $loaded) === 1,
+        sprintf('%s: the provider answers the page that loads the front-channel URI of this client in a frame (got %d)', $slug, $status),
+    );
+    $loaded = html_entity_decode($loaded[1]);
+    parse_str((string) parse_url($loaded, \PHP_URL_QUERY), $named);
+    demo_expect(
+        ($named['iss'] ?? null) === $issuer && is_string($named['sid'] ?? null),
+        sprintf('%s: the frame names the issuer and the session that ended (Front-Channel Logout 1.0 §2.1, got %s)', $slug, $loaded),
+    );
+    demo_expect(
+        preg_match('/http-equiv="refresh"[^>]+content="\d+;url=([^"]+)"/', $page, $back) === 1 && html_entity_decode($back[1]) === DEMO_URL . '/',
+        sprintf('%s: and the page sends the browser back where this client asked to be sent', $slug),
+    );
+
+    // the frame itself, which is a request of this browser and carries its cookies
+    [$status, , $ended] = demo_request($cookies, $ca, 'GET', $loaded);
+    demo_expect(
+        $status === 200 && str_contains($ended, 'was ended'),
+        sprintf('%s: the frame ends the session of this client here (got %d)', $slug, $status),
+    );
+    [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/c/' . $slug . '/profile');
+    demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf(
+        '%s: so its page asks for a login again (got %d %s)',
+        $slug,
+        $status,
+        $location,
+    ));
+}
+
+/**
+ * RFC 7592 §2.1: the built client reads itself at the URI it was handed, with the credential it was
+ * handed, which is the one way a dynamic client reads its own registration. It is asked for from its page,
+ * so it is asked for while that client is signed in.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_forge_read(array &$cookies, string $ca, string $handle, string $clientId): void
+{
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', sprintf('%s/c/%s/profile?read=1', DEMO_URL, $handle));
+    demo_expect(
+        $status === 200 && preg_match('/data-read="([^"]+)"/', $page, $read) === 1 && $read[1] === $clientId,
+        sprintf('%s: it reads its own registration at the URI it was handed (RFC 7592 §2.1, got "%s")', $handle, $read[1] ?? ''),
+    );
+}
+
+/**
+ * RFC 7592 §2.3: the client deletes itself at the provider, which answers 204 and no body, and the page
+ * says what came back rather than claiming the deletion. The route is not behind the firewall of the
+ * forge: a client that has signed out deletes itself all the same.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_forge_delete(array &$cookies, string $ca, string $handle): string
+{
+    [$status, $location] = demo_request($cookies, $ca, 'POST', DEMO_URL . '/forge/' . $handle . '/delete');
+    demo_expect($status === 302 && str_starts_with($location, DEMO_URL . '/?'), sprintf(
+        '%s: it deletes itself at the provider (RFC 7592 §2.3, got %d %s)',
+        $handle,
+        $status,
+        $location,
+    ));
+    [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
+    demo_expect(
+        $status === 200
+        && preg_match('/data-deleted="' . preg_quote($handle, '/') . '" data-answered="([^"]+)"/', $page, $answered) === 1
+        && $answered[1] === '204',
+        sprintf('%s: and the page says what the provider answered (got "%s")', $handle, $answered[1] ?? ''),
+    );
+    demo_expect(
+        ! str_contains($page, '/c/' . $handle . '/profile'),
+        sprintf('%s: the page of the forge no longer offers it', $handle),
+    );
+
+    return 'deleted, the provider answering 204';
+}
+
+/**
+ * A preset the provider refuses for a reason that is written down: the demonstration lands on the page
+ * that says why, and the walk reads that reason rather than asserting a success it will not get.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ */
+function demo_forge_known(array &$cookies, string $ca, string $slug, int $status, string $location, string $issue): string
 {
     demo_expect($status === 302 && $location === DEMO_URL . '/c/' . $slug . '/login', sprintf(
-        '%s: the demonstration refuses the login and says so on the page of the rung (got %d %s)',
+        '%s: the demonstration refuses the login and says so on the page of this client (got %d %s)',
         $slug,
         $status,
         $location,
     ));
     [$status, , $page] = demo_request($cookies, $ca, 'GET', $location);
-    demo_expect($status === 200 && preg_match('/<code>([^<]+)<\/code>/', $page, $reason) === 1, sprintf('%s: the page of the rung carries the reason', $slug));
-    $refusal = html_entity_decode($reason[1]);
-    demo_expect(
-        str_contains($refusal, 'token endpoint request failed'),
-        sprintf('%s: the refusal comes from the token endpoint, as the issue says (got "%s")', $slug, $refusal),
-    );
+    demo_expect($status === 200 && preg_match('/<p><code>(.*?)<\/code><\/p>/s', $page, $reason) === 1, sprintf('%s: the page carries the reason', $slug));
 
     return sprintf('refused, see %s', basename($issue));
 }
 
 /**
- * The login of the OP for a rung of the ladder: the request is parked, the page carries the form, the
- * form is posted, and what comes back is where the interaction resumes. The same three requests for every
- * rung, whatever it registered.
+ * The login of the provider for a client of the forge: the request is parked, the page carries the form,
+ * the form is posted, and what comes back is where the interaction resumes. The same three requests for
+ * every composition, whatever it registered: what a client asks for never changes how a user proves who
+ * they are.
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
-function demo_ladder_login(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
+function demo_interaction_login(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
 {
     [$status, $location] = demo_request($cookies, $ca, 'GET', $authorization);
     demo_expect($status === 302 && str_starts_with($location, $issuer . '/login?interaction='), sprintf(
@@ -1624,73 +1875,17 @@ function demo_ladder_login(array &$cookies, string $issuer, string $password, st
 }
 
 /**
- * What the page of a rung prints, read by the name each block carries and not by its place: the last rung
- * prints what it pushed before what it received, and a walk counting blocks would read a request object
- * for an ID token.
+ * What the page of a built client says travelled, by the label of each hop and in the order it happened.
+ * The page names those cards for this walk to read, the other cards of it being what the client is and
+ * what Symfony's own authenticator could not have served.
  *
- * @return array<string, string>
+ * @return list<string>
  */
-function demo_ladder_jwts(string $page): array
+function demo_forge_hops(string $page): array
 {
-    preg_match_all('/<pre class="jwt" data-jwt="([a-z_]+)">([^<]*)<\/pre>/', $page, $matches, \PREG_SET_ORDER);
-    $jwts = [];
-    foreach ($matches as $match) {
-        $jwts[$match[1]] = trim(html_entity_decode($match[2]));
-    }
+    preg_match_all('/<div class="card hop">\s*<h2>([^<]+)<\/h2>/', $page, $matches);
 
-    return $jwts;
-}
-
-/**
- * What the page of a rung shows of the tokens it holds, which is what the rung was registered for: an
- * access token with nothing to read on the opaque rung, one bound to a key on the last one, and an ID
- * token that arrived encrypted there and in clear everywhere else.
- *
- * @param array<string, string> $tokens
- */
-function demo_ladder_tokens(string $slug, array $tokens, string $page): string
-{
-    $idToken = $tokens['id_token'] ?? '';
-    $accessToken = $tokens['access_token'] ?? '';
-    if ($slug === 'opaque') {
-        demo_expect(substr_count($accessToken, '.') !== 2, 'opaque: the access token of the rung has no structure to read');
-
-        return sprintf('an opaque access token of %d characters', strlen($accessToken));
-    }
-    if ($slug === 'fapi') {
-        demo_expect(substr_count($idToken, '.') === 4, sprintf(
-            'fapi: the ID token arrived encrypted, a JWE of five parts (got %d)',
-            substr_count($idToken, '.') + 1,
-        ));
-        demo_expect(
-            substr_count($tokens['request_object'] ?? '', '.') === 2,
-            'fapi: the page shows the request object the rung pushed, which the browser never carried',
-        );
-        $jkt = demo_jwt($accessToken)['claims']['cnf']['jkt'] ?? null;
-        demo_expect(is_string($jkt), 'fapi: the access token names the key it is bound to (RFC 9449 §6)');
-
-        return sprintf('an ID token still encrypted, an at+jwt bound to %s', substr((string) $jkt, 0, 12));
-    }
-    $claims = demo_jwt($accessToken)['claims'];
-    demo_expect(($claims['cnf'] ?? null) === null, sprintf('%s: the access token is a bearer token, bound to nothing', $slug));
-    if ($slug === 'rar') {
-        // RFC 9396 §7: what this rung asked for beyond its scopes, as the type of the detail built it; it is
-        // the one thing its token says that the tokens of the rungs above do not
-        demo_expect(
-            ($claims['authorization_details'] ?? null) === DEMO_RAR_GRANTED,
-            sprintf('rar: the access token carries the detail the rung asked for (%s)', json_encode($claims['authorization_details'] ?? null)),
-        );
-        // and the page of the rung shows it: a token carrying a detail buried inside it shows nobody anything,
-        // so the demonstration reads the claim and renders it (LadderController)
-        demo_expect(
-            preg_match('/data-authorization-detail="([^"]+)"/', $page, $shown) === 1 && $shown[1] === 'invoice_payment',
-            sprintf('rar: the page of the rung shows the detail its token carries (got "%s")', $shown[1] ?? ''),
-        );
-
-        return sprintf('an at+jwt carrying %d authorization detail(s)', count(DEMO_RAR_GRANTED));
-    }
-
-    return sprintf('an at+jwt with no cnf, scope "%s"', $claims['scope'] ?? '?');
+    return array_map(trim(...), $matches[1]);
 }
 
 /**
@@ -1934,7 +2129,7 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     $verified[] = ['POST /api/v1/invoices', sprintf('403, %s', $challenge)];
 
     // RFC 7662 §2.2: the OP describes a token to the client it was issued to and to no other. The
-    // demonstration is not one client, its main firewall and every rung of its ladder being one each, so
+    // demonstration is not one client, its main firewall and each declared client of the tenant being one, so
     // whoever reads one of its pages holds a token of whichever client that page belongs to: the API asks
     // the OP as each client whose secret the demonstration holds, and the first answer that describes the
     // token is the one its firewall reads (WhicheverClientKnowsTheToken of the demonstration). A token of
@@ -2056,7 +2251,7 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         'An API Platform API served the invoices of its user behind the introspection endpoint of the OP, one scope per operation, and forgot what it was told after %d seconds.',
         $ttl,
     ));
-    io()->note('The page of the document offers one way of being authorized, the bearer token of RFC 6750 §2.1, and the token to paste is any one the demonstration handed out: the OP describes a token to the client it was issued to and to no other (RFC 7662 §2.2), so the API asks it as each client whose secret the demonstration holds, which is what the step above plays. The two rungs that prove a key rather than share a secret are the exception, their tokens being ones no HTTP client can ask about. A flow of an authorization code is not offered in that page: it runs in a browser, so the client it signed in as would hold its secret there.');
+    io()->note('The page of the document offers one way of being authorized, the bearer token of RFC 6750 §2.1, and the token to paste is any one the demonstration handed out: the OP describes a token to the client it was issued to and to no other (RFC 7662 §2.2), so the API asks it as each client whose secret the demonstration holds, which is what the step above plays. A flow of an authorization code is not offered in that page: it runs in a browser, so the client it signed in as would hold its secret there.');
     io()->note(sprintf(
         'The %d seconds are the trade RFC 7662 §4 leaves to a resource server: a longer window spares the OP a round trip per request and carries a withdrawn token for longer, and the figure is one line of config/services.yaml of the demonstration. It is the other half of what --resource-server shows: an "at+jwt" verified offline is accepted until it expires, whatever the OP knows of it, where this API asks and so stops at the end of the window.',
         $ttl,
@@ -2338,13 +2533,13 @@ function demo_flow_backchannel_run(string $issuer, string $password, string $ca)
 }
 
 /**
- * A sign-in replayed after the fact (issue #462): the trace this provider recorded while a rung of the
- * ladder signed its user in, read from the page that draws it. The back-channel token request is in it,
+ * A sign-in replayed after the fact (issue #462): the trace this provider recorded while a client of the
+ * forge signed its user in, read from the page that draws it. The back-channel token request is in it,
  * which is the whole reason a narrator living in the page of a client cannot do this.
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
-function demo_ladder_replay(array &$cookies, string $ca, string $issuer, string $slug, string $clientId): string
+function demo_forge_replay(array &$cookies, string $ca, string $issuer, string $slug, string $clientId): string
 {
     $drawing = demo_flow_trace($cookies, $ca, $issuer, 'authorization_code', $clientId);
     foreach (['authorization_request', 'authorization_response', 'token_request', 'token_response'] as $hop) {
@@ -3592,7 +3787,7 @@ const DEMO_ACCESS_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:access_token';
  * endpoint, while this walk goes to the address it printed and answers as whoever is in front of the browser
  * would, on a device that shares nothing with it but the code.
  *
- * Every step is asserted as the ladder asserts its rungs: what the provider hands the CLI to display
+ * Every step is asserted as the forge asserts its presets: what the provider hands the CLI to display
  * (§3.2), what the page shows of the request before anybody agrees to it (BCP 10027 §2: the provider that
  * asks, the client that asks, where it asked from, the code itself), and what the CLI ends up holding.
  */
@@ -5437,7 +5632,7 @@ function demo_register_check(string $issuer, string $password, string $ca): void
     // the time, which is what the conformance plans need and what this walk must not leave behind.
     demo_registration_mode($issuer, $ca, DEMO_REGISTER_ENV_MARKER, DEMO_REGISTER_MODE);
 
-    $token = demo_register_token();
+    $token = demo_initial_access_token(DEMO_REGISTER_TOKEN_NAME, DEMO_REGISTER_REGISTRATIONS);
     $verified[] = [
         'Initial access token',
         sprintf('"%s", worth %d registrations (beffroi:client:token:issue)', DEMO_REGISTER_TOKEN_NAME, DEMO_REGISTER_REGISTRATIONS),
@@ -5793,9 +5988,10 @@ function demo_registration_mode(string $issuer, string $ca, string $marker, ?str
 
 /**
  * An initial access token of the tenant, issued by the console command a tenant issues them with (#344):
- * the value is printed once, on the last line, and this provider cannot show it again.
+ * the value is printed once, on the last line, and this provider cannot show it again. Two walks ask for
+ * one, under a name of their own and worth what they will spend, so it is written here once.
  */
-function demo_register_token(): string
+function demo_initial_access_token(string $name, int $registrations): string
 {
     $process = new Process([
         'docker',
@@ -5806,9 +6002,9 @@ function demo_register_token(): string
         'php',
         'bin/console',
         'beffroi:client:token:issue',
-        DEMO_REGISTER_TOKEN_NAME,
+        $name,
         '--registrations',
-        (string) DEMO_REGISTER_REGISTRATIONS,
+        (string) $registrations,
         '--days',
         '1',
     ]);
