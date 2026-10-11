@@ -10,6 +10,7 @@ use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -297,5 +298,79 @@ final class AuthenticationProofsTest extends TestCase
     {
         // When / Then
         static::assertFalse(AuthenticationMethod::password()->equals(new AuthenticationMethod('PWD')));
+    }
+
+    /**
+     * The document a column holds the proofs as, which is the shape of
+     * TokenInterface::getAuthenticationProofs(): a method reference on the Unix timestamp it was last
+     * proven at.
+     *
+     * @param array<string, int> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function theProofsComeBackOutOfTheirTimestamps(AuthenticationProofs $proofs, array $document): void
+    {
+        // When / Then
+        static::assertEquals($proofs, AuthenticationProofs::fromTimestamps($document));
+    }
+
+    /**
+     * @return iterable<string, array{AuthenticationProofs, array<string, int>}>
+     */
+    public static function provideDocuments(): iterable
+    {
+        yield 'one proof' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), new DateTimeImmutable('@1789000000')),
+            [
+                'pwd' => 1789000000,
+            ],
+        ];
+        yield 'two proofs' => [
+            AuthenticationProofs::of(AuthenticationMethod::password(), new DateTimeImmutable('@1789000000'))->with(
+                new AuthenticationMethod('otp'),
+                new DateTimeImmutable('@1789000060'),
+            ),
+            [
+                'pwd' => 1789000000,
+                'otp' => 1789000060,
+            ],
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideTimestampsThatAreNotProofs')]
+    public function aDocumentThatIsNotTheProofsIsRefused(array $document, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        AuthenticationProofs::fromTimestamps($document);
+    }
+
+    /**
+     * @return iterable<string, array{array<array-key, mixed>, string}>
+     */
+    public static function provideTimestampsThatAreNotProofs(): iterable
+    {
+        yield 'no entry' => [[], 'A session holds at least one authentication proof (RFC 8176).'];
+        yield 'a string timestamp' => [
+            [
+                'pwd' => '1789000000',
+            ],
+            'Authentication proofs map a method reference to a Unix timestamp.',
+        ];
+        yield 'a list' => [[1789000000], 'Authentication proofs map a method reference to a Unix timestamp.'];
+        yield 'a malformed method' => [
+            [
+                'p w d' => 1789000000,
+            ],
+            '"p w d" is not a well-formed authentication method reference.',
+        ];
     }
 }

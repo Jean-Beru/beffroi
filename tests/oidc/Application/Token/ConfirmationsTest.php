@@ -265,4 +265,71 @@ final class ConfirmationsTest extends TestCase
 
         yield 'a confirmation that is not an object' => ['x5t#S256', 'names one of'];
     }
+
+    /**
+     * The members a confirmation writes (RFC 7800 §3.1) are the document the column of an opaque token
+     * holds it as, so the row says the same thing an "at+jwt" says of the same token.
+     *
+     * @param array<string, mixed> $members
+     */
+    #[Test]
+    #[DataProvider('provideMembers')]
+    public function aConfirmationWritesTheMembersAColumnHoldsItAs(ConfirmationInterface $confirmation, array $members): void
+    {
+        // When / Then
+        static::assertSame($members, $confirmation->toMembers());
+    }
+
+    /**
+     * @param array<string, mixed> $members
+     */
+    #[Test]
+    #[DataProvider('provideMembers')]
+    public function aConfirmationComesBackOutOfItsMembers(ConfirmationInterface $confirmation, array $members): void
+    {
+        // When / Then
+        static::assertEquals($confirmation, self::confirmations()->fromMembers($members));
+    }
+
+    /**
+     * Those same members under the "cnf" are what a token carries, so the two cannot drift apart.
+     *
+     * @param array<string, mixed> $members
+     */
+    #[Test]
+    #[DataProvider('provideMembers')]
+    public function theClaimOfATokenCarriesThoseSameMembers(ConfirmationInterface $confirmation, array $members): void
+    {
+        // When / Then
+        static::assertSame(
+            [
+                ConfirmationInterface::CLAIM => $members,
+            ],
+            $confirmation->toClaims(),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{ConfirmationInterface, array<string, mixed>}>
+     */
+    public static function provideMembers(): iterable
+    {
+        yield 'a key the client proved possession of' => [
+            new KeyConfirmation(self::THUMBPRINT),
+            [
+                'jkt' => self::THUMBPRINT,
+            ],
+        ];
+        yield 'the certificate the client presented' => [
+            new CertificateConfirmation(self::THUMBPRINT),
+            [
+                'x5t#S256' => self::THUMBPRINT,
+            ],
+        ];
+    }
+
+    private static function confirmations(): Confirmations
+    {
+        return new Confirmations([new KeyConfirmationKind(), new CertificateConfirmationKind()]);
+    }
 }

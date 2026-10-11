@@ -209,4 +209,100 @@ final class ClaimsRequestTest extends TestCase
         yield 'values holds an object (deeper than a claims request)' => ['{"id_token": {"acr": {"values": [{"a": "b"}]}}}', 'not valid JSON'];
         yield 'values holds null' => ['{"id_token": {"acr": {"values": [null]}}}', '"values" member'];
     }
+
+    /**
+     * OIDC Core §5.5: the document a column holds the request as is the form of the wire, the two members
+     * and the claims each asks of, an empty object where it asks for nothing.
+     *
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itWritesTheDocumentAColumnHoldsItAs(ClaimsRequest $claims, array $document): void
+    {
+        // When / Then
+        static::assertSame($document, $claims->toDocument());
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itComesBackOutOfItsDocument(ClaimsRequest $claims, array $document): void
+    {
+        // When / Then
+        static::assertEquals($claims, ClaimsRequest::fromDocument($document));
+    }
+
+    /**
+     * @return iterable<string, array{ClaimsRequest, array<string, mixed>}>
+     */
+    public static function provideDocuments(): iterable
+    {
+        yield 'a request of both members' => [
+            new ClaimsRequest([
+                'email' => new ClaimRequest(true),
+                'name' => new ClaimRequest(),
+            ], [
+                'acr' => new ClaimRequest(false, null, ['silver', 'gold']),
+                'auth_time' => new ClaimRequest(true, 1789000000),
+            ]),
+            [
+                'userinfo' => [
+                    'email' => [
+                        'essential' => true,
+                    ],
+                    'name' => null,
+                ],
+                'id_token' => [
+                    'acr' => [
+                        'values' => ['silver', 'gold'],
+                    ],
+                    'auth_time' => [
+                        'essential' => true,
+                        'value' => 1789000000,
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * A member that asks for nothing is written as an empty JSON object and not as a list, which is what
+     * an empty PHP array would have been written as.
+     */
+    #[Test]
+    public function aMemberThatAsksForNothingIsWrittenAsAnObject(): void
+    {
+        // When / Then
+        static::assertEquals((object) [], new ClaimsRequest()->toDocument()['userinfo']);
+    }
+
+    /**
+     * That empty object comes back as an empty array, which is what asking for nothing is.
+     */
+    #[Test]
+    public function aDocumentThatAsksForNothingComesBackAsARequestThatAsksForNothing(): void
+    {
+        // When
+        $claims = ClaimsRequest::fromDocument([
+            'userinfo' => [],
+            'id_token' => [],
+        ]);
+
+        // Then
+        static::assertTrue($claims->isEmpty());
+    }
+
+    #[Test]
+    public function aDocumentThatIsAListIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The claims request must be a JSON object (OIDC Core §5.5).');
+
+        // When
+        ClaimsRequest::fromDocument([1]);
+    }
 }

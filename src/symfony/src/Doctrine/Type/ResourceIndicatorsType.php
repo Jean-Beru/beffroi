@@ -8,21 +8,20 @@ use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\DBAL\Types\Exception\ValueNotConvertible;
 use Doctrine\DBAL\Types\Type;
-use function explode;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
-use function implode;
 use function is_string;
 
 /**
- * The resources a grant carries (RFC 8707 §2), space delimited: a resource indicator is an absolute URI
- * and carries no space, so the set writes itself and reads itself back exactly as a set of scopes does.
+ * The resources a grant carries (RFC 8707 §2) in one column, as the set writes itself
+ * (`ResourceIndicators::toDocument()`): space delimited, a resource indicator carrying no space.
+ *
+ * An empty column is no set at all and never an empty one, which is why this is a type of its own and not
+ * a `StringObjectType`: the absence of resources is a null, exactly as it is for the scopes of a token.
  */
 final class ResourceIndicatorsType extends Type
 {
     public const string NAME = 'beffroi_resources';
-
-    private const string SEPARATOR = ' ';
 
     public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
     {
@@ -38,7 +37,7 @@ final class ResourceIndicatorsType extends Type
             throw InvalidType::new($value, self::NAME, ['null', ResourceIndicators::class]);
         }
 
-        return implode(self::SEPARATOR, $value->values());
+        return $value->toDocument();
     }
 
     public function convertToPHPValue(mixed $value, AbstractPlatform $platform): ?ResourceIndicators
@@ -51,7 +50,7 @@ final class ResourceIndicatorsType extends Type
         }
 
         try {
-            return ResourceIndicators::of(explode(self::SEPARATOR, $value));
+            return ResourceIndicators::fromDocument($value);
         } catch (InvalidArgumentException $exception) {
             throw ValueNotConvertible::new($value, self::NAME, $exception->getMessage(), $exception);
         }

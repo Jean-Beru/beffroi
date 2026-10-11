@@ -11,8 +11,6 @@ use Doctrine\DBAL\Types\Type;
 use Beffroi\Core\Exception\InvalidArgumentException as CoreInvalidArgumentException;
 use Beffroi\Oidc\Exception\InvalidArgumentException as OidcInvalidArgumentException;
 use function is_array;
-use function is_float;
-use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
@@ -21,10 +19,15 @@ use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
 use JsonException;
-use function sprintf;
 
 /**
  * A value object stored as a JSON document; a document that does not look like it is a conversion error, never a guess.
+ *
+ * It keeps the Doctrine half and nothing else: the name the mapping uses, the declaration of the column on
+ * each platform, the JSON, and the refusals of DBAL. **What the document looks like is the object's**, in
+ * the package that owns it, so that a round trip costs no connection and a second reader of those rows
+ * reads them through the same object (issue #603); here, what that object refuses becomes the
+ * `ValueNotConvertible` of Doctrine, naming the column it was read out of.
  *
  * @template T of object
  */
@@ -37,6 +40,9 @@ abstract class JsonObjectType extends Type
      *
      * @param T $value
      *
+     * @throws CoreInvalidArgumentException
+     * @throws OidcInvalidArgumentException
+     *
      * @return array<array-key, mixed>
      */
     abstract protected function encode(object $value): array;
@@ -44,7 +50,6 @@ abstract class JsonObjectType extends Type
     /**
      * @param array<array-key, mixed> $data
      *
-     * @throws ValueNotConvertible
      * @throws CoreInvalidArgumentException
      * @throws OidcInvalidArgumentException
      *
@@ -76,7 +81,7 @@ abstract class JsonObjectType extends Type
 
         try {
             return json_encode($this->encode($value), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
-        } catch (JsonException $exception) {
+        } catch (CoreInvalidArgumentException|OidcInvalidArgumentException|JsonException $exception) {
             throw ValueNotConvertible::new($value, $this->name(), $exception->getMessage(), $exception);
         }
     }
@@ -107,47 +112,5 @@ abstract class JsonObjectType extends Type
         } catch (CoreInvalidArgumentException|OidcInvalidArgumentException $exception) {
             throw ValueNotConvertible::new($value, $this->name(), $exception->getMessage(), $exception);
         }
-    }
-
-    /**
-     * @param array<array-key, mixed> $data
-     */
-    final protected function nullableString(array $data, string $key): ?string
-    {
-        $value = $data[$key] ?? null;
-        if ($value !== null && ! is_string($value)) {
-            throw ValueNotConvertible::new($data, $this->name(), sprintf('The member "%s" must be a string or absent.', $key));
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<array-key, mixed> $data
-     */
-    final protected function nullableInt(array $data, string $key): ?int
-    {
-        $value = $data[$key] ?? null;
-        if ($value !== null && ! is_int($value)) {
-            throw ValueNotConvertible::new($data, $this->name(), sprintf('The member "%s" must be an integer or absent.', $key));
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<array-key, mixed> $data
-     */
-    final protected function nullableFloat(array $data, string $key): ?float
-    {
-        $value = $data[$key] ?? null;
-        if ($value === null) {
-            return null;
-        }
-        if (! is_float($value) && ! is_int($value)) {
-            throw ValueNotConvertible::new($data, $this->name(), sprintf('The member "%s" must be a number or absent.', $key));
-        }
-
-        return (float) $value;
     }
 }

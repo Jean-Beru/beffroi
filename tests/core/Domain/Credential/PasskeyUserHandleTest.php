@@ -68,4 +68,46 @@ final class PasskeyUserHandleTest extends TestCase
         yield '63 bytes' => [str_repeat('h', 63)];
         yield '65 bytes' => [str_repeat('h', 65)];
     }
+
+    /**
+     * WebAuthn Level 3 §5.4.3: the sixty-four octets as a column holds them, base64url without padding.
+     */
+    #[Test]
+    public function itWritesTheValueAColumnHoldsItAs(): void
+    {
+        // When / Then
+        static::assertSame(str_repeat('_', 85) . 'w', new PasskeyUserHandle(str_repeat("\xff", 64))->toDocument());
+    }
+
+    #[Test]
+    public function itComesBackOutOfItsValue(): void
+    {
+        // Given
+        $handle = new PasskeyUserHandle(str_repeat("\xff", 64));
+
+        // When / Then
+        static::assertEquals($handle, PasskeyUserHandle::fromDocument($handle->toDocument()));
+    }
+
+    #[Test]
+    public function aValueThatIsNotBase64UrlIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A user handle is base64url.');
+
+        // When
+        PasskeyUserHandle::fromDocument(str_repeat('*', 86));
+    }
+
+    #[Test]
+    public function aValueOfTheWrongLengthIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A passkey user handle is 64 bytes long.');
+
+        // When
+        PasskeyUserHandle::fromDocument(str_repeat('a', 84));
+    }
 }
