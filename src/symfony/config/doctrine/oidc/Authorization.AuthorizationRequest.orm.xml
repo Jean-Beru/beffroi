@@ -7,6 +7,15 @@
       A validated authorization request (architecture §4.2), every parameter in its own column; the client
       is not mapped here, an embeddable cannot hold it, the entity that carries the request does.
 
+      **This is the one embeddable the mapping holds**, and what keeps it is the client: a registration is
+      read back from wherever registrations are read at every load (ClientResolver), while a DBAL type is
+      asked for a complete object and the constructor of a request requires it, so no type hands this
+      object back whole. Its seventeen other fields already have a type each, eight of them types of the
+      bundle and two of those handed a registry at boot, which a type reading one document for the whole
+      object would have to be handed too. What holds the exemption to those reasons is
+      OneEmbeddableRemainsTest, which refuses a second embeddable and a reason that stopped being true,
+      and not this comment.
+
       Two of its columns carry a personal datum and are sealed under the data key of their tenant
       (decisions 0011 and 0018): the two hints, which name the person a client is asking for. Every other
       parameter is what the request asked of the protocol, and the state and the nonce are values the
