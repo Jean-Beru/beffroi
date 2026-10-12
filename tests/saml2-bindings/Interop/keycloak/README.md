@@ -26,8 +26,10 @@ every query string received and `PostReceiver` every form.
 The judge was played on 1 October 2026: **green both ways**, on PHP 8.5.10 and on PHP 8.4.25, every probe refused by
 Keycloak, its `LogoutResponse` over HTTP-Redirect obtained, verified and accepted. Two settings of Keycloak's console
 were changed for it, each a measured finding: as its importer configures it, the broker asks for its response over
-HTTP-Redirect, which the model refuses (K-2), and realm `idp` answers a logout over HTTP-POST (K-9). Section 6 holds
-the findings.
+HTTP-Redirect, which the model refuses (K-2), and realm `idp` answers a logout over HTTP-POST (K-9). Played again on 12
+October 2026, after the `dev-main` of both dependencies moved and B-1 and B-9 changed: **green both ways**, on PHP
+8.5.11 and on PHP 8.4.25, the same outcome but for the measure of the broker's `RelayState` of 122 bytes, which the
+package now reads (section 4, "Played again on 12 October 2026"). Section 6 holds the findings.
 
 ## Versions
 
@@ -38,6 +40,8 @@ the findings.
 | This package | `src/` as of d891fbb, on `beffroi-php/saml2-model` `dev-main` at 9c833c5 and `beffroi-php/xml-security` `dev-main` at d7990c0 | the branch `story/9-keycloak` | 1 October 2026 |
 | PHP of the scripts | 8.5.10 and 8.4.25, curl 8.14.1, OpenSSL 3.5.7 | `ghcr.io/spomky-labs/phpqa:8.5` and `:8.4`, `PHP_VERSION` of castor | 1 October 2026 |
 | Docker, Compose, Castor | Docker 29.8.1, Compose 5.5.1, Castor 1.7.0 (macOS, Darwin 25.6, Apple M4) | the machine that ran it | 1 October 2026 |
+| This package, played again | `src/` as of 82bfa1d, on `beffroi-php/saml2-model` `dev-main` at 6028dd7 and `beffroi-php/xml-security` `dev-main` at aece936, documentation only since 9c833c5 and d7990c0 (the name Beffroi) | the branch `story/11-sync` | 12 October 2026 |
+| PHP of the scripts, played again | 8.5.11 and 8.4.25, curl 8.14.1, OpenSSL 3.5.7; Docker 29.8.2, Compose 5.5.1, Castor 1.7.0 | `ghcr.io/spomky-labs/phpqa:8.5` and `:8.4` as pulled on 12 October 2026 | 12 October 2026 |
 
 ## 1. The installation
 
@@ -271,8 +275,8 @@ accepted when taken to the login page:
   session's code (43 characters), its tab (11) and its client's internal ID, a UUID written as the base64url of its 16
   bytes (22), joined by dots (`IdentityBrokerState.decoded()` of 26.7.4; its SAML provider declares no long state,
   `supportsLongStateParameter()` false). For a client whose internal ID is not a UUID, Keycloak writes the base64url of
-  its `client_id` instead: 122 bytes for a `client_id` of 49 bytes, which `RedirectReceiver` refuses (`InvalidRelayState`,
-  B-9; K-4). The `RelayState` of its `LogoutRequest` is 24 bytes.
+  its `client_id` instead: 122 bytes for a `client_id` of 49 bytes, which `RedirectReceiver` refused on 1 October 2026
+  (`InvalidRelayState`, B-9) and reads since 12 October 2026 (K-4). The `RelayState` of its `LogoutRequest` is 24 bytes.
 - Realm `idp` echoes the `RelayState` it received: 16, 17 and 80 bytes intact, in its forms and in its query string;
   when none was received, none is sent. Keycloak never sent an empty `RelayState`.
 - A space in a signed `RelayState`, written `%20` by `RedirectSender` and `+` by hand: both verified and decoded to a
@@ -285,6 +289,29 @@ or `SAMLResponse`, `RelayState`, `SigAlg`, `Signature`, nothing else; a space is
 **Forms**: the base64 of every form, the response's and the logout response's, on one line, never wrapped; the fields
 `SAMLResponse`, then `RelayState` when there is one.
 
+### Played again on 12 October 2026
+
+After the `dev-main` of `saml2-model` (6028dd7, its merge of 4b19973) and of `xml-security` (aece936, its merge of
+31dbd57) moved, documentation only, the name Beffroi, and after B-1 came to refuse a name PHP's parser reads as one of
+the six and B-9 to read a `RelayState` of up to 1 024 bytes (section 12 of the specification), the run was played once
+more, from a stopped Keycloak, its realm keys new, without `--keep`, what Keycloak sent written to the ignored
+`received/`:
+
+```bash
+castor keycloak --up
+castor keycloak --capture && castor keycloak --exchange
+PHP_VERSION=8.4 castor keycloak --capture && PHP_VERSION=8.4 castor keycloak --exchange
+castor keycloak --down
+```
+
+On PHP 8.5.11, the capture from 13:17:35 UTC and the exchange from 13:17:40 UTC, and on PHP 8.4.25 from 13:17:50 UTC:
+**every step green on both**, eighteen steps, three of the capture and fifteen of the exchange; the twelve probes
+refused by realm `idp` and by the broker, each genuine twin accepted; the `SigAlg` realm `idp` accepts and refuses
+(K-7), its decoding of a space in a `RelayState`, and the broker's `AuthnRequest` asking for its response over
+HTTP-Redirect, verified and refused by the model (K-2), as on 1 October (RSASSA-PSS not measured on 8.4, whose build
+lacks it). One outcome differs, as the rules now say: the broker's `AuthnRequest` for a client of 49 bytes whose
+internal ID is not a UUID, its `RelayState` of 122 bytes, is read by `RedirectReceiver` where it was refused (K-4).
+
 ## 5. Measurements
 
 `../measure.php` on the captures of `tests/Fixture/real/`, 1 October 2026 (section 2 has the command):
@@ -292,7 +319,7 @@ or `SAMLResponse`, `RelayState`, `SigAlg`, `Signature`, nothing else; a space is
 | Query string | Bytes | Parameters | SigAlg | Escapes | RelayState, bytes | Signature, bytes | Inflated, bytes |
 |---|---|---|---|---|---|---|---|
 | `keycloak-26.7.4-idp-logoutresponse-to-bindings-query-2026-10-01.txt` | 993 | SAMLResponse, RelayState, SigAlg, Signature | rsa-sha256 | 32, uppercase; 4 `+`, 0 `%7E` | 80 | 256 | 546 |
-| `keycloak-26.7.4-sp-authnrequest-to-bindings-long-relaystate-refused-query-2026-10-01.txt` | 1 124 | SAMLRequest, RelayState, SigAlg, Signature | rsa-sha256 | 33, uppercase; 0 `+`, 0 `%7E` | 122 | 256 | not read: B-9 refuses it before inflating |
+| `keycloak-26.7.4-sp-authnrequest-to-bindings-long-relaystate-query-2026-10-01.txt` | 1 124 | SAMLRequest, RelayState, SigAlg, Signature | rsa-sha256 | 33, uppercase; 0 `+`, 0 `%7E` | 122 | 256 | not read: B-9 refuses it before inflating |
 | `keycloak-26.7.4-sp-authnrequest-to-bindings-query-2026-10-01.txt` | 1 096 | SAMLRequest, RelayState, SigAlg, Signature | rsa-sha256 | 39, uppercase; 0 `+`, 0 `%7E` | 78 | 256 | 704 |
 | `keycloak-26.7.4-sp-authnrequest-to-bindings-redirect-binding-refused-query-2026-10-01.txt` | 1 100 | SAMLRequest, RelayState, SigAlg, Signature | rsa-sha256 | 41, uppercase; 0 `+`, 0 `%7E` | 78 | 256 | 708 |
 | `keycloak-26.7.4-sp-authnrequest-unsigned-refused-query-2026-10-01.txt` | 626 | SAMLRequest, RelayState | none | 18, uppercase; 0 `+`, 0 `%7E` | 78 | none | 714 |
@@ -329,7 +356,7 @@ section 1, and no rule of the specification had to change for the exchange. What
   carries `ProtocolBinding` HTTP-Redirect: `RedirectReceiver` verified its signature, and the model refused it
   (`Unsupported`, model.md section 8, `saml2-model`'s finding 1, decided there on 30 September 2026). The rule stands:
   the response cannot travel over HTTP-Redirect (Profiles §4.1.2). With "HTTP-POST binding response" switched on by
-  hand, the broker's requests stay on HTTP-Redirect and ask for the response over HTTP-POST. For `heidi/saml`
+  hand, the broker's requests stay on HTTP-Redirect and ask for the response over HTTP-POST. For `beffroi/saml`
   (model.md §6.9, section 6.8 of the specification): its identity provider's metadata lists HTTP-POST next to
   HTTP-Redirect, so that a broker configured by Keycloak's importer posts everything; a Keycloak broker sends this
   package a query string only when its administrator sets that switch, and then signed, since the metadata says
@@ -343,11 +370,13 @@ section 1, and no rule of the specification had to change for the exchange. What
 - **K-4. The broker's `RelayState` is 78 bytes, and longer for a client whose ID is not a UUID.** Keycloak keeps the SAML
   broker's state short on purpose, 2 bytes under the bound of SAML Bindings §3.4.3, but writes the base64url of the
   `client_id` where the client's internal ID is not a UUID, which a realm imported with such IDs holds: 122 bytes for a
-  `client_id` of 49 bytes, refused by `RedirectReceiver` (`InvalidRelayState`, B-9), kept as
-  `keycloak-26.7.4-sp-authnrequest-to-bindings-long-relaystate-refused-query-2026-10-01.txt`. Any `client_id` of 19
-  bytes or more under such an ID goes over 80 bytes. SAML Bindings §3.4.3 says the value "MUST NOT exceed 80 bytes in
-  length": the producer is wrong and the rule stands (section 9.4), with SimpleSAMLphp's long `ReturnTo` (F-5) the
-  second producer named under the open item of section 12.
+  `client_id` of 49 bytes, refused by `RedirectReceiver` on 1 October 2026 (`InvalidRelayState`, B-9), as SAML Bindings
+  §3.4.3 says the value "MUST NOT exceed 80 bytes in length". Any `client_id` of 19 bytes or more under such an ID goes
+  over 80 bytes. Decided on 12 October 2026 by the maintainer, with SimpleSAMLphp's long `ReturnTo` (F-5, section 12 of
+  the specification): B-9 reads and sends a `RelayState` of up to 1 024 bytes, a named and bounded exception to the
+  binding (section 8), so that the capture, kept as
+  `keycloak-26.7.4-sp-authnrequest-to-bindings-long-relaystate-query-2026-10-01.txt`, is verified and validated
+  (section 9.4).
 - **K-5. The broker verifies the query string of a `LogoutResponse`.** Under `validateSignature`, every change after
   signing is refused, and so is the response stripped of `Signature` and `SigAlg`, "Invalid signature in response from
   identity provider.", HTTP 400; the genuine one closes realm `sp`'s session. The broker's logout survives the refused
