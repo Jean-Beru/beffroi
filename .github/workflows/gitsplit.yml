@@ -9,7 +9,7 @@ name: gitsplit
 # whatever the default branch happens to declare at that moment.
 #
 # The container is not given the repository credentials: it pushes with
-# GITSPLIT_TOKEN, which must reach the four target repositories, and the step
+# GITSPLIT_TOKEN, which must reach the six target repositories, and the step
 # after it reads that same secret. One credential does everything that is done
 # to a mirror and nothing that is done here, so it carries write access to
 # their code and, for their default branch, to their administration. It never
@@ -36,7 +36,7 @@ name: gitsplit
 # the "docker run" below, on every push to a maintenance branch and on every
 # tag, and that limit is counted per address of the runner pool, which this
 # repository shares with everybody else running there: a push that landed on a
-# busy address was answered "toomanyrequests", the four mirrors fell behind,
+# busy address was answered "toomanyrequests", the mirrors fell behind,
 # and nothing of the repository was wrong. A cache entry of 19 MB restores in
 # a second, the key is the digest, so the normal path reaches no registry at
 # all and the one pull that fills the entry again is a digest somebody edited
