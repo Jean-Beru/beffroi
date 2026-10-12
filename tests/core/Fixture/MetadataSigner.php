@@ -26,8 +26,9 @@ use SpomkyLabs\Pki\X509\Certificate\TBSCertificate;
 use SpomkyLabs\Pki\X509\Certificate\Validity;
 
 /**
- * A metadata service of the tests (FIDO Metadata Service v3 §3.1.7): a root of its own, an intermediate
- * it issued, a signing certificate the intermediate issued, and the blobs it signs with ES256, the chain
+ * A metadata service of the tests (FIDO Metadata Service v3.1.1 §3.1.7): a root of its own, an
+ * intermediate it issued, a signing certificate the intermediate issued, and the blobs it signs with
+ * ES256, the chain
  * in the protected header (RFC 7515 §4.1.6), the shape of the chain of the FIDO Alliance, whose blob names
  * the signer and the intermediates and leaves the root to the relying party. Generated at each run on
  * pki-framework, nothing committed.

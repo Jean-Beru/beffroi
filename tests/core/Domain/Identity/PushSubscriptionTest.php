@@ -164,8 +164,8 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * Push API §4, RFC 8291 §3.1: a browser that subscribes again draws its keys afresh and may have been
-     * handed another application server key since, and this row is what carries them.
+     * Push API §3.4, RFC 8291 §3.1: a browser that subscribes again draws its keys afresh and may have
+     * been handed another application server key since, and this row is what carries them.
      */
     #[Test]
     public function aBrowserThatSubscribesAgainCarriesWhatItHandedThisTime(): void

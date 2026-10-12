@@ -15,9 +15,9 @@ use function strtr;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Push API §4, RFC 8292 §3.2, architecture §5.2, §5.6: the page where a user says which of their browsers
- * this provider may reach, over HTTP. The browser is handed the application server key of the tenant, it
- * hands back what its push service gave it, and it is taken out from the same page.
+ * Push API §3.4, RFC 8292 §3.2, architecture §5.2, §5.6: the page where a user says which of their
+ * browsers this provider may reach, over HTTP. The browser is handed the application server key of the
+ * tenant, it hands back what its push service gave it, and it is taken out from the same page.
  */
 final class PushSubscriptionTest extends BrowserTestCase
 {
@@ -72,7 +72,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Push API §4: what the browser hands back is kept against the key it was handed, and the page lists
+     * Push API §8: what the browser hands back is kept against the key it was handed, and the page lists
      * it.
      */
     #[Test]
@@ -119,10 +119,10 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Push API §4: the same browser subscribing again hands back the endpoint it already had, so the row it
-     * has is what changes. It is the one path where a row is read and written in the same request, which is
-     * what a second object over one identity is refused by, and what no test against an in-memory store can
-     * see.
+     * Push API §3.4: the same browser subscribing again hands back the endpoint it already had, so the row
+     * it has is what changes. It is the one path where a row is read and written in the same request, which
+     * is what a second object over one identity is refused by, and what no test against an in-memory store
+     * can see.
      */
     #[Test]
     public function aBrowserThatSubscribesAgainChangesTheRowItHas(): void
@@ -146,7 +146,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8030 §7.3, Push API §4: a browser the user had taken out is reachable again when it subscribes
+     * RFC 8030 §7.3, Push API §3.4: a browser the user had taken out is reachable again when it subscribes
      * again, having just said so, and it does not come back beside itself.
      */
     #[Test]
@@ -305,7 +305,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Push API §4: the page carries the digest of the endpoint of every browser it lists, which is what
+     * Push API §8: the page carries the digest of the endpoint of every browser it lists, which is what
      * the script of the bundle recognises the browser reading the page by. The endpoint itself is on no
      * page: a digest is what this provider compares too (PushSubscription::digestOf).
      */

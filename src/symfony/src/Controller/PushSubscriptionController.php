@@ -21,9 +21,10 @@ use function trim;
 
 /**
  * What the browser of the signed-in user hands over once its push service has given it a subscription
- * (Push API §4, architecture §5.2): where a message for it is taken and the two keys one is encrypted to.
- * Posted by the script of the page with the token that page renders, and recorded against the application
- * server key the browser was handed, which is what will sign a push to it (RFC 8292 §3.2).
+ * (Push API §3.4, §8, architecture §5.2): where a message for it is taken and the two keys one is
+ * encrypted to. Posted by the script of the page with the token that page renders, and recorded against
+ * the application server key the browser was handed, which is what will sign a push to it
+ * (RFC 8292 §3.2).
  *
  * A browser that subscribes again hands back the endpoint it already had, and that is one browser and not
  * two: the row it has is what changes.

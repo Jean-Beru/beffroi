@@ -18,7 +18,7 @@ use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * FIDO Metadata Service v3 §3.1.7 and §3.2: a blob is a JWS whose chain leads to the root the relying
+ * FIDO Metadata Service v3.1.1 §3.1.7 and §3.2: a blob is a JWS whose chain leads to the root the relying
  * party pins; anything short of that is refused, whatever it claims.
  */
 final class MetadataBlobVerifierTest extends TestCase
