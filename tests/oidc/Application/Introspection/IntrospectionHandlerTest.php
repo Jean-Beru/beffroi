@@ -305,7 +305,13 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $code = $this->code($this->other, ['openid']);
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        $token = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
+        )->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $this->clock->now(),
         )->value;

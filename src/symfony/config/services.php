@@ -467,6 +467,7 @@ use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Beffroi\Oidc\Application\Token\PresentedAccessTokenParser;
 use Beffroi\Oidc\Application\Token\RefreshTokenGrant;
+use Beffroi\Oidc\Application\Token\SealedPerson;
 use Beffroi\Oidc\Application\Token\ServedAccessTokenShapes;
 use Beffroi\Oidc\Application\Token\ServedGrants;
 use Beffroi\Oidc\Application\Flow\TheClientActsForItself;
@@ -1651,6 +1652,9 @@ return static function (ContainerConfigurator $container): void {
     // is tagged is what a client may register and what a signing key still waits for, never an
     // enumeration kept beside them (issue #239). An issuer names the shape it writes and the verifier of
     // that shape answers to the same name; the first tagged one is what a client that names none takes.
+    // The person a self-contained token is about is sealed under the KMS of the tenant (issue #641), the
+    // issuer of that shape writing what its verifier opens.
+    $services->set(SealedPerson::class);
     $services->set(JwtAccessTokenIssuer::class)->tag('beffroi.oidc.access_token_issuer');
     $services->set(OpaqueAccessTokenIssuer::class)->tag('beffroi.oidc.access_token_issuer');
     $services->set(ServedAccessTokenShapes::class)->args([tagged_iterator('beffroi.oidc.access_token_issuer')]);

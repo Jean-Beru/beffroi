@@ -11,7 +11,9 @@ use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
 use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
 use Beffroi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
+use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Oidc\Application\Token\PersonOfAnAccessToken;
+use Beffroi\Oidc\Application\Token\SealedPerson;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSalt;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSubjectRepository;
 use Beffroi\Oidc\Port\PairwiseSaltInterface;
@@ -47,6 +49,16 @@ final class Subjects
         $users ??= new InMemoryUserRepository();
 
         return new PersonOfAnAccessToken($users, $subjects ?? self::ofAProvider($users));
+    }
+
+    /**
+     * The person a self-contained token says it is about (issue #641), sealed as a deployment seals it: the
+     * sealer of the tests writes the tenant into the envelope and reads it back, so an envelope of one
+     * tenant does not open for another here either.
+     */
+    public static function sealedPerson(?SecretSealerInterface $sealer = null): SealedPerson
+    {
+        return new SealedPerson($sealer ?? new FakeSecretSealer());
     }
 
     public static function publicKind(?UserRepositoryInterface $users = null): PublicSubjectIdentifierResolver

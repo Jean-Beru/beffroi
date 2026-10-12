@@ -449,7 +449,13 @@ final class RevocationHandlerTest extends TestCase
 
     private function jwt(Client $client, DateTimeImmutable $issuedAt): string
     {
-        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        return new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
+        )->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $issuedAt)),
             $issuedAt,
         )->value;
