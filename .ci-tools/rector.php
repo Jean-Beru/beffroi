@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
+use Rector\Php55\Rector\String_\StringClassNameToClassConstantRector;
+use Rector\Php71\Rector\FuncCall\RemoveExtraParametersRector;
 use Rector\PHPUnit\CodeQuality\Rector\Class_\PreferPHPUnitThisCallRector;
+use Rector\PHPUnit\CodeQuality\Rector\ClassMethod\AddInstanceofAssertForNullableArgumentRector;
 use Rector\PHPUnit\Set\PHPUnitSetList;
 use Rector\Set\ValueObject\LevelSetList;
 use Rector\Set\ValueObject\SetList;
@@ -30,6 +33,30 @@ $builder->withPaths([
 ]);
 $builder->withSkip([
     PreferPHPUnitThisCallRector::class,
+    // The fixtures of the SAML packages are data, and their interoperability projects (tests/xml-security/Dsig/
+    // Fixture/real, tests/saml2-model/Interop) are throwaway Composer projects run in their own containers against
+    // libraries that are not dependencies here.
+    __DIR__ . '/../tests/xml-security/*/Fixture/*',
+    __DIR__ . '/../tests/saml2-model/Fixture/*',
+    __DIR__ . '/../tests/saml2-model/Interop/*',
+    // The source guard tests of the SAML packages list the banned class names of their section 8 as tokens to search
+    // for, never to reference: turning 'Dom\XPath' into XPath::class is the very thing the ban catches.
+    StringClassNameToClassConstantRector::class => [
+        __DIR__ . '/../tests/xml-security',
+        __DIR__ . '/../tests/saml2-model',
+    ],
+    // assertNotNull() narrows a nullable node for PHPStan already; the assertInstanceOf() this rule adds after it is
+    // one PHPStan then reports as always true.
+    AddInstanceofAssertForNullableArgumentRector::class => [
+        __DIR__ . '/../tests/xml-security',
+        __DIR__ . '/../tests/saml2-model',
+    ],
+    // openssl_sign() and openssl_verify() take a fifth parameter, the padding, on PHP 8.5 (spec/dsig.md section 13);
+    // Rector reads the PHP 8.4 signatures and would strip the argument the PSS schemes pass.
+    RemoveExtraParametersRector::class => [
+        __DIR__ . '/../src/xml-security',
+        __DIR__ . '/../tests/xml-security',
+    ],
 ]);
 $builder->withParallel();
 // A hash per file, so a run re-reads only what changed. The directory is of the repository and not of
