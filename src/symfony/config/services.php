@@ -256,6 +256,7 @@ use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Application\Totp\TotpAuthentication;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Application\Totp\BackupCodeSet;
 use Beffroi\Core\Application\Totp\BackupCodesRenewal;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\A256Gcm;
@@ -1278,6 +1279,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(EnrolmentTicketRedemption::class);
     $services->set(PresentedEnrolmentTicket::class);
     $services->set(PasskeyAuthentication::class);
+    // the set of backup codes a TOTP is handed, which the enrolment and the renewal both draw (issue #629)
+    $services->set(BackupCodeSet::class);
     $services->set(BackupCodesRenewal::class);
     $services->set(TotpEnrolment::class);
     $services->set(TotpAuthentication::class);

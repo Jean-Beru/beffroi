@@ -48,7 +48,9 @@ final class Base64UrlTest extends TestCase
     }
 
     /**
-     * What a store reads out of a column it did not write is a text somebody else may have written.
+     * What a store reads out of a column it did not write is a text somebody else may have written. The
+     * alphabet is the one of §5: the standard one of §4 and the padding it defines are another text, and
+     * a text that is not base64url is not read as if it were.
      */
     #[Test]
     #[DataProvider('provideTextsThatAreNotBase64Url')]
@@ -66,5 +68,14 @@ final class Base64UrlTest extends TestCase
         yield 'outside the alphabet' => ['***'];
         yield 'one character outside it' => ['Zm9v*'];
         yield 'a character of no alphabet at all' => ["Zm9v\x00"];
+        yield 'the "+" of the standard alphabet' => ['Zm+v'];
+        yield 'the "/" of the standard alphabet' => ['Zm/v'];
+        yield 'padded' => ['Zm8='];
+        yield 'padded to the full quantum' => ['Zg=='];
+        yield 'the padding alone' => ['='];
+        yield 'a line a reader wrapped' => ["Zm9v\nYmFy"];
+        yield 'a trailing line feed' => ["Zm9v\n"];
+        yield 'a space between two quanta' => ['Zm9v YmFy'];
+        yield 'a quantum of one character' => ['Zm9vY'];
     }
 }
