@@ -9,6 +9,7 @@ use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidJwsException;
+use Beffroi\Core\Exception\RuntimeException as CoreRuntimeException;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -58,6 +59,11 @@ final class AccessTokenVerifierTest extends TestCase
     /**
      * A payload as JwtAccessTokenIssuer writes it, valid for ten minutes from Fixtures::now().
      */
+    /**
+     * The name the account carries, which no client ever sees under a pairwise kind (OIDC Core §8.1).
+     */
+    private const string ACCOUNT = 'alice-as-this-provider-knows-her';
+
     private const string PAYLOAD = '{"iss":"https://id.acme.example","exp":1789467000,"aud":"spa","sub":"alice-subject","client_id":"spa","iat":1789466400,"jti":"6f1c2b7e-1d2a-4c3b-8e9f-0a1b2c3d4e5f","auth_time":1789466400,"acr":"1","amr":["pwd"],"scope":"openid profile","sid":"01997b9e-0000-7000-8000-000000000000","grant_id":"01997b9e-0000-7000-8000-00000000000a"}';
 
     private Tenant $tenant;
@@ -108,7 +114,13 @@ final class AccessTokenVerifierTest extends TestCase
             ['openid', 'email'],
             claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'),
         );
-        $minted = new JwtAccessTokenIssuer($jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        $minted = new JwtAccessTokenIssuer(
+            $jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
+        )->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         );
@@ -248,6 +260,43 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
+     * Issue #641, RFC 8693 §2.2.1: a self-contained token of an exchange carries a "sub" the client that
+     * holds it never sees, and says beside it who it is about; this is where that is opened, the token
+     * being its own record and there being nothing else to ask.
+     */
+    #[Test]
+    public function itReadsThePersonASelfContainedTokenSaysItIsAbout(): void
+    {
+        // Given
+        $this->knows(self::with([
+            'person' => Subjects::sealedPerson()->claim(Fixtures::tenant(), new Subject(self::ACCOUNT)),
+        ]));
+
+        // When
+        $token = $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame(self::ACCOUNT, (string) $token->person);
+    }
+
+    /**
+     * A token that says nobody is read by its "sub", for the client it was written for (OIDC Core §8),
+     * which is what a token somebody signed in for carries.
+     */
+    #[Test]
+    public function itNamesNobodyForASelfContainedTokenCarryingNoPerson(): void
+    {
+        // Given
+        $this->knows(self::PAYLOAD);
+
+        // When
+        $token = $this->verifier->verify($this->tenant, self::TOKEN, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertNull($token->person);
+    }
+
+    /**
      * RFC 6749 §4.4, RFC 9068 §2.2: a self-contained token a client holds for itself names that client in
      * "sub" and descends from no sign-in, so nothing of a session is read back from it.
      */
@@ -266,7 +315,13 @@ final class AccessTokenVerifierTest extends TestCase
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $minted = new JwtAccessTokenIssuer($jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        $minted = new JwtAccessTokenIssuer(
+            $jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
+        )->issue(
             $authorization,
             Fixtures::now(),
         );
@@ -908,6 +963,29 @@ final class AccessTokenVerifierTest extends TestCase
             null,
             null,
         ];
+        // issue #641: who the token is about travels sealed under the KMS of the tenant, so a claim this
+        // provider did not seal there is not a claim it wrote
+        yield 'a person that is not a string' => [
+            self::with([
+                'person' => 1,
+            ]),
+            null,
+            null,
+        ];
+        yield 'a person that is not an envelope' => [
+            self::with([
+                'person' => self::ACCOUNT,
+            ]),
+            null,
+            CoreRuntimeException::class,
+        ];
+        yield 'a person sealed for another tenant' => [
+            self::with([
+                'person' => Subjects::sealedPerson()->claim(Fixtures::tenant('other', 'https://id.other.example'), new Subject(self::ACCOUNT)),
+            ]),
+            null,
+            CoreRuntimeException::class,
+        ];
     }
 
     /**
@@ -1051,7 +1129,7 @@ final class AccessTokenVerifierTest extends TestCase
         $clients->save($this->client);
         $verifier = new AccessTokenVerifier(
             [
-                new JwtAccessTokenVerifier($this->jws, $clients, Bindings::wired(), AuthorizationDetailTypes::served()),
+                new JwtAccessTokenVerifier($this->jws, $clients, Bindings::wired(), AuthorizationDetailTypes::served(), Subjects::sealedPerson()),
                 new OpaqueAccessTokenVerifier($this->storedTokens, Subjects::publicKind()),
             ],
             new ServedAccessTokenShapes([new FakeAccessTokenIssuer('jwt')]),

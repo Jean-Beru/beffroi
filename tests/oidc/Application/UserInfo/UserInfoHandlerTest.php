@@ -120,6 +120,7 @@ final class UserInfoHandlerTest extends TestCase
             Subjects::publicKind(),
             Algorithms::all(),
             new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
         );
         $this->grants = new InMemoryAuthorizationCodeRepository();
         $this->deviceRecords = new InMemoryDeviceAuthorizationRecordRepository();

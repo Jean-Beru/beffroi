@@ -21,6 +21,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Token\AccessTokenInspector;
 use Beffroi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\SealedPerson;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
@@ -29,7 +30,10 @@ use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Beffroi\Oidc\Domain\Token\ClientAuthorization;
+use Beffroi\Oidc\Domain\Token\SubjectAuthorization;
+use Beffroi\Oidc\Domain\Token\TokenSignIn;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
 use Beffroi\Oidc\Exception\InvalidTokenException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
@@ -74,6 +78,8 @@ final class AccessTokenInspectorTest extends TestCase
 
     private InMemoryClientRepository $clients;
 
+    private SealedPerson $persons;
+
     private AccessTokenInspector $inspector;
 
     protected function setUp(): void
@@ -91,12 +97,14 @@ final class AccessTokenInspectorTest extends TestCase
         $users->save($this->user);
         $this->clients = new InMemoryClientRepository();
         $this->clients->save($this->client);
+        $this->persons = Subjects::sealedPerson();
         $this->inspector = new AccessTokenInspector(
             AccessTokenShapes::verifier(
                 new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
                 $this->clients,
                 $this->tokens,
                 Subjects::publicKind(),
+                $this->persons,
             ),
             $this->sessions,
             $this->grants,
@@ -145,6 +153,25 @@ final class AccessTokenInspectorTest extends TestCase
     {
         // Given
         $token = $this->exchangedToken($this->code(), $this->user->subject);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
+        static::assertSame(self::SUBJECT_OF_THE_FIRST_CLIENT, (string) $inspected->token->subject);
+    }
+
+    /**
+     * Issue #641: the self-contained shape keeps no record, so what the exchange resolved travels in the
+     * token, sealed, and the resource that asked is handed the same person the record of the opaque shape
+     * names. Read under the client that asked, that "sub" would name nobody (OIDC Core §8.1).
+     */
+    #[Test]
+    public function itNamesThePersonASelfContainedExchangedTokenCarries(): void
+    {
+        // Given
+        $token = $this->selfContainedExchangedToken($this->code(), $this->user->subject);
 
         // When
         $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
@@ -404,6 +431,32 @@ final class AccessTokenInspectorTest extends TestCase
         return $value;
     }
 
+    /**
+     * RFC 8693 §2.1: the same exchange in the self-contained shape, where the person the exchange resolved
+     * is a claim of the token and not a column of a row (issue #641).
+     */
+    private function selfContainedExchangedToken(AuthorizationCode $code, Subject $person): string
+    {
+        $gateway = Clients::gateway($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), 'person-jwt-gateway');
+        $this->clients->save($gateway);
+
+        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), $this->persons)->issue(
+            new SubjectAuthorization(
+                Grants::tokenExchange(),
+                $code->grantId,
+                $gateway,
+                new Subject(self::SUBJECT_OF_THE_FIRST_CLIENT),
+                new Scopes([new Scope('invoices.read')]),
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                new TokenSignIn($this->session->id, AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass())),
+                person: $person,
+            ),
+            Fixtures::now(),
+        )->value;
+    }
+
     private function code(): AuthorizationCode
     {
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now());
@@ -435,7 +488,13 @@ final class AccessTokenInspectorTest extends TestCase
             return $this->tokenOf($code);
         }
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator())->issue(
+        return new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
+        )->issue(
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         )->value;

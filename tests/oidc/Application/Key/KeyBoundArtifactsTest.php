@@ -98,6 +98,7 @@ final class KeyBoundArtifactsTest extends TestCase
                 Subjects::publicKind(),
                 Algorithms::all(),
                 new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
                 new DateInterval('PT20M'),
             ),
             new RegisteredClients([$this->clients]),
@@ -159,6 +160,7 @@ final class KeyBoundArtifactsTest extends TestCase
                     Subjects::publicKind(),
                     Algorithms::all(),
                     new SymfonyUuidGenerator(),
+                    Subjects::sealedPerson(),
                     new DateInterval('PT2M'),
                 ),
                 new RegisteredClients([$this->clients]),
@@ -227,6 +229,7 @@ final class KeyBoundArtifactsTest extends TestCase
                     Subjects::publicKind(),
                     Algorithms::all(),
                     new SymfonyUuidGenerator(),
+                    Subjects::sealedPerson(),
                     new DateInterval('PT1M'),
                 ),
                 new RegisteredClients([$this->clients]),
@@ -254,7 +257,7 @@ final class KeyBoundArtifactsTest extends TestCase
             accessTokenShape: Shapes::opaque(),
         ));
         $kind = new AccessTokenJwsKind(
-            new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator()),
+            new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), Subjects::sealedPerson()),
             new RegisteredClients([$this->clients]),
         );
 
@@ -315,6 +318,7 @@ final class KeyBoundArtifactsTest extends TestCase
                     Subjects::publicKind(),
                     Algorithms::all(),
                     new SymfonyUuidGenerator(),
+                    Subjects::sealedPerson(),
                     new DateInterval('PT2M'),
                 ),
                 new RegisteredClients([$this->clients]),

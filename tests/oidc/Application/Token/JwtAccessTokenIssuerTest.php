@@ -16,6 +16,7 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\SealedPerson;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
@@ -39,6 +40,8 @@ use Jose\Component\Checker\InvalidClaimException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
 use function preg_match;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
@@ -53,12 +56,15 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
     private JwtAccessTokenIssuer $issuer;
 
+    private SealedPerson $persons;
+
     protected function setUp(): void
     {
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
-        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator());
+        $this->persons = Subjects::sealedPerson();
+        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), $this->persons);
     }
 
     /**
@@ -247,6 +253,95 @@ final class JwtAccessTokenIssuerTest extends TestCase
         // Then
         static::assertArrayNotHasKey('act', $claims);
         static::assertArrayNotHasKey('sid', $claims);
+    }
+
+    /**
+     * Issue #641: the "sub" of an exchanged token is the one the presented token carried, written for the
+     * client that token had been issued to (RFC 8693 §2.2.1), so the token says who it is about beside it,
+     * sealed, there being no record of it for the provider to read that from.
+     */
+    #[Test]
+    public function aTokenExchangedForAnotherSaysWhoItIsAbout(): void
+    {
+        // Given
+        $alice = Fixtures::user($this->session->tenant);
+        $token = $this->issuer->issue($this->exchangedFor($alice->subject), Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertSame(
+            $alice->subject->value,
+            (string) $this->persons->of($this->session->tenant, $claims[JwtAccessTokenIssuer::PERSON] ?? null),
+        );
+    }
+
+    /**
+     * OIDC Core §8.1: the name the account carries is the one that links a person across sectors, and it is
+     * what a pairwise kind exists to keep from a client, so nothing a client holds carries it. What the
+     * provider wrote there it reads itself, and the holder of the token learns nothing from it.
+     */
+    #[Test]
+    public function aTokenExchangedForAnotherNamesThePersonToNobodyHoldingIt(): void
+    {
+        // Given
+        $alice = Fixtures::user($this->session->tenant);
+        $token = $this->issuer->issue($this->exchangedFor($alice->subject), Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertStringNotContainsString($alice->subject->value, self::json($claims));
+    }
+
+    /**
+     * A token somebody signed in for carries a "sub" the client it was written for reads back
+     * (OIDC Core §8), so there is nothing beside it to write and no envelope to make on a sign-in.
+     */
+    #[Test]
+    public function aTokenSomebodySignedInForCarriesNoPerson(): void
+    {
+        // Given
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertArrayNotHasKey(JwtAccessTokenIssuer::PERSON, $claims);
+    }
+
+    /**
+     * RFC 6749 §4.4: a token a client holds for itself is about nobody, and it says so by carrying nothing
+     * where a person would be named.
+     */
+    #[Test]
+    public function aTokenAClientHoldsForItselfCarriesNoPerson(): void
+    {
+        // Given
+        $service = Clients::service($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $authorization = new ClientAuthorization(
+            Grants::clientCredentials(),
+            Uuid::v7(),
+            $service,
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
+        $token = $this->issuer->issue($authorization, Fixtures::now());
+
+        // When
+        ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
+
+        // Then
+        static::assertArrayNotHasKey(JwtAccessTokenIssuer::PERSON, $claims);
     }
 
     /**
@@ -503,6 +598,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             Subjects::publicKind(),
             Algorithms::all(),
             new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
             new DateInterval('PT1M'),
         );
 
@@ -532,6 +628,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             Subjects::publicKind(),
             Algorithms::all(),
             new SymfonyUuidGenerator(),
+            Subjects::sealedPerson(),
             new DateInterval('PT1M'),
         )->issue(
             $authorization,
@@ -674,5 +771,32 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
         // Then
         static::assertArrayNotHasKey('userinfo_claims', $claims);
+    }
+
+    /**
+     * RFC 8693 §2.1: what a gateway is given for the subject of the token it presented, carrying the "sub"
+     * that token carried and the person the exchange resolved when it read it (issue #601).
+     */
+    private function exchangedFor(Subject $person): SubjectAuthorization
+    {
+        return new SubjectAuthorization(
+            Grants::tokenExchange(),
+            Uuid::v7(),
+            Clients::gateway($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET)),
+            new Subject('alice-to-the-first-client'),
+            new Scopes([new Scope('invoices.read')]),
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            person: $person,
+        );
+    }
+
+    /**
+     * @param array<array-key, mixed> $claims
+     */
+    private static function json(array $claims): string
+    {
+        return json_encode($claims, JSON_THROW_ON_ERROR);
     }
 }
