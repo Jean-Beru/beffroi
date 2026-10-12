@@ -11,11 +11,14 @@ use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
 use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\LogicException;
-use const PASSWORD_ARGON2_DEFAULT_MEMORY_COST;
+use const PASSWORD_ARGON2ID;
 use const PASSWORD_BCRYPT;
+use function password_get_info;
 use function password_hash;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
 use function str_starts_with;
 
 final class NativePasswordHasherTest extends TestCase
@@ -33,6 +36,26 @@ final class NativePasswordHasherTest extends TestCase
         static::assertSame(Argon2id::NAME, $hash->algorithm->name());
         static::assertTrue(str_starts_with($hash->encoded, '$argon2id$'));
         static::assertFalse($hasher->needsRehash($hash));
+    }
+
+    /**
+     * RFC 9106 §4 asks for 64 MiB of memory, three passes and four lanes in its memory-constrained set. The memory and
+     * the passes are read as a floor, what PHP defaults to being that memory and a pass more; the lanes are exact.
+     */
+    #[Test]
+    public function itHashesWithTheParameterSetOfRfc9106(): void
+    {
+        // Given
+        $hasher = new NativePasswordHasher();
+
+        // When
+        $hash = $hasher->hash('correct horse battery staple');
+
+        // Then
+        $parameters = password_get_info($hash->encoded)['options'];
+        static::assertGreaterThanOrEqual(65_536, $parameters['memory_cost']);
+        static::assertGreaterThanOrEqual(3, $parameters['time_cost']);
+        static::assertSame(4, $parameters['threads']);
     }
 
     #[Test]
@@ -80,11 +103,26 @@ final class NativePasswordHasherTest extends TestCase
     }
 
     #[Test]
+    public function itAsksForTheRehashOfAHashOfOneLane(): void
+    {
+        // Given
+        $hasher = new NativePasswordHasher();
+        $oneLane = new PasswordHash(new Argon2id(), password_hash('secret', PASSWORD_ARGON2ID, [
+            'memory_cost' => NativePasswordHasher::MEMORY_COST,
+            'time_cost' => NativePasswordHasher::TIME_COST,
+            'threads' => 1,
+        ]));
+
+        // When / Then
+        static::assertTrue($hasher->needsRehash($oneLane));
+    }
+
+    #[Test]
     public function itAsksForARehashWhenTheParametersGrew(): void
     {
         // Given
         $weaker = new NativePasswordHasher();
-        $stronger = new NativePasswordHasher(memoryCost: PASSWORD_ARGON2_DEFAULT_MEMORY_COST * 2);
+        $stronger = new NativePasswordHasher(memoryCost: NativePasswordHasher::MEMORY_COST * 2);
         $hash = $weaker->hash('secret');
 
         // When / Then
@@ -96,7 +134,7 @@ final class NativePasswordHasherTest extends TestCase
     {
         // Given
         $weaker = new NativePasswordHasher();
-        $stronger = new NativePasswordHasher(memoryCost: PASSWORD_ARGON2_DEFAULT_MEMORY_COST * 2);
+        $stronger = new NativePasswordHasher(memoryCost: NativePasswordHasher::MEMORY_COST * 2);
         $hash = $weaker->hash('secret');
 
         // When / Then
@@ -104,13 +142,30 @@ final class NativePasswordHasherTest extends TestCase
     }
 
     #[Test]
-    public function itRefusesParametersBelowTheDefaultsOfPhp(): void
+    #[DataProvider('provideParametersBelowTheFloor')]
+    public function itRefusesParametersBelowItsFloor(int $memoryCost, int $timeCost, int $threads): void
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'argon2id parameters cannot go below %d KiB of memory, %d passes and %d lanes.',
+            NativePasswordHasher::MEMORY_COST,
+            NativePasswordHasher::TIME_COST,
+            NativePasswordHasher::THREADS,
+        ));
 
         // When
-        new NativePasswordHasher(timeCost: 1);
+        new NativePasswordHasher($memoryCost, $timeCost, $threads);
+    }
+
+    /**
+     * @return iterable<string, array{int, int, int}>
+     */
+    public static function provideParametersBelowTheFloor(): iterable
+    {
+        yield 'less memory' => [NativePasswordHasher::MEMORY_COST - 1, NativePasswordHasher::TIME_COST, NativePasswordHasher::THREADS];
+        yield 'a pass fewer' => [NativePasswordHasher::MEMORY_COST, NativePasswordHasher::TIME_COST - 1, NativePasswordHasher::THREADS];
+        yield 'a lane fewer' => [NativePasswordHasher::MEMORY_COST, NativePasswordHasher::TIME_COST, NativePasswordHasher::THREADS - 1];
     }
 
     #[Test]
