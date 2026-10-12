@@ -9,7 +9,7 @@ name: gitsplit
 # whatever the default branch happens to declare at that moment.
 #
 # The container is not given the repository credentials: it pushes with
-# GITSPLIT_TOKEN, which must reach the six target repositories, and the step
+# GITSPLIT_TOKEN, which must reach the seven target repositories, and the step
 # after it reads that same secret. One credential does everything that is done
 # to a mirror and nothing that is done here, so it carries write access to
 # their code and, for their default branch, to their administration. It never

@@ -25,6 +25,8 @@ splits:
     target: "https://${GH_TOKEN}@github.com/beffroi-php/xml-security.git"
   - prefix: "src/saml2-model"
     target: "https://${GH_TOKEN}@github.com/beffroi-php/saml2-model.git"
+  - prefix: "src/saml2-bindings"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/saml2-bindings.git"
   - prefix: "apps/op"
     target: "https://${GH_TOKEN}@github.com/beffroi-php/op.git"
 
