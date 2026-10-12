@@ -198,6 +198,6 @@ final class SourceGuardTest extends TestCase
 
     private function sourceDirectory(): string
     {
-        return dirname(__DIR__, 3) . '/src/Enc';
+        return dirname(__DIR__, 4) . '/src/xml-security/src/Enc';
     }
 }

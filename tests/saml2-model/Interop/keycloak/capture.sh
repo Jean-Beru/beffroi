@@ -9,8 +9,8 @@
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(cd "$here/../../.." && pwd)
-out=${1:-$root/tests/Fixture/real}
+root=$(cd "$here/../../../.." && pwd)
+out=${1:-$root/tests/saml2-model/Fixture/real}
 base=http://localhost:8180
 client_redirect=$base/capture
 # The disposable test user of realms/idp.json.

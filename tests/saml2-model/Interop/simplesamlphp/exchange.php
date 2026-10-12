@@ -81,7 +81,7 @@ use Beffroi\Xml\Dsig\SignatureAlgorithm;
 use Beffroi\Xml\Dsig\Verifier;
 use Psr\Clock\ClockInterface;
 
-require __DIR__ . '/../../../vendor/autoload.php';
+require __DIR__ . '/../../../../vendor/autoload.php';
 
 const VERSION = '2.5.3.1';
 const IDP = 'http://localhost:8081/simplesaml';

@@ -353,7 +353,7 @@ final class AssertionReaderTest extends TestCase
     {
         $sources = [];
         /** @var SplFileInfo $file */
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__ . '/../../../../src')) as $file) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__ . '/../../../../../src/saml2-model/src')) as $file) {
             if ($file->getExtension() !== 'php' || $file->getFilename() === 'AssertionReader.php') {
                 continue;
             }

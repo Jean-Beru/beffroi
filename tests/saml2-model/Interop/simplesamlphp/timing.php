@@ -20,7 +20,7 @@ use Beffroi\Saml2\Model\Tests\Support\InMemoryReplayGuard;
 use Beffroi\Saml2\Model\Validation\ExpectedResponse;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 
-require __DIR__ . '/../../../vendor/autoload.php';
+require __DIR__ . '/../../../../vendor/autoload.php';
 
 $real = __DIR__ . '/../../Fixture/real/';
 $acs = 'http://localhost:8082/simplesaml/module.php/saml/sp/saml2-acs.php/default-sp';

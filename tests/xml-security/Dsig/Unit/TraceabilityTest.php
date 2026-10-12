@@ -27,7 +27,7 @@ final class TraceabilityTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->traceability = new Traceability(dirname(__DIR__, 3) . '/spec/dsig.md', __DIR__, 'D');
+        $this->traceability = new Traceability(dirname(__DIR__, 4) . '/src/xml-security/spec/dsig.md', __DIR__, 'D');
     }
 
     /**

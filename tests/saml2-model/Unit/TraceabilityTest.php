@@ -24,7 +24,7 @@ final class TraceabilityTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->traceability = new Traceability(dirname(__DIR__, 2) . '/spec/model.md', __DIR__);
+        $this->traceability = new Traceability(dirname(__DIR__, 3) . '/src/saml2-model/spec/model.md', __DIR__);
     }
 
     /**

@@ -6,7 +6,7 @@
 set -eu
 
 directory=$1
-key=tests/Enc/Fixture/keys/test-signing-key.pem
+key=tests/xml-security/Enc/Fixture/keys/test-signing-key.pem
 decrypted=$(mktemp)
 count=0
 for file in "$directory"/*.xml; do

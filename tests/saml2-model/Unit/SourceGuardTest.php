@@ -209,7 +209,7 @@ final class SourceGuardTest extends TestCase
      */
     private function sources(): array
     {
-        $directory = dirname(__DIR__, 2) . '/src';
+        $directory = dirname(__DIR__, 3) . '/src/saml2-model/src';
         $sources = [];
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
             $directory,

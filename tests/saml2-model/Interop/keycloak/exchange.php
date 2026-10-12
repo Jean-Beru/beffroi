@@ -28,7 +28,7 @@ declare(strict_types=1);
  *       [output directory, default tests/Fixture/real] [work directory, default tmp-phpqa/keycloak/model]
  */
 
-require __DIR__ . '/../../../vendor/autoload.php';
+require __DIR__ . '/../../../../vendor/autoload.php';
 
 use Beffroi\Saml2\Model\Assertion\Assertion;
 use Beffroi\Saml2\Model\Assertion\Attribute;
@@ -109,9 +109,9 @@ const CONSOLE_DEFAULTS = [
 ];
 const FIRST_BROKER_LOGIN = 'first broker login without review profile';
 
-$root = dirname(__DIR__, 3);
-$out = $argv[1] ?? $root . '/tests/Fixture/real';
-$work = $argv[2] ?? $root . '/tmp-phpqa/keycloak/model';
+$root = dirname(__DIR__, 4);
+$out = $argv[1] ?? $root . '/tests/saml2-model/Fixture/real';
+$work = $argv[2] ?? $root . '/var/keycloak/model';
 preg_match('~image: quay\.io/keycloak/keycloak:([0-9.]+)~', (string) file_get_contents(__DIR__ . '/compose.yaml'), $match)
     || fail('No Keycloak version in compose.yaml.');
 $version = $match[1];

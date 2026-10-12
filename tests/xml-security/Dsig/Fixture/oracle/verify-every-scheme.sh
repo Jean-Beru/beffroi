@@ -5,7 +5,7 @@
 set -eu
 
 directory=$1
-certificate=tests/Dsig/Fixture/keys/test-signing-certificate.pem
+certificate=tests/xml-security/Dsig/Fixture/keys/test-signing-certificate.pem
 count=0
 for file in "$directory"/*.xml; do
     [ -f "$file" ] || continue
