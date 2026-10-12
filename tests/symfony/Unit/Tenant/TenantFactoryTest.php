@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Tenant;
 
+use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Identity\Claim\Nickname;
+use Beffroi\Core\Domain\Identity\Claim\PictureUrl;
+use Beffroi\Core\Domain\Identity\Claim\ProfileUrl;
+use Beffroi\Core\Domain\Identity\Claim\WebsiteUrl;
 use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -134,6 +139,60 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
+     * Issue #626: the name a tenant opens is the name OIDC Core §5.1 defines, which is the name the
+     * discovery document of the same instance announces. What the configuration named is read against the
+     * claims this provider holds and carried by the tenant.
+     */
+    #[Test]
+    public function aClaimIsOpenedUnderTheNameTheSpecificationDefines(): void
+    {
+        // Given
+        $factory = new TenantFactory(
+            'https://op.test',
+            'main',
+            null,
+            new MockClock(Fixtures::now()),
+            Predicates::wired(),
+            selfServedClaims: ['nickname', 'profile'],
+            claims: self::claims(),
+        );
+
+        // When
+        $claims = $factory->create()->selfServedClaims;
+
+        // Then
+        static::assertTrue($claims->opens('nickname'));
+        static::assertTrue($claims->opens('profile'));
+    }
+
+    /**
+     * Issue #626: a claim is opened under the name OIDC Core §5.1 defines, which is the name the discovery
+     * document of the same instance announces. A configuration that carried another spelling refuses the
+     * start, naming the claims this provider holds, which is where a renamed claim has to show itself.
+     */
+    #[Test]
+    public function aClaimNamedBySomethingNoWiredClaimAnswersRefusesTheStart(): void
+    {
+        // Given
+        $factory = new TenantFactory(
+            'https://op.test',
+            'main',
+            null,
+            new MockClock(Fixtures::now()),
+            Predicates::wired(),
+            selfServedClaims: ['profile_url'],
+            claims: self::claims(),
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('This provider holds no claim "profile_url" a person could change of themselves; it holds nickname, profile, picture, website.');
+
+        // When
+        $factory->create();
+    }
+
+    /**
      * Decisions 0006 and 0010: what a policy may not say refuses the start, not a request.
      */
     #[Test]
@@ -209,5 +268,14 @@ final class TenantFactoryTest extends TestCase
 
         // When
         $factory->create();
+    }
+
+    /**
+     * Four of the claims the bundle wires, three of them the ones whose class is named after the field it
+     * reads and not after the claim it is.
+     */
+    private static function claims(): WiredClaims
+    {
+        return new WiredClaims([new Nickname(), new ProfileUrl(), new PictureUrl(), new WebsiteUrl()]);
     }
 }

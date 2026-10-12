@@ -6,13 +6,20 @@ namespace Beffroi\Core\Tests\Domain\Identity\Claim;
 
 use Beffroi\Core\Domain\Identity\Claim\Birthdate;
 use Beffroi\Core\Domain\Identity\Claim\ClaimField;
+use Beffroi\Core\Domain\Identity\Claim\ClaimInterface;
 use Beffroi\Core\Domain\Identity\Claim\Locale;
 use Beffroi\Core\Domain\Identity\Claim\Nickname;
+use Beffroi\Core\Domain\Identity\Claim\PictureUrl;
+use Beffroi\Core\Domain\Identity\Claim\ProfileUrl;
+use Beffroi\Core\Domain\Identity\Claim\WebsiteUrl;
 use Beffroi\Core\Domain\Identity\Claim\Zoneinfo;
+use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Closure;
 use function count;
 use DateTimeZone;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -165,6 +172,39 @@ final class ClaimsTest extends TestCase
         // Then
         static::assertSame('Ada-of-the-notes', $user->profile->nickname);
         static::assertSame([], new Nickname()->field()->choices);
+    }
+
+    /**
+     * OIDC Core §5.1, issue #626: three claims are named by the specification and held by a field of
+     * another name, the class being named after the field it reads. The name the claim answers and the
+     * field it writes are paired in one place (`Profile::describedWith()`), so what a person says under
+     * the name of the specification is read back from the field that holds it.
+     *
+     * @param Closure(Profile): ?string $read
+     */
+    #[Test]
+    #[DataProvider('provideClaimsHeldByAFieldOfAnotherName')]
+    public function aClaimNamedByTheSpecificationWritesTheFieldThatHoldsIt(ClaimInterface $claim, string $name, Closure $read): void
+    {
+        // Given
+        $user = Fixtures::user();
+
+        // When
+        $claim->describe($user, 'https://ada.example/page', Fixtures::now());
+
+        // Then
+        static::assertSame($name, $claim->name());
+        static::assertSame('https://ada.example/page', $read($user->profile));
+    }
+
+    /**
+     * @return iterable<string, array{ClaimInterface, string, Closure(Profile): ?string}>
+     */
+    public static function provideClaimsHeldByAFieldOfAnotherName(): iterable
+    {
+        yield 'profile' => [new ProfileUrl(), 'profile', static fn (Profile $profile): ?string => $profile->profileUrl];
+        yield 'picture' => [new PictureUrl(), 'picture', static fn (Profile $profile): ?string => $profile->pictureUrl];
+        yield 'website' => [new WebsiteUrl(), 'website', static fn (Profile $profile): ?string => $profile->websiteUrl];
     }
 
     /**

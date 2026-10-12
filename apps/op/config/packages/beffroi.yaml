@@ -31,9 +31,9 @@ beffroi:
             - 'gender'
             - 'locale'
             - 'zoneinfo'
-            - 'profile_url'
-            - 'picture_url'
-            - 'website_url'
+            - 'profile'
+            - 'picture'
+            - 'website'
             - 'phone_number'
     keys:
         # The KMS client of config/packages/key_management.yaml the private keys are sealed with; the DSN

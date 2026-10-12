@@ -333,16 +333,16 @@
         <source>profile.zoneinfo</source>
         <target>Time zone</target>
       </trans-unit>
-      <trans-unit id="f8b6df7bf6" resname="profile.profile_url">
-        <source>profile.profile_url</source>
+      <trans-unit id="5deb5d46f9" resname="profile.profile">
+        <source>profile.profile</source>
         <target>Profile page</target>
       </trans-unit>
-      <trans-unit id="b63d2bc82b" resname="profile.picture_url">
-        <source>profile.picture_url</source>
+      <trans-unit id="117780da1e" resname="profile.picture">
+        <source>profile.picture</source>
         <target>Picture</target>
       </trans-unit>
-      <trans-unit id="282ca669bd" resname="profile.website_url">
-        <source>profile.website_url</source>
+      <trans-unit id="96c81c25d2" resname="profile.website">
+        <source>profile.website</source>
         <target>Website</target>
       </trans-unit>
       <trans-unit id="ef830c2e9b" resname="profile.address">

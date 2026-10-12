@@ -785,6 +785,9 @@ services:
     test.beffroi.archives:
         alias: Beffroi\Core\Port\PersonalArchiveRepositoryInterface
         public: true
+    test.beffroi.claims:
+        alias: Beffroi\Bundle\Identity\WiredClaims
+        public: true
     test.beffroi.claim_history:
         alias: Beffroi\Core\Port\ClaimHistoryInterface
         public: true
