@@ -419,7 +419,7 @@ final class PairingTest extends TestCase
      */
     private function functions(): array
     {
-        $directory = dirname(__DIR__, 2) . '/src';
+        $directory = dirname(__DIR__, 3) . '/src/saml2-bindings/src';
         $functions = [];
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
             $directory,

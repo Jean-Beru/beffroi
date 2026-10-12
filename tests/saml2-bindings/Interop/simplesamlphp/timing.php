@@ -33,7 +33,7 @@ use Beffroi\Saml2\Model\Validation\AuthnRequestValidator;
 use Beffroi\Saml2\Model\Validation\ExpectedResponse;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 
-require __DIR__ . '/../../../vendor/autoload.php';
+require __DIR__ . '/../../../../vendor/autoload.php';
 
 $real = __DIR__ . '/../../Fixture/real/';
 

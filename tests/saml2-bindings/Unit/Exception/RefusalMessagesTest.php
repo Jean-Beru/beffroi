@@ -192,7 +192,7 @@ final class RefusalMessagesTest extends TestCase
      */
     private function refusals(): array
     {
-        $files = glob(dirname(__DIR__, 3) . '/src/Exception/*.php');
+        $files = glob(dirname(__DIR__, 4) . '/src/saml2-bindings/src/Exception/*.php');
         static::assertIsArray($files);
 
         return array_values(array_filter(
@@ -206,7 +206,7 @@ final class RefusalMessagesTest extends TestCase
      */
     private function sources(): array
     {
-        $directory = dirname(__DIR__, 3) . '/src';
+        $directory = dirname(__DIR__, 4) . '/src/saml2-bindings/src';
         $sources = [];
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
             $directory,

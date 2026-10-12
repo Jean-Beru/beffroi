@@ -21,7 +21,7 @@ for url in "$@"; do
         echo "No file $url, or no $expected next to it." >&2
         exit 1
     fi
-    python3 tests/Fixture/oracle/read-redirect-url.py "$url" "$work"
+    python3 tests/saml2-bindings/Fixture/oracle/read-redirect-url.py "$url" "$work"
     # The six RSA schemes of dsig.md D-5, RFC 6931 §2.3: PKCS#1 v1.5, and RSASSA-PSS with MGF1 of the same digest and a
     # salt of the digest's length.
     case "$(cat "$work/sigalg")" in

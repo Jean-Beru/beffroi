@@ -36,6 +36,9 @@
         <testsuite name="saml2-model">
             <directory>../tests/saml2-model/Unit</directory>
         </testsuite>
+        <testsuite name="saml2-bindings">
+            <directory>../tests/saml2-bindings/Unit</directory>
+        </testsuite>
     </testsuites>
     <php>
         <ini name="display_errors" value="1"/>

@@ -23,7 +23,7 @@ use Beffroi\Saml2\Bindings\RedirectReceiver;
 use Beffroi\Saml2\Bindings\Tests\Support\BrowserForm;
 use Beffroi\Saml2\Model\SamlLoader;
 
-require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__ . '/../../../vendor/autoload.php';
 
 $files = glob(rtrim($argv[1] ?? '.', '/') . '/' . ($argv[2] ?? '*.txt')) ?: [];
 sort($files);

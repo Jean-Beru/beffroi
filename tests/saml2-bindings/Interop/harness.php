@@ -14,7 +14,7 @@ declare(strict_types=1);
 use Beffroi\Saml2\Bindings\Tests\Support\BrowserForm;
 use Psr\Clock\ClockInterface;
 
-require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__ . '/../../../vendor/autoload.php';
 
 // The SigAlg of RSA with SHA-512 as a query string carries it, for the probe that changes the SigAlg after signing.
 const RSA_SHA512_ENCODED = 'http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha512';
