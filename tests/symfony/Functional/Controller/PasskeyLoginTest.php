@@ -278,6 +278,34 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
+     * WebAuthn Level 3 §6.1.3: the BE flag of a credential is set when it is created and never changes, so
+     * an assertion that claims another one is refused after the signature, with the key the passkey was
+     * enrolled as in the trail, and the row keeps that flag.
+     */
+    #[Test]
+    public function anAssertionWhoseBackupEligibilityChangedIsRefused(): void
+    {
+        // Given
+        $device = self::device(synced: true);
+        $alice = self::user('alice');
+        $this->enrol($alice, $device);
+        $this->forgetTheBrowser();
+        $interaction = $this->authorize();
+
+        // When
+        $this->loginWithPasskey($interaction, $device->withoutBackupEligibility());
+
+        // Then
+        $failures = self::events(AuthenticationFailed::class);
+        $this->assertRefused($interaction);
+        static::assertCount(1, $failures);
+        static::assertSame(AuthenticationFailureReason::InvalidCredential, $failures[0]->reason);
+        static::assertSame('swk', $failures[0]->method?->value);
+        static::assertTrue($failures[0]->user?->id->equals($alice->id));
+        static::assertTrue(self::passkeyOf($alice, $device)->backupEligible);
+    }
+
+    /**
      * The state of the account is checked after the signature, as after the password (UserChecker).
      */
     #[Test]

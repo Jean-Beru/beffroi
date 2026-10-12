@@ -113,10 +113,10 @@ final class PasskeyCredentialTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideFlags')]
-    public function anAssertionProvesTheKeyAndThePresenceOfTheUserByItsFlags(AuthenticatorData $data, array $expected): void
+    public function anAssertionProvesTheKeyOfThePasskeyAndThePresenceItsFlagsSay(bool $synced, AuthenticatorData $data, array $expected): void
     {
         // Given
-        $passkey = Fixtures::passkey();
+        $passkey = Fixtures::passkey(backupEligible: $synced, backedUp: $synced);
 
         // When
         $methods = $passkey->methods($data);
@@ -126,17 +126,18 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2 against the flags of WebAuthn Level 3 §6.1: the backup eligible flag tells a synced
-     * passkey from a device-bound key, the user presence flag says a user was there.
+     * RFC 8176 §2 against the flags of WebAuthn Level 3 §6.1: the backup eligibility of the enrolment
+     * tells a synced passkey from a device-bound key (§6.1.3, the flag of a credential never changing),
+     * the user presence flag of the assertion says a user was there.
      *
-     * @return iterable<string, array{AuthenticatorData, list<string>}>
+     * @return iterable<string, array{bool, AuthenticatorData, list<string>}>
      */
     public static function provideFlags(): iterable
     {
-        yield 'device-bound key, user present' => [Fixtures::authenticatorData(userPresent: true, backupEligible: false), ['hwk', 'user']];
-        yield 'device-bound key, no presence test' => [Fixtures::authenticatorData(userPresent: false, backupEligible: false), ['hwk']];
-        yield 'synced passkey, user present' => [Fixtures::authenticatorData(userPresent: true, backupEligible: true, backedUp: true), ['swk', 'user']];
-        yield 'synced passkey, no presence test' => [Fixtures::authenticatorData(userPresent: false, backupEligible: true), ['swk']];
+        yield 'device-bound key, user present' => [false, Fixtures::authenticatorData(userPresent: true), ['hwk', 'user']];
+        yield 'device-bound key, no presence test' => [false, Fixtures::authenticatorData(userPresent: false), ['hwk']];
+        yield 'synced passkey, user present' => [true, Fixtures::authenticatorData(userPresent: true, backupEligible: true, backedUp: true), ['swk', 'user']];
+        yield 'synced passkey, no presence test' => [true, Fixtures::authenticatorData(userPresent: false, backupEligible: true), ['swk']];
     }
 
     /**
@@ -233,11 +234,15 @@ final class PasskeyCredentialTest extends TestCase
         yield 'back to zero' => [5, 0, true];
     }
 
+    /**
+     * WebAuthn Level 3 §7.2 (step 26) and §6.1.4: the backup state is the latest value of the BS flag,
+     * the backup eligibility the one of the creation, which the use leaves where it is.
+     */
     #[Test]
     public function aUseRecordsTheCountTheBackupStateAndTheDate(): void
     {
         // Given
-        $passkey = Fixtures::passkey();
+        $passkey = Fixtures::passkey(backupEligible: true);
         $used = new DateTimeImmutable('2026-09-19T08:00:00+00:00');
 
         // When
@@ -248,6 +253,35 @@ final class PasskeyCredentialTest extends TestCase
         static::assertTrue($passkey->backupEligible);
         static::assertTrue($passkey->backedUp);
         static::assertSame($used, $passkey->lastUsedAt);
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.3: "The value of the BE flag is set during authenticatorMakeCredential
+     * operation and MUST NOT change", so an assertion that carries another one is refused and the stored
+     * flag, which says what the key is, is never written over.
+     */
+    #[Test]
+    #[DataProvider('provideFlippedBackupEligibility')]
+    public function aUseThatChangesTheBackupEligibilityIsRefused(bool $enrolledWith): void
+    {
+        // Given
+        $passkey = Fixtures::passkey(backupEligible: $enrolledWith, backedUp: $enrolledWith);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The backup eligibility of a passkey is the one it was enrolled with and never changes (WebAuthn Level 3 §6.1.3).');
+
+        // When
+        $passkey->recordUse(Fixtures::authenticatorData(backupEligible: ! $enrolledWith), Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{bool}>
+     */
+    public static function provideFlippedBackupEligibility(): iterable
+    {
+        yield 'a synced passkey whose assertion says the key is bound to its authenticator' => [true];
+        yield 'a device-bound key whose assertion says the key is synced' => [false];
     }
 
     #[Test]
