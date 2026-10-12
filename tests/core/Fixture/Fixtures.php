@@ -13,6 +13,8 @@ use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordLength;
+use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
@@ -25,6 +27,7 @@ use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use Psr\Clock\ClockInterface;
+use SensitiveParameter;
 use function str_repeat;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -94,6 +97,20 @@ final class Fixtures
             self::context($authenticatedAt),
             $authenticatedAt->modify('+12 hours'),
         );
+    }
+
+    /**
+     * A password as somebody typed it, held to the length the floor of the logins of a tenant asks of it
+     * (PasswordLength): the floor of a tenant of these fixtures when none is given, which is the one a
+     * tenant that names none stands on and asks the longer of the two numbers of NIST SP 800-63B
+     * §3.1.1.2.
+     */
+    public static function plainPassword(
+        #[SensitiveParameter]
+        string $value,
+        ?AuthenticationPredicateInterface $floor = null,
+    ): PlainPassword {
+        return new PlainPassword($value, PasswordLength::under($floor ?? self::tenant()->loginFloor));
     }
 
     /**

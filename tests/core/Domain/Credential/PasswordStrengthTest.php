@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * How hard a password is to guess, in bits, and the rung that number falls on (NIST SP 800-63B §5.1.1.2).
+ * How hard a password is to guess, in bits, and the rung that number falls on (NIST SP 800-63B §3.1.1.2).
  *
  * **These vectors are what holds the two estimates together.** The same count is written twice, here and
  * in the script the browser runs (password-strength.js), and there is no JavaScript runner in this

@@ -17,6 +17,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\PhishingResistant;
 use Beffroi\Core\Domain\Session\PhishingResistantHardware;
 use Beffroi\Core\Domain\Session\SingleFactor;
+use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
@@ -117,6 +118,30 @@ final class TenantHardeningTest extends TestCase
         // Then
         static::assertSame(1, $forgotten);
         static::assertSame([$bound], $this->credentials->findByUser($this->alice, PasskeyCredential::class));
+    }
+
+    /**
+     * Issue #625: a floor that stops reading a second factor asks fifteen characters of a password where
+     * the floor before it asked eight (PasswordLength, NIST SP 800-63B §3.1.1.2), and the sweep takes
+     * nothing for that. A hash says nothing of the length of the password behind it, and the same section
+     * asks a verifier not to require a change without evidence of compromise: the length is a rule of what
+     * is posed, and a password this provider accepted is not one it refuses at the next login.
+     */
+    #[Test]
+    public function aPasswordIsKeptUnderAFloorThatNowAsksForMoreLength(): void
+    {
+        // Given
+        $this->tenant->adoptLoginFloor(new TwoFactors());
+        $password = Fixtures::password($this->alice);
+        $this->credentials->save($password);
+
+        // When
+        $forgotten = $this->hardening->adopt($this->tenant, new SingleFactor(), $this->context);
+
+        // Then
+        static::assertSame(0, $forgotten);
+        static::assertSame([$password], $this->credentials->findByUser($this->alice));
+        static::assertSame([], $this->events->of(CredentialForgotten::class));
     }
 
     /**

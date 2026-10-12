@@ -966,7 +966,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CodeAttemptLimiterInterface::class, 'beffroi.security.code_attempts');
     $services->set('beffroi.security.password_attempts', RateLimitedAttempts::class)->args([service('limiter.' . RateLimitedAttempts::PASSWORD_LIMITER)]);
     $services->alias(PasswordAttemptLimiterInterface::class, 'beffroi.security.password_attempts');
-    // The list of compromised passwords NIST SP 800-63B §5.1.1.2 asks a password to be compared against
+    // The list of compromised passwords NIST SP 800-63B §3.1.1.2 asks a password to be compared against
     // (issue #552): the range endpoint of Pwned Passwords, where five characters of a SHA-1 leave and the
     // comparison is local. There is no option to turn it on and no second adapter to alias: a deployment
     // that names no endpoint asks nobody and says so where it is configured (PasswordsSection), as one
@@ -1289,7 +1289,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(EnrolmentRefusal::class);
     $services->set(TenantHardening::class);
     $services->set(PasswordChange::class);
-    // the rule §5.1.1.2 puts first, run by every path that writes a password, and the lookup of a password
+    // the rule §3.1.1.2 puts first, run by every path that writes a password, and the lookup of a password
     // already posed, run by the lane (issue #552)
     $services->set(BreachedPasswordRefusal::class);
     $services->set(BreachedPasswordLookup::class);

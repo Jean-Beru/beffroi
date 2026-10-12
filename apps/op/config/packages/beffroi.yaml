@@ -72,7 +72,7 @@ beffroi:
     passwords:
         breached:
             # The list of compromised passwords a password posed here is compared against (NIST SP
-            # 800-63B §5.1.1.2, issue beffroi-php/beffroi#552): five hexadecimal characters of the SHA-1
+            # 800-63B §3.1.1.2, issue beffroi-php/beffroi#552): five hexadecimal characters of the SHA-1
             # leave, the comparison of the thirty-five that are left is local, there is no API key and no
             # subscription. Empty until a deployment names it, which is what makes the lookup a decision
             # and not a default; a deployment that leaves it empty poses passwords and signs people in on
