@@ -447,6 +447,7 @@ use Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler;
 use Beffroi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResolver;
 use Beffroi\Oidc\Application\Revocation\RevocationHandler;
 use Beffroi\Oidc\Application\Token\AccessTokenInspector;
+use Beffroi\Oidc\Application\Token\PersonOfAnAccessToken;
 use Beffroi\Oidc\Application\Token\AccessTokenVerifier;
 use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Beffroi\Oidc\Application\Token\ClientCredentialsGrant;
@@ -1708,6 +1709,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwtAccessTokenVerifier::class)->tag('beffroi.oidc.access_token_verifier');
     $services->set(OpaqueAccessTokenVerifier::class)->tag('beffroi.oidc.access_token_verifier');
     $services->set(AccessTokenVerifier::class)->args([tagged_iterator('beffroi.oidc.access_token_verifier')]);
+    $services->set(PersonOfAnAccessToken::class);
     $services->set(AccessTokenInspector::class);
     $services->set(PresentedAccessTokenParser::class);
 

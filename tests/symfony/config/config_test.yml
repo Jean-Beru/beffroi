@@ -383,6 +383,34 @@ beffroi:
             token_exchange:
                 subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
                 may_act_for_a_user: true
+        # RFC 8693 §2.1 and OIDC Core §8.1 (issue #601): an exchange between two clients of a sector each.
+        # The "sub" of the token the first holds names its person to that client and to no other, so the
+        # record the exchange writes keeps a name the second one could never read back. The gateway sees its
+        # own users under an identifier of the sector the document it registers names, it registers no
+        # redirection URI as every client of this flow does, and its own tokens are opaque, so what it is
+        # given is a record this provider keeps the person on and can be given back.
+        exchange-pairwise-app:
+            client_name: 'Application of a sector whose token is exchanged'
+            secret: 'exchange-pairwise-secret-of-at-least-32-c'
+            redirect_uris: ['https://exchange-sector.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            scope: 'openid profile invoices.read'
+            resources: ['https://cal.example.com/']
+        exchange-pairwise-gateway:
+            client_name: 'Gateway of another sector acting for a person'
+            secret: 'exchange-gateway-secret-of-at-least-32-ch'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:token-exchange']
+            scope: 'openid profile invoices.read'
+            access_token_format: opaque
+            subject_type: pairwise
+            sector_identifier_uri: 'https://exchange-gateway.test/redirect_uris.json'
+            resources: ['https://cal.example.com/']
+            token_exchange:
+                subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
+                may_act_for_a_user: true
         service-opaque-app:
             client_name: 'Service acting for itself, with opaque tokens'
             secret: 'service-opaque-secret-of-at-least-32-chars'

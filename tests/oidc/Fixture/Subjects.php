@@ -11,10 +11,12 @@ use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
 use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
 use Beffroi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
+use Beffroi\Oidc\Application\Token\PersonOfAnAccessToken;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSalt;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSubjectRepository;
 use Beffroi\Oidc\Port\PairwiseSaltInterface;
 use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
+use Beffroi\Oidc\Port\PresentedSubjectReaderInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
 
@@ -31,6 +33,20 @@ final class Subjects
     public static function ofAProvider(?UserRepositoryInterface $users = null): AssignedSubjectIdentifiers
     {
         return new AssignedSubjectIdentifiers([self::publicKind($users)]);
+    }
+
+    /**
+     * The one reading a resource of the provider does of the person a token is about (issue #601): off the
+     * record, where whatever issued the token resolved one, and off the "sub" for its client where nothing
+     * did.
+     */
+    public static function personOfAToken(
+        ?UserRepositoryInterface $users = null,
+        ?PresentedSubjectReaderInterface $subjects = null,
+    ): PersonOfAnAccessToken {
+        $users ??= new InMemoryUserRepository();
+
+        return new PersonOfAnAccessToken($users, $subjects ?? self::ofAProvider($users));
     }
 
     public static function publicKind(?UserRepositoryInterface $users = null): PublicSubjectIdentifierResolver

@@ -142,7 +142,7 @@ final class IntrospectionHandlerTest extends TestCase
                 ),
                 $sessions,
                 new RecordedGrants([$this->grants, $this->deviceRecords, $this->backchannelRecords]),
-                Subjects::ofAProvider($users),
+                Subjects::personOfAToken($users),
             ),
             $this->jwts->signer,
             Algorithms::all(),
