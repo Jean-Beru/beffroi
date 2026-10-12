@@ -1,5 +1,5 @@
 /*
- * The browser side of a push subscription (Push API §4, architecture §5.2, §5.6): the page of the
+ * The browser side of a push subscription (Push API §3.4, architecture §5.2, §5.6): the page of the
  * account names, in data-application-server-key, the public half of the application server key of the
  * tenant (RFC 8292 §3.2) and, in data-worker-url, the service worker that will receive. Opening the page
  * registers that worker; pressing the button asks the user for permission, subscribes to their own push

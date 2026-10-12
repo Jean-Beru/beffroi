@@ -18,7 +18,7 @@ use function strtr;
 
 /**
  * The application server key of a tenant in the one shape a browser takes it (RFC 8292 §3.2, Push API
- * §4): the uncompressed point of SEC 1 §2.3.3, sixty-five octets of "\x04" and the two coordinates, in
+ * §7.2): the uncompressed point of SEC 1 §2.3.3, sixty-five octets of "\x04" and the two coordinates, in
  * base64url. What the tenant keeps is a JWK (architecture §3.3), what a browser subscribes with is this,
  * and the conversion between the two is here and nowhere else: the page that hands the key out and the
  * sender that signs with it read the same octets, or the push service would refuse a request made for a

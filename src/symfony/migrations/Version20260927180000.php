@@ -9,7 +9,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * The browsers of a user this provider may push to (RFC 8030 §2, Push API §4, architecture §3.1): one
+ * The browsers of a user this provider may push to (RFC 8030 §2, Push API §3.4, architecture §3.1): one
  * row per browser, several per user, each carrying where its push service takes a message for it, the two
  * keys it gave to encrypt one (RFC 8291 §3.1) and the application server key of the tenant it was made
  * under (RFC 8292 §3.2).

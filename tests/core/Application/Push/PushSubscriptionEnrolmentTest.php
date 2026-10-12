@@ -22,7 +22,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * RFC 8292 §3.2, Push API §4: a browser says where it can be pushed to, and what it hands over is
+ * RFC 8292 §3.2, Push API §3.4: a browser says where it can be pushed to, and what it hands over is
  * recorded against the application server key it was handed.
  */
 final class PushSubscriptionEnrolmentTest extends TestCase

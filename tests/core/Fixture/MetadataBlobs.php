@@ -9,7 +9,7 @@ use const JSON_THROW_ON_ERROR;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * Payloads of a Metadata BLOB (FIDO Metadata Service v3 §3.1.4) for the tests: one entry per
+ * Payloads of a Metadata BLOB (FIDO Metadata Service v3.1.1 §3.1.6) for the tests: one entry per
  * authenticator, with the statement an authenticator of the tests would have and the status reports the
  * test chooses.
  */

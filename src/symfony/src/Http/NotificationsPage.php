@@ -13,7 +13,7 @@ use Beffroi\Core\Port\CanPageActiveSubscriptionsInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The page where a user says which of their browsers this provider may reach (Push API §4, architecture
+ * The page where a user says which of their browsers this provider may reach (Push API §3.4, architecture
  * §5.2): what is subscribed now, a button that subscribes this one, and a button that takes one out.
  *
  * The application server key of the tenant is handed to the page because the browser needs it to

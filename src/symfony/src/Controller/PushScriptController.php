@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * The script the page of the account runs to subscribe the browser showing it to its own push service
- * (Push API §4, architecture §5.2, §5.6).
+ * (Push API §3.4, architecture §5.2, §5.6).
  */
 #[AsController]
 final readonly class PushScriptController

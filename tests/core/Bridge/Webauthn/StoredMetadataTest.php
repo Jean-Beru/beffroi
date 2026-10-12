@@ -137,8 +137,8 @@ final class StoredMetadataTest extends TestCase
     }
 
     /**
-     * An entry the service keys by attestation certificate identifiers rather than by AAGUID (FIDO
-     * Metadata Service v3 §3.1.1, a U2F authenticator): nothing to find it by here.
+     * An entry that names its authenticator by attestation certificate key identifiers and not by AAGUID
+     * (FIDO Metadata Service v3.1.1 §3.1.1, a U2F authenticator): nothing to find it by here.
      */
     #[Test]
     public function anEntryWithoutAaguidIsIgnored(): void

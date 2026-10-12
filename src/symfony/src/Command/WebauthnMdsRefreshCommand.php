@@ -26,10 +26,10 @@ use Webauthn\MetadataService\CertificateChain\CertificateToolbox;
 
 /**
  * The FIDO metadata the ceremonies check an attestation against (architecture §3.4), refreshed by hand:
- * the Metadata BLOB downloaded (FIDO Metadata Service v3 §3.1), its signature and its chain verified up to
- * the root this command pins (§3.2), its payload stored. Nothing refreshes it on its own: that is a service
- * of the hosted offer, and a provider that never ran this command knows no authenticator, which its own
- * enrolment does not need (it asks for no attestation).
+ * the Metadata BLOB downloaded (FIDO Metadata Service v3.1.1 §3.1), its signature and its chain verified
+ * up to the root this command pins (§3.2), its payload stored. Nothing refreshes it on its own: that is a
+ * service of the hosted offer, and a provider that never ran this command knows no authenticator, which
+ * its own enrolment does not need (it asks for no attestation).
  */
 #[AsCommand(
     name: 'beffroi:webauthn:mds-refresh',

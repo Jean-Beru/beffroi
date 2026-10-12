@@ -187,8 +187,8 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * Push API §4: the same browser subscribing again hands back the endpoint it already had, and that is
-     * what says it is this browser. The lookup matches on the digest, which the domain computes from the
+     * Push API §3.4: the same browser subscribing again hands back the endpoint it already had, and that
+     * is what says it is this browser. The lookup matches on the digest, which the domain computes from the
      * endpoint it is given and which stays in the clear, so sealing the endpoint takes nothing from it.
      */
     #[Test]
