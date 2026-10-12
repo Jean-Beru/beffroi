@@ -82,9 +82,7 @@ final class RedirectReceiverTest extends TestCase
      */
     public static function provideBothMessageParameters(): iterable
     {
-        $signed = RedirectQuery::carrying('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE))
-            ->withRelayState('state')
-            ->signed();
+        $signed = RedirectQuery::carrying('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE))->withRelayState('state')->signed();
         $authnRequest = RedirectQuery::message(self::fixture(self::AUTHN_REQUEST));
         $logoutRequest = RedirectQuery::message(self::fixture(self::LOGOUT_REQUEST));
 
@@ -204,10 +202,7 @@ final class RedirectReceiverTest extends TestCase
     public function itVerifiesTheOctetsWhateverTheOrderOfArrival(): void
     {
         // Given
-        $query = self::authnRequestQuery()
-            ->withRelayState('state')
-            ->signed()
-            ->inOrder(['SigAlg', 'Signature', 'RelayState', 'SAMLRequest']);
+        $query = self::authnRequestQuery()->withRelayState('state')->signed()->inOrder(['SigAlg', 'Signature', 'RelayState', 'SAMLRequest']);
 
         // When
         $accepted = self::receiver()
@@ -316,10 +311,7 @@ final class RedirectReceiverTest extends TestCase
     {
         yield 'an empty query string' => [''];
         yield 'RelayState alone' => ['RelayState=state'];
-        yield 'the signature without the message' => [self::authnRequestQuery()
-            ->signed()
-            ->without('SAMLRequest')
-            ->toString()];
+        yield 'the signature without the message' => [self::authnRequestQuery()->signed()->without('SAMLRequest')->toString()];
     }
 
     /**
@@ -333,8 +325,7 @@ final class RedirectReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The query string carries a message parameter the method does not take (B-1).');
 
         // When
-        self::receiver()
-            ->authnRequest(RedirectQuery::carrying('SAMLResponse', self::fixture(self::AUTHN_REQUEST))->toString());
+        self::receiver()->authnRequest(RedirectQuery::carrying('SAMLResponse', self::fixture(self::AUTHN_REQUEST))->toString());
     }
 
     /**
@@ -909,9 +900,7 @@ final class RedirectReceiverTest extends TestCase
         yield '%G1 in the name of a parameter of the binding' => [$signed . '&Relay%G1State=x'];
         yield '%2 in the name of another parameter' => ['tenant%2=acme&' . $signed];
         yield 'a trailing % in a name' => [$signed . '&tenant%=acme'];
-        yield '%G1 in the message' => [$query
-            ->replaced('SAMLRequest', $query->value('SAMLRequest') . '%G1')
-            ->toString()];
+        yield '%G1 in the message' => [$query->replaced('SAMLRequest', $query->value('SAMLRequest') . '%G1')->toString()];
         yield '%2 in RelayState' => [$query->replaced('RelayState', 'state%2')->toString()];
         yield 'a trailing % in SigAlg' => [$query->replaced('SigAlg', $query->value('SigAlg') . '%')->toString()];
         yield '%G1 in Signature' => [$query->replaced('Signature', '%G1' . $query->value('Signature'))->toString()];
@@ -939,8 +928,7 @@ final class RedirectReceiverTest extends TestCase
     public static function provideOtherEncodings(): iterable
     {
         yield 'another URI' => [RedirectQuery::encode('urn:example:encoding')];
-        yield 'DEFLATE in lower case' =>
-            [RedirectQuery::encode('urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:deflate')];
+        yield 'DEFLATE in lower case' => [RedirectQuery::encode('urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:deflate')];
         yield 'empty' => [''];
     }
 

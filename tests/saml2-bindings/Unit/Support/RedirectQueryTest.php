@@ -60,9 +60,7 @@ final class RedirectQueryTest extends TestCase
 
         // Then
         static::assertSame(
-            'SAMLRequest='
-            . $query->value('SAMLRequest')
-            . '&RelayState=a%20b&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256',
+            'SAMLRequest=' . $query->value('SAMLRequest') . '&RelayState=a%20b&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256',
             $octets,
         );
     }

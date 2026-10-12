@@ -122,10 +122,7 @@ final class RefusalMessagesTest extends TestCase
 
     private static function namesItsRule(string $message): bool
     {
-        return (
-            preg_match('~\((?:B-\d+|section \d+(?:\.\d+)*)(?:, (?:B-\d+|section \d+(?:\.\d+)*))*\)\.\z~', $message)
-            === 1
-        );
+        return preg_match('~\((?:B-\d+|section \d+(?:\.\d+)*)(?:, (?:B-\d+|section \d+(?:\.\d+)*))*\)\.\z~', $message) === 1;
     }
 
     /**
@@ -143,9 +140,7 @@ final class RefusalMessagesTest extends TestCase
         $exceptions = [...$this->refusals(), ...self::PROGRAMMING_ERRORS];
         $messages = [];
         foreach ($tokens as $index => $token) {
-            if (
-                ! $token->is(T_NEW) || ! in_array($this->shortName($tokens[$index + 1]->text ?? ''), $exceptions, true)
-            ) {
+            if (! $token->is(T_NEW) || ! in_array($this->shortName($tokens[$index + 1]->text ?? ''), $exceptions, true)) {
                 continue;
             }
             $messages[] = $this->argument($tokens, $index + 3);

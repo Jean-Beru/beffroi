@@ -354,11 +354,7 @@ final class QueryParametersTest extends TestCase
     public function itBuildsTheOctetsOfASamlResponseWithoutRelayState(): void
     {
         // Given
-        $queryString =
-            'SAMLResponse=fZDB&SigAlg='
-            . self::SIG_ALG
-            . '&Signature='
-            . RedirectQuery::encode(base64_encode(str_repeat("\x01", 256)));
+        $queryString = 'SAMLResponse=fZDB&SigAlg=' . self::SIG_ALG . '&Signature=' . RedirectQuery::encode(base64_encode(str_repeat("\x01", 256)));
 
         // When
         $parameters = QueryParameters::read($queryString, ['SAMLRequest', 'SAMLResponse'], SamlLoader::create());

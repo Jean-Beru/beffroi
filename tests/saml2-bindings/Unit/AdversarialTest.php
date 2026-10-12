@@ -1635,9 +1635,7 @@ final class AdversarialTest extends TestCase
     {
         // Given
         $signed = self::reception(
-            RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
-                ->withRelayState('state')
-                ->signed(),
+            RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))->withRelayState('state')->signed(),
             Service::SingleSignOn,
         );
         $forged = self::reception(
@@ -1715,9 +1713,7 @@ final class AdversarialTest extends TestCase
     public static function provideSerializations(): iterable
     {
         $received = new ReceivedAuthnRequest(self::reception(
-            RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
-                ->withRelayState('state')
-                ->signed(),
+            RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))->withRelayState('state')->signed(),
             Service::SingleSignOn,
         ));
         $property = "\0" . ReceivedAuthnRequest::class . "\0reception";

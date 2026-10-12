@@ -36,9 +36,7 @@ final class ReceptionTest extends TestCase
     public function itReadsAQueryStringWhole(): void
     {
         // Given
-        $query = RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
-            ->withRelayState('a state')
-            ->signed();
+        $query = RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))->withRelayState('a state')->signed();
 
         // When
         $reception = self::reception($query, Service::SingleSignOn);

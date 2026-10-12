@@ -101,10 +101,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     public function itRefusesASigAlgChangedAfterSigning(): void
     {
         // Given
-        $query = self::query()
-            ->withRelayState('state')
-            ->signed()
-            ->replaced('SigAlg', RedirectQuery::encode(SignatureAlgorithm::RsaSha512->value));
+        $query = self::query()->withRelayState('state')->signed()->replaced('SigAlg', RedirectQuery::encode(SignatureAlgorithm::RsaSha512->value));
         $received = self::receiver()->authnRequest($query->toString());
 
         // Then
@@ -139,10 +136,7 @@ final class ReceivedAuthnRequestTest extends TestCase
      */
     public static function provideQueriesSignedInAnotherOrder(): iterable
     {
-        $query = self::query()
-            ->withRelayState('state')
-            ->withSigAlg(SignatureAlgorithm::RsaSha256)
-            ->inOrder(['RelayState', 'SAMLRequest', 'SigAlg']);
+        $query = self::query()->withRelayState('state')->withSigAlg(SignatureAlgorithm::RsaSha256)->inOrder(['RelayState', 'SAMLRequest', 'SigAlg']);
         $message = 'SAMLRequest=' . $query->value('SAMLRequest');
         $relayState = 'RelayState=' . $query->value('RelayState');
         $sigAlg = 'SigAlg=' . $query->value('SigAlg');
@@ -180,10 +174,7 @@ final class ReceivedAuthnRequestTest extends TestCase
         $query = self::query()->withRelayState('a state/1')->withSigAlg(SignatureAlgorithm::RsaSha256);
 
         yield 'the values decoded' => [$query->signedOver(
-            'SAMLRequest='
-            . rawurldecode($query->value('SAMLRequest'))
-            . '&RelayState=a state/1&SigAlg='
-            . SignatureAlgorithm::RsaSha256->value,
+            'SAMLRequest=' . rawurldecode($query->value('SAMLRequest')) . '&RelayState=a state/1&SigAlg=' . SignatureAlgorithm::RsaSha256->value,
         )];
         yield 'the values encoded again in lowercase' => [$query->signedOver(
             RedirectQuery::inLowercase($query->octets()),
@@ -204,10 +195,7 @@ final class ReceivedAuthnRequestTest extends TestCase
         )
             ->withRelayState('state')
             ->signed();
-        $query = self::query()
-            ->withRelayState('state')
-            ->withSigAlg(SignatureAlgorithm::RsaSha256)
-            ->with('Signature', $other->value('Signature'));
+        $query = self::query()->withRelayState('state')->withSigAlg(SignatureAlgorithm::RsaSha256)->with('Signature', $other->value('Signature'));
         $received = self::receiver()->authnRequest($query->toString());
 
         // Then
@@ -347,8 +335,7 @@ final class ReceivedAuthnRequestTest extends TestCase
         if (! SignatureAlgorithm::RsaPssSha256->isAvailable()) {
             static::markTestSkipped('This build cannot sign RSASSA-PSS: it needs PHP 8.5 and OpenSSL 3.1.');
         }
-        $received = self::receiver()
-            ->authnRequest(self::query()->signed('sp', SignatureAlgorithm::RsaPssSha256)->toString());
+        $received = self::receiver()->authnRequest(self::query()->signed('sp', SignatureAlgorithm::RsaPssSha256)->toString());
 
         // When
         $accepted = $this->validate($received);

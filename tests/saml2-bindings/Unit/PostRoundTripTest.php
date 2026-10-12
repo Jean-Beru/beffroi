@@ -126,8 +126,7 @@ final class PostRoundTripTest extends TestCase
     public function itAcceptsASignedLogoutResponse(SignatureAlgorithm $algorithm, ?string $relayState): void
     {
         // Given
-        $form = self::postSender()
-            ->logoutResponse(self::logoutResponse(), self::signing('sp', $algorithm), $relayState);
+        $form = self::postSender()->logoutResponse(self::logoutResponse(), self::signing('sp', $algorithm), $relayState);
         $received = self::postReceiver()->logoutMessage(BrowserForm::submitted($form));
         static::assertInstanceOf(ReceivedLogoutResponse::class, $received);
 
@@ -163,8 +162,7 @@ final class PostRoundTripTest extends TestCase
         SignatureCoverage $coverage,
     ): void {
         // Given
-        $received = self::postReceiver()
-            ->response(BrowserForm::submitted(self::post($message, $relayState, $algorithm)));
+        $received = self::postReceiver()->response(BrowserForm::submitted(self::post($message, $relayState, $algorithm)));
 
         // When
         $accepted = $received->validate(

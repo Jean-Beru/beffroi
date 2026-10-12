@@ -64,10 +64,8 @@ final readonly class BannedConstructsRule implements Rule
         $message = match (true) {
             $node instanceof Equal => '== compares loosely: section 8 of the specification bans it, === compares.',
             $node instanceof NotEqual => '!= compares loosely: section 8 of the specification bans it, !== compares.',
-            $node instanceof Switch_
-                => 'switch compares loosely: section 8 of the specification bans it, match compares.',
-            $node instanceof Bool_
-                => '(bool) casts: section 8 of the specification bans it, a boolean is compared as a string.',
+            $node instanceof Switch_ => 'switch compares loosely: section 8 of the specification bans it, match compares.',
+            $node instanceof Bool_ => '(bool) casts: section 8 of the specification bans it, a boolean is compared as a string.',
             $node instanceof New_ => $this->readsTheClock($node, $scope),
             $node instanceof Variable => $this->superglobal($node),
             default => null,

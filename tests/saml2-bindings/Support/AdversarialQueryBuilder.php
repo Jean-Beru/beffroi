@@ -178,9 +178,7 @@ final readonly class AdversarialQueryBuilder
         $forged = RedirectQuery::message(self::forgedAuthnRequest());
         $message = RedirectQuery::message(self::fixture(self::AUTHN_REQUEST));
         $query = self::signedAuthnRequest();
-        $logoutRequest = RedirectQuery::carrying('SAMLRequest', self::fixture(self::LOGOUT_REQUEST))
-            ->withRelayState('state')
-            ->signed('idp');
+        $logoutRequest = RedirectQuery::carrying('SAMLRequest', self::fixture(self::LOGOUT_REQUEST))->withRelayState('state')->signed('idp');
 
         return [
             self::accepted('name-double-percent-encoded-saml-request') => self::nextTo(
@@ -292,10 +290,7 @@ final readonly class AdversarialQueryBuilder
     {
         $query = self::signedAuthnRequest();
         $signed = $query->toString();
-        $logoutRequest = RedirectQuery::carrying('SAMLRequest', self::fixture(self::LOGOUT_REQUEST))
-            ->withRelayState('state')
-            ->signed('idp')
-            ->toString();
+        $logoutRequest = RedirectQuery::carrying('SAMLRequest', self::fixture(self::LOGOUT_REQUEST))->withRelayState('state')->signed('idp')->toString();
         $segments = explode('&', $signed);
 
         return [
@@ -354,21 +349,11 @@ final readonly class AdversarialQueryBuilder
             self::refused('value-space-after-the-message') => 'SAMLRequest=' . $message . '%20',
             self::refused('value-nul-after-the-message') => 'SAMLRequest=' . $message . '%00',
             self::refused('value-double-percent-encoded-message') => 'SAMLRequest=' . rawurlencode($message),
-            self::refused('value-space-before-the-signature') => $query
-                ->replaced('Signature', '+' . $signature)
-                ->toString(),
-            self::refused('value-nul-after-the-signature') => $query
-                ->replaced('Signature', $signature . '%00')
-                ->toString(),
-            self::refused('value-double-percent-encoded-signature') => $query
-                ->replaced('Signature', rawurlencode($signature))
-                ->toString(),
-            self::refused('value-space-after-saml-encoding') => $query
-                ->with('SAMLEncoding', RedirectQuery::encode(self::DEFLATE) . '+')
-                ->toString(),
-            self::refused('value-nul-after-saml-encoding') => $query
-                ->with('SAMLEncoding', RedirectQuery::encode(self::DEFLATE) . '%00')
-                ->toString(),
+            self::refused('value-space-before-the-signature') => $query->replaced('Signature', '+' . $signature)->toString(),
+            self::refused('value-nul-after-the-signature') => $query->replaced('Signature', $signature . '%00')->toString(),
+            self::refused('value-double-percent-encoded-signature') => $query->replaced('Signature', rawurlencode($signature))->toString(),
+            self::refused('value-space-after-saml-encoding') => $query->with('SAMLEncoding', RedirectQuery::encode(self::DEFLATE) . '+')->toString(),
+            self::refused('value-nul-after-saml-encoding') => $query->with('SAMLEncoding', RedirectQuery::encode(self::DEFLATE) . '%00')->toString(),
             self::refused('value-double-percent-encoded-saml-encoding') => $query
                 ->with('SAMLEncoding', rawurlencode(RedirectQuery::encode(self::DEFLATE)))
                 ->toString(),
@@ -387,14 +372,9 @@ final readonly class AdversarialQueryBuilder
     {
         $query = self::signedAuthnRequest();
         $forged = RedirectQuery::message(self::forgedAuthnRequest());
-        $logoutResponse = RedirectQuery::carrying('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE))
-            ->withRelayState('state')
-            ->signed()
-            ->toString();
+        $logoutResponse = RedirectQuery::carrying('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE))->withRelayState('state')->signed()->toString();
         $logoutRequest = RedirectQuery::message(self::fixture(self::LOGOUT_REQUEST));
-        $spaced = RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
-            ->with('RelayState', 'a+b')
-            ->signed();
+        $spaced = RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))->with('RelayState', 'a+b')->signed();
         $sha512 = RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
             ->withRelayState('state')
             ->with('SigAlg', RedirectQuery::encode('http://www.w3.org/2001/04/xmldsig-more#rsa-sha512'));
@@ -403,14 +383,10 @@ final readonly class AdversarialQueryBuilder
             self::refused('confusion-saml-request-twice-in-two-spellings') => $query
                 ->with('SAMLRequest', RedirectQuery::inLowercase($query->value('SAMLRequest')))
                 ->toString(),
-            self::refused('confusion-signed-logout-response-and-a-logout-request-under-a-space') =>
-                $logoutResponse . '&+SAMLRequest=' . $logoutRequest,
-            self::refused('confusion-signed-logout-response-and-a-logout-request-under-a-nul') =>
-                $logoutResponse . '&SAMLRequest%00=' . $logoutRequest,
-            self::refused('confusion-signed-logout-response-and-a-logout-request-under-brackets') =>
-                $logoutResponse . '&SAMLRequest[]=' . $logoutRequest,
-            self::accepted('confusion-forged-message-under-a-longer-name-first') =>
-                'xSAMLRequest=' . $forged . '&' . $query->toString(),
+            self::refused('confusion-signed-logout-response-and-a-logout-request-under-a-space') => $logoutResponse . '&+SAMLRequest=' . $logoutRequest,
+            self::refused('confusion-signed-logout-response-and-a-logout-request-under-a-nul') => $logoutResponse . '&SAMLRequest%00=' . $logoutRequest,
+            self::refused('confusion-signed-logout-response-and-a-logout-request-under-brackets') => $logoutResponse . '&SAMLRequest[]=' . $logoutRequest,
+            self::accepted('confusion-forged-message-under-a-longer-name-first') => 'xSAMLRequest=' . $forged . '&' . $query->toString(),
             self::accepted('confusion-forged-message-inside-another-value-first') =>
                 'tenant=' . rawurlencode('SAMLRequest=' . $forged) . '&' . $query->toString(),
             self::refused('confusion-relay-state-folded-into-the-message') => RedirectQuery::none()
@@ -422,18 +398,14 @@ final readonly class AdversarialQueryBuilder
             self::refused('confusion-message-escaped-again-after-signing') => $query
                 ->replaced('SAMLRequest', RedirectQuery::inLowercase($query->value('SAMLRequest')))
                 ->toString(),
-            self::refused('confusion-relay-state-space-written-again-after-signing') => $spaced
-                ->replaced('RelayState', 'a%20b')
-                ->toString(),
+            self::refused('confusion-relay-state-space-written-again-after-signing') => $spaced->replaced('RelayState', 'a%20b')->toString(),
             self::refused('confusion-sig-alg-escaped-again-after-signing') => $query
                 ->replaced('SigAlg', RedirectQuery::inLowercase($query->value('SigAlg')))
                 ->toString(),
             self::accepted('confusion-signature-escaped-again-after-signing') => $query
                 ->replaced('Signature', RedirectQuery::inLowercase($query->value('Signature')))
                 ->toString(),
-            self::refused('confusion-sig-alg-of-sha512-over-a-signature-under-sha256') => $sha512
-                ->signedOver($sha512->octets())
-                ->toString(),
+            self::refused('confusion-sig-alg-of-sha512-over-a-signature-under-sha256') => $sha512->signedOver($sha512->octets())->toString(),
         ];
     }
 
@@ -449,26 +421,16 @@ final readonly class AdversarialQueryBuilder
         $deflate = RedirectQuery::encode(self::DEFLATE);
 
         return [
-            self::accepted('encoding-deflate-every-byte-escaped') => $query
-                ->with('SAMLEncoding', self::escapedWhole(self::DEFLATE))
-                ->toString(),
+            self::accepted('encoding-deflate-every-byte-escaped') => $query->with('SAMLEncoding', self::escapedWhole(self::DEFLATE))->toString(),
             self::accepted('encoding-deflate-in-lower-case-hexadecimal') => $query
                 ->with('SAMLEncoding', RedirectQuery::encodeInLowercase(self::DEFLATE))
                 ->toString(),
             self::accepted('encoding-deflate-unescaped') => $query->with('SAMLEncoding', self::DEFLATE)->toString(),
-            self::accepted('encoding-deflate-first-of-a-signed-query-string') =>
-                'SAMLEncoding=' . $deflate . '&' . $query->toString(),
+            self::accepted('encoding-deflate-first-of-a-signed-query-string') => 'SAMLEncoding=' . $deflate . '&' . $query->toString(),
             self::refused('encoding-deflate-over-a-message-not-deflated') =>
-                'SAMLRequest='
-                    . RedirectQuery::encode(base64_encode(self::fixture(self::AUTHN_REQUEST)))
-                    . '&SAMLEncoding='
-                    . $deflate,
-            self::refused('encoding-deflate-in-upper-case') => $query
-                ->with('SAMLEncoding', RedirectQuery::encode(strtoupper(self::DEFLATE)))
-                ->toString(),
-            self::refused('encoding-deflate-with-a-trailing-slash') => $query
-                ->with('SAMLEncoding', $deflate . '%2F')
-                ->toString(),
+                'SAMLRequest=' . RedirectQuery::encode(base64_encode(self::fixture(self::AUTHN_REQUEST))) . '&SAMLEncoding=' . $deflate,
+            self::refused('encoding-deflate-in-upper-case') => $query->with('SAMLEncoding', RedirectQuery::encode(strtoupper(self::DEFLATE)))->toString(),
+            self::refused('encoding-deflate-with-a-trailing-slash') => $query->with('SAMLEncoding', $deflate . '%2F')->toString(),
             self::accepted('encoding-name-in-lower-case-holding-another-uri') => $query
                 ->with('samlencoding', RedirectQuery::encode('urn:example:encoding'))
                 ->toString(),
@@ -551,16 +513,13 @@ final readonly class AdversarialQueryBuilder
 
         return [
             self::refused('base64-padding-in-the-middle-of-the-message') =>
-                'SAMLRequest='
-                    . RedirectQuery::encode(base64_encode($deflated[0]) . base64_encode(substr($deflated, 1))),
+                'SAMLRequest=' . RedirectQuery::encode(base64_encode($deflated[0]) . base64_encode(substr($deflated, 1))),
             self::refused('base64-padding-in-the-middle-of-the-signature') => $query
                 ->replaced('Signature', RedirectQuery::encode(
-                    base64_encode(substr(self::decodedBase64($signatureText), 0, 1))
-                        . base64_encode(substr(self::decodedBase64($signatureText), 1)),
+                    base64_encode(substr(self::decodedBase64($signatureText), 0, 1)) . base64_encode(substr(self::decodedBase64($signatureText), 1)),
                 ))
                 ->toString(),
-            self::refused('base64-carriage-return-and-line-feed-in-the-message') =>
-                'SAMLRequest=' . RedirectQuery::encode(chunk_split($base64, 76, "\r\n")),
+            self::refused('base64-carriage-return-and-line-feed-in-the-message') => 'SAMLRequest=' . RedirectQuery::encode(chunk_split($base64, 76, "\r\n")),
             self::refused('base64-unused-bit-set-in-the-signature') => $query
                 ->replaced('Signature', RedirectQuery::encode(self::withAnUnusedBitSet($signatureText)))
                 ->toString(),
@@ -595,14 +554,7 @@ final readonly class AdversarialQueryBuilder
         $zlibDictionary = deflate_init(ZLIB_ENCODING_DEFLATE, ['dictionary' => 'urn:oasis:names:tc:SAML:2.0:protocol']);
         $rawDictionary = deflate_init(ZLIB_ENCODING_RAW, ['dictionary' => 'urn:oasis:names:tc:SAML:2.0:protocol']);
         $flushed = deflate_init(ZLIB_ENCODING_RAW);
-        if (
-            ! is_string($level0)
-            || $stored === false
-            || $fixed === false
-            || $zlibDictionary === false
-            || $rawDictionary === false
-            || $flushed === false
-        ) {
+        if (! is_string($level0) || $stored === false || $fixed === false || $zlibDictionary === false || $rawDictionary === false || $flushed === false) {
             throw new LogicException('zlib could not deflate an attempt.');
         }
         $chunks = '';
@@ -634,8 +586,7 @@ final readonly class AdversarialQueryBuilder
                 base64_encode(substr($deflated, 0, -1) . chr($last | 0x80)),
             )),
             self::refused('deflate-two-final-blocks') => self::unsignedMessage($deflated . $deflated),
-            self::refused('deflate-empty-final-block-after-the-final-block') => self::unsignedMessage($deflated
-            . "\x03\x00"),
+            self::refused('deflate-empty-final-block-after-the-final-block') => self::unsignedMessage($deflated . "\x03\x00"),
             self::refused('deflate-zlib-preset-dictionary') => self::unsignedMessage(self::added(deflate_add(
                 $zlibDictionary,
                 $xml,
@@ -723,10 +674,8 @@ final readonly class AdversarialQueryBuilder
             self::accepted('form-lower-case-sig-alg') => $message . '&sigalg=' . urlencode(self::RSA_SHA256),
             self::refused('form-empty-sig-alg') => $message . '&SigAlg=',
             self::accepted('form-saml-response-twice-the-last-genuine') => 'SAMLResponse=x&' . $message,
-            self::accepted('form-wrapped-by-carriage-returns-alone') =>
-                'SAMLResponse=' . urlencode(chunk_split($base64, 76, "\r")),
-            self::accepted('form-line-feed-every-three-characters') =>
-                'SAMLResponse=' . urlencode(chunk_split($base64, 3, "\n")),
+            self::accepted('form-wrapped-by-carriage-returns-alone') => 'SAMLResponse=' . urlencode(chunk_split($base64, 76, "\r")),
+            self::accepted('form-line-feed-every-three-characters') => 'SAMLResponse=' . urlencode(chunk_split($base64, 3, "\n")),
             self::accepted('form-line-breaks-at-both-ends') => 'SAMLResponse=' . urlencode("\r\n" . $base64 . "\r\n"),
             self::refused('form-form-feed-in-the-message') => 'SAMLResponse=' . urlencode("\f" . $base64),
             self::refused('form-vertical-tab-in-the-message') => 'SAMLResponse=' . urlencode("\v" . $base64),
@@ -744,16 +693,14 @@ final readonly class AdversarialQueryBuilder
             self::refused('form-plus-left-unescaped-in-the-message') => 'SAMLResponse=' . self::withPlus($base64),
             self::accepted('form-relay-state-carriage-return-and-line-feed') => $message . '&RelayState=a%0D%0Ab',
             self::accepted('form-relay-state-nul') => $message . '&RelayState=sta%00te',
-            self::accepted('form-relay-state-html') =>
-                $message . '&RelayState=' . urlencode('<script>alert(1)</script>'),
+            self::accepted('form-relay-state-html') => $message . '&RelayState=' . urlencode('<script>alert(1)</script>'),
             self::accepted('form-relay-state-80-bytes-of-characters-of-three-bytes-and-two-letters') =>
                 $message . '&RelayState=' . urlencode(str_repeat("\u{20ac}", 26) . 'ab'),
             self::accepted('form-relay-state-81-bytes-ending-with-a-character-of-two-bytes') =>
                 $message . '&RelayState=' . urlencode(str_repeat('a', 79) . "\u{e9}"),
             self::accepted('form-message-of-exactly-max-form-value-bytes') => $message,
             self::refused('form-message-one-byte-over-max-form-value-bytes') => $message,
-            self::refused('form-message-under-max-form-value-bytes-its-line-breaks-over') =>
-                'SAMLResponse=' . urlencode(chunk_split($base64, 76, "\r\n")),
+            self::refused('form-message-under-max-form-value-bytes-its-line-breaks-over') => 'SAMLResponse=' . urlencode(chunk_split($base64, 76, "\r\n")),
         ];
     }
 
@@ -783,12 +730,8 @@ final readonly class AdversarialQueryBuilder
                 65_537,
                 'x',
             ),
-            self::refused('bound-signature-of-1024-bytes-in-1368-characters') => $query
-                ->replaced('Signature', RedirectQuery::encode($at1024))
-                ->toString(),
-            self::refused('bound-signature-of-1368-characters-written-in-4104') => $query
-                ->replaced('Signature', self::escapedWhole($at1024))
-                ->toString(),
+            self::refused('bound-signature-of-1024-bytes-in-1368-characters') => $query->replaced('Signature', RedirectQuery::encode($at1024))->toString(),
+            self::refused('bound-signature-of-1368-characters-written-in-4104') => $query->replaced('Signature', self::escapedWhole($at1024))->toString(),
             self::refused('bound-signature-of-256-bytes') => $query
                 ->replaced('Signature', RedirectQuery::encode(base64_encode(str_repeat("\x5A", 256))))
                 ->toString(),
@@ -827,9 +770,7 @@ final readonly class AdversarialQueryBuilder
                     )
                     ->toString();
             }
-            $attempts[self::accepted('real-' . $capture . '-parameters-in-reverse-order')] = $query
-                ->inOrder(array_reverse($query->names()))
-                ->toString();
+            $attempts[self::accepted('real-' . $capture . '-parameters-in-reverse-order')] = $query->inOrder(array_reverse($query->names()))->toString();
             $attempts[self::accepted('real-' . $capture . '-saml-encoding-added')] = $query
                 ->with('SAMLEncoding', RedirectQuery::encode(self::DEFLATE))
                 ->toString();
@@ -866,9 +807,7 @@ final readonly class AdversarialQueryBuilder
      */
     private static function signedWithSigAlg(string $sigAlg): string
     {
-        $query = RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
-            ->withRelayState('state')
-            ->with('SigAlg', $sigAlg);
+        $query = RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))->withRelayState('state')->with('SigAlg', $sigAlg);
 
         return $query->signedOver($query->octets())->toString();
     }
@@ -878,9 +817,7 @@ final readonly class AdversarialQueryBuilder
      */
     private static function signedAuthnRequest(): RedirectQuery
     {
-        return RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
-            ->withRelayState('state')
-            ->signed();
+        return RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))->withRelayState('state')->signed();
     }
 
     /**
@@ -888,10 +825,7 @@ final readonly class AdversarialQueryBuilder
      */
     private static function signedWithRelayState(string $raw): string
     {
-        return RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))
-            ->with('RelayState', $raw)
-            ->signed()
-            ->toString();
+        return RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST))->with('RelayState', $raw)->signed()->toString();
     }
 
     /**

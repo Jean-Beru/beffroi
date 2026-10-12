@@ -95,10 +95,7 @@ final class PairingTest extends TestCase
         // When
         $pairing = array_filter(
             $this->functions(),
-            fn (array $function): bool => (
-                $this->takesAny($function['types'], self::MESSAGES)
-                && $this->takesAny($function['types'], self::SIGNATURES)
-            ),
+            fn (array $function): bool => $this->takesAny($function['types'], self::MESSAGES) && $this->takesAny($function['types'], self::SIGNATURES),
         );
 
         // Then
@@ -126,10 +123,7 @@ final class PairingTest extends TestCase
         // Given
         $factories = array_filter(
             $this->functions(),
-            static fn (array $function): bool => (
-                $function['file'] === 'Internal/Reception.php'
-                && $function['name'] !== '__construct'
-            ),
+            static fn (array $function): bool => $function['file'] === 'Internal/Reception.php' && $function['name'] !== '__construct',
         );
 
         // When
@@ -268,9 +262,7 @@ final class PairingTest extends TestCase
      */
     public static function provideFormsWithTheSignatureOfAQueryString(): iterable
     {
-        $signed = RedirectQuery::carrying('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE))
-            ->withRelayState('state')
-            ->signed();
+        $signed = RedirectQuery::carrying('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE))->withRelayState('state')->signed();
         $signature = [
             ['RelayState', 'state'],
             ['SigAlg', rawurldecode($signed->value('SigAlg'))],
@@ -360,8 +352,7 @@ final class PairingTest extends TestCase
             'receiver, logoutMessage()' => $this->validateLogoutResponse(
                 self::receiver()->logoutMessage($query->toString()),
             ),
-            'by hand, ReceivedLogoutResponse'
-                => $this->validateLogoutResponse(new ReceivedLogoutResponse(self::reception(
+            'by hand, ReceivedLogoutResponse' => $this->validateLogoutResponse(new ReceivedLogoutResponse(self::reception(
                 $query,
                 Service::SingleLogout,
             ))),

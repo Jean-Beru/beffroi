@@ -122,8 +122,7 @@ final class PostReceiverTest extends TestCase
     public function itReceivesALogoutResponse(): void
     {
         // When
-        $received = self::postReceiver()
-            ->logoutMessage(self::form('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE)));
+        $received = self::postReceiver()->logoutMessage(self::form('SAMLResponse', self::fixture(self::LOGOUT_RESPONSE)));
 
         // Then
         static::assertInstanceOf(ReceivedLogoutResponse::class, $received);
@@ -395,9 +394,7 @@ final class PostReceiverTest extends TestCase
 
         // Then
         $this->expectException(LimitExceeded::class);
-        $this->expectExceptionMessageIs('The message field is longer than maxFormValueBytes, '
-        . $bound
-        . ' bytes (B-7).');
+        $this->expectExceptionMessageIs('The message field is longer than maxFormValueBytes, ' . $bound . ' bytes (B-7).');
 
         // When
         new PostReceiver(SamlLoader::create(), new BindingLimits(maxFormValueBytes: $bound))->response($form);

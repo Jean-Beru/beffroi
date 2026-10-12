@@ -426,9 +426,7 @@ final class RedirectSenderTest extends TestCase
 
         // Then
         $this->expectException(LimitExceeded::class);
-        $this->expectExceptionMessageIs('The query string would be longer than maxQueryStringBytes, '
-        . $bound
-        . ' bytes, which the receiver refuses (B-7).');
+        $this->expectExceptionMessageIs('The query string would be longer than maxQueryStringBytes, ' . $bound . ' bytes, which the receiver refuses (B-7).');
 
         // When
         self::send(
@@ -481,9 +479,7 @@ final class RedirectSenderTest extends TestCase
 
         // Then
         $this->expectException(LimitExceeded::class);
-        $this->expectExceptionMessageIs('The message is longer than maxInflatedBytes, '
-        . $bound
-        . ' bytes, which the receiver refuses once inflated (B-7).');
+        $this->expectExceptionMessageIs('The message is longer than maxInflatedBytes, ' . $bound . ' bytes, which the receiver refuses once inflated (B-7).');
 
         // When
         self::send($message, limits: new BindingLimits(maxInflatedBytes: $bound));
