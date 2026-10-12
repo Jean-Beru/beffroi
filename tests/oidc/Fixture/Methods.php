@@ -15,6 +15,7 @@ use Beffroi\Oidc\Application\Client\ClientAssertionValidator;
 use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Beffroi\Oidc\Application\Client\ClientAuthenticationRequestParser;
 use Beffroi\Oidc\Application\Client\ClientKeySetProvider;
+use Beffroi\Oidc\Application\Key\PublishedKeySetProvider;
 use Beffroi\Oidc\Application\Client\Method\ClientSecretBasic;
 use Beffroi\Oidc\Application\Client\Method\ClientSecretJwt;
 use Beffroi\Oidc\Application\Client\Method\ClientSecretPost;
@@ -96,12 +97,12 @@ final class Methods
         ?ClockInterface $clock = null,
         ?DateInterval $cooldown = null,
     ): ClientKeySetProvider {
-        return new ClientKeySetProvider(
+        return new ClientKeySetProvider(new PublishedKeySetProvider(
             $fetcher ?? new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]),
             new InMemoryClientJwksCache(),
             $clock ?? new MockClock('2026-09-15T12:00:00+00:00'),
             $cooldown ?? new DateInterval('PT300S'),
-        );
+        ));
     }
 
     /**

@@ -8,6 +8,8 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
@@ -75,7 +77,31 @@ final class ConfigurationTrustedIssuersTest extends TestCase
         static::assertSame(['job-runner'], $issuer->clientIds);
         static::assertSame('workforce', $issuer->identityProvider);
         static::assertTrue($issuer->isTrustedFor(new Scopes([new Scope('invoices.read')])));
+        static::assertInstanceOf(ClientJwks::class, $issuer->keys);
         static::assertCount(1, $issuer->keys->keys);
+    }
+
+    /**
+     * RFC 7517 §5: an issuer that publishes its keys behind a URL declares that URL instead of the set, which
+     * is what an issuer that rotates its keys does; nothing is read at boot.
+     */
+    #[Test]
+    public function anIssuerMayPublishItsKeysBehindAUrl(): void
+    {
+        // Given
+        $issuers = $this->issuers([
+            TrustedIssuers::ISSUER =>
+                [
+                    'jwks_uri' => TrustedIssuers::JWKS_URI,
+                ] + self::withoutKeys(),
+        ]);
+
+        // When
+        $issuer = $issuers->find($this->tenant, TrustedIssuers::ISSUER) ?? static::fail('The declared issuer should have been found.');
+
+        // Then
+        static::assertInstanceOf(ClientUri::class, $issuer->keys);
+        static::assertSame(TrustedIssuers::JWKS_URI, $issuer->keys->value);
     }
 
     #[Test]
@@ -136,13 +162,38 @@ final class ConfigurationTrustedIssuersTest extends TestCase
             'has unknown keys: insecure_accept_anything',
         ];
         yield 'no keys at all' => [
+            self::withoutKeys(),
+            'publishes the keys it signs with in "jwks" or behind a "jwks_uri"',
+        ];
+        yield 'keys both ways' => [
             [
-                'signing_algorithms' => ['ES256'],
-                'clients' => ['job-runner'],
-                'identity_provider' => 'workforce',
-                'trusted_scopes' => ['invoices.read'],
-            ],
-            'publishes the keys it signs with in "jwks"',
+                'jwks_uri' => TrustedIssuers::JWKS_URI,
+            ] + self::WORKFORCE,
+            'either in "jwks" or behind a "jwks_uri", never both',
+        ];
+        yield 'a jwks_uri that is not a URL' => [
+            [
+                'jwks_uri' => 'not-a-url',
+            ] + self::withoutKeys(),
+            'is not an absolute URI',
+        ];
+        yield 'a jwks_uri in plain HTTP' => [
+            [
+                'jwks_uri' => 'http://workforce.example.com/jwks',
+            ] + self::withoutKeys(),
+            'must use HTTPS',
+        ];
+        yield 'a jwks_uri that is not a string' => [
+            [
+                'jwks_uri' => ['https://workforce.example.com/jwks'],
+            ] + self::withoutKeys(),
+            'jwks_uri option of the trusted issuer',
+        ];
+        yield 'keys that are not written as a set' => [
+            [
+                'jwks' => 'not-a-set',
+            ] + self::withoutKeys(),
+            'jwks option of the trusted issuer',
         ];
         yield 'keys that are not a JWK Set' => [
             [
@@ -226,6 +277,21 @@ final class ConfigurationTrustedIssuersTest extends TestCase
                 'trusted_scopes' => ['invoices.read'],
             ],
             'clients option of the trusted issuer',
+        ];
+    }
+
+    /**
+     * The declaration of the issuer but for where its keys are, which each case names itself.
+     *
+     * @return array<string, mixed>
+     */
+    private static function withoutKeys(): array
+    {
+        return [
+            'signing_algorithms' => ['ES256'],
+            'clients' => ['job-runner'],
+            'identity_provider' => 'workforce',
+            'trusted_scopes' => ['invoices.read'],
         ];
     }
 

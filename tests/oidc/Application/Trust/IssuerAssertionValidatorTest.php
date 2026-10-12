@@ -11,17 +11,19 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Trust\IssuerAssertionValidator;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryIssuerAssertionReplayGuard;
-use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
-use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Exception\InvalidGrantException;
 use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
 use Beffroi\Oidc\Tests\Fixture\FakeTrustedIssuers;
 use Beffroi\Oidc\Tests\Fixture\TrustedIssuers;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
 /**
  * What an assertion presented as an authorization has to say (RFC 7523 §3). Every refusal is the same refusal:
@@ -31,6 +33,12 @@ final class IssuerAssertionValidatorTest extends TestCase
 {
     private const string REFUSED = 'invalid_grant: The assertion is not one this provider accepts as an authorization (RFC 7523 section 3).';
 
+    /**
+     * Seconds between two reads of the same "jwks_uri" when an assertion names a "kid" the kept set does not
+     * hold, the one the deployment of the tests is wired with.
+     */
+    private const int COOLDOWN = 300;
+
     private Tenant $tenant;
 
     private Client $client;
@@ -38,6 +46,10 @@ final class IssuerAssertionValidatorTest extends TestCase
     private FakeTrustedIssuers $issuers;
 
     private InMemoryIssuerAssertionReplayGuard $replays;
+
+    private FakeClientJwksFetcher $fetcher;
+
+    private MockClock $clock;
 
     private IssuerAssertionValidator $validator;
 
@@ -48,6 +60,8 @@ final class IssuerAssertionValidatorTest extends TestCase
         $this->issuers = new FakeTrustedIssuers();
         $this->issuers->trust($this->tenant, TrustedIssuers::workforce());
         $this->replays = new InMemoryIssuerAssertionReplayGuard();
+        $this->fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
+        $this->clock = new MockClock(Fixtures::now());
         $this->validator = $this->validatorWith();
     }
 
@@ -253,15 +267,100 @@ final class IssuerAssertionValidatorTest extends TestCase
         $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
     }
 
+    /**
+     * RFC 7517 §5: an issuer that publishes its keys behind a URL has them read once and kept, as a client
+     * that does has (RFC 7591 §2).
+     */
+    #[Test]
+    public function theKeysOfAnIssuerBehindAUrlAreReadOnceAndKept(): void
+    {
+        // Given
+        $this->trustIssuerPublishingBehindAUrl();
+        $this->validator->validate($this->tenant, $this->client, $this->assertionOf('employee-42'), Fixtures::now());
+
+        // When
+        $verified = $this->validator->validate($this->tenant, $this->client, $this->assertionOf('employee-43'), Fixtures::now());
+
+        // Then
+        static::assertSame('employee-43', $verified->subject);
+        static::assertCount(1, $this->fetcher->fetched);
+    }
+
+    /**
+     * An issuer that rotates a key is followed: the "kid" the assertion names is not in the kept set, so the
+     * set is read again, which the cooldown of the reading bounds to once (PublishedKeySetProviderTest).
+     */
+    #[Test]
+    public function anAssertionNamingAKeyTheKeptSetDoesNotHoldHasTheSetReadAgain(): void
+    {
+        // Given
+        $this->trustIssuerPublishingBehindAUrl();
+        $this->validator->validate($this->tenant, $this->client, $this->assertionOf('employee-42'), Fixtures::now());
+        $this->clock->modify('+' . (self::COOLDOWN + 1) . ' seconds');
+
+        // When
+        try {
+            $this->validator->validate(
+                $this->tenant,
+                $this->client,
+                $this->assertionOf('employee-43', [
+                    'kid' => 'rotated-in',
+                ]),
+                Fixtures::now(),
+            );
+        } catch (InvalidGrantException) {
+        }
+
+        // Then
+        static::assertCount(2, $this->fetcher->fetched);
+    }
+
+    /**
+     * RFC 7523 §3: an issuer whose keys cannot be read is the one refusal every other refusal of this grant
+     * is, and a client learns nothing of what the tenant trusts.
+     */
+    #[Test]
+    public function anIssuerWhoseKeysCannotBeReadIsTheOneRefusal(): void
+    {
+        // Given
+        $this->trustIssuerPublishingBehindAUrl();
+        $this->fetcher->failure = new ClientKeysUnavailableException('https://workforce.example.com/jwks answered 500.');
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::REFUSED);
+
+        // When
+        $this->validator->validate($this->tenant, $this->client, $this->assertionOf('employee-42'), Fixtures::now());
+    }
+
+    /**
+     * @param array<string, mixed> $header
+     */
+    private function assertionOf(string $subject, array $header = []): string
+    {
+        return TrustedIssuers::assertion(
+            $subject,
+            (string) $this->tenant->issuer,
+            Fixtures::now(),
+            [
+                'jti' => 'assertion-of-' . $subject,
+            ],
+            $header,
+        );
+    }
+
     private function validatorWith(): IssuerAssertionValidator
     {
-        return new IssuerAssertionValidator(
-            new JwtLibraryCompactJwtReader(),
-            new JwtLibraryJwtKeyVerifier(Algorithms::all()->manager()),
-            $this->issuers,
-            $this->replays,
-            new DateInterval('PT300S'),
-            new DateInterval('PT30S'),
-        );
+        return TrustedIssuers::validator($this->issuers, $this->replays, $this->fetcher, $this->clock, new DateInterval('PT' . self::COOLDOWN . 'S'));
+    }
+
+    /**
+     * The issuer of the fixtures, publishing its keys behind the URL it registered rather than writing them
+     * down (RFC 7517 §5).
+     */
+    private function trustIssuerPublishingBehindAUrl(): void
+    {
+        $this->issuers->trust($this->tenant, TrustedIssuers::workforce(keys: new ClientUri(TrustedIssuers::JWKS_URI)));
     }
 }

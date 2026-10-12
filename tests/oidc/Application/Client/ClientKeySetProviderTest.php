@@ -4,188 +4,126 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client;
 
-use function array_map;
 use DateInterval;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\ClientAuthenticationFailure;
 use Beffroi\Oidc\Application\Client\ClientKeySetProvider;
+use Beffroi\Oidc\Application\Key\PublishedKeySetProvider;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientJwksCache;
 use Beffroi\Oidc\Domain\Client\Client;
-use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Where the keys of a client come from (RFC 7591 §2): the set it published inline, or the set read back
- * from its "jwks_uri", kept between requests and read again at most once per cooldown when an assertion
- * names a "kid" the kept set does not hold.
+ * The client's half of a published key set (RFC 7591 §2): the set its registration names, read by the
+ * one class that reads a published set (PublishedKeySetProviderTest), and what being unable to read it
+ * means for the method that was authenticating the client.
  */
 final class ClientKeySetProviderTest extends TestCase
 {
     private const string JWKS_URI = 'https://key.example/jwks';
 
-    private const int COOLDOWN = 300;
-
     private Tenant $tenant;
 
-    private MockClock $clock;
+    private FakeClientJwksFetcher $fetcher;
 
-    private InMemoryClientJwksCache $cache;
+    private ClientKeySetProvider $provider;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $this->clock = new MockClock('2026-09-15T10:00:00+00:00');
-        $this->cache = new InMemoryClientJwksCache();
+        $this->fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
+        $this->provider = new ClientKeySetProvider(new PublishedKeySetProvider(
+            $this->fetcher,
+            new InMemoryClientJwksCache(),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            new DateInterval('PT300S'),
+        ));
     }
 
+    /**
+     * RFC 7591 §2: a client that wrote its keys down is answered them, and nothing is called.
+     */
     #[Test]
-    public function aSetPublishedInlineIsNeverFetched(): void
+    public function theSetAClientWroteDownIsItsAnswer(): void
     {
         // Given
-        $fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
         $client = Clients::withKeys($this->tenant);
 
         // When
-        $keys = $this->provider($fetcher)->keysOf($client, ClientAssertions::KEY_ID);
+        $keys = $this->provider->keysOf($client, ClientAssertions::KEY_ID);
 
         // Then
         static::assertSame($client->registration->jwks, $keys);
-        static::assertSame([], $fetcher->fetched);
-    }
-
-    #[Test]
-    public function aSetBehindAJwksUriIsFetchedOnce(): void
-    {
-        // Given
-        $fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
-        $provider = $this->provider($fetcher);
-        $client = $this->remoteClient();
-        $provider->keysOf($client, ClientAssertions::KEY_ID);
-
-        // When
-        $provider->keysOf($client, ClientAssertions::KEY_ID);
-
-        // Then
-        static::assertSame([self::JWKS_URI], self::urls($fetcher));
+        static::assertSame([], $this->fetcher->fetched);
     }
 
     /**
-     * A client that rotates a key is followed: the "kid" it now signs with is not in the kept set, and
-     * the set is read again once the cooldown has passed.
+     * RFC 7591 §2: a client that registered a "jwks_uri" has it read, and no other URL.
      */
     #[Test]
-    public function anUnknownKeyIdentifierCostsOneRefetch(): void
+    public function theSetOfAClientIsReadFromTheUrlItRegistered(): void
     {
-        // Given
-        $rotated = ClientAssertions::publishedKeys();
-        $fetcher = new FakeClientJwksFetcher([self::otherKeys(), $rotated]);
-        $provider = $this->provider($fetcher);
-        $client = $this->remoteClient();
-        $provider->keysOf($client, 'old-key');
-        $this->clock->modify('+' . (self::COOLDOWN + 1) . ' seconds');
-
         // When
-        $keys = $provider->keysOf($client, ClientAssertions::KEY_ID);
+        $keys = $this->provider->keysOf($this->remoteClient(), ClientAssertions::KEY_ID);
 
         // Then
-        static::assertSame($rotated->keys, $keys->keys);
-        static::assertCount(2, $fetcher->fetched);
+        static::assertSame(ClientAssertions::publishedKeys()->keys, $keys->keys);
+        static::assertSame([self::JWKS_URI], array_map(static fn (ClientUri $uri): string => $uri->value, $this->fetcher->fetched));
     }
 
     /**
-     * A client that signs with a key it never published cannot make the provider call it on every
-     * request.
+     * A client that publishes neither a set nor a URL publishes nothing to verify a signature against,
+     * and nothing is called to find out.
      */
     #[Test]
-    public function aSecondUnknownKeyIdentifierInsideTheCooldownCostsNoRefetch(): void
+    public function aClientThatPublishesNoKeyIsRefused(): void
     {
         // Given
-        $fetcher = new FakeClientJwksFetcher([self::otherKeys(), self::otherKeys()]);
-        $provider = $this->provider($fetcher);
-        $client = $this->remoteClient();
-        $provider->keysOf($client, 'old-key');
-        $this->clock->modify('+' . (self::COOLDOWN + 1) . ' seconds');
-        $provider->keysOf($client, ClientAssertions::KEY_ID);
-
-        // When
-        $provider->keysOf($client, ClientAssertions::KEY_ID);
-
-        // Then
-        static::assertCount(2, $fetcher->fetched);
-    }
-
-    /**
-     * A signature that names no key is verified against everything the client published, so there is
-     * nothing to read again.
-     */
-    #[Test]
-    public function aSignatureThatNamesNoKeyCostsNoRefetch(): void
-    {
-        // Given
-        $fetcher = new FakeClientJwksFetcher([self::otherKeys()]);
-        $provider = $this->provider($fetcher);
-        $client = $this->remoteClient();
-        $provider->keysOf($client, null);
-        $this->clock->modify('+1 day');
-
-        // When
-        $provider->keysOf($client, null);
-
-        // Then
-        static::assertCount(1, $fetcher->fetched);
-    }
-
-    /**
-     * A "jwks_uri" that cannot be read is an authentication that fails, and nothing else.
-     */
-    #[Test]
-    public function aJwksUriThatCannotBeReadIsRaised(): void
-    {
-        // Given
-        $fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
-        $fetcher->failure = new ClientKeysUnavailableException('https://key.example/jwks answered 500.');
+        $client = Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
 
         // Then
         $this->expectException(ClientKeysUnavailableException::class);
-        $this->expectExceptionMessageIs('https://key.example/jwks answered 500.');
+        $this->expectExceptionMessageIs('The client "oidc-demo" publishes no key.');
 
         // When
-        $this->provider($fetcher)->keysOf($this->remoteClient(), ClientAssertions::KEY_ID);
+        $this->provider->keysOf($client, null);
     }
 
-    private function provider(FakeClientJwksFetcher $fetcher): ClientKeySetProvider
+    /**
+     * RFC 6749 §5.2: keys that cannot be read are a refusal of the method that was authenticating the
+     * client and not an error of the endpoint.
+     */
+    #[Test]
+    public function keysThatCannotBeReadRefuseTheMethodThatWasAuthenticating(): void
     {
-        return new ClientKeySetProvider($fetcher, $this->cache, $this->clock, new DateInterval('PT' . self::COOLDOWN . 'S'));
+        // Given
+        $this->fetcher->failure = new ClientKeysUnavailableException('https://key.example/jwks answered 500.');
+        $method = Methods::privateKeyJwt();
+
+        // When
+        try {
+            $this->provider->keysAuthenticating($this->remoteClient(), ClientAssertions::KEY_ID, $method);
+            static::fail('Keys that cannot be read should refuse the method.');
+        } catch (ClientAuthenticationFailure $failure) {
+            // Then
+            static::assertSame(ClientAuthenticationFailureReason::UnreadableClientKeys, $failure->reason);
+            static::assertSame('https://key.example/jwks answered 500.', $failure->getPrevious()?->getMessage());
+        }
     }
 
     private function remoteClient(): Client
     {
         return Clients::withKeys($this->tenant, 'remote-client', jwksUri: new ClientUri(self::JWKS_URI));
-    }
-
-    private static function otherKeys(): ClientJwks
-    {
-        return new ClientJwks([[
-            'kty' => 'EC',
-            'crv' => 'P-256',
-            'kid' => 'old-key',
-            'x' => 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
-            'y' => 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
-        ]]);
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function urls(FakeClientJwksFetcher $fetcher): array
-    {
-        return array_map(static fn (ClientUri $uri): string => $uri->value, $fetcher->fetched);
     }
 }

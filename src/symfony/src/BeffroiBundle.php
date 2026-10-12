@@ -273,7 +273,8 @@ final class BeffroiBundle extends AbstractBundle
             ]);
         }
         if ($builder->hasExtension('framework')) {
-            // the keys of the clients, the assertions of a client, the assertions of a trusted issuer and
+            // the keys of the clients, the keys of the issuers a tenant trusts, the assertions of a client,
+            // the assertions of a trusted issuer and
             // the software statements already seen, each in a pool of its own, the request objects already seen,
             // what DPoP remembers of a proof and what each budget of a load has been asked for live in
             // pools of their own, so that a deployment can point them at a shared store without
@@ -282,6 +283,9 @@ final class BeffroiBundle extends AbstractBundle
                 'cache' => [
                     'pools' => [
                         'beffroi.client_keys' => [
+                            'adapter' => 'cache.app',
+                        ],
+                        'beffroi.issuer_keys' => [
                             'adapter' => 'cache.app',
                         ],
                         'beffroi.client_assertions' => [

@@ -16,6 +16,9 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  * access token (RFC 7523 §2.1), so everything about it is written down here: the keys, the algorithms, the
  * clients that may present its assertions, the source of the identities it is about and what it is trusted
  * for. A tenant that declares none serves the grant to nobody.
+ *
+ * What one read of a "jwks_uri" of an issuer costs is read from "client_authentication" (ClientAuthenticationSection),
+ * as the window of its assertions is: the bound belongs to the read and not to whoever registered the URL.
  */
 final readonly class TrustedIssuersSection extends ConfigurationSection
 {
@@ -42,7 +45,11 @@ final readonly class TrustedIssuersSection extends ConfigurationSection
             ->arrayPrototype()
             ->children()
             ->variableNode('jwks')
-            ->info('The JWK Set of the issuer, inline (RFC 7517 §5): public keys only, and the only keys an assertion of this issuer is ever verified against, whatever its header names (RFC 8725 §3.10).')
+            ->info('The JWK Set of the issuer, inline (RFC 7517 §5): public keys only, and the only keys an assertion of this issuer is ever verified against, whatever its header names (RFC 8725 §3.10). Either this or "jwks_uri", never both and never neither.')
+            ->defaultNull()
+            ->end()
+            ->scalarNode('jwks_uri')
+            ->info('Where the JWK Set of the issuer is read back from instead (RFC 7517 §5), which is how an issuer that rotates its keys publishes them: one GET over HTTPS, no redirect followed, read once and kept in a pool the workers share, and read again at most once per cooldown when an assertion names a "kid" the kept set does not hold. Either this or "jwks", never both and never neither.')
             ->defaultNull()
             ->end()
             ->arrayNode('signing_algorithms')
@@ -80,5 +87,7 @@ final readonly class TrustedIssuersSection extends ConfigurationSection
             $clientAuthentication,
             'assertion_max_lifetime',
         ))->arg('$leeway', self::seconds($clientAuthentication, 'assertion_leeway'));
+        $services->get('beffroi.oidc.issuer_keys.provider')->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
+        $services->get('beffroi.oidc.issuer_keys.cache')->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
     }
 }

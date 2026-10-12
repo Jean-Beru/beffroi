@@ -1619,7 +1619,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         },
  *     },
  *     trusted_issuers?: array<string, array{ // Default: []
- *         jwks?: mixed, // The JWK Set of the issuer, inline (RFC 7517 §5): public keys only, and the only keys an assertion of this issuer is ever verified against, whatever its header names (RFC 8725 §3.10). // Default: null
+ *         jwks?: mixed, // The JWK Set of the issuer, inline (RFC 7517 §5): public keys only, and the only keys an assertion of this issuer is ever verified against, whatever its header names (RFC 8725 §3.10). Either this or "jwks_uri", never both and never neither. // Default: null
+ *         jwks_uri?: scalar|Param|null, // Where the JWK Set of the issuer is read back from instead (RFC 7517 §5), which is how an issuer that rotates its keys publishes them: one GET over HTTPS, no redirect followed, read once and kept in a pool the workers share, and read again at most once per cooldown when an assertion names a "kid" the kept set does not hold. Either this or "jwks", never both and never neither. // Default: null
  *         signing_algorithms?: list<scalar|Param|null>,
  *         clients?: list<scalar|Param|null>,
  *         identity_provider?: scalar|Param|null, // The source of the linked identities the subjects of its assertions name (decision 0002): the "sub" of an assertion is a user of this tenant only when a linked identity of that source says so, and no user is ever created here. // Default: null
