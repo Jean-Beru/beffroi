@@ -53,6 +53,8 @@ const INFECTION_STRICT_FILES = [
     'src/Internal/Service.php',
     // Section 6.1: HTTP-Redirect received, in order (B-6, B-7).
     'src/RedirectReceiver.php',
+    // Section 6.3: HTTP-Redirect sent, in order (B-2, B-6, B-9, B-10, B-12).
+    'src/RedirectSender.php',
     // Section 6.1 step 12: authenticated as the binding says, then validated (B-5).
     'src/ReceivedAuthnRequest.php',
     'src/ReceivedLogoutRequest.php',
@@ -303,6 +305,55 @@ function deptrac(): void
         '--config-file=.ci-tools/deptrac.yaml',
         '--cache-file=tmp-phpqa/.deptrac.cache',
         '--no-progress',
+    ]);
+}
+
+/**
+ * The directory the OpenSSL oracle writes its URLs into, ignored by git with the rest of tmp-phpqa/.
+ */
+const REDIRECT_ORACLE = 'tmp-phpqa/redirect-oracle';
+
+#[AsTask(
+    description: 'Write signed HTTP-Redirect URLs with RedirectSender under every algorithm this build has, then have the OpenSSL command line verify each signature over the octets of the binding built from the URL, and Python\'s zlib inflate each message to the document the writer wrote, each under its signer\'s certificate in Alpine 3.22 (spec/bindings.md section 9.1), what the job Oracle of the CI runs: PHP_VERSION=8.5 castor redirect-oracle',
+)]
+function redirect_oracle(): void
+{
+    foreach (glob(REDIRECT_ORACLE . '/*') ?: [] as $file) {
+        unlink($file);
+    }
+    phpqa(
+        [
+            'composer',
+            'exec',
+            '--',
+            'phpunit',
+            '--configuration',
+            '.ci-tools/phpunit.xml.dist',
+            '--filter',
+            'RedirectSenderOracleTest',
+        ],
+        ['REDIRECT_ORACLE' => REDIRECT_ORACLE],
+    );
+    // The repository mounted read-only: the oracle reads what the sender wrote and writes nothing back.
+    run([
+        'docker',
+        'run',
+        '--rm',
+        '-i',
+        '-v',
+        getcwd() . ':/project:ro',
+        '-w',
+        '/project',
+        'alpine:3.22',
+        'sh',
+        '-c',
+        'apk add -q openssl python3 >/dev/null 2>&1 && openssl version && python3 --version'
+            . ' && sh tests/Fixture/oracle/verify-redirect.sh tests/Fixture/keys/sp-signing-certificate.pem '
+            . REDIRECT_ORACLE
+            . '/sp-*.url'
+            . ' && sh tests/Fixture/oracle/verify-redirect.sh tests/Fixture/keys/idp-signing-certificate.pem '
+            . REDIRECT_ORACLE
+            . '/idp-*.url',
     ]);
 }
 
