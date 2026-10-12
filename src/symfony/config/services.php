@@ -98,6 +98,7 @@ use Beffroi\Bundle\Http\Decision\InteractionPage;
 use Beffroi\Bundle\Http\Decision\LoginRequiredRenderer;
 use Beffroi\Bundle\Http\FapiInteractionId;
 use Beffroi\Bundle\Http\FormTarget;
+use Beffroi\Bundle\Http\ImageSource;
 use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\DeviceApprovalPage;
 use Beffroi\Bundle\Http\RecentLogin;
@@ -648,10 +649,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(FapiInteractionId::class);
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
-    // where a form of a page of this plane may send the browser: the origin of the client the page is
-    // answering, named in the "form-action" of the policy that answer carries, without which a browser
-    // refuses the redirection that takes the code there (FormTarget)
+    // what a page of this plane adds to the policy its answer carries, the deployment writing the rest
+    // (PolicyCompletion): the origin of the client the page is answering, named in "form-action", without
+    // which a browser refuses the redirection that takes the code there (FormTarget), and the origins of
+    // the images the consent page shows, named in "img-src" (ImageSource)
     $services->set(FormTarget::class);
+    $services->set(ImageSource::class);
     // which page of a table a request asks for, and the page of the rows a selection finds: the one word
     // and the one number every table of this plane is paged by, and the one place a count and a slice are
     // written (architecture §5.2)

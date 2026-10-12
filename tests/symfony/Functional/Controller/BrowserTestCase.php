@@ -425,9 +425,9 @@ abstract class BrowserTestCase extends DatabaseTestCase
     /**
      * Architecture §5.2: what every response of the interaction plane carries.
      *
-     * @param string $contentSecurityPolicy what this page carries over the policy of the plane, which a
-     *                                      page whose policy is part of its answer names in full (the
-     *                                      consent page, ConsentPage)
+     * @param string $contentSecurityPolicy what this page carries over the policy of the plane, which the
+     *                                      two pages whose policy is part of a step of the protocol name
+     *                                      in full (FormPostResponse, FrontChannelLogoutPage)
      */
     protected static function assertInteractionHeaders(Response $response, string $contentSecurityPolicy = self::INTERACTION_POLICY): void
     {

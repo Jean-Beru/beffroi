@@ -8,6 +8,8 @@ use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\FormTarget;
+use Beffroi\Bundle\Http\ImageSource;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\InteractionPages;
@@ -31,9 +33,10 @@ use Symfony\Component\Routing\Attribute\Route;
  * The consent page of an interaction (architecture §4.3, §5.2): GET shows it, POST carries "allow" or
  * "deny" with the CSRF token.
  *
- * What the page says of the client that is asking, and the Content-Security-Policy that goes with it,
- * are the module's (ConsentPage); this renders them from a template an application may override, as the
- * form post response and the front-channel logout page are rendered.
+ * What the page says of the client that is asking is the module's (ConsentPage); this renders it from a
+ * template an application may override, as the form post response and the front-channel logout page are
+ * rendered, and names what the page adds to the policy its answer carries: the origins of the two images
+ * it shows and the origin its submission may end at.
  */
 #[AsController]
 final readonly class ConsentController
@@ -53,6 +56,8 @@ final readonly class ConsentController
         private InteractionPages $pages,
         private FormToken $formTokens,
         private InteractionLocale $locale,
+        private ImageSource $images,
+        private FormTarget $formTargets,
     ) {
     }
 
@@ -84,9 +89,12 @@ final readonly class ConsentController
             return $this->responder->respond($request, $decision);
         }
 
-        // the page shows the logo of the client and the one of the tenant, so its policy names where both
-        // are served from (ConsentPage); it is the one page whose policy is part of its answer
+        // the page shows the logo of the client and the one of the tenant, so the "img-src" of the policy
+        // the answer carries names where both are served from (ConsentPage, ImageSource), and allowing
+        // ends with the code carried to the client, so its "form-action" names that client (FormTarget)
         $page = new ConsentPage($interaction->request->client->registration->presentation, $tenant->look);
+        $this->images->mayLoadFrom($request, $page->imageOrigins);
+        $this->formTargets->mayEndAt($request, $interaction->request->redirectUri);
 
         return $this->pages->render(
             'consent.html.twig',
@@ -98,9 +106,6 @@ final readonly class ConsentController
                 'scopes' => $decision->scopes,
                 'authorization_details' => $decision->authorizationDetails,
                 'requirement' => $decision->requirement,
-            ],
-            headers: [
-                'Content-Security-Policy' => $page->contentSecurityPolicy(),
             ],
         );
     }

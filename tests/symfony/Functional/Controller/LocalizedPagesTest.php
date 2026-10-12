@@ -418,12 +418,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
-        // The consent page builds a policy of its own around what the client registered (ConsentPage);
-        // the client of this test registered no logo, so it names no origin.
-        self::assertInteractionHeaders(
-            $response,
-            $path === '/consent' ? "img-src 'self'; frame-ancestors 'none'" : self::INTERACTION_POLICY,
-        );
+        self::assertInteractionHeaders($response);
 
         return $crawler;
     }

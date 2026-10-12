@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use function base64_encode;
 use Beffroi\Bundle\Http\BrowserPreferences;
+use function hash;
 use function implode;
+use function parse_str;
+use function parse_url;
+use const PHP_URL_QUERY;
+use function rtrim;
 use function sprintf;
+use function strtr;
 use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
@@ -184,7 +191,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * The three pages whose policy is part of the protocol compute their own, and theirs is the one that is
+     * The two pages whose policy is part of the protocol compute their own, and theirs is the one that is
      * sent: the page that posts the response of an authorization request to the redirect URI names the hash
      * of the one script that submits the form and the origin it posts to, and nothing else runs or loads
      * (OAuth 2.0 Form Post Response Mode §2, CSP Level 3 §6.6.2.2).
@@ -231,6 +238,73 @@ final class SecurityHeadersTest extends BrowserTestCase
             "form-action 'self' https://client.example.com;",
             (string) $response->headers->get('Content-Security-Policy'),
         );
+    }
+
+    /**
+     * Issue beffroi-php/beffroi#584: the consent page extends the layout of this application, so it is
+     * served the policy written here like every other page of the plane and not one of its own, which
+     * would be a page served without the directives above. What it adds to that policy is read on the
+     * page itself: the host serving the logo of the asking client in the "img-src", that client in the
+     * "form-action", and nothing a client registers anywhere else.
+     */
+    #[Test]
+    public function itServesTheConsentPageThePolicyOfThisDeploymentCompletedWithWhatThatPageAdds(): void
+    {
+        // Given
+        $this->signIn(self::user());
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => 'consent-app',
+            'redirect_uri' => 'https://consent.test/callback',
+            'response_type' => 'code',
+            'scope' => 'openid profile',
+            'state' => 'state-of-the-client',
+            'nonce' => 'nonce-of-the-client',
+            'code_challenge' => self::codeChallenge(),
+            'code_challenge_method' => 'S256',
+        ]);
+
+        // When
+        $this->browser->request('GET', '/consent', [
+            'interaction' => $this->interactionOfTheRedirection(),
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertCspHeader(
+            requiredDirectives: ['default-src', 'base-uri', 'script-src', 'style-src', 'img-src', 'form-action', 'frame-ancestors'],
+            contains: [
+                "default-src 'none'",
+                "img-src 'self' data: https://cdn.consent.test https://op.test",
+                "form-action 'self' https://consent.test",
+            ],
+        );
+    }
+
+    /**
+     * RFC 7636 §4.2 over the verifier of the walk above, which nothing ever presents: the authorization
+     * endpoint refuses a request that carries no challenge (decision 0006) and the page under test is
+     * reached before any token is asked for.
+     */
+    private static function codeChallenge(): string
+    {
+        return rtrim(strtr(base64_encode(hash('sha256', 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk', true)), '+/', '-_'), '=');
+    }
+
+    /**
+     * The interaction the authorization request began, read where the browser was sent (architecture
+     * §4.3): the page of an interaction is reached with the identifier the redirection names and with no
+     * other.
+     */
+    private function interactionOfTheRedirection(): string
+    {
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
+        $query = [];
+        parse_str((string) parse_url(self::string($response->headers->get('Location')), PHP_URL_QUERY), $query);
+        $interaction = $query['interaction'] ?? null;
+        static::assertIsString($interaction);
+
+        return $interaction;
     }
 
     /**

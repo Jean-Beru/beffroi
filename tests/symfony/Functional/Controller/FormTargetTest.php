@@ -23,11 +23,13 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * CSP Level 3 §6.1, §6.3.2 on a deployment that says where a form may be submitted: a page of the
- * interaction plane that may send the browser to a client names the origin of that client among the
- * targets of a submission (FormTarget). A browser checks the directive over the whole redirect chain of
- * one, and the last hop of that chain is the answer carried to the client, so a page that names only
- * this provider is a page whose login never reaches the client that asked for it.
+ * CSP Level 3 §6.1, §6.3.2 on a deployment that writes a policy for its pages: a page of the interaction
+ * plane says what it adds to that policy and the directive it names is completed once the policy is
+ * written (PolicyCompletion). A page that may send the browser to a client names the origin of that
+ * client among the targets of a submission (FormTarget), a browser checking the directive over the whole
+ * redirect chain of one and the last hop of that chain being the answer carried to the client, so a page
+ * that names only this provider is a page whose login never reaches the client that asked for it; the
+ * consent page names the hosts of the images it shows as well (ImageSource).
  *
  * The kernel of this suite writes no policy of its own: what every page of the plane carries is the floor
  * of the plane, which restricts no submission (architecture §5.2). The listener below stands in for the
@@ -39,10 +41,11 @@ final class FormTargetTest extends PasskeyTestCase
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * What a deployment writes on the pages of this plane, the directive of this test among the ones it
-     * names: every form of these pages comes back to the provider, and nothing else may be posted to.
+     * What a deployment writes on the pages of this plane, the two directives of this test among the ones
+     * it names: every form of these pages comes back to the provider and nothing else may be posted to,
+     * every image is served by the provider and no other host.
      */
-    private const string DEPLOYMENT_POLICY = "default-src 'none'; script-src 'self'; form-action 'self'; frame-ancestors 'none'";
+    private const string DEPLOYMENT_POLICY = "default-src 'none'; script-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'";
 
     /**
      * The client of the walks below, and the origin it is answered at.
@@ -52,6 +55,18 @@ final class FormTargetTest extends PasskeyTestCase
     private const string REDIRECT_URI = 'https://demo.test/login/check';
 
     private const string CLIENT_ORIGIN = 'https://demo.test';
+
+    /**
+     * The client consent is required of, the one declared with a logo (config_test.yml), and the two
+     * origins its consent page names: where it is answered, and where that logo is served from.
+     */
+    private const string CONSENT_CLIENT_ID = 'consent-app';
+
+    private const string CONSENT_REDIRECT_URI = 'https://consent.test/callback';
+
+    private const string CONSENT_CLIENT_ORIGIN = 'https://consent.test';
+
+    private const string CONSENT_LOGO_ORIGIN = 'https://cdn.consent.test';
 
     protected function configureContainer(): Closure
     {
@@ -144,6 +159,38 @@ final class FormTargetTest extends PasskeyTestCase
     }
 
     /**
+     * Issue #584: the consent page extends the layout of its deployment, so it carries the policy of that
+     * deployment and not one of its own, with the client it may answer in the "form-action" and the host
+     * serving the logo it shows in the "img-src".
+     */
+    #[Test]
+    public function theConsentPageNamesTheClientItMayAnswerAndTheHostOfTheLogoItShows(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $interaction = $this->authorize([
+            'client_id' => self::CONSENT_CLIENT_ID,
+            'redirect_uri' => self::CONSENT_REDIRECT_URI,
+        ]);
+
+        // When
+        $this->browser->request('GET', '/consent', [
+            'interaction' => $interaction,
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertSame(
+            "default-src 'none'; script-src 'self'; img-src 'self' "
+            . self::CONSENT_LOGO_ORIGIN
+            . "; form-action 'self' "
+            . self::CONSENT_CLIENT_ORIGIN
+            . "; frame-ancestors 'none'",
+            $this->policyOfTheAnswer(),
+        );
+    }
+
+    /**
      * A page of the account answers no client and sends the browser nowhere: what a deployment wrote is
      * what it carries.
      */
@@ -193,7 +240,7 @@ final class FormTargetTest extends PasskeyTestCase
 
     private static function policyNaming(string $origin): string
     {
-        return "default-src 'none'; script-src 'self'; form-action 'self' " . $origin . "; frame-ancestors 'none'";
+        return "default-src 'none'; script-src 'self'; img-src 'self'; form-action 'self' " . $origin . "; frame-ancestors 'none'";
     }
 
     private function policyOfTheAnswer(): string
