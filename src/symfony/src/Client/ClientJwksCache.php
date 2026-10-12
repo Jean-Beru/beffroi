@@ -7,20 +7,23 @@ namespace Beffroi\Bundle\Client;
 use DateTimeImmutable;
 use function hash;
 use Beffroi\Oidc\Domain\Client\CachedClientJwks;
-use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Client\ClientJwks;
+use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Port\ClientJwksCacheInterface;
 use function is_array;
 use function is_int;
 use Psr\Cache\CacheItemPoolInterface;
-use function sprintf;
 use Throwable;
 
 /**
- * The keys read back from a client's "jwks_uri", kept in a pool of the application so that the workers
- * of a deployment share one fetch. What is written is the set and the moment it was read, as plain
- * values and not as objects: a pool outlives a deployment, and what comes back from it is read again as
- * strictly as what comes back from the client itself.
+ * The keys read back from a "jwks_uri", kept in a pool of the application so that the workers of a
+ * deployment share one read. What is written is the set and the moment it was read, as plain values and
+ * not as objects: a pool outlives a deployment, and what comes back from it is read again as strictly as
+ * what comes back from the party itself.
+ *
+ * The class is wired once per pool, the keys of the clients and the keys of the issuers a tenant trusts
+ * living in one each: what tells them apart is the pool and not the key, as it is for the assertions of
+ * each.
  */
 final readonly class ClientJwksCache implements ClientJwksCacheInterface
 {
@@ -30,9 +33,9 @@ final readonly class ClientJwksCache implements ClientJwksCacheInterface
     ) {
     }
 
-    public function read(Client $client): ?CachedClientJwks
+    public function read(ClientUri $jwksUri): ?CachedClientJwks
     {
-        $item = $this->cache->getItem(self::key($client));
+        $item = $this->cache->getItem(self::key($jwksUri));
         if (! $item->isHit()) {
             return null;
         }
@@ -51,9 +54,9 @@ final readonly class ClientJwksCache implements ClientJwksCacheInterface
         return new CachedClientJwks($keys, new DateTimeImmutable('@' . $kept['fetched_at']));
     }
 
-    public function write(Client $client, CachedClientJwks $keys): void
+    public function write(ClientUri $jwksUri, CachedClientJwks $keys): void
     {
-        $item = $this->cache->getItem(self::key($client));
+        $item = $this->cache->getItem(self::key($jwksUri));
         $item->set([
             'keys' => $keys->keys->keys,
             'fetched_at' => $keys->fetchedAt->getTimestamp(),
@@ -63,11 +66,11 @@ final readonly class ClientJwksCache implements ClientJwksCacheInterface
     }
 
     /**
-     * Per tenant and per client; the identifiers are hashed because a pool key takes no arbitrary
-     * character (PSR-6 §Definitions).
+     * By the URL the set was read from, hashed because a pool key takes no arbitrary character
+     * (PSR-6 §Definitions).
      */
-    private static function key(Client $client): string
+    private static function key(ClientUri $jwksUri): string
     {
-        return 'beffroi.client_keys.' . hash('xxh128', sprintf('%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId));
+        return 'beffroi.published_keys.' . hash('xxh128', $jwksUri->value);
     }
 }

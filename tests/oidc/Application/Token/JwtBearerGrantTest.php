@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
-use DateInterval;
 use Beffroi\Core\Bridge\InMemory\InMemoryLinkedIdentityRepository;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
-use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -19,11 +17,7 @@ use Beffroi\Oidc\Application\Client\AuthenticatedClient;
 use Beffroi\Oidc\Application\Request\RequestParameters;
 use Beffroi\Oidc\Application\Token\JwtBearerGrant;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
-use Beffroi\Oidc\Application\Trust\IssuerAssertionValidator;
-use Beffroi\Oidc\Bridge\InMemory\InMemoryIssuerAssertionReplayGuard;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
-use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
-use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Scope\Scope;
@@ -87,14 +81,7 @@ final class JwtBearerGrantTest extends TestCase
         $this->issuers = new FakeTrustedIssuers();
         $this->issuers->trust($this->tenant, TrustedIssuers::workforce());
         $this->grant = new JwtBearerGrant(
-            new IssuerAssertionValidator(
-                new JwtLibraryCompactJwtReader(),
-                new JwtLibraryJwtKeyVerifier(Algorithms::all()->manager()),
-                $this->issuers,
-                new InMemoryIssuerAssertionReplayGuard(),
-                new DateInterval('PT300S'),
-                new DateInterval('PT30S'),
-            ),
+            TrustedIssuers::validator($this->issuers),
             $identities,
             Subjects::publicKind(),
             new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $refreshTokens, Secrets::drawer(), new RecordingEventDispatcher()),

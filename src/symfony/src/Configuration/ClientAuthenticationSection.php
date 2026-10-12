@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
-use Beffroi\Bundle\Client\ClientJwksCache;
 use Beffroi\Bundle\Client\ClientJwksFetcher;
 use Beffroi\Oidc\Application\Client\ClientAssertionValidator;
-use Beffroi\Oidc\Application\Client\ClientKeySetProvider;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
 /**
  * What the provider allows of an assertion a client signs (RFC 7523 §3) and of the JWK Set a client publishes (RFC 7591 §2): how long one stands, and what one read of a "jwks_uri" may cost.
+ *
+ * What a read of a "jwks_uri" costs is a property of the read and not of whoever registered the URL, so the
+ * four options below bound the reads of every published set: those of the clients, and those of the issuers a
+ * tenant trusts, which TrustedIssuersSection reads here for the same reason it reads the assertion window
+ * here (RFC 7523 §3).
  */
 final readonly class ClientAuthenticationSection extends ConfigurationSection
 {
@@ -102,11 +105,11 @@ final readonly class ClientAuthenticationSection extends ConfigurationSection
             $clientAuthentication,
             'assertion_max_lifetime',
         ))->arg('$leeway', self::seconds($clientAuthentication, 'assertion_leeway'));
-        $services->get(ClientKeySetProvider::class)->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
+        $services->get('beffroi.oidc.client_keys.provider')->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
         $services->get(ClientJwksFetcher::class)->arg('$timeout', self::float($clientAuthentication, 'jwks_timeout'))->arg('$maximumSize', self::integer(
             $clientAuthentication,
             'jwks_max_size',
         ));
-        $services->get(ClientJwksCache::class)->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
+        $services->get('beffroi.oidc.client_keys.cache')->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
     }
 }

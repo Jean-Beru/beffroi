@@ -373,6 +373,7 @@ use Beffroi\Oidc\Application\Client\ClientAuthenticationRequestParser;
 use Beffroi\Oidc\Application\Client\ClientAuthenticator;
 use Beffroi\Oidc\Application\Client\ClientDocumentIssuer;
 use Beffroi\Oidc\Application\Client\ClientKeySetProvider;
+use Beffroi\Oidc\Application\Key\PublishedKeySetProvider;
 use Beffroi\Oidc\Application\Client\Method\ClientSecretBasic;
 use Beffroi\Oidc\Application\Client\Method\ClientSecretJwt;
 use Beffroi\Oidc\Application\Client\Method\ClientSecretPost;
@@ -508,7 +509,6 @@ use Beffroi\Oidc\Port\RequestObjectReplayGuardInterface;
 use Beffroi\Oidc\Port\ClientAssertionSecretVerifierInterface;
 use Beffroi\Oidc\Port\ClientAuthenticationMethodsInterface;
 use Beffroi\Oidc\Port\CodeChallengeMethodsInterface;
-use Beffroi\Oidc\Port\ClientJwksCacheInterface;
 use Beffroi\Oidc\Port\ClientJwksFetcherInterface;
 use Beffroi\Oidc\Domain\Token\CertificateConfirmationKind;
 use Beffroi\Oidc\Domain\Token\KeyConfirmationKind;
@@ -1471,15 +1471,20 @@ return static function (ContainerConfigurator $container): void {
     // the tenant, and the two endpoints CIBA Core §7.1 adds for a client registered for a grant that
     // reaches its user itself, read from what the provider serves and from what the client registered
     $services->set(AcceptedAssertionAudiences::class);
-    $services->set(ClientKeySetProvider::class);
-    // the keys of a client read back over HTTPS, kept in a pool the workers share, and the "jti" of the
-    // assertions already seen kept until they expire
+    $services->set(ClientKeySetProvider::class)->args([service('beffroi.oidc.client_keys.provider')]);
+    // the keys published behind a "jwks_uri" read back over HTTPS and kept in a pool the workers share, and
+    // the "jti" of the assertions already seen kept until they expire. What reads a published set and keeps
+    // it is one class, wired once per family of publisher with a pool of its own: the keys of the clients
+    // here, the keys of the issuers a tenant trusts below, as the assertions of each have a pool of their
+    // own. One reader of a URL serves both, so a read of an issuer costs what a read of a client costs.
     $services->set(ClientJwksFetcher::class);
     $services->alias(ClientJwksFetcherInterface::class, ClientJwksFetcher::class);
-    $services->set(ClientJwksCache::class)->args([
+    $services->set('beffroi.oidc.client_keys.cache', ClientJwksCache::class)->args([
         '$cache' => service('beffroi.client_keys'),
     ]);
-    $services->alias(ClientJwksCacheInterface::class, ClientJwksCache::class);
+    $services->set('beffroi.oidc.client_keys.provider', PublishedKeySetProvider::class)->args([
+        '$cache' => service('beffroi.oidc.client_keys.cache'),
+    ]);
     $services->set(ClientAssertionReplayGuard::class)->args([
         inline_service(SeenOnce::class)->args([service('beffroi.client_assertions')]),
     ]);
@@ -1490,7 +1495,13 @@ return static function (ContainerConfigurator $container): void {
     // its own pool of the assertions already seen, so that one reading cannot satisfy the other.
     $services->set(ConfigurationTrustedIssuers::class);
     $services->alias(TrustedIssuersInterface::class, ConfigurationTrustedIssuers::class);
-    $services->set(IssuerAssertionValidator::class);
+    $services->set('beffroi.oidc.issuer_keys.cache', ClientJwksCache::class)->args([
+        '$cache' => service('beffroi.issuer_keys'),
+    ]);
+    $services->set('beffroi.oidc.issuer_keys.provider', PublishedKeySetProvider::class)->args([
+        '$cache' => service('beffroi.oidc.issuer_keys.cache'),
+    ]);
+    $services->set(IssuerAssertionValidator::class)->arg('$publishedKeys', service('beffroi.oidc.issuer_keys.provider'));
     $services->set(IssuerAssertionReplayGuard::class)->args([
         inline_service(SeenOnce::class)->args([service('beffroi.issuer_assertions')]),
     ]);
